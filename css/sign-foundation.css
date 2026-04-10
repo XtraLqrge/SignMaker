@@ -1,0 +1,317 @@
+/* sign-foundation.css
+Serves as the most minimum needed to support sign making before adopting MUTCDs
+*/
+
+:root {
+  --fhwaBaselineShift: 1px;
+}
+
+.blockElementMaster {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0rem;
+}
+
+.blockElementRow {
+  --blockBleedLeft: 0rem;
+  --blockBleedRight: 0rem;
+  --blockBleedTop: 0rem;
+  --blockBleedBottom: 0rem;
+  --blockPaddingTopExtra: 0rem;
+  --blockPaddingBottomExtra: 0rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: var(--marginTop) 0 var(--marginBottom) 0;
+  background-color: var(--masterBlockBgColor);
+}
+
+.blockElementRow.fullBleed {
+  width: calc(100% + var(--blockBleedLeft, 0rem) + var(--blockBleedRight, 0rem));
+  margin-left: calc(-1 * var(--blockBleedLeft, 0rem));
+  margin-right: calc(-1 * var(--blockBleedRight, 0rem));
+  margin-top: calc(var(--marginTop, 0rem) - var(--blockBleedTop, 0rem));
+  margin-bottom: calc(var(--marginBottom, 0rem) - var(--blockBleedBottom, 0rem));
+  padding-left: var(--blockBleedLeft, 0rem);
+  padding-right: var(--blockBleedRight, 0rem);
+  padding-top: calc(var(--blockBleedTop, 0rem) + var(--blockPaddingTopExtra, 0rem));
+  padding-bottom: calc(var(--blockBleedBottom, 0rem) + var(--blockPaddingBottomExtra, 0rem));
+}
+
+.bE-textElement {
+  --fhwaBaselineOffset: 0px;
+  font-family: var(--fontFamily), "Series EM";
+  font-size: var(--fontSize);
+  background-color: var(--blockBgColor);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 var(--spacing);
+  white-space: pre;
+  line-height: calc(var(--fontSize) * ((var(--lineHeight) / 100) + 0.2));
+}
+
+.bE-textElement>span {
+  position: relative;
+  top: var(--fhwaBaselineOffset);
+}
+
+.bE-advisoryMessage {
+  padding: calc(var(--fontSize) * var(--vertPadding)) calc(var(--fontSize) * var(--horizPadding));
+  border-radius: var(--borderRadius);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bE-advisoryMessage.hgFix {
+  line-height: calc(var(--fontSize) * (var(--lineHeight) / 100) * 0.75);
+}
+
+.bE-electronicSign * {
+  color: var(--textColor);
+  text-shadow: var(--textShadow);
+}
+
+.bE-electronicSign {
+  padding: 0.2rem var(--padding);
+  line-height: calc(var(--fontSize) * ((var(--lineHeight) / 100)));
+}
+
+.bE-electronicSign.hgFix {
+  padding: 0.4rem var(--padding) 0.2rem var(--padding);
+}
+
+.bE-numeral {
+  font-size: calc(var(--fontSize) * (var(--numeralSize) / 100));
+}
+
+.bE-banner {
+  font-size: calc(var(--fontSize) * (var(--bannerSize) / 100));
+}
+
+.bE-banner:first-letter {
+  font-size: calc(var(--fontSize) * (var(--bannerSize) / 100) * (var(--bannerFirstLetterSize) / 100));
+}
+
+.bE-tollLogoElement {
+  display: block;
+  height: vmax-content;
+  margin: 0 var(--spacing, 0rem);
+}
+
+.bE-tollLogoElement.hasBackground {
+  background-color: var(--tollBgColor, white);
+  padding: var(--vertPadding) var(--horizPadding);
+  border-radius: var(--borderRadius, 4px);
+}
+
+.bE-tollLogoElement.hasBackground.hasOnlyBlock {
+  border: 3px solid white;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--tollLogoHeight) / 6);
+  padding: calc(var(--vertPadding) * 0.5) calc(var(--horizPadding));
+}
+
+.bE-tollLogoElement.hasBackground.hasOnlyBlock.inverseColor,
+.bE-tollLogoElement.hasBackground.hasOnlyBlock.inverseColor img {
+  border-color: black;
+}
+
+.bE-tollLogoElement.hasBackground.hasOnlyBlock.inverseColor .bE-tollOnlyBlock {
+  background: black;
+  color: white;
+}
+
+.bE-tollOnlyBlock {
+  background-color: white;
+  color: black;
+  font-family: "Series E";
+  padding: calc(var(--tollLogoHeight) * 0.15) 0.5rem calc(var(--tollLogoHeight) * 0.075);
+  line-height: calc(var(--tollLogoHeight) * 0.55);
+  font-size: calc(var(--tollLogoHeight) * 0.8);
+  border-radius: calc(var(--borderRadius) / 2);
+}
+
+.bE-tollLogoElement.hasBackground.hasOnlyBlock img {
+  border: 3px solid white;
+  border-radius: var(--borderRadius, 4px);
+  padding: calc(var(--tollLogoHeight) / 10) calc(var(--tollLogoHeight) / 4);
+}
+
+.bE-shieldElement {
+  /* moved shield layout rules to css/shields.css */
+}
+
+.bE-tollLogoElement img {
+  height: var(--tollLogoHeight);
+}
+
+.bE-arrowElement {
+  --arrowRotation: 0deg;
+  --arrowSize: 1.75rem;
+  --arrowPaddingVertical: 0rem;
+  --arrowPaddingHorizontal: 0rem;
+  --arrowFlip: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: var(--arrowPaddingVertical) var(--arrowPaddingHorizontal);
+}
+
+.bE-arrowElement img {
+  display: block;
+  width: var(--arrowSize);
+  height: auto;
+  transform: scaleX(var(--arrowFlip)) rotate(var(--arrowRotation));
+  transform-origin: center;
+}
+
+.blockElementRow[data-light-background="true"] .bE-arrowElement img {
+  filter: brightness(0);
+}
+
+.bE-beaconElement {
+  --beaconSize: 2rem;
+  --beaconFlashDuration: 1s;
+  --beaconBackplateThickness: 0.125rem;
+  --beaconBackplateRadius: 0.15rem;
+  width: var(--beaconSize);
+  height: var(--beaconSize);
+  background-color: #000;
+  border-radius: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 0.5rem;
+}
+
+.bE-beaconElement.hasBackplate {
+  box-shadow: 0 0 0 var(--beaconBackplateThickness, 0.125rem) var(--beaconBackplateColor, #ffd200);
+  border-radius: var(--beaconBackplateRadius, 0.15rem);
+}
+
+.bE-beaconBulb {
+  width: calc(var(--beaconSize) * 0.85);
+  height: calc(var(--beaconSize) * 0.85);
+  border-radius: 50%;
+  background-color: var(--beaconBulbColor, var(--yellow, #ffd200));
+  animation: beaconFlash var(--beaconFlashDuration) steps(1, end) infinite;
+  animation-fill-mode: both;
+  box-shadow: none;
+}
+
+@keyframes beaconFlash {
+
+  0%,
+  49.9% {
+    opacity: 1;
+    box-shadow: 0 0 calc(var(--beaconSize) * 0.25) var(--beaconBulbColor, var(--yellow, #ffd200));
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+    box-shadow: none;
+  }
+}
+
+.bE-beaconElement.flashOpposite .bE-beaconBulb {
+  animation-delay: calc(var(--beaconFlashDuration, 1s) / -2);
+}
+
+.dividerElement {
+  --dividerLength: var(--dividerWidth, 100%);
+  --dividerThickness: var(--dividerHeight, 0.2rem);
+  --dividerBleedLeft: 0rem;
+  --dividerBleedRight: 0rem;
+  --dividerBleedTop: 0rem;
+  --dividerBleedBottom: 0rem;
+  background-color: white;
+  width: var(--dividerLength, 100%);
+  height: var(--dividerThickness, 0.2rem);
+  position: relative;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.dividerElement.vertical {
+  width: var(--dividerThickness, 0.2rem);
+  height: var(--dividerLength, 100%);
+  align-self: stretch;
+}
+
+.dividerElement.fullBleed:not(.vertical) {
+  width: calc(var(--dividerLength, 100%) + var(--dividerBleedLeft, 0rem) + var(--dividerBleedRight, 0rem));
+  margin-left: calc(-1 * var(--dividerBleedLeft, 0rem));
+  margin-right: calc(-1 * var(--dividerBleedRight, 0rem));
+  flex-grow: 1;
+}
+
+.dividerElement.vertical.fullBleed {
+  height: calc(var(--dividerLength, 100%) + var(--dividerBleedTop, 0rem) + var(--dividerBleedBottom, 0rem));
+  margin-top: calc(-1 * var(--dividerBleedTop, 0rem));
+  margin-bottom: calc(-1 * var(--dividerBleedBottom, 0rem));
+}
+
+.blockElementLeft,
+.blockElementCenter,
+.blockElementRight {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  flex-grow: 1;
+  flex-basis: 0;
+  min-width: max-content;
+}
+
+.blockElementCenter:empty,
+.blockElementLeft:empty,
+.blockElementRight:empty {
+  flex-grow: 0;
+}
+
+.blockElementLeft {
+  justify-content: left;
+}
+
+.blockElementCenter {
+  justify-content: center;
+}
+
+.blockElementRight {
+  justify-content: right;
+}
+
+.bE-iconElement {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 var(--spacing, 0rem);
+  aspect-ratio: 1 / 1;
+  width: 3.5rem;
+}
+
+.bE-iconElement img {
+  height: var(--iconSize, 3rem);
+  width: auto;
+  display: block;
+}
+
+.bE-iconElement.hasBackground {
+  background-color: var(--iconBgColor, inherit);
+  padding: 0.2rem;
+  border-radius: var(--borderRadius, 4px);
+}
+
+.bE-iconElement.hasBorder {
+  border: 0.15rem solid var(--iconBorderColor, white);
+}

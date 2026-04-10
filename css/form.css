@@ -1,0 +1,2172 @@
+.sMConfigOption>span:not(.material-symbols-outlined, .toolTip) {
+  font-size: 1rem;
+  top: 2px;
+  position: relative;
+}
+
+nav#sMConfigBar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0.2rem;
+  background: var(--hotbarColor);
+  width: max-content;
+  position: fixed;
+  top: 50%;
+  right: 1rem;
+  left: auto;
+  bottom: auto;
+  transform: translateY(-50%);
+  height: max-content;
+  z-index: 1;
+}
+
+:root[data-theme="dark"] .sMConfigOption:not(.selected) {
+  background: rgba(var(--baseColor), 0.1);
+}
+
+.sMConfigOption {
+  background: rgba(var(--baseColor), 0.25);
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.4rem;
+  transition: 0.25s ease-in-out;
+  cursor: pointer;
+  position: relative;
+  font-family: "Inter";
+  color: var(--textColor);
+  line-height: 1;
+  min-width: 12rem;
+}
+
+.sMConfigOption .configIcon,
+.sMModalTitle .configIcon {
+  height: 1.25rem;
+  width: 1.25rem;
+  object-fit: contain;
+}
+
+:root:not([data-theme="dark"]) .templateIcon {
+  filter: invert(1);
+}
+
+.sMConfigOption.selected {
+  background: var(--selectedColor);
+  transition: 0s;
+}
+
+@media (max-width: 768px) {
+  nav#sMConfigBar {
+    left: 0;
+    right: 0;
+    width: auto;
+    transform: none;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  nav#sMConfigBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav#sMConfigBar .sMConfigOption {
+    flex: 0 0 auto;
+    padding: 0.35rem;
+    gap: 0.15rem;
+  }
+
+  nav#sMConfigBar .sMConfigOption>span:not(.material-symbols-outlined) {
+    display: none;
+  }
+}
+
+.historyBar {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding-top: 0.15rem;
+}
+
+.historyButton {
+  width: 2.6rem;
+  height: 2.6rem;
+  min-width: 2.6rem;
+  padding: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(var(--baseColor), 0.25);
+  color: var(--textColor);
+  border: 0;
+  cursor: pointer;
+  transition: 0.15s ease-in-out;
+}
+
+.historyButton:hover:enabled {
+  background: var(--hoverColor);
+}
+
+.historyButton .material-symbols-outlined {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+nav#sMConfigBar.invisible .historyBar {
+  display: none;
+}
+
+.sMModal {
+  max-width: 80vh;
+  background: var(--hotbarColor);
+  display: none;
+  min-width: 45vh;
+  width: max-content;
+  height: max-content;
+}
+
+.sMModalContent {
+  padding: 1rem;
+  max-height: 80vh;
+  overflow-x: auto;
+}
+
+.modals {
+  width: max-content;
+  inset: 1.5rem;
+  position: fixed;
+  height: max-content;
+  max-height: 87.5%;
+}
+
+#export {
+  background-color: rgba(255, 0, 0, 0.25);
+}
+
+#export.hover {
+  background-color: rgba(255, 0, 0, 0.5);
+}
+
+span.toolTip {
+  position: fixed;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.2rem 0.5rem;
+  font-size: 13px;
+  opacity: 1;
+  transition: 0.25s ease-in-out transform, 0.25s ease-in-out opacity;
+  z-index: 3;
+  font-family: "Inter", sans-serif;
+  width: max-content;
+  max-width: 200px;
+}
+
+label>.toolTip {
+  font-family: "Inter";
+}
+
+.modals label {
+  position: relative;
+}
+
+label span.toolTip,
+.listNavOptions button .toolTip {
+  width: 8rem;
+  text-align: right;
+  left: 4rem;
+  height: max-content;
+  top: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+@keyframes appear {
+  from {
+    display: none;
+    opacity: 0;
+  }
+
+  to {
+    display: block;
+    opacity: 1;
+  }
+}
+
+.sMConfigOption:not(.selected):hover {
+  background: var(--hoverColor);
+}
+
+#panelSelect {
+  display: none;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 12rem;
+  min-height: 10rem;
+  position: absolute;
+  background-color: var(--hotbarColor);
+  top: 0;
+  right: calc(100% + 0.5rem);
+  left: auto;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  z-index: 2;
+  box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+  font-family: "Inter", sans-serif;
+}
+
+.panelPopoverHeader {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.panelPopoverHeader h5 {
+  margin: 0;
+  font-family: inherit;
+}
+
+.panelPopoverHint {
+  font-size: 0.65rem;
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 0.8;
+  font-family: inherit;
+}
+
+.panelActions {
+  display: flex;
+  width: 100%;
+  gap: 0.25rem;
+}
+
+.panelActions button {
+  flex: 1 1 auto;
+  padding: 0.25rem 0.35rem;
+  border-radius: 0;
+}
+
+#panelList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.panelListButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  background: rgba(var(--baseColor), 0.3);
+  border-radius: 0;
+  cursor: grab;
+  position: relative;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.panelListButton.active {
+  border-color: var(--selectedColor);
+  background: rgba(var(--baseColor), 0.6);
+}
+
+.panelListButton.panelWiggle {
+  animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate;
+  animation-delay: var(--wiggle-delay, 0s);
+}
+
+.panelListButton.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  animation: none !important;
+}
+
+.panelListButton.dropBefore::before,
+.panelListButton.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  height: 0.15rem;
+  background: var(--selectedColor);
+  border-radius: 0.15rem;
+  pointer-events: none;
+}
+
+.panelListButton.dropBefore::before {
+  top: -0.1rem;
+}
+
+.panelListButton.dropAfter::after {
+  bottom: -0.1rem;
+}
+
+.panelSpacingControl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.panelSpacingControl label {
+  font-size: 0.75rem;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 0.85;
+  font-family: inherit;
+}
+
+.panelSpacingInputs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.panelSpacingInputs input[type="range"] {
+  flex: 1 1 auto;
+}
+
+.panelSpacingInputs input[type="number"] {
+  width: 3.5rem;
+  padding: 0.2rem;
+  border-radius: 0;
+}
+
+.postThicknessControl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.postThicknessControl label {
+  font-size: 0.85rem;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 1;
+  width: auto;
+  text-align: left;
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+}
+
+.postThicknessControl input {
+  width: 4.5rem;
+  padding: 0.25rem;
+}
+
+.hitbox {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: 2;
+}
+
+.listNav>.scrollMenu {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  width: 10rem;
+  white-space: nowrap;
+  overflow-x: auto;
+  gap: 4px;
+  margin-left: -8px;
+}
+
+/* Minimalistic scrollbar */
+.scrollMenu {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+.sMModalContent>div:not(#sMSPSettings),
+#sMSPSettings>div {
+  width: max-content;
+  flex-grow: 1;
+  height: 100%;
+}
+
+legend {
+  font-family: "Inter" !important;
+  text-align: center;
+  width: max-content !important;
+  padding: 0 0.5rem;
+  font-size: 16px;
+}
+
+nav.sMModalBar {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-items: center;
+  height: max-content;
+  background-color: rgba(var(--baseColor), 0.5);
+}
+
+:root[data-theme="dark"] nav.sMModalBar {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-items: center;
+  height: max-content;
+  background-color: rgb(50, 75, 255, 1);
+}
+
+nav.sMModalBar *:not(.material-symbols-outlined, select, button, input) {
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+nav.sMModalSubBar {
+  padding: 0.2rem;
+}
+
+:root[data-theme="dark"] div.sMModalTitle {
+  background-color: rgb(50, 50, 200, 1);
+}
+
+div.sMModalTitle {
+  background-color: rgba(var(--baseColor), 0.75);
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+}
+
+div.sMModalTab {
+  padding: 0rem 0.5rem;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+div.sMModalTab.selected {
+  text-decoration: underline;
+}
+
+div.sMModalTitle *,
+div.sMModalTitle {
+  font-size: 16px;
+}
+
+.tabHidden {
+  display: none !important;
+}
+
+div#sMPanelPadding,
+div#sMExitTabSetting,
+div#sMSPSettings,
+div#sMAPL {
+  display: flex;
+  flex-direction: column;
+  justify-content: left;
+  align-items: start;
+  gap: 1rem;
+}
+
+input[type="number"] {
+  border: 0;
+  margin: 0.25rem;
+}
+
+.listNav {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.listNavOptions {
+  display: flex;
+  flex-direction: row;
+  justify-content: right;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.listNavOptions button,
+.listNavOptions label {
+  width: max-content;
+  position: relative;
+}
+
+.listNavOptions .listNavLabel {
+  flex-basis: 100%;
+  text-align: right;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+#exitTabNumber,
+#subPanelNumber {
+  width: 3rem;
+}
+
+.listNav .scrollMenu {
+  flex-grow: 1;
+  flex-direction: row;
+  justify-content: left;
+  width: 10rem;
+}
+
+.resetClass {
+  background-color: rgb(255, 0, 0, 20%);
+  padding: 0.3rem;
+}
+
+.resetClass:hover {
+  background-color: rgb(255, 0, 0, 30%);
+}
+
+div#modalHolder {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+::backdrop {
+  background-color: rgb(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+dialog {
+  border: 0;
+  padding: 1rem;
+  width: 80vw;
+  max-width: 800px;
+  max-height: 85vh;
+  background: white;
+  color: black;
+  display: none;
+  flex-direction: row;
+  gap: 16px;
+  overflow: auto;
+  margin: 0;
+}
+
+
+#welcomeToSignMaker {
+  width: 70%;
+}
+
+#welcomeToSignMaker img {
+  width: 100%;
+}
+
+div.options {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid black;
+}
+
+#downloadContent {
+  position: relative;
+}
+
+div.options button {
+  padding: 0.5rem;
+  font-size: 1.25rem;
+}
+
+div.options a {
+  color: black;
+}
+
+.SMSPNewElementHolder {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgb(var(--baseColor), 0.4);
+}
+
+.SMSPNewElementHolder>span {
+  font-size: 0.7rem;
+}
+
+/* OLD - TO CONFIGURE */
+
+.active,
+.exitTabButton.active,
+.exitTabNestedButton.active {
+  background-color: rgb(200, 200, 200);
+}
+
+:root[data-theme="dark"] .active,
+:root[data-theme="dark"] .exitTabSelect.active {
+  background-color: rgb(0, 0, 255);
+}
+
+:root[data-theme="dark"] .scrollMenu button:not(.active),
+:root[data-theme="dark"] .scrolMenu button:not(.active) {
+  background-color: var(--black);
+}
+
+input,
+select,
+textarea {
+  width: rem;
+  margin: 0.25rem;
+  padding: 0.25rem;
+  border: none;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+}
+
+label {
+  font-family: "Inter", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  width: 7.5rem;
+  text-align: right;
+  display: inline-block;
+}
+
+label.noLabelAlignment {
+  width: max-content;
+}
+
+label:hover {
+  font-weight: 600;
+}
+
+select {
+  background: rgb(240, 240, 240) url(../img/other-symbols/select.svg) no-repeat right;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 17px;
+
+  cursor: pointer;
+}
+
+select:hover,
+select:focus {
+  background-color: rgb(var(--baseColor));
+  font-weight: 700;
+}
+
+input,
+select {
+  background-color: rgb(var(--inputColor));
+  color: var(--textColor);
+}
+
+:root[data-theme="dark"] .listNavOptions input,
+:root[data-theme="dark"] .listNavOptions button {
+  background-color: rgb(40, 40, 255);
+}
+
+button,
+input[type="button"] {
+  display: flex;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  appearance: none;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.15s ease-in-out;
+  border: 0;
+  width: max-content;
+  background-color: rgb(var(--inputColor));
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  color: var(--textColor);
+}
+
+button:not(.textEditorBlock, .sMControlRow .sMConfigOption):enabled:hover,
+input[type="button"]:not(.textEditorblock,
+  .sMControlRow,
+  .sMConfigOption):enabled:hover {
+  background-color: var(--selectedColor);
+}
+
+button:disabled,
+input[type="button"]:disabled {
+  cursor: default;
+}
+
+.textEditorBlock {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999rem;
+  cursor: grab;
+  user-select: none;
+  transform-origin: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.textEditorBlock:active {
+  cursor: grabbing;
+}
+
+.textEditorBlock.blockWiggle {
+  animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate;
+  animation-delay: var(--wiggle-delay, 0s);
+}
+
+.textEditorBlock.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+  animation: none;
+}
+
+.textEditorBlock.dropBefore::before,
+.textEditorBlock.dropAfter::after {
+  content: "";
+  position: absolute;
+  top: 15%;
+  bottom: 15%;
+  width: 0.2rem;
+  border-radius: 0.2rem;
+  background: var(--selectedColor);
+  pointer-events: none;
+}
+
+.textEditorBlock.dropBefore::before {
+  left: -0.2rem;
+}
+
+.textEditorBlock.dropAfter::after {
+  right: -0.2rem;
+}
+
+.sMControlRow.dropActive {
+  background-color: rgba(var(--baseColor), 0.35);
+}
+
+#sMSPCreateRow.dropActive {
+  outline: 2px dashed var(--selectedColor);
+  background-color: rgba(var(--baseColor), 0.45);
+}
+
+@keyframes textEditorBlockWiggle {
+  from {
+    transform: rotate(-2deg) scale(1.02);
+  }
+
+  to {
+    transform: rotate(2deg) scale(1.02);
+  }
+}
+
+.sdArrow_rotationButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  justify-content: center;
+}
+
+.sdArrow_rotationButtons>* {
+  font-size: 20px;
+  width: 10%;
+}
+
+#sdArrow_flipButton {
+  font-size: 24px;
+  margin-top: 0.5rem;
+  width: 10rem;
+  justify-self: center;
+}
+
+.sMControlRow:hover {
+  cursor: pointer;
+}
+
+textarea {
+  min-width: 15rem;
+  min-height: 5rem;
+  max-width: 25rem;
+  transition: none;
+}
+
+#shieldBacksLabel {
+  width: auto;
+}
+
+.shields div {
+  border-radius: 0.25rem;
+
+  width: -moz-max-content;
+  width: -webkit-max-content;
+  width: intrinsic;
+}
+
+.shields div:nth-child(odd) {
+  background-color: rgba(var(--baseColor), 0.33);
+}
+
+.shields div:nth-child(even) {
+  background-color: rgba(var(--baseColor), 0.11);
+}
+
+.shields label,
+.shields select:first-of-type {
+  width: auto;
+}
+
+.shields label {
+  margin: 0;
+}
+
+.clear:hover {
+  background-color: rgb(247, 176, 176) !important;
+}
+
+#controlCitiesLabel {
+  position: relative;
+  top: -5rem;
+}
+
+#guideArrowLanes {
+  width: 2.25rem;
+}
+
+#actionMessage,
+#g_actionMessage {
+  width: 15.75rem;
+}
+
+#guideArrowLanes {
+  width: 3rem;
+}
+
+#oSNum {
+  margin-left: 8.5rem;
+}
+
+#currentPanel {
+  width: auto;
+  background: linear-gradient(to bottom,
+      rgba(var(--baseColor), 0.2),
+      rgba(var(--baseColor), 0.4));
+  border-radius: 0rem 0rem 1rem 2rem;
+  padding: 0.4rem;
+  display: table;
+}
+
+#panelNumber {
+  background-color: rgb(var(--baseColor));
+  text-align: center;
+  padding: 0.1rem;
+  border-radius: 0;
+  width: 3rem;
+}
+
+#panelNumberTitle {
+  font-size: 1.3rem;
+  padding: 0.2rem;
+}
+
+#downloadContent {
+  position: relative;
+  background-color: rgb(226 236 255);
+  padding: 1rem;
+  width: 90%;
+  display: none;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 1.25rem;
+  height: 55%;
+}
+
+#downloadContent h3 {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  text-align: center;
+  width: max-content;
+  z-index: 1;
+}
+
+#downloadContents {
+  width: 33%;
+  position: static;
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#downloadPreview {
+  width: 67%;
+  min-width: 0;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#downloadPreview img,
+#downloadPreview iframe {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  margin: 0 auto;
+}
+
+.downloadCloseButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  min-width: 2.2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.downloadCloseButton .material-symbols-outlined {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+#downloadContent .options.downloadActionButtons {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.downloadPrimaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: #8f5a69;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  min-width: 0;
+  font-size: 1.05rem;
+}
+
+.downloadPrimaryButton:hover {
+  background: #9b6574;
+}
+
+.downloadPrimaryButton .material-symbols-outlined {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.downloadEntirePostRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 4.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.downloadEntirePostRow #entirePostLabel {
+  width: auto;
+  text-align: left;
+  margin: 0;
+}
+
+.downloadEntirePostRow #entirePost {
+  margin: 0;
+  vertical-align: middle;
+}
+
+#downloadContents > #entirePostLabel {
+  display: inline-block;
+  width: auto;
+  text-align: left;
+  margin-top: 4.25rem;
+  margin-right: 0.35rem;
+}
+
+#downloadContents > #entirePost {
+  vertical-align: middle;
+  margin-top: 4.25rem;
+}
+
+.downloadPreviewLoading {
+  font-family: "Inter", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  opacity: 0.85;
+  animation: downloadPreviewPulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes downloadPreviewPulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+#singularPanel {
+  display: none;
+}
+
+:root[data-theme="light"] .activated {
+  background-color: rgb(200, 200, 200);
+}
+
+:root[data-theme="dark"] .activated {
+  background-color: rgb(100, 100, 100);
+}
+
+.close {
+  color: #aaaaaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.controlTextArea {
+  font-size: 0.8rem;
+  font-family: "Clearview 4W";
+}
+
+.radioOption {
+  width: auto;
+}
+
+.exitTabGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+}
+
+.exitTabButton,
+.exitTabNestedButton {
+  background: rgb(230, 230, 230);
+  border-radius: 0;
+  min-width: 6rem;
+  padding: 0.25rem 0.5rem;
+  flex: 0 0 auto;
+  position: relative;
+}
+
+.exitTabNestedButton {
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  min-width: 5rem;
+}
+
+.exitTabButton:hover,
+.exitTabNestedButton:hover {
+  background: rgb(200, 200, 200);
+}
+
+.exitTabButton.blockWiggle {
+  animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate;
+  animation-delay: var(--wiggle-delay, 0s);
+}
+
+.exitTabButton.dragging {
+  opacity: 0.6;
+  animation: none;
+  cursor: grabbing;
+}
+
+.exitTabButton.dropBefore::before,
+.exitTabButton.dropAfter::after {
+  content: "";
+  position: absolute;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  width: 0.2rem;
+  background: var(--selectedColor);
+  pointer-events: none;
+}
+
+.exitTabButton.dropBefore::before {
+  left: -0.25rem;
+}
+
+.exitTabButton.dropAfter::after {
+  right: -0.25rem;
+}
+
+
+nav#sMConfigBar.invisible {
+  top: 50%;
+  right: 1rem;
+  left: auto;
+  bottom: auto;
+  transform: translateY(-50%);
+  width: max-content;
+}
+
+nav#sMConfigBar.invisible .sMConfigOption:not(#hideConfig) {
+  display: none;
+}
+
+nav#sMConfigBar.invisible #hideConfig {
+  display: flex;
+}
+nav#SMConfigBar.invisible>.sMConfigOption:not(#hideConfig) {
+  display: none;
+}
+
+#smSPTextEditor,
+#smSPShieldEditor {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(var(--baseColor), 0.2);
+  padding: 1rem;
+  gap: 1rem;
+}
+
+#sMSPCreate,
+#smSPElement,
+#smSPShieldHeader,
+#smSPShieldList {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background-color: rgb(var(--baseColor), 0.3);
+  width: 100%;
+}
+
+#smSPElement,
+#smSPShieldList {
+  gap: 1rem;
+}
+
+#sMSPCreate>span,
+#sMSPElement>span,
+#smSPShieldHeader>span,
+#smSPShieldList>span {
+  font-size: 16px;
+}
+
+#sMSPTextList {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: rgb(var(--baseColor), 0.15);
+  padding: 0.5rem;
+  width: 100%;
+}
+
+.smControlRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgb(var(--baseColor), 0.15);
+  padding: 0.25rem;
+  width: 100%;
+  height: m;
+}
+
+:root[data-theme="dark"] .smControlRow.selected {
+  background-color: rgb(var(--baseColor), 0.25);
+}
+
+.smControlRow.selected {
+  background-color: rgb(var(--baseColor), 0.5);
+}
+
+.sMControlRow.rowWiggle {
+  animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate;
+  animation-delay: var(--wiggle-delay, 0s);
+}
+
+.sMControlRow.dragging {
+  opacity: 0.5;
+  animation: none;
+  cursor: grabbing;
+}
+
+.sMControlRow.dropBefore::before,
+.sMControlRow.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  height: 0.2rem;
+  border-radius: 0.2rem;
+  background: var(--selectedColor);
+  pointer-events: none;
+}
+
+.sMControlRow.dropBefore::before {
+  top: -0.15rem;
+}
+
+.sMControlRow.dropAfter::after {
+  bottom: -0.15rem;
+}
+
+.smControlRow * {
+  font-size: 16px;
+  padding: 4px 8px;
+}
+
+.smControlRow *.selected {
+  text-decoration: none;
+  box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, 0.4);
+}
+
+.sdCtrlText {
+  background-color: var(--green);
+  color: white;
+}
+
+.sdBlocker {
+  background-color: white;
+  color: black;
+}
+
+.sdShield {
+  background-color: var(--blue);
+  color: white;
+}
+
+.sdAdvisory {
+  background-color: var(--yellow);
+  border-radius: 8px;
+}
+
+.sdTollLogo {
+  background-color: var(--purple);
+  color: white;
+}
+
+.sdIcon {
+  background-color: var(--brown);
+  color: white;
+}
+
+.sdBeacon {
+  background-color: var(--black);
+  color: var(--yellow);
+}
+
+.sdActionMessage {
+  background-color: var(--green);
+  color: white;
+}
+
+.sdShieldTopRow,
+.sdShieldSecondRow,
+.sdShieldThirdRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.35rem 0;
+}
+
+.sdShieldTopRow,
+.sdShieldSecondRow,
+.sdShieldThirdRow,
+.sdShieldFontRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.35rem 0;
+}
+
+.sdShieldTopRow {
+  column-gap: 0.3rem;
+}
+
+.sdShieldTopRow label[for="sdShield_shieldType"] {
+  margin-left: 0.25rem;
+}
+
+.sdShieldTopRow label[for="sdShield_shieldSize"] {
+  margin-left: 0.2rem;
+}
+
+.sdShieldScaleLabel {
+  width: 11.5rem;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.sdShieldBannerCustomInput {
+  width: 8rem;
+}
+
+.sdShieldPositionLabel {
+  margin-left: 0;
+  width: 3.6rem;
+}
+
+.sdShieldCapLabel {
+  width: 5.1rem;
+  line-height: 1.02;
+  text-align: right;
+  margin-left: 0;
+}
+
+.sdShieldBannerFontSizeLabel {
+  width: 10.5rem;
+  white-space: nowrap;
+  margin-left: 0.4rem;
+}
+
+.sdShieldRouteNumberInput,
+.sdShieldNumericInput,
+#sdBlock_topPaddingVal,
+#sdBlock_bottomPaddingVal {
+  font-size: 1.1rem;
+}
+
+.sdShieldRouteNumberInput {
+  width: 7rem;
+}
+
+.sdShieldCountyTextInput {
+  width: 7rem;
+}
+
+
+.sdShieldBannerGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.45rem 0;
+}
+
+label[for="sdBlock_bottomPadding"] {
+  width: 10rem;
+  white-space: nowrap;
+}
+
+.sdShieldRouteNumberInput {
+  width: 7rem;
+  font-size: 1.1rem;
+}
+
+.sdShieldCountyTextInput {
+  width: 7rem;
+}
+
+.sdShieldCountyHidden {
+  display: none !important;
+}
+
+.sdShieldBannerGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0.35rem 0;
+}
+
+.sdElectronicSign {
+  background-color: var(--black);
+  color: var(--orange);
+}
+
+#smSPProperties,
+#smSPBlockProperties,
+#smSPShieldProperties {
+  background-color: rgb(var(--baseColor), 0.225);
+  padding: 0.5rem;
+  width: 100%;
+}
+
+.sdCtrlTextTopRow,
+.sdCtrlTextSecondRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.sdCtrlTextTopRow {
+  margin-bottom: 0.35rem;
+}
+
+.sdCtrlTextLayout br {
+  display: none;
+}
+
+.sdCtrlTextSettingsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin-bottom: 0.35rem;
+}
+
+.sdCtrlTextTopRow label,
+.sdCtrlTextSecondRow label {
+  width: max-content;
+  min-width: 0;
+  text-align: right;
+}
+
+.sdTextEditorContentCompact {
+  width: 10rem;
+  min-width: 0;
+  flex: 0 0 10rem;
+}
+
+.sdTextEditorFontCompact {
+  width: 8.5rem;
+  min-width: 0;
+  flex: 0 0 8.5rem;
+}
+
+.sdTextEditorWide {
+  width: 70%;
+}
+
+.sdTextEditorSmall {
+  width: 3rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.smSPShieldVisual {
+  height: 30px;
+  width: auto;
+}
+
+.smSPShieldLargeVisual {
+  height: 90px;
+  width: auto;
+}
+
+.smSPShieldRow,
+.smSPShieldGroup {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgb(var(--baseColor), 0.5);
+  cursor: pointer;
+}
+
+.smSPShieldRow:hover,
+.smSPShieldGroup:hover {
+  background-color: rgb(200, 200, 200, 0.5);
+}
+
+.smSPShieldRow.selected {
+  background-color: rgb(var(--baseColor), 1);
+}
+
+.smSPShieldGroupHolder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+}
+
+.newBlock {
+  background-color: rgb(0, 0, 0, 0.3);
+  color: white;
+  width: 100%;
+  padding: 0.25rem;
+  text-align: center;
+  font-weight: bold;
+  height: 1.5rem;
+  border: 3px dashed black;
+}
+
+.smSPShieldBlock {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  flex-grow: 1;
+  padding: 0.25rem;
+}
+
+.dragIndicator {
+  height: stretch;
+  aspect-ratio: 1 / 1;
+  display: none;
+  background: none;
+}
+
+.dragIndicator:hover {
+  background-color: rgb(0, 0, 0, 0.2) !important;
+}
+
+.smSPShieldRow.selected .dragIndicator,
+.smSPShieldGroup.selected>.dragIndicator {
+  display: block;
+}
+
+#smSPShieldList {
+  flex-direction: column;
+}
+
+#smSPShieldImgConfig {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  background-color: rgb(var(--baseColor), 0.25);
+  padding: 1rem;
+}
+
+#smSPShieldImgConfig>div {
+  background-color: rgb(var(--baseColor), 0.125);
+  height: stretch;
+}
+
+#smSPShieldImgConfig>div:nth-child(1) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+#smSPShieldImgConfig>div:nth-child(2) {
+  padding: 0.5rem;
+}
+
+#changeImgBtn,
+#smSPShieldAdvanced {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#advancedMenu {
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background-color: rgb(var(--baseColor), 0.2);
+}
+
+#shieldImgSelector {
+  background: none;
+  padding: 0;
+  flex-direction: row;
+  width: 50%;
+  height: 80%;
+}
+
+#shieldImgSelector>div {
+  padding: 1rem;
+}
+
+#shieldImgSelector>div {
+  background: canvas;
+}
+
+.shieldLibrary {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.shieldLibrary>header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#shieldImgSelectorClose {
+  font-size: 20px;
+  padding: 0.125rem 1rem;
+  background-color: rgb(255, 0, 0, 0.2);
+}
+
+#shieldImgSelectorClose:hover {
+  background-color: rgb(255, 0, 0, 0.6);
+}
+
+.shieldLibrary>nav {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shieldLibrary>nav button {
+  font-size: 24px;
+  padding: 0.5rem 2rem;
+}
+
+.shieldLibrary>nav button.selected {
+  background-color: rgb(0, 0, 255, 0.7);
+  color: white;
+}
+
+.shieldLibrary[data-tab="presetShieldList"] #uploadShield {
+  display: none;
+}
+
+.shieldLibrary[data-tab="uploadShield"] #presetShieldList,
+.shieldLibrary[data-tab="uploadShield"] #presetShieldSearch {
+  display: none;
+}
+
+.shieldLibrary>nav button.selected:hover {
+  background-color: rgb(0, 0, 255, 1) !important;
+}
+
+.shieldLibrary>nav button:not(.selected):hover {
+  background-color: rgb(0, 0, 255, 0.125) !important;
+}
+
+#presetShieldList {
+  overflow: auto;
+  flex-grow: 1;
+}
+
+.shieldItemImg {
+  height: 70px;
+  background: rgb(0, 0, 255, 0.8);
+  padding: 0.25rem;
+}
+
+.shieldCategoryType {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.shieldCategoryType.selected,
+.customShieldItem.selected {
+  background-color: rgb(0, 0, 255, 0.1);
+}
+
+.shieldCategoryType.selected .shieldItemName {
+  font-weight: 600;
+}
+
+.shieldCategoryHead {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgb(0, 0, 255, 0.5);
+  padding: 0.5rem;
+  color: white;
+  margin-left: -1rem;
+  cursor: pointer;
+}
+
+.shieldCategory {
+  padding-left: 1rem;
+}
+
+.shieldCategoryHead:hover {
+  background-color: rgb(0, 0, 255, 0.75);
+}
+
+.shieldItemName {
+  font-size: 24px;
+  text-align: center;
+}
+
+.shieldCategoryType:not(.selected):nth-child(odd),
+.customShieldItem:not(.selected):nth-child(odd) {
+  background-color: rgb(0, 0, 0, 0.075);
+}
+
+.shieldCategoryType:not(.selected):nth-child(even),
+.customShieldItem:not(.selected):nth-child(even) {
+  background-color: rgb(0, 0, 0, 0.025);
+}
+
+.shieldCategoryType:hover,
+.customShieldItem:hover {
+  background-color: rgb(0, 0, 255, 0.2) !important;
+}
+
+#presetShieldSearch {
+  width: 100%;
+  border: 1px solid black;
+  padding: 0.75rem;
+  margin: 0;
+  font-size: 20px;
+}
+
+.shieldPreview {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.selectedShieldPreview {
+  height: 164px;
+  background-color: var(--shieldBackColor, rgb(0, 0, 255, 0.8));
+  border-radius: var(--shieldBackRadius);
+}
+
+.selectedShieldName {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.shieldPreview>footer {
+  margin-top: auto;
+}
+
+#setShield {
+  font-size: 24px;
+  padding: 0.25rem 2rem;
+}
+
+#uploadShield {
+  flex-grow: 1;
+  overflow: auto;
+}
+
+#shieldUploadField {
+  background-color: rgb(0, 0, 0, 0.1);
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+#shieldUploadField>span.material-symbols-outlined {
+  font-size: 64px;
+}
+
+#shieldUploadField {
+  cursor: pointer;
+}
+
+#shieldUploadField:hover {
+  background-color: rgb(0, 0, 0, 0.2);
+  border-color: #666;
+}
+
+#shieldUploadField.dragover {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-color: #4caf50;
+}
+
+.shieldUploadDisclaimer {
+  font-size: 12px;
+  padding: 0.25rem;
+  color: rgb(100, 100, 100);
+}
+
+#linkUpload {
+  width: 15rem;
+  border: 1px solid black;
+}
+
+#savedCustomShieldsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.customShieldItem {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.deleteCustomShieldBtn {
+  background: none;
+}
+
+#uploadShield h3 {
+  margin-bottom: 0.5rem;
+}
+
+dialog:not([open]) {
+  display: none;
+}
+
+.shieldCategory:not(.open) .shieldCategoryType,
+.shieldCategory:not(.open)>.shieldCategory {
+  display: none;
+}
+
+#selectedBackRoudness {
+  background-color: rgb(0, 0, 0, 0.05);
+}
+
+.smallVal {
+  width: 3rem;
+  display: inline-block;
+}
+
+
+
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 1rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(var(--baseColor), 0.1);
+}
+
+.iconGridItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: center;
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+.iconGridItem:hover {
+  background-color: var(--selectedColor);
+}
+
+.iconGridItem img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
+}
+
+.iconGridItem span {
+  display: none;
+}
+
+#iconSearch {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+#arrowGrid .iconGridItem img {
+  filter: invert(1);
+}
+
+/* APL Divider Controls */
+.aplDividerRadioGroup {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  font-size: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.aplDividerRadioLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  width: auto;
+}
+
+.aplDividerButton {
+  min-width: 2.5rem;
+  min-height: 1.9rem;
+  margin: 2px;
+  font-size: 1rem;
+}
+
+.aplArrowListItem {
+  margin: 4px 0;
+  padding: 6px;
+  gap: 10px;
+}
+
+.aplArrowListItem button {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+:root[data-theme="dark"] .aplDividerButton,
+:root[data-theme="dark"] .aplDividerButton.active,
+:root[data-theme="dark"] .aplArrowListItem button,
+:root[data-theme="dark"] #aplArrowFlip {
+  background-color: rgb(var(--inputColor));
+}
+
+#aplArrowFlip,
+#aplArrowFlipButton {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.aplArrowControls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.aplArrowControls label {
+  width: auto;
+}
+
+.aplArrowControls select,
+.aplArrowControls button {
+  padding: 0.25rem 0.5rem;
+}
+
+/* Template Management Styles */
+.templateSaveSection {
+  margin-bottom: 1rem;
+}
+
+.templateSaveSection h4 {
+  margin-bottom: 0.5rem;
+}
+
+.templateSaveInput {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.templateSaveInput input {
+  flex: 1;
+}
+
+.templateListSection h4 {
+  margin-bottom: 0.5rem;
+}
+
+#savedTemplatesList {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.templateItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  gap: 0.5rem;
+}
+
+.templateItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+}
+
+.templateItemName {
+  font-size: 1rem;
+}
+
+.templateItemDate {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.templateItemActions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.templateLoadBtn,
+.templateDeleteBtn {
+  padding: 0.25rem;
+}
+
+.templates .sMModalContent hr {
+  margin: 1rem 0;
+}
+  font-size: 0.9rem;
+}
+
+.aplDividerIcon {
+  width: 20px;
+  height: 20px;
+}
+
+:root[data-theme="dark"] .aplDividerIcon {
+  filter: invert(1);
+}
+
+/* Dark mode for dialog modals */
+:root[data-theme="dark"] dialog {
+  background-color: rgb(30, 30, 30);
+  color: white;
+}
+
+:root[data-theme="dark"] div.options {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme="dark"] .iconGrid {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="dark"] .iconGridItem {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .iconGridItem:hover {
+  background-color: var(--selectedColor);
+}
+
+:root[data-theme="dark"] #iconSearch,
+:root[data-theme="dark"] #arrowSearch,
+:root[data-theme="dark"] #tollLogoSearch {
+  background-color: rgb(50, 50, 50);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme="dark"] #iconGrid .iconGridItem img {
+  filter: invert(1);
+}
+
+:root[data-theme="dark"] #downloadContent {
+  background-color: rgb(28, 34, 52);
+  color: rgb(235, 240, 255);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] #downloadContents,
+:root[data-theme="dark"] #downloadContent h3,
+:root[data-theme="dark"] #downloadContent label,
+:root[data-theme="dark"] #downloadContent #fileTypeLabel,
+:root[data-theme="dark"] #downloadContent #entirePostLabel,
+:root[data-theme="dark"] #downloadContent #selectPanelLabel {
+  color: rgb(235, 240, 255);
+}
+
+:root[data-theme="dark"] #downloadContent .options {
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+:root[data-theme="dark"] #downloadContent button {
+  background-color: rgb(10, 14, 24);
+  color: rgb(245, 248, 255);
+}
+
+:root[data-theme="dark"] #downloadContent button:hover {
+  background-color: rgb(24, 30, 44);
+}
+
+:root[data-theme="dark"] #downloadContent button.activated,
+:root[data-theme="dark"] #downloadContent button.active {
+  background-color: rgb(95, 102, 118);
+  color: white;
+}
+
+:root[data-theme="dark"] #downloadContent input,
+:root[data-theme="dark"] #downloadContent select {
+  background-color: rgb(18, 22, 32);
+  color: rgb(245, 248, 255);
+}
+
+:root[data-theme="dark"] #downloadPreview {
+  background: transparent;
+}
+
+:root[data-theme="dark"] #downloadPreview img,
+:root[data-theme="dark"] #downloadPreview iframe {
+  display: block;
+  margin: 0 auto;
+}

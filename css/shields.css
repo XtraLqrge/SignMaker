@@ -1,0 +1,1201 @@
+.shield {
+	margin: 0.07rem;
+	position: relative;
+}
+
+.shieldImg {
+	height: 3rem;
+}
+
+.to {
+	--fhwaBaselineOffset: 0px;
+	display: none;
+	margin: auto 0 auto auto;
+	padding-left: 0.25rem;
+	font-family: "Clearview 5WR";
+	margin-bottom: 1.8rem;
+	margin-right: 1.8rem;
+	font-size: 1.5rem;
+	position: relative;
+	top: -0.55rem;
+}
+
+.bannerShieldContainer {
+	display: flex;
+	flex-direction: column;
+	padding: 0.1rem;
+}
+
+.bannerShieldContainer.bannerPositionLeft {
+	flex-direction: row;
+}
+
+.bannerShieldContainer.bannerPositionAbove {
+	flex-direction: column;
+}
+
+.bannerShieldContainer.bannerPositionRight {
+	flex-direction: row-reverse;
+}
+
+.bannerA,
+.bannerB {
+	--fhwaBaselineOffset: 0px;
+	border-radius: 0.1rem;
+	font-size: var(--fontSize);
+	text-transform: uppercase;
+	font-family: var(--bannerFontFamily, "Series E");
+	margin-bottom: auto;
+	position: relative;
+	top: -0.4rem;
+}
+
+.bannerA:not(.TOLL, .noIndent):first-letter,
+.bannerB:not(.TOLL, .noIndent):first-letter {
+	font-size: calc(var(--fontSize) + 0.3rem);
+}
+
+.bE-shieldElement {
+	--shieldScale: 1;
+	--bannerScale: var(--shieldScale, 1);
+	--shieldSize: calc(3rem * var(--shieldScale, 1));
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	margin: 0 var(--spacing, 0.15rem);
+}
+
+/* this should be updated when the new shields ui is done */
+.bannerA.noSmallCaps,
+.bannerB.noSmallCaps {
+	text-transform: none;
+	font-variant: normal;
+}
+
+.bE-shieldElement .bannerShieldContainer {
+	display: grid;
+	grid-template-columns: auto auto auto;
+	grid-template-rows: auto auto auto;
+	grid-template-areas:
+		". top ."
+		"left center right"
+		". bottom .";
+	align-items: center;
+	justify-items: center;
+	margin: 0;
+	padding: calc(0.2rem * var(--shieldScale, 1));
+	font-size: calc(1rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer.noBanners {
+	padding: 0;
+	gap: 0;
+}
+
+.bE-shieldElement .to {
+	margin: 0;
+	order: -1;
+	position: static;
+	padding: 0;
+	align-self: center;
+	margin-right: 0.35rem;
+	flex: 0 0 auto;
+}
+
+.bE-shieldElement .bannerShieldContainer .shield {
+	grid-area: center;
+}
+
+.bE-shieldElement .shield {
+	margin: calc(0.07rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .shieldImg {
+	height: var(--shieldSize);
+}
+
+.bE-shieldElement .bannerSlot-above {
+	grid-area: top;
+	margin-bottom: -0.5rem;
+}
+
+.bE-shieldElement .bannerSlot-below {
+	grid-area: bottom;
+	margin-top: 0.5rem;
+}
+
+.bE-shieldElement .bannerSlot-left {
+	grid-area: left;
+	justify-self: end;
+	align-self: start;
+	margin-top: -0rem;
+}
+
+.bE-shieldElement .bannerSlot-right {
+	grid-area: right;
+	justify-self: start;
+	align-self: start;
+	margin-top: -0rem;
+}
+
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: -2rem;
+}
+
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-left {
+	align-items: flex-end;
+	margin-top: 0.6rem;
+}
+
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-right {
+	align-items: flex-start;
+	margin-top: 0.6rem;
+}
+
+.bE-shieldElement .bannerSlot-right .bannerA,
+.bE-shieldElement .bannerSlot-right .bannerB {
+	padding-left: 0.55rem;
+	padding-right: 0;
+}
+
+.bE-shieldElement .bannerSlot-left .bannerA,
+.bE-shieldElement .bannerSlot-left .bannerB {
+	padding-right: 0.55rem;
+	padding-left: 0;
+}
+
+.bE-shieldElement .countyLabel,
+.bannerShieldContainer .countyLabel {
+	position: absolute;
+	top: 0.3rem;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 100%;
+	text-align: center;
+	font-family: "Series D";
+	font-size: 0.5rem;
+	line-height: 0.8rem;
+	color: var(--countyYellow);
+}
+
+.bE-shieldElement .routeNumber {
+	font-size: calc(1.5rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerA,
+.bE-shieldElement .bannerB {
+	font-size: calc(var(--fontSize) * var(--bannerScale, 1));
+}
+
+.bE-shieldElement .bannerA:not(.TOLL, .noIndent):first-letter,
+.bE-shieldElement .bannerB:not(.TOLL, .noIndent):first-letter {
+	font-size: calc((var(--fontSize) + 0.3rem) * var(--bannerScale, 1));
+}
+
+.bE-shieldElement .to {
+	font-size: calc(1.5rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .countyLabel,
+.bE-shieldElement .bannerShieldContainer .countyLabel {
+	top: calc(0.3rem * var(--shieldScale, 1));
+	font-size: calc(0.5rem * var(--shieldScale, 1));
+	line-height: calc(0.8rem * var(--shieldScale, 1));
+}
+
+/* === Number offsets start === */
+
+/* UNITED STATES */
+
+/* INTERSTATE */
+.bannerShieldContainer.I .routeNumber {
+	color: var(--white);
+	top: .16em;
+	font-size: 2em;
+}
+.bannerShieldContainer.I.one .routeNumber,
+.bannerShieldContainer.I.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.I.three .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.I.four .routeNumber {
+	font-family: "Series C";
+}
+.bannerShieldContainer.I.bus .banner {
+	display: none;
+}
+
+/* US ROUTE, NOVA SCOTIA, CIRCLE, ELLIPSE, RECTANGLES */
+.bannerShieldContainer.US .routeNumber,
+.bannerShieldContainer.cir .routeNumber,
+.bannerShieldContainer.elp .routeNumber,
+.bannerShieldContainer.rec .routeNumber,
+.bannerShieldContainer.rec2 .routeNumber {
+	color: var(--black);
+	font-size: 2.2em;
+	font-family: "Series D";
+	top: 0em;
+}
+.bannerShieldContainer.US.four .routeNumber {
+	font-family: "Series C";
+}
+
+/* COUNTY */
+.bannerShieldContainer.C .routeNumber {
+	color: var(--countyYellow);
+	font-size: 1.5em;
+	top: 0.3em;
+}
+.bannerShieldContainer.C.one .routeNumber,
+.bannerShieldContainer.C.two .routeNumber,
+.bannerShieldContainer.C.three .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.C.four .routeNumber {
+	font-family: "Series C";
+}
+
+/* ALABAMA */
+.bannerShieldContainer.AL .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: -0.13em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.AL.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* ALASKA */
+.bannerShieldContainer.AK .routeNumber {
+	color: var(--black);
+	top: 0em;
+    font-size: 2em;
+}
+.bannerShieldContainer.AK.one .routeNumber {
+	font-family: "Series E";
+	text-align: center;
+    top: 0.05em;
+	left: 0.275em;
+    font-size: 2em;
+}
+.bannerShieldContainer.AK.two .routeNumber {
+    font-family: "Series D";
+    text-align: center;
+    top: 0.15em;
+    left: 0.25em;
+    font-size: 1.75em;
+}
+.bannerShieldContainer.AK.three .routeNumber {
+	font-family: "Series C";
+	text-align: center;
+    top: 0.25em;
+	left: 0.25em;
+    font-size: 1.5em;
+}
+
+/* ARIZONA */
+.bannerShieldContainer.AZ .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+    text-align: center;
+	top: 0em;
+	font-size: 2.5em;
+}
+/*
+.bannerShieldContainer.AZ.loop.three .banner,
+*/
+.bannerShieldContainer.AZ.three .routeNumber {
+    font-family: "Series C";
+    text-align: center;
+    top: 0em;
+    font-size: 2.5em;
+}
+
+/* ARKANSAS */
+.bannerShieldContainer.AR .routeNumber {
+	color: var(--black);
+    font-family: "Series B";
+    text-align: center;
+	top: -0.05em;
+	right: 0em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.AR.one .routeNumber,
+.bannerShieldContainer.AR.two .routeNumber {
+	font-family: "Series B";
+}
+.bannerShieldContainer.AR.three .routeNumber {
+	font-family: "Series B";
+	right: 0.1em;
+}
+
+/* CALIFORNIA */
+.bannerShieldContainer.CA .routeNumber {
+	color: var(--white);
+	font-family: "Series D";
+	top: 0.3em;
+	font-size: 2em;
+}
+.bannerShieldContainer.CA.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* COLORADO */
+.bannerShieldContainer.CO .routeNumber {
+	color: var(--black);
+	font-size: 1.9em;
+	top: 0.51em;
+}
+.bannerShieldContainer.CO.one .routeNumber,
+.bannerShieldContainer.CO.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.CO.three .routeNumber {
+	font-family: "Series C";
+}
+
+/* CONNECTICUT (UNFINISHED) */
+.bannerShieldContainer.CT .routeNumber {
+    
+}
+.bannerShieldContainer.CT.three .routeNumber {
+    
+}
+
+/* DELAWARE (UNFINISHED) */
+.bannerShieldContainer.DE .routeNumber {
+    
+}
+
+/* DISTRICT OF COLUMBIA */
+.bannerShieldContainer.DC .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	font-size: 1.5em;
+	top: 0.65em;
+}
+
+/* FLORIDA */
+.bannerShieldContainer.FL .routeNumber {
+	color: var(--black);
+	top: 0.3em;
+	right: 0.15em;
+	font-size: 1.5em;
+}
+.bannerShieldContainer.FL.one .routeNumber,
+.bannerShieldContainer.FL.two .routeNumber,
+.bannerShieldContainer.FL.three .routeNumber {
+	font-family: "Series D";
+	font-size: 2em;
+	top: 0.2em;
+}
+.bannerShieldContainer.FL.four .routeNumber {
+	font-family: "Series C";
+	font-size: 2em;
+	top: 0.2em;
+}
+.bannerShieldContainer.FL.toll .banner {
+	display: none;
+}
+.bannerShieldContainer.FL.toll .routeNumber,
+.bannerShieldContainer.FL.cfxtoll .routeNumber {
+	font-family: "Series C";
+	font-size: 1.3em;
+	top: 0.7em;
+}
+.bannerShieldContainer.FL.turnpike .routeNumber {
+	opacity: 0;
+}
+
+/* GEORGIA */
+.bannerShieldContainer.GA .routeNumber {
+	color: var(--black);
+    font-size: 2.5em;
+	top: 0em;
+}
+.bannerShieldContainer.GA.one .routeNumber,
+.bannerShieldContainer.GA.two .routeNumber {
+	font-family: "Series C";
+}
+.bannerShieldContainer.GA.three .routeNumber {
+	font-family: "Series C";
+    font-size: 2.4em;
+    top: 0.01em;
+}
+/*
+.bannerShieldContainer.GA.alt .banner,
+.bannerShieldContainer.GA.byp .banner,
+.bannerShieldContainer.GA.conn .banner,
+.bannerShieldContainer.GA.loop .banner,
+.bannerShieldContainer.GA.spur .banner {
+	display: none;
+}
+*/
+
+/* HAWAII */
+.bannerShieldContainer.HI .routeNumber {
+	color: var(--black);
+	font-size: 1.75em;
+}
+.bannerShieldContainer.HI.one .routeNumber,
+.bannerShieldContainer.HI.two .routeNumber {
+	font-family: "Series D";
+	top: 0.5em;
+}
+.bannerShieldContainer.HI.three .routeNumber {
+	font-family: "Series C";
+	font-size: 1.75em;
+	top: 0.5em;
+}
+.bannerShieldContainer.HI.four .routeNumber {
+    font-family: "Series C";
+    font-size: 1.35em;
+    top: 0.9em;
+}
+
+/* IDAHO */
+.bannerShieldContainer.ID .routeNumber {
+    color: var(--black);
+	font-family: "Series C";
+	text-align: right;
+	top: -0.15em;
+	font-size: 2em;
+}
+.bannerShieldContainer.ID.one .routeNumber,
+.bannerShieldContainer.ID.two .routeNumber {
+	right: 0.075em;
+}
+.bannerShieldContainer.ID.three .routeNumber {
+	font-family: "Series B"
+}
+.shieldsContainer.shieldBacks.ID .routeNumber {
+	color: var(--white);
+}
+.shieldsContainer:not(.shieldBacks) .ID .routeNumber {
+	color: var(--black);
+}
+
+/* ILLINOIS */
+.bannerShieldContainer.IL .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: 0.175em;
+	font-size: 2.25em;
+}
+.bannerShieldContainer.IL.three .routeNumber {
+    font-family: "Series D";
+    top: 0.175em;
+    font-size: 2.25em;
+}
+
+/* INDIANA */
+.bannerShieldContainer.IN .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: 0.1em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.IN.three .routeNumber {
+    font-family: "Series D";
+    top: 0.175em;
+    font-size: 2.25em;
+}
+
+/* IOWA  (UNFINISHED) */
+.bannerShieldContainer.IA .routeNumber {
+    
+}
+.bannerShieldContainer.IA.three .routeNumber {
+    
+}
+
+/* KANSAS (UNFINISHED) */
+.bannerShieldContainer.KS .routeNumber {
+    
+}
+.bannerShieldContainer.KS .routeNumber {
+    
+}
+
+/* KENTUCKY (UNFINISHED) */
+.bannerShieldContainer.KY .routeNumber {
+    
+}
+.bannerShieldContainer.KY.three .routeNumber {
+    
+}
+.bannerShieldContainer.KY.four .routeNumber {
+    
+}
+
+/* LOUISIANA */
+.bannerShieldContainer.LA .routeNumber {
+	color: var(--black);
+	font-family: "Series C";
+	font-size: 1.75em;
+	top: 0.45em;
+}
+.bannerShieldContainer.LA.three .routeNumber {
+    font-size: 1.5em;
+    top: 0.65em;
+}
+.bannerShieldContainer.LA.four .routeNumber {
+    font-family: "Series B";
+    font-size: 1.5em;
+    top: 0.65em;
+}
+
+/* MAINE */
+.bannerShieldContainer.ME .routeNumber {
+    
+}
+.bannerShieldContainer.ME.three .routeNumber {
+    
+}
+
+/* MARYLAND */
+.bannerShieldContainer.MD .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: 0.135em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.MD.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* MASSACHUSETTS (UNFINISHED) */
+.bannerShieldContainer.MA .routeNumber {
+    
+}
+.bannerShieldContainer.MA.three .routeNumber {
+    
+}
+
+/* MICHIGAN */
+.bannerShieldContainer.MI .routeNumber {
+	color: var(--black);
+	font-size: 1.8em;
+	top: 0.25em;
+}
+.bannerShieldContainer.MI.one .routeNumber,
+.bannerShieldContainer.MI.two .routeNumber {
+	font-family: "Series D";
+}
+
+.bannerShieldContainer.MI.three .routeNumber {
+	font-family: "Series C";
+}
+
+/* MINNESOTA (UNFINISHED) */
+.bannerShieldContainer.MN .routeNumber {
+	color: var(--white);
+    text-align: center;
+	font-family: "Series D";
+	font-size: 2em;
+	top: 0.25em;
+}
+.bannerShieldContainer.MN.three .routeNumber {
+    font-family: "Series C"
+}
+
+/*
+.bannerShieldContainer.MN.bus .banner {
+	display: none;
+}
+*/
+
+/* MISSISSIPPI (UNFINISHED) */
+
+
+/* MISSOURI */
+.bannerShieldContainer.MO .routeNumber {
+	color: var(--black);
+	top: 0.15em;
+}
+.bannerShieldContainer.MO.one .routeNumber,
+.bannerShieldContainer.MO.two .routeNumber {
+	font-family: "Series C";
+    font-size: 2.25em;
+    top: 0em;
+}
+.bannerShieldContainer.MO.three .routeNumber {
+	font-family: "Series C";
+    font-size: 2.25em;
+    top: 0em;
+}
+
+/* MONTANA */
+.bannerShieldContainer.MT .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: 0.125em;
+	font-size: 2.25em;
+}
+.bannerShieldContainer.MT.one .routeNumber {
+    font-family: "Series E"
+}
+.bannerShieldContainer.MT2 .routeNumber {
+	color: var(--black);
+}
+.bannerShieldContainer.MT2.one .routeNumber,
+.bannerShieldContainer.MT2.two .routeNumber {
+    font-size: 1.75em;
+	top: 0.1em;
+}
+.bannerShieldContainer.MT2.three .routeNumber {
+	font-size: 1.5em;
+	top: 0.3em;
+}
+.bannerShieldContainer.MT2.one .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.MT2.two .routeNumber,
+.bannerShieldContainer.MT2.three .routeNumber {
+	font-family: "Series C";
+}
+
+/* NEBRASKA (UNFINISHED) */
+.bannerShieldContainer.NE .routeNumber {
+	color: var(--black);
+	top: 0.03em;
+    font-size: 1.8em;
+}
+.bannerShieldContainer.NE.one .routeNumber,
+.bannerShieldContainer.NE.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.NE.three .routeNumber {
+	font-family: "Series C";
+}
+/*
+.bannerShieldContainer.NE.link.one .banner,
+.bannerShieldContainer.NE.link.two .banner,
+.bannerShieldContainer.NE.spur.one .banner,
+.bannerShieldContainer.NE.spur.two .banner {
+	display: none;
+}
+*/
+/*
+.bannerShieldContainer.NE.link.one .routeNumber .bannerShieldContainer.NE.link.two .routeNumber,
+.bannerShieldContainer.NE.spur.one .routeNumber .bannerShieldContainer.NE.spur.two .routeNumber {
+	top: -0.1em;
+}
+*/
+
+/* NEVADA */
+.bannerShieldContainer.NV .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	font-size: 1.35em;
+	top: 0.05em;
+}
+.bannerShieldContainer.NV.three .routeNumber {
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.075em;
+}
+
+/* NEW HAMPSHIRE */
+.bannerShieldContainer.NH .routeNumber {
+	color: var(--black);
+}
+.bannerShieldContainer.NH.one .routeNumber,
+.bannerShieldContainer.NH.two .routeNumber {
+	font-family: "Series C";
+    top: -0.05em;
+    right: -0.05em;
+    font-size: 2.5em;
+}
+/*
+.bannerShieldContainer.NH.three .routeNumber {
+	font-family: "Series C";
+	font-size: 2.5em;
+    top: -0.05em;
+	right: -0.05em;
+}
+*/
+
+/* NEW JERSEY */
+.bannerShieldContainer.NJ .routeNumber {
+    
+}
+.bannerShieldContainer.NJ.three .routeNumber {
+    
+}
+
+/* NEW MEXICO */
+.bannerShieldContainer.NM .routeNumber {
+	color: var(--black);
+}
+.bannerShieldContainer.NM.one .routeNumber,
+.bannerShieldContainer.NM.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.NM.one .routeNumber {
+	top: 0.15em;
+}
+.bannerShieldContainer.NM.two .routeNumber {
+    color: var(--black);
+    text-align: center;
+    font-size: 1.75em;
+    font-family: "Series D";
+    top: 0.175em;
+}
+.bannerShieldContainer.NM.three .routeNumber {
+	font-family: "Series C";
+	font-size: 1.25em;
+	top: 0.55em;
+}
+
+/* NEW YORK */
+.bannerShieldContainer.NY .routeNumber {
+	color: var(--black);
+	font-family: "Series E";
+	top: 0.1em;
+	font-size: 2em;
+}
+.bannerShieldContainer.NY.three .routeNumber {
+    font-size: 1.9em;
+    top: 0.15em;
+}
+
+/* NORTH CAROLINA */
+.bannerShieldContainer.NC .routeNumber {
+	color: var(--black);
+	font-size: 1.9em;
+	top: 0.15em;
+}
+.bannerShieldContainer.NC.one .routeNumber,
+.bannerShieldContainer.NC.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.NC.three .routeNumber {
+	font-family: "Series C";
+    font-size: 1.75em;
+    top: 0.2em;
+}
+
+/* NORTH DAKOTA */
+.bannerShieldContainer.ND .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: 0.075em;
+    right: 0.025em;
+    font-size: 2.5em;
+}
+.bannerShieldContainer.ND.three .routeNumber {
+    font-family: "Series C";
+    top: 0.075em;
+    right: 0.025em;
+    font-size: 2.5em;
+}
+.bannerShieldContainer.ND.four .routeNumber {
+    font-family: "Series B";
+    top: 0.075em;
+    right: 0.025em;
+    font-size: 2.5em;
+}
+
+/* OHIO */
+.bannerShieldContainer.OH .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+    font-size: 2.5em;
+	top: -0.075em;
+}
+.bannerShieldContainer.OH.three .routeNumber {
+    font-size: 2.25em;
+    top: 0em;
+}
+
+/* OKLAHOMA */
+.bannerShieldContainer.OK .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+    top: 0.13em;
+    font-size: 2.5em;
+}
+.bannerShieldContainer.OK.three .routeNumber {
+    font-family: "Series B";
+}
+
+/* OREGON */
+.bannerShieldContainer.OR .routeNumber {
+	color: var(--black);
+	top: -0.125em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.OR.one .routeNumber {
+    font-family: "Series D";
+}
+.bannerShieldContainer.OR.two .routeNumber {
+	font-family: "Series C";
+}
+.bannerShieldContainer.OR.three .routeNumber {
+	font-family: "Series C";
+}
+
+/* PENNSYLVANIA */
+.bannerShieldContainer.PA .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: -0.05em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.PA.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* PUERTO RICO (NOT CREATED) */
+
+/* RHODE ISLAND */
+.bannerShieldContainer.RI .routeNumber {
+	color: var(--black);
+	top: 0.1em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.RI.one .routeNumber {
+    font-family: "Series E";
+}
+.bannerShieldContainer.RI.two .routeNumber {
+    font-family: "Series D";
+}
+.bannerShieldContainer.RI.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* SOUTH CAROLINA */
+.bannerShieldContainer.SC .routeNumber {
+	color: var(--blue);
+	font-family: "Series D";
+	top: 0.18em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.SC.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* SOUTH DAKOTA */
+.bannerShieldContainer.SD .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: -0.075em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.SD.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* TENNESSEE */
+.bannerShieldContainer.TN .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: -0.15em;
+	font-size: 2.5em;
+}
+.bannerShieldContainer.TN.three .routeNumber {
+    font-family: "Series C"
+}
+.bannerShieldContainer.TN2 .routeNumber {
+	color: var(--black);
+}
+.bannerShieldContainer.TN2.one .routeNumber {
+    font-family: "Series D";
+    font-size: 2.5em;
+    top: -0.2em;
+}
+.bannerShieldContainer.TN2.two .routeNumber {
+	font-family: "Series D";
+    font-size: 2em;
+    top: -0.15em;
+}
+.bannerShieldContainer.TN2.three .routeNumber {
+	font-family: "Series C";
+    font-size: 1.85em;
+    top: -0.175em;
+}
+
+/* TEXAS */
+.bannerShieldContainer.TX .routeNumber {
+	color: var(--black);
+	font-size: 2.2em;
+	top: 0.2em;
+}
+.bannerShieldContainer.TX.one .routeNumber,
+.bannerShieldContainer.TX.two .routeNumber,
+.bannerShieldContainer.TX.three .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.TX.four .routeNumber {
+	font-family: "Series C";
+}
+.bannerShieldContainer.TX.toll.three .routeNumber {
+	font-family: "Series D";
+	left: 0rem;
+	font-size: 1.8em;
+	letter-spacing: 0;
+	top: -0.2rem;
+}
+.bannerShieldContainer.TX.toll.four .routeNumber {
+	font-family: "Series C";
+	left: 0rem;
+	font-size: 2em;
+	top: -.45rem;
+}
+.bannerShieldContainer.TX.toll .routeNumber {
+	color: var(--white);
+	top: -0.45rem;
+	font-size: 2.2em;
+	font-family: "Series E";
+}
+.bannerShieldContainer.TX.express .routeNumber {
+	color: var(--white);
+	top: 0.1em;
+	font-size: 2rem;
+}
+.bannerShieldContainer.TX.loop .banner,
+.bannerShieldContainer.TX.spur .banner {
+	display: none;
+}
+.bannerShieldContainer.TX.loop.four .routeNumber {
+	font-family: "Series C";
+}
+
+/* UTAH */
+.bannerShieldContainer.UT .routeNumber {
+	color: var(--black);
+    font-size: 1.75em;
+    top: 0.19em;
+}
+.bannerShieldContainer.UT.one .routeNumber,
+.bannerShieldContainer.UT.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.UT.three .routeNumber {
+	font-family: "Series C";
+}
+
+/* VERMONT */
+.bannerShieldContainer.VT .routeNumber {
+	color: var(--green);
+	font-family: "Series D";
+	top: 0.15em;
+	font-size: 2.4em;
+}
+.bannerShieldContainer.VT.three .routeNumber {
+    font-family: "Series C"
+}
+
+/* VIRGINIA */
+.bannerShieldContainer.VA .routeNumber {
+	color: var(--black);
+    top: -0.15em;
+    font-size: 2.5em;
+
+}
+.bannerShieldContainer.VA.one .routeNumber {
+    font-family: "Series D";
+}
+.bannerShieldContainer.VA.two .routeNumber {
+    font-family: "Series C"
+}
+.bannerShieldContainer.VA.three .routeNumber {
+    font-family: "Series C";
+}
+/* FUTURE: make this default when Virginia route number is >599, exclude 785 and 895 */
+.bannerShieldContainer.VA2 .routeNumber {
+	color: var(--black);
+}
+.bannerShieldContainer.VA2.one .routeNumber {
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.05em;
+}
+.bannerShieldContainer.VA2.two .routeNumber {
+    font-size: 2.5em;
+    font-family: "Series C";
+    top: -0.05em;
+}
+.bannerShieldContainer.VA2.three .routeNumber {
+    font-size: 2.5em;
+    font-family: "Series B";
+    top: -0.05em;
+}
+
+/* WASHINGTON */
+.bannerShieldContainer.WA .routeNumber {
+	color: var(--black);
+    font-family: "Series C";
+}
+.bannerShieldContainer.WA.one .routeNumber {
+    font-size: 2.5em;
+    top: -0.1em;
+}
+.bannerShieldContainer.WA.two .routeNumber {
+	font-size: 2.1em;
+	top: 0em;
+}
+.bannerShieldContainer.WA.three .routeNumber {
+	font-size: 1.75em;
+	top: 0.1em;
+}
+
+/* WEST VIRGINIA */
+.bannerShieldContainer.WV .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.04em;
+}
+.bannerShieldContainer.WV.three .routeNumber {
+    font-family: "Series C";
+}
+
+/* WISCONSIN */
+.bannerShieldContainer.WI .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.04em;
+}
+.bannerShieldContainer.WI.one .routeNumber,
+.bannerShieldContainer.WI.two .routeNumber {
+    font-family: "Series D";
+}
+.bannerShieldContainer.WI.three .routeNumber {
+	font-family: "Series B";
+}
+
+/* WYOMING */
+.bannerShieldContainer.WY .routeNumber {
+	color: var(--black);
+	top: 0.125em;
+	font-size: 2em;
+}
+.bannerShieldContainer.WY.one .routeNumber,
+.bannerShieldContainer.WY.two .routeNumber {
+	font-family: "Series D";
+}
+.bannerShieldContainer.WY.three .routeNumber {
+	font-family: "Series C";
+}
+
+
+/* CANADA */
+
+/* ALBERTA (NOT CREATED) */
+/* BRITISH COLUMBIA (NOT CREATED) */
+/* MANITOBA (NOT CREATED) */
+
+/* NEW BRUNSWICK (UNFINISHED) */
+.bannerShieldContainer.NB .routeNumber {
+    color: var(--black);
+    top: 0.5em;
+    font-family: "Helvetica";
+    font-weight: bold;
+}
+.bannerShieldContainer.NB.one .routeNumber,
+.bannerShieldContainer.NB.two .routeNumber {
+    font-size: 1.5em;
+}
+.bannerShieldContainer.NB.three .routeNumber {
+    font-size: 1.25em;
+    top: 0.65em;
+    left: -0.03em;
+}
+/*
+.bannerShieldContainer.NB.local.three .banner {
+    display: none;
+}
+*/
+
+/* NEWFOUNDLAND & LABRADOR */
+.bannerShieldContainer.NL .routeNumber {
+    font-size: 1.8em;
+    color: var(--black);
+    font-family: "Series EM";
+    top: 0.38em;
+}
+
+.bannerShieldContainer.NL.three .routeNumber {
+    font-size: 1.7em;
+    top: 0.45em;
+    font-family: "Series EM";
+}
+
+/* NORTHWEST TERRITORIES (NOT CREATED) */
+
+/* NOVA SCOTIA */
+/*
+.bannerShieldContainer.NS.three .routeNumber {
+    font-size: 1.05em;
+    top: 0.8em;
+    letter-spacing: .05em;
+    left: 0.02em;
+    color: white;
+    font-family: "Series C";
+}
+.bannerShieldContainer.bannerShieldContainer.NS.conn.three .routeNumber {
+    font-size: 1.05em;
+    color: white;
+    top: .51em;
+    letter-spacing: 0.05em;
+    left: .015em;
+    font-family: "Series D";
+}
+.bannerShieldContainer.NS.trunk.two .banner,
+.bannerShieldContainer.NS.conn .banner,
+.bannerShieldContainer.NS.arterial.three .banner {
+    display: none;
+}
+*/
+
+/* NUNAVUT (NOT CREATED) */
+
+/* ONTARIO (NOT CREATED) */
+
+/* PRINCE EDWARD ISLAND */
+.bannerShieldContainer.PEI .routeNumber {
+    font-size: 1.2em;
+    top: 0.5em;
+    color: var(--black);
+    font-family: "Series C";
+}
+.bannerShieldContainer.PEI.three .routeNumber {
+    font-size: 1.1em;
+    top: .6em;
+}
+
+/* QUEBEC */
+.bannerShieldContainer.QC .routeNumber {
+    font-size: 1.5rem;
+    color: var(--white);
+    top: 0.4em;
+    font-family: "Series EM";
+}
+.bannerShieldContainer.QC.two .routeNumber {
+    font-family: "Series D";
+    top: 0.42em;
+}
+.bannerShieldContainer.QC2 .routeNumber {
+    font-size: 1.2rem;
+    color: var(--white);
+    top: 0.4em;
+    font-family: "Series D";
+    font-size: 1.3em;
+}
+
+/* SASKATCHEWAN (NOT CREATED) */
+
+/* YUKON (NOT CREATED) */
+
+
+/* block preview fixes for the shields whose numbers are too small / too high */

@@ -15,9 +15,11 @@ const app = (function () {
 
   let currentlySelectedAPLArrowIndex = 0;
 
-  const getCurrentPanel = () => {
-    return post.panels[currentlySelectedPanelIndex];
-  };
+    const APP_STORAGE_KEY = "signMaker.autosave.v1";
+
+    const getCurrentPanel = () => {
+        return post.panels[currentlySelectedPanelIndex];
+    };
 
   const getCurrentSubPanel = () => {
     return getCurrentPanel().sign.subPanels[currentlySelectedSubPanelIndex];
@@ -263,6 +265,31 @@ const app = (function () {
       } catch (error) {
         console.error("Failed to serialize undo state", error);
         return null;
+      }
+    };
+    
+    const saveAppState = () => {
+      try {
+        const snapshot = serializeAppState();
+        if (snapshot) {
+          window.localStorage.setItem(APP_STORAGE_KEY, snapshot);
+        }
+      } catch (error) {
+        console.error("Failed to save app state", error);
+      }
+    };
+
+    const loadSavedAppState = () => {
+      try {
+        const snapshot = window.localStorage.getItem(APP_STORAGE_KEY);
+        if (!snapshot) {
+          return false;
+        }
+        restoreAppState(snapshot);
+        return true;
+      } catch (error) {
+        console.error("Failed to load saved app state", error);
+        return false;
       }
     };
 
@@ -634,14 +661,15 @@ const app = (function () {
         return;
       }
 
-      const afterSnapshot = serializeAppState();
-      if (afterSnapshot && afterSnapshot !== pendingBeforeSnapshot) {
-        pushUndoSnapshot(pendingBeforeSnapshot);
-        redoStack.length = 0;
-      }
+        const afterSnapshot = serializeAppState();
+          if (afterSnapshot && afterSnapshot !== pendingBeforeSnapshot) {
+            pushUndoSnapshot(pendingBeforeSnapshot);
+            redoStack.length = 0;
+        }
 
-      pendingBeforeSnapshot = null;
-      updateUndoButtons();
+        pendingBeforeSnapshot = null;
+        updateUndoButtons();
+        saveAppState();
     };
 
     const runWithUndo = (callback) => {
@@ -668,6 +696,7 @@ const app = (function () {
 
       restoreAppState(previousSnapshot);
       updateUndoButtons();
+        saveAppState();
     };
 
     const redo = () => {
@@ -684,7 +713,37 @@ const app = (function () {
 
       restoreAppState(nextSnapshot);
       updateUndoButtons();
+        saveAppState();
     };
+    
+    const clearAll = () => {
+      return runWithUndo(() => {
+        post = new Post(Post.prototype.polePositions[0]);
+
+        currentlySelectedPanelIndex = -1;
+        currentlySelectedSubPanelIndex = 0;
+        currentlySelectedExitTabIndex = 0;
+        currentlySelectedNestedExitTabIndex = -1;
+        currentlySelectedRowIndex = 0;
+        currentlySelectedBlockIndex = 0;
+        currentlySelectedAPLArrowIndex = 0;
+
+        fileInfo = {
+          fileType: "png",
+          panel: -1,
+        };
+
+        post.newPanel();
+        currentlySelectedPanelIndex = post.panels.length - 1;
+
+        redoStack.length = 0;
+
+        formHandler.updateForm();
+        redraw();
+        saveAppState();
+      });
+    };
+    
   const applyHighwayGothicStyling = (element, fontFamily = "Series E") => {
     if (!element) {
       return;
@@ -831,16 +890,26 @@ const app = (function () {
 
   // Initialize the application, and populates dropdowns and the default post.
 
-  const init = async function () {
-    post = new Post(Post.prototype.polePositions[0]);
-    formHandler.init(exposeToFormHandler);
+    const init = async function () {
+      post = new Post(Post.prototype.polePositions[0]);
+      formHandler.init(exposeToFormHandler);
 
-    // Initialize CustomShields after formHandler and wait for it
-    window.customShields = new CustomShields();
-    await window.customShields.initialized;
+      // Initialize CustomShields after formHandler and wait for it
+      window.customShields = new CustomShields();
+      await window.customShields.initialized;
 
-    newPanel();
-  };
+      const restored = loadSavedAppState();
+
+      if (!restored) {
+        post.newPanel();
+        currentlySelectedPanelIndex = post.panels.length - 1;
+        formHandler.updateForm();
+        redraw();
+        saveAppState();
+      }
+
+      window.addEventListener("beforeunload", saveAppState);
+    };
 
   // Create a new panel, set the current editing panel to that panel, update the form, and redraw.
     const newPanel = function () {
@@ -4181,6 +4250,7 @@ const app = (function () {
     currentlySelectedPanelIndex = 0;
     formHandler.updateForm();
     redraw();
+      saveAppState();
   };
 
   // Template management functions
@@ -4605,7 +4675,7 @@ const app = (function () {
         delRow: (...args) => runWithUndo(() => delRow(...args)),
         newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
         delControlElem: (...args) => runWithUndo(() => delControlElem(...args)),
-
+        clearAll: clearAll,
         saveTemplate: saveTemplate,
         loadTemplate: loadTemplate,
         deleteTemplate: deleteTemplate,

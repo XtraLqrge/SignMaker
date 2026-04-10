@@ -1,7 +1,3 @@
-/* 
-  // form.js - JK_Potato/Computer
-  Responsible for changes within the website form (editor)
-*/
 
 const formHandler = (function () {
   let exposed;
@@ -1336,17 +1332,29 @@ const formHandler = (function () {
           updateUtilityButtonLabels();
     };
     
-      document.querySelector("#closeWelcome").onclick = function () {
-        localStorage.setItem("closedWelcome", true);
-        const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-        if (welcomeDialog) {
-          welcomeDialog.style.display = "none";
-        }
-        const modalHolder = document.querySelector("#modalHolder");
-        if (modalHolder) {
-          modalHolder.style.display = "none";
-        }
-      };
+      const closeWelcomeButton = document.querySelector("#closeWelcome");
+      if (closeWelcomeButton) {
+        closeWelcomeButton.onclick = function () {
+          const modalHolder = document.querySelector("#modalHolder");
+          const welcomeDialog = document.querySelector("#welcomeToSignMaker");
+
+          localStorage.setItem("closedWelcome", "true");
+
+          if (welcomeDialog && typeof welcomeDialog.close === "function") {
+            try {
+              welcomeDialog.close();
+            } catch (error) {}
+          }
+
+          if (welcomeDialog) {
+            welcomeDialog.style.display = "none";
+          }
+
+          if (modalHolder) {
+            modalHolder.style.display = "none";
+          }
+        };
+      }
 
     newRowDropTargetButton = document.getElementById("sMSPCreateRow");
     if (newRowDropTargetButton) {
@@ -1428,13 +1436,15 @@ const formHandler = (function () {
       });
     });
 
-      if (!localStorage.getItem("closedWelcome")) {
+      const welcomeDialog = document.querySelector("#welcomeToSignMaker");
+      if (!localStorage.getItem("closedWelcome") && welcomeDialog) {
         const modalHolder = document.querySelector("#modalHolder");
-        const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-        if (modalHolder && welcomeDialog) {
+
+        if (modalHolder) {
           modalHolder.style.display = "flex";
-          welcomeDialog.style.display = "flex";
         }
+
+        welcomeDialog.style.display = "flex";
       }
 
     // Populate post kind options

@@ -338,10 +338,10 @@
 }
 
 :root {
-  --green: rgb(1, 111, 80);
+  --green: rgb(0, 95, 77);
   --blue: rgb(0, 67, 123);
   --brown: rgb(98, 51, 30);
-  --yellow: rgb(255, 208, 70);
+  --yellow: rgb(252, 207, 52);
   --countyYellow: rgb(247, 209, 23);
   --white: rgb(255, 255, 255);
   --black: rgb(0, 0, 0);

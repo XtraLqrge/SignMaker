@@ -1,38 +1,40 @@
-/* 
-  // form.js - JK_Potato/Computer
-  Responsible for changes within the website form (editor)
-*/
-
 const formHandler = (function () {
-  let exposed;
-  let post;
-  let blockDragState = null;
-  let panelDragState = null;
-  let exitTabDragState = null;
-  let rowDragState = null;
-  let newRowDropTargetButton = null;
+    let exposed;
+    let post;
+    let blockDragState = null;
+    let panelDragState = null;
+    let exitTabDragState = null;
+    let rowDragState = null;
+    let newRowDropTargetButton = null;
+    let ensureSubpanelMenuOpenPublic = () => {};
+    let ensureExitTabMenuOpenPublic = () => {};
+    let ensureGuideArrowMenuOpenPublic = () => {};
     const syncPostReference = () => {
       if (exposed && typeof exposed.getPost === "function") {
         post = exposed.getPost();
       }
     };
-  const STORAGE_KEYS = {
-    postPosition: "signMaker.postPosition",
-    postColor: "signMaker.postColor",
-    showPost: "signMaker.showPost",
-    postThickness: "signMaker.postThickness",
-    controlTextFont: "signMaker.controlTextFont",
-    bannerFontFamily: "signMaker.bannerFontFamily",
-    exitTabFHWAFont: "signMaker.exitTabFHWAFont",
-    exitTabFullBorder: "signMaker.exitTabFullBorder",
-    exitTabSquareCorners: "signMaker.exitTabSquareCorners",
-    exitTabTopOffset: "signMaker.exitTabTopOffset",
-  };
-  let localStorageAvailable;
-  let localStorageWarningLogged = false;
-  const LIMON_TRIGGER_VALUE = "limon";
-  const LIMON_VIDEO_URL = "https://www.youtube.com/watch?v=qA7qUG6uEbY";
-  const getPostThicknessFallback = () =>
+    const STORAGE_KEYS = {
+        postPosition: "signMaker.postPosition",
+        postColor: "signMaker.postColor",
+        showPost: "signMaker.showPost",
+        postThickness: "signMaker.postThickness",
+        controlTextFont: "signMaker.controlTextFont",
+        bannerFontFamily: "signMaker.bannerFontFamily",
+        exitTabFHWAFont: "signMaker.exitTabFHWAFont",
+        exitTabFullBorder: "signMaker.exitTabFullBorder",
+        exitTabSquareCorners: "signMaker.exitTabSquareCorners",
+        exitTabTopOffset: "signMaker.exitTabTopOffset",
+        restoreOnRefresh: "signMaker.restoreOnRefresh",
+        shortcutOverrides: "signMaker.shortcutOverrides",
+        configBarPosition: "signMaker.configBarPosition",
+        shieldPickerScrollTop: "signMaker.shieldPickerScrollTop",
+    };
+    let localStorageAvailable;
+    let localStorageWarningLogged = false;
+    const LIMON_TRIGGER_VALUE = "limon";
+    const LIMON_VIDEO_URL = "https://www.youtube.com/watch?v=qA7qUG6uEbY";
+const getPostThicknessFallback = () =>
     typeof Post.prototype.defaultThickness === "number"
       ? Post.prototype.defaultThickness
       : 1;
@@ -81,6 +83,60 @@ const formHandler = (function () {
       localStorageAvailable = false;
     }
   };
+    
+    const normalizeConfigBarPosition = (value) => {
+      if (value === "bottom" || value === "top") {
+        return value;
+      }
+
+      return "right";
+    };
+
+    const updateConfigPositionButtons = (position) => {
+      const normalized = normalizeConfigBarPosition(position);
+      const buttons = document.querySelectorAll("[data-config-position]");
+
+      buttons.forEach((button) => {
+        const isActive =
+          normalizeConfigBarPosition(button.dataset.configPosition) === normalized;
+        button.classList.toggle("active", isActive);
+      });
+    };
+
+    const applyConfigBarPosition = (position, { persist = false } = {}) => {
+      const normalized = normalizeConfigBarPosition(position);
+      const configBar = document.getElementById("sMConfigBar");
+
+      if (configBar) {
+        configBar.dataset.position = normalized;
+      }
+
+      document.documentElement.dataset.configPosition = normalized;
+      updateConfigPositionButtons(normalized);
+
+      if (persist) {
+        setStoredItem(STORAGE_KEYS.configBarPosition, normalized);
+      }
+    };
+
+    const getStoredConfigBarPosition = () =>
+      normalizeConfigBarPosition(getStoredItem(STORAGE_KEYS.configBarPosition));
+
+    const bindConfigPositionControls = (root = document) => {
+      const buttons = root.querySelectorAll("[data-config-position]");
+
+      buttons.forEach((button) => {
+        if (button.dataset.configPositionBound === "true") {
+          return;
+        }
+
+        button.dataset.configPositionBound = "true";
+
+        button.addEventListener("click", () => {
+          applyConfigBarPosition(button.dataset.configPosition, { persist: true });
+        });
+      });
+    };
 
   const formatPostKindLabel = (value) => {
     if (typeof value !== "string") {
@@ -90,6 +146,125 @@ const formHandler = (function () {
     return spaced.replace(/[_-]+/g, " ").trim() || value;
   };
 
+    const normalizeRestoreOnRefreshMode = (value) => {
+      const normalized = String(value || "").toLowerCase();
+      if (normalized === "always" || normalized === "prompt" || normalized === "never") {
+        return normalized;
+      }
+      return "always";
+    };
+    
+    const getStoredShortcutOverrides = () => {
+      const raw = getStoredItem(STORAGE_KEYS.shortcutOverrides);
+      if (!raw) {
+        return {};
+      }
+
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (error) {
+        console.warn("Unable to parse saved shortcut overrides", error);
+        return {};
+      }
+    };
+
+    const saveStoredShortcutOverrides = (overrides) => {
+      setStoredItem(STORAGE_KEYS.shortcutOverrides, JSON.stringify(overrides || {}));
+    };
+
+    const persistShortcutInputValue = (input) => {
+      if (!input || !input.id) {
+        return;
+      }
+
+      const overrides = getStoredShortcutOverrides();
+      overrides[input.id] = input.dataset.shortcutInternalValue || "";
+      saveStoredShortcutOverrides(overrides);
+    };
+    
+    const normalizeShortcutToken = (value) =>
+      String(value || "")
+        .toUpperCase()
+        .replace(/\s+/g, "")
+        .replace(/⌘/g, "CTRL")
+        .replace(/⌃/g, "CTRL")
+        .replace(/⇧/g, "SHIFT")
+        .replace(/⌥/g, "ALT")
+        .replace(/CMD/g, "CTRL");
+    
+    const isMacOS =
+      navigator.userAgentData?.platform === "macOS" ||
+      /Mac|iPhone|iPad|iPod/.test(navigator.platform || "") ||
+      /Mac|iPhone|iPad|iPod/.test(navigator.userAgent || "");
+
+    const formatSingleShortcutForDisplay = (value) => {
+      const normalized = normalizeShortcutToken(value);
+      if (!normalized) {
+        return "";
+      }
+
+      if (!isMacOS) {
+        return normalized;
+      }
+
+      const parts = normalized.split("+").filter(Boolean);
+      const modifierSymbols = [];
+
+      const hasCtrl = parts.includes("CTRL");
+      const hasShift = parts.includes("SHIFT");
+      const hasAlt = parts.includes("ALT");
+
+      if (hasCtrl) {
+        modifierSymbols.push("⌘");
+      }
+      if (hasShift) {
+        modifierSymbols.push("⇧");
+      }
+      if (hasAlt) {
+        modifierSymbols.push("⌥");
+      }
+
+        const mainKeys = parts
+          .filter((part) => part !== "CTRL" && part !== "SHIFT" && part !== "ALT")
+          .map((part) => {
+            if (part === "ESC") return "Escape";
+            if (part === "BACKSPACE") return "Backspace";
+            if (part === "LEFT") return "←";
+            if (part === "RIGHT") return "→";
+            return part;
+          });
+
+        return modifierSymbols.join("") + mainKeys.join("+");
+    };
+
+    const formatShortcutForDisplay = (value) =>
+      String(value || "")
+        .split("|")
+        .map((part) => formatSingleShortcutForDisplay(part))
+        .filter(Boolean)
+        .join("|");
+    
+    const applyStoredShortcutOverrides = (root = document) => {
+      const overrides = getStoredShortcutOverrides();
+      const shortcutInputs = root.querySelectorAll('#settingsControls input[type="text"]');
+
+      shortcutInputs.forEach((input) => {
+        if (!input.id) {
+          return;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(overrides, input.id)) {
+          const storedValue = overrides[input.id] || "";
+          input.dataset.shortcutInternalValue = storedValue;
+          input.value = formatShortcutForDisplay(storedValue);
+        } else {
+          input.dataset.shortcutInternalValue = input.defaultValue || "";
+          input.value = formatShortcutForDisplay(input.defaultValue || "");
+        }
+      });
+    };
+    
   const applyStoredPreferences = () => {
     const storedPostPosition = getStoredItem(STORAGE_KEYS.postPosition);
     if (
@@ -865,41 +1040,22 @@ const formHandler = (function () {
         return;
       }
       document.documentElement.dataset.undoBound = "true";
-        const isDownloadDialogOpen = () => {
-          const downloadDialog = document.getElementById("downloadContent");
-          return !!(downloadDialog && downloadDialog.open);
-        };
-        const tryUndo = () => {
-          if (typeof app !== "undefined" && typeof app.undo === "function") {
-            app.undo();
-          }
-        };
 
-        const tryRedo = () => {
-          if (typeof app !== "undefined" && typeof app.redo === "function") {
-            app.redo();
-          }
-        };
-
-      document.addEventListener("keydown", (event) => {
-        const key = String(event.key || "").toLowerCase();
-        const usesModifier = event.ctrlKey || event.metaKey;
-
-        if (!usesModifier) {
-          return;
+      const tryUndo = () => {
+        if (typeof app !== "undefined" && typeof app.undo === "function") {
+          app.undo();
+        } else if (exposed && typeof exposed.undo === "function") {
+          exposed.undo();
         }
+      };
 
-        if (key === "z" && !event.shiftKey) {
-          event.preventDefault();
-          tryUndo();
-          return;
+      const tryRedo = () => {
+        if (typeof app !== "undefined" && typeof app.redo === "function") {
+          app.redo();
+        } else if (exposed && typeof exposed.redo === "function") {
+          exposed.redo();
         }
-
-        if ((key === "z" && event.shiftKey) || key === "y") {
-          event.preventDefault();
-          tryRedo();
-        }
-      });
+      };
 
       const undoSelectors = [
         "#undo",
@@ -922,26 +1078,27 @@ const formHandler = (function () {
         });
         break;
       }
-        const redoSelectors = [
-          "#redoButton",
-          "#redoBtn",
-          "[data-action='redo']",
-          "[aria-label='Redo']",
-          "[title='Redo']",
-        ];
 
-        for (const selector of redoSelectors) {
-          const button = document.querySelector(selector);
-          if (!button) {
-            continue;
-          }
+      const redoSelectors = [
+        "#redoButton",
+        "#redoBtn",
+        "[data-action='redo']",
+        "[aria-label='Redo']",
+        "[title='Redo']",
+      ];
 
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            tryRedo();
-          });
-          break;
+      for (const selector of redoSelectors) {
+        const button = document.querySelector(selector);
+        if (!button) {
+          continue;
         }
+
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          tryRedo();
+        });
+        break;
+      }
     };
 
   const initialize = async (appExposed) => {
@@ -949,6 +1106,8 @@ const formHandler = (function () {
     post = exposed.getPost();
     applyStoredPreferences();
     await initUI();
+    bindConfigPositionControls();
+    applyConfigBarPosition(getStoredConfigBarPosition());
     bindUndoControls();
 
     try {
@@ -957,6 +1116,2367 @@ const formHandler = (function () {
       console.error(e);
     }
   };
+    
+    const applyEditorInputBehavior = (root = document) => {
+      const editorInputs = root.querySelectorAll(
+        'input[type="text"], input[type="number"], input[type="search"], input[type="email"], input[type="url"], input[type="tel"], input[type="password"], textarea'
+      );
+
+      for (const input of editorInputs) {
+        if (input.dataset.editorBehaviorBound === "true") {
+          continue;
+        }
+        input.dataset.editorBehaviorBound = "true";
+
+        input.setAttribute("autocomplete", "off");
+        input.setAttribute("autocorrect", "off");
+        input.setAttribute("autocapitalize", "off");
+        input.setAttribute("spellcheck", "false");
+
+        input.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") {
+            return;
+          }
+
+          if (input.tagName === "TEXTAREA" && event.shiftKey) {
+            return;
+          }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (
+              typeof formHandler !== "undefined" &&
+              typeof formHandler.readForm === "function"
+            ) {
+              formHandler.readForm();
+            }
+
+            input.blur();
+
+          input.blur();
+        });
+      }
+    };
+    
+    const syncSettingsDefaultsFamilyPreviewSelect = (selectEl) => {
+      if (!selectEl) {
+        return;
+      }
+
+      if (selectEl.value === "Clearview") {
+        selectEl.style.fontFamily = '"Clearview 5WR", sans-serif';
+        selectEl.style.fontSize = "1rem";
+      } else if (selectEl.value === "Highway Gothic") {
+        selectEl.style.fontFamily = '"Series EM", sans-serif';
+        selectEl.style.fontSize = "1.2rem";
+      } else if (selectEl.value === "Arial") {
+        selectEl.style.fontFamily = 'Arial, sans-serif';
+        selectEl.style.fontSize = "1rem";
+      } else if (selectEl.value === "Transport") {
+        selectEl.style.fontFamily = '"Transport", sans-serif';
+        selectEl.style.fontSize = "1rem";
+      } else if (selectEl.value === "DIN 1451") {
+        selectEl.style.fontFamily = '"DIN 1451", sans-serif';
+        selectEl.style.fontSize = "1rem";
+      } else if (selectEl.value === "Rawlinson") {
+        selectEl.style.fontFamily = '"Rawlinson Regular", serif';
+        selectEl.style.fontSize = "1rem";
+      } else if (selectEl.value === "Helvetica Neue") {
+        selectEl.style.fontFamily = '"Helvetica Neue Roman", sans-serif';
+        selectEl.style.fontSize = "1rem";
+      } else {
+        selectEl.style.fontFamily = 'Inter, sans-serif';
+        selectEl.style.fontSize = "1rem";
+      }
+    };
+
+    const syncFontPreviewSelect = (selectEl) => {
+      if (!selectEl) {
+        return;
+      }
+
+      selectEl.classList.add("fontPreviewSelect");
+
+      const id = selectEl.id || "";
+
+      if (
+        id === "settingsDefaultsControlTextFontFamily" ||
+        id === "settingsDefaultsAdvisoryFontFamily" ||
+        id === "settingsDefaultsActionFontFamily"
+      ) {
+        if (selectEl.value === "Clearview") {
+          selectEl.style.fontFamily = '"Clearview 5WR", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "Highway Gothic") {
+          selectEl.style.fontFamily = '"Series EM", sans-serif';
+          selectEl.style.fontSize = "1.1rem";
+        } else if (selectEl.value === "Arial") {
+          selectEl.style.fontFamily = 'Arial, sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "Transport") {
+          selectEl.style.fontFamily = '"Transport", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else {
+          selectEl.style.fontFamily = 'Inter, sans-serif';
+          selectEl.style.fontSize = "1rem";
+        }
+        return;
+      }
+
+        const selectedFont = selectEl.value || "Inter";
+        selectEl.style.fontFamily = `"${selectedFont}", sans-serif`;
+    };
+    
+    const bindAllFontPreviewSelects = (root = document) => {
+      const fontSelects = Array.from(root.querySelectorAll("select")).filter(
+        (selectEl) =>
+          /font/i.test(selectEl.id || "") ||
+          /font/i.test(selectEl.name || "") ||
+          /font/i.test(selectEl.className || "")
+      );
+
+      for (const selectEl of fontSelects) {
+        syncFontPreviewSelect(selectEl);
+
+        if (selectEl.dataset.fontPreviewBound === "true") {
+          continue;
+        }
+
+        selectEl.dataset.fontPreviewBound = "true";
+        selectEl.addEventListener("change", () => {
+          syncFontPreviewSelect(selectEl);
+        });
+      }
+    };
+    
+    const FONT_PICKER_SINGLE_FONT_FAMILIES = new Set(["Transport", "DIN 1451"]);
+
+    const getFontPickerFamilies = () => {
+      const allFonts = Array.isArray(TextElement.prototype.fontFamily)
+        ? TextElement.prototype.fontFamily
+        : [];
+
+      const familyDefs = [
+        {
+          family: "Clearview",
+          previewFont: "Clearview 5WR",
+          fonts: allFonts.filter((font) => /^Clearview/i.test(font)),
+        },
+        {
+          family: "Highway Gothic",
+          previewFont: "Series EM",
+          fonts: allFonts.filter((font) => /^Series/i.test(font)),
+        },
+        {
+          family: "Arial",
+          previewFont: "Arial",
+          fonts: allFonts.filter(
+            (font) => font === "Arial" || font === "Arial Bold"
+          ),
+        },
+        {
+          family: "Transport",
+          previewFont: "Transport",
+          fonts: allFonts.filter((font) => font === "Transport"),
+        },
+        {
+          family: "DIN 1451",
+          previewFont: "DIN 1451",
+          fonts: allFonts.filter((font) => font === "DIN 1451"),
+        },
+        {
+          family: "ITC Stone Sans",
+          previewFont: "ITC Stone Sans Regular",
+          fonts: allFonts.filter((font) => /^ITC Stone Sans/i.test(font)),
+        },
+        {
+          family: "Rawlinson",
+          previewFont: "Rawlinson Regular",
+          fonts: allFonts.filter((font) => /^Rawlinson/i.test(font)),
+        },
+        {
+          family: "Helvetica Neue",
+          previewFont: "Helvetica Neue Roman",
+          fonts: allFonts.filter((font) => /^Helvetica Neue/i.test(font)),
+        },
+      ];
+
+      return familyDefs.filter((def) => def.fonts.length > 0);
+    };
+
+    const getFontsForPickerFamily = (family) => {
+      const match = getFontPickerFamilies().find((def) => def.family === family);
+      return match ? match.fonts : [];
+    };
+
+    const getFontPickerFamilyForFont = (font) => {
+      const families = getFontPickerFamilies();
+      const match = families.find((def) => def.fonts.includes(font));
+      return match ? match.family : "";
+    };
+
+    const getFontPickerPreviewFontForFamily = (family) => {
+      const match = getFontPickerFamilies().find((def) => def.family === family);
+      if (!match) {
+        return "Inter";
+      }
+
+      return match.fonts.includes(match.previewFont)
+        ? match.previewFont
+        : match.fonts[0];
+    };
+
+    const isHighwayGothicFontValue = (value) =>
+      /^Series/i.test(String(value || "")) || value === "Highway Gothic";
+
+    const getFontPickerDisplaySize = (value) =>
+      isHighwayGothicFontValue(value) ? "120%" : "100%";
+
+    const closeAllFontPickers = (except = null) => {
+      document.querySelectorAll(".fontPicker.open").forEach((picker) => {
+        if (picker !== except) {
+          picker.classList.remove("open");
+        }
+      });
+    };
+
+    const setNativeFontSelectValue = (selectEl, value, { dispatch = true } = {}) => {
+      if (!selectEl || !value) {
+        return;
+      }
+
+      const hasOption = Array.from(selectEl.options).some(
+        (option) => option.value === value
+      );
+
+      if (!hasOption) {
+        lib.appendOption(selectEl, value);
+      }
+
+      selectEl.value = value;
+
+      if (dispatch) {
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    };
+
+    const createFontPicker = ({ selectEl, mode, linkedFamilySelect = null }) => {
+      if (!selectEl) {
+        return null;
+      }
+
+      if (selectEl._fontPickerApi) {
+        selectEl._fontPickerApi.mode = mode;
+        selectEl._fontPickerApi.linkedFamilySelect = linkedFamilySelect;
+        selectEl._fontPickerApi.sync();
+        return selectEl._fontPickerApi;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = `fontPicker fontPicker-${mode}`;
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "fontPickerTrigger";
+
+      const triggerLabel = document.createElement("span");
+      triggerLabel.className = "fontPickerTriggerLabel";
+
+      const triggerCaret = document.createElement("span");
+      triggerCaret.className = "fontPickerTriggerCaret";
+      triggerCaret.textContent = "arrow_drop_down";
+
+      const menu = document.createElement("div");
+      menu.className = "fontPickerMenu";
+
+      trigger.appendChild(triggerLabel);
+      trigger.appendChild(triggerCaret);
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(menu);
+
+      selectEl.classList.add("fontPickerNativeSelect");
+      selectEl.insertAdjacentElement("afterend", wrapper);
+
+      const updateTrigger = () => {
+        const value = selectEl.value || "";
+        const display =
+          mode === "family"
+            ? value
+            : value || linkedFamilySelect?.value || "";
+
+        triggerLabel.textContent = display || "Font";
+
+        const previewFont =
+          mode === "family"
+            ? getFontPickerPreviewFontForFamily(value)
+            : value;
+
+        trigger.style.fontFamily = `"${previewFont || "Inter"}", sans-serif`;
+        trigger.style.fontSize = getFontPickerDisplaySize(previewFont);
+      };
+
+      const makeFontButton = (fontValue) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "fontPickerItem fontPickerFontItem";
+        button.dataset.fontValue = fontValue;
+        button.textContent = fontValue;
+        button.style.fontFamily = `"${fontValue}", sans-serif`;
+        button.style.fontSize = getFontPickerDisplaySize(fontValue);
+
+        if (selectEl.value === fontValue) {
+          button.classList.add("selected");
+        }
+
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setNativeFontSelectValue(selectEl, fontValue);
+          wrapper.classList.remove("open");
+          syncAllFontPickers();
+        });
+
+        return button;
+      };
+
+      const makeFamilyButton = (family) => {
+        const previewFont = getFontPickerPreviewFontForFamily(family);
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "fontPickerItem fontPickerFamilyItem";
+        button.dataset.familyValue = family;
+        button.textContent = family;
+        button.style.fontFamily = `"${previewFont}", sans-serif`;
+        button.style.fontSize = getFontPickerDisplaySize(previewFont);
+
+        if (selectEl.value === family) {
+          button.classList.add("selected");
+        }
+
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setNativeFontSelectValue(selectEl, family);
+          wrapper.classList.remove("open");
+          syncAllFontPickers();
+        });
+
+        return button;
+      };
+
+      const render = () => {
+        menu.innerHTML = "";
+
+        const families = getFontPickerFamilies();
+
+        if (mode === "allFontsGrouped") {
+          for (const familyDef of families) {
+            const familyBlock = document.createElement("div");
+            familyBlock.className = "fontPickerFamilyBlock expanded";
+
+            const familyHeader = document.createElement("div");
+            familyHeader.className = "fontPickerFamilyHeader";
+            familyHeader.textContent = familyDef.family;
+            familyHeader.style.fontFamily = `"${getFontPickerPreviewFontForFamily(
+              familyDef.family
+            )}", sans-serif`;
+            familyHeader.style.fontSize = getFontPickerDisplaySize(
+              familyDef.previewFont
+            );
+
+            const children = document.createElement("div");
+            children.className = "fontPickerFamilyChildren";
+
+            for (const font of familyDef.fonts) {
+              children.appendChild(makeFontButton(font));
+            }
+
+            familyBlock.appendChild(familyHeader);
+            familyBlock.appendChild(children);
+            menu.appendChild(familyBlock);
+          }
+        } else if (mode === "family") {
+          for (const familyDef of families) {
+            menu.appendChild(makeFamilyButton(familyDef.family));
+          }
+        } else if (mode === "familyFont") {
+          const family = linkedFamilySelect?.value || "";
+          const fonts = getFontsForPickerFamily(family);
+
+          for (const font of fonts) {
+            menu.appendChild(makeFontButton(font));
+          }
+        }
+
+        updateTrigger();
+      };
+
+      const sync = () => {
+        const shouldHide =
+          mode === "familyFont" &&
+          FONT_PICKER_SINGLE_FONT_FAMILIES.has(linkedFamilySelect?.value || "");
+
+        wrapper.classList.toggle("hidden", shouldHide);
+
+        const label = document.querySelector(`label[for="${selectEl.id}"]`);
+        if (label) {
+          label.classList.toggle("hidden", shouldHide);
+        }
+
+        render();
+      };
+
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const willOpen = !wrapper.classList.contains("open");
+        closeAllFontPickers(wrapper);
+
+        if (willOpen) {
+          render();
+          wrapper.classList.add("open");
+        } else {
+          wrapper.classList.remove("open");
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target)) {
+          wrapper.classList.remove("open");
+        }
+      });
+
+      selectEl.addEventListener("change", () => {
+        sync();
+      });
+
+      const api = {
+        mode,
+        linkedFamilySelect,
+        wrapper,
+        sync,
+      };
+
+      selectEl._fontPickerApi = api;
+      sync();
+
+      return api;
+    };
+
+    const syncAllFontPickers = () => {
+      document.querySelectorAll("select.fontPickerNativeSelect").forEach((selectEl) => {
+        if (selectEl._fontPickerApi) {
+          selectEl._fontPickerApi.sync();
+        }
+      });
+    };
+
+    const initializeFontPickers = () => {
+      [
+        "sdCtrlText_fontFamily",
+        "sdAdvisory_fontFamily",
+        "sdActionMessage_fontFamily",
+      ].forEach((id) => {
+        createFontPicker({
+          selectEl: document.getElementById(id),
+          mode: "allFontsGrouped",
+        });
+      });
+
+      const defaultsPairs = [
+        ["settingsDefaultsControlTextFontFamily", "settingsDefaultsControlTextFont"],
+        ["settingsDefaultsAdvisoryFontFamily", "settingsDefaultsAdvisoryFont"],
+        ["settingsDefaultsActionFontFamily", "settingsDefaultsActionFont"],
+      ];
+
+      defaultsPairs.forEach(([familyId, fontId]) => {
+        const familySelect = document.getElementById(familyId);
+        const fontSelect = document.getElementById(fontId);
+
+        createFontPicker({
+          selectEl: familySelect,
+          mode: "family",
+        });
+
+        createFontPicker({
+          selectEl: fontSelect,
+          mode: "familyFont",
+          linkedFamilySelect: familySelect,
+        });
+
+        if (familySelect && fontSelect && familySelect.dataset.fontPickerPairBound !== "true") {
+          familySelect.dataset.fontPickerPairBound = "true";
+
+          familySelect.addEventListener("change", () => {
+            const family = familySelect.value;
+            const fonts = getFontsForPickerFamily(family);
+            const storedFont = fontSelect.value;
+
+            const nextFont = fonts.includes(storedFont)
+              ? storedFont
+              : fonts[0] || "";
+
+            if (nextFont) {
+              setNativeFontSelectValue(fontSelect, nextFont, { dispatch: true });
+            }
+
+            syncAllFontPickers();
+          });
+        }
+      });
+
+      syncAllFontPickers();
+    };
+    
+
+    const SHIELD_DROPDOWN_PLACEHOLDER_ICON =
+      "data:image/svg+xml;utf8," +
+      encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+          <rect x="4" y="4" width="40" height="40" rx="4" fill="#111" stroke="#666" stroke-width="2"/>
+          <path d="M12 32 L32 12 M24 12 H32 V20" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `);
+    
+    const SHIELD_PICKER_MANUAL_ORDER = {
+        
+      "us-newjersey": [
+        "NJ",
+        "NJTP",
+        "GSP",
+        "PIP",
+      ],
+        
+      "us-oklahoma": [
+        "OK",
+        "OKCH",
+        "OKCR",
+        "OKHB",
+        "OKIN",
+        "OKKC",
+        "OKKL",
+        "OKMS",
+        "OKTU",
+        "OKWR",
+      ],
+
+      "us-pennsylvania": [
+        "PA",
+        "PATPLOGO",
+        "PATP",
+      ],
+
+      "us-texas": [
+        "TX",
+        "TXFM",
+        "TXRM",
+        "TXBELT",
+        "TXLOOP",
+        "TXPARK",
+        "TXSPUR",
+        "TXEXPRESS",
+        "TXTOLL",
+        "TXTOLLCTRMA",
+        "TXTOLLNTTA",
+        "TXTOLLFBTR",
+        "HTR",
+        "SHT",
+        "WPT",
+      ],
+    };
+
+    const applyManualShieldPickerOrder = (node) => {
+      if (!node || !Array.isArray(node.children)) {
+        return node;
+      }
+
+      node.children.forEach(applyManualShieldPickerOrder);
+
+      const manualOrder = SHIELD_PICKER_MANUAL_ORDER[node.id];
+
+      if (!manualOrder) {
+        return node;
+      }
+
+      const orderMap = new Map(
+        manualOrder.map((value, index) => [value, index])
+      );
+
+      node.children.sort((a, b) => {
+        const aIndex = orderMap.has(a.value) ? orderMap.get(a.value) : 9999;
+        const bIndex = orderMap.has(b.value) ? orderMap.get(b.value) : 9999;
+
+        if (aIndex !== bIndex) {
+          return aIndex - bIndex;
+        }
+
+        return (a.label || a.value || "").localeCompare(b.label || b.value || "");
+      });
+
+      return node;
+    };
+
+    const SHIELD_PICKER_TREE = [
+      {
+        id: "us",
+        label: "United States",
+        children: [
+          {
+            id: "us-interstate",
+            label: "Interstate",
+            children: [
+              { value: "I", label: "Interstate", asset: "img/shields/United States/I-2Digit.svg" },
+              { value: "I-BUS", label: "Interstate Business", asset: "img/shields/United States/I-BUS-2Digit.svg" },
+              { value: "I-BUS-LOOP", label: "Interstate Business Loop", disabled: true },
+              { value: "I-BUS-SPUR", label: "Interstate Business Spur", disabled: true },
+              { value: "FUTURE-I", label: "Future Interstate", disabled: true },
+            ],
+          },
+          {
+            id: "us-usroute",
+            label: "U.S. Route",
+            children: [
+              { value: "US", label: "U.S. Route", asset: "img/shields/United States/US-2Digit.svg" },
+              { value: "US-OLD", label: "U.S. Route (old style)", disabled: true },
+              { value: "US-CA", label: "U.S. Route (CA style)", disabled: true },
+            ],
+          },
+
+          { value: "AL", label: "Alabama", asset: "img/shields/United States/AL-2Digit.svg" },
+          { value: "AK", label: "Alaska", asset: "img/shields/United States/AK-2Digit.svg" },
+          { value: "AZ", label: "Arizona", asset: "img/shields/United States/AZ/AZ-2Digit.svg" },
+          { value: "AR", label: "Arkansas", asset: "img/shields/United States/AR-2Digit.svg" },
+          { value: "CA", label: "California", asset: "img/shields/United States/CA-2Digit.svg" },
+          { value: "CO", label: "Colorado", asset: "img/shields/United States/CO-2Digit.svg" },
+          { value: "CT", label: "Connecticut", asset: "img/shields/United States/CT-2Digit.svg" },
+          { value: "DE", label: "Delaware", asset: "img/shields/United States/DE-2Digit.svg" },
+          { value: "DC", label: "District of Columbia", asset: "img/shields/United States/DC-2Digit.svg" },
+
+          {
+            id: "us-florida",
+            label: "Florida",
+            children: [
+              { value: "FL", label: "Florida", asset: "img/shields/United States/FL/FL-2Digit.svg" },
+              { value: "FLToll", label: "Florida Toll", asset: "img/shields/United States/FL/FLToll-Current.svg" },
+              { value: "FLTURNPIKE", label: "Florida’s Turnpike", asset: "img/shields/United States/FL/FLTURNPIKE.svg" },
+            ],
+          },
+
+          {
+            id: "us-georgia",
+            label: "Georgia",
+            children: [
+              { value: "GA", label: "Georgia", asset: "img/shields/United States/GA/GA-2Digit.svg" },
+              { value: "GAALT", label: "GA Alternate", disabled: true },
+              { value: "GABYP", label: "GA Bypass", disabled: true },
+              { value: "GACONN", label: "GA Connector", disabled: true },
+              { value: "GALOOP", label: "GA Loop", disabled: true },
+              { value: "GASPUR", label: "GA Spur", disabled: true },
+            ],
+          },
+
+          { value: "HI", label: "Hawaii", asset: "img/shields/United States/HI-2Digit.svg" },
+          { value: "ID", label: "Idaho", asset: "img/shields/United States/ID-2Digit.svg" },
+          { value: "IL", label: "Illinois", asset: "img/shields/United States/IL-2Digit.svg" },
+
+          {
+            id: "us-indiana",
+            label: "Indiana",
+            children: [
+              { value: "IN", label: "Indiana", asset: "img/shields/United States/IN/IN-2Digit.svg" },
+              { value: "IN-TOLL", label: "IN Toll Road", disabled: true },
+            ],
+          },
+
+          { value: "IA", label: "Iowa", asset: "img/shields/United States/IA-2Digit.svg" },
+
+          {
+            id: "us-kansas",
+            label: "Kansas",
+            children: [
+              { value: "KS", label: "Kansas", asset: "img/shields/United States/KS/KS-2Digit.svg" },
+              { value: "KS-TURNPIKE", label: "KS Turnpike", disabled: true },
+            ],
+          },
+
+          {
+            id: "us-kentucky",
+            label: "Kentucky",
+            children: [
+              { value: "KY", label: "Kentucky", asset: "img/shields/United States/KY/KY-2Digit.svg" },
+              {
+                id: "us-kentucky-parkways",
+                label: "KY Parkways",
+                children: [
+                  { value: "KY-AA", label: "AA Highway", disabled: true },
+                  { value: "KY-AUDUBON", label: "Audubon Parkway", disabled: true },
+                  { value: "KY-BLUEGRASS", label: "Bluegrass Parkway", disabled: true },
+                  { value: "KY-HALROGERS", label: "Hal Rogers Parkway", disabled: true },
+                  { value: "KY-MOUNTAIN", label: "Mountain Parkway", disabled: true },
+                  { value: "KY-NATCHER", label: "Natcher Parkway", disabled: true },
+                  { value: "KY-PENNYRILE", label: "Pennyrile Parkway", disabled: true },
+                  { value: "KY-PURCHASE", label: "Purchase Parkway", disabled: true },
+                  { value: "KY-WESTERN", label: "Western KY Parkway", disabled: true },
+                ],
+              },
+            ],
+          },
+
+          { value: "LA", label: "Louisiana", asset: "img/shields/United States/LA-2Digit.svg" },
+          { value: "ME", label: "Maine", asset: "img/shields/United States/ME/ME-2Digit.svg" },
+          { value: "MD", label: "Maryland", asset: "img/shields/United States/MD-2Digit.svg" },
+
+          {
+            id: "us-massachusetts",
+            label: "Massachusetts",
+            children: [
+              { value: "MA", label: "Massachusetts", asset: "img/shields/United States/MA/MA-2Digit.svg" },
+              { value: "MA-PIKE", label: "Mass Pike", disabled: true },
+            ],
+          },
+
+          { value: "MI", label: "Michigan", asset: "img/shields/United States/MI-2Digit.svg" },
+          { value: "MN", label: "Minnesota", asset: "img/shields/United States/MN/MN-2Digit.svg" },
+          { value: "MS", label: "Mississippi", asset: "img/shields/United States/MS-2Digit.svg" },
+          { value: "MO", label: "Missouri", asset: "img/shields/United States/MO-2Digit.svg" },
+
+          {
+            id: "us-montana",
+            label: "Montana",
+            children: [
+              { value: "MT", label: "Montana", asset: "img/shields/United States/MT/MT-2Digit.svg" },
+              { value: "MT2", label: "Montana (secondary)", asset: "img/shields/United States/MT/MT2-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "us-nebraska",
+            label: "Nebraska",
+            children: [
+              { value: "NE", label: "Nebraska", asset: "img/shields/United States/NE/NE-2Digit.svg" },
+              { value: "NELINK", label: "NE Link", disabled: true },
+              { value: "NESPUR", label: "NE Spur", disabled: true },
+            ],
+          },
+
+          { value: "NV", label: "Nevada", asset: "img/shields/United States/NV-2Digit.svg" },
+          { value: "NH", label: "New Hampshire", asset: "img/shields/United States/NH-2Digit.svg" },
+
+          
+              {
+                id: "us-newjersey",
+                label: "New Jersey",
+                children: [
+                  { value: "NJ", label: "New Jersey", asset: "img/shields/United States/NJ/NJ-2Digit.svg" },
+                  { value: "GSP", label: "Garden State Parkway", asset: "img/shields/United States/NJ/GSP.png" },
+                  { value: "NJTP", label: "NJ Turnpike", asset: "img/shields/United States/NJ/NJTP.png" },
+                  { value: "PIP", label: "Palisades Interstate Parkway", asset: "img/shields/United States/NJ/PIP.png" },
+                ],
+              },
+
+          { value: "NM", label: "New Mexico", asset: "img/shields/United States/NM-2Digit.svg" },
+
+              {
+                id: "us-newyork",
+                label: "New York",
+                children: [
+                  { value: "NY", label: "New York", asset: "img/shields/United States/NY/NY-2Digit.svg" },
+                  { value: "NYST", label: "NY State Thruway", asset: "img/shields/United States/NY/NYST.png" },
+                  {
+                    id: "us-newyork-parkways",
+                    label: "NY Parkways",
+                    children: [
+                      { value: "B", label: "Bethpage Parkway", asset: "img/shields/United States/NY/B.png" },
+                      { value: "BMP", label: "Bear Mountain Parkway", asset: "img/shields/United States/NY/BMP.png" },
+                      { value: "BP", label: "Belt Parkway", asset: "img/shields/United States/NY/BP.png" },
+                      { value: "BR", label: "Bronx River Parkway", asset: "img/shields/United States/NY/BR.png" },
+                      { value: "BRP", label: "Bronx River Parkway", asset: "img/shields/United States/NY/BRP.png" },
+                      { value: "CCP", label: "Cross County Parkway", asset: "img/shields/United States/NY/CCP.png" },
+                      { value: "CI", label: "Cross Island Parkway", asset: "img/shields/United States/NY/CI.png" },
+                      { value: "FDR", label: "FDR Drive", asset: "img/shields/United States/NY/FDR.png" },
+                      { value: "GCP", label: "Grand Central Parkway", asset: "img/shields/United States/NY/GCP.png" },
+                      { value: "H", label: "Heckscher Parkway", asset: "img/shields/United States/NY/H.png" },
+                      { value: "HH", label: "Henry Hudson Parkway", asset: "img/shields/United States/NY/HH.png" },
+                      { value: "HR", label: "Hutchinson River Parkway", asset: "img/shields/United States/NY/HR.png" },
+                      { value: "HRD", label: "Harlem River Drive", asset: "img/shields/United States/NY/HRD.png" },
+                      { value: "HRP", label: "Hutchinson River Parkway", asset: "img/shields/United States/NY/HRP.png" },
+                      { value: "JR", label: "Jackie Robinson Parkway", asset: "img/shields/United States/NY/JR.png" },
+                      { value: "KWV", label: "Korean War Veterans Parkway", asset: "img/shields/United States/NY/KWV.png" },
+                      { value: "LOSP", label: "Lake Ontario State Parkway", asset: "img/shields/United States/NY/LOSP.png" },
+                      { value: "M", label: "Meadowbrook Parkway", asset: "img/shields/United States/NY/M.png" },
+                      { value: "MP", label: "Mosholu Parkway", asset: "img/shields/United States/NY/MP.png" },
+                      { value: "N", label: "Northern State Parkway", asset: "img/shields/United States/NY/N.png" },
+                      { value: "NSP", label: "Niagara Scenic Parkway", asset: "img/shields/United States/NY/NSP.png" },
+                      { value: "O", label: "Ocean Parkway", asset: "img/shields/United States/NY/O.png" },
+                      { value: "Pe", label: "Pelham Parkway", asset: "img/shields/United States/NY/Pe.png" },
+                      { value: "PIP", label: "Palisades Interstate Parkway", asset: "img/shields/United States/NY/PIP.png" },
+                      { value: "RM", label: "Robert Moses Causeway", asset: "img/shields/United States/NY/RM.png" },
+                      { value: "SA", label: "Sagtikos Parkway", asset: "img/shields/United States/NY/SA.png" },
+                      { value: "SBP", label: "Sprain Brook Parkway", asset: "img/shields/United States/NY/SBP.png" },
+                      { value: "SM", label: "Sunken Meadow Parkway", asset: "img/shields/United States/NY/SM.png" },
+                      { value: "SMP", label: "Saw Mill Parkway", asset: "img/shields/United States/NY/SMP.png" },
+                      { value: "SO", label: "Southern State Parkway", asset: "img/shields/United States/NY/SO.png" },
+                      { value: "TSP", label: "Taconic State Parkway", asset: "img/shields/United States/NY/TSP.png" },
+                      { value: "W", label: "Wantagh Parkway", asset: "img/shields/United States/NY/W.png" },
+                    ],
+                  },
+                ],
+              },
+
+          { value: "NC", label: "North Carolina", asset: "img/shields/United States/NC-2Digit.svg" },
+          { value: "ND", label: "North Dakota", asset: "img/shields/United States/ND-2Digit.svg" },
+
+              {
+                id: "us-ohio",
+                label: "Ohio",
+                children: [
+                  { value: "OH", label: "Ohio", asset: "img/shields/United States/OH/OH-2Digit.svg" },
+                  { value: "OHTP", label: "Ohio Turnpike", asset: "img/shields/United States/OH/OHTP.png" },
+                ],
+              },
+
+              {
+                id: "us-oklahoma",
+                label: "Oklahoma",
+                children: [
+                  { value: "OK", label: "Oklahoma", asset: "img/shields/United States/OK/OK-2Digit.svg" },
+                  { value: "OKCH", label: "Cherokee Turnpike", asset: "img/shields/United States/OK/OKCH.png" },
+                  { value: "OKCR", label: "Creek Turnpike", asset: "img/shields/United States/OK/OKCR.png" },
+                  { value: "OKHB", label: "H.E. Bailey Turnpike", asset: "img/shields/United States/OK/OKHB.png" },
+                  { value: "OKIN", label: "Indian Nation Turnpike", asset: "img/shields/United States/OK/OKIN.png" },
+                  { value: "OKKC", label: "Kickapoo Turnpike", asset: "img/shields/United States/OK/OKKC.png" },
+                  { value: "OKKL", label: "Kilpatrick Turnpike", asset: "img/shields/United States/OK/OKKL.png" },
+                  { value: "OKMS", label: "Muskogee Turnpike", asset: "img/shields/United States/OK/OKMS.png" },
+                  { value: "OKTU", label: "Turner Turnpike", asset: "img/shields/United States/OK/OKTU.png" },
+                  { value: "OKWR", label: "Will Rogers Turnpike", asset: "img/shields/United States/OK/OKWR.png" },
+                ],
+              },
+              
+          { value: "OR", label: "Oregon", asset: "img/shields/United States/OR-2Digit.svg" },
+
+          {
+            id: "us-pennsylvania",
+            label: "Pennsylvania",
+            children: [
+              {
+                value: "PA",
+                label: "Pennsylvania",
+                asset: "img/shields/United States/PA/PA-2Digit.svg"
+              },
+              {
+                value: "PATPLOGO",
+                label: "PA Turnpike",
+                asset: "img/shields/United States/PA/PATP.png"
+              },
+              {
+                value: "PATP",
+                label: "PA Turnpike Route",
+                asset: "img/shields/United States/PA/PATP-2Digit.svg"
+              },
+            ],
+          },
+
+          {
+            id: "us-puertorico",
+            label: "Puerto Rico",
+            disabled: true,
+            children: [
+              { value: "PR", label: "Puerto Rico (primary)", disabled: true },
+              { value: "PR-URBAN", label: "Puerto Rico (urban primary)", disabled: true },
+              { value: "PR-SECONDARY", label: "Puerto Rico (secondary)", disabled: true },
+              { value: "PR-TERTIARY", label: "Puerto Rico (tertiary)", disabled: true },
+            ],
+          },
+
+          { value: "RI", label: "Rhode Island", asset: "img/shields/United States/RI-2Digit.svg" },
+          { value: "SC", label: "South Carolina", asset: "img/shields/United States/SC-2Digit.svg" },
+          { value: "SD", label: "South Dakota", asset: "img/shields/United States/SD-2Digit.svg" },
+
+          {
+            id: "us-tennessee",
+            label: "Tennessee",
+            children: [
+              { value: "TN", label: "Tennessee", asset: "img/shields/United States/TN-2Digit.svg" },
+              { value: "TN2", label: "Tennessee (secondary)", asset: "img/shields/United States/TN2-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "us-texas",
+            label: "Texas",
+            children: [
+              { value: "TX", label: "Texas", asset: "img/shields/United States/TX/TX-2Digit.svg" },
+              { value: "TXFM", label: "TX FM", asset: "img/shields/United States/TX/TXFM-4Digit.svg" },
+              { value: "TXRM", label: "TX RM", asset: "img/shields/United States/TX/TXRM-2Digit.svg" },
+              { value: "TXBELT", label: "TX Beltway", asset: "img/shields/United States/TX/TXBELTWAY-2Digit.svg" },
+              { value: "TXLOOP", label: "TX Loop", asset: "img/shields/United States/TX/TXLOOP-2Digit.svg" },
+              { value: "TXPARK", label: "TX Park Road", asset: "img/shields/United States/TX/TXPARK-2Digit.svg" },
+              { value: "TXSPUR", label: "TX Spur", asset: "img/shields/United States/TX/TXSPUR-2Digit.svg" },
+              { value: "TXEXPRESS", label: "TX Express Toll", asset: "img/shields/United States/TX/TXEXPRESS-2Digit.svg" },
+              { value: "TXTOLL", label: "TX Toll TxDOT", asset: "img/shields/United States/TX/TXTOLL-2Digit.svg" },
+              { value: "TXTOLLCTRMA", label: "TX Toll CTRMA", asset: "img/shields/United States/TX/TXTollCTRMA.svg" },
+              { value: "TXTOLLNTTA", label: "TX Toll NTTA", asset: "img/shields/United States/TX/TXTollNTTA.svg" },
+              { value: "TXTOLLFBTR", label: "Fort Bend Toll Road", asset: "img/shields/United States/TX/TXTollFBTR.png" },
+              { value: "HTR", label: "Hardy Toll Road", asset: "img/shields/United States/TX/HTR.png" },
+              { value: "SHT", label: "Sam Houston Tollway", asset: "img/shields/United States/TX/SHT.png" },
+              { value: "WPT", label: "Westpark Tollway", asset: "img/shields/United States/TX/WPT.png" },
+            ],
+          },
+              
+          { value: "UT", label: "Utah", asset: "img/shields/United States/UT-2Digit.svg" },
+
+          {
+            id: "us-vermont",
+            label: "Vermont",
+            children: [
+              { value: "VT", label: "Vermont", asset: "img/shields/United States/VT-2Digit.svg" },
+              { value: "VT2", label: "Vermont (secondary)", asset: "img/shields/United States/VT2-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "us-virginia",
+            label: "Virginia",
+            children: [
+              { value: "VA", label: "Virginia", asset: "img/shields/United States/VA-2Digit.svg" },
+              { value: "VA2", label: "Virginia (secondary)", asset: "img/shields/United States/VA2-2Digit.svg" },
+            ],
+          },
+
+          { value: "WA", label: "Washington", asset: "img/shields/United States/WA-2Digit.svg" },
+          { value: "WV", label: "West Virginia", asset: "img/shields/United States/WV-2Digit.svg" },
+          { value: "WI", label: "Wisconsin", asset: "img/shields/United States/WI-2Digit.svg" },
+          { value: "WY", label: "Wyoming", asset: "img/shields/United States/WY-2Digit.svg" },
+        ],
+      },
+
+      {
+        id: "canada",
+        label: "Canada",
+        children: [
+          {
+            value: "TCH",
+            label: "Trans-Canada Highway",
+            asset: "img/shields/Canada/TCH-2Digit.svg",
+          },
+
+          {
+            id: "canada-alberta",
+            label: "Alberta",
+            children: [
+              { value: "AB", label: "Alberta", asset: "img/shields/Canada/AB/AB-2Digit.svg" },
+              { value: "AB2", label: "Alberta Secondary", asset: "img/shields/Canada/AB/AB2-2Digit.svg" },
+              { value: "ABTC", label: "Alberta TCH", asset: "img/shields/Canada/AB/ABTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-britishcolumbia",
+            label: "British Columbia",
+            children: [
+              { value: "BC", label: "British Columbia", asset: "img/shields/Canada/BC/BC-2Digit.svg" },
+              { value: "BCYH", label: "BC Yellowhead", asset: "img/shields/Canada/BC/BCYH-2Digit.svg" },
+              { value: "BCTC", label: "BC TCH", asset: "img/shields/Canada/BC/BCTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-manitoba",
+            label: "Manitoba",
+            children: [
+              { value: "MB", label: "Manitoba", asset: "img/shields/Canada/MB/MB-2Digit.svg" },
+              { value: "MB2", label: "Manitoba Secondary", asset: "img/shields/Canada/MB/MB2-2Digit.svg" },
+              { value: "MBTC", label: "Manitoba TCH", asset: "img/shields/Canada/MB/MBTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-newbrunswick",
+            label: "New Brunswick",
+            children: [
+              { value: "NB", label: "New Brunswick", asset: "img/shields/Canada/NB/NB-2Digit.svg" },
+              { value: "NBCONN", label: "NB Connector", asset: "img/shields/Canada/NB/NBCONN-2Digit.svg" },
+              { value: "NBLOCAL", label: "NB Local", asset: "img/shields/Canada/NB/NBLOCAL-2Digit.svg" },
+              { value: "NBTC", label: "NB TCH", asset: "img/shields/Canada/NB/NBTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-newfoundland",
+            label: "Newfoundland and Labrador",
+            children: [
+              { value: "NL", label: "Newfoundland and Labrador", asset: "img/shields/Canada/NL/NL-2Digit.svg" },
+              { value: "NLTC", label: "NL TCH", asset: "img/shields/Canada/NL/NLTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-novascotia",
+            label: "Nova Scotia",
+            children: [
+              { value: "NS", label: "Nova Scotia", asset: "img/shields/Canada/NS/NS-2Digit.svg" },
+              { value: "NSCONN", label: "NS Connector", asset: "img/shields/Canada/NS/NSCONN-2Digit.svg" },
+              { value: "NSTC", label: "NS TCH", asset: "img/shields/Canada/NS/NSTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-ontario",
+            label: "Ontario",
+            children: [
+              { value: "ON", label: "Ontario", asset: "img/shields/Canada/ON/ON-2Digit.svg" },
+              { value: "ON2", label: "Ontario Secondary", asset: "img/shields/Canada/ON/ON2-2Digit.svg" },
+              { value: "ON3", label: "Ontario Tertiary", asset: "img/shields/Canada/ON/ON3-2Digit.svg" },
+              { value: "ONDVP", label: "Don Valley Parkway", asset: "img/shields/Canada/ON/ON-DVP.png" },
+              { value: "ONGAR", label: "Gardiner Expressway", asset: "img/shields/Canada/ON/ON-GAR.png" },
+              { value: "ONTC", label: "Ontario TCH", asset: "img/shields/Canada/ON/ONTC-2Digit.svg" },
+              { value: "ONTCCOR", label: "Central Ontario Route", asset: "img/shields/Canada/ON/ONTC-COR.svg" },
+              { value: "ONTCGBR", label: "Georgian Bay Route", asset: "img/shields/Canada/ON/ONTC-GBR.svg" },
+              { value: "ONTCLSR", label: "Lake Superior Route", asset: "img/shields/Canada/ON/ONTC-LSR.svg" },
+              { value: "ONTCNOR", label: "Northern Ontario Route", asset: "img/shields/Canada/ON/ONTC-NOR.svg" },
+              { value: "ONTCOVR", label: "Ottawa Valley Route", asset: "img/shields/Canada/ON/ONTC-OVR.svg" },
+            ],
+          },
+
+          {
+            value: "PEI",
+            label: "Prince Edward Island",
+            asset: "img/shields/Canada/PEI/PEI-2Digit.svg",
+          },
+
+          {
+            id: "canada-quebec",
+            label: "Quebec",
+            children: [
+              { value: "QC", label: "Quebec Autoroute", asset: "img/shields/Canada/QC/QC-2Digit.svg" },
+              { value: "QC2", label: "Quebec Route", asset: "img/shields/Canada/QC/QC2-2Digit.svg" },
+              { value: "QCTC", label: "Quebec TCH", asset: "img/shields/Canada/QC/QCTC-2Digit.svg" },
+            ],
+          },
+
+          {
+            id: "canada-saskatchewan",
+            label: "Saskatchewan",
+            children: [
+              { value: "SK", label: "Saskatchewan", asset: "img/shields/Canada/SK/SK-2Digit.svg" },
+              { value: "SK2", label: "SK Secondary", asset: "img/shields/Canada/SK/SK2-2Digit.svg" },
+              { value: "SKTC", label: "SK TCH", asset: "img/shields/Canada/SK/SKTC-2Digit.svg" },
+            ],
+          },
+        ],
+      },
+    ];
+    
+    const patchShieldPickerTreeForUploadedStateFolders = () => {
+      const usRoot = SHIELD_PICKER_TREE.find((node) => node.id === "us");
+      if (!usRoot || !Array.isArray(usRoot.children)) {
+        return;
+      }
+
+        const replacementIds = new Set([
+          "us-interstate",
+          "us-usroute",
+          "us-arizona",
+          "us-florida",
+          "us-georgia",
+          "us-indiana",
+          "us-kansas",
+          "us-kentucky",
+          "us-massachusetts",
+          "us-maine",
+          "us-minnesota",
+          "us-nebraska",
+          "us-wisconsin",
+        ]);
+
+      const replacementValues = new Set([
+        "I",
+        "I-BUS",
+        "I-BS",
+        "I-BL",
+        "I-DS",
+        "I-DL",
+        "I-F",
+        "US",
+        "USCA",
+        "US-CA",
+        "WI",
+        "WICo",
+        "WICO",
+        "AZ",
+        "AZLOOP",
+        "AZ-LOOP",
+        "FL",
+        "FLToll",
+        "FLTP",
+        "FL-TURNPIKE",
+        "GA",
+        "GAALT",
+        "GABYP",
+        "GACONN",
+        "GALOOP",
+        "GASPUR",
+        "IN",
+        "INTR",
+        "IN-TOLLROAD",
+        "KS",
+        "KSTP",
+        "KS-TURNPIKE",
+        "KY",
+        "KYAA",
+        "KYAU",
+        "KYBG",
+        "KYCM",
+        "KYHR",
+        "KYMT",
+        "KYPR",
+        "KYPU",
+        "KYWK",
+        "KYWN",
+        "KY-AA",
+        "KY-AUDUBON",
+        "KY-BLUEGRASS",
+        "KY-HALROGERS",
+        "KY-MOUNTAIN",
+        "KY-NATCHER",
+        "KY-PENNYRILE",
+        "KY-PURCHASE",
+        "KY-WESTERN",
+        "MA",
+        "MATP",
+        "MA-PIKE",
+        "ME",
+        "METP",
+        "ME-TURNPIKE",
+        "MN",
+        "MNBUS",
+        "MN-BUSINESS",
+        "NE",
+        "NELINK",
+        "NE-LINK",
+        "NESPUR",
+        "NE-SPUR",
+      ]);
+
+      const shouldRemoveNode = (node) => {
+        if (!node) {
+          return false;
+        }
+
+        if (replacementIds.has(node.id)) {
+          return true;
+        }
+
+        if (node.value && replacementValues.has(node.value)) {
+          return true;
+        }
+
+        return false;
+      };
+
+      usRoot.children = usRoot.children.filter((node) => !shouldRemoveNode(node));
+
+      const node = (value, label, asset) => ({
+        value,
+        label,
+        asset,
+      });
+
+      const category = (id, label, children) => ({
+        id,
+        label,
+        children,
+      });
+
+      const stateFolders = [
+          category("us-interstate", "Interstate", [
+            node("I", "Interstate", "img/shields/United States/Interstate/I-2Digit.svg"),
+            node("I-BUS", "Interstate Business", "img/shields/United States/Interstate/I-BUS-2Digit.svg"),
+            node("I-BL", "Interstate Business Loop", "img/shields/United States/Interstate/I-BL-2Digit.svg"),
+            node("I-BS", "Interstate Business Spur", "img/shields/United States/Interstate/I-BS-2Digit.svg"),
+            node("I-DL", "Interstate Downtown Loop", "img/shields/United States/Interstate/I-DL-2Digit.svg"),
+            node("I-DS", "Interstate Downtown Spur", "img/shields/United States/Interstate/I-DS-2Digit.svg"),
+            node("I-F", "Future Interstate", "img/shields/United States/Interstate/I-F-2Digit.svg"),
+          ]),
+          category("us-usroute", "U.S. Route", [
+            node("US", "U.S. Route", "img/shields/United States/US Route/US-2Digit.svg"),
+            node("USCA", "U.S. Route (CA style)", "img/shields/United States/US Route/US-CA-2Digit.svg"),
+          ]),
+        category("us-arizona", "Arizona", [
+          node("AZ", "Arizona", "img/shields/United States/AZ/AZ-2Digit.svg"),
+          node("AZLOOP", "Arizona Loop", "img/shields/United States/AZ/AZLOOP-3Digit.svg"),
+        ]),
+        
+        category("us-florida", "Florida", [
+          node("FL", "Florida", "img/shields/United States/FL/FL-2Digit.svg"),
+          node("FLToll", "Florida Toll", "img/shields/United States/FL/FLToll-Current.svg"),
+          node("FLTP", "Florida’s Turnpike", "img/shields/United States/FL/FLTP.svg"),
+        ]),
+
+        category("us-georgia", "Georgia", [
+          node("GA", "Georgia", "img/shields/United States/GA/GA-2Digit.svg"),
+          node("GAALT", "GA Alternate", "img/shields/United States/GA/GAALT-2Digit.svg"),
+          node("GABYP", "GA Bypass", "img/shields/United States/GA/GABYP-2Digit.svg"),
+          node("GACONN", "GA Connector", "img/shields/United States/GA/GACONN-2Digit.svg"),
+          node("GALOOP", "GA Loop", "img/shields/United States/GA/GALOOP-2Digit.svg"),
+          node("GASPUR", "GA Spur", "img/shields/United States/GA/GASPUR-2Digit.svg"),
+        ]),
+
+        category("us-indiana", "Indiana", [
+          node("IN", "Indiana", "img/shields/United States/IN/IN-2Digit.svg"),
+          node("INTR", "Indiana Toll Road", "img/shields/United States/IN/INTR.png"),
+        ]),
+
+        category("us-kansas", "Kansas", [
+          node("KS", "Kansas", "img/shields/United States/KS/KS-2Digit.svg"),
+          node("KSTP", "Kansas Turnpike", "img/shields/United States/KS/KSTP.png"),
+        ]),
+
+        category("us-kentucky", "Kentucky", [
+          node("KY", "Kentucky", "img/shields/United States/KY/KY-2Digit.svg"),
+          category("us-kentucky-parkways", "KY Parkways", [
+            node("KYAA", "AA Highway", "img/shields/United States/KY/KYAA.png"),
+            node("KYAU", "Audubon Parkway", "img/shields/United States/KY/KYAU.png"),
+            node("KYBG", "Bluegrass Parkway", "img/shields/United States/KY/KYBG.png"),
+            node("KYCM", "Cumberland Parkway", "img/shields/United States/KY/KYCM.png"),
+            node("KYHR", "Hal Rogers Parkway", "img/shields/United States/KY/KYHR.png"),
+            node("KYMT", "Mountain Parkway", "img/shields/United States/KY/KYMT.png"),
+            node("KYPR", "Pennyrile Parkway", "img/shields/United States/KY/KYPR.png"),
+            node("KYPU", "Purchase Parkway", "img/shields/United States/KY/KYPU.png"),
+            node("KYWK", "Western KY Parkway", "img/shields/United States/KY/KYWK.png"),
+            node("KYWN", "Natcher Parkway", "img/shields/United States/KY/KYWN.png"),
+          ]),
+        ]),
+
+        category("us-maine", "Maine", [
+          node("ME", "Maine", "img/shields/United States/ME/ME-2Digit.svg"),
+          node("METP", "Maine Turnpike", "img/shields/United States/ME/METP.png"),
+        ]),
+
+        category("us-massachusetts", "Massachusetts", [
+          node("MA", "Massachusetts", "img/shields/United States/MA/MA-2Digit.svg"),
+          node("MATP", "Mass Pike", "img/shields/United States/MA/MATP.png"),
+        ]),
+
+        category("us-minnesota", "Minnesota", [
+          node("MN", "Minnesota", "img/shields/United States/MN/MN-2Digit.svg"),
+          node("MNBUS", "Minnesota Business", "img/shields/United States/MN/MNBUS-2Digit.svg"),
+        ]),
+
+        category("us-nebraska", "Nebraska", [
+          node("NE", "Nebraska", "img/shields/United States/NE/NE-2Digit.svg"),
+          node("NELINK", "Nebraska Link", "img/shields/United States/NE/NELINK-2Digit.svg"),
+          node("NESPUR", "Nebraska Spur", "img/shields/United States/NE/NESPUR-2Digit.svg"),
+        ]),
+          
+        category("us-wisconsin", "Wisconsin", [
+          node("WI", "Wisconsin", "img/shields/United States/WI/WI-2Digit.svg"),
+          node("WICo", "Wisconsin County", "img/shields/United States/WI/WICo-2Digit.svg"),
+        ]),
+        
+        
+
+      ];
+        
+        const sortUnitedStatesShieldPickerChildren = () => {
+          const getPriority = (entry) => {
+            if (entry.id === "us-interstate" || entry.label === "Interstate") {
+              return 0;
+            }
+
+            if (entry.id === "us-usroute" || entry.label === "U.S. Route") {
+              return 1;
+            }
+
+            return 2;
+          };
+
+          const sortNodes = (nodes) => {
+            if (!Array.isArray(nodes)) {
+              return;
+            }
+
+            nodes.sort((a, b) => {
+              const priorityA = getPriority(a);
+              const priorityB = getPriority(b);
+
+              if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+              }
+
+              return String(a.label || a.value || "").localeCompare(
+                String(b.label || b.value || "")
+              );
+            });
+
+            nodes.forEach((node) => {
+              if (Array.isArray(node.children)) {
+                sortNodes(node.children);
+              }
+            });
+          };
+
+          sortNodes(usRoot.children);
+        };
+
+      const insertIndex = usRoot.children.findIndex((entry) => {
+        const label = entry.label || "";
+        return label.localeCompare("Arizona") > 0;
+      });
+
+      if (insertIndex === -1) {
+        usRoot.children.push(...stateFolders);
+      } else {
+        usRoot.children.splice(insertIndex, 0, ...stateFolders);
+      }
+        sortUnitedStatesShieldPickerChildren();
+    };
+
+    patchShieldPickerTreeForUploadedStateFolders();
+
+    SHIELD_PICKER_TREE.forEach(applyManualShieldPickerOrder);
+
+    const flattenShieldPickerTree = (nodes, result = []) => {
+      nodes.forEach((node) => {
+        if (node.value) {
+          result.push(node);
+        }
+        if (Array.isArray(node.children)) {
+          flattenShieldPickerTree(node.children, result);
+        }
+      });
+      return result;
+    };
+
+    const findShieldPickerEntryByValue = (value, nodes = SHIELD_PICKER_TREE) => {
+      for (const node of nodes) {
+        if (node.value === value) {
+          return node;
+        }
+        if (Array.isArray(node.children)) {
+          const found = findShieldPickerEntryByValue(value, node.children);
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return null;
+    };
+    
+    const findFirstSelectableShieldEntry = (nodes = []) => {
+      for (const node of nodes) {
+        if (!node.disabled && node.value) {
+          return node;
+        }
+        if (Array.isArray(node.children) && node.children.length) {
+          const found = findFirstSelectableShieldEntry(node.children);
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return null;
+    };
+
+    const buildShieldPickerTriggerLabel = (entry) => {
+      if (!entry) {
+        return "Select shield";
+      }
+      return entry.label;
+    };
+
+    const buildShieldPickerIconSrc = (entry) => {
+      if (!entry) {
+        return SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+      }
+
+      if (entry.asset) {
+        return entry.asset;
+      }
+
+      if (Array.isArray(entry.children) && entry.children.length) {
+        const firstChildShield = findFirstSelectableShieldEntry(entry.children);
+        if (firstChildShield && firstChildShield.asset) {
+          return firstChildShield.asset;
+        }
+      }
+
+      return SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+    };
+
+    const updateShieldPickerTreeState = (container, currentValue, expandedIds) => {
+      container.querySelectorAll(".shieldPickerTreeRow").forEach((row) => {
+        const nodeId = row.dataset.nodeId || "";
+        row.classList.toggle("expanded", !!nodeId && expandedIds.has(nodeId));
+      });
+
+      container.querySelectorAll(".shieldPickerItem").forEach((button) => {
+        const nodeId = button.dataset.nodeId || "";
+        const nodeValue = button.dataset.nodeValue || "";
+        const hasChildren = button.dataset.hasChildren === "true";
+        const isExpanded = hasChildren && expandedIds.has(nodeId);
+
+        button.classList.toggle("expanded", isExpanded);
+        button.classList.toggle(
+          "selected",
+          !!nodeValue && nodeValue === currentValue
+        );
+      });
+
+      container.querySelectorAll(".shieldPickerTreeChildren").forEach((children) => {
+        const parentId = children.dataset.parentId || "";
+        children.classList.toggle("expanded", !!parentId && expandedIds.has(parentId));
+      });
+    };
+    
+    const createShieldPickerRow = ({
+      node,
+      depth = 0,
+      currentValue,
+      expandedIds,
+      onSelect,
+      onToggle,
+    }) => {
+      const row = document.createElement("div");
+      row.className = "shieldPickerTreeRow";
+      row.style.setProperty("--shieldPickerDepth", String(depth));
+      row.dataset.nodeId = node.id || "";
+
+      const isExpanded =
+        !!(node.children && node.children.length && expandedIds.has(node.id));
+
+      if (isExpanded) {
+        row.classList.add("expanded");
+      }
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "shieldPickerItem";
+      button.dataset.nodeId = node.id || "";
+      button.dataset.nodeValue = node.value || "";
+      button.dataset.hasChildren =
+        node.children && node.children.length ? "true" : "false";
+
+      if (node.value && node.value === currentValue) {
+        button.classList.add("selected");
+      }
+      if (node.disabled) {
+        button.classList.add("disabled");
+      }
+      if (node.children && node.children.length) {
+        button.classList.add("hasChildren");
+      }
+      if (isExpanded) {
+        button.classList.add("expanded");
+      }
+
+      const icon = document.createElement("img");
+      icon.className = "shieldPickerItemIcon";
+      icon.src = buildShieldPickerIconSrc(node);
+      icon.alt = "";
+      icon.loading = "lazy";
+      icon.decoding = "async";
+      icon.draggable = false;
+      icon.onerror = () => {
+        icon.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+      };
+      button.appendChild(icon);
+
+      const label = document.createElement("span");
+      label.className = "shieldPickerItemLabel";
+      label.textContent = node.label;
+      button.appendChild(label);
+
+      if (node.children && node.children.length) {
+        const caret = document.createElement("span");
+        caret.className = "shieldPickerItemCaret";
+        caret.textContent = "▸";
+        button.appendChild(caret);
+      }
+
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (node.children && node.children.length) {
+          const wasExpanded = expandedIds.has(node.id);
+
+          onToggle(node.id);
+
+          if (!wasExpanded) {
+            const firstChildShield = findFirstSelectableShieldEntry(node.children);
+            if (firstChildShield) {
+              onSelect(firstChildShield, {
+                keepOpen: true,
+                skipExpandPath: false,
+                preserveTree: true,
+              });
+            }
+          }
+
+          return;
+        }
+
+        if (!node.disabled && node.value) {
+          onSelect(node);
+        }
+      });
+
+      row.appendChild(button);
+
+      if (node.children && node.children.length) {
+        const childrenWrap = document.createElement("div");
+        childrenWrap.className = "shieldPickerTreeChildren";
+        childrenWrap.dataset.parentId = node.id || "";
+
+        if (isExpanded) {
+          childrenWrap.classList.add("expanded");
+        }
+
+        node.children.forEach((child) => {
+          childrenWrap.appendChild(
+            createShieldPickerRow({
+              node: child,
+              depth: depth + 1,
+              currentValue,
+              expandedIds,
+              onSelect,
+              onToggle,
+            })
+          );
+        });
+
+        row.appendChild(childrenWrap);
+      }
+
+      return row;
+    };
+
+    const renderShieldPickerTree = ({
+      container,
+      nodes,
+      currentValue,
+      expandedIds,
+      onSelect,
+      onToggle,
+    }) => {
+      container.innerHTML = "";
+
+      nodes.forEach((node) => {
+        container.appendChild(
+          createShieldPickerRow({
+            node,
+            depth: 0,
+            currentValue,
+            expandedIds,
+            onSelect,
+            onToggle,
+          })
+        );
+      });
+    };
+
+    const createShieldPicker = ({
+      mount,
+      value,
+      onChange,
+      placeholder = "Select shield",
+      rootNodes = SHIELD_PICKER_TREE,
+    }) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "shieldPicker";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "shieldPickerTrigger";
+
+      const triggerIcon = document.createElement("img");
+      triggerIcon.className = "shieldPickerTriggerIcon";
+      triggerIcon.alt = "";
+      trigger.appendChild(triggerIcon);
+
+      const triggerLabel = document.createElement("span");
+      triggerLabel.className = "shieldPickerTriggerLabel";
+      trigger.appendChild(triggerLabel);
+
+      const triggerCaret = document.createElement("span");
+      triggerCaret.className = "shieldPickerTriggerCaret";
+      triggerCaret.textContent = "▾";
+      trigger.appendChild(triggerCaret);
+        
+        const popover = document.createElement("div");
+        popover.className = "shieldPickerPopover";
+
+        const getStoredShieldPickerScrollTop = () => {
+          const raw = getStoredItem(STORAGE_KEYS.shieldPickerScrollTop);
+          const parsed = parseFloat(raw);
+          return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+        };
+
+        const saveShieldPickerScrollTop = () => {
+          setStoredItem(
+            STORAGE_KEYS.shieldPickerScrollTop,
+            String(Math.max(0, popover.scrollTop || 0))
+          );
+        };
+
+        const restoreShieldPickerScrollTop = () => {
+          const storedScrollTop = getStoredShieldPickerScrollTop();
+
+          if (storedScrollTop !== null) {
+            popover.scrollTop = storedScrollTop;
+            return;
+          }
+
+          const selectedItem = popover.querySelector(".shieldPickerItem.selected");
+          if (selectedItem) {
+            selectedItem.scrollIntoView({
+              block: "nearest",
+              inline: "nearest",
+            });
+          }
+        };
+
+        const placePopover = () => {
+          const rect = trigger.getBoundingClientRect();
+
+          const visualScale =
+            parseFloat(
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--sm-app-zoom")
+            ) || 1;
+
+          const viewportHeight = window.innerHeight;
+          const bottomSpace = viewportHeight - rect.bottom - 12;
+          const topSpace = rect.top - 12;
+          const openUpward = bottomSpace < 220 && topSpace > bottomSpace;
+
+          popover.style.position = "fixed";
+          popover.style.left = rect.left + "px";
+          popover.style.width = Math.max(rect.width, 320) + "px";
+
+          if (openUpward) {
+            popover.style.top = "auto";
+            popover.style.bottom = viewportHeight - rect.top + 2 + "px";
+            popover.style.maxHeight =
+              Math.max(260, Math.min(760, topSpace / visualScale)) + "px";
+          } else {
+            popover.style.bottom = "auto";
+            popover.style.top = rect.bottom + 2 + "px";
+            popover.style.maxHeight =
+              Math.max(260, Math.min(760, bottomSpace / visualScale)) + "px";
+          }
+        };;
+
+      const tree = document.createElement("div");
+      tree.className = "shieldPickerTree";
+      popover.appendChild(tree);
+
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(popover);
+      mount.replaceWith(wrapper);
+
+      let currentValue = value || "";
+      const expandedIds = new Set(["us", "canada"]);
+
+      const expandPathToValue = (targetValue, nodes = rootNodes, parents = []) => {
+        for (const node of nodes) {
+          if (node.value === targetValue) {
+            parents.forEach((id) => expandedIds.add(id));
+            return true;
+          }
+          if (Array.isArray(node.children)) {
+            if (expandPathToValue(targetValue, node.children, [...parents, node.id])) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      const syncTrigger = () => {
+        const entry = findShieldPickerEntryByValue(currentValue, rootNodes);
+        triggerLabel.textContent = entry
+          ? buildShieldPickerTriggerLabel(entry)
+          : placeholder;
+        triggerIcon.src = buildShieldPickerIconSrc(entry);
+        triggerIcon.onerror = () => {
+          triggerIcon.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+        };
+      };
+
+        const rerenderTree = (forceRebuild = false) => {
+          if (forceRebuild || !tree.childElementCount) {
+            renderShieldPickerTree({
+              container: tree,
+              nodes: rootNodes,
+              currentValue,
+              expandedIds,
+              onSelect: (node, options = {}) => {
+                currentValue = node.value;
+
+                if (!options.skipExpandPath) {
+                  expandPathToValue(node.value);
+                }
+
+                syncTrigger();
+
+                if (options.preserveTree) {
+                  updateShieldPickerTreeState(tree, currentValue, expandedIds);
+                } else {
+                  rerenderTree(true);
+                }
+
+                  if (!options.keepOpen) {
+                    saveShieldPickerScrollTop();
+                    wrapper.classList.remove("open");
+                  }
+
+                if (typeof onChange === "function") {
+                  onChange(node.value, node);
+                }
+              },
+              onToggle: (id) => {
+                if (expandedIds.has(id)) {
+                  expandedIds.delete(id);
+                } else {
+                  expandedIds.add(id);
+                }
+
+                updateShieldPickerTreeState(tree, currentValue, expandedIds);
+              },
+            });
+
+            return;
+          }
+
+          updateShieldPickerTreeState(tree, currentValue, expandedIds);
+        };
+
+        trigger.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const willOpen = !wrapper.classList.contains("open");
+
+          if (!willOpen) {
+            saveShieldPickerScrollTop();
+          }
+
+          wrapper.classList.toggle("open", willOpen);
+
+          if (willOpen) {
+            placePopover();
+            rerenderTree();
+            requestAnimationFrame(() => {
+              restoreShieldPickerScrollTop();
+            });
+          }
+        });
+
+            document.addEventListener("click", (event) => {
+              const clickedInsideTrigger = trigger.contains(event.target);
+              const clickedInsidePopover = popover.contains(event.target);
+
+              if (!clickedInsideTrigger && !clickedInsidePopover) {
+                if (wrapper.classList.contains("open")) {
+                  saveShieldPickerScrollTop();
+                }
+
+                wrapper.classList.remove("open");
+              }
+            });
+            
+            popover.addEventListener("scroll", () => {
+              saveShieldPickerScrollTop();
+            });
+        
+        window.addEventListener("resize", () => {
+          if (wrapper.classList.contains("open")) {
+            placePopover();
+          }
+        });
+
+        window.addEventListener("scroll", () => {
+          if (wrapper.classList.contains("open")) {
+            placePopover();
+          }
+        }, true);
+
+        expandPathToValue(currentValue);
+        syncTrigger();
+        rerenderTree(true);
+
+      return {
+        element: wrapper,
+        getValue: () => currentValue,
+        setValue: (nextValue) => {
+          currentValue = nextValue || "";
+          expandPathToValue(currentValue);
+          syncTrigger();
+          rerenderTree();
+        },
+      };
+    };
+    
+    const syncShieldBasePickerValue = (nextValue, { updateBlock = false } = {}) => {
+      const normalizedValue =
+        nextValue ||
+        ShieldElement.prototype.defaultShieldBase ||
+        "I";
+
+      const nativeSelect = document.getElementById("sdShield_shieldBase");
+
+      if (nativeSelect) {
+        nativeSelect.dataset.pickerValue = normalizedValue;
+
+        const hasNativeOption = Array.from(nativeSelect.options || []).some(
+          (option) => option.value === normalizedValue
+        );
+
+        if (hasNativeOption) {
+          nativeSelect.value = normalizedValue;
+        }
+      }
+
+      const pickerApi =
+        nativeSelect?._shieldPickerApi ||
+        nativeSelect?.parentElement?.querySelector(".sdShieldBasePickerHost")
+          ?._shieldPickerApi ||
+        null;
+
+      if (pickerApi && typeof pickerApi.setValue === "function") {
+        pickerApi.setValue(normalizedValue);
+      }
+
+      if (updateBlock) {
+        const currentBlockElem =
+          exposed && typeof exposed.getCurrentBlockElem === "function"
+            ? exposed.getCurrentBlockElem()
+            : null;
+
+        if (currentBlockElem) {
+          currentBlockElem.shieldBase = normalizedValue;
+          currentBlockElem.type = normalizedValue;
+        }
+      }
+
+      return normalizedValue;
+    };
+
+    const ensureSdShieldBasePicker = () => {
+      const nativeSelect = document.getElementById("sdShield_shieldBase");
+
+      if (!nativeSelect) {
+        return null;
+      }
+
+      let pickerHost = nativeSelect.parentElement?.querySelector(
+        ".sdShieldBasePickerHost"
+      );
+
+      if (!pickerHost) {
+        pickerHost = document.createElement("div");
+        pickerHost.className = "sdShieldBasePickerHost";
+        nativeSelect.insertAdjacentElement("afterend", pickerHost);
+      }
+
+      nativeSelect.style.display = "none";
+
+      let pickerApi =
+        nativeSelect._shieldPickerApi || pickerHost._shieldPickerApi || null;
+
+      if (!pickerApi) {
+        const placeholderSelect = document.createElement("select");
+        placeholderSelect.id = "sdShield_shieldBase_pickerProxy";
+
+        pickerHost.innerHTML = "";
+        pickerHost.appendChild(placeholderSelect);
+
+        pickerApi = createShieldPicker({
+          mount: placeholderSelect,
+          value:
+            nativeSelect.dataset.pickerValue ||
+            nativeSelect.value ||
+            ShieldElement.prototype.defaultShieldBase ||
+            "I",
+          placeholder: "Shield type",
+          onChange: (nextValue) => {
+            if (!nextValue) {
+              return;
+            }
+
+            syncShieldBasePickerValue(nextValue, { updateBlock: true });
+
+            updateShieldCountyVisibility();
+
+            if (typeof readForm === "function") {
+              readForm();
+            }
+          },
+        });
+
+        nativeSelect._shieldPickerApi = pickerApi;
+        pickerHost._shieldPickerApi = pickerApi;
+      }
+
+      const currentBlockElem =
+        exposed && typeof exposed.getCurrentBlockElem === "function"
+          ? exposed.getCurrentBlockElem()
+          : null;
+
+      const selectedShieldBase =
+        currentBlockElem?.shieldBase ||
+        currentBlockElem?.type ||
+        nativeSelect.dataset.pickerValue ||
+        nativeSelect.value ||
+        ShieldElement.prototype.defaultShieldBase ||
+        "I";
+
+      syncShieldBasePickerValue(selectedShieldBase);
+
+      return pickerApi;
+    };
+    
+    const ensureGuideArrowPicker = () => {
+      const nativeSelect = document.getElementById("guideArrow");
+      if (!nativeSelect) {
+        return null;
+      }
+
+      let pickerHost = nativeSelect.parentElement?.querySelector(".guideArrowPickerHost");
+      let pickerApi = nativeSelect._arrowPickerApi || null;
+
+      if (!pickerHost) {
+        pickerHost = document.createElement("div");
+        pickerHost.className = "guideArrowPickerHost";
+        nativeSelect.insertAdjacentElement("afterend", pickerHost);
+      }
+
+      nativeSelect.style.display = "none";
+
+      if (!pickerApi) {
+        const placeholderSelect = document.createElement("select");
+        placeholderSelect.id = "guideArrow_pickerProxy";
+        pickerHost.innerHTML = "";
+        pickerHost.appendChild(placeholderSelect);
+
+        pickerApi = createFlatArrowPicker({
+          mount: placeholderSelect,
+            value: String(nativeSelect.value || "None").split(":")[0].trim(),          placeholder: "Arrows",
+          items: ARROW_PICKER_ITEMS,
+            previewOptions: { exitDirection: false },
+          onChange: (nextValue) => {
+            nativeSelect.value = nextValue;
+            if (typeof readForm === "function") {
+              readForm();
+            }
+          },
+        });
+
+        nativeSelect._arrowPickerApi = pickerApi;
+      }
+
+      if (pickerApi && typeof pickerApi.setValue === "function") {
+          pickerApi.setValue(String(nativeSelect.value || "None").split(":")[0].trim());
+      }
+
+      return pickerApi;
+    };
+    
+    const ensureExitOnlyDirectionPicker = () => {
+      const nativeSelect = document.getElementById("exitOnlyDirection");
+      if (!nativeSelect) {
+        return null;
+      }
+
+      let pickerHost = nativeSelect.parentElement?.querySelector(".exitOnlyDirectionPickerHost");
+      let pickerApi = nativeSelect._arrowPickerApi || null;
+
+      if (!pickerHost) {
+        pickerHost = document.createElement("div");
+        pickerHost.className = "exitOnlyDirectionPickerHost";
+        nativeSelect.insertAdjacentElement("afterend", pickerHost);
+      }
+
+      nativeSelect.style.display = "none";
+
+      if (!pickerApi) {
+        const placeholderSelect = document.createElement("select");
+        placeholderSelect.id = "exitOnlyDirection_pickerProxy";
+        pickerHost.innerHTML = "";
+        pickerHost.appendChild(placeholderSelect);
+
+        pickerApi = createFlatArrowPicker({
+          mount: placeholderSelect,
+            value: String(nativeSelect.value || "Down Arrow").split(":")[0].trim(),
+          placeholder: "Direction",
+          items: EXIT_ONLY_DIRECTION_ITEMS,
+            previewOptions: { exitDirection: true },
+          onChange: (nextValue) => {
+            nativeSelect.value = nextValue;
+            if (typeof readForm === "function") {
+              readForm();
+            }
+          },
+        });
+
+        nativeSelect._arrowPickerApi = pickerApi;
+      }
+
+      if (pickerApi && typeof pickerApi.setValue === "function") {
+          pickerApi.setValue(String(nativeSelect.value || "Down Arrow").split(":")[0].trim());
+      }
+
+      return pickerApi;
+    };
+    
+    const getArrowDisplayLabel = (value) => String(value || "").split(":")[0].trim();
+
+    const getGuideArrowEntryByLabel = (label) =>
+      Sign.prototype.guideArrows.find(
+        (entry) => getArrowDisplayLabel(entry) === label
+      ) || label;
+
+    const getExitArrowEntryByLabel = (label) =>
+      Sign.prototype.exitguideArrows.find(
+        (entry) => getArrowDisplayLabel(entry) === label
+      ) || label;
+
+    const normalizeArrowAssetCode = (rawCode) => {
+      let code = String(rawCode || "").trim();
+
+      if (!code) {
+        return "";
+      }
+
+      if (code.includes("/")) {
+        code = code.split("/")[0].trim();
+      }
+
+      if (/^E[A-C]-/i.test(code)) {
+        const parts = code.split("-");
+        code = `${code.charAt(1)}-${parts[1]}`;
+      }
+
+      return code;
+    };
+
+    const getArrowIconPathFromValue = (value, { exitDirection = false } = {}) => {
+      const label = getArrowDisplayLabel(value);
+
+      if (!label || label === "None") {
+        return null;
+      }
+
+      const hardMap = {
+        "Side Left": "A-4",
+        "Side Right": "A-1",
+        "Exit Only": "C-1",
+        "Split Exit Only": "C-1",
+        "Half Exit Only": "C-1",
+      };
+
+      let code = hardMap[label] || "";
+
+      if (!code) {
+        const entry = exitDirection
+          ? getExitArrowEntryByLabel(label)
+          : getGuideArrowEntryByLabel(label);
+
+        const afterColon = String(entry).split(":")[1] || "";
+        code = normalizeArrowAssetCode(afterColon);
+      }
+
+      if (!code) {
+        return null;
+      }
+
+      const folder = /^[A-E]-[1-4]$/i.test(code)
+        ? "img/arrows"
+        : "img/arrows/SpecialArrows";
+
+      return `${folder}/${code}.svg`;
+    };
+
+    const createArrowPreviewNode = (value, options = {}) => {
+      const label = getArrowDisplayLabel(value);
+
+      const makeArrowImg = (src, extraClass = "", invert = false) => {
+        const img = document.createElement("img");
+        img.className = `arrowPickerIconImage ${extraClass}`.trim();
+        img.alt = "";
+        img.src = src;
+        img.loading = "lazy";
+        img.decoding = "async";
+        if (invert) {
+          img.style.filter = "invert(1)";
+        }
+        img.onerror = () => {
+          img.style.display = "none";
+        };
+        return img;
+      };
+
+      const makeSpecialBox = (theme, invertArrow = false) => {
+        const box = document.createElement("span");
+        box.className = `arrowPickerSpecialSvgBox ${theme}`;
+        box.appendChild(makeArrowImg("img/arrows/C-1.svg", "", invertArrow));
+        return box;
+      };
+
+      if (label === "Exit Only") {
+        const wrap = document.createElement("span");
+        wrap.className = "arrowPickerSpecialSvg";
+        wrap.appendChild(makeSpecialBox("yellow", true));
+        return wrap;
+      }
+
+      if (label === "Split Exit Only") {
+        const wrap = document.createElement("span");
+        wrap.className = "arrowPickerSpecialSvg";
+        wrap.appendChild(makeSpecialBox("green", false));
+        return wrap;
+      }
+
+      if (label === "Half Exit Only") {
+        const wrap = document.createElement("span");
+        wrap.className = "arrowPickerSpecialSvg dual";
+        wrap.appendChild(makeSpecialBox("green", false));
+        wrap.appendChild(makeSpecialBox("yellow", true));
+        return wrap;
+      }
+
+        const path = getArrowIconPathFromValue(value, options);
+
+        if (!path) {
+          return null;
+        }
+
+      const img = document.createElement("img");
+      img.className = "arrowPickerIconImage";
+      img.alt = "";
+      img.src = path;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.onerror = () => {
+        img.style.display = "none";
+      };
+      return img;
+    };
+    
+    const ARROW_PICKER_ITEMS = Sign.prototype.guideArrows.map((entry) => {
+      const label = getArrowDisplayLabel(entry);
+      return {
+        value: label,
+        label,
+        rawValue: entry,
+      };
+    });
+
+    const EXIT_ONLY_DIRECTION_ITEMS = Sign.prototype.exitguideArrows.map((entry) => {
+      const label = getArrowDisplayLabel(entry);
+      return {
+        value: label,
+        label,
+        rawValue: entry,
+      };
+    });
+    
+    const APL_ARROW_PICKER_ITEMS = [
+      { value: "UP", label: "Up", arrowType: "APL_UP", flip: false },
+      { value: "UP_LEFT", label: "Up Left Turn", arrowType: "APL_UP_TURN", flip: true },
+      { value: "UP_RIGHT", label: "Up Right Turn", arrowType: "APL_UP_TURN", flip: false },
+      { value: "DUAL_TURN", label: "Dual Turn", arrowType: "APL_DUAL_TURN", flip: false },
+      { value: "LEFT_TURN", label: "Left Turn", arrowType: "APL_TURN", flip: true },
+      { value: "RIGHT_TURN", label: "Right Turn", arrowType: "APL_TURN", flip: false },
+    ];
+
+    const createAPLArrowPreviewNode = (value) => {
+      const item = APL_ARROW_PICKER_ITEMS.find((entry) => entry.value === value);
+      if (!item) {
+        return null;
+      }
+
+      const arrowDef = ArrowElement.prototype.arrows[item.arrowType];
+      if (!arrowDef || !arrowDef.src) {
+        return null;
+      }
+
+      const img = document.createElement("img");
+      img.className = "arrowPickerIconImage aplArrowPickerIconImage";
+      img.alt = "";
+      img.src = arrowDef.src;
+      img.loading = "lazy";
+      img.decoding = "async";
+
+      if (item.flip) {
+        img.style.transform = "scaleX(-1)";
+      }
+
+      img.onerror = () => {
+        img.style.display = "none";
+      };
+
+      return img;
+    };
+
+    const findArrowPickerEntryByValue = (value, items) =>
+      items.find((item) => item.value === value) || null;
+
+    const createFlatArrowPicker = ({
+        mount,
+        value,
+        onChange,
+        placeholder = "Select arrow",
+        items = ARROW_PICKER_ITEMS,
+        previewOptions = {},
+        createPreviewNode = createArrowPreviewNode,
+    }) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "shieldPicker arrowPicker";
+    
+        const placePopover = () => {
+          const rect = trigger.getBoundingClientRect();
+          popover.style.position = "fixed";
+          popover.style.left = `${rect.left}px`;
+          popover.style.top = `${rect.bottom + 2}px`;
+          popover.style.width = `${Math.max(rect.width, 320)}px`;
+          popover.style.maxHeight = `${Math.max(160, window.innerHeight - rect.bottom - 12)}px`;
+        };
+
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.className = "shieldPickerTrigger";
+
+        const triggerIconHolder = document.createElement("span");
+        triggerIconHolder.className = "shieldPickerTriggerIcon arrowPickerIconHolder";
+        trigger.appendChild(triggerIconHolder);
+
+        const triggerLabel = document.createElement("span");
+        triggerLabel.className = "shieldPickerTriggerLabel";
+        trigger.appendChild(triggerLabel);
+
+        const triggerCaret = document.createElement("span");
+        triggerCaret.className = "shieldPickerTriggerCaret";
+        triggerCaret.textContent = "▾";
+        trigger.appendChild(triggerCaret);
+
+        const popover = document.createElement("div");
+        popover.className = "shieldPickerPopover";
+        
+        const list = document.createElement("div");
+        list.className = "shieldPickerTree arrowPickerList";
+        popover.appendChild(list);
+
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(popover);
+        mount.replaceWith(wrapper);
+
+      let currentValue = value || "";
+
+      const syncTrigger = () => {
+        const entry = findArrowPickerEntryByValue(currentValue, items);
+        triggerLabel.textContent = entry ? entry.label : placeholder;
+          triggerIconHolder.innerHTML = "";
+          const triggerIcon = createPreviewNode(entry ? entry.value : "", previewOptions);
+          if (triggerIcon) {
+            triggerIconHolder.appendChild(triggerIcon);
+            triggerIconHolder.style.display = "";
+          } else {
+            triggerIconHolder.style.display = "none";
+          }
+      };
+
+      const renderList = () => {
+        list.innerHTML = "";
+
+        items.forEach((item) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "shieldPickerItem";
+          if (item.value === currentValue) {
+            row.classList.add("selected");
+          }
+
+            const iconNode = createPreviewNode(item.value, previewOptions);
+            if (iconNode) {
+              const iconHolder = document.createElement("span");
+              iconHolder.className = "arrowPickerIconHolder";
+              iconHolder.appendChild(iconNode);
+              row.appendChild(iconHolder);
+            }
+
+          const label = document.createElement("span");
+          label.className = "shieldPickerItemLabel";
+          label.textContent = item.label;
+          row.appendChild(label);
+
+          row.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            currentValue = item.value;
+            syncTrigger();
+            renderList();
+            wrapper.classList.remove("open");
+            if (typeof onChange === "function") {
+              onChange(item.value, item);
+            }
+          });
+
+          list.appendChild(row);
+        });
+      };
+
+        trigger.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const willOpen = !wrapper.classList.contains("open");
+          wrapper.classList.toggle("open", willOpen);
+
+          if (willOpen) {
+            placePopover();
+          }
+        });
+
+        document.addEventListener("click", (event) => {
+          const clickedInsideTrigger = trigger.contains(event.target);
+          const clickedInsidePopover = popover.contains(event.target);
+
+          if (!clickedInsideTrigger && !clickedInsidePopover) {
+            wrapper.classList.remove("open");
+          }
+        });
+        
+        window.addEventListener("resize", () => {
+          if (wrapper.classList.contains("open")) {
+            placePopover();
+          }
+        });
+
+        window.addEventListener("scroll", () => {
+          if (wrapper.classList.contains("open")) {
+            placePopover();
+          }
+        }, true);
+
+      syncTrigger();
+      renderList();
+
+      return {
+        element: wrapper,
+        getValue: () => currentValue,
+        setValue: (nextValue) => {
+          currentValue = nextValue || "";
+          syncTrigger();
+          renderList();
+        },
+      };
+    };
 
   const initUI = async () => {
     const sMConfigBar = document.querySelector("#sMConfigBar");
@@ -986,9 +3506,35 @@ const formHandler = (function () {
         userThemeOverride = false;
       }
     };
+      const settingsRestoreOnRefresh = document.getElementById("settingsSaveOnRefresh");
+      if (settingsRestoreOnRefresh) {
+        const storedRestoreMode = normalizeRestoreOnRefreshMode(
+          getStoredItem(STORAGE_KEYS.restoreOnRefresh)
+        );
+        settingsRestoreOnRefresh.value = storedRestoreMode;
+
+        if (settingsRestoreOnRefresh.dataset.restoreOnRefreshBound !== "true") {
+          settingsRestoreOnRefresh.dataset.restoreOnRefreshBound = "true";
+          settingsRestoreOnRefresh.addEventListener("change", () => {
+            const selectedMode = normalizeRestoreOnRefreshMode(
+              settingsRestoreOnRefresh.value
+            );
+            settingsRestoreOnRefresh.value = selectedMode;
+            setStoredItem(STORAGE_KEYS.restoreOnRefresh, selectedMode);
+          });
+        }
+      }
     const updateUtilityButtonLabels = () => {
         const exportButton = document.getElementById("export");
         const nightModeButton = document.getElementById("nightMode");
+        const settingsButton = document.getElementById("settingsMenuButton");
+
+        if (settingsButton) {
+          const settingsLabel = settingsButton.querySelector(".buttonLabel");
+          if (settingsLabel) {
+            settingsLabel.textContent = "Settings";
+          }
+        }
         const hideConfigButton = document.getElementById("hideConfig");
 
         if (exportButton) {
@@ -1020,6 +3566,17 @@ const formHandler = (function () {
           if (icon) {
             icon.textContent = isCollapsed ? "menu_open" : "open_in_full";
           }
+        }
+        try {
+          ensureGuideArrowPicker();
+        } catch (error) {
+          console.error("Failed to initialize guide arrow picker", error);
+        }
+
+        try {
+          ensureExitOnlyDirectionPicker();
+        } catch (error) {
+          console.error("Failed to initialize exit-only direction picker", error);
         }
     };
     syncThemeWithSystem();
@@ -1080,6 +3637,406 @@ const formHandler = (function () {
           }
         });
       }
+      const settingsMenuButton = document.getElementById("settingsMenuButton");
+      const signMakerSettingsModal = document.getElementById("signMakerSettingsModal");
+      const closeSignMakerSettings = document.getElementById("closeSignMakerSettings");
+
+      const isSettingsOpen = () =>
+        !!signMakerSettingsModal && signMakerSettingsModal.classList.contains("open");
+
+      const openSettings = () => {
+        if (!signMakerSettingsModal) {
+          return;
+        }
+        signMakerSettingsModal.classList.add("open");
+      };
+
+      const closeSettings = () => {
+        if (!signMakerSettingsModal) {
+          return;
+        }
+        signMakerSettingsModal.classList.remove("open");
+      };
+
+      if (settingsMenuButton) {
+        settingsMenuButton.type = "button";
+        settingsMenuButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (isSettingsOpen()) {
+            closeSettings();
+          } else {
+            openSettings();
+          }
+        });
+      }
+
+      if (closeSignMakerSettings) {
+        closeSignMakerSettings.type = "button";
+        closeSignMakerSettings.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          closeSettings();
+        });
+      }
+
+      if (signMakerSettingsModal) {
+        signMakerSettingsModal.addEventListener("click", (event) => {
+          event.stopPropagation();
+        });
+      }
+      const settingsSideTabs = document.querySelectorAll(".settingsSideTab");
+      const settingsPages = document.querySelectorAll(".settingsPage");
+      let currentSettingsPageId = "settingsGeneral";
+
+      const showSettingsPage = (pageId) => {
+        currentSettingsPageId = pageId;
+
+        settingsSideTabs.forEach((tab) => {
+          tab.classList.toggle(
+            "active",
+            tab.dataset.settingsPage === pageId
+          );
+        });
+
+        settingsPages.forEach((page) => {
+          page.classList.toggle("active", page.id === pageId);
+        });
+      };
+
+      settingsSideTabs.forEach((tab) => {
+        tab.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          showSettingsPage(tab.dataset.settingsPage);
+        });
+      });
+
+      showSettingsPage("settingsGeneral");
+      
+      const applyShortcutDisplayFormatting = (root = document) => {
+        const shortcutInputs = root.querySelectorAll('#settingsControls input[type="text"]');
+
+        shortcutInputs.forEach((input) => {
+          if (!input.value) {
+            return;
+          }
+          input.value = formatShortcutForDisplay(input.value);
+        });
+      };
+      
+      const formatShortcutKeyName = (key) => {
+        const normalized = String(key || "");
+
+        const specialKeyMap = {
+          " ": "SPACE",
+          Escape: "Escape",
+          Esc: "Escape",
+          Control: "CTRL",
+          Meta: "CMD",
+          Alt: "ALT",
+          Shift: "SHIFT",
+          ArrowUp: "↑",
+          ArrowDown: "↓",
+          ArrowLeft: "←",
+          ArrowRight: "→",
+          PageUp: "PGUP",
+          PageDown: "PGDN",
+          Delete: "Delete",
+          Backspace: "Backspace",
+          Enter: "Enter",
+          Tab: "Tab",
+          Home: "Home",
+          End: "End",
+          Insert: "Insert",
+        };
+
+        if (specialKeyMap[normalized]) {
+          return specialKeyMap[normalized];
+        }
+
+        if (/^F\d{1,2}$/i.test(normalized)) {
+          return normalized.toUpperCase();
+        }
+
+        if (/^Numpad\d$/i.test(normalized)) {
+          return normalized.replace(/^Numpad/i, "NUMPAD");
+        }
+
+        if (/^Key[A-Z]$/i.test(normalized)) {
+          return normalized.slice(-1).toUpperCase();
+        }
+
+        if (/^Digit\d$/i.test(normalized)) {
+          return normalized.slice(-1);
+        }
+
+        if (normalized.length === 1) {
+          return normalized.toUpperCase();
+        }
+
+        return normalized.toUpperCase();
+      };
+
+      const buildShortcutString = (event) => {
+        const parts = [];
+
+        if (event.ctrlKey) {
+          parts.push("CTRL");
+        }
+        if (event.metaKey) {
+          parts.push(isMacOS ? "CTRL" : "CMD");
+        }
+        if (event.altKey) {
+          parts.push("ALT");
+        }
+        if (event.shiftKey) {
+          parts.push("SHIFT");
+        }
+
+        const keyName = normalizeEventKeyForShortcut(event);
+
+        if (!["CTRL", "CMD", "ALT", "SHIFT"].includes(keyName)) {
+          parts.push(keyName);
+        }
+
+        return parts.join("+");
+      };
+
+      const bindShortcutCaptureInputs = (root = document) => {
+        const shortcutInputs = root.querySelectorAll(
+          '#settingsControls input[type="text"]'
+        );
+
+        shortcutInputs.forEach((input) => {
+          if (input.dataset.shortcutCaptureBound === "true") {
+            return;
+          }
+
+          input.dataset.shortcutCaptureBound = "true";
+          input.setAttribute("autocomplete", "off");
+          input.setAttribute("autocorrect", "off");
+          input.setAttribute("autocapitalize", "off");
+          input.setAttribute("spellcheck", "false");
+
+            input.addEventListener("keydown", (event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                input.blur();
+                return;
+              }
+
+              if (event.key === "Backspace") {
+                event.preventDefault();
+                event.stopPropagation();
+                input.value = "";
+                persistShortcutInputValue(input);
+                return;
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+
+                const shortcutValue = buildShortcutString(event);
+                if (!shortcutValue) {
+                  return;
+                }
+
+                input.dataset.shortcutInternalValue = shortcutValue;
+                input.value = formatShortcutForDisplay(shortcutValue);
+                persistShortcutInputValue(input);
+            });
+
+          input.addEventListener("focus", () => {
+            input.select();
+          });
+        });
+      };
+
+      bindShortcutCaptureInputs(document);
+      
+      const bindExitTabSliderReset = (buttonId, inputId, valueId, getResetValue) => {
+        const button = document.getElementById(buttonId);
+        const input = document.getElementById(inputId);
+        const valueLabel = document.getElementById(valueId);
+
+        if (!button || !input || button.dataset.boundReset === "true") {
+          return;
+        }
+
+        button.dataset.boundReset = "true";
+
+        button.addEventListener("click", () => {
+          const resetValue =
+            typeof getResetValue === "function" ? getResetValue() : getResetValue;
+
+          input.value = String(resetValue);
+
+          if (valueLabel) {
+            valueLabel.innerHTML = String(resetValue);
+          }
+
+          formHandler.readForm();
+        });
+      };
+
+      bindExitTabSliderReset(
+        "borderReset",
+        "borderThickness",
+        "borderValue",
+        () => ExitTab.prototype.defaultBorderThickness
+      );
+
+      bindExitTabSliderReset(
+        "minimumReset",
+        "minHeight",
+        "minValue",
+        () => ExitTab.prototype.defaultMinHeight
+      );
+
+      bindExitTabSliderReset(
+        "sizeReset",
+        "fontSize",
+        "fontValue",
+        () => ExitTab.prototype.defaultFontSize
+      );
+
+      bindExitTabSliderReset(
+        "nestedSpacingReset",
+        "nestedTabSpacing",
+        "nestedSpacingValue",
+        () => ExitTab.prototype.defaultNestedTabSpacing
+      );
+      
+      const bindShortcutResetButtons = (root = document) => {
+          const shortcutInputs = root.querySelectorAll(
+            '#settingsControls input[type="text"]'
+          );
+
+        shortcutInputs.forEach((input) => {
+            if (!input.dataset.defaultShortcutCaptured) {
+              input.dataset.defaultShortcutCaptured = "true";
+              input.dataset.defaultShortcutValue = input.defaultValue || "";
+            }
+
+          if (input.dataset.shortcutResetWrapped === "true") {
+            return;
+          }
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "settingsShortcutField";
+
+          input.parentNode.insertBefore(wrapper, input);
+          wrapper.appendChild(input);
+
+            const resetButton = document.createElement("button");
+            resetButton.type = "button";
+            resetButton.tabIndex = -1;
+            resetButton.className = "settingsShortcutResetButton";
+            resetButton.setAttribute("aria-label", `Reset ${input.id} to default`);
+            resetButton.setAttribute("title", "Reset to default");
+            resetButton.innerHTML =
+              '<span class="material-symbols-outlined">restart_alt</span>';
+
+            resetButton.addEventListener("mousedown", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            });
+
+            resetButton.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              const parentField = resetButton.closest(".settingsShortcutField");
+              const targetInput = parentField
+                ? parentField.querySelector('input[type="text"]')
+                : null;
+
+              if (!targetInput) {
+                return;
+              }
+
+                targetInput.dataset.shortcutInternalValue =
+                  targetInput.dataset.defaultShortcutValue || "";
+                targetInput.value = formatShortcutForDisplay(
+                  targetInput.dataset.shortcutInternalValue
+                );
+                persistShortcutInputValue(targetInput);
+                targetInput.blur();
+                resetButton.blur();
+                targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+                targetInput.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.tabIndex = -1;
+            deleteButton.className = "settingsShortcutDeleteButton";
+            deleteButton.setAttribute("aria-label", `Clear ${input.id}`);
+            deleteButton.setAttribute("title", "Clear shortcut");
+            deleteButton.innerHTML =
+              '<span class="material-symbols-outlined">close</span>';
+
+            deleteButton.addEventListener("mousedown", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            });
+
+            deleteButton.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              const parentField = deleteButton.closest(".settingsShortcutField");
+              const targetInput = parentField
+                ? parentField.querySelector('input[type="text"]')
+                : null;
+
+              if (!targetInput) {
+                return;
+              }
+
+                targetInput.dataset.shortcutInternalValue = "";
+                targetInput.value = "";
+                persistShortcutInputValue(targetInput);
+                targetInput.blur();
+                deleteButton.blur();
+                targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+                targetInput.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+
+            wrapper.appendChild(resetButton);
+            wrapper.appendChild(deleteButton);
+            input.dataset.shortcutResetWrapped = "true";
+        });
+      };
+
+      bindShortcutCaptureInputs(document);
+      bindShortcutResetButtons(document);
+      applyStoredShortcutOverrides(document);
+      
+      const settingsResetControlsDefaults = document.getElementById("settingsResetControlsDefaults");
+
+      if (settingsResetControlsDefaults) {
+        settingsResetControlsDefaults.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const shortcutInputs = document.querySelectorAll(
+            '#settingsControls input[type="text"]'
+          );
+
+          shortcutInputs.forEach((input) => {
+            const defaultValue = input.dataset.defaultShortcutValue || input.defaultValue || "";
+            input.dataset.shortcutInternalValue = defaultValue;
+            input.value = formatShortcutForDisplay(defaultValue);
+            persistShortcutInputValue(input);
+            input.blur();
+          });
+        });
+      }
+      
     if (prefersDarkScheme) {
       if (typeof prefersDarkScheme.addEventListener === "function") {
         prefersDarkScheme.addEventListener("change", syncThemeWithSystem);
@@ -1087,6 +4044,9 @@ const formHandler = (function () {
         prefersDarkScheme.addListener(syncThemeWithSystem);
       }
     }
+      
+      
+      
 
     function reDisplay() {
       for (const holder of document.querySelectorAll(".sMModal")) {
@@ -1124,15 +4084,26 @@ const formHandler = (function () {
 
     for (const button of document.querySelectorAll(".sMConfigOption")) {
         button.onclick = function () {
-          if (
-            !button.id ||
-            button.id === "nightMode" ||
-            button.id === "export" ||
-            button.id === "hideConfig" ||
-            button.id === "undoButton"
-          ) {
-            return;
-          }
+            if (
+              !button.id ||
+              button.id === "nightMode" ||
+              button.id === "export" ||
+              button.id === "hideConfig" ||
+              button.id === "undoButton" ||
+              button.id === "settingsMenuButton"
+            ) {
+              return;
+            }
+            
+           if (button.id === "guideArrowConfig") {
+              if (sMConfigBar.dataset.currentMenu === button.id) {
+              sMConfigBar.dataset.currentMenu = "";
+              reDisplay();
+              } else {
+              ensureGuideArrowMenuOpen();
+              }
+              return;
+           }
 
           if (sMConfigBar.dataset.currentMenu == button.id) {
             sMConfigBar.dataset.currentMenu = "";
@@ -1144,15 +4115,731 @@ const formHandler = (function () {
         };
     }
 
-    for (const button of document.querySelectorAll(".sMModalTab")) {
-      button.onclick = function () {
-        if (!button.dataset.tab) {
+      const getShortcutTokensForField = (fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (!field) {
+          return [];
+        }
+
+        const rawValue = field.dataset.shortcutInternalValue || "";
+
+        return String(rawValue)
+          .split("|")
+          .map((part) => normalizeShortcutToken(part))
+          .filter(Boolean);
+      };
+
+      const normalizeEventKeyForShortcut = (event) => {
+        const key = event.key;
+        const code = event.code || "";
+
+        const specialMap = {
+          Escape: "ESC",
+          Esc: "ESC",
+          ArrowUp: "↑",
+          ArrowDown: "↓",
+          ArrowLeft: "←",
+          ArrowRight: "→",
+          PageUp: "PGUP",
+          PageDown: "PGDN",
+          Backspace: "BACKSPACE",
+          Delete: "DELETE",
+          Enter: "ENTER",
+          Tab: "TAB",
+          Home: "HOME",
+          End: "END",
+          Insert: "INSERT",
+          " ": "SPACE",
+        };
+
+        if (specialMap[key]) {
+          return specialMap[key];
+        }
+
+        if (/^Key[A-Z]$/i.test(code)) {
+          return code.slice(-1).toUpperCase();
+        }
+
+        if (/^Digit\d$/i.test(code)) {
+          return code.slice(-1);
+        }
+
+        if (/^Numpad\d$/i.test(code)) {
+          return code.replace(/^Numpad/i, "NUMPAD");
+        }
+
+        if (/^F\d{1,2}$/i.test(key)) {
+          return key.toUpperCase();
+        }
+
+        if (key && key.length === 1) {
+          return key.toUpperCase();
+        }
+
+        return String(key || "").toUpperCase();
+      };
+
+      const getEventShortcutToken = (event) => {
+        const parts = [];
+
+        if (event.ctrlKey) {
+          parts.push("CTRL");
+        }
+        if (event.metaKey) {
+          parts.push(isMacOS ? "CTRL" : "CMD");
+        }
+        if (event.altKey) {
+          parts.push("ALT");
+        }
+        if (event.shiftKey) {
+          parts.push("SHIFT");
+        }
+
+        const normalizedKey = normalizeEventKeyForShortcut(event);
+        if (
+          normalizedKey &&
+          !["CTRL", "CMD", "ALT", "SHIFT"].includes(normalizedKey)
+        ) {
+          parts.push(normalizedKey);
+        }
+
+        return normalizeShortcutToken(parts.join("+"));
+      };
+
+      const shortcutFieldMatchesEvent = (fieldId, event) => {
+        const eventToken = getEventShortcutToken(event);
+        if (!eventToken) {
+          return false;
+        }
+
+        const configuredTokens = getShortcutTokensForField(fieldId);
+        if (!configuredTokens.length) {
+          return false;
+        }
+
+        return configuredTokens.includes(eventToken);
+      };
+
+      const shouldSuppressAllAppShortcuts = (event) => {
+        const activeEl = document.activeElement;
+        if (!activeEl) {
+          return false;
+        }
+
+        const tagName = activeEl.tagName;
+        const inputType = (activeEl.type || "").toLowerCase();
+
+        const isTypingField =
+          activeEl.isContentEditable ||
+          tagName === "TEXTAREA" ||
+          tagName === "SELECT" ||
+          (tagName === "INPUT" &&
+            ![
+              "button",
+              "checkbox",
+              "color",
+              "file",
+              "hidden",
+              "image",
+              "radio",
+              "range",
+              "reset",
+              "submit",
+            ].includes(inputType));
+
+        const isInsideCustomShieldPicker =
+          !!activeEl.closest?.(".shieldPicker") ||
+          !!document.querySelector(".shieldPicker.open");
+
+        if (!isTypingField && !isInsideCustomShieldPicker) {
+          return false;
+        }
+
+        const eventToken = event ? getEventShortcutToken(event) : "";
+        const isEscape = eventToken === "ESC";
+        const isUndo =
+          eventToken === normalizeShortcutToken("CTRL+Z") ||
+          eventToken === normalizeShortcutToken("CMD+Z");
+        const isRedo =
+          eventToken === normalizeShortcutToken("CTRL+SHIFT+Z") ||
+          eventToken === normalizeShortcutToken("CMD+SHIFT+Z") ||
+          eventToken === normalizeShortcutToken("CTRL+Y") ||
+          eventToken === normalizeShortcutToken("CMD+Y");
+
+        return !(isEscape || isUndo || isRedo);
+      };
+
+      const closeCurrentSidebarMenu = () => {
+        if (!sMConfigBar) {
           return;
         }
 
-        const modal = document.querySelectorAll(
-          '.sMModal:has(.sMModalTab[data-tab="' + button.dataset.tab + '"]'
-        )[0];
+        sMConfigBar.dataset.currentMenu = "";
+        reDisplay();
+      };
+
+      const openConfigMenuById = (menuId) => {
+        if (!sMConfigBar) {
+          return;
+        }
+
+        sMConfigBar.dataset.currentMenu = menuId || "";
+        reDisplay();
+      };
+
+      const toggleConfigMenuById = (menuId) => {
+        if (!sMConfigBar) {
+          return;
+        }
+
+        if (sMConfigBar.dataset.currentMenu === menuId) {
+          sMConfigBar.dataset.currentMenu = "";
+        } else {
+          sMConfigBar.dataset.currentMenu = menuId;
+        }
+
+        reDisplay();
+      };
+      
+      const closeTopmostUI = () => {
+        const downloadDialog = document.getElementById("downloadContent");
+        const welcomeDialog = document.getElementById("welcomeToSignMaker");
+        const shieldDialog = document.getElementById("shieldImgSelector");
+        const iconDialog = document.getElementById("iconSelectorModal");
+        const tollDialog = document.getElementById("tollLogoSelectorModal");
+        const arrowDialog = document.getElementById("arrowSelectorModal");
+
+        if (signMakerSettingsModal && signMakerSettingsModal.classList.contains("open")) {
+          closeSettings();
+          return true;
+        }
+
+          if (
+            downloadDialog &&
+            downloadDialog.style.display !== "none" &&
+            downloadDialog.style.display !== ""
+          ) {
+            downloadDialog.style.display = "none";
+            const modalHolder = document.getElementById("modalHolder");
+            if (modalHolder) {
+              modalHolder.style.display = "none";
+            }
+            return true;
+          }
+
+        if (welcomeDialog && welcomeDialog.open) {
+          welcomeDialog.close();
+          return true;
+        }
+
+        if (shieldDialog && shieldDialog.open) {
+          shieldDialog.close();
+          return true;
+        }
+
+        if (iconDialog && iconDialog.open) {
+          iconDialog.close();
+          return true;
+        }
+
+        if (tollDialog && tollDialog.open) {
+          tollDialog.close();
+          return true;
+        }
+
+        if (arrowDialog && arrowDialog.open) {
+          arrowDialog.close();
+          return true;
+        }
+
+        if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
+          closeCurrentSidebarMenu();
+          return true;
+        }
+
+        return false;
+      };
+      
+      const isDownloadMenuOpen = () =>
+        !!downloadDialog &&
+        downloadDialog.style.display !== "" &&
+        downloadDialog.style.display !== "none";
+
+      const isShortcutBlockingOverlayOpen = () =>
+        isSettingsOpen() || isDownloadMenuOpen();
+
+      const ensureSubpanelMenuOpen = () => {
+        if (!sMConfigBar) {
+          return;
+        }
+
+        if (sMConfigBar.dataset.currentMenu !== "subPanelConfig") {
+          sMConfigBar.dataset.currentMenu = "subPanelConfig";
+          reDisplay();
+        }
+      };
+
+      const ensureExitTabMenuOpen = () => {
+        if (!sMConfigBar) {
+          return;
+        }
+
+        if (sMConfigBar.dataset.currentMenu !== "exitTabConfig") {
+          sMConfigBar.dataset.currentMenu = "exitTabConfig";
+          reDisplay();
+        }
+      };
+
+      const getPreferredGuideArrowMenuMode = () => {
+        syncPostReference();
+
+        const panel = post?.panels?.[exposed?.vars?.currentlySelectedPanelIndex];
+        const sign = panel?.sign;
+
+        if (!sign) {
+          return "standard";
+        }
+
+        const hasAPLArrows =
+          Array.isArray(sign.aplArrows) && sign.aplArrows.length > 0;
+
+        const hasStandardArrows =
+          String(sign.guideArrow || "None") !== "None";
+
+        if (sign.arrowMode === "apl" && hasAPLArrows) {
+          return "apl";
+        }
+
+        if (sign.arrowMode === "standard" || hasStandardArrows) {
+          return "standard";
+        }
+
+        return hasAPLArrows ? "apl" : "standard";
+      };
+
+      const ensureGuideArrowMenuOpen = (mode = null) => {
+        if (!sMConfigBar) {
+          return;
+        }
+
+        const resolvedMode = mode || getPreferredGuideArrowMenuMode();
+
+        if (sMConfigBar.dataset.currentMenu !== "guideArrowConfig") {
+          sMConfigBar.dataset.currentMenu = "guideArrowConfig";
+          reDisplay();
+        }
+
+        const targetTab =
+          resolvedMode === "apl"
+            ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
+            : '.guideArrowConfig .sMModalTab[data-tab="sMGuideArrowSetting"]';
+
+        const tabButton = document.querySelector(targetTab);
+
+        if (tabButton) {
+          tabButton.click();
+        }
+      };
+
+      ensureSubpanelMenuOpenPublic = ensureSubpanelMenuOpen;
+      ensureExitTabMenuOpenPublic = ensureExitTabMenuOpen;
+      ensureGuideArrowMenuOpenPublic = ensureGuideArrowMenuOpen;
+
+      const showShortcutNotice = (message) => {
+        if (!message) {
+          return;
+        }
+
+        let notice = document.getElementById("shortcutActionNotice");
+
+        if (!notice) {
+          notice = document.createElement("div");
+          notice.id = "shortcutActionNotice";
+          notice.style.position = "fixed";
+          notice.style.top = "1rem";
+          notice.style.left = "50%";
+          notice.style.transform = "translateX(-50%)";
+          notice.style.zIndex = "5000";
+          notice.style.padding = "0.4rem 0.8rem";
+          notice.style.background = "rgba(0, 0, 0, 0.75)";
+          notice.style.color = "#fff";
+          notice.style.borderRadius = "0.35rem";
+          notice.style.fontFamily = "Inter, sans-serif";
+          notice.style.fontSize = "0.95rem";
+          notice.style.opacity = "0";
+          notice.style.pointerEvents = "none";
+          notice.style.transition = "opacity 0.2s ease";
+          document.body.appendChild(notice);
+        }
+
+        notice.textContent = message;
+        notice.style.opacity = "1";
+
+        clearTimeout(notice._hideTimer);
+        notice._hideTimer = setTimeout(() => {
+          notice.style.opacity = "0";
+        }, 900);
+      };
+
+      const secondaryShortcutActions = [
+        {
+          fieldId: "settingsControlCloseMenu",
+          run: () => {
+            closeTopmostUI();
+          },
+        },
+        {
+          fieldId: "settingsControlShowHideMenus",
+          run: () => {
+            const hideConfigButton = document.getElementById("hideConfig");
+            if (hideConfigButton) {
+              hideConfigButton.click();
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlUndoEdit",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.undo === "function") {
+              app.undo();
+            } else if (exposed && typeof exposed.undo === "function") {
+              exposed.undo();
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlRedoEdit",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.redo === "function") {
+              app.redo();
+            } else if (exposed && typeof exposed.redo === "function") {
+              exposed.redo();
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlClearAll",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.clearAll === "function") {
+              app.clearAll();
+            } else if (exposed && typeof exposed.clearAll === "function") {
+              exposed.clearAll();
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlPostSettings",
+          run: () => toggleConfigMenuById("postConfig"),
+        },
+        {
+          fieldId: "settingsControlPanelMenu",
+          run: () => toggleConfigMenuById("panelSelector"),
+        },
+        {
+          fieldId: "settingsControlPanelStyle",
+          run: () => toggleConfigMenuById("panelStyleConfig"),
+        },
+        {
+          fieldId: "settingsControlExitTabs",
+          run: () => toggleConfigMenuById("exitTabConfig"),
+        },
+        {
+          fieldId: "settingsControlSubpanels",
+          run: () => toggleConfigMenuById("subPanelConfig"),
+        },
+        {
+          fieldId: "settingsControlGuideArrows",
+          run: () => ensureGuideArrowMenuOpen(),
+        },
+        {
+          fieldId: "settingsControlTemplates",
+          run: () => toggleConfigMenuById("templates"),
+        },
+        {
+          fieldId: "settingsControlDownload",
+          run: () => {
+            const downloadButton = document.getElementById("export");
+            if (downloadButton) {
+              downloadButton.click();
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlDarkMode",
+          run: () => {
+            const darkModeButton = document.getElementById("nightMode");
+            if (darkModeButton) {
+              darkModeButton.click();
+            }
+          },
+        },
+      ];
+
+      const firstColumnShortcutActions = [
+        {
+          fieldId: "settingsControlNewPanel",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.createPanelRightOfSelected === "function") {
+              app.createPanelRightOfSelected();
+              showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNewPanelLeft",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.createPanelLeftOfSelected === "function") {
+              app.createPanelLeftOfSelected();
+              showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNewSubpanel",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.createSubPanelRightOfSelected === "function") {
+              app.createSubPanelRightOfSelected();
+              showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNewSubpanelLeft",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.createSubPanelLeftOfSelected === "function") {
+              app.createSubPanelLeftOfSelected();
+              showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNewRow",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.createRowBelowSelected === "function") {
+              app.createRowBelowSelected();
+              showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNewRowTop",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.createRowAboveSelected === "function") {
+              app.createRowAboveSelected();
+              showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNextPanel",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.selectNextPanel === "function") {
+              app.selectNextPanel();
+              showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlPreviousPanel",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.selectPreviousPanel === "function") {
+              app.selectPreviousPanel();
+              showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNextSubpanel",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.selectNextSubPanel === "function") {
+              app.selectNextSubPanel();
+              showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlPreviousSubpanel",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.selectPreviousSubPanel === "function") {
+              app.selectPreviousSubPanel();
+              showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlNextRow",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.selectNextRow === "function") {
+              app.selectNextRow();
+              showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlPreviousRow",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.selectPreviousRow === "function") {
+              app.selectPreviousRow();
+              showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlDeletePanel",
+          run: () => {
+            if (typeof app !== "undefined" && typeof app.deleteCurrentPanelShortcut === "function") {
+              const deletedIndex = app.deleteCurrentPanelShortcut();
+              if (deletedIndex !== null && deletedIndex !== undefined) {
+                showShortcutNotice(`Deleted Panel ${deletedIndex + 1}`);
+              }
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlDeleteSubpanel",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.deleteCurrentSubPanelShortcut === "function") {
+              const deletedIndex = app.deleteCurrentSubPanelShortcut();
+              if (deletedIndex !== null && deletedIndex !== undefined) {
+                showShortcutNotice(`Deleted Subpanel ${deletedIndex + 1}`);
+              }
+            }
+          },
+        },
+        {
+          fieldId: "settingsControlDeleteRow",
+          run: () => {
+            ensureSubpanelMenuOpen();
+            if (typeof app !== "undefined" && typeof app.deleteCurrentRowShortcut === "function") {
+              const deletedIndex = app.deleteCurrentRowShortcut();
+              if (deletedIndex !== null && deletedIndex !== undefined) {
+                showShortcutNotice(`Deleted Row ${deletedIndex + 1}`);
+              }
+            }
+          },
+        },
+      ];
+
+      document.addEventListener("keydown", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+
+        if (event.key !== "Escape" && isShortcutBlockingOverlayOpen()) {
+          return;
+        }
+
+        if (shouldSuppressAllAppShortcuts(event)) {
+          return;
+        }
+
+        const allShortcutActions = [
+          ...firstColumnShortcutActions,
+          ...secondaryShortcutActions,
+        ];
+
+        for (const action of allShortcutActions) {
+          if (!shortcutFieldMatchesEvent(action.fieldId, event)) {
+            continue;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          action.run();
+          return;
+        }
+      });
+
+    for (const button of document.querySelectorAll(".sMModalTab")) {
+      button.onclick = function () {
+          if (!button.dataset.tab) {
+            return;
+          }
+
+          if (button.dataset.tab === "sMAPL") {
+            const panel = post?.panels?.[exposed.vars.currentlySelectedPanelIndex];
+            const subPanelCount = panel?.sign?.subPanels?.length || 0;
+
+            if (subPanelCount <= 1) {
+              const promptOverlay = document.createElement("div");
+              promptOverlay.className = "aplSubpanelPromptOverlay";
+              promptOverlay.innerHTML = `
+                <div class="aplSubpanelPrompt">
+                  <h3>APL arrows need at least two subpanels.</h3>
+                  <p>Add a new subpanel before opening the APL arrows menu?</p>
+                  <div class="aplSubpanelPromptActions">
+                    <button type="button" data-apl-subpanel-choice="left">Add to left</button>
+                    <button type="button" data-apl-subpanel-choice="right">Add to right</button>
+                    <button type="button" data-apl-subpanel-choice="cancel">Cancel</button>
+                  </div>
+                </div>
+              `;
+
+              document.body.appendChild(promptOverlay);
+
+              promptOverlay.addEventListener("click", (event) => {
+                const choiceButton = event.target.closest("[data-apl-subpanel-choice]");
+                if (!choiceButton) {
+                  return;
+                }
+
+                const choice = choiceButton.dataset.aplSubpanelChoice;
+                promptOverlay.remove();
+
+                if (choice === "left") {
+                  exposed.addAPLSubPanelLeftAndOpen();
+                } else if (choice === "right") {
+                  exposed.addAPLSubPanelRightAndOpen();
+                } else {
+                  return;
+                }
+
+                const aplTabButton = document.querySelector(
+                  '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
+                );
+
+                if (aplTabButton) {
+                  setTimeout(() => aplTabButton.click(), 0);
+                }
+              });
+
+              return;
+            }
+
+              if (
+                exposed &&
+                typeof exposed.initializeAPLArrowsForCurrentPanel === "function"
+              ) {
+                const guideArrowSelect = document.getElementById("guideArrow");
+                if (guideArrowSelect) {
+                  guideArrowSelect.value = "None";
+                }
+
+                exposed.initializeAPLArrowsForCurrentPanel();
+              }
+          }
+          
+          if (button.dataset.tab === "sMGuideArrowSetting") {
+            if (
+              exposed &&
+              typeof exposed.setCurrentPanelArrowMode === "function"
+            ) {
+              exposed.setCurrentPanelArrowMode("standard");
+            }
+          }
+
+          const modal = document.querySelectorAll(
+            '.sMModal:has(.sMModalTab[data-tab="' + button.dataset.tab + '"]'
+          )[0];
 
         if (modal.dataset.currentMenu != button.dataset.tab) {
           modal.dataset.currentMenu = button.dataset.tab;
@@ -1186,6 +4873,28 @@ const formHandler = (function () {
           return;
         }
 
+        const settingsModal = document.getElementById("signMakerSettingsModal");
+
+        if (settingsModal && settingsModal.classList.contains("open")) {
+          const activeEl = document.activeElement;
+          const activeIsControlsShortcut =
+            activeEl &&
+            activeEl.matches &&
+            activeEl.matches('#settingsControls input[type="text"]');
+
+          if (activeIsControlsShortcut) {
+            event.preventDefault();
+            event.stopPropagation();
+            activeEl.blur();
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          settingsModal.classList.remove("open");
+          return;
+        }
+
         const openDialogs = [
           document.getElementById("downloadContent"),
           document.getElementById("welcomeToSignMaker"),
@@ -1214,6 +4923,7 @@ const formHandler = (function () {
 
     document.getElementsByName("signMaker")[0].onsubmit = function (e) {
       e.preventDefault();
+        applyEditorInputBehavior(document);
     };
 
     const registerPanelButton = (selector, actionName) => {
@@ -1336,17 +5046,29 @@ const formHandler = (function () {
           updateUtilityButtonLabels();
     };
     
-      document.querySelector("#closeWelcome").onclick = function () {
-        localStorage.setItem("closedWelcome", true);
-        const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-        if (welcomeDialog) {
-          welcomeDialog.style.display = "none";
-        }
-        const modalHolder = document.querySelector("#modalHolder");
-        if (modalHolder) {
-          modalHolder.style.display = "none";
-        }
-      };
+      const closeWelcomeButton = document.querySelector("#closeWelcome");
+      if (closeWelcomeButton) {
+        closeWelcomeButton.onclick = function () {
+          const modalHolder = document.querySelector("#modalHolder");
+          const welcomeDialog = document.querySelector("#welcomeToSignMaker");
+
+          localStorage.setItem("closedWelcome", "true");
+
+          if (welcomeDialog && typeof welcomeDialog.close === "function") {
+            try {
+              welcomeDialog.close();
+            } catch (error) {}
+          }
+
+          if (welcomeDialog) {
+            welcomeDialog.style.display = "none";
+          }
+
+          if (modalHolder) {
+            modalHolder.style.display = "none";
+          }
+        };
+      }
 
     newRowDropTargetButton = document.getElementById("sMSPCreateRow");
     if (newRowDropTargetButton) {
@@ -1428,13 +5150,15 @@ const formHandler = (function () {
       });
     });
 
-      if (!localStorage.getItem("closedWelcome")) {
+      const welcomeDialog = document.querySelector("#welcomeToSignMaker");
+      if (!localStorage.getItem("closedWelcome") && welcomeDialog) {
         const modalHolder = document.querySelector("#modalHolder");
-        const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-        if (modalHolder && welcomeDialog) {
+
+        if (modalHolder) {
           modalHolder.style.display = "flex";
-          welcomeDialog.style.display = "flex";
         }
+
+        welcomeDialog.style.display = "flex";
       }
 
     // Populate post kind options
@@ -1548,7 +5272,7 @@ const formHandler = (function () {
     const sMSPElementSelect = document.getElementById("sMSPElementSelect");
     for (const element in Control.prototype.blockElements) {
         lib.appendOption(sMSPElementSelect, element, {
-            selected: element == "ShieldElement",
+            selected: element == "ControlTextElement",
             text: Control.prototype.blockElements[element],
         });
     }
@@ -1581,47 +5305,6 @@ const formHandler = (function () {
     const otherSymbolSelectElement = document.getElementById("otherSymbol");
     for (const otherSymbol of Sign.prototype.otherSymbols) {
       lib.appendOption(otherSymbolSelectElement, otherSymbol);
-    }
-
-    // APL Arrow Per Lane event listeners
-    const addAPLArrowBtn = document.getElementById("addAPLArrow");
-    const removeAPLArrowBtn = document.getElementById("removeAPLArrow");
-    const aplArrowTypeSelect = document.getElementById("aplArrowType");
-
-    if (addAPLArrowBtn) {
-      addAPLArrowBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (exposed && typeof exposed.addAPLArrow === "function") {
-          const type = aplArrowTypeSelect ? aplArrowTypeSelect.value : "APL_UP";
-          exposed.addAPLArrow(type);
-        }
-      });
-    }
-
-    if (removeAPLArrowBtn) {
-      removeAPLArrowBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (exposed && typeof exposed.removeAPLArrow === "function") {
-          exposed.removeAPLArrow();
-        }
-      });
-    }
-
-    if (aplArrowTypeSelect) {
-      aplArrowTypeSelect.addEventListener("change", () => {
-        if (exposed && typeof exposed.updateAPLArrowType === "function") {
-          exposed.updateAPLArrowType(aplArrowTypeSelect.value);
-        }
-      });
-    }
-
-    const aplArrowFlipButton = document.getElementById("aplArrowFlipButton");
-    if (aplArrowFlipButton) {
-      aplArrowFlipButton.addEventListener("click", () => {
-        if (exposed && typeof exposed.toggleAPLArrowFlip === "function") {
-          exposed.toggleAPLArrowFlip();
-        }
-      });
     }
 
     // Control Signs Revision
@@ -1729,6 +5412,938 @@ const formHandler = (function () {
         setStoredItem(STORAGE_KEYS.controlTextFont, selectedFont);
       });
     }
+    
+
+      const clampPercentValue = (value, inputEl) => {
+        const parsed = parseFloat(value);
+        const min = inputEl && inputEl.min !== "" ? parseFloat(inputEl.min) : 0;
+        const max = inputEl && inputEl.max !== "" ? parseFloat(inputEl.max) : 300;
+
+        if (!Number.isFinite(parsed)) {
+          return min;
+        }
+
+        return Math.max(min, Math.min(max, parsed));
+      };
+
+      const syncPercentValueDisplay = (inputId) => {
+        const inputEl = document.getElementById(inputId);
+        const valueEl = document.getElementById(inputId + "Val");
+
+        if (!inputEl || !valueEl) {
+          return;
+        }
+
+        if (valueEl.tagName === "INPUT") {
+          valueEl.value = inputEl.value;
+        } else {
+          valueEl.textContent = `${inputEl.value}%`;
+        }
+      };
+      
+      const settingsDefaultsFontFamilyIds = [
+        "settingsDefaultsControlTextFontFamily",
+        "settingsDefaultsAdvisoryFontFamily",
+        "settingsDefaultsActionFontFamily",
+      ];
+
+      const settingsDefaultsFontIds = {
+        settingsDefaultsControlTextFontFamily: "settingsDefaultsControlTextFont",
+        settingsDefaultsAdvisoryFontFamily: "settingsDefaultsAdvisoryFont",
+        settingsDefaultsActionFontFamily: "settingsDefaultsActionFont",
+      };
+
+      const clearviewFonts = TextElement.prototype.fontFamily.filter((font) =>
+        /^Clearview/i.test(font)
+      );
+
+      const highwayGothicFonts = TextElement.prototype.fontFamily.filter((font) =>
+        /^Series/i.test(font)
+      );
+
+      const arialFonts = TextElement.prototype.fontFamily.filter(
+        (font) => font === "Arial" || font === "Arial Bold"
+      );
+
+      const transportFonts = TextElement.prototype.fontFamily.filter(
+        (font) => font === "Transport"
+      );
+
+      const din1451Fonts = TextElement.prototype.fontFamily.filter(
+        (font) => font === "DIN 1451"
+      );
+
+      const rawlinsonFonts = TextElement.prototype.fontFamily.filter((font) =>
+        /^Rawlinson/i.test(font)
+      );
+      
+      const itcStoneSansFonts = TextElement.prototype.fontFamily.filter((font) =>
+        /^ITC Stone Sans/i.test(font)
+      );
+
+      const helveticaNeueFonts = TextElement.prototype.fontFamily.filter((font) =>
+        /^Helvetica Neue/i.test(font)
+      );
+
+      const settingsDefaultsFontFamilies = {
+        Clearview: clearviewFonts,
+        "Highway Gothic": highwayGothicFonts,
+        Arial: arialFonts,
+        Transport: transportFonts,
+        "DIN 1451": din1451Fonts,
+        Rawlinson: rawlinsonFonts,
+        "ITC Stone Sans": itcStoneSansFonts,
+        "Helvetica Neue": helveticaNeueFonts,
+      };
+
+      const settingsDefaultsFontDefaults = {
+        Clearview: clearviewFonts.includes("Clearview 5WR")
+          ? "Clearview 5WR"
+          : (clearviewFonts[0] || ""),
+        "Highway Gothic": highwayGothicFonts.includes("Series EM")
+          ? "Series EM"
+          : (highwayGothicFonts[0] || ""),
+        Arial: arialFonts.includes("Arial")
+          ? "Arial"
+          : (arialFonts[0] || ""),
+        Transport: transportFonts[0] || "",
+        "DIN 1451": din1451Fonts[0] || "",
+          Rawlinson: rawlinsonFonts.includes("Rawlinson Regular")
+            ? "Rawlinson Regular"
+            : (rawlinsonFonts[0] || ""),
+          "ITC Stone Sans": itcStoneSansFonts.includes("ITC Stone Sans Regular")
+            ? "ITC Stone Sans Regular"
+            : (itcStoneSansFonts[0] || ""),
+          "Helvetica Neue": helveticaNeueFonts.includes("Helvetica Neue Roman")
+            ? "Helvetica Neue Roman"
+            : (helveticaNeueFonts[0] || ""),
+      };
+      
+      const SETTINGS_DEFAULTS_STORAGE_KEY = "signMaker.settingsDefaults";
+
+      const settingsDefaultsFieldDefaults = {
+        settingsDefaultsControlTextText: "Control",
+        settingsDefaultsControlTextFontFamily: "Clearview",
+        settingsDefaultsControlTextFont: "Clearview 5WR",
+        settingsDefaultsControlTextSize: "100",
+        settingsDefaultsControlTextColor: ControlTextElement.defaultTextColor,
+        settingsDefaultsControlTextBg: "Inherit",
+
+        settingsDefaultsShieldType: ShieldElement.prototype.defaultShieldBase,
+        settingsDefaultsShieldRouteNumber: "1",
+        settingsDefaultsShieldSize: "3",
+        settingsDefaultsShieldBanner1: "Right",
+        settingsDefaultsShieldBanner2: "Above",
+
+        settingsDefaultsAdvisoryText: "Advisory",
+        settingsDefaultsAdvisoryFontFamily: "Highway Gothic",
+        settingsDefaultsAdvisoryFont: "Series E",
+        settingsDefaultsAdvisorySize: "70",
+        settingsDefaultsAdvisoryColor: "Black",
+        settingsDefaultsAdvisoryBg: "Yellow",
+
+        settingsDefaultsActionText: "Action",
+        settingsDefaultsActionFontFamily: "Clearview",
+        settingsDefaultsActionFont: "Clearview 5WR",
+        settingsDefaultsActionSize: "70",
+        settingsDefaultsActionColor: ControlTextElement.defaultTextColor,
+        settingsDefaultsActionBg: "Inherit",
+        
+          settingsDefaultsExitTabText: "",
+          settingsDefaultsExitTabType: "Standard",
+          settingsDefaultsExitTabAlignment: "Right",
+          settingsDefaultsExitTabPosition: "Edge",
+          settingsDefaultsExitTabPanelColor: "Panel Color",
+          settingsDefaultsExitTabBorderThickness: 0.2,
+          settingsDefaultsExitTabMinHeight: 2,
+          settingsDefaultsExitTabTextSize: 20,
+          settingsDefaultsExitTabNestedSpacing: 0,
+          settingsDefaultsExitTabFHWAStyle: false,
+          settingsDefaultsExitTabLeft: false,
+          settingsDefaultsExitTabFullBorder: false,
+          settingsDefaultsExitTabSquareCorners: false,
+          settingsDefaultsExitTabTopOffset: false,
+          settingsDefaultsExitTabVerticalArrangement: false,
+          settingsDefaultsExitTabCAStyle: false,
+      };
+
+      const getStoredSettingsDefaults = () => {
+        try {
+          const raw = localStorage.getItem(SETTINGS_DEFAULTS_STORAGE_KEY);
+          if (!raw) return {};
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (error) {
+          return {};
+        }
+      };
+
+      const setStoredSettingsDefaults = (values) => {
+        try {
+          localStorage.setItem(
+            SETTINGS_DEFAULTS_STORAGE_KEY,
+            JSON.stringify(values || {})
+          );
+        } catch (error) {
+          // ignore storage write failures
+        }
+      };
+
+      const saveSettingsDefaultsField = (id, value) => {
+        const stored = getStoredSettingsDefaults();
+        stored[id] = value;
+        setStoredSettingsDefaults(stored);
+      };
+      
+      const storedSettingsDefaults = getStoredSettingsDefaults();
+      
+      const getMergedSettingsDefaults = () => ({
+        ...settingsDefaultsFieldDefaults,
+        ...getStoredSettingsDefaults(),
+      });
+
+      const mapSettingsDefaultsExitTabTypeToVariant = (value) => {
+        switch (value) {
+          case "Standard":
+            return "Default";
+          case "Full Left":
+            return "Full Left";
+          case "Toll Pass":
+            return "Toll Logo";
+          default:
+            return "Default";
+        }
+      };
+
+      const applyExitTabSettingsDefaults = () => {
+        const defaults = getMergedSettingsDefaults();
+
+        const parseNumberOrFallback = (value, fallback) => {
+          const parsed = typeof value === "number" ? value : parseFloat(value);
+          return Number.isFinite(parsed) ? parsed : fallback;
+        };
+
+        ExitTab.prototype.defaultText =
+          String(defaults.settingsDefaultsExitTabText ?? "");
+
+        ExitTab.prototype.defaultVariant =
+          mapSettingsDefaultsExitTabTypeToVariant(
+            defaults.settingsDefaultsExitTabType
+          );
+
+        ExitTab.prototype.defaultPosition =
+          ExitTab.prototype.positions.includes(defaults.settingsDefaultsExitTabAlignment)
+            ? defaults.settingsDefaultsExitTabAlignment
+            : "Right";
+
+        ExitTab.prototype.defaultWidth =
+          ExitTab.prototype.widths.includes(defaults.settingsDefaultsExitTabPosition)
+            ? defaults.settingsDefaultsExitTabPosition
+            : "Narrow";
+
+        ExitTab.prototype.defaultColor =
+          ExitTab.prototype.colors.includes(defaults.settingsDefaultsExitTabPanelColor)
+            ? defaults.settingsDefaultsExitTabPanelColor
+            : "Panel Color";
+
+        ExitTab.prototype.defaultBorderThickness = Math.max(
+          0,
+          parseNumberOrFallback(defaults.settingsDefaultsExitTabBorderThickness, 0.2)
+        );
+
+        ExitTab.prototype.defaultMinHeight = Math.max(
+          0,
+          parseNumberOrFallback(defaults.settingsDefaultsExitTabMinHeight, 2)
+        );
+
+        ExitTab.prototype.defaultFontSize = Math.max(
+          10,
+          parseNumberOrFallback(defaults.settingsDefaultsExitTabTextSize, 20)
+        );
+
+        ExitTab.prototype.defaultNestedTabSpacing = Math.max(
+          0,
+          parseNumberOrFallback(defaults.settingsDefaultsExitTabNestedSpacing, 0)
+        );
+
+        ExitTab.prototype.defaultFHWAFont = !!defaults.settingsDefaultsExitTabFHWAStyle;
+        ExitTab.prototype.defaultShowLeft = !!defaults.settingsDefaultsExitTabLeft;
+        ExitTab.prototype.defaultFullBorder = !!defaults.settingsDefaultsExitTabFullBorder;
+        ExitTab.prototype.defaultSquareCorners = !!defaults.settingsDefaultsExitTabSquareCorners;
+        ExitTab.prototype.defaultTopOffset = !!defaults.settingsDefaultsExitTabTopOffset;
+        ExitTab.prototype.defaultVerticalArrangement =
+          !!defaults.settingsDefaultsExitTabVerticalArrangement;
+        ExitTab.prototype.defaultCAStyle = !!defaults.settingsDefaultsExitTabCAStyle;
+      };
+
+      applyExitTabSettingsDefaults();
+      
+      const bindExitTabSettingsDefaultsPersistence = (id, { checkbox = false } = {}) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.exitTabDefaultsBound === "true") {
+          return;
+        }
+
+        el.dataset.exitTabDefaultsBound = "true";
+
+        const persist = () => {
+          const value = checkbox ? !!el.checked : el.value;
+          saveSettingsDefaultsField(id, value);
+          applyExitTabSettingsDefaults();
+        };
+
+        el.addEventListener("change", persist);
+        if (!checkbox) {
+          el.addEventListener("input", persist);
+        }
+      };
+      
+      [
+        "settingsDefaultsExitTabText",
+        "settingsDefaultsExitTabType",
+        "settingsDefaultsExitTabAlignment",
+        "settingsDefaultsExitTabPosition",
+        "settingsDefaultsExitTabPanelColor",
+        "settingsDefaultsExitTabBorderThickness",
+        "settingsDefaultsExitTabMinHeight",
+        "settingsDefaultsExitTabTextSize",
+        "settingsDefaultsExitTabNestedSpacing",
+      ].forEach((id) => bindExitTabSettingsDefaultsPersistence(id));
+
+      [
+        "settingsDefaultsExitTabFHWAStyle",
+        "settingsDefaultsExitTabLeft",
+        "settingsDefaultsExitTabFullBorder",
+        "settingsDefaultsExitTabSquareCorners",
+        "settingsDefaultsExitTabTopOffset",
+        "settingsDefaultsExitTabVerticalArrangement",
+        "settingsDefaultsExitTabCAStyle",
+      ].forEach((id) => bindExitTabSettingsDefaultsPersistence(id, { checkbox: true }));
+      
+      const getSettingsDefaultsFamilyPreviewFont = (family) => {
+        if (family === "Clearview") return '"Clearview 5WR", "Transport", sans-serif';
+        if (family === "Highway Gothic") return '"Series EM", "Highway Gothic", sans-serif';
+        if (family === "Arial") return 'Arial, sans-serif';
+        if (family === "Transport") return '"Transport", sans-serif';
+        return 'Inter, sans-serif';
+      };
+
+      const populateSimpleSelect = (selectEl, options, selectedValue = "") => {
+        if (!selectEl) {
+          return;
+        }
+
+        selectEl.innerHTML = "";
+
+        for (const option of options) {
+          if (typeof option === "string") {
+            lib.appendOption(selectEl, option, {
+              selected: option === selectedValue,
+            });
+          } else if (option && typeof option === "object") {
+            lib.appendOption(selectEl, option.value, {
+              text: option.label ?? option.value,
+              selected: option.value === selectedValue,
+            });
+          }
+        }
+      };
+
+      const updateSettingsDefaultsFontSelect = (fontFamilySelectId) => {
+        const fontFamilySelect = document.getElementById(fontFamilySelectId);
+        const fontSelect = document.getElementById(
+          settingsDefaultsFontIds[fontFamilySelectId]
+        );
+
+        if (!fontFamilySelect || !fontSelect) {
+          return;
+        }
+
+        const selectedFamily = fontFamilySelect.value;
+        const matchingFonts = settingsDefaultsFontFamilies[selectedFamily] || [];
+        const fontId = settingsDefaultsFontIds[fontFamilySelectId];
+
+        const preferredStoredFont = Object.prototype.hasOwnProperty.call(
+          storedSettingsDefaults,
+          fontId
+        )
+          ? storedSettingsDefaults[fontId]
+          : settingsDefaultsFieldDefaults[fontId];
+
+        const defaultFontForFamily =
+          matchingFonts.includes(preferredStoredFont)
+            ? preferredStoredFont
+            : (settingsDefaultsFontDefaults[selectedFamily] || matchingFonts[0] || "");
+
+          const shouldHideChildFontSelect =
+            selectedFamily === "Transport" || selectedFamily === "DIN 1451";
+
+          populateSimpleSelect(fontSelect, matchingFonts, defaultFontForFamily);
+          fontSelect.value = defaultFontForFamily;
+
+          fontSelect.classList.toggle("hidden", shouldHideChildFontSelect);
+
+          const fontLabel = document.querySelector(`label[for="${fontSelect.id}"]`);
+          if (fontLabel) {
+            fontLabel.classList.toggle("hidden", shouldHideChildFontSelect);
+          }
+
+          if (fontSelect._fontPickerApi) {
+            fontSelect._fontPickerApi.sync();
+          }
+        fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
+        fontSelect.style.fontSize =
+            selectedFamily === "Highway Gothic" ? "1.2rem" : "1rem";
+      };
+      
+      settingsDefaultsFontFamilyIds.forEach((id) => {
+        const selectEl = document.getElementById(id);
+        if (!selectEl) {
+          return;
+        }
+
+        const selectedFamily =
+          Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+            ? storedSettingsDefaults[id]
+            : settingsDefaultsFieldDefaults[id];
+
+        populateSimpleSelect(
+          selectEl,
+          Object.keys(settingsDefaultsFontFamilies),
+          selectedFamily
+        );
+
+          const syncFamilyPreview = () => {
+            syncSettingsDefaultsFamilyPreviewSelect(selectEl);
+          };
+
+          if (selectEl.dataset.defaultsFontFamilyBound !== "true") {
+            selectEl.dataset.defaultsFontFamilyBound = "true";
+
+            selectEl.addEventListener("change", () => {
+              updateSettingsDefaultsFontSelect(id);
+              syncFamilyPreview();
+
+              saveSettingsDefaultsField(id, selectEl.value);
+              storedSettingsDefaults[id] = selectEl.value;
+
+              const fontId = settingsDefaultsFontIds[id];
+              const fontSelect = document.getElementById(fontId);
+
+              if (fontSelect) {
+                saveSettingsDefaultsField(fontId, fontSelect.value);
+                storedSettingsDefaults[fontId] = fontSelect.value;
+              }
+
+              if (typeof syncAllFontPickers === "function") {
+                syncAllFontPickers();
+              }
+            });
+          }
+
+          updateSettingsDefaultsFontSelect(id);
+          syncFamilyPreview();
+      });
+      
+    Object.entries(settingsDefaultsFontIds).forEach(([fontFamilyId, fontId]) => {
+      const fontSelect = document.getElementById(fontId);
+
+      if (!fontSelect) {
+        return;
+      }
+
+        const syncDefaultsFontPreview = () => {
+          fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
+
+          let familySelectId = null;
+          if (fontId === "settingsDefaultsControlTextFont") {
+            familySelectId = "settingsDefaultsControlTextFontFamily";
+          } else if (fontId === "settingsDefaultsAdvisoryFont") {
+            familySelectId = "settingsDefaultsAdvisoryFontFamily";
+          } else if (fontId === "settingsDefaultsActionFont") {
+            familySelectId = "settingsDefaultsActionFontFamily";
+          }
+
+          const familySelect = familySelectId
+            ? document.getElementById(familySelectId)
+            : null;
+
+          fontSelect.style.fontSize =
+            familySelect && familySelect.value === "Highway Gothic" ? "1.2rem" : "1rem";
+        };
+
+      syncDefaultsFontPreview();
+
+      if (fontSelect.dataset.defaultsFontPreviewBound !== "true") {
+        fontSelect.dataset.defaultsFontPreviewBound = "true";
+          fontSelect.addEventListener("change", () => {
+            syncDefaultsFontPreview();
+
+            saveSettingsDefaultsField(fontId, fontSelect.value);
+            storedSettingsDefaults[fontId] = fontSelect.value;
+          });
+      }
+    });
+
+      const settingsDefaultsTextColorSelects = [
+        document.getElementById("settingsDefaultsControlTextColor"),
+        document.getElementById("settingsDefaultsAdvisoryColor"),
+        document.getElementById("settingsDefaultsActionColor"),
+      ];
+
+      const settingsDefaultsBgColorSelects = [
+        document.getElementById("settingsDefaultsControlTextBg"),
+        document.getElementById("settingsDefaultsAdvisoryBg"),
+        document.getElementById("settingsDefaultsActionBg"),
+        document.getElementById("settingsDefaultsExitTabPanelColor"),
+      ];
+
+      const settingsDefaultsTextColors = ControlTextElement.getTextColorOptions();
+      const settingsDefaultsBackgroundColors = TextElement.prototype.backgroundColor;
+
+      settingsDefaultsTextColorSelects.forEach((selectEl) => {
+        populateSimpleSelect(selectEl, settingsDefaultsTextColors, ControlTextElement.defaultTextColor);
+      });
+
+      settingsDefaultsBgColorSelects.forEach((selectEl) => {
+        if (selectEl?.id === "settingsDefaultsExitTabPanelColor") {
+          populateSimpleSelect(selectEl, settingsDefaultsBackgroundColors, "Panel Color");
+        } else {
+          populateSimpleSelect(selectEl, settingsDefaultsBackgroundColors, "Inherit");
+        }
+      });
+
+      const settingsDefaultsShieldType = document.getElementById("settingsDefaultsShieldType");
+      let settingsDefaultsShieldPicker = null;
+
+      if (settingsDefaultsShieldType) {
+        const existingShieldValue =
+          settingsDefaultsShieldType.value ||
+          getStoredItem("signMaker.settingsDefaults")
+            ? (() => {
+                try {
+                  const parsed = JSON.parse(
+                    getStoredItem("signMaker.settingsDefaults") || "{}"
+                  );
+                  return parsed.settingsDefaultsShieldType || "I";
+                } catch (error) {
+                  return "I";
+                }
+              })()
+            : "I";
+
+        settingsDefaultsShieldPicker = createShieldPicker({
+          mount: settingsDefaultsShieldType,
+          value: existingShieldValue,
+          placeholder: "Shield type",
+          onChange: (nextValue) => {
+            const settingsDefaultsShieldRouteNumber = document.getElementById("settingsDefaultsShieldRouteNumber");
+            const storedRaw = getStoredItem("signMaker.settingsDefaults");
+            let storedDefaults = {};
+            try {
+              storedDefaults = storedRaw ? JSON.parse(storedRaw) : {};
+            } catch (error) {
+              storedDefaults = {};
+            }
+            storedDefaults.settingsDefaultsShieldType = nextValue;
+            setStoredItem("signMaker.settingsDefaults", JSON.stringify(storedDefaults));
+            if (typeof readForm === "function") {
+              readForm();
+            }
+          },
+        });
+      }
+      if (settingsDefaultsShieldType) {
+        settingsDefaultsShieldType.innerHTML = "";
+        for (const shield of ShieldElement.prototype.blockShieldBases) {
+          lib.appendOption(settingsDefaultsShieldType, shield.value, {
+            text: shield.label,
+            selected:
+              shield.value === ShieldElement.prototype.defaultShieldBase,
+          });
+        }
+      }
+
+      const settingsDefaultsShieldBanner1 = document.getElementById("settingsDefaultsShieldBanner1");
+      const settingsDefaultsShieldBanner2 = document.getElementById("settingsDefaultsShieldBanner2");
+      const shieldBannerPositions = ShieldElement.prototype.getBannerPositionOptions();
+
+      populateSimpleSelect(
+        settingsDefaultsShieldBanner1,
+        shieldBannerPositions,
+        settingsDefaultsFieldDefaults.settingsDefaultsShieldBanner1
+      );
+
+      populateSimpleSelect(
+        settingsDefaultsShieldBanner2,
+        shieldBannerPositions,
+        settingsDefaultsFieldDefaults.settingsDefaultsShieldBanner2
+      );
+
+    const settingsDefaultsControlTextText = document.getElementById("settingsDefaultsControlTextText");
+    const settingsDefaultsAdvisoryText = document.getElementById("settingsDefaultsAdvisoryText");
+    const settingsDefaultsActionText = document.getElementById("settingsDefaultsActionText");
+    const settingsDefaultsShieldRouteNumber = document.getElementById("settingsDefaultsShieldRouteNumber");
+
+      Object.entries(settingsDefaultsFieldDefaults).forEach(([id, fallbackValue]) => {
+        const el = document.getElementById(id);
+        if (!el) {
+          return;
+        }
+
+        const storedValue = Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+          ? storedSettingsDefaults[id]
+          : fallbackValue;
+
+        if (el.type === "checkbox") {
+          el.checked = !!storedValue;
+        } else if (el.tagName === "SELECT") {
+          const hasMatchingOption = Array.from(el.options).some(
+            (option) => option.value === storedValue
+          );
+          const safeValue = hasMatchingOption ? storedValue : fallbackValue;
+          el.value = safeValue;
+          storedSettingsDefaults[id] = safeValue;
+        } else {
+          el.value = storedValue;
+        }
+      });
+      
+      setStoredSettingsDefaults(storedSettingsDefaults);
+      
+      updateSettingsDefaultsFontSelect("settingsDefaultsControlTextFontFamily");
+      updateSettingsDefaultsFontSelect("settingsDefaultsAdvisoryFontFamily");
+      updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
+
+      initializeFontPickers();
+
+      [
+        "settingsDefaultsControlTextFontFamily",
+        "settingsDefaultsAdvisoryFontFamily",
+        "settingsDefaultsActionFontFamily",
+      ].forEach((id) => {
+        const selectEl = document.getElementById(id);
+        if (!selectEl) {
+          return;
+        }
+
+        if (selectEl.value === "Clearview") {
+          selectEl.style.fontFamily = "Clearview 5WR";
+        } else if (selectEl.value === "Highway Gothic") {
+          selectEl.style.fontFamily = "Series EM";
+        } else if (selectEl.value === "Arial") {
+          selectEl.style.fontFamily = "Arial";
+        } else if (selectEl.value === "Transport") {
+          selectEl.style.fontFamily = "Transport";
+        } else if (selectEl.value === "DIN 1451") {
+          selectEl.style.fontFamily = '"DIN 1451", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "Rawlinson") {
+          selectEl.style.fontFamily = '"Rawlinson Regular", serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "Helvetica Neue") {
+          selectEl.style.fontFamily = '"Helvetica Neue Roman", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else {
+          selectEl.style.fontFamily = "Inter";
+        }
+      });
+      
+      [
+        "settingsDefaultsControlTextFontFamily",
+        "settingsDefaultsAdvisoryFontFamily",
+        "settingsDefaultsActionFontFamily",
+      ].forEach((id) => {
+        const selectEl = document.getElementById(id);
+        if (selectEl && !selectEl.value) {
+          selectEl.value = settingsDefaultsFieldDefaults[id];
+        }
+      });
+      updateSettingsDefaultsFontSelect("settingsDefaultsControlTextFontFamily");
+      updateSettingsDefaultsFontSelect("settingsDefaultsAdvisoryFontFamily");
+      updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
+      
+      const bindSettingsDefaultsSlider = (sliderId, valueId, formatter = (value) => value) => {
+        const slider = document.getElementById(sliderId);
+        const valueEl = document.getElementById(valueId);
+
+        if (!slider || !valueEl) {
+          return;
+        }
+
+        const syncValue = () => {
+          valueEl.textContent = formatter(slider.value);
+        };
+
+        syncValue();
+
+        if (slider.dataset.defaultsSliderBound !== "true") {
+          slider.dataset.defaultsSliderBound = "true";
+          slider.addEventListener("input", syncValue);
+          slider.addEventListener("change", syncValue);
+        }
+      };
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsControlTextSize",
+        "settingsDefaultsControlTextSizeValue",
+        (value) => `${value}%`
+      );
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsAdvisorySize",
+        "settingsDefaultsAdvisorySizeValue",
+        (value) => `${value}%`
+      );
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsActionSize",
+        "settingsDefaultsActionSizeValue",
+        (value) => `${value}%`
+      );
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsShieldSize",
+        "settingsDefaultsShieldSizeValue",
+        (value) => `${value} rem`
+      );
+      
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsExitTabBorderThickness",
+        "settingsDefaultsExitTabBorderThicknessValue",
+        (value) => value
+      );
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsExitTabMinHeight",
+        "settingsDefaultsExitTabMinHeightValue",
+        (value) => value
+      );
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsExitTabTextSize",
+        "settingsDefaultsExitTabTextSizeValue",
+        (value) => value
+      );
+
+      bindSettingsDefaultsSlider(
+        "settingsDefaultsExitTabNestedSpacing",
+        "settingsDefaultsExitTabNestedSpacingValue",
+        (value) => value
+      );
+      
+      [
+        "settingsDefaultsControlTextText",
+        "settingsDefaultsControlTextColor",
+        "settingsDefaultsControlTextBg",
+        "settingsDefaultsShieldType",
+        "settingsDefaultsShieldRouteNumber",
+        "settingsDefaultsShieldBanner1",
+        "settingsDefaultsShieldBanner2",
+        "settingsDefaultsAdvisoryText",
+        "settingsDefaultsAdvisoryColor",
+        "settingsDefaultsAdvisoryBg",
+        "settingsDefaultsActionText",
+        "settingsDefaultsActionColor",
+        "settingsDefaultsActionBg",
+        "settingsDefaultsExitTabText",
+        "settingsDefaultsExitTabType",
+        "settingsDefaultsExitTabAlignment",
+        "settingsDefaultsExitTabPosition",
+        "settingsDefaultsExitTabPanelColor",
+      ].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) {
+          return;
+        }
+
+        const value = Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+          ? storedSettingsDefaults[id]
+          : settingsDefaultsFieldDefaults[id];
+
+        if (el.type === "checkbox") {
+          el.checked = !!value;
+        } else {
+          el.value = value;
+        }
+      });
+      
+      [
+        "settingsDefaultsExitTabFHWAStyle",
+        "settingsDefaultsExitTabLeft",
+        "settingsDefaultsExitTabFullBorder",
+        "settingsDefaultsExitTabSquareCorners",
+        "settingsDefaultsExitTabTopOffset",
+        "settingsDefaultsExitTabVerticalArrangement",
+        "settingsDefaultsExitTabCAStyle",
+      ].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.defaultsPersistBound === "true") {
+          return;
+        }
+
+        el.dataset.defaultsPersistBound = "true";
+
+        const persist = () => saveSettingsDefaultsField(id, el.checked);
+        el.addEventListener("change", persist);
+      });
+
+      [
+        "settingsDefaultsControlTextSize",
+        "settingsDefaultsAdvisorySize",
+        "settingsDefaultsActionSize",
+        "settingsDefaultsShieldSize",
+        "settingsDefaultsExitTabBorderThickness",
+        "settingsDefaultsExitTabMinHeight",
+        "settingsDefaultsExitTabTextSize",
+        "settingsDefaultsExitTabNestedSpacing",
+      ].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.defaultsPersistBound === "true") {
+          return;
+        }
+
+        el.dataset.defaultsPersistBound = "true";
+        const persist = () => saveSettingsDefaultsField(id, el.value);
+        el.addEventListener("change", persist);
+        el.addEventListener("input", persist);
+      });
+      
+      
+      const settingsResetDefaultsButton = document.getElementById("settingsResetDefaultsButton");
+          applyExitTabSettingsDefaults();
+
+      if (settingsResetDefaultsButton && settingsResetDefaultsButton.dataset.bound !== "true") {
+        settingsResetDefaultsButton.dataset.bound = "true";
+
+          settingsResetDefaultsButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+              Object.entries(settingsDefaultsFieldDefaults).forEach(([id, value]) => {
+                const el = document.getElementById(id);
+                if (!el) {
+                  return;
+                }
+
+                if (el.type === "checkbox") {
+                  el.checked = !!value;
+                } else {
+                  el.value = value;
+                }
+              });
+
+            updateSettingsDefaultsFontSelect("settingsDefaultsControlTextFontFamily");
+            updateSettingsDefaultsFontSelect("settingsDefaultsAdvisoryFontFamily");
+            updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
+              [
+                "settingsDefaultsControlTextFontFamily",
+                "settingsDefaultsAdvisoryFontFamily",
+                "settingsDefaultsActionFontFamily",
+              ].forEach((id) => {
+                syncSettingsDefaultsFamilyPreviewSelect(document.getElementById(id));
+              });
+
+            document.getElementById("settingsDefaultsControlTextFont").value =
+              settingsDefaultsFieldDefaults.settingsDefaultsControlTextFont;
+            document.getElementById("settingsDefaultsAdvisoryFont").value =
+              settingsDefaultsFieldDefaults.settingsDefaultsAdvisoryFont;
+            document.getElementById("settingsDefaultsActionFont").value =
+              settingsDefaultsFieldDefaults.settingsDefaultsActionFont;
+              [
+                "settingsDefaultsControlTextFont",
+                "settingsDefaultsAdvisoryFont",
+                "settingsDefaultsActionFont",
+              ].forEach((id) => {
+                syncFontPreviewSelect(document.getElementById(id));
+              });
+
+            Object.entries(settingsDefaultsFieldDefaults).forEach(([id, value]) => {
+              saveSettingsDefaultsField(id, value);
+            });
+            Object.assign(storedSettingsDefaults, settingsDefaultsFieldDefaults);
+              
+              const syncEvent = new Event("input", { bubbles: true });
+              const changeEvent = new Event("change", { bubbles: true });
+
+              [
+                "settingsDefaultsControlTextSize",
+                "settingsDefaultsAdvisorySize",
+                "settingsDefaultsActionSize",
+                "settingsDefaultsShieldSize",
+                "settingsDefaultsExitTabBorderThickness",
+                "settingsDefaultsExitTabMinHeight",
+                "settingsDefaultsExitTabTextSize",
+                "settingsDefaultsExitTabNestedSpacing",
+              ].forEach((id) => {
+                const slider = document.getElementById(id);
+                if (slider) {
+                  slider.dispatchEvent(syncEvent);
+                  slider.dispatchEvent(changeEvent);
+                }
+              });
+              
+              const settingsDefaultsExitTabFHWAStyle = document.getElementById("settingsDefaultsExitTabFHWAStyle");
+              const settingsDefaultsExitTabTextSize = document.getElementById("settingsDefaultsExitTabTextSize");
+
+              if (
+                settingsDefaultsExitTabFHWAStyle &&
+                settingsDefaultsExitTabTextSize &&
+                settingsDefaultsExitTabFHWAStyle.dataset.exitTabTextSizeBound !== "true"
+              ) {
+                settingsDefaultsExitTabFHWAStyle.dataset.exitTabTextSizeBound = "true";
+
+                settingsDefaultsExitTabFHWAStyle.addEventListener("change", () => {
+                  const nextValue = settingsDefaultsExitTabFHWAStyle.checked ? "18" : "20";
+                  settingsDefaultsExitTabTextSize.value = nextValue;
+                  saveSettingsDefaultsField("settingsDefaultsExitTabTextSize", nextValue);
+                  settingsDefaultsExitTabTextSize.dispatchEvent(new Event("input", { bubbles: true }));
+                  settingsDefaultsExitTabTextSize.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+              }
+
+              document.getElementById("settingsDefaultsControlTextSizeValue").textContent =
+                `${document.getElementById("settingsDefaultsControlTextSize").value}%`;
+              document.getElementById("settingsDefaultsAdvisorySizeValue").textContent =
+                `${document.getElementById("settingsDefaultsAdvisorySize").value}%`;
+              document.getElementById("settingsDefaultsActionSizeValue").textContent =
+                `${document.getElementById("settingsDefaultsActionSize").value}%`;
+              document.getElementById("settingsDefaultsShieldSizeValue").textContent =
+                `${document.getElementById("settingsDefaultsShieldSize").value} rem`;
+              
+
+            settingsDefaultsFontFamilyIds.forEach((id) => {
+              const familyEl = document.getElementById(id);
+              if (!familyEl) {
+                return;
+              }
+
+              if (familyEl.value === "Clearview") {
+                familyEl.style.fontFamily = '"Clearview 5WR", sans-serif';
+                familyEl.style.fontSize = "1rem";
+              } else if (familyEl.value === "Highway Gothic") {
+                familyEl.style.fontFamily = '"Series EM", sans-serif';
+                familyEl.style.fontSize = "1.1rem";
+              } else if (familyEl.value === "Arial") {
+                familyEl.style.fontFamily = "Arial, sans-serif";
+                familyEl.style.fontSize = "1rem";
+              } else if (familyEl.value === "Transport") {
+                familyEl.style.fontFamily = '"Transport", sans-serif';
+                familyEl.style.fontSize = "1rem";
+              } else {
+                familyEl.style.fontFamily = "Inter, sans-serif";
+                familyEl.style.fontSize = "1rem";
+              }
+            });
+
+            Object.values(settingsDefaultsFontIds).forEach((id) => {
+              const fontEl = document.getElementById(id);
+              if (fontEl) {
+                fontEl.style.fontFamily = fontEl.value || "Inter";
+              }
+            });
+          });
+      }
 
     for (const elem of textElem_alignmentSelects) {
       for (const alignment of TextElement.prototype.alignment) {
@@ -1827,52 +6442,113 @@ const formHandler = (function () {
         updateShieldCountyVisibility();
       }
 
-    const shieldVariantSelect = document.querySelector("#sdShield_shieldType");
-    if (shieldVariantSelect && ShieldElement.prototype.blockShieldVariants) {
-      const populateVariantOptions = (baseValue, currentValue) => {
-        shieldVariantSelect.innerHTML = "";
-        const config = ShieldElement.prototype.getBlockShieldConfig(baseValue);
-        const variants =
-          (config && Array.isArray(config.variants) && config.variants.length
-            ? config.variants
-            : []) || [];
-        const optionsToUse = variants.length
-          ? variants
-          : (ShieldElement.prototype.blockShieldVariants || []).map(
-            (variant) => variant.value || variant
-          );
-        for (const variant of optionsToUse) {
-          lib.appendOption(shieldVariantSelect, variant, { text: variant });
-        }
-        if (currentValue && optionsToUse.includes(currentValue)) {
-          shieldVariantSelect.value = currentValue;
-        }
-      };
+      const shieldVariantSelect = document.querySelector("#sdShield_shieldType");
+      if (shieldVariantSelect && ShieldElement.prototype.blockShieldVariants) {
+        const AUTO_VARIANT_VALUE = ShieldElement.prototype.defaultVariant || "Auto";
 
-      populateVariantOptions(
-        shield_shieldBase?.value || ShieldElement.prototype.defaultShieldBase,
-        shieldVariantSelect.value
-      );
+        const populateVariantOptions = (baseValue, currentValue) => {
+          shieldVariantSelect.innerHTML = "";
 
-      if (shield_shieldBase) {
-        shield_shieldBase.addEventListener("change", () => {
-          populateVariantOptions(shield_shieldBase.value, null);
+          const config = ShieldElement.prototype.getBlockShieldConfig(baseValue);
+          const variants =
+            (config && Array.isArray(config.variants) && config.variants.length
+              ? config.variants
+              : []) || [];
+
+          const baseOptions = variants.length
+            ? variants
+            : (ShieldElement.prototype.blockShieldVariants || []).map(
+                (variant) => variant.value || variant
+              );
+
+          const optionsToUse = [
+            AUTO_VARIANT_VALUE,
+            ...baseOptions.filter((variant) => variant !== AUTO_VARIANT_VALUE),
+          ];
+
+          for (const variant of optionsToUse) {
+            lib.appendOption(shieldVariantSelect, variant, {
+              text: variant === AUTO_VARIANT_VALUE ? "Auto" : variant,
+            });
+          }
+
+          const nextValue =
+            currentValue && optionsToUse.includes(currentValue)
+              ? currentValue
+              : AUTO_VARIANT_VALUE;
+
+          shieldVariantSelect.value = nextValue;
+        };
+
+        populateVariantOptions(
+          shield_shieldBase?.dataset?.pickerValue ||
+            shield_shieldBase?.value ||
+            ShieldElement.prototype.defaultShieldBase,
+          shieldVariantSelect.value || AUTO_VARIANT_VALUE
+        );
+
+        if (shield_shieldBase) {
+          shield_shieldBase.addEventListener("change", () => {
+            populateVariantOptions(
+              shield_shieldBase.dataset?.pickerValue ||
+                shield_shieldBase.value ||
+                ShieldElement.prototype.defaultShieldBase,
+              AUTO_VARIANT_VALUE
+            );
+          });
+        }
+      }
+
+      const manualBannerCheckbox = document.getElementById("sdShield_manualBanners");
+      if (manualBannerCheckbox) {
+        manualBannerCheckbox.addEventListener("change", () => {
+          syncManualBannerInputMode({ convert: true });
+          readForm();
         });
       }
-    }
 
-    const blockShieldBannerSelects = [
-      document.querySelector("#sdShield_bannerType"),
-      document.querySelector("#sdShield_bannerType2"),
-    ];
-    for (const select of blockShieldBannerSelects) {
-      if (!select) {
-        continue;
+      /* Populate the fixed Shield banner dropdowns */
+      const blockShieldBannerSelects = [
+        document.querySelector("#sdShield_bannerType"),
+        document.querySelector("#sdShield_bannerType2"),
+      ];
+
+      const bannerTypeOptions = Shield.prototype.bannerTypes || [];
+
+      for (const select of blockShieldBannerSelects) {
+        if (!select) {
+          continue;
+        }
+
+        select.innerHTML = "";
+
+        for (const bannerType of bannerTypeOptions) {
+          lib.appendOption(select, bannerType);
+        }
+
+        if (!bannerTypeOptions.includes("None")) {
+          lib.appendOption(select, "None");
+        }
       }
-      for (const bannerType of Shield.prototype.bannerTypes) {
-        lib.appendOption(select, bannerType);
+
+      /* Clicking blank space in the Banner Font row should blur the number input */
+      const shieldFontRow = document.querySelector(
+        '#smSPProperties > [data-property="sdShield"] .sdShieldFontRow'
+      );
+
+      if (shieldFontRow && !shieldFontRow.dataset.blankBlurListener) {
+        shieldFontRow.addEventListener("mousedown", (event) => {
+          const clickedControl = event.target.closest(
+            "input, select, button, label, option"
+          );
+
+          if (!clickedControl && document.activeElement) {
+            document.activeElement.blur();
+          }
+        });
+
+        shieldFontRow.dataset.blankBlurListener = "true";
       }
-    }
 
     const blockBannerPositionSelects = [
       document.querySelector("#sdShield_bannerPosition"),
@@ -2185,8 +6861,11 @@ const formHandler = (function () {
           return hasAnything;
         };
         searchFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+        bindAllFontPreviewSelects(document);
       });
   };
+    
+/* END OF INITUI */
 
   // Show/hide dependent small inputs for a given block (e.g. sdCtrlText, sdAdvisory, sdActionMessage, sdIcon)
   const setDependentVisibility = (block) => {
@@ -2258,6 +6937,135 @@ const formHandler = (function () {
       countyLabel.classList.toggle("sdShieldCountyHidden", !isCountyShield);
       countyInput.classList.toggle("sdShieldCountyHidden", !isCountyShield);
     };
+
+    
+
+    const applyExitOnlyArrowVisibility = () => {
+      const currentPanel = post?.panels?.[exposed?.vars?.currentlySelectedPanelIndex];
+      if (!currentPanel || !currentPanel.sign) {
+        return;
+      }
+
+      const exitOnlyDirectionLabel = document.getElementById("exitOnlyDirectionLabel");
+      const showExitOnlyLabel = document.getElementById("showExitOnlyLabel");
+      const hideExitArrowLabel = document.getElementById("hideExitArrowLabel");
+      const exitOnlyDirection = document.getElementById("exitOnlyDirection");
+      const showExitOnly = document.getElementById("showExitOnly");
+      const hideExitArrow = document.getElementById("hideExitArrow");
+        const exitOnlyDirectionHost = document.querySelector(".exitOnlyDirectionPickerHost");
+      const exitOnlyBorderModeLabel = document.getElementById("exitOnlyBorderModeLabel");
+      const exitOnlyBorderModeSelect = document.getElementById("exitOnlyBorderMode");
+      const exitOnlyLeftTextLabel = document.getElementById("exitOnlyLeftTextLabel");
+      const exitOnlyLeftTextInput = document.getElementById("exitOnlyLeftText");
+      const exitOnlyRightTextLabel = document.getElementById("exitOnlyRightTextLabel");
+      const exitOnlyRightTextInput = document.getElementById("exitOnlyRightText");
+
+      const isExitOnlyMode =
+        currentPanel.sign.guideArrow === "Exit Only" ||
+        currentPanel.sign.guideArrow === "Split Exit Only" ||
+        currentPanel.sign.guideArrow === "Half Exit Only";
+
+      const setVisible = (el, visible) => {
+        if (!el) return;
+        el.classList.toggle("invisible", !visible);
+        el.style.visibility = visible ? "visible" : "hidden";
+      };
+
+      setVisible(exitOnlyDirectionLabel, isExitOnlyMode);
+      setVisible(showExitOnlyLabel, isExitOnlyMode);
+        setVisible(exitOnlyDirection, isExitOnlyMode);
+        setVisible(exitOnlyDirectionHost, isExitOnlyMode);
+      setVisible(showExitOnly, isExitOnlyMode);
+      setVisible(hideExitArrowLabel, isExitOnlyMode);
+      setVisible(hideExitArrow, isExitOnlyMode);
+      setVisible(exitOnlyLeftTextLabel, isExitOnlyMode);
+      setVisible(exitOnlyLeftTextInput, isExitOnlyMode);
+      setVisible(exitOnlyRightTextLabel, isExitOnlyMode);
+      setVisible(exitOnlyRightTextInput, isExitOnlyMode);
+
+      const shouldShowBorderMode =
+        isExitOnlyMode &&
+        !post.secondExitOnly &&
+        (currentPanel.sign.guideArrow === "Half Exit Only" ||
+          currentPanel.sign.guideArrow === "Exit Only");
+
+      setVisible(exitOnlyBorderModeLabel, shouldShowBorderMode);
+      setVisible(exitOnlyBorderModeSelect, shouldShowBorderMode);
+    };
+    const getDefaultBannerType = () =>
+      ShieldElement.prototype.defaultBannerType || "None";
+
+    const normalizeManualBannerText = (value) =>
+      String(value || "").trim();
+
+    const findManualBannerOptionCaseInsensitive = (value) => {
+      const normalized = normalizeManualBannerText(value).toLowerCase();
+
+      if (!normalized) {
+        return getDefaultBannerType();
+      }
+
+      const options = Shield.prototype.bannerTypes || [];
+
+      return (
+        options.find(
+          (option) => String(option).toLowerCase() === normalized
+        ) || null
+      );
+    };
+
+    const syncManualBannerInputMode = ({ convert = false } = {}) => {
+      const manualCheckbox = document.getElementById("sdShield_manualBanners");
+
+      const bannerPairs = [
+        {
+          select: document.getElementById("sdShield_bannerType"),
+          input: document.getElementById("sdShield_bannerCustomText"),
+        },
+        {
+          select: document.getElementById("sdShield_bannerType2"),
+          input: document.getElementById("sdShield_bannerCustomText2"),
+        },
+      ];
+
+      const manual = !manualCheckbox || manualCheckbox.checked;
+
+      bannerPairs.forEach(({ select, input }) => {
+        if (!select || !input) {
+          return;
+        }
+
+        if (convert) {
+          if (manual) {
+            input.value = select.value || getDefaultBannerType();
+          } else {
+            const matchedOption = findManualBannerOptionCaseInsensitive(input.value);
+            select.value = matchedOption || getDefaultBannerType();
+            input.value = "";
+          }
+        }
+
+        select.hidden = manual;
+        input.hidden = !manual;
+      });
+    };
+    
+    const updateExitTabLeftControlVisibility = (exitNumberValue) => {
+      const hasExitNumber = String(exitNumberValue || "").trim() !== "";
+
+      const showLeftLabel = document.getElementById("showLeftLabel");
+      const showLeft = document.getElementById("showLeft");
+
+      if (showLeftLabel) {
+        showLeftLabel.style.display = hasExitNumber ? "" : "none";
+      }
+
+      if (showLeft) {
+        showLeft.style.display = hasExitNumber ? "" : "none";
+      }
+
+      return hasExitNumber;
+    };
     
   // Handle Form
   // Read the form and update the page by redrawing it.
@@ -2315,11 +7123,109 @@ const formHandler = (function () {
     exitTab.width = exitTab.number.trim() === ""
         ? "Edge"
         : form["exitTabWidth"].value;
-    exitTab.position = form["exitTabPosition"].value;
+        const exitTabPositionField = form["exitTabPosition"];
+        const showLeftField = form["showLeft"];
+
+        const hasExitNumberText = updateExitTabLeftControlVisibility(exitTab.number);
+
+        const previousPosition = exitTab.position || "Right";
+        const previousShowLeft = exitTab.showLeft === true;
+
+        let nextExitTabPosition = exitTabPositionField
+          ? exitTabPositionField.value || previousPosition
+          : previousPosition;
+
+        let nextShowLeft = showLeftField
+          ? showLeftField.checked
+          : previousShowLeft;
+
+        const activeElement = document.activeElement;
+        const changedLeftCheckbox = showLeftField && activeElement === showLeftField;
+        const changedPositionDropdown =
+          exitTabPositionField && activeElement === exitTabPositionField;
+
+        /*
+          Left checkbox:
+          - checking it forces position to Left
+          - unchecking it does NOT move position away from Left
+        */
+        if (changedLeftCheckbox) {
+          if (nextShowLeft) {
+            nextExitTabPosition = "Left";
+          }
+        }
+
+        /*
+          Position dropdown:
+          - choosing Left checks the Left box
+          - choosing anything else unchecks the Left box
+        */
+        if (changedPositionDropdown) {
+          nextShowLeft = nextExitTabPosition === "Left";
+        }
+
+        /*
+          No exit number means the Left checkbox should not show or stay active.
+        */
+        if (!hasExitNumberText) {
+          nextShowLeft = false;
+        }
+
+        exitTab.position = nextExitTabPosition;
+        exitTab.showLeft = nextShowLeft;
+
+        if (exitTabPositionField) {
+          exitTabPositionField.value = exitTab.position;
+        }
+
+        if (showLeftField) {
+          showLeftField.checked = exitTab.showLeft;
+        }
+        
     exitTab.color = form["exitColor"].value;
     exitTab.variant = form["exitVariant"].value;
 
     toggleExitTabVariantOptionsVisibility(exitTab.variant);
+        
+        const currentSign = currentPanel?.sign;
+
+        if (currentSign) {
+        const qcEnabled = document.getElementById("qcExitMarkerEnabled");
+        const qcNumber = document.getElementById("qcExitMarkerNumber");
+        const qcPosition = document.getElementById("qcExitMarkerPosition");
+        const qcFlipped = document.getElementById("qcExitMarkerFlipped");
+        const qcSize = document.getElementById("qcExitMarkerSize");
+        const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
+
+        if (qcEnabled) {
+        currentSign.quebecExitMarkerEnabled = !!qcEnabled.checked;
+        }
+
+        if (qcNumber) {
+        currentSign.quebecExitMarkerNumber = qcNumber.value || "1";
+        }
+
+        if (qcPosition) {
+          currentSign.quebecExitMarkerPosition = String(qcPosition.value || "Center")
+            .replace(/^Bottom\s+/i, "")
+            .trim();
+        }
+
+        if (qcFlipped) {
+        currentSign.quebecExitMarkerFlipped = !!qcFlipped.checked;
+        }
+        if (qcSize) {
+          const parsedSize = parseFloat(qcSize.value);
+          const resolvedSize =
+            Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 3.05;
+
+          currentSign.quebecExitMarkerSizeRem = resolvedSize;
+
+          if (qcSizeValue) {
+            qcSizeValue.textContent = resolvedSize.toString();
+          }
+        }
+    }
 
     const resolveDefaultTollLogoSize = () =>
       typeof ExitTab.prototype.defaultTollLogoSize === "number"
@@ -2384,34 +7290,75 @@ const formHandler = (function () {
       exitTab.tollLogoSquare = !!exitTab.tollLogoSquare;
     }
 
-    exitTab.FHWAFont = form["exitFont"].checked;
-    exitTab.showLeft = form["showLeft"].checked;
-    exitTab.fullBorder = form["fullBorder"].checked;
-    exitTab.squareCorners = form["squareCorners"].checked;
-    exitTab.topOffset = form["topOffset"].checked;
-    exitTab.verticalArrangement = form["verticalArrangement"].checked;
-    exitTab.caStyle = form["caStyle"].checked;
+        const exitFontCheckbox = form["exitFont"];
+        const fontSizeInput = form["fontSize"];
 
-    setStoredItem(STORAGE_KEYS.exitTabFHWAFont, String(!!exitTab.FHWAFont));
-    setStoredItem(STORAGE_KEYS.exitTabFullBorder, String(!!exitTab.fullBorder));
-    setStoredItem(STORAGE_KEYS.exitTabSquareCorners, String(!!exitTab.squareCorners));
-    setStoredItem(STORAGE_KEYS.exitTabTopOffset, String(!!exitTab.topOffset));
-    const borderThicknessInput = parseFloat(form["borderThickness"].value);
-    exitTab.borderThickness = Number.isFinite(borderThicknessInput)
-      ? Math.max(0, borderThicknessInput)
-      : ExitTab.prototype.defaultBorderThickness;
-    exitTab.minHeight = form["minHeight"].value;
-    exitTab.fontSize = form["fontSize"].value;
+        const previousFHWAState =
+          exitFontCheckbox?.dataset.lastFhwaState === "true";
 
-    // Nested Tab Spacing (always applies to parent exit tab, not nested tabs)
-    const parentExitTab = currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex];
-    const nestedTabSpacingInput = parseFloat(form["nestedTabSpacing"]?.value);
-    if (parentExitTab) {
-      parentExitTab.nestedTabSpacing = Number.isFinite(nestedTabSpacingInput)
-        ? Math.max(0, nestedTabSpacingInput)
-        : 0;
-    }
+        const nextFHWAState = !!exitFontCheckbox?.checked;
 
+        if (
+          exitFontCheckbox &&
+          exitFontCheckbox.dataset.lastFhwaState !== undefined &&
+          previousFHWAState !== nextFHWAState
+        ) {
+          const currentFontSize = parseFloat(fontSizeInput?.value);
+
+          if (nextFHWAState === true && Number.isFinite(currentFontSize) && currentFontSize === 20) {
+            fontSizeInput.value = "16";
+            const fontValueEl = document.getElementById("fontValue");
+            if (fontValueEl) {
+              fontValueEl.innerHTML = "16";
+            }
+          } else if (nextFHWAState === false && Number.isFinite(currentFontSize) && currentFontSize === 16) {
+            fontSizeInput.value = "20";
+            const fontValueEl = document.getElementById("fontValue");
+            if (fontValueEl) {
+              fontValueEl.innerHTML = "20";
+            }
+          }
+        }
+
+        if (exitFontCheckbox) {
+          exitFontCheckbox.dataset.lastFhwaState = String(nextFHWAState);
+        }
+
+        exitTab.FHWAFont = nextFHWAState;
+
+        const hasExitNumberForLeft =
+          String(exitTab.number || "").trim() !== "";
+
+        if (!hasExitNumberForLeft) {
+          exitTab.showLeft = false;
+        }
+
+        exitTab.fullBorder = form["fullBorder"].checked;
+        exitTab.squareCorners = form["squareCorners"].checked;
+        exitTab.topOffset = form["topOffset"].checked;
+        exitTab.verticalArrangement = form["verticalArrangement"].checked;
+        exitTab.caStyle = form["caStyle"].checked;
+
+        setStoredItem(STORAGE_KEYS.exitTabFHWAFont, String(!!exitTab.FHWAFont));
+        setStoredItem(STORAGE_KEYS.exitTabFullBorder, String(!!exitTab.fullBorder));
+        setStoredItem(STORAGE_KEYS.exitTabSquareCorners, String(!!exitTab.squareCorners));
+        setStoredItem(STORAGE_KEYS.exitTabTopOffset, String(!!exitTab.topOffset));
+
+        const borderThicknessInput = parseFloat(form["borderThickness"].value);
+        exitTab.borderThickness = Number.isFinite(borderThicknessInput)
+          ? Math.max(0, borderThicknessInput)
+          : ExitTab.prototype.defaultBorderThickness;
+
+        exitTab.minHeight = form["minHeight"].value;
+        exitTab.fontSize = form["fontSize"].value;
+
+        const parentExitTab = currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex];
+        const nestedTabSpacingInput = parseFloat(form["nestedTabSpacing"]?.value);
+        if (parentExitTab) {
+          parentExitTab.nestedTabSpacing = Number.isFinite(nestedTabSpacingInput)
+            ? Math.max(0, nestedTabSpacingInput)
+            : 0;
+        }
     // Misc Shields
     currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
 
@@ -2532,27 +7479,57 @@ const formHandler = (function () {
       const elementId = `${blockElemType}_${propertyName}`;
       const element = document.getElementById(elementId);
 
-      if (element) {
-        const handleCustomBanner =
-          blockElemType === "sdShield" &&
-          (propertyName === "bannerType" || propertyName === "bannerType2");
-        if (handleCustomBanner) {
-          const customInputId =
-            propertyName === "bannerType"
-              ? "sdShield_bannerCustomText"
-              : "sdShield_bannerCustomText2";
-          const customInput = document.getElementById(customInputId);
-          const customValue =
-            customInput && typeof customInput.value === "string"
-              ? customInput.value.trim()
-              : "";
-          if (customValue) {
-            currentBlockElem[propertyName] = customValue;
-          } else if (element.tagName === "SELECT") {
-            currentBlockElem[propertyName] = element.value;
-          }
-          continue;
-        }
+        if (element) {
+            if (blockElemType === "sdShield" && propertyName === "shieldBase") {
+              const selectedShieldBase = syncShieldBasePickerValue(
+                currentBlockElem.shieldBase ||
+                  currentBlockElem.type ||
+                  element.dataset?.pickerValue ||
+                  element.value ||
+                  ShieldElement.prototype.defaultShieldBase ||
+                  "I",
+                { updateBlock: true }
+              );
+
+              currentBlockElem.shieldBase = selectedShieldBase;
+              currentBlockElem.type = selectedShieldBase;
+              continue;
+            }
+
+            const handleCustomBanner =
+              blockElemType === "sdShield" &&
+              (propertyName === "bannerType" || propertyName === "bannerType2");
+
+            if (handleCustomBanner) {
+              const manualCheckbox = document.getElementById("sdShield_manualBanners");
+              const manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+              const customInputId =
+                propertyName === "bannerType"
+                  ? "sdShield_bannerCustomText"
+                  : "sdShield_bannerCustomText2";
+
+              const customInput = document.getElementById(customInputId);
+
+              if (manualBanners) {
+                const customValue =
+                  customInput && typeof customInput.value === "string"
+                    ? customInput.value.trim()
+                    : "";
+
+                currentBlockElem[propertyName] =
+                  customValue || ShieldElement.prototype.defaultBannerType || "None";
+              } else {
+                const selectedValue = element.tagName === "SELECT"
+                  ? element.value
+                  : ShieldElement.prototype.defaultBannerType || "None";
+
+                currentBlockElem[propertyName] =
+                  selectedValue || ShieldElement.prototype.defaultBannerType || "None";
+              }
+
+              continue;
+            }
         if (element.type === "checkbox") {
           currentBlockElem[propertyName] = element.checked;
         } else if (element.type === "radio") {
@@ -2566,6 +7543,14 @@ const formHandler = (function () {
         }
       }
     }
+        if (blockElemType === "sdShield") {
+          ensureSdShieldBasePicker();
+
+          const manualCheckbox = document.getElementById("sdShield_manualBanners");
+          currentBlockElem.manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+          syncManualBannerInputMode();
+        }
 
     if (blockElemType === "sdShield") {
       currentBlockElem.shieldSize =
@@ -2649,9 +7634,16 @@ const formHandler = (function () {
       }
     }
 
-    currentPanel.sign.guideArrow = guideArrow_result;
-    currentPanel.sign.guideArrowLanes = form["guideArrowLanes"].value;
-    currentPanel.sign.arrowPosition = form["arrowLocations"].value;
+        currentPanel.sign.guideArrow = guideArrow_result;
+
+        if (guideArrow_result !== "None") {
+          currentPanel.sign.arrowMode = "standard";
+        } else if (currentPanel.sign.arrowMode !== "apl") {
+          currentPanel.sign.arrowMode = "standard";
+        }
+
+        currentPanel.sign.guideArrowLanes = form["guideArrowLanes"].value;
+        currentPanel.sign.arrowPosition = form["arrowLocations"].value;
 
     var exitOnlyDirection_result = form["exitOnlyDirection"].value;
 
@@ -2661,29 +7653,22 @@ const formHandler = (function () {
         break;
       }
     }
+        
+    
 
-    if (currentPanel.sign.guideArrow == "Half Exit Only") {
-      if (form["arrowLocations"].value == "Middle") {
-        while (form["arrowLocations"].firstChild) {
-          form["arrowLocations"].removeChild(form["arrowLocations"].lastChild);
-        }
+        if (currentPanel.sign.guideArrow == "Half Exit Only") {
+          currentPanel.sign.arrowPosition = form["arrowLocations"].value;
 
-        for (const arrowPosition of Sign.prototype.arrowPositions) {
-          if (arrowPosition != "Middle") {
-            lib.appendOption(form["arrowLocations"], arrowPosition);
+          for (const arrowPosition of Sign.prototype.arrowPositions) {
+            if (
+              !form["arrowLocations"].querySelector(
+                `option[value="${arrowPosition}"]`
+              )
+            ) {
+              lib.appendOption(form["arrowLocations"], arrowPosition);
+            }
           }
-        }
-
-        form["arrowLocations"].value = "Left";
-        currentPanel.sign.arrowPosition = "Left";
-      } else {
-        currentPanel.sign.arrowPosition = form["arrowLocations"].value;
-
-        if (!form["arrowLocations"].querySelector("option[value=Middle]")) {
-          lib.appendOption(form["arrowLocations"], "Middle");
-        }
-      }
-    } else if (
+        } else if (
       currentPanel.sign.guideArrow == "Exit Only" &&
       (currentPanel.sign.guideArrowLanes == 1 ||
         currentPanel.sign.guideArrowLanes == 2)
@@ -2741,7 +7726,10 @@ const formHandler = (function () {
       .filter((part) => part && part.trim().length > 0)
       .join(" ")
       .trim();
-    currentPanel.sign.exitOnlyPadding = form["exitOnlyPadding"].value;
+        const rawExitOnlyPadding = parseFloat(form["exitOnlyPadding"].value);
+        currentPanel.sign.exitOnlyPadding = Number.isFinite(rawExitOnlyPadding)
+          ? rawExitOnlyPadding
+          : 0.25;
 
     currentPanel.sign.otherSymbol = form["otherSymbol"].value;
     currentPanel.sign.oSNum = form["oSNum"].value;
@@ -2753,85 +7741,8 @@ const formHandler = (function () {
       form["oSNum"].style.display = "none";
     }
 
-    const exitOnlyDirectionLabel = document.getElementById(
-      "exitOnlyDirectionLabel"
-    );
-    const showExitOnlyLabel = document.getElementById("showExitOnlyLabel");
-    const hideExitArrowLabel = document.getElementById("hideExitArrowLabel");
-    const exitOnlyDirection = document.getElementById("exitOnlyDirection");
-    const showExitOnly = document.getElementById("showExitOnly");
-    const hideExitArrow = document.getElementById("hideExitArrow");
-    const exitOnlyBorderModeLabel = document.getElementById(
-      "exitOnlyBorderModeLabel"
-    );
-    const exitOnlyBorderModeSelect = document.getElementById(
-      "exitOnlyBorderMode"
-    );
-    const exitOnlyLeftTextLabel = document.getElementById(
-      "exitOnlyLeftTextLabel"
-    );
-    const exitOnlyLeftTextInput = document.getElementById("exitOnlyLeftText");
-    const exitOnlyRightTextLabel = document.getElementById(
-      "exitOnlyRightTextLabel"
-    );
-    const exitOnlyRightTextInput = document.getElementById("exitOnlyRightText");
-
-    if (
-      currentPanel.sign.guideArrow != "Exit Only" &&
-      currentPanel.sign.guideArrow != "Split Exit Only" &&
-      currentPanel.sign.guideArrow != "Half Exit Only"
-    ) {
-      exitOnlyDirectionLabel.style.visibility = "hidden";
-      showExitOnlyLabel.style.visibility = "hidden";
-      exitOnlyDirection.style.visibility = "hidden";
-      showExitOnly.style.visibility = "hidden";
-      if (hideExitArrowLabel && hideExitArrow) {
-        hideExitArrowLabel.style.visibility = "hidden";
-        hideExitArrow.style.visibility = "hidden";
-      }
-      if (exitOnlyLeftTextLabel && exitOnlyLeftTextInput) {
-        exitOnlyLeftTextLabel.style.visibility = "hidden";
-        exitOnlyLeftTextInput.style.visibility = "hidden";
-      }
-      if (exitOnlyRightTextLabel && exitOnlyRightTextInput) {
-        exitOnlyRightTextLabel.style.visibility = "hidden";
-        exitOnlyRightTextInput.style.visibility = "hidden";
-      }
-      if (exitOnlyBorderModeLabel && exitOnlyBorderModeSelect) {
-        exitOnlyBorderModeLabel.style.visibility = "hidden";
-        exitOnlyBorderModeSelect.style.visibility = "hidden";
-      }
-    } else {
-      exitOnlyDirectionLabel.style.visibility = "visible";
-      showExitOnlyLabel.style.visibility = "visible";
-      exitOnlyDirection.style.visibility = "visible";
-      showExitOnly.style.visibility = "visible";
-      if (hideExitArrowLabel && hideExitArrow) {
-        hideExitArrowLabel.style.visibility = "visible";
-        hideExitArrow.style.visibility = "visible";
-      }
-      if (exitOnlyLeftTextLabel && exitOnlyLeftTextInput) {
-        exitOnlyLeftTextLabel.style.visibility = "visible";
-        exitOnlyLeftTextInput.style.visibility = "visible";
-      }
-      if (exitOnlyRightTextLabel && exitOnlyRightTextInput) {
-        exitOnlyRightTextLabel.style.visibility = "visible";
-        exitOnlyRightTextInput.style.visibility = "visible";
-      }
-      if (exitOnlyBorderModeLabel && exitOnlyBorderModeSelect) {
-        const shouldShowBorderMode =
-          !post.secondExitOnly &&
-          (currentPanel.sign.guideArrow == "Half Exit Only" ||
-            currentPanel.sign.guideArrow == "Exit Only");
-        exitOnlyBorderModeLabel.style.visibility = shouldShowBorderMode
-          ? "visible"
-          : "hidden";
-        exitOnlyBorderModeSelect.style.visibility = shouldShowBorderMode
-          ? "visible"
-          : "hidden";
-      }
-    }
-
+    applyExitOnlyArrowVisibility();
+    
     var paddingValues = currentPanel.sign.padding.split("rem");
 
     var left = parseFloat(paddingValues[3]);
@@ -2866,6 +7777,39 @@ const formHandler = (function () {
    */
   const updateForm = function () {
     syncPostReference();
+      const currentPanelLabel = document.getElementById("currentlySelectedPanel");
+      if (currentPanelLabel && post && Array.isArray(post.panels)) {
+        const selectedPanel =
+          exposed && typeof exposed.getCurrentPanel === "function"
+            ? exposed.getCurrentPanel()
+            : null;
+
+        const selectedPanelIndex = selectedPanel
+          ? post.panels.indexOf(selectedPanel)
+          : -1;
+
+        const panelNumber = (selectedPanelIndex >= 0 ? selectedPanelIndex : 0) + 1;
+        currentPanelLabel.textContent = "Panel " + panelNumber;
+      }
+      
+      const currentPanel =
+        exposed && typeof exposed.getCurrentPanel === "function"
+          ? exposed.getCurrentPanel()
+          : null;
+
+      if (currentPanel && currentPanel.sign) {
+        document.getElementById("guideArrow").value =
+          String(currentPanel.sign.guideArrow || "None").split(":")[0];
+
+        document.getElementById("guideArrowLanes").value =
+          currentPanel.sign.guideArrowLanes ?? 1;
+
+        document.getElementById("arrowLocations").value =
+          currentPanel.sign.arrowPosition || "Middle";
+
+        document.getElementById("exitOnlyDirection").value =
+          String(currentPanel.sign.exitguideArrows || "").split(":")[0];
+      }
     // Icon Modal Logic
     const iconChooseBtn = document.getElementById("sdIcon_chooseBtn");
     const iconModal = document.getElementById("iconSelectorModal");
@@ -3160,36 +8104,62 @@ const formHandler = (function () {
       exitTabList.removeChild(exitTabList.lastChild);
     }
 
-    for (
-      let panelIndex = 0, panelsLength = post.panels.length;
-      panelIndex < panelsLength;
-      panelIndex++
-    ) {
-      const panelButton = document.createElement("button");
-      panelButton.id = "edit" + (panelIndex + 1);
-      panelButton.type = "button";
-      panelButton.className =
-        "panelListButton" +
-        (exposed.vars.currentlySelectedPanelIndex == panelIndex
-          ? " active"
-          : "");
-      panelButton.dataset.panelIndex = panelIndex.toString();
-      panelButton.draggable = post.panels.length > 1;
+      for (
+        let panelIndex = 0, panelsLength = post.panels.length;
+        panelIndex < panelsLength;
+        panelIndex++
+      ) {
+        const panelRow = document.createElement("div");
+        panelRow.className = "panelListRow";
 
-      const label = document.createElement("span");
-      label.className = "panelListLabel";
-      label.textContent = "Panel " + (panelIndex + 1);
-      panelButton.appendChild(label);
+        const panelButton = document.createElement("button");
+        panelButton.id = "edit" + (panelIndex + 1);
+        panelButton.type = "button";
+        panelButton.className =
+          "panelListButton" +
+          (exposed.vars.currentlySelectedPanelIndex == panelIndex
+            ? " active"
+            : "");
+        panelButton.dataset.panelIndex = panelIndex.toString();
+        panelButton.draggable = post.panels.length > 1;
 
-      panelButton.addEventListener("click", function () {
-        exposed.changeEditingPanel(panelIndex);
-        panelButton.classList.add("active");
-      });
-      panelButton.addEventListener("dragstart", handlePanelDragStart);
-      panelButton.addEventListener("dragend", handlePanelDragEnd);
+        const label = document.createElement("span");
+        label.className = "panelListLabel";
+        label.textContent = "Panel " + (panelIndex + 1);
+        panelButton.appendChild(label);
 
-      panelList.appendChild(panelButton);
-    }
+        panelButton.addEventListener("click", function () {
+          exposed.changeEditingPanel(panelIndex);
+        });
+        panelButton.addEventListener("dragstart", handlePanelDragStart);
+        panelButton.addEventListener("dragend", handlePanelDragEnd);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "panelDeleteButton";
+        deleteButton.title = "Delete Panel " + (panelIndex + 1);
+        deleteButton.setAttribute("aria-label", "Delete Panel " + (panelIndex + 1));
+
+        const deleteIcon = document.createElement("span");
+        deleteIcon.className = "material-symbols-outlined";
+        deleteIcon.textContent = "delete";
+        deleteButton.appendChild(deleteIcon);
+
+          deleteButton.addEventListener("mousedown", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+
+          deleteButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            app.deletePanelAt(panelIndex);
+          });
+        panelRow.appendChild(panelButton);
+        panelRow.appendChild(deleteButton);
+        panelList.appendChild(panelRow);
+      }
 
     const panelSpacingSlider = document.getElementById("panelSpacing");
     const panelSpacingValueInput =
@@ -3319,229 +8289,556 @@ const formHandler = (function () {
         !selectedExitTab || nestedCount >= limit;
     }
 
-    // APL Arrow List Update
-    const aplArrowList = document.getElementById("aplArrowList");
-    const aplArrowTypeSelect = document.getElementById("aplArrowType");
-    const selectedAPLIndex = exposed.vars.currentlySelectedAPLArrowIndex;
+      // APL Arrow List Update
+      const aplArrowList = document.getElementById("aplArrowList");
+      const aplArrowTypeSelect = document.getElementById("aplArrowType");
+      const selectedAPLIndex = exposed.vars.currentlySelectedAPLArrowIndex;
 
-    if (aplArrowList) {
-      lib.clearChildren(aplArrowList);
+      const getAPLArrowKind = (arrow) => {
+        if (arrow?.kind) return arrow.kind;
+        if (arrow?.type === "APL_UP") return "UP";
+        if (arrow?.type === "APL_UP_TURN") return arrow.flip ? "UP_LEFT" : "UP_RIGHT";
+        if (arrow?.type === "APL_DUAL_TURN") return "DUAL_TURN";
+        if (arrow?.type === "APL_TURN") return arrow.flip ? "LEFT_TURN" : "RIGHT_TURN";
+        return "UP";
+      };
 
-      // Add hint text
-      const hintText = document.createElement("p");
-      hintText.style.fontSize = "0.8rem";
-      hintText.style.color = "#888";
-      hintText.style.marginBottom = "8px";
-      hintText.style.fontStyle = "italic";
-      hintText.textContent = "To adjust spacing of each APL section, use the spacing section in the subpanel tab.";
-      aplArrowList.appendChild(hintText);
+      const getAPLArrowLabel = (arrow) => {
+        const labels = {
+          UP: "Up",
+          UP_LEFT: "Up Left Turn",
+          UP_RIGHT: "Up Right Turn",
+          DUAL_TURN: "Dual Turn",
+          LEFT_TURN: "Left Turn",
+          RIGHT_TURN: "Right Turn",
+        };
 
-      const aplArrows = panel.sign.aplArrows || [];
+        return labels[getAPLArrowKind(arrow)] || "Up";
+      };
 
-      for (let i = 0; i < aplArrows.length; i++) {
-        const arrow = aplArrows[i];
+      const createAPLDropZone = ({ placement, subPanelIndex, dividerAfterSubPanelIndex }) => {
+        const dropZone = document.createElement("div");
+        dropZone.className = "aplArrowDropZone";
+        dropZone.textContent = "Drop arrow here";
+        dropZone.dataset.aplDropPlacement = placement;
 
-        // Create container for arrow button and divider button
-        const arrowContainer = document.createElement("div");
-        arrowContainer.className = "aplArrowListItem";
-        arrowContainer.style.display = "flex";
-        arrowContainer.style.alignItems = "center";
-        arrowContainer.style.gap = "4px";
-
-        const arrowButton = document.createElement("button");
-        arrowButton.type = "button";
-        arrowButton.className = "scrollMenuItem" + (i === selectedAPLIndex ? " active" : "");
-        arrowButton.dataset.aplIndex = i.toString();
-        arrowButton.style.flex = "1";
-
-        const arrowDef = ArrowElement.prototype.arrows[arrow.type];
-        let label = arrowDef ? arrowDef.label : arrow.type;
-        // Remove "APL " prefix if present
-        if (label.startsWith("APL ")) {
-          label = label.substring(4);
+        if (placement === "divider") {
+          dropZone.dataset.dividerAfterSubpanelIndex = String(dividerAfterSubPanelIndex);
+        } else {
+          dropZone.dataset.subpanelIndex = String(subPanelIndex);
         }
-        arrowButton.textContent = "Arrow " + (i + 1) + ": " + label;
 
-        arrowButton.addEventListener("click", function () {
-          if (exposed && typeof exposed.selectAPLArrow === "function") {
-            exposed.selectAPLArrow(i);
+        dropZone.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          dropZone.classList.add("dragOver");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+          dropZone.classList.remove("dragOver");
+        });
+
+        dropZone.addEventListener("drop", (event) => {
+          event.preventDefault();
+          dropZone.classList.remove("dragOver");
+
+          const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+
+          if (!Number.isFinite(fromIndex)) {
+            return;
+          }
+
+          if (placement === "divider") {
+            exposed.moveAPLArrow(fromIndex, {
+              placement: "divider",
+              dividerAfterSubPanelIndex,
+            });
+          } else {
+            exposed.moveAPLArrow(fromIndex, {
+              placement: "subpanel",
+              subPanelIndex,
+            });
           }
         });
 
-        arrowContainer.appendChild(arrowButton);
+        return dropZone;
+      };
 
-        // Add divider button (available on all arrows if at least 2 arrows)
-        if (aplArrows.length >= 2) {
-          const dividerContainer = document.createElement("div");
-          dividerContainer.style.display = "flex";
-          dividerContainer.style.flexDirection = "row";
-          dividerContainer.style.alignItems = "center";
-          dividerContainer.style.gap = "4px";
-          dividerContainer.style.marginLeft = "4px";
+      let aplVisualArrowOrder = [];
 
-          const dividerButton = document.createElement("button");
-          dividerButton.type = "button";
-          dividerButton.className = "aplDividerButton" + (arrow.dividerAfter ? " active" : "");
-          dividerButton.title = arrow.dividerAfter ? "Remove Divider" : "Add Divider";
-          dividerButton.style.minWidth = "28px";
-          dividerButton.style.padding = "4px";
-          dividerButton.style.display = "flex";
-          dividerButton.style.alignItems = "center";
-          dividerButton.style.justifyContent = "center";
+      const shouldShowSpacingAfterArrow = (arrowIndex) => {
+        const visualIndex = aplVisualArrowOrder.indexOf(arrowIndex);
+        return visualIndex >= 0 && visualIndex < aplVisualArrowOrder.length - 1;
+      };
 
-          if (arrow.dividerAfter) {
-            const closeIcon = document.createElement("img");
-            closeIcon.src = "img/other-symbols/ui/close.svg";
-            closeIcon.alt = "Remove Divider";
-            closeIcon.className = "aplDividerIcon";
-            closeIcon.style.width = "20px";
-            closeIcon.style.height = "20px";
-            dividerButton.appendChild(closeIcon);
-          } else {
-            const dividerIcon = document.createElement("img");
-            dividerIcon.src = "img/other-symbols/ui/divider_add.svg";
-            dividerIcon.alt = "Add Divider";
-            dividerIcon.className = "aplDividerIcon";
-            dividerIcon.style.width = "20px";
-            dividerIcon.style.height = "20px";
-            dividerButton.appendChild(dividerIcon);
-          }
+      const createAPLArrowRow = (arrow, arrowIndex, sectionArrows, sectionLocalIndex) => {
+        const arrowRow = document.createElement("div");
+        arrowRow.className =
+          "aplArrowListItem" + (arrowIndex === selectedAPLIndex ? " active" : "");
+          arrowRow.draggable = false;
+          arrowRow.dataset.aplIndex = String(arrowIndex);
 
-          dividerButton.addEventListener("click", function (e) {
-            e.stopPropagation();
-            if (exposed && typeof exposed.addAPLDivider === "function") {
-              exposed.addAPLDivider(i);
+          const dragHandle = document.createElement("button");
+          dragHandle.type = "button";
+          dragHandle.className = "aplArrowDragHandle";
+          dragHandle.textContent = "☰";
+          dragHandle.title = "Drag to reorder";
+          dragHandle.draggable = true;
+
+          arrowRow.addEventListener("dragstart", (event) => {
+            const startedFromHandle = event.target.closest(".aplArrowDragHandle");
+
+            if (!startedFromHandle) {
+              event.preventDefault();
+              event.stopPropagation();
+              return;
             }
+
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", String(arrowIndex));
+            arrowRow.classList.add("dragging");
           });
 
-          dividerContainer.appendChild(dividerButton);
+        arrowRow.addEventListener("dragend", () => {
+          arrowRow.classList.remove("dragging");
+        });
+          const stopControlDragStart = (element) => {
+            if (!element) {
+              return;
+            }
 
-          if (arrow.dividerAfter) {
-            // Radio buttons for divider options (when divider is active)
-            const radioGroup = document.createElement("div");
-            radioGroup.className = "aplDividerRadioGroup";
-            radioGroup.style.display = "flex";
-            radioGroup.style.flexDirection = "row";
-            radioGroup.style.gap = "8px";
-            radioGroup.style.fontSize = "0.75rem";
-            radioGroup.style.marginLeft = "8px";
-            radioGroup.style.flexWrap = "wrap";
-
-            const radioName = "aplDividerOption_" + i;
-
-            // Option 1: Normal (default)
-            const normalLabel = document.createElement("label");
-            normalLabel.className = "aplDividerRadioLabel";
-            const normalRadio = document.createElement("input");
-            normalRadio.type = "radio";
-            normalRadio.name = radioName;
-            normalRadio.value = "normal";
-            normalRadio.checked = !arrow.groupedWithDivider && !arrow.exitOnly;
-            normalRadio.addEventListener("change", function (e) {
-              e.stopPropagation();
-              if (exposed) {
-                if (typeof exposed.setAPLGroupedWithDivider === "function") {
-                  exposed.setAPLGroupedWithDivider(i, false);
-                }
-                if (typeof exposed.setAPLExitOnly === "function") {
-                  exposed.setAPLExitOnly(i, false);
-                }
-                if (typeof exposed.selectAPLArrow === "function") {
-                  exposed.selectAPLArrow(i);
-                }
-              }
-            });
-            normalLabel.appendChild(normalRadio);
-            normalLabel.appendChild(document.createTextNode("Normal"));
-            radioGroup.appendChild(normalLabel);
-
-            // Option 2: Group with Last Arrow
-            const groupLabel = document.createElement("label");
-            groupLabel.className = "aplDividerRadioLabel";
-            const groupRadio = document.createElement("input");
-            groupRadio.type = "radio";
-            groupRadio.name = radioName;
-            groupRadio.value = "group";
-            groupRadio.checked = arrow.groupedWithDivider === true;
-            groupRadio.addEventListener("change", function (e) {
-              e.stopPropagation();
-              if (exposed && typeof exposed.setAPLGroupedWithDivider === "function") {
-                exposed.setAPLGroupedWithDivider(i, true);
-              }
-              if (exposed && typeof exposed.selectAPLArrow === "function") {
-                exposed.selectAPLArrow(i);
-              }
-            });
-            groupLabel.appendChild(groupRadio);
-            groupLabel.appendChild(document.createTextNode("Group"));
-            radioGroup.appendChild(groupLabel);
-
-            // Option 3: Exit Only
-            const exitOnlyLabel = document.createElement("label");
-            exitOnlyLabel.className = "aplDividerRadioLabel";
-            const exitOnlyRadio = document.createElement("input");
-            exitOnlyRadio.type = "radio";
-            exitOnlyRadio.name = radioName;
-            exitOnlyRadio.value = "exitOnly";
-            exitOnlyRadio.checked = arrow.exitOnly === true;
-            exitOnlyRadio.addEventListener("change", function (e) {
-              e.stopPropagation();
-              if (exposed && typeof exposed.setAPLExitOnly === "function") {
-                exposed.setAPLExitOnly(i, true);
-              }
-              if (exposed && typeof exposed.selectAPLArrow === "function") {
-                exposed.selectAPLArrow(i);
-              }
-            });
-            exitOnlyLabel.appendChild(exitOnlyRadio);
-            exitOnlyLabel.appendChild(document.createTextNode("Exit Only"));
-            radioGroup.appendChild(exitOnlyLabel);
-
-            dividerContainer.appendChild(radioGroup);
-          } else {
-            // Checkbox for Exit Only (when no divider)
-            const exitOnlyCheckLabel = document.createElement("label");
-            exitOnlyCheckLabel.className = "aplDividerRadioLabel";
-            exitOnlyCheckLabel.style.marginLeft = "8px";
-
-            const exitOnlyCheckbox = document.createElement("input");
-            exitOnlyCheckbox.type = "checkbox";
-            exitOnlyCheckbox.checked = arrow.exitOnly === true;
-            exitOnlyCheckbox.addEventListener("change", function (e) {
-              e.stopPropagation();
-              if (exposed && typeof exposed.setAPLExitOnly === "function") {
-                exposed.setAPLExitOnly(i, this.checked);
-              }
-              if (exposed && typeof exposed.selectAPLArrow === "function") {
-                exposed.selectAPLArrow(i);
-              }
+            element.addEventListener("pointerdown", (event) => {
+              event.stopPropagation();
             });
 
-            exitOnlyCheckLabel.appendChild(exitOnlyCheckbox);
-            exitOnlyCheckLabel.appendChild(document.createTextNode("Exit Only"));
-            dividerContainer.appendChild(exitOnlyCheckLabel);
+            element.addEventListener("mousedown", (event) => {
+              event.stopPropagation();
+            });
+
+            element.addEventListener("dragstart", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            });
+          };
+
+        arrowRow.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          arrowRow.classList.add("dragOver");
+        });
+
+        arrowRow.addEventListener("dragleave", () => {
+          arrowRow.classList.remove("dragOver");
+        });
+
+        arrowRow.addEventListener("drop", (event) => {
+          event.preventDefault();
+          arrowRow.classList.remove("dragOver");
+
+          const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+
+          if (!Number.isFinite(fromIndex)) {
+            return;
           }
 
-          arrowContainer.appendChild(dividerContainer);
+          if (arrow.placement === "divider") {
+            exposed.moveAPLArrow(fromIndex, {
+              placement: "divider",
+              dividerAfterSubPanelIndex: arrow.dividerAfterSubPanelIndex,
+              beforeIndex: arrowIndex,
+            });
+          } else {
+            exposed.moveAPLArrow(fromIndex, {
+              placement: "subpanel",
+              subPanelIndex: arrow.subPanelIndex,
+              beforeIndex: arrowIndex,
+            });
+          }
+        });
+
+          const currentKind = getAPLArrowKind(arrow);
+
+          const typePickerMount = document.createElement("select");
+          const typePickerHost = document.createElement("div");
+          typePickerHost.className = "aplInlineTypePickerHost";
+          typePickerHost.appendChild(typePickerMount);
+
+          const typePickerApi = createFlatArrowPicker({
+            mount: typePickerMount,
+            value: currentKind,
+            placeholder: "Arrow",
+            items: APL_ARROW_PICKER_ITEMS,
+            createPreviewNode: createAPLArrowPreviewNode,
+            onChange: (nextValue) => {
+              if (exposed && typeof exposed.updateAPLArrowType === "function") {
+                exposed.updateAPLArrowType(nextValue, arrowIndex);
+              }
+            },
+          });
+
+          const typeSelect = typePickerApi.element;
+          typeSelect.classList.add("aplInlineTypePicker");
+
+          const sizeControl = document.createElement("div");
+          sizeControl.className = "aplArrowSizeControl";
+
+          const sizeLabel = document.createElement("span");
+          sizeLabel.textContent = "Size:";
+
+          const sizeSlider = document.createElement("input");
+          sizeSlider.type = "range";
+          sizeSlider.className = "aplArrowSizeSlider";
+          sizeSlider.min = "1";
+          sizeSlider.max = "10";
+          sizeSlider.step = "0.1";
+          sizeSlider.value = Number.isFinite(Number(arrow.arrowSizeRem))
+            ? String(Number(arrow.arrowSizeRem))
+            : "4.75";
+
+          const sizeValue = document.createElement("span");
+          sizeValue.textContent = `${sizeSlider.value} rem`;
+
+          sizeSlider.addEventListener("input", function () {
+            sizeValue.textContent = `${this.value} rem`;
+          });
+
+          sizeSlider.addEventListener("change", function () {
+            if (exposed && typeof exposed.setAPLArrowSize === "function") {
+              exposed.setAPLArrowSize(arrowIndex, this.value);
+            }
+          });
+          stopControlDragStart(sizeSlider);
+
+          sizeControl.appendChild(sizeLabel);
+          sizeControl.appendChild(sizeSlider);
+          sizeControl.appendChild(sizeValue);
+          
+        const exitOnlyLabel = document.createElement("label");
+        exitOnlyLabel.className = "aplExitOnlyInlineLabel";
+
+        const exitOnlyCheckbox = document.createElement("input");
+        exitOnlyCheckbox.type = "checkbox";
+        exitOnlyCheckbox.checked = arrow.exitOnly === true;
+
+        exitOnlyCheckbox.addEventListener("change", () => {
+          exposed.setAPLExitOnly(arrowIndex, exitOnlyCheckbox.checked);
+        });
+
+        exitOnlyLabel.appendChild(exitOnlyCheckbox);
+        exitOnlyLabel.appendChild(document.createTextNode(" Exit Only"));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "aplArrowDeleteButton";
+        deleteButton.textContent = "Delete";
+
+          deleteButton.addEventListener("click", () => {
+            exposed.removeAPLArrowAt(arrowIndex);
+          });
+
+          stopControlDragStart(typeSelect);
+          stopControlDragStart(exitOnlyCheckbox);
+          stopControlDragStart(deleteButton);
+
+          arrowRow.appendChild(dragHandle);
+          arrowRow.appendChild(typeSelect);
+          arrowRow.appendChild(sizeControl);
+          arrowRow.appendChild(exitOnlyLabel);
+          arrowRow.appendChild(deleteButton);
+
+        return arrowRow;
+      };
+      
+      const createAPLSpacingRow = (arrowIndex, arrow) => {
+        if (!arrow) {
+          return null;
         }
 
-        aplArrowList.appendChild(arrowContainer);
-      }
+        const spacingRow = document.createElement("div");
+        spacingRow.className = "aplArrowSpacingRow aplBetweenArrowSpacingRow";
 
-      // Update the type selector to match the selected arrow
-      if (aplArrowTypeSelect && aplArrows.length > 0 && selectedAPLIndex < aplArrows.length) {
-        aplArrowTypeSelect.value = aplArrows[selectedAPLIndex].type;
-      }
+        if (arrow.placement === "divider") {
+          spacingRow.classList.add("aplSpacingAfterDivider");
+        }
 
-      // Update the flip button state
-      const aplArrowFlipButton = document.getElementById("aplArrowFlipButton");
-      if (aplArrowFlipButton && aplArrows.length > 0 && selectedAPLIndex < aplArrows.length) {
-        const isFlipped = aplArrows[selectedAPLIndex].flip === true;
-        aplArrowFlipButton.classList.toggle("activated", isFlipped);
-        aplArrowFlipButton.setAttribute("aria-pressed", isFlipped ? "true" : "false");
-        aplArrowFlipButton.textContent = isFlipped ? "Unflip" : "Flip";
+        const spacingLabel = document.createElement("label");
+        spacingLabel.textContent = "Spacing:";
+
+        const spacingSlider = document.createElement("input");
+        spacingSlider.type = "range";
+        spacingSlider.className = "aplArrowSpacingSlider";
+        spacingSlider.min = "0";
+        spacingSlider.max = "14";
+        spacingSlider.step = "0.2";
+          spacingSlider.value = Number.isFinite(Number(arrow?.spacingAfterRem))
+            ? String(Number(arrow.spacingAfterRem))
+            : "8";
+
+        const spacingValue = document.createElement("span");
+        spacingValue.textContent = `${spacingSlider.value} rem`;
+
+        spacingSlider.addEventListener("input", function () {
+          spacingValue.textContent = `${this.value} rem`;
+        });
+
+        spacingSlider.addEventListener("change", function () {
+          exposed.setAPLArrowSpacing(arrowIndex, this.value);
+        });
+
+        spacingSlider.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+        });
+
+        spacingSlider.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+        });
+
+        spacingSlider.addEventListener("dragstart", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        spacingRow.appendChild(spacingLabel);
+        spacingRow.appendChild(spacingSlider);
+        spacingRow.appendChild(spacingValue);
+
+        return spacingRow;
+      };
+      
+      const createAPLBeforeSpacingRow = (arrowIndex, arrow) => {
+        if (!arrow) {
+          return null;
+        }
+
+        const spacingRow = document.createElement("div");
+        spacingRow.className = "aplArrowSpacingRow aplBeforeArrowSpacingRow";
+
+        const spacingLabel = document.createElement("label");
+        spacingLabel.textContent = "Spacing:";
+
+        const spacingSlider = document.createElement("input");
+        spacingSlider.type = "range";
+        spacingSlider.className = "aplArrowSpacingSlider";
+        spacingSlider.min = "0";
+        spacingSlider.max = "10";
+        spacingSlider.step = "0.1";
+          spacingSlider.max = "14";
+          spacingSlider.step = "0.2";
+          spacingSlider.value = Number.isFinite(Number(arrow.spacingBeforeRem))
+            ? String(Number(arrow.spacingBeforeRem))
+            : "8";
+
+        const spacingValue = document.createElement("span");
+        spacingValue.textContent = `${spacingSlider.value} rem`;
+
+        spacingSlider.addEventListener("input", function () {
+          spacingValue.textContent = `${this.value} rem`;
+        });
+
+        spacingSlider.addEventListener("change", function () {
+          exposed.setAPLArrowBeforeSpacing(arrowIndex, this.value);
+        });
+
+        spacingSlider.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+        });
+
+        spacingSlider.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+        });
+
+        spacingSlider.addEventListener("dragstart", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        spacingRow.appendChild(spacingLabel);
+        spacingRow.appendChild(spacingSlider);
+        spacingRow.appendChild(spacingValue);
+
+        return spacingRow;
+      };
+
+      if (aplArrowList) {
+        lib.clearChildren(aplArrowList);
+
+        const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
+        const selectedSubpanelStatus = document.getElementById("aplSelectedSubpanelStatus");
+
+        if (selectedSubpanelStatus) {
+          selectedSubpanelStatus.textContent =
+            "Selected Subpanel: SubPanel " + (selectedSubPanelIndex + 1);
+        }
+
+          const aplArrows = panel.sign.aplArrows || [];
+          const subPanelCount = panel.sign.subPanels.length;
+
+          aplVisualArrowOrder = [];
+
+          for (let orderSubPanelIndex = 0; orderSubPanelIndex < subPanelCount; orderSubPanelIndex++) {
+            aplArrows.forEach((arrow, index) => {
+              if (
+                arrow.placement !== "divider" &&
+                arrow.subPanelIndex === orderSubPanelIndex
+              ) {
+                aplVisualArrowOrder.push(index);
+              }
+            });
+
+            if (orderSubPanelIndex < subPanelCount - 1) {
+              aplArrows.forEach((arrow, index) => {
+                if (
+                  arrow.placement === "divider" &&
+                  arrow.dividerAfterSubPanelIndex === orderSubPanelIndex
+                ) {
+                  aplVisualArrowOrder.push(index);
+                }
+              });
+            }
+          }
+
+          for (let subPanelIndex = 0; subPanelIndex < subPanelCount; subPanelIndex++) {
+          const subPanelSection = document.createElement("div");
+          subPanelSection.className =
+            "aplSubpanelSection" +
+            (subPanelIndex === selectedSubPanelIndex ? " selected" : "");
+
+          const sectionHeader = document.createElement("div");
+          sectionHeader.className = "aplSubpanelSectionHeader";
+          sectionHeader.textContent = "SubPanel " + (subPanelIndex + 1);
+
+          sectionHeader.addEventListener("click", () => {
+            exposed.changeEditingSubPanel(subPanelIndex);
+          });
+
+          subPanelSection.appendChild(sectionHeader);
+
+          const sectionArrows = aplArrows
+            .map((arrow, index) => ({ arrow, index }))
+            .filter(
+              ({ arrow }) =>
+                arrow.placement !== "divider" &&
+                arrow.subPanelIndex === subPanelIndex
+            );
+
+          subPanelSection.appendChild(
+            createAPLDropZone({
+              placement: "subpanel",
+              subPanelIndex,
+            })
+          );
+
+              sectionArrows.forEach(({ arrow, index }, localIndex) => {
+                if (localIndex === 0 && subPanelIndex > 0) {
+                  const dividerBeforeThisSubpanel = aplArrows.some(
+                    (candidate) =>
+                      candidate.placement === "divider" &&
+                      candidate.dividerAfterSubPanelIndex === subPanelIndex - 1
+                  );
+
+                  if (dividerBeforeThisSubpanel) {
+                    const beforeSpacingRow = createAPLBeforeSpacingRow(index, arrow);
+                    if (beforeSpacingRow) {
+                      subPanelSection.appendChild(beforeSpacingRow);
+                    }
+                  }
+                }
+
+                subPanelSection.appendChild(
+                  createAPLArrowRow(arrow, index, sectionArrows, localIndex)
+                );
+
+                  const hasDividerAfterSubpanel = aplArrows.some(
+                    (candidate) =>
+                      candidate.placement === "divider" &&
+                      candidate.dividerAfterSubPanelIndex === subPanelIndex
+                  );
+
+                  const isLastArrowInSubpanel =
+                    localIndex === sectionArrows.length - 1;
+
+                  if (
+                    localIndex < sectionArrows.length - 1 ||
+                    (isLastArrowInSubpanel && hasDividerAfterSubpanel)
+                  ) {
+                    const spacingRow = createAPLSpacingRow(index, arrow);
+                    if (spacingRow) {
+                      subPanelSection.appendChild(spacingRow);
+                    }
+                  }
+              });
+
+          const addToSubpanelButton = document.createElement("button");
+          addToSubpanelButton.type = "button";
+          addToSubpanelButton.textContent = "Add arrow to SubPanel " + (subPanelIndex + 1);
+
+          addToSubpanelButton.addEventListener("click", () => {
+            exposed.changeEditingSubPanel(subPanelIndex);
+
+            exposed.addAPLArrow(null, {
+              placement: "subpanel",
+              subPanelIndex,
+            });
+          });
+
+          subPanelSection.appendChild(addToSubpanelButton);
+          aplArrowList.appendChild(subPanelSection);
+
+          if (subPanelIndex < subPanelCount - 1) {
+            const dividerSection = document.createElement("div");
+            dividerSection.className = "aplDividerSection";
+
+            const dividerHeader = document.createElement("div");
+            dividerHeader.className = "aplDividerSectionHeader";
+              dividerHeader.textContent = "Divider " + (subPanelIndex + 1);
+
+            dividerSection.appendChild(dividerHeader);
+
+            dividerSection.appendChild(
+              createAPLDropZone({
+                placement: "divider",
+                dividerAfterSubPanelIndex: subPanelIndex,
+              })
+            );
+
+            const dividerArrows = aplArrows
+              .map((arrow, index) => ({ arrow, index }))
+              .filter(
+                ({ arrow }) =>
+                  arrow.placement === "divider" &&
+                  arrow.dividerAfterSubPanelIndex === subPanelIndex
+              );
+
+              dividerArrows.forEach(({ arrow, index }, localIndex) => {
+                dividerSection.appendChild(
+                  createAPLArrowRow(arrow, index, dividerArrows, localIndex)
+                );
+              });
+
+              if (dividerArrows.length === 0) {
+                const addDividerArrowButton = document.createElement("button");
+                addDividerArrowButton.type = "button";
+                addDividerArrowButton.textContent = "Add divider arrow";
+
+                  addDividerArrowButton.addEventListener("click", () => {
+                    exposed.addAPLArrow(null, {
+                      placement: "divider",
+                      dividerAfterSubPanelIndex: subPanelIndex,
+                    });
+                  });
+
+                dividerSection.appendChild(addDividerArrowButton);
+              }
+              aplArrowList.appendChild(dividerSection);
+          }
+        }
+
+        if (
+          aplArrowTypeSelect &&
+          aplArrows.length > 0 &&
+          selectedAPLIndex < aplArrows.length
+        ) {
+          aplArrowTypeSelect.value = getAPLArrowKind(aplArrows[selectedAPLIndex]);
+        }
       }
-    }
 
     // Panel Setting Config
 
@@ -3629,6 +8926,17 @@ const formHandler = (function () {
         break;
       }
     }
+      const showLeft = document.getElementById("showLeft");
+      const showLeftLabel = document.getElementById("showLeftLabel");
+      const hasExitNumberText = updateExitTabLeftControlVisibility(exitTab.number);
+
+      if (showLeft) {
+        showLeft.checked = hasExitNumberText && exitTab.showLeft === true;
+      }
+
+      if (!hasExitNumberText) {
+        exitTab.showLeft = false;
+      }
 
     const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
     for (const option of exitTabWidthSelectElmt.options) {
@@ -3656,6 +8964,46 @@ const formHandler = (function () {
       }
       toggleExitTabVariantOptionsVisibility(exitTab.variant);
     }
+      const currentSign = panel?.sign;
+
+      if (currentSign) {
+        const qcEnabled = document.getElementById("qcExitMarkerEnabled");
+        const qcNumber = document.getElementById("qcExitMarkerNumber");
+        const qcPosition = document.getElementById("qcExitMarkerPosition");
+        const qcFlipped = document.getElementById("qcExitMarkerFlipped");
+        const qcSize = document.getElementById("qcExitMarkerSize");
+        const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
+
+        if (qcEnabled) {
+          qcEnabled.checked = !!currentSign.quebecExitMarkerEnabled;
+        }
+
+        if (qcNumber) {
+          qcNumber.value = currentSign.quebecExitMarkerNumber || "1";
+        }
+
+        if (qcPosition) {
+        qcPosition.value = String(currentSign.quebecExitMarkerPosition || "Center")
+          .replace(/^Bottom\s+/i, "")
+          .trim();
+        }
+
+        if (qcFlipped) {
+          qcFlipped.checked = !!currentSign.quebecExitMarkerFlipped;
+        }
+        if (qcSize) {
+            const resolvedSize =
+              Number.isFinite(parseFloat(currentSign.quebecExitMarkerSizeRem))
+                ? parseFloat(currentSign.quebecExitMarkerSizeRem)
+                : 3.3;
+
+            qcSize.value = resolvedSize;
+
+            if (qcSizeValue) {
+              qcSizeValue.innerHTML = resolvedSize;
+            }
+        }
+      }
 
     const tollLogoSizeInput = document.getElementById("exitTollLogoSize");
     const tollLogoSizeValueElmt = document.getElementById(
@@ -3715,9 +9063,6 @@ const formHandler = (function () {
     const exitFont = document.getElementById("exitFont");
     exitFont.checked = exitTab.FHWAFont;
 
-    const showLeft = document.getElementById("showLeft");
-    showLeft.checked = exitTab.showLeft;
-
     const fullBorder = document.getElementById("fullBorder");
     fullBorder.checked = exitTab.fullBorder;
 
@@ -3757,6 +9102,16 @@ const formHandler = (function () {
       const resolvedSpacing = parentExitTab?.nestedTabSpacing ?? 0;
       nestedTabSpacingInput.value = resolvedSpacing;
     }
+      
+      const nestedSpacingValue = document.getElementById("nestedSpacingValue");
+      if (nestedSpacingValue) {
+        nestedSpacingValue.innerHTML = nestedTabSpacingInput.value.toString();
+      }
+
+      const exitFontCheckbox = document.getElementById("exitFont");
+      if (exitFontCheckbox) {
+        exitFontCheckbox.dataset.lastFhwaState = String(!!exitTab.FHWAFont);
+      }
 
     // Shields
     updateShieldSubform();
@@ -3924,6 +9279,9 @@ const formHandler = (function () {
       if (currentBlockElem.smallCaps2 === undefined) {
         currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
       }
+        if (currentBlockElem.manualBanners === undefined) {
+          currentBlockElem.manualBanners = true;
+        }
     }
 
     if (blockElemType === "sdBlocker") {
@@ -3933,80 +9291,104 @@ const formHandler = (function () {
         );
     }
 
-    for (const propertyName in currentBlockElem) {
-      const elementId = `${blockElemType}_${propertyName}`;
-      const element = document.getElementById(elementId);
-      const displayElement = document.getElementById(elementId + "Val");
-      if (element) {
-        const handleCustomBanner =
-          blockElemType === "sdShield" &&
-          (propertyName === "bannerType" || propertyName === "bannerType2");
-        if (handleCustomBanner) {
-          const customInputId =
-            propertyName === "bannerType"
-              ? "sdShield_bannerCustomText"
-              : "sdShield_bannerCustomText2";
-          const customInput = document.getElementById(customInputId);
-          const bannerOptions = Shield.prototype.bannerTypes || [];
-          const isPreset = bannerOptions.includes(currentBlockElem[propertyName]);
-          if (element.tagName === "SELECT") {
-            element.value = isPreset
-              ? currentBlockElem[propertyName]
-              : ShieldElement.prototype.defaultBannerType;
+      for (const propertyName in currentBlockElem) {
+        const elementId = `${blockElemType}_${propertyName}`;
+        const element = document.getElementById(elementId);
+        const displayElement = document.getElementById(elementId + "Val");
+
+        if (element) {
+          const handleCustomBanner =
+            blockElemType === "sdShield" &&
+            (propertyName === "bannerType" || propertyName === "bannerType2");
+
+          if (handleCustomBanner) {
+            const manualCheckbox = document.getElementById("sdShield_manualBanners");
+
+            if (manualCheckbox) {
+              manualCheckbox.checked = currentBlockElem.manualBanners !== false;
+            }
+
+            const customInputId =
+              propertyName === "bannerType"
+                ? "sdShield_bannerCustomText"
+                : "sdShield_bannerCustomText2";
+
+            const customInput = document.getElementById(customInputId);
+            const bannerOptions = Shield.prototype.bannerTypes || [];
+            const currentBanner =
+              currentBlockElem[propertyName] || getDefaultBannerType();
+
+            const matchedPreset = bannerOptions.find(
+              (option) =>
+                String(option).toLowerCase() === String(currentBanner).toLowerCase()
+            );
+
+            const manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+            if (element.tagName === "SELECT") {
+              element.value = matchedPreset || getDefaultBannerType();
+              element.addEventListener("change", readForm, { once: true });
+            }
+
+            if (customInput) {
+              customInput.value = manualBanners ? currentBanner : "";
+              customInput.addEventListener("blur", readForm, { once: true });
+            }
+
+            syncManualBannerInputMode();
+
+            if (displayElement) {
+              displayElement.textContent = currentBanner;
+            }
+
+            continue;
+          }
+
+          if (element.type === "checkbox") {
+            element.checked = currentBlockElem[propertyName];
             element.addEventListener("change", readForm, { once: true });
+          } else if (element.type === "radio") {
+            if (element.value === currentBlockElem[propertyName].toString()) {
+              element.checked = true;
+            }
+            element.addEventListener("change", readForm, { once: true });
+          } else if (element.tagName === "SELECT") {
+            element.value = currentBlockElem[propertyName];
+
+            element.addEventListener("change", readForm, { once: true });
+            element.addEventListener("blur", readForm, { once: true });
+          } else {
+            element.value = currentBlockElem[propertyName];
+            element.addEventListener(
+              element.type === "text" ? "blur" : "change",
+              readForm,
+              { once: true }
+            );
+
+            if (
+              element.type === "range" &&
+              displayElement &&
+              !element.dataset.syncDisplay
+            ) {
+              element.addEventListener("input", () => {
+                displayElement.value = element.value;
+              });
+              element.dataset.syncDisplay = "true";
+            }
           }
-          if (customInput) {
-            customInput.value = isPreset ? "" : currentBlockElem[propertyName];
-            customInput.addEventListener("blur", readForm, { once: true });
-          }
-          if (displayElement) {
+        }
+
+        if (displayElement) {
+          if (
+            displayElement.tagName === "INPUT" &&
+            displayElement.type === "number"
+          ) {
+            displayElement.value = currentBlockElem[propertyName];
+          } else {
             displayElement.textContent = currentBlockElem[propertyName];
           }
-          continue;
-        }
-        if (element.type === "checkbox") {
-          element.checked = currentBlockElem[propertyName];
-          element.addEventListener("change", readForm, { once: true });
-        } else if (element.type === "radio") {
-          if (element.value === currentBlockElem[propertyName].toString()) {
-            element.checked = true;
-          }
-          element.addEventListener("change", readForm, { once: true });
-        } else if (element.tagName === "SELECT") {
-          element.value = currentBlockElem[propertyName];
-          element.addEventListener("blur", readForm, { once: true });
-        } else {
-          element.value = currentBlockElem[propertyName];
-          element.addEventListener(
-            element.type === "text" ? "blur" : "change",
-            readForm,
-            { once: true }
-          );
-          if (
-            element.type === "range" &&
-            displayElement &&
-            !element.dataset.syncDisplay
-          ) {
-            element.addEventListener("input", () => {
-              displayElement.value = element.value;
-            });
-            element.dataset.syncDisplay = "true";
-          }
         }
       }
-
-      if (displayElement) {
-        // If the display element is an input (we replaced many spans with number inputs), set value.
-        if (
-          displayElement.tagName === "INPUT" &&
-          displayElement.type === "number"
-        ) {
-          displayElement.value = currentBlockElem[propertyName];
-        } else {
-          displayElement.textContent = currentBlockElem[propertyName];
-        }
-      }
-    }
 
     if (blockElemType === "sdArrow") {
       const arrowRotationButtons = document.querySelectorAll(
@@ -4294,8 +9676,16 @@ const formHandler = (function () {
       hideExitArrow.checked = !!panel.sign.hideExitArrow;
       hideExitArrow.value = panel.sign.hideExitArrow;
     }
-    exitOnlyPadding.value = panel.sign.exitOnlyPadding;
-    exitOnlyPaddingValue.textContent = panel.sign.exitOnlyPadding;
+      const resolvedExitOnlyPadding =
+        panel.sign.exitOnlyPadding !== undefined &&
+        panel.sign.exitOnlyPadding !== null &&
+        panel.sign.exitOnlyPadding !== ""
+          ? panel.sign.exitOnlyPadding
+          : 0.25;
+
+      panel.sign.exitOnlyPadding = resolvedExitOnlyPadding;
+      exitOnlyPadding.value = resolvedExitOnlyPadding;
+      exitOnlyPaddingValue.textContent = resolvedExitOnlyPadding;
 
     for (const option of exitOnlyDirection.options) {
       if (option.value == panel.sign.exitguideArrows) {
@@ -4303,6 +9693,41 @@ const formHandler = (function () {
         break;
       }
     }
+    
+      let currentBlockElemForPickerSync = null;
+
+      try {
+        currentBlockElemForPickerSync =
+          exposed && typeof exposed.getCurrentBlockElem === "function"
+            ? exposed.getCurrentBlockElem()
+            : null;
+      } catch (error) {
+        currentBlockElemForPickerSync = null;
+      }
+
+      if (
+        currentBlockElemForPickerSync &&
+        Control.prototype.blockInternalElements[
+          Control.prototype.blockToClassElems.getElem(currentBlockElemForPickerSync)
+        ] === "sdShield" &&
+        typeof ensureSdShieldBasePicker === "function"
+      ) {
+        ensureSdShieldBasePicker();
+
+        syncShieldBasePickerValue(
+          currentBlockElemForPickerSync.shieldBase ||
+            currentBlockElemForPickerSync.type ||
+            ShieldElement.prototype.defaultShieldBase ||
+            "I"
+        );
+      }
+
+      if (typeof ensureGuideArrowPicker === "function") {
+        ensureGuideArrowPicker();
+      }
+      if (typeof ensureExitOnlyDirectionPicker === "function") {
+        ensureExitOnlyDirectionPicker();
+      }
 
     const otherSymbolSelectElement = document.getElementById("otherSymbol");
     for (const option of otherSymbolSelectElement.options) {
@@ -4326,7 +9751,13 @@ const formHandler = (function () {
       "sdIcon",
       "sdTollLogo",
     ].forEach((block) => setDependentVisibility(block));
+      applyEditorInputBehavior(document);
+      bindAllFontPreviewSelects(document);
+      syncAllFontPickers();
+      applyExitOnlyArrowVisibility();
   };
+    
+    /* END OF UPDATEFORM */
 
   /**
    * Update the fields in the form relating to shields to the values of the currently selected panel.
@@ -4368,16 +9799,30 @@ const formHandler = (function () {
       rowContainerElmt.appendChild(toCheckLabelElmt);
 
       // Populate shield options
-      const typeSelectElmt = document.createElement("select");
-      for (const type in Shield.prototype.types) {
-        lib.appendOption(typeSelectElmt, Shield.prototype.types[type], {
-          selected: shields[shieldIndex].type == Shield.prototype.types[type],
-          text: type,
+        const typeSelectPlaceholder = document.createElement("select");
+        typeSelectPlaceholder.id = `shield${shieldIndex}_type`;
+        rowContainerElmt.appendChild(typeSelectPlaceholder);
+
+        const shieldPicker = createShieldPicker({
+          mount: typeSelectPlaceholder,
+          value:
+            shields[shieldIndex].shieldBase ||
+            shields[shieldIndex].type ||
+            "I",
+          placeholder: "Shield type",
+          onChange: (nextValue) => {
+            const shield = shields[shieldIndex];
+            if ("shieldBase" in shield) {
+              shield.shieldBase = nextValue;
+            }
+            if ("type" in shield) {
+              shield.type = nextValue;
+            }
+            if (typeof readForm === "function") {
+              readForm();
+            }
+          },
         });
-      }
-      typeSelectElmt.id = `shield${shieldIndex}_type`;
-      typeSelectElmt.addEventListener("change", readForm);
-      rowContainerElmt.appendChild(typeSelectElmt);
 
       const routeNumberElmt = document.createElement("input");
       routeNumberElmt.type = "text";
@@ -4478,7 +9923,7 @@ const formHandler = (function () {
       const fontSizeText = document.createElement("input");
       fontSizeText.type = "number";
       fontSizeText.id = `shield${shieldIndex}_fontSize`;
-      fontSizeText.placeholder = 1.4;
+      fontSizeText.placeholder = 1.6;
       fontSizeText.value = parseFloat(
         shields[shieldIndex].fontSize.split("rem")[0]
       );
@@ -4877,10 +10322,13 @@ const formHandler = (function () {
     });
   };
 
-  return {
-    init: initialize,
-    readForm,
-    updateForm,
-    updateShieldSubform,
-  };
+    return {
+      init: initialize,
+      readForm,
+      updateForm,
+      updateShieldSubform,
+      ensureSubpanelMenuOpen: () => ensureSubpanelMenuOpenPublic(),
+      ensureExitTabMenuOpen: () => ensureExitTabMenuOpenPublic(),
+      ensureGuideArrowMenuOpen: (mode) => ensureGuideArrowMenuOpenPublic(mode),
+    };
 })();

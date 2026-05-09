@@ -235,11 +235,113 @@
   src: local("Arial Bold");
 }
 
+@font-face {
+  font-family: "DIN 1451";
+  src: url("../fonts/DIN1451.woff2") format("woff2"),
+       url("../fonts/DIN1451.woff") format("woff"),
+       url("../fonts/DIN1451.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Rawlinson Regular";
+  src: url("../fonts/Rawlinson Regular.woff2") format("woff2"),
+       url("../fonts/Rawlinson Regular.woff") format("woff"),
+       url("../fonts/Rawlinson Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Rawlinson Bold";
+  src: url("../fonts/Rawlinson Bold.woff2") format("woff2"),
+       url("../fonts/Rawlinson Bold.woff") format("woff"),
+       url("../fonts/Rawlinson Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue Thin";
+  src: url("../fonts/HelveticaNeue-Thin.woff2") format("woff2"),
+       url("../fonts/HelveticaNeue-Thin.woff") format("woff"),
+       url("../fonts/HelveticaNeue-Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue Light";
+  src: url("../fonts/HelveticaNeue-Light.woff2") format("woff2"),
+       url("../fonts/HelveticaNeue-Light.woff") format("woff"),
+       url("../fonts/HelveticaNeue-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue Roman";
+  src: url("../fonts/HelveticaNeue-Roman.woff2") format("woff2"),
+       url("../fonts/HelveticaNeue-Roman.woff") format("woff"),
+       url("../fonts/HelveticaNeue-Roman.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue Medium";
+  src: url("../fonts/HelveticaNeue-Medium.woff2") format("woff2"),
+       url("../fonts/HelveticaNeue-Medium.woff") format("woff"),
+       url("../fonts/HelveticaNeue-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Neue Bold";
+  src: url("../fonts/HelveticaNeue-Bold.woff2") format("woff2"),
+       url("../fonts/HelveticaNeue-Bold.woff") format("woff"),
+       url("../fonts/HelveticaNeue-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ITC Stone Sans Regular";
+  src:
+    url("../fonts/ITC Stone Sans Regular.woff2") format("woff2"),
+    url("../fonts/ITC Stone Sans Regular.woff") format("woff"),
+    url("../fonts/ITC Stone Sans Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "ITC Stone Sans Semibold";
+  src:
+    url("../fonts/ITC Stone Sans Semibold Regular.woff2") format("woff2"),
+    url("../fonts/ITC Stone Sans Semibold Regular.woff") format("woff"),
+    url("../fonts/ITC Stone Sans Semibold Regular.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
-  --green: rgb(0, 95, 77);
+  --green: rgb(1, 111, 80);
   --blue: rgb(0, 67, 123);
   --brown: rgb(98, 51, 30);
-  --yellow: rgb(252, 207, 52);
+  --yellow: rgb(255, 208, 70);
   --countyYellow: rgb(247, 209, 23);
   --white: rgb(255, 255, 255);
   --black: rgb(0, 0, 0);
@@ -261,7 +363,7 @@
 }
 
 :root[data-theme="dark"] {
-  --backgroundColor: rgb(10 28 77);
+  --backgroundColor: rgb(4 20 64);
   --hotbarColor: rgb(43 63 118);
   --textColor: rgb(247 249 251);
   --selectedColor: rgb(255, 255, 255, 0.25);
@@ -349,7 +451,7 @@ main {
 }
 
 body>footer {
-  border-top: solid rgba(255, 255, 255, 0.25) 0.25rem;
+  border-top: solid rgba(255, 255, 255, 0.35) 0.15rem;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -362,32 +464,43 @@ body>footer div:nth-child(1) {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background-color: rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.15);
   width: max-content;
   padding: 0.5rem 1rem;
 }
 
-body>footer a {
-  background-color: rgba(255, 255, 255, 0.25);
-  border-radius: 0.1rem;
-
-  color: black;
-  text-decoration: none;
-
-  display: inline-block;
-  margin: 0.25rem;
-  padding: 0 0.5rem 0;
-
-  transition: 0.2s;
+body>footer h3 {
+  font-size: 1rem;
+  line-height: 1.05;
 }
 
 body>footer p {
-  font-size: 16px;
+  font-size: 13px;
+  line-height: 1.15;
 }
 
-body>footer a:hover {
-  background-color: rgba(255, 255, 255, 0.5);
-  scale: 1.1;
+body>footer a,
+body>footer a:visited {
+  display: inline;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #4ea3ff;
+  text-decoration: underline;
+  font: inherit;
+  transition: color 0.2s;
+}
+
+body>footer a:hover,
+body>footer a:focus {
+  background: none;
+  color: #7bbcff;
+  text-decoration: underline;
+  scale: none;
 }
 
 h1,

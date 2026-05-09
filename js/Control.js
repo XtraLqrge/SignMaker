@@ -111,11 +111,19 @@ class TextElement {
       this.fontFamily.toLowerCase().includes("series");
 
     // Set custom CSS properties here based off the this. properties
-    newText.style.setProperty("--fontFamily", '"' + this.fontFamily + '"');
-    newText.style.setProperty(
-      "--fontSize",
-      1.75 * (this.fontSize / 100) + "rem"
-    );
+      newText.style.setProperty("--fontFamily", '"' + this.fontFamily + '"');
+
+      const renderedFontSize = getRenderedTextFontSize(
+        this.fontSize,
+        this.fontFamily
+      );
+
+      newText.style.setProperty(
+        "--fontSize",
+        1.75 * (renderedFontSize / 100) + "rem"
+      );
+
+      newText.style.removeProperty("font-size");
     newText.style.setProperty(
       "--blockBgColor",
       this.backgroundColor == "Inherit"
@@ -168,22 +176,33 @@ TextElement.prototype.fontFamily = [
   "Clearview 1B",
   "Clearview 1W",
   "Clearview 2B",
-  "Clearivew 2W",
+  "Clearview 2W",
   "Clearview 3B",
   "Clearview 3W",
   "Clearview 4B",
   "Clearview 4W",
-  "Clearivew 5B",
-  "Clearivew 5W",
+  "Clearview 5B",
+  "Clearview 5W",
   "Clearview 5WR",
   "Clearview 6B",
-  "Series A",
+  "Clearview 6W",
   "Series B",
   "Series C",
   "Series D",
   "Series E",
+  "Series EEM",
   "Series EM",
   "Series F",
+  "DIN 1451",
+  "Rawlinson Regular",
+  "Rawlinson Bold",
+  "ITC Stone Sans Regular",
+  "ITC Stone Sans Semibold",
+  "Helvetica Neue Thin",
+  "Helvetica Neue Light",
+  "Helvetica Neue Roman",
+  "Helvetica Neue Medium",
+  "Helvetica Neue Bold",
   "Arial",
   "Arial Bold",
   "Transport",
@@ -195,40 +214,132 @@ TextElement.prototype.backgroundColor = ["Inherit"].concat(
   Object.keys(lib.colors)
 );
 
+const SETTINGS_DEFAULTS_STORAGE_KEY = "signMaker.settingsDefaults";
+
+const getStoredControlTextDefaults = () => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_DEFAULTS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+};
+
+const getStoredDefaultsOption = (options, optionKey, storedKey, fallbackValue) => {
+  if (
+    Object.prototype.hasOwnProperty.call(options, optionKey) &&
+    options[optionKey] !== undefined &&
+    options[optionKey] !== null &&
+    options[optionKey] !== ""
+  ) {
+    return options[optionKey];
+  }
+
+  const storedDefaults = getStoredControlTextDefaults();
+  const storedValue = storedDefaults[storedKey];
+
+  if (storedValue !== undefined && storedValue !== null && storedValue !== "") {
+    return storedValue;
+  }
+
+  return fallbackValue;
+};
+
+const HIGHWAY_GOTHIC_TEXT_RENDER_SCALE = 1.2;
+
+const isHighwayGothicFontFamily = (fontFamily) =>
+  /^Series\s/i.test(String(fontFamily || "")) ||
+  String(fontFamily || "") === "Highway Gothic" ||
+  String(fontFamily || "") === "Highway Gothic Wide";
+
+const getRenderedTextFontSize = (fontSize, fontFamily) => {
+  const parsedSize = parseFloat(fontSize);
+  const safeSize = Number.isFinite(parsedSize) ? parsedSize : 100;
+
+  return isHighwayGothicFontFamily(fontFamily)
+    ? safeSize * HIGHWAY_GOTHIC_TEXT_RENDER_SCALE
+    : safeSize;
+};
+
 class ControlTextElement extends TextElement {
-  constructor(options = {}) {
-    const {
-      spacing = 0,
-      smallCapitals = false,
-      textColor = ControlTextElement.defaultTextColor,
-    } = options;
-    const resolvedOptions = { ...options };
-    const availableFonts =
-      TextElement && TextElement.prototype
-        ? TextElement.prototype.fontFamily
-        : null;
-    const providedFont = resolvedOptions.fontFamily;
-    if (
-      !providedFont ||
-      !Array.isArray(availableFonts) ||
-      !availableFonts.includes(providedFont)
-    ) {
-      const defaultFont =
+    constructor(options = {}) {
+      const resolvedOptions = { ...options };
+
+      const availableFonts =
+        TextElement && TextElement.prototype
+          ? TextElement.prototype.fontFamily
+          : [];
+
+      const storedOrFallbackFont = getStoredDefaultsOption(
+        resolvedOptions,
+        "fontFamily",
+        "settingsDefaultsControlTextFont",
         typeof ControlTextElement.getDefaultFont === "function"
           ? ControlTextElement.getDefaultFont()
-          : ControlTextElement.defaultFont;
-      if (defaultFont) {
-        resolvedOptions.fontFamily = defaultFont;
-      }
+          : ControlTextElement.defaultFont
+      );
+
+      const resolvedFont =
+        Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
+          ? storedOrFallbackFont
+          : (typeof ControlTextElement.getDefaultFont === "function"
+              ? ControlTextElement.getDefaultFont()
+              : ControlTextElement.defaultFont);
+
+      resolvedOptions.textContent = getStoredDefaultsOption(
+        resolvedOptions,
+        "textContent",
+        "settingsDefaultsControlTextText",
+        "Control"
+      );
+
+      resolvedOptions.fontFamily = resolvedFont;
+
+      resolvedOptions.fontSize = parseFloat(
+        getStoredDefaultsOption(
+          resolvedOptions,
+          "fontSize",
+          "settingsDefaultsControlTextSize",
+          100
+        )
+      );
+
+      resolvedOptions.backgroundColor = getStoredDefaultsOption(
+        resolvedOptions,
+        "backgroundColor",
+        "settingsDefaultsControlTextBg",
+        "Inherit"
+      );
+
+      const spacing = Object.prototype.hasOwnProperty.call(options, "spacing")
+        ? options.spacing
+        : 0;
+
+      const smallCapitals = Object.prototype.hasOwnProperty.call(options, "smallCapitals")
+        ? options.smallCapitals
+        : false;
+
+      const textColor = getStoredDefaultsOption(
+        resolvedOptions,
+        "textColor",
+        "settingsDefaultsControlTextColor",
+        ControlTextElement.defaultTextColor
+      );
+
+      super(resolvedOptions);
+
+      this.spacing = spacing;
+      this.smallCapitals = smallCapitals;
+      this.textColor =
+        typeof textColor === "string" && textColor.trim().length
+          ? textColor
+          : ControlTextElement.defaultTextColor;
     }
-    super(resolvedOptions);
-    this.spacing = spacing;
-    this.smallCapitals = smallCapitals;
-    this.textColor =
-      typeof textColor === "string" && textColor.trim().length
-        ? textColor
-        : ControlTextElement.defaultTextColor;
-  }
 
   createElement(panel) {
     const newText = super.createElement(panel);
@@ -290,25 +401,174 @@ ControlTextElement.getTextColorOptions = function () {
 };
 
 class ActionMessageElement extends TextElement {
-  constructor({ fontSize = 70, useNumeralFormatting = true } = {}) {
-    super();
-    this.fontSize = fontSize;
+  constructor(options = {}) {
+    const resolvedOptions = { ...options };
+
+    const availableFonts =
+      TextElement && TextElement.prototype
+        ? TextElement.prototype.fontFamily
+        : [];
+
+    const storedOrFallbackFont = getStoredDefaultsOption(
+      resolvedOptions,
+      "fontFamily",
+      "settingsDefaultsActionFont",
+      "Clearview 5WR"
+    );
+
+    const resolvedFont =
+      Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
+        ? storedOrFallbackFont
+        : "Clearview 5WR";
+
+    resolvedOptions.textContent = getStoredDefaultsOption(
+      resolvedOptions,
+      "textContent",
+      "settingsDefaultsActionText",
+      "Action"
+    );
+
+    resolvedOptions.fontFamily = resolvedFont;
+
+    resolvedOptions.fontSize = parseFloat(
+      getStoredDefaultsOption(
+        resolvedOptions,
+        "fontSize",
+        "settingsDefaultsActionSize",
+        70
+      )
+    );
+
+    resolvedOptions.backgroundColor = getStoredDefaultsOption(
+      resolvedOptions,
+      "backgroundColor",
+      "settingsDefaultsActionBg",
+      "Inherit"
+    );
+
+    const textColor = getStoredDefaultsOption(
+      resolvedOptions,
+      "textColor",
+      "settingsDefaultsActionColor",
+      ControlTextElement.defaultTextColor
+    );
+
+    const useNumeralFormatting = Object.prototype.hasOwnProperty.call(
+      resolvedOptions,
+      "useNumeralFormatting"
+    )
+      ? resolvedOptions.useNumeralFormatting
+      : true;
+
+    super(resolvedOptions);
+
     this.useNumeralFormatting = useNumeralFormatting;
+    this.textColor =
+      typeof textColor === "string" && textColor.trim().length
+        ? textColor
+        : ControlTextElement.defaultTextColor;
+  }
+
+  createElement(panel) {
+    const newText = super.createElement(panel);
+
+    const shouldOverrideTextColor =
+      typeof this.textColor === "string" &&
+      this.textColor.trim().length > 0 &&
+      this.textColor !== ControlTextElement.defaultTextColor;
+
+    if (shouldOverrideTextColor) {
+      const resolvedTextColor =
+        (lib?.colors && lib.colors[this.textColor]) || this.textColor;
+      if (typeof resolvedTextColor === "string") {
+        newText.style.color = resolvedTextColor.toLowerCase();
+      } else if (resolvedTextColor) {
+        newText.style.color = resolvedTextColor;
+      }
+    }
+
+    return newText;
   }
 }
 
 class AdvisoryMessageElement extends TextElement {
-  constructor({
-    backgroundColor = "Yellow",
-    fontFamily = "Series E",
-    borderRadius = 4,
-    useNumeralFormatting = true,
-    horizPadding = 0.3,
-    vertPadding = 0.3,
-  } = {}) {
-    super();
-    this.backgroundColor = backgroundColor;
-    this.fontFamily = fontFamily;
+  constructor(options = {}) {
+    const resolvedOptions = { ...options };
+
+    const availableFonts =
+      TextElement && TextElement.prototype
+        ? TextElement.prototype.fontFamily
+        : [];
+
+    const storedOrFallbackFont = getStoredDefaultsOption(
+      resolvedOptions,
+      "fontFamily",
+      "settingsDefaultsAdvisoryFont",
+      "Series E"
+    );
+
+    const resolvedFont =
+      Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
+        ? storedOrFallbackFont
+        : "Series E";
+
+    resolvedOptions.textContent = getStoredDefaultsOption(
+      resolvedOptions,
+      "textContent",
+      "settingsDefaultsAdvisoryText",
+      "Advisory"
+    );
+
+    resolvedOptions.fontFamily = resolvedFont;
+
+    resolvedOptions.fontSize = parseFloat(
+      getStoredDefaultsOption(
+        resolvedOptions,
+        "fontSize",
+        "settingsDefaultsAdvisorySize",
+        70
+      )
+    );
+
+    resolvedOptions.backgroundColor = getStoredDefaultsOption(
+      resolvedOptions,
+      "backgroundColor",
+      "settingsDefaultsAdvisoryBg",
+      "Yellow"
+    );
+
+    const textColor = getStoredDefaultsOption(
+      resolvedOptions,
+      "textColor",
+      "settingsDefaultsAdvisoryColor",
+      "Black"
+    );
+
+    const borderRadius = Object.prototype.hasOwnProperty.call(resolvedOptions, "borderRadius")
+      ? resolvedOptions.borderRadius
+      : 4;
+
+    const useNumeralFormatting = Object.prototype.hasOwnProperty.call(
+      resolvedOptions,
+      "useNumeralFormatting"
+    )
+      ? resolvedOptions.useNumeralFormatting
+      : true;
+
+    const horizPadding = Object.prototype.hasOwnProperty.call(resolvedOptions, "horizPadding")
+      ? resolvedOptions.horizPadding
+      : 0.3;
+
+    const vertPadding = Object.prototype.hasOwnProperty.call(resolvedOptions, "vertPadding")
+      ? resolvedOptions.vertPadding
+      : 0.3;
+
+    super(resolvedOptions);
+
+    this.textColor =
+      typeof textColor === "string" && textColor.trim().length
+        ? textColor
+        : ControlTextElement.defaultTextColor;
     this.borderRadius = borderRadius;
     this.useNumeralFormatting = useNumeralFormatting;
     this.horizPadding = horizPadding;
@@ -321,6 +581,21 @@ class AdvisoryMessageElement extends TextElement {
     newText.style.setProperty("--horizPadding", this.horizPadding);
     newText.style.setProperty("--vertPadding", this.vertPadding);
     newText.className = "bE-textElement bE-advisoryMessage";
+
+    const shouldOverrideTextColor =
+      typeof this.textColor === "string" &&
+      this.textColor.trim().length > 0 &&
+      this.textColor !== ControlTextElement.defaultTextColor;
+
+    if (shouldOverrideTextColor) {
+      const resolvedTextColor =
+        (lib?.colors && lib.colors[this.textColor]) || this.textColor;
+      if (typeof resolvedTextColor === "string") {
+        newText.style.color = resolvedTextColor.toLowerCase();
+      } else if (resolvedTextColor) {
+        newText.style.color = resolvedTextColor;
+      }
+    }
 
     if (this.fontFamily.includes("Series")) {
       newText.classList.add("hgFix");
@@ -413,41 +688,74 @@ class ShieldElement extends Shield {
     size,
   } = {}) {
     super();
-    const resolvedBase =
-      shieldBase || type || ShieldElement.prototype.defaultShieldBase;
-    const resolvedVariant =
-      shieldType || specialBannerType || ShieldElement.prototype.defaultVariant;
+      const resolvedBase = getStoredDefaultsOption(
+        { shieldBase, type },
+        "shieldBase",
+        "settingsDefaultsShieldType",
+        ShieldElement.prototype.defaultShieldBase
+      );
 
-    this.shieldBase = resolvedBase;
-    this.shieldType = resolvedVariant;
-    this.routeNumber =
-      `${routeNumber ?? ""}`.trim() ||
-      ShieldElement.prototype.defaultRouteNumber;
+      const resolvedVariant =
+        shieldType || specialBannerType || ShieldElement.prototype.defaultVariant;
 
-    this.to = !!to;
-    this.indentFirstLetter = indentFirstLetter !== false;
-    const normalizedIndentSecond =
-      indentFirstLetter2 !== undefined ? indentFirstLetter2 : indentFirstLetter;
-    this.indentFirstLetter2 = normalizedIndentSecond !== false;
-    this.smallCaps = smallCaps !== false;
-    const normalizedSmallCapsSecond =
-      smallCaps2 !== undefined ? smallCaps2 : smallCaps;
-    this.smallCaps2 = normalizedSmallCapsSecond !== false;
-    this.bannerType = ShieldElement.prototype.normalizeBannerType(bannerType);
-    this.bannerType2 = ShieldElement.prototype.normalizeBannerType(bannerType2);
-    this.bannerPosition = ShieldElement.prototype.normalizeBannerPosition(
-      bannerPosition
-    );
-    this.bannerPosition2 = ShieldElement.prototype.normalizeBannerPosition(
-      bannerPosition2 || bannerPosition
-    );
-    this.fontSize = ShieldElement.prototype.normalizeFontSize(fontSize);
-    this.bannerFontFamily =
-      ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
-    this.countyText = typeof countyText === "string" ? countyText : "";
-    this.shieldSize = ShieldElement.prototype.normalizeShieldSize(
-      shieldSize !== undefined ? shieldSize : size
-    );
+      this.shieldBase = resolvedBase;
+      this.shieldType = resolvedVariant;
+
+      this.routeNumber = `${getStoredDefaultsOption(
+        { routeNumber },
+        "routeNumber",
+        "settingsDefaultsShieldRouteNumber",
+        ShieldElement.prototype.defaultRouteNumber
+      ) ?? ""}`.trim() || ShieldElement.prototype.defaultRouteNumber;
+
+      this.to = !!to;
+      this.indentFirstLetter = indentFirstLetter !== false;
+      const normalizedIndentSecond =
+        indentFirstLetter2 !== undefined ? indentFirstLetter2 : indentFirstLetter;
+      this.indentFirstLetter2 = normalizedIndentSecond !== false;
+      this.smallCaps = smallCaps !== false;
+      const normalizedSmallCapsSecond =
+        smallCaps2 !== undefined ? smallCaps2 : smallCaps;
+      this.smallCaps2 = normalizedSmallCapsSecond !== false;
+      this.bannerType = ShieldElement.prototype.normalizeBannerType(bannerType);
+      this.bannerType2 = ShieldElement.prototype.normalizeBannerType(bannerType2);
+
+      const defaultBannerPosition1 = getStoredDefaultsOption(
+        { bannerPosition },
+        "bannerPosition",
+        "settingsDefaultsShieldBanner1",
+        ShieldElement.prototype.defaultBannerPosition
+      );
+
+      const defaultBannerPosition2 = getStoredDefaultsOption(
+        { bannerPosition2 },
+        "bannerPosition2",
+        "settingsDefaultsShieldBanner2",
+        ShieldElement.prototype.defaultBannerPosition2 ||
+          ShieldElement.prototype.defaultBannerPosition
+      );
+
+      this.bannerPosition = ShieldElement.prototype.normalizeBannerPosition(
+        defaultBannerPosition1
+      );
+      this.bannerPosition2 = ShieldElement.prototype.normalizeBannerPosition(
+        defaultBannerPosition2
+      );
+
+      this.fontSize = ShieldElement.prototype.normalizeFontSize(fontSize);
+      this.bannerFontFamily =
+        ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+      this.countyText = typeof countyText === "string" ? countyText : "";
+
+      const storedShieldSize = getStoredDefaultsOption(
+        { shieldSize, size },
+        "shieldSize",
+        "settingsDefaultsShieldSize",
+        ShieldElement.prototype.defaultShieldSize
+      );
+
+      this.shieldSize = ShieldElement.prototype.normalizeShieldSize(storedShieldSize);
+      this.scaleBannersWithShield = scaleBannersWithShield !== false;
     this.scaleBannersWithShield = scaleBannersWithShield !== false;
 
     // Legacy properties used by older save data and helpers
@@ -507,6 +815,38 @@ class ShieldElement extends Shield {
     if (containerSizeClass) {
       shieldContainer.classList.add(containerSizeClass);
     }
+      
+      const routeTextForFontCheck = String(this.routeNumber || "").trim();
+
+      const routeCharCountForFontCheck =
+        ShieldElement.prototype.getRouteCharacterCount(routeTextForFontCheck);
+
+      const routeHasOneForFontCheck = routeTextForFontCheck.includes("1");
+
+      const getsSeriesCWhenThreeCharsWithoutOne =
+        SERIES_C_THREE_CHAR_NO_ONE_SHIELDS.some((shieldClass) =>
+          shieldContainer.classList.contains(shieldClass)
+        ) &&
+        routeCharCountForFontCheck === 3 &&
+        !routeHasOneForFontCheck;
+
+      const getsSeriesDWhenThreeCharsWithOne =
+        SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS.some((shieldClass) =>
+          shieldContainer.classList.contains(shieldClass)
+        ) &&
+        routeCharCountForFontCheck === 3 &&
+        routeHasOneForFontCheck;
+
+      shieldContainer.classList.toggle(
+        "threeNoOne",
+        getsSeriesCWhenThreeCharsWithoutOne
+      );
+
+      shieldContainer.classList.toggle(
+        "threeWithOne",
+        getsSeriesDWhenThreeCharsWithOne
+      );
+
 
     const hasBannerA = ShieldElement.prototype.hasBannerValue(this.bannerType);
     const hasBannerB = ShieldElement.prototype.hasBannerValue(this.bannerType2);
@@ -520,31 +860,30 @@ class ShieldElement extends Shield {
       normalizedBannerPosition === normalizedBannerPosition2;
 
     if (shouldStackSamePosition) {
-      const stackedBannerSlot =
-        ShieldElement.prototype.createStackedBannerSlot(
-          normalizedBannerPosition,
-          [
-            {
-              bannerClass: "bannerA",
-              bannerValue: this.bannerType,
-              containerClass: "bannerContainer",
-              indentFirstLetter: this.indentFirstLetter,
-              smallCaps: this.smallCaps,
-            },
-            {
-              bannerClass: "bannerB",
-              bannerValue: this.bannerType2,
-              containerClass: "bannerContainer2",
-              indentFirstLetter: this.indentFirstLetter2,
-              smallCaps: this.smallCaps2,
-            },
-          ],
-          fontSizeCss,
-          fontSizeCss,
-          this.indentFirstLetter,
-          bannerFontFamily,
-          this.smallCaps
-        );
+        const stackedBannerSlot =
+          ShieldElement.prototype.createStackedBannerSlot(
+            normalizedBannerPosition,
+            [
+              {
+                bannerClass: "bannerA",
+                bannerValue: this.bannerType,
+                containerClass: "bannerContainer",
+                indentFirstLetter: this.indentFirstLetter,
+                smallCaps: this.smallCaps,
+              },
+              {
+                bannerClass: "bannerB",
+                bannerValue: this.bannerType2,
+                containerClass: "bannerContainer2",
+                indentFirstLetter: this.indentFirstLetter2,
+                smallCaps: this.smallCaps2,
+              },
+            ],
+            fontSizeCss,
+            this.indentFirstLetter,
+            bannerFontFamily,
+            this.smallCaps
+          );
       shieldContainer.appendChild(stackedBannerSlot);
     } else if (hasBannerA) {
       const bannerContainerElmt = ShieldElement.prototype.createBannerContainer(
@@ -577,22 +916,46 @@ class ShieldElement extends Shield {
     img.draggable = false;
     shieldEl.appendChild(img);
 
-    const routeEl = document.createElement("p");
-    routeEl.className = "routeNumber";
-    routeEl.textContent = routeText;
+      const routeEl = document.createElement("p");
+      routeEl.className = "routeNumber";
+      routeEl.innerHTML = String(routeText || "")
+        .split("")
+        .map((char) => {
+          const safeChar = char
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
 
-    if (ShieldElement.prototype.isCountyShield(config)) {
-      const countyLabel = document.createElement("p");
-      countyLabel.className = "countyLabel";
-      countyLabel.textContent = (this.countyText || "").trim().toUpperCase();
-      if (countyLabel.textContent.length > 0) {
-        shieldEl.appendChild(countyLabel);
+          const charClass = /^[0-9A-Za-z]$/.test(char)
+            ? ` routeChar-${char.toUpperCase()}`
+            : "";
+
+          return `<span class="routeChar${charClass}">${safeChar}</span>`;
+        })
+        .join("");
+
+      if (ShieldElement.prototype.isCountyShield(config)) {
+        const countyLabel = document.createElement("p");
+        countyLabel.className = "countyLabel";
+        countyLabel.textContent = (this.countyText || "").trim().toUpperCase();
+        if (countyLabel.textContent.length > 0) {
+          shieldEl.appendChild(countyLabel);
+        }
       }
-    }
 
-    shieldEl.appendChild(routeEl);
+      if (!config?.suppressRouteNumber) {
+        shieldEl.appendChild(routeEl);
+      }
 
-    shieldContainer.appendChild(shieldEl);
+      shieldContainer.appendChild(shieldEl);
+
+      requestAnimationFrame(() => {
+        const fontFamily = window.getComputedStyle(routeEl).fontFamily || "";
+        const usesSeriesD = fontFamily.toLowerCase().includes("series d");
+
+        shieldContainer.classList.toggle("seriesDSpacingFix", usesSeriesD);
+      });
 
     if (!shouldStackSamePosition && hasBannerB) {
       const bannerContainerElmt2 = ShieldElement.prototype.createBannerContainer(
@@ -619,12 +982,16 @@ class ShieldElement extends Shield {
   }
 }
 
+const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN"];
+const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN"];
+
 ShieldElement.prototype.defaultShieldBase = "I";
 ShieldElement.prototype.defaultVariant = "Auto";
 ShieldElement.prototype.defaultRouteNumber = "40"; //TEMP
 ShieldElement.prototype.defaultBannerType = "None";
-ShieldElement.prototype.defaultBannerPosition = "Above";
-ShieldElement.prototype.defaultBannerFontSize = 1.4;
+ShieldElement.prototype.defaultBannerPosition = "Right";
+ShieldElement.prototype.defaultBannerPosition2 = "Above";
+ShieldElement.prototype.defaultBannerFontSize = 1.6;
 ShieldElement.prototype.defaultBannerFontFamily = "Series E";
 ShieldElement.prototype.defaultCountyText = "";
 ShieldElement.prototype.defaultShieldSize = 3;
@@ -677,9 +1044,52 @@ ShieldElement.prototype.getShieldClassNames = function (code) {
 };
 
 ShieldElement.prototype.buildBlockShieldList = function () {
-  const shields = [];
-  const directory = Shield.prototype.shieldDirectory;
+    const shields = [];
+    const directory = Shield.prototype.shieldDirectory;
 
+    const explicitShieldAssetOverrides = {
+      NY: {
+        "2Digit": "img/shields/United States/NY/NY-2Digit.svg",
+        "3Digit": "img/shields/United States/NY/NY-3Digit.svg",
+      },
+      NJ: {
+        "2Digit": "img/shields/United States/NJ/NJ-2Digit.svg",
+        "3Digit": "img/shields/United States/NJ/NJ-3Digit.svg",
+      },
+      IN: {
+        "2Digit": "img/shields/United States/IN/IN-2Digit.svg",
+        "3Digit": "img/shields/United States/IN/IN-3Digit.svg",
+      },
+      KS: {
+        "2Digit": "img/shields/United States/KS/KS-2Digit.svg",
+        "3Digit": "img/shields/United States/KS/KS-3Digit.svg",
+      },
+      KY: {
+        "2Digit": "img/shields/United States/KY/KY-2Digit.svg",
+        "3Digit": "img/shields/United States/KY/KY-3Digit.svg",
+      },
+      MA: {
+        "2Digit": "img/shields/United States/MA/MA-2Digit.svg",
+        "3Digit": "img/shields/United States/MA/MA-3Digit.svg",
+      },
+      ME: {
+        "2Digit": "img/shields/United States/ME/ME-2Digit.svg",
+        "3Digit": "img/shields/United States/ME/ME-3Digit.svg",
+      },
+      MN: {
+        "2Digit": "img/shields/United States/MN/MN-2Digit.svg",
+        "3Digit": "img/shields/United States/MN/MN-3Digit.svg",
+      },
+      NE: {
+        "2Digit": "img/shields/United States/NE/NE-2Digit.svg",
+        "3Digit": "img/shields/United States/NE/NE-3Digit.svg",
+      },
+      OK: {
+        "2Digit": "img/shields/United States/OK/OK-2Digit.svg",
+        "3Digit": "img/shields/United States/OK/OK-3Digit.svg",
+      },
+    };
+    
   const traverse = (node, pathParts = []) => {
     if (!node || typeof node !== "object") {
       return;
@@ -693,71 +1103,971 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       } else if (value.type === "shield") {
         const normalizedCode = ShieldElement.prototype.normalizeShieldCode(key);
         const variants = Array.isArray(value.variants) ? value.variants.slice() : [];
-        shields.push({
-          value: normalizedCode,
-          label: value.name || normalizedCode,
-          variants,
-          assetFolder: ["img/shields"].concat(pathParts).join("/"),
-          className: ShieldElement.prototype.getShieldClassNames(normalizedCode),
-          assetName: normalizedCode,
-          categories: pathParts.slice(),
-        });
+          const shieldFolderOverrides = {
+            I: "img/shields/United States/Interstate",
+            AZ: "img/shields/United States/AZ",
+            AZLOOP: "img/shields/United States/AZ",
+
+            GA: "img/shields/United States/GA",
+            GAALT: "img/shields/United States/GA",
+            GABYP: "img/shields/United States/GA",
+            GACONN: "img/shields/United States/GA",
+            GALOOP: "img/shields/United States/GA",
+            GASPUR: "img/shields/United States/GA",
+
+            IN: "img/shields/United States/IN",
+            INTR: "img/shields/United States/IN",
+
+            KS: "img/shields/United States/KS",
+            KSTP: "img/shields/United States/KS",
+
+            KY: "img/shields/United States/KY",
+
+            MA: "img/shields/United States/MA",
+            MATP: "img/shields/United States/MA",
+
+            ME: "img/shields/United States/ME",
+            METP: "img/shields/United States/ME",
+
+            MN: "img/shields/United States/MN",
+            MNBUS: "img/shields/United States/MN",
+
+            NE: "img/shields/United States/NE",
+            NELINK: "img/shields/United States/NE",
+            NESPUR: "img/shields/United States/NE",
+
+            NJ: "img/shields/United States/NJ",
+            GSP: "img/shields/United States/NJ",
+            NJTP: "img/shields/United States/NJ",
+            PIP: "img/shields/United States/NJ",
+
+            NY: "img/shields/United States/NY",
+
+            OK: "img/shields/United States/OK",
+          };
+
+          const resolvedAssetFolder =
+            shieldFolderOverrides[normalizedCode] ||
+            ["img/shields"].concat(pathParts).join("/");
+
+          shields.push({
+            value: normalizedCode,
+            label: value.name || normalizedCode,
+            variants,
+            assetFolder: resolvedAssetFolder,
+            className: ShieldElement.prototype.getShieldClassNames(normalizedCode),
+            assetName: normalizedCode,
+            assetPathByVariant: explicitShieldAssetOverrides[normalizedCode] || null,
+            categories: pathParts.slice(),
+          });
       }
     }
   };
 
   traverse(directory);
 
-  const ensureShield = (value, label, variants, assetFolder, categories = []) => {
-    const normalizedValue = ShieldElement.prototype.normalizeShieldCode(value);
-    if (
-      shields.some(
+    const ensureShield = ({
+      value,
+      label,
+      variants = [],
+      assetFolder,
+      categories = [],
+      assetName,
+      assetPath,
+      assetPathByVariant,
+      suppressRouteNumber = false,
+    }) => {
+      const normalizedValue = ShieldElement.prototype.normalizeShieldCode(value);
+
+      const existing = shields.find(
         (shield) =>
           ShieldElement.prototype.normalizeShieldCode(shield.value) ===
           normalizedValue
-      )
-    ) {
-      return;
-    }
-    shields.push({
-      value: normalizedValue,
-      label: label || normalizedValue,
-      variants: variants || [],
-      assetFolder,
-      className: ShieldElement.prototype.getShieldClassNames(normalizedValue),
-      assetName: normalizedValue,
-      categories,
-    });
-  };
+      );
 
-  ensureShield(
-    "cir",
-    "Circle",
-    ["2 Digit", "3 Digit"],
-    "img/shields/United States",
-    ["United States"]
-  );
-  ensureShield(
-    "elp",
-    "Ellipse",
-    ["2 Digit", "3 Digit"],
-    "img/shields/United States",
-    ["United States"]
-  );
-  ensureShield(
-    "rec",
-    "Rectangle",
-    ["2 Digit", "3 Digit"],
-    "img/shields/United States",
-    ["United States"]
-  );
-  ensureShield(
-    "rec2",
-    "Rectangle (Alt)",
-    ["2 Digit", "3 Digit"],
-    "img/shields/United States",
-    ["United States"]
-  );
+        const normalizedShield = {
+          value: normalizedValue,
+          label: label || normalizedValue,
+          variants,
+          assetFolder,
+          className: ShieldElement.prototype.getShieldClassNames(normalizedValue),
+          assetName: assetName || normalizedValue,
+          assetPath: assetPath || null,
+          assetPathByVariant: assetPathByVariant || null,
+          suppressRouteNumber: !!suppressRouteNumber,
+          categories,
+        };
+
+      if (existing) {
+        Object.assign(existing, normalizedShield);
+        return;
+      }
+
+      shields.push(normalizedShield);
+    };
+
+    const ensureDigitShield = (value, label, folder, variants = ["2 Digit", "3 Digit"]) => {
+      ensureShield({
+        value,
+        label,
+        variants,
+        assetFolder: folder,
+        categories: ["United States"],
+      });
+    };
+
+    const ensureExactShield = (value, label, path) => {
+      ensureShield({
+        value,
+        label,
+        variants: ["Image"],
+        assetFolder: path.split("/").slice(0, -1).join("/"),
+        assetName: value,
+        assetPath: path,
+        suppressRouteNumber: true,
+        categories: ["United States"],
+      });
+    };
+    
+    const ensureVariantShield = ({
+      value,
+      label,
+      folder,
+      assetName = value,
+      categories = ["United States"],
+      variants = ["2 Digit", "3 Digit"],
+    }) => {
+      const assetPathByVariant = {};
+
+      for (const variant of variants) {
+        const variantKey = ShieldElement.prototype.formatVariantKey(variant);
+        assetPathByVariant[variantKey] =
+          `${folder}/${assetName}-${variantKey}.svg`;
+      }
+
+      ensureShield({
+        value,
+        label,
+        variants,
+        assetFolder: folder,
+        assetName,
+        assetPathByVariant,
+        categories,
+      });
+    };
+
+    ensureDigitShield("cir", "Circle", "img/shields/United States");
+    ensureDigitShield("elp", "Ellipse", "img/shields/United States");
+    ensureDigitShield("rec", "Rectangle", "img/shields/United States");
+    ensureDigitShield("rec2", "Rectangle (Alt)", "img/shields/United States");
+    
+    /* Interstate */
+    ensureVariantShield({
+      value: "I",
+      label: "Interstate",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    ensureVariantShield({
+      value: "I-BUS",
+      label: "Interstate Business",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    ensureVariantShield({
+      value: "I-BL",
+      label: "Interstate Business Loop",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    ensureVariantShield({
+      value: "I-BS",
+      label: "Interstate Business Spur",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    ensureVariantShield({
+      value: "I-DL",
+      label: "Interstate Downtown Loop",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    ensureVariantShield({
+      value: "I-DS",
+      label: "Interstate Downtown Spur",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    ensureVariantShield({
+      value: "I-F",
+      label: "Future Interstate",
+      folder: "img/shields/United States/Interstate",
+      categories: ["United States", "Interstate"],
+    });
+
+    /* US Route */
+    ensureVariantShield({
+      value: "US",
+      label: "U.S. Route",
+      folder: "img/shields/United States/US Route",
+      categories: ["United States", "U.S. Route"],
+    });
+
+    ensureVariantShield({
+      value: "USCA",
+      label: "U.S. Route (CA style)",
+      folder: "img/shields/United States/US Route",
+      assetName: "US-CA",
+      categories: ["United States", "U.S. Route"],
+    });
+
+    /* Wisconsin */
+    ensureVariantShield({
+      value: "WI",
+      label: "Wisconsin",
+      folder: "img/shields/United States/WI",
+      categories: ["United States", "Wisconsin"],
+    });
+
+    ensureVariantShield({
+      value: "WICo",
+      label: "Wisconsin County",
+      folder: "img/shields/United States/WI",
+      assetName: "WICo",
+      categories: ["United States", "Wisconsin"],
+    });
+
+    /* AZ */
+    ensureDigitShield("AZ", "Arizona", "img/shields/United States/AZ");
+    ensureShield({
+      value: "AZLOOP",
+      label: "Arizona Loop",
+      variants: ["3 Digit"],
+      assetFolder: "img/shields/United States/AZ",
+      assetName: "AZLOOP",
+      categories: ["United States"],
+    });
+    /* FL */
+    ensureDigitShield("FL", "Florida", "img/shields/United States/FL");
+
+    ensureShield({
+      value: "FLToll",
+      label: "Florida Toll",
+      variants: ["Image"],
+      assetFolder: "img/shields/United States/FL",
+      assetName: "FLToll",
+      assetPath: "img/shields/United States/FL/FLToll-Current.svg",
+      suppressRouteNumber: false,
+      categories: ["United States"],
+    });
+
+    ensureShield({
+      value: "FLTP",
+      label: "Florida’s Turnpike",
+      variants: ["Image"],
+      assetFolder: "img/shields/United States/FL",
+      assetName: "FLTP",
+      assetPath: "img/shields/United States/FL/FLTP.svg",
+      suppressRouteNumber: true,
+      categories: ["United States"],
+    });
+
+    /* GA */
+    ensureDigitShield("GA", "Georgia", "img/shields/United States/GA");
+    ensureDigitShield("GAALT", "GA Alternate", "img/shields/United States/GA");
+    ensureDigitShield("GABYP", "GA Bypass", "img/shields/United States/GA");
+    ensureDigitShield("GACONN", "GA Connector", "img/shields/United States/GA");
+    ensureDigitShield("GALOOP", "GA Loop", "img/shields/United States/GA");
+    ensureDigitShield("GASPUR", "GA Spur", "img/shields/United States/GA");
+
+    /* IN */
+    ensureDigitShield("IN", "Indiana", "img/shields/United States/IN");
+    ensureExactShield("INTR", "Indiana Toll Road", "img/shields/United States/IN/INTR.png");
+
+    /* KS */
+    ensureDigitShield("KS", "Kansas", "img/shields/United States/KS");
+    ensureExactShield("KSTP", "Kansas Turnpike", "img/shields/United States/KS/KSTP.png");
+
+    /* KY */
+    ensureDigitShield("KY", "Kentucky", "img/shields/United States/KY");
+    ensureExactShield("KYAA", "AA Highway", "img/shields/United States/KY/KYAA.png");
+    ensureExactShield("KYAU", "Audubon Parkway", "img/shields/United States/KY/KYAU.png");
+    ensureExactShield("KYBG", "Bluegrass Parkway", "img/shields/United States/KY/KYBG.png");
+    ensureExactShield("KYCM", "Cumberland Parkway", "img/shields/United States/KY/KYCM.png");
+    ensureExactShield("KYHR", "Hal Rogers Parkway", "img/shields/United States/KY/KYHR.png");
+    ensureExactShield("KYMT", "Mountain Parkway", "img/shields/United States/KY/KYMT.png");
+    ensureExactShield("KYPR", "Pennyrile Parkway", "img/shields/United States/KY/KYPR.png");
+    ensureExactShield("KYPU", "Purchase Parkway", "img/shields/United States/KY/KYPU.png");
+    ensureExactShield("KYWK", "Western KY Parkway", "img/shields/United States/KY/KYWK.png");
+    ensureExactShield("KYWN", "Natcher Parkway", "img/shields/United States/KY/KYWN.png");
+
+    /* MA */
+    ensureDigitShield("MA", "Massachusetts", "img/shields/United States/MA");
+    ensureExactShield("MATP", "Mass Pike", "img/shields/United States/MA/MATP.png");
+
+    /* ME */
+    ensureDigitShield("ME", "Maine", "img/shields/United States/ME");
+    ensureExactShield("METP", "Maine Turnpike", "img/shields/United States/ME/METP.png");
+
+    /* MN */
+    ensureShield({
+      value: "MN",
+      label: "Minnesota",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/MN",
+      assetName: "MN",
+      categories: ["United States"],
+    });
+    ensureShield({
+      value: "MNBUS",
+      label: "Minnesota Business",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/MN",
+      assetName: "MNBUS",
+      categories: ["United States"],
+    });
+
+    /* NE */
+    ensureDigitShield("NE", "Nebraska", "img/shields/United States/NE");
+    ensureShield({
+      value: "NELINK",
+      label: "Nebraska Link",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/NE",
+      assetName: "NELINK",
+      categories: ["United States"],
+    });
+    ensureShield({
+      value: "NESPUR",
+      label: "Nebraska Spur",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/NE",
+      assetName: "NESPUR",
+      categories: ["United States"],
+    });
+    
+    /* NJ */
+    ensureDigitShield("NJ", "New Jersey", "img/shields/United States/NJ");
+    ensureExactShield("GSP", "Garden State Parkway", "img/shields/United States/NJ/GSP.png");
+    ensureExactShield("NJTP", "NJ Turnpike", "img/shields/United States/NJ/NJTP.png");
+    ensureExactShield("PIP", "Palisades Interstate Parkway", "img/shields/United States/NJ/PIP.png");
+
+    /* NY */
+    ensureDigitShield("NY", "New York", "img/shields/United States/NY");
+    ensureExactShield("B", "Bethpage Parkway", "img/shields/United States/NY/B.png");
+    ensureExactShield("BMP", "Bear Mountain Parkway", "img/shields/United States/NY/BMP.png");
+    ensureExactShield("BP", "Belt Parkway", "img/shields/United States/NY/BP.png");
+    ensureExactShield("BR", "Bronx River Parkway", "img/shields/United States/NY/BR.png");
+    ensureExactShield("BRP", "Bronx River Parkway", "img/shields/United States/NY/BRP.png");
+    ensureExactShield("CCP", "Cross County Parkway", "img/shields/United States/NY/CCP.png");
+    ensureExactShield("CI", "Cross Island Parkway", "img/shields/United States/NY/CI.png");
+    ensureExactShield("FDR", "FDR Drive", "img/shields/United States/NY/FDR.png");
+    ensureExactShield("GCP", "Grand Central Parkway", "img/shields/United States/NY/GCP.png");
+    ensureExactShield("H", "Heckscher Parkway", "img/shields/United States/NY/H.png");
+    ensureExactShield("HH", "Henry Hudson Parkway", "img/shields/United States/NY/HH.png");
+    ensureExactShield("HR", "Hutchinson River Parkway", "img/shields/United States/NY/HR.png");
+    ensureExactShield("HRD", "Harlem River Drive", "img/shields/United States/NY/HRD.png");
+    ensureExactShield("HRP", "Hutchinson River Parkway", "img/shields/United States/NY/HRP.png");
+    ensureExactShield("JR", "Jackie Robinson Parkway", "img/shields/United States/NY/JR.png");
+    ensureExactShield("KWV", "Korean War Veterans Parkway", "img/shields/United States/NY/KWV.png");
+    ensureExactShield("LOSP", "Lake Ontario State Parkway", "img/shields/United States/NY/LOSP.png");
+    ensureExactShield("M", "Meadowbrook Parkway", "img/shields/United States/NY/M.png");
+    ensureExactShield("MP", "Mosholu Parkway", "img/shields/United States/NY/MP.png");
+    ensureExactShield("N", "Northern State Parkway", "img/shields/United States/NY/N.png");
+    ensureExactShield("NSP", "Niagara Scenic Parkway", "img/shields/United States/NY/NSP.png");
+    ensureExactShield("NYST", "NY State Thruway", "img/shields/United States/NY/NYST.png");
+    ensureExactShield("O", "Ocean Parkway", "img/shields/United States/NY/O.png");
+    ensureExactShield("Pe", "Pelham Parkway", "img/shields/United States/NY/Pe.png");
+    ensureExactShield("RM", "Robert Moses Causeway", "img/shields/United States/NY/RM.png");
+    ensureExactShield("SA", "Sagtikos Parkway", "img/shields/United States/NY/SA.png");
+    ensureExactShield("SBP", "Sprain Brook Parkway", "img/shields/United States/NY/SBP.png");
+    ensureExactShield("SM", "Sunken Meadow Parkway", "img/shields/United States/NY/SM.png");
+    ensureExactShield("SMP", "Saw Mill Parkway", "img/shields/United States/NY/SMP.png");
+    ensureExactShield("SO", "Southern State Parkway", "img/shields/United States/NY/SO.png");
+    ensureExactShield("TSP", "Taconic State Parkway", "img/shields/United States/NY/TSP.png");
+    ensureExactShield("W", "Wantagh Parkway", "img/shields/United States/NY/W.png");
+
+    /* OH */
+    ensureDigitShield("OH", "Ohio", "img/shields/United States/OH");
+    ensureExactShield("OHTP", "Ohio Turnpike", "img/shields/United States/OH/OHTP.png");
+
+    /* OK */
+    ensureDigitShield("OK", "Oklahoma", "img/shields/United States/OK");
+    ensureExactShield("OKCH", "Cherokee Turnpike", "img/shields/United States/OK/OKCH.png");
+    ensureExactShield("OKCR", "Creek Turnpike", "img/shields/United States/OK/OKCR.png");
+    ensureExactShield("OKHB", "H.E. Bailey Turnpike", "img/shields/United States/OK/OKHB.png");
+    ensureExactShield("OKIN", "Indian Nation Turnpike", "img/shields/United States/OK/OKIN.png");
+    ensureExactShield("OKKC", "Kickapoo Turnpike", "img/shields/United States/OK/OKKC.png");
+    ensureExactShield("OKKL", "Kilpatrick Turnpike", "img/shields/United States/OK/OKKL.png");
+    ensureExactShield("OKMS", "Muskogee Turnpike", "img/shields/United States/OK/OKMS.png");
+    ensureExactShield("OKTU", "Turner Turnpike", "img/shields/United States/OK/OKTU.png");
+    ensureExactShield("OKWR", "Will Rogers Turnpike", "img/shields/United States/OK/OKWR.png");
+    
+    /* PA */
+    ensureShield({
+      value: "PA",
+      label: "Pennsylvania",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/PA",
+      assetName: "PA",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/PA/PA-2Digit.svg",
+        "3Digit": "img/shields/United States/PA/PA-3Digit.svg",
+      },
+      categories: ["United States", "Pennsylvania"],
+    });
+
+    ensureShield({
+      value: "PATPLOGO",
+      label: "PA Turnpike",
+      variants: ["Image"],
+      assetFolder: "img/shields/United States/PA",
+      assetName: "PATP",
+      assetPath: "img/shields/United States/PA/PATP.png",
+      categories: ["United States", "Pennsylvania"],
+    });
+
+    ensureShield({
+      value: "PATP",
+      label: "PA Turnpike Route",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/PA",
+      assetName: "PATP",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/PA/PATP-2Digit.svg",
+        "3Digit": "img/shields/United States/PA/PATP-3Digit.svg",
+      },
+      categories: ["United States", "Pennsylvania"],
+    });
+    
+    /* TX */
+    ensureDigitShield("TX", "Texas", "img/shields/United States/TX");
+
+    ensureShield({
+      value: "TXBELT",
+      label: "Texas Beltway",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXBELTWAY",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXBELTWAY-2Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXEXPRESS",
+      label: "Texas Express Toll",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXEXPRESS",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXEXPRESS-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXEXPRESS-3Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXFM",
+      label: "Texas FM",
+      variants: ["4 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXFM",
+      assetPathByVariant: {
+        "4Digit": "img/shields/United States/TX/TXFM-4Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXLOOP",
+      label: "Texas Loop",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXLOOP",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXLOOP-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXLOOP-3Digit.svg",
+        "4Digit": "img/shields/United States/TX/TXLOOP-4Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXPARK",
+      label: "Texas Park Road",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXPARK",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXPARK-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXPARK-3Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXRM",
+      label: "Texas RM",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXRM",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXRM-2Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXSPUR",
+      label: "Texas Spur",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXSPUR",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXSPUR-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXSPUR-3Digit.svg",
+        "4Digit": "img/shields/United States/TX/TXSPUR-4Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureShield({
+      value: "TXTOLL",
+      label: "Texas Toll",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/TX",
+      assetName: "TXTOLL",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXTOLL-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXTOLL-3Digit.svg",
+      },
+      categories: ["United States", "Texas"],
+    });
+
+    ensureExactShield("HTR", "Hardy Toll Road", "img/shields/United States/TX/HTR.png");
+    ensureExactShield("SHT", "Sam Houston Tollway", "img/shields/United States/TX/SHT.png");
+    ensureExactShield("TXTOLLCTRMA", "Texas Toll CTRMA", "img/shields/United States/TX/TXTollCTRMA.svg");
+    ensureExactShield("TXTOLLNTTA", "Texas Toll NTTA", "img/shields/United States/TX/TXTollNTTA.svg");
+    ensureExactShield("TXTOLLFBTR", "Fort Bend Toll Road", "img/shields/United States/TX/TXTollFBTR.png");
+    ensureExactShield("WPT", "Westpark Tollway", "img/shields/United States/TX/WPT.png");
+    
+    /* CANADA */
+
+    ensureShield({
+      value: "TCH",
+      label: "Trans-Canada Highway",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada",
+      assetName: "TCH",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/TCH-2Digit.svg",
+        "3Digit": "img/shields/Canada/TCH-3Digit.svg",
+      },
+      categories: ["Canada"],
+    });
+
+    /* AB */
+    ensureShield({
+      value: "AB",
+      label: "Alberta",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/AB",
+      assetName: "AB",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/AB/AB-2Digit.svg",
+        "3Digit": "img/shields/Canada/AB/AB-3Digit.svg",
+      },
+      categories: ["Canada", "Alberta"],
+    });
+
+    ensureShield({
+      value: "AB2",
+      label: "Alberta Oval",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/AB",
+      assetName: "AB2",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/AB/AB2-2Digit.svg",
+        "3Digit": "img/shields/Canada/AB/AB2-3Digit.svg",
+      },
+      categories: ["Canada", "Alberta"],
+    });
+
+    ensureShield({
+      value: "ABTC",
+      label: "Alberta TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/AB",
+      assetName: "ABTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/AB/ABTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/AB/ABTC-3Digit.svg",
+      },
+      categories: ["Canada", "Alberta"],
+    });
+
+    /* BC */
+    ensureShield({
+      value: "BC",
+      label: "British Columbia",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/BC",
+      assetName: "BC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/BC/BC-2Digit.svg",
+        "3Digit": "img/shields/Canada/BC/BC-3Digit.svg",
+      },
+      categories: ["Canada", "British Columbia"],
+    });
+
+    ensureShield({
+      value: "BCYH",
+      label: "BC Yellowhead",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/BC",
+      assetName: "BCYH",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/BC/BCYH-2Digit.svg",
+        "3Digit": "img/shields/Canada/BC/BCYH-3Digit.svg",
+      },
+      categories: ["Canada", "British Columbia"],
+    });
+    
+    ensureShield({
+      value: "BCTC",
+      label: "BC TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/BC",
+      assetName: "BCTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/BC/BCTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/BC/BCTC-3Digit.svg",
+      },
+      categories: ["Canada", "British Columbia"],
+    });
+
+    /* MB */
+    ensureShield({
+      value: "MB",
+      label: "Manitoba",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/MB",
+      assetName: "MB",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/MB/MB-2Digit.svg",
+        "3Digit": "img/shields/Canada/MB/MB-3Digit.svg",
+      },
+      categories: ["Canada", "Manitoba"],
+    });
+
+    ensureShield({
+      value: "MB2",
+      label: "Manitoba Secondary",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/MB",
+      assetName: "MB2",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/MB/MB2-2Digit.svg",
+        "3Digit": "img/shields/Canada/MB/MB2-3Digit.svg",
+      },
+      categories: ["Canada", "Manitoba"],
+    });
+
+    ensureShield({
+      value: "MBTC",
+      label: "Manitoba TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/MB",
+      assetName: "MBTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/MB/MBTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/MB/MBTC-3Digit.svg",
+      },
+      categories: ["Canada", "Manitoba"],
+    });
+
+    /* NB */
+    ensureShield({
+      value: "NB",
+      label: "New Brunswick",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NB",
+      assetName: "NB",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NB/NB-2Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NB-3Digit.svg",
+      },
+      categories: ["Canada", "New Brunswick"],
+    });
+
+    ensureShield({
+      value: "NBCONN",
+      label: "NB Connector",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NB",
+      assetName: "NBCONN",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NB/NBCONN-2Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NBCONN-3Digit.svg",
+      },
+      categories: ["Canada", "New Brunswick"],
+    });
+
+    ensureShield({
+      value: "NBLOCAL",
+      label: "NB Local",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NB",
+      assetName: "NBLOCAL",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NB/NBLOCAL-2Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NBLOCAL-3Digit.svg",
+      },
+      categories: ["Canada", "New Brunswick"],
+    });
+
+    ensureShield({
+      value: "NBTC",
+      label: "NB TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NB",
+      assetName: "NBTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NB/NBTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NBTC-3Digit.svg",
+      },
+      categories: ["Canada", "New Brunswick"],
+    });
+
+    /* NL */
+    ensureShield({
+      value: "NL",
+      label: "Newfoundland and Labrador",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NL",
+      assetName: "NL",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NL/NL-2Digit.svg",
+        "3Digit": "img/shields/Canada/NL/NL-3Digit.svg",
+      },
+      categories: ["Canada", "Newfoundland and Labrador"],
+    });
+
+    ensureShield({
+      value: "NLTC",
+      label: "NL TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NL",
+      assetName: "NLTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NL/NLTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/NL/NLTC-3Digit.svg",
+      },
+      categories: ["Canada", "Newfoundland and Labrador"],
+    });
+
+    /* NS */
+    ensureShield({
+      value: "NS",
+      label: "Nova Scotia",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NS",
+      assetName: "NS",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NS/NS-2Digit.svg",
+        "3Digit": "img/shields/Canada/NS/NS-3Digit.svg",
+      },
+      categories: ["Canada", "Nova Scotia"],
+    });
+
+    ensureShield({
+      value: "NSCONN",
+      label: "NS Connector",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NS",
+      assetName: "NSCONN",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NS/NSCONN-2Digit.svg",
+        "3Digit": "img/shields/Canada/NS/NSCONN-3Digit.svg",
+      },
+      categories: ["Canada", "Nova Scotia"],
+    });
+
+    ensureShield({
+      value: "NSTC",
+      label: "NS TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/NS",
+      assetName: "NSTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/NS/NSTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/NS/NSTC-3Digit.svg",
+      },
+      categories: ["Canada", "Nova Scotia"],
+    });
+
+    /* ON */
+    ensureShield({
+      value: "ON",
+      label: "Ontario",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/ON",
+      assetName: "ON",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/ON/ON-2Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ON-3Digit.svg",
+      },
+      categories: ["Canada", "Ontario"],
+    });
+
+    ensureShield({
+      value: "ON2",
+      label: "Ontario Secondary",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/ON",
+      assetName: "ON2",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/ON/ON2-2Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ON2-3Digit.svg",
+      },
+      categories: ["Canada", "Ontario"],
+    });
+
+    ensureShield({
+      value: "ON3",
+      label: "Ontario Tertiary",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/ON",
+      assetName: "ON3",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/ON/ON3-2Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ON3-3Digit.svg",
+      },
+      categories: ["Canada", "Ontario"],
+    });
+
+    ensureExactShield("ONDVP", "Don Valley Parkway", "img/shields/Canada/ON/ON-DVP.png");
+    ensureExactShield("ONGAR", "Gardiner Expressway", "img/shields/Canada/ON/ON-GAR.png");
+
+    ensureShield({
+      value: "ONTC",
+      label: "Ontario TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/ON",
+      assetName: "ONTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/ON/ONTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ONTC-3Digit.svg",
+      },
+      categories: ["Canada", "Ontario"],
+    });
+
+    ensureExactShield("ONTCCOR", "Central Ontario Route", "img/shields/Canada/ON/ONTC-COR.svg");
+    ensureExactShield("ONTCGBR", "Georgian Bay Route", "img/shields/Canada/ON/ONTC-GBR.svg");
+    ensureExactShield("ONTCLSR", "Lake Superior Route", "img/shields/Canada/ON/ONTC-LSR.svg");
+    ensureExactShield("ONTCNOR", "Northern Ontario Route", "img/shields/Canada/ON/ONTC-NOR.svg");
+    ensureExactShield("ONTCOVR", "Ottawa Valley Route", "img/shields/Canada/ON/ONTC-OVR.svg");
+
+    /* PEI */
+    ensureShield({
+      value: "PEI",
+      label: "Prince Edward Island",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/Canada/PEI",
+      assetName: "PEI",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/PEI/PEI-2Digit.svg",
+      },
+      categories: ["Canada", "Prince Edward Island"],
+    });
+
+    /* QC */
+    ensureShield({
+      value: "QC",
+      label: "Quebec Autoroute",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/QC",
+      assetName: "QC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/QC/QC-2Digit.svg",
+        "3Digit": "img/shields/Canada/QC/QC-3Digit.svg",
+      },
+      categories: ["Canada", "Quebec"],
+    });
+
+    ensureShield({
+      value: "QC2",
+      label: "Quebec Route",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/QC",
+      assetName: "QC2",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/QC/QC2-2Digit.svg",
+        "3Digit": "img/shields/Canada/QC/QC2-3Digit.svg",
+      },
+      categories: ["Canada", "Quebec"],
+    });
+
+    ensureShield({
+      value: "QCTC",
+      label: "Quebec TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/QC",
+      assetName: "QCTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/QC/QCTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/QC/QCTC-3Digit.svg",
+      },
+      categories: ["Canada", "Quebec"],
+    });
+
+    /* SK */
+    ensureShield({
+      value: "SK",
+      label: "Saskatchewan",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/SK",
+      assetName: "SK",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/SK/SK-2Digit.svg",
+        "3Digit": "img/shields/Canada/SK/SK-3Digit.svg",
+      },
+      categories: ["Canada", "Saskatchewan"],
+    });
+
+    ensureShield({
+      value: "SK2",
+      label: "Saskatchewan Secondary",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/SK",
+      assetName: "SK2",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/SK/SK2-2Digit.svg",
+        "3Digit": "img/shields/Canada/SK/SK2-3Digit.svg",
+      },
+      categories: ["Canada", "Saskatchewan"],
+    });
+
+    ensureShield({
+      value: "SKTC",
+      label: "Saskatchewan TCH",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada/SK",
+      assetName: "SKTC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/SK/SKTC-2Digit.svg",
+        "3Digit": "img/shields/Canada/SK/SKTC-3Digit.svg",
+      },
+      categories: ["Canada", "Saskatchewan"],
+    });
 
   return shields;
 };
@@ -898,12 +2208,31 @@ ShieldElement.prototype.createBannerElement = function (
     bannerEl.style.setProperty("--bannerFontFamily", `"${normalizedFont}"`);
     bannerEl.style.fontFamily = `"${normalizedFont}"`;
   }
-  if (bannerValue === "Toll") {
-    bannerEl.classList.add("TOLL");
-  }
-  bannerEl.textContent =
-    bannerValue && bannerValue !== "None" ? bannerValue : " ";
+    const normalizedBannerValue = String(bannerValue || "").trim();
+    const lowerBannerValue = normalizedBannerValue.toLowerCase();
+
+    if (lowerBannerValue === "toll") {
+      bannerEl.classList.add("TOLL", "yellowElmt", "noIndent");
+    }
+    bannerEl.textContent =
+      normalizedBannerValue && normalizedBannerValue !== "None"
+        ? normalizedBannerValue
+        : " ";
   return bannerEl;
+};
+
+ShieldElement.prototype.isBilingualDirectionPair = function (firstValue, secondValue) {
+  const first = String(firstValue || "").trim().toUpperCase();
+  const second = String(secondValue || "").trim().toUpperCase();
+
+  const pairs = {
+    EAST: "EST",
+    WEST: "OUEST",
+    NORTH: "NORD",
+    SOUTH: "SUD",
+  };
+
+  return pairs[first] === second;
 };
 
 ShieldElement.prototype.createStackedBannerSlot = function (
@@ -917,25 +2246,53 @@ ShieldElement.prototype.createStackedBannerSlot = function (
   const normalizedPosition = ShieldElement.prototype.normalizeBannerPosition(
     position
   );
+
   const container = document.createElement("div");
   container.className = "stackedBannerSlot bannerSlot";
-  container.classList.add(
-    `bannerSlot-${normalizedPosition.toLowerCase()}`
-  );
+  container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
+
+  const firstBannerValue = banners?.[0]?.bannerValue;
+  const secondBannerValue = banners?.[1]?.bannerValue;
+
+  if (
+    ShieldElement.prototype.isBilingualDirectionPair(
+      firstBannerValue,
+      secondBannerValue
+    )
+  ) {
+    container.classList.add("bilingualDirectionBanner");
+  }
+
+  const hasTollBanner = banners.some((banner) => {
+    return String(banner.bannerValue || "").trim().toUpperCase() === "TOLL";
+  });
+
+  if (hasTollBanner) {
+    container.classList.add("tollStackedBanner");
+  }
 
   banners.forEach(
-    ({ bannerClass, bannerValue, containerClass, indentFirstLetter: bannerSpecificIndent, smallCaps: bannerSpecificSmallCaps }) => {
+    ({
+      bannerClass,
+      bannerValue,
+      containerClass,
+      indentFirstLetter: bannerSpecificIndent,
+      smallCaps: bannerSpecificSmallCaps,
+    }) => {
       if (containerClass) {
         container.classList.add(containerClass);
       }
+
       const bannerIndent =
         typeof bannerSpecificIndent === "boolean"
           ? bannerSpecificIndent
           : indentFirstLetter;
+
       const bannerSmallCaps =
         typeof bannerSpecificSmallCaps === "boolean"
           ? bannerSpecificSmallCaps
           : smallCaps;
+
       const bannerEl = ShieldElement.prototype.createBannerElement(
         bannerClass,
         bannerValue,
@@ -944,8 +2301,10 @@ ShieldElement.prototype.createStackedBannerSlot = function (
         bannerFontFamily,
         bannerSmallCaps
       );
+
       container.appendChild(bannerEl);
-    });
+    }
+  );
 
   return container;
 };
@@ -964,12 +2323,18 @@ ShieldElement.prototype.createBannerContainer = function (
   const container = document.createElement("div");
   container.className = containerClass;
   container.classList.add("bannerSlot");
+
   const normalizedPosition = ShieldElement.prototype.normalizeBannerPosition(
     position
   );
-  container.classList.add(
-    `bannerSlot-${normalizedPosition.toLowerCase()}`
-  );
+  container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
+
+  const normalizedBannerValue = String(bannerValue || "").trim().toUpperCase();
+
+  if (normalizedBannerValue === "TOLL") {
+    container.classList.add("tollBannerSlot");
+  }
+
   const bannerEl = ShieldElement.prototype.createBannerElement(
     bannerClass,
     bannerValue,
@@ -978,6 +2343,7 @@ ShieldElement.prototype.createBannerContainer = function (
     bannerFontFamily,
     smallCaps
   );
+
   container.appendChild(bannerEl);
   return container;
 };
@@ -1014,51 +2380,69 @@ ShieldElement.prototype.resolveBlockVariant = function (
   return allowed.includes(inferred) ? inferred : fallback;
 };
 
+ShieldElement.prototype.getRouteCharacterCount = function (routeNumber) {
+  const raw = String(routeNumber || "").trim();
+
+  if (!raw) {
+    return 0;
+  }
+
+  try {
+    return (raw.match(/[\p{L}\p{N}]/gu) || []).length;
+  } catch (error) {
+    return (raw.match(/[A-Za-z0-9]/g) || []).length;
+  }
+};
+
+ShieldElement.prototype.getRouteSizeClassFromCount = function (count) {
+  if (!count) {
+    return "";
+  }
+  if (count <= 1) {
+    return "one";
+  }
+  if (count === 2) {
+    return "two";
+  }
+  if (count === 3) {
+    return "three";
+  }
+  return "four";
+};
+
 ShieldElement.prototype.getVariantFromRoute = function (routeNumber, config) {
-  const digitsOnly = (routeNumber || "").replace(/[^0-9]/g, "");
+  const characterCount = ShieldElement.prototype.getRouteCharacterCount(routeNumber);
   const supportsFourDigit =
     Array.isArray(config?.variants) && config.variants.includes("4 Digit");
-  if (supportsFourDigit && digitsOnly.length >= 4) {
+
+  if (supportsFourDigit && characterCount >= 4) {
     return "4 Digit";
   }
-  return digitsOnly.length >= 3 ? "3 Digit" : "2 Digit";
+
+  return characterCount >= 3 ? "3 Digit" : "2 Digit";
 };
 
 ShieldElement.prototype.getContainerSizeClass = function (routeNumber) {
-  const length = (routeNumber || "").trim().length;
-  if (length === 0) {
-    return "";
-  }
-  if (length <= 1) {
-    return "one";
-  }
-  if (length === 2) {
-    return "two";
-  }
-  if (length === 3) {
-    return "three";
-  }
-  return "four";
+  return ShieldElement.prototype.getRouteSizeClassFromCount(
+    ShieldElement.prototype.getRouteCharacterCount(routeNumber)
+  );
 };
 
 ShieldElement.prototype.getImageSizeClass = function (routeNumber) {
-  const length = (routeNumber || "").trim().length;
-  if (length === 0) {
-    return "";
-  }
-  if (length <= 1) {
-    return "one";
-  }
-  if (length === 2) {
-    return "two";
-  }
-  if (length === 3) {
-    return "three";
-  }
-  return "four";
+  return ShieldElement.prototype.getRouteSizeClassFromCount(
+    ShieldElement.prototype.getRouteCharacterCount(routeNumber)
+  );
 };
 
 ShieldElement.prototype.getShieldAssetPath = function (config, variantKey) {
+  if (config?.assetPathByVariant && config.assetPathByVariant[variantKey]) {
+    return config.assetPathByVariant[variantKey];
+  }
+
+  if (config?.assetPath) {
+    return config.assetPath;
+  }
+
   const assetFolder = config?.assetFolder || "img/shields";
   const assetName = config?.assetName || config?.value || "I";
   const suffix = variantKey ? `-${variantKey}` : "";
@@ -1085,20 +2469,9 @@ ShieldElement.prototype.getEffectiveSizeClass = function (routeNumber, variant) 
     return "four";
   }
 
-  const length = (routeNumber || "").trim().length;
-  if (length === 0) {
-    return "";
-  }
-  if (length <= 1) {
-    return "one";
-  }
-  if (length === 2) {
-    return "two";
-  }
-  if (length === 3) {
-    return "three";
-  }
-  return "four";
+    return ShieldElement.prototype.getRouteSizeClassFromCount(
+      ShieldElement.prototype.getRouteCharacterCount(routeNumber)
+    );
 };
 
 class DividerElement {

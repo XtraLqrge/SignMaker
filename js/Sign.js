@@ -26,7 +26,7 @@ class Sign {
 		guideArrowLanes = 1,
 		useCanadianDownArrows = false,
 		exitguideArrows = "Down Arrow",
-		exitOnlyPadding = 0,
+		exitOnlyPadding = 0.2,
 		exitOnlyBorderMode,
 		exitOnlyLeftText = "EXIT",
 		exitOnlyRightText = "ONLY",

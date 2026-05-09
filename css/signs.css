@@ -563,15 +563,12 @@
   clear: both;
   visibility: visible;
   overflow: hidden;
-  width: 100%;
 }
 
 .signHolder {
   display: flex;
   clear: both;
   flex-direction: row;
-  width: 100%;
-  justify-content: center;
 }
 
 .panel.round .exitTabContainer,
@@ -779,7 +776,7 @@
 
 .guideArrows.half_exit.only.default .arrowContainer {
   position: relative;
-  z-index: 1;
+  z-index: auto;
 }
 
 .halfarrow {
@@ -842,7 +839,7 @@
 
 .exitTab .exitTabVerticalContainer {
   display: flex;
-  flex-direction: column;
+  flex-direction: column;Im
   align-items: center;
   justify-content: flex-start;
   gap: 0.4rem;
@@ -1128,12 +1125,54 @@
 
 .exitOnlyArrow {
   display: inline-block;
-
   margin-top: 0.1em;
+  height: 1.8rem;
+  padding: 2px 0.35rem;
+}
 
-  height: 2rem;
+.exitOnlyArrow[src$="A-4.svg"],
+.exitOnlyArrow[src$="A-1.svg"] {
+  transform: scale(1.14);
+  transform-origin: center center;
+}
 
-  padding: 2px;
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="B-4.svg"]:only-of-type),
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="A-4.svg"]:only-of-type),
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="B-1.svg"]:only-of-type),
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="A-1.svg"]:only-of-type) {
+  display: grid;
+  grid-template-columns: 4.4ch auto 4.4ch;
+  align-items: center;
+  column-gap: 0.32rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin: 0 auto;
+}
+.guideArrows.exit_only:has(.exitOnlyArrow[src$="A-4.svg"]),
+.guideArrows.exit_only:has(.exitOnlyArrow[src$="A-1.svg"]) {
+  padding-top: 0.1rem !important;
+  padding-bottom: 0.1rem !important;
+}
+
+.guideArrows.exit_only:has(.exitOnlyArrow[src$="A-4.svg"]) .arrowContainer,
+.guideArrows.exit_only:has(.exitOnlyArrow[src$="A-1.svg"]) .arrowContainer {
+  min-height: 1.0rem;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="A-4.svg"]:only-of-type) > .exitOnlyText:first-of-type,
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="A-1.svg"]:only-of-type) > .exitOnlyText:first-of-type {
+  text-align: right;
+  justify-content: flex-end;
+  padding: 0;
+  margin: 0;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="A-4.svg"]:only-of-type) > .exitOnlyText:last-of-type,
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[src$="A-1.svg"]:only-of-type) > .exitOnlyText:last-of-type {
+  text-align: left;
+  justify-content: flex-start;
+  padding: 0;
+  margin: 0;
 }
 
 .arrowContainer.hideExitOnlyArrows .exitOnlyArrow,
@@ -1147,8 +1186,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 4.8ch;
-  padding: 0;
+  min-width: 4.7ch;
+  width: auto;
+  padding: 0 0.8rem;
   padding-top: 0.18rem;
   font-size: 1.45rem;
   word-spacing: 0.2rem;
@@ -1165,11 +1205,11 @@
   background-color: var(--yellow);
   color: var(--black);
   border-radius: 0.1rem;
-  font-size: 0.95rem;
-  padding: 0px 3px 0px 3px;
+  font-size: 1rem;
+  padding: 0px 0px 0px 3px;
   margin-left: 0.3rem;
   margin-right: 0.3rem;
-  margin-top: 0.5rem;
+  margin-top: 0.3rem;
   font-family: "Series EM";
   height: 1.15rem;
   position: relative;
@@ -1177,8 +1217,11 @@
 }
 
 .exitOnlySpace {
-  margin-right: 5rem;
+  display: inline-block;
+  width: 7.6ch;
+  margin-right: 0;
 }
+
 
 .oText {
   margin: 0 1rem;
@@ -1188,66 +1231,185 @@
   font-size: 4rem;
   line-height: 0;
   display: inline-block;
-  margin: 0.2rem 1.2rem;
-  padding: 0;
-  height: 1.65rem;
+  margin: 0rem 4.25rem 0.5rem;
+  padding: 0 0.1rem 0 0.05rem;
   width: auto;
   object-fit: contain;
   vertical-align: middle;
 }
 
-/* wide horizontal arrows */
-.arrow.leftarrow,
-.arrow.rightarrow {
-  height: 1.7rem;
+/* Straight / down */
+.arrow.downarrow,
+.arrow.straight,
+.arrow.down,
+.arrow.up,
+.arrow.uparrow {
+  height: 1.5rem;
 }
 
-/* diagonals */
+.arrow[src$="B-4.svg"],
+.arrow[src$="B-1.svg"],
+.arrow[src$="B-3.svg"],
+.arrow[src$="B-2.svg"] {
+  height: 2rem !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+/* Diagonals */
 .arrow.left\/uparrow,
 .arrow.right\/uparrow,
 .arrow.left\/downarrow,
 .arrow.right\/downarrow {
-  height: 2.1rem;
+  height: 2.25rem;
 }
 
-/* straight / down */
-.arrow.downarrow,
-.arrow.straight,
-.arrow.down {
-  height: 1.75rem;
+/* Alt diagonals */
+.arrow.alt.left\/uparrow,
+.arrow.alt.right\/uparrow,
+.arrow.alt.left\/downarrow,
+.arrow.alt.right\/downarrow {
+  height: 2rem !important;
+  width: auto !important;
+  transform: none !important;
 }
 
-/* slight curves */
+/* Wide horizontal arrows */
+.arrow.leftarrow,
+.arrow.rightarrow {
+  height: 1.8rem;
+}
+
+/* Sharp curves */
+.arrow.sharpleft,
+.arrow.sharpright {
+    height: 2.5rem;
+}
+
+/* Slight curves */
 .arrow.slightleft,
 .arrow.slightright {
-  height: 1.85rem;
+  height: 2.15rem;
 }
 
 .arrowContainer {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0;
+  width: max-content;
+  margin: 0 auto;
 }
 
 .arrow:first-child {
-  margin-left: 0.5rem;
+  margin-left: 1rem;
 }
 
 .arrow:last-child {
-  margin-right: 0.5rem;
+  margin-right: 1rem;
+}
+
+/* 1 Arrow */
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(1):last-of-type) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: max-content;
+  margin: 0 auto;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(1):last-of-type) > .exitOnlyText {
+  min-width: auto;
+  padding-left: 0.32rem;
+  padding-right: 0.32rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(1):last-of-type) > img.exitOnlyArrow {
+  padding-left: 0.32rem;
+  padding-right: 0.32rem;
+  margin: 0;
+}
+
+/* 2 Arrows */
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(2):last-of-type) > img.exitOnlyArrow:first-of-type {
+  padding-right: 0.08rem;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(2):last-of-type) > img.exitOnlyArrow:last-of-type {
+  padding-left: 0.08rem;
+}
+
+/* 3 Arrows */
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) .exitOnlyText {
+  min-width: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) > img.exitOnlyArrow:first-of-type {
+  margin-right: 1.15rem;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) > img.exitOnlyArrow:nth-of-type(2) {
+  margin-left: 0.8rem;
+  margin-right: 0.8rem;
+}
+
+.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) > img.exitOnlyArrow:nth-of-type(3):last-of-type {
+  margin-left: 1.15rem;
+}
+
+
+/* 4 Arrows */
+.guideArrows.exit_only:has(.arrowContainer.exitOnlyFourLane) {
+  width: 100%;
+}
+
+.guideArrows.exit_only .arrowContainer.exitOnlyFourLane {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  align-items: center !important;
+  justify-items: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding-left: 0.8rem !important;
+  padding-right: 0.8rem !important;
+  margin: 0 !important;
+  position: relative !important;
+}
+
+.guideArrows.exit_only .arrowContainer.exitOnlyFourLane > .exitOnlyArrow {
+  margin: 0 !important;
+  padding: 2px 0 !important;
+}
+
+.guideArrows.exit_only .arrowContainer.exitOnlyFourLane > .exitOnlyFourLaneText {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  min-width: auto !important;
+  margin: 0 !important;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .arrowContainer .left {
-  margin-right: 0.5rem;
-}
-
-.arrowContainer .right {
-  margin-left: 0.5rem;
+  margin-right: 1rem;
 }
 
 .arrowContainer .middle {
   float: none;
+}
+
+.arrowContainer .right {
+  margin-left: 1rem;
 }
 
 .centerText .arrow {
@@ -1255,10 +1417,9 @@
   margin-top: -0.25rem;
 }
 
-.actionMessage+.arrow {
+.actionMessage + .arrow {
   margin-left: 0.5rem;
 }
-
 
 .actionMessage {
   --fhwaBaselineOffset: 0px;
@@ -1332,7 +1493,8 @@
   height: auto;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 /* Center subpanel content vertically, except for APL subpanels */
@@ -1345,7 +1507,12 @@
 
 /* When APL arrows are present, make subpanels stretch equally */
 .subPanelDisplay:has(.subpanelAplArrows) {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.subPanelDisplay.hasAplExitOnlySubpanel {
+  --aplExitOnlySubpanelReserve: 5.7rem;
+  flex-basis: var(--aplExitOnlySubpanelReserve);
 }
 
 /* Make content area grow to push APL arrows to consistent bottom position */
@@ -1426,11 +1593,17 @@
   border-bottom-right-radius: 0.5rem;
 }
 
-img.exitOnlyArrow:first-child,
-img.exitOnlyArrow:last-child {
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
+img.exitOnlyArrow:first-child {
+  padding-left: 0.8rem;
+  padding-right: 0.3rem;
 }
+img.exitOnlyArrow:last-child {
+  padding-right: 0.8rem;
+  padding-left: 0.3rem;
+}
+
+/* Full EXIT ONLY containers */
+
 
 .tagOnlyText {
   color: black;
@@ -1552,130 +1725,21 @@ img.exitOnlyArrow:last-child {
   filter: invert(1);
 }
 
-/* APL arrows inside subpanels - extends past parent to cover side borders */
-.subpanelAplArrows {
-  padding: 0.5rem 1rem;
-  margin-left: -0.2rem;
-  margin-right: -0.2rem;
-  border: 0.2rem solid var(--white);
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  border-radius: 0;
-  position: relative;
-  /*z-index: 5;*/
-  align-items: flex-end;
-  min-height: 6rem;
-  /* Matches largest arrow height (4.75rem) + padding */
-}
-
-/* Only first subpanel gets left border and bottom-left radius */
-.subPanelDisplay:first-of-type .subpanelAplArrows {
-  border-left: 0.2rem solid var(--white);
-  border-bottom-left-radius: var(--signBorderRadius, 0.75rem);
-  justify-content: flex-start;
-  /* Left align arrows */
-  padding-left: 0;
-  /* Remove left padding as requested */
-}
-
-/* Only last subpanel gets right border and bottom-right radius */
-.subPanelDisplay:last-of-type .subpanelAplArrows {
-  border-right: 0.2rem solid var(--white);
-  border-bottom-right-radius: var(--signBorderRadius, 0.75rem);
-  justify-content: flex-end;
-  /* Right align arrows */
-  padding-right: 0;
-  /* Remove right padding for symmetry */
-}
-
-/* When a divider follows the last subpanel, remove the right border/radius from that subpanel */
-.subPanelDisplay:has(+ .subDivider:last-child) .subpanelAplArrows {
-  border-right: none;
-  border-bottom-right-radius: 0;
-}
-
-/* Add a pseudo-element to extend the bottom border after the last divider */
-.signHolder:has(.subpanelAplArrows) .subDivider:last-child {
-  border-bottom: 0.2rem solid var(--white);
-  border-right: 0.2rem solid var(--white);
-  border-bottom-right-radius: var(--signBorderRadius, 0.75rem);
-}
-
-.panel.white .subpanelAplArrows,
-.panel.yellow .subpanelAplArrows,
-.panel.orange .subpanelAplArrows {
-  border-color: var(--black);
-}
-
-.panel.white .subPanelDisplay:first-of-type .subpanelAplArrows,
-.panel.yellow .subPanelDisplay:first-of-type .subpanelAplArrows,
-.panel.orange .subPanelDisplay:first-of-type .subpanelAplArrows {
-  border-left-color: var(--black);
-}
-
-.panel.white .subPanelDisplay:last-of-type .subpanelAplArrows,
-.panel.yellow .subPanelDisplay:last-of-type .subpanelAplArrows,
-.panel.orange .subPanelDisplay:last-of-type .subpanelAplArrows {
-  border-right-color: var(--black);
-}
-
-/* APL Exit Only Styling */
-.aplExitOnlyContainer {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  gap: 0.25rem;
-}
-
-.aplExitOnlyLabel {
-  background-color: var(--yellow);
-  color: var(--black);
-  font-family: "Series E", sans-serif;
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 0.1rem 1rem;
-  border-radius: 0.1rem
-}
-
-/* APL Exit Only - TURN arrow */
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"] .aplExitOnlyExit {
-  margin-right: 0.15rem
-}
-
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"] .aplExitOnlyOnly {
-  /* Shift ONLY to the left (closer to arrow) */
-  margin-left: -2rem;
-}
-
-/* APL Exit Only - TURN arrow flipped */
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"] .aplExitOnlyExit {
-  /* Shift EXIT to the right (closer to arrow) */
-  margin-right: -2rem;
-}
-
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"] .aplExitOnlyOnly {
-  /* Reset ONLY shift for flipped TURN */
-  margin-left: 0.15rem;
-}
 
 @keyframes flashSelection {
   0% {
-    outline: 0.5rem solid yellow;
+    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0.75);
+    opacity: 1;
   }
 
-  15% {
-    outline: 1.125rem solid yellow;
-  }
-
-  25% {
-    outline: 0.5rem solid yellow;
+  20% {
+    box-shadow: 0 0 0 0.28rem rgba(255, 255, 0, 1);
+    opacity: 1;
   }
 
   100% {
-    outline: 0.5rem solid rgba(255, 255, 0, 0);
+    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0);
+    opacity: 0;
   }
 }
 
@@ -1683,6 +1747,679 @@ img.exitOnlyArrow:last-child {
   position: absolute;
   pointer-events: none;
   z-index: 50;
-  background: transparent;
-  animation: flashSelection 0.5s ease-in forwards;
+  background: rgba(255, 255, 0, 0.08);
+  border-radius: inherit;
+  animation: flashSelection 0.45s ease-out forwards;
+}
+#postContainer {
+  position: relative;
+}
+
+.flash-selection {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+/* ---------- Exit Only / Half Exit Only corner fill only, correct parent ---------- */
+
+/* The green corner is coming from .signContainer, not .sign */
+.signContainer:has(> .guideArrows.exit_only),
+.signContainer:has(> .guideArrows.half_exit.only) {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Keep actual sign and guide arrow contents above the corner patches */
+.signContainer:has(> .guideArrows.exit_only) > *,
+.signContainer:has(> .guideArrows.half_exit.only) > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Full Exit Only: both bottom corners behind the guide strip should be yellow */
+.signContainer:has(> .guideArrows.exit_only)::before,
+.signContainer:has(> .guideArrows.exit_only)::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: var(--signBorderRadius, 0.75rem);
+  height: var(--signBorderRadius, 0.75rem);
+  background-color: var(--yellow) !important;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.signContainer:has(> .guideArrows.exit_only)::before {
+  left: 0;
+}
+
+.signContainer:has(> .guideArrows.exit_only)::after {
+  right: 0;
+}
+
+/* Keep full Exit Only yellow even when .new / .new2 tries to turn it green */
+.guideArrows.exit_only,
+.guideArrows.exit_only.new,
+.guideArrows.exit_only.new2 {
+  background-color: var(--yellow) !important;
+  border-color: var(--black) !important;
+  color: var(--black) !important;
+}
+
+/* Half Exit Only: left corner only when the yellow half-exit piece touches the left edge */
+.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.left.new2)::before,
+.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.new:first-child)::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--signBorderRadius, 0.75rem);
+  height: var(--signBorderRadius, 0.75rem);
+  background-color: var(--yellow) !important;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Half Exit Only: right corner only when the yellow half-exit piece touches the right edge */
+.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.right.new2)::after,
+.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.new:last-child)::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: var(--signBorderRadius, 0.75rem);
+  height: var(--signBorderRadius, 0.75rem);
+  background-color: var(--yellow) !important;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ---------- Quebec-style exit marker feature ---------- */
+
+.sign,
+.guideArrows {
+  position: relative;
+}
+
+.qcExitMarker {
+  position: absolute;
+  z-index: 18;
+  pointer-events: none;
+  display: block;
+}
+
+.qcExitMarker.qcOnSign {
+  width: var(--qc-marker-width, 3.05rem);
+  height: var(--qc-marker-height, 1.18rem);
+  bottom: 0.42rem;
+}
+
+.qcExitMarker.qcLeft {
+  left: 0.85rem;
+}
+
+.qcExitMarker.qcCenter {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.qcExitMarker.qcRight {
+  right: 0.85rem;
+}
+
+.qcExitMarker.flipped .qcExitMarkerImg {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
+.qcExitMarkerImg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.qcExitMarkerNumber {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--black);
+  z-index: 2;
+  font-family: "Series E";
+  font-size: var(--qc-marker-font-size, 1rem);
+  line-height: 1;
+  font-weight: 700;
+  padding-top: 0.01rem;
+}
+
+/* QC marker inside Exit Only / Half Exit Only yellow band */
+
+.guideArrows.qcExitMarkerMode {
+  min-height: 1.95rem;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  position: relative;
+}
+
+.guideArrows.qcExitMarkerMode .exitOnlyText {
+  display: none !important;
+}
+
+.guideArrows.qcExitMarkerMode .arrowContainer {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.guideArrows.qcExitMarkerMode .qcExitOnlyPair {
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.72rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.guideArrows.qcExitMarkerMode .qcExitOnlyArrow {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  display: block !important;
+  flex: 0 0 auto;
+  padding: 0 !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  filter: none !important;
+}
+
+.guideArrows.qcExitMarkerMode .qcExitOnlyArrow.flipped {
+  transform: scaleX(-1);
+}
+
+.guideArrows.qcExitMarkerMode .qcExitMarker.qcInBand {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  width: var(--qc-marker-width, 3.05rem) !important;
+  height: var(--qc-marker-height, 1.18rem) !important;
+  flex: 0 0 auto;
+  margin: 0 !important;
+  z-index: 19;
+}
+
+.guideArrows.qcExitMarkerMode .qcExitMarker.flipped .qcExitMarkerImg {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
+.guideArrows.qcExitMarkerMode .qcExitMarkerImg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.guideArrows.qcExitMarkerMode .qcExitMarkerNumber {
+  font-size: var(--qc-marker-font-size, 1rem) !important;
+  padding-top: 0 !important;
+}
+
+
+/* Downsize in-panel diagonal guide arrows only.
+   Does not affect Side Left / Side Right, because those use
+   .sideLeftArrow and .sideRightArrow instead of .arrow. */
+
+/* diagonal arrow SVGs */
+.guideArrows .arrow[src$="A-1.svg"],
+.guideArrows .arrow[src$="A-4.svg"],
+.guideArrows .arrow[src$="B-1.svg"],
+.guideArrows .arrow[src$="B-4.svg"],
+.guideArrows .arrow[src$="C-1.svg"],
+.guideArrows .arrow[src$="C-4.svg"],
+.guideArrows .arrow[src$="D-1.svg"],
+.guideArrows .arrow[src$="D-4.svg"],
+.guideArrows .arrow[src$="E-1.svg"],
+.guideArrows .arrow[src$="E-4.svg"] {
+  height: 1.85rem !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+/* keep true side arrows full size */
+.sideLeftArrow,
+.sideRightArrow {
+  height: 2.5rem;
+}
+
+.guideArrows .arrow.right\/uparrow,
+.guideArrows .arrow.left\/uparrow,
+.guideArrows .arrow.right\/downarrow,
+.guideArrows .arrow.left\/downarrow,
+.guideArrows .arrow.uprightturn,
+.guideArrows .arrow.upleftturn,
+.guideArrows .arrow.downrightturn,
+.guideArrows .arrow.downleftturn {
+  height: 1.85rem !important;
+  width: auto !important;
+}
+
+.guideArrows .arrow.down,
+.guideArrows .arrow.downarrow {
+  height: 1.5rem !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+.guideArrows .arrow.leftarrow,
+.guideArrows .arrow.rightarrow {
+  height: 1.5rem !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+.exitOnlyText.fhwaScaledExitOnlyText {
+  font-size: 120%;
+}
+
+/* ---------- APL subpanel arrows ---------- */
+
+.subPanelDisplay.hasAplWidthReserve {
+  flex: 0 0 auto !important;
+  width: max-content;
+  min-width: var(--aplSubpanelMinWidth) !important;
+}
+
+.subPanelDisplay.hasAplWidthReserve .signContentContainer {
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+.subPanelDisplay.hasAplWidthReserve .subpanelAplArrows {
+  width: var(--aplSubpanelMinWidth) !important;
+  min-width: var(--aplSubpanelMinWidth) !important;
+  max-width: var(--aplSubpanelMinWidth) !important;
+}
+
+.subPanelDisplay.hasAplWidthReserve .subpanelAplArrows {
+  width: 100%;
+}
+
+/* Extra text room on edge APL subpanels should grow outward from the sign lane */
+.signHolder > .subPanelDisplay.hasAplWidthReserve:first-of-type .subpanelAplArrows {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.signHolder > .subPanelDisplay.hasAplWidthReserve:last-of-type .subpanelAplArrows {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.signHolder > .subPanelDisplay.hasAplWidthReserve:not(:first-of-type):not(:last-of-type) .subpanelAplArrows {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.subPanelDisplay:has(.subpanelAplArrows) .signContentContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.subpanelAplArrows {
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: flex-end !important;
+  gap: 0 !important;
+
+  width: 100%;
+  height: var(--aplArrowZoneHeight, 5.8rem);
+  min-height: var(--aplArrowZoneHeight, 5.8rem);
+  padding: 0rem 0 0rem 0;
+  margin: 0 !important;
+
+  border: 0 !important;
+  border-radius: 0 !important;
+
+  position: relative;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.aplArrowSlot {
+  position: relative;
+  display: block;
+  flex: 0 0 0;
+  width: 0;
+  height: var(--aplArrowSlotHeight, 4.8rem);
+  overflow: visible;
+  line-height: 0;
+}
+
+.aplArrowSlot > .aplArrow {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+
+  display: block;
+  width: auto;
+  max-width: none;
+  margin: 0 !important;
+
+  transform: translateX(-50%);
+  transform-origin: center center;
+}
+
+.aplArrowSlot[data-flipped="true"] > .aplArrow {
+  transform: translateX(-50%) scaleX(-1);
+}
+
+/* APL divider should stop at the arrows, not run full height */
+.signHolder:has(.subpanelAplArrows) .subDivider {
+  width: 0.2rem !important;
+  flex: 0 0 0.2rem !important;
+  align-self: stretch !important;
+  margin: 0 0 var(--aplArrowZoneHeight, 5.8rem) 0 !important;
+  background-color: var(--white) !important;
+  position: relative !important;
+  overflow: visible !important;
+  z-index: 4;
+}
+
+.panel.white .signHolder:has(.subpanelAplArrows) .subDivider,
+.panel.yellow .signHolder:has(.subpanelAplArrows) .subDivider,
+.panel.orange .signHolder:has(.subpanelAplArrows) .subDivider,
+.panel.fluorescent.yellow-green .signHolder:has(.subpanelAplArrows) .subDivider,
+.panel.fluorescent.pink .signHolder:has(.subpanelAplArrows) .subDivider {
+  background-color: var(--black) !important;
+}
+
+/* Divider with its own APL arrow: hide the full-height bar, then draw only the upper segment */
+.signHolder:has(.subpanelAplArrows) .subDivider.hasArrow {
+  margin-bottom: 0 !important;
+  background-color: transparent !important;
+}
+
+.subDivider.hasArrow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: var(--aplDividerStopOffset, var(--aplArrowZoneHeight, 5.5rem));
+  left: 0;
+  width: 0.2rem;
+  background-color: var(--white);
+}
+
+.panel.white .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
+.panel.yellow .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
+.panel.orange .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
+.panel.fluorescent.yellow-green .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
+.panel.fluorescent.pink .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before {
+  background-color: var(--black);
+}
+
+.signHolder:has(.subpanelAplArrows) .subDivider:last-child {
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.aplDividerArrowSlot {
+  position: absolute;
+  left: 50%;
+  bottom: var(--aplDividerArrowBottomOffset, 0.45rem);
+  z-index: 6;
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.aplExitOnlyContainer {
+  --aplExitOnlyGap: 1.15rem;
+  --aplExitOnlyLabelBottom: 0.15rem;
+  --aplExitOnlyStemOffset: 0rem;
+}
+
+.aplExitOnlyContainer[data-arrow-type*="TURN"] {
+  --aplExitOnlyGap: 1.1rem;
+  --aplExitOnlyStemOffset: -0.75rem;
+}
+
+.aplExitOnlyLabel {
+  position: absolute;
+  bottom: var(--aplExitOnlyLabelBottom);
+  z-index: 8;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+  min-width: 3.25rem;
+  height: 1.35rem;
+  padding: 0.04rem 0.18rem 0;
+
+  background-color: var(--yellow);
+  color: var(--black);
+  border-radius: 0.08rem;
+
+  font-family: "Series E", sans-serif;
+  font-size: 1.28rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .5;
+  white-space: nowrap;
+}
+
+.aplExitOnlyExit {
+  right: calc(var(--aplExitOnlyGap) - var(--aplExitOnlyStemOffset));
+}
+
+.aplExitOnlyOnly {
+  left: calc(var(--aplExitOnlyGap) + var(--aplExitOnlyStemOffset));
+}
+
+/* Lift regular subpanel APL arrows off the sign border */
+.subpanelAplArrows {
+  --aplSubpanelArrowBottomOffset: 0.45rem;
+}
+
+.subpanelAplArrows > .aplArrowSlot > .aplArrow {
+  bottom: var(--aplSubpanelArrowBottomOffset, 0.45rem);
+}
+
+.subpanelAplArrows > .aplExitOnlyContainer .aplExitOnlyLabel {
+  bottom: calc(var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
+}
+
+/* Half Exit Only final layout */
+.signContainer:has(> .guideArrows.half_exit.only.default) {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  overflow: visible !important;
+}
+
+.signContainer:has(> .guideArrows.half_exit.only.default) > .sign {
+  width: 100% !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.guideArrows.half_exit.only.default {
+  display: block !important;
+  width: 100% !important;
+  min-width: max-content !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) !important;
+
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+.guideArrows.half_exit.only.default > .arrowContainer.new2,
+.guideArrows.half_exit.only.default > .arrowContainer.halfExitWrapper {
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+
+  width: 100% !important;
+  min-width: max-content !important;
+
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+
+  background: transparent !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+/* Green normal-arrow lane */
+.guideArrows.half_exit.only.default .halfExitGuideLane {
+  flex: 1 1 auto !important;
+  min-width: 7.6rem !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 0.14rem 0.65rem 0.18rem !important;
+  margin: 0 !important;
+
+  background-color: var(--green) !important;
+
+  border-style: solid !important;
+  border-color: var(--white) !important;
+  border-top-width: 0 !important;
+  border-bottom-width: 0.2rem !important;
+
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+/* Green lane on the left side */
+.guideArrows.half_exit.only.default .halfExitGuideLane.left {
+  border-left-width: 0.2rem !important;
+  border-right-width: 0 !important;
+  border-bottom-left-radius: var(--signBorderRadius, 0.75rem) !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+/* Green lane on the right side */
+.guideArrows.half_exit.only.default .halfExitGuideLane.right {
+  border-left-width: 0 !important;
+  border-right-width: 0.2rem !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: var(--signBorderRadius, 0.75rem) !important;
+}
+
+.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow {
+  height: 1.55rem !important;
+  width: auto !important;
+  max-width: none !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  object-fit: contain !important;
+  filter: none !important;
+}
+
+/* Yellow EXIT ONLY lane */
+.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2 {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 0.32rem !important;
+  padding: 0.14rem 0.65rem 0.18rem !important;
+  margin: 0 !important;
+
+  background-color: var(--yellow) !important;
+  color: var(--black) !important;
+
+  border-style: solid !important;
+  border-color: var(--black) !important;
+  border-top-width: 0 !important;
+  border-bottom-width: 0.2rem !important;
+
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+/* Yellow on the left edge: black outside left + bottom only */
+.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2.left {
+  border-left-width: 0.2rem !important;
+  border-right-width: 0 !important;
+  border-bottom-left-radius: var(--signBorderRadius, 0.75rem) !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+/* Yellow on the right edge: black outside right + bottom only */
+.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2.right {
+  border-left-width: 0 !important;
+  border-right-width: 0.2rem !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: var(--signBorderRadius, 0.75rem) !important;
+}
+
+.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2 .exitOnlyText {
+  color: var(--black) !important;
+  min-width: max-content !important;
+  width: max-content !important;
+
+  margin: 0 !important;
+  padding: 0 0.22rem !important;
+
+  font-size: 1.22rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2 .exitOnlyArrow {
+  height: 1.65rem !important;
+  width: auto !important;
+
+  margin: 0 !important;
+  padding: 0 0.16rem !important;
+
+  object-fit: contain !important;
+  filter: invert(1) !important;
+}
+
+/* Half Exit Only: nudge the white guide arrow inward without changing row width */
+.guideArrows.half_exit.only.default .halfExitGuideLane.left {
+  justify-content: flex-start !important;
+  padding-left: 0.95rem !important;
+  padding-right: 1.65rem !important;
+}
+
+.guideArrows.half_exit.only.default .halfExitGuideLane.right {
+  justify-content: flex-end !important;
+  padding-left: 1.65rem !important;
+  padding-right: 0.95rem !important;
+}
+
+.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow {
+  margin: 0 !important;
 }

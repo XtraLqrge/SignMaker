@@ -5,31 +5,30 @@ class ExitTab {
 	 * @param {string} [position=null] - Position to display the exit tab relative to the sign.
 	 * @param {string} [width=null] - Width of the exit tab (narrow or wide).
 	 */
-	constructor({
-		number = null,
-		position = null,
-		width = null,
-		color = null,
-		variant = "Default",
-		icon = null,
-		useTextBasedIcon = false,
-		fullBorder = ExitTab.prototype.defaultFullBorder,
-		squareCorners = ExitTab.prototype.defaultSquareCorners,
-		topOffset = ExitTab.prototype.defaultTopOffset,
-		showLeft = false,
-		borderThickness = 0.2,
-		minHeight = 2.25,
-		nestedExitTabs = [],
-		nestedTabSpacing = 0,
-		FHWAFont = ExitTab.prototype.defaultFHWAFont,
-		fontSize = 18,
-		tollLogoOnly = true,
-		tollLogoSquare = false,
-		tollLogoSize = null,
-		verticalArrangement = ExitTab.prototype.defaultVerticalArrangement,
-		caStyle = ExitTab.prototype.defaultCAStyle
-	} = {}
-	) {
+    constructor({
+      number = ExitTab.prototype.defaultText,
+      position = ExitTab.prototype.defaultPosition,
+      width = ExitTab.prototype.defaultWidth,
+      color = ExitTab.prototype.defaultColor,
+      variant = ExitTab.prototype.defaultVariant,
+      icon = null,
+      useTextBasedIcon = false,
+      fullBorder = ExitTab.prototype.defaultFullBorder,
+      squareCorners = ExitTab.prototype.defaultSquareCorners,
+      topOffset = ExitTab.prototype.defaultTopOffset,
+      showLeft = ExitTab.prototype.defaultShowLeft,
+      borderThickness = ExitTab.prototype.defaultBorderThickness,
+      minHeight = ExitTab.prototype.defaultMinHeight,
+      nestedExitTabs = [],
+      nestedTabSpacing = ExitTab.prototype.defaultNestedTabSpacing,
+      FHWAFont = ExitTab.prototype.defaultFHWAFont,
+      fontSize = ExitTab.prototype.defaultFontSize,
+      tollLogoOnly = true,
+      tollLogoSquare = false,
+      tollLogoSize = null,
+      verticalArrangement = ExitTab.prototype.defaultVerticalArrangement,
+      caStyle = ExitTab.prototype.defaultCAStyle
+    } = {}) {
 		this.number = number;
 		if (this.positions.includes(position)) {
 			this.position = position;
@@ -159,6 +158,15 @@ ExitTab.prototype.defaultTopOffset = false;
 ExitTab.prototype.defaultFHWAFont = false;
 ExitTab.prototype.defaultVerticalArrangement = false;
 ExitTab.prototype.defaultCAStyle = false;
+ExitTab.prototype.defaultText = "";
+ExitTab.prototype.defaultVariant = "Default";
+ExitTab.prototype.defaultPosition = "Right";
+ExitTab.prototype.defaultWidth = "Narrow";
+ExitTab.prototype.defaultColor = "Panel Color";
+ExitTab.prototype.defaultShowLeft = false;
+ExitTab.prototype.defaultMinHeight = 2;
+ExitTab.prototype.defaultNestedTabSpacing = 0;
+ExitTab.prototype.defaultFontSize = 20;
 ExitTab.prototype.colors = (() => {
 	const colors = ["Panel Color"];
 	if (typeof lib !== "undefined" && lib?.colors) {

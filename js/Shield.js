@@ -150,7 +150,7 @@ Shield.prototype.getDirectoryFromShield = (name, variant) => {
       if (cat.type == "category") {
         const catSearch = search(cat, str, category);
         if (catSearch != null) {
-          return category + "/" + catSearch;
+          return (cat.folder || category) + "/" + catSearch;
         }
       } else if (cat.type == "shield" && category == name) {
         if (cat.variants.length > 0 && variant) {
@@ -188,21 +188,61 @@ Shield.prototype.getPropertiesFromName = (name) => {
 Shield.prototype.shieldDirectory = {
   "United States": {
     type: "category",
-    I: {
-      type: "shield",
-      name: "Interstate",
-      variants: ["2 Digit", "3 Digit"],
-    },
-    "I-BUS": {
-      type: "shield",
-      name: "Interstate (Business)",
-      variants: ["2 Digit", "3 Digit"],
-    },
-    US: {
-      type: "shield",
-      name: "US Route",
-      variants: ["2 Digit", "3 Digit"],
-    },
+      Interstate: {
+        type: "category",
+        folder: "Interstate",
+
+        I: {
+          type: "shield",
+          name: "Interstate",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "I-BUS": {
+          type: "shield",
+          name: "Interstate Business",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "I-BL": {
+          type: "shield",
+          name: "Interstate Business Loop",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "I-BS": {
+          type: "shield",
+          name: "Interstate Business Spur",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "I-DL": {
+          type: "shield",
+          name: "Interstate Downtown Loop",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "I-DS": {
+          type: "shield",
+          name: "Interstate Downtown Spur",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "I-F": {
+          type: "shield",
+          name: "Future Interstate",
+          variants: ["2 Digit", "3 Digit"],
+        },
+      },
+      "US Route": {
+        type: "category",
+        folder: "US Route",
+
+        US: {
+          type: "shield",
+          name: "U.S. Route",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        "US-CA": {
+          type: "shield",
+          name: "U.S. Route (CA style)",
+          variants: ["2 Digit", "3 Digit"],
+        },
+      },
     AL: { type: "shield", name: "Alabama", variants: ["2 Digit", "3 Digit"] },
     AK: { type: "shield", name: "Alaska", variants: ["2 Digit", "3 Digit"] },
     Arizona: {
@@ -236,14 +276,14 @@ Shield.prototype.shieldDirectory = {
       name: "District of Columbia",
       variants: ["2 Digit", "3 Digit"],
     },
-    Florida: {
+    FL: {
       type: "category",
       FL: {
         type: "shield",
         name: "Florida",
         variants: ["2 Digit", "3 Digit", "No Outline"],
       },
-      FLTURNPIKE: { type: "shield", name: "Florida's Turnpike", variants: [] },
+      FLTP: { type: "shield", name: "Florida's Turnpike", variants: [] },
       FLToll: {
         type: "shield",
         name: "Florida (Toll)",
@@ -255,7 +295,7 @@ Shield.prototype.shieldDirectory = {
         variants: ["Current", "Old"],
       },
     },
-    Georgia: {
+    GA: {
       type: "category",
       GA: { type: "shield", name: "Georgia", variants: ["2 Digit", "3 Digit"] },
       GALOOP: {
@@ -300,7 +340,7 @@ Shield.prototype.shieldDirectory = {
       variants: ["2 Digit", "3 Digit"],
     },
     MI: { type: "shield", name: "Michigan", variants: ["2 Digit", "3 Digit"] },
-    Minnesota: {
+    MN: {
       type: "category",
       MN: { type: "shield", name: "Minnesota", variants: ["2 Digit"] },
       MNBUS: {
@@ -321,7 +361,7 @@ Shield.prototype.shieldDirectory = {
       name: "Montana (2nd)",
       variants: ["2 Digit", "3 Digit"],
     },
-    Nebraska: {
+    NE: {
       type: "category",
       NE: {
         type: "shield",
@@ -366,7 +406,10 @@ Shield.prototype.shieldDirectory = {
       name: "North Dakota",
       variants: ["2 Digit", "3 Digit"],
     },
-    OH: { type: "shield", name: "Ohio", variants: ["2 Digit", "3 Digit"] },
+      OH: {
+        type: "category",
+        OH: { type: "shield", name: "Ohio", variants: ["2 Digit", "3 Digit"] },
+      },
     OK: { type: "shield", name: "Oklahoma", variants: ["2 Digit", "3 Digit"] },
     OR: { type: "shield", name: "Oregon", variants: ["2 Digit", "3 Digit"] },
     PA: {
@@ -395,7 +438,7 @@ Shield.prototype.shieldDirectory = {
       name: "Tennessee (2nd)",
       variants: ["2 Digit", "3 Digit"],
     },
-    Texas: {
+    TX: {
       type: "category",
       TX: { type: "shield", name: "Texas", variants: ["2 Digit", "3 Digit"] },
       TXLOOP: {
@@ -450,7 +493,21 @@ Shield.prototype.shieldDirectory = {
       name: "West Virginia",
       variants: ["2 Digit", "3 Digit"],
     },
-    WI: { type: "shield", name: "Wisconsin", variants: ["2 Digit", "3 Digit"] },
+      Wisconsin: {
+        type: "category",
+        folder: "WI",
+
+        WI: {
+          type: "shield",
+          name: "Wisconsin",
+          variants: ["2 Digit", "3 Digit"],
+        },
+        WICo: {
+          type: "shield",
+          name: "Wisconsin County",
+          variants: ["2 Digit", "3 Digit"],
+        },
+      },
     WY: { type: "shield", name: "Wyoming", variants: ["2 Digit", "3 Digit"] },
     C: { type: "shield", name: "County", variants: ["2 Digit", "3 Digit"] },
   },

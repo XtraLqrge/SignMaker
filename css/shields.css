@@ -1152,6 +1152,15 @@
 .bannerShieldContainer.WI.three .routeNumber {
 	font-family: "Series B";
 }
+.bannerShieldContainer.WICo .routeNumber {
+  color: var(--black);
+  font-size: 2.5em;
+  font-family: "Series D";
+  top: -0.04em;
+}
+.bannerShieldContainer.WICo.three .routeNumber {
+  font-family: "Series C";
+}
 
 /* WYOMING */
 .bannerShieldContainer.WY .routeNumber {
@@ -1170,114 +1179,329 @@
 
 /* CANADA */
 
-/* ALBERTA (NOT CREATED) */
-/* BRITISH COLUMBIA (NOT CREATED) */
-/* MANITOBA (NOT CREATED) */
-
-/* NEW BRUNSWICK (UNFINISHED) */
-.bannerShieldContainer.NB .routeNumber {
+/* Alberta */
+.bannerShieldContainer.AB .routeNumber {
     color: var(--black);
-    top: 0.5em;
-    font-family: "Helvetica";
-    font-weight: bold;
+    font-size: 2em;
+    top: 0.25em;
 }
-.bannerShieldContainer.NB.one .routeNumber,
-.bannerShieldContainer.NB.two .routeNumber {
-    font-size: 1.5em;
+.bannerShieldContainer.AB.one .routeNumber {
+    font-family: "Series E";
 }
-.bannerShieldContainer.NB.three .routeNumber {
-    font-size: 1.25em;
-    top: 0.65em;
-    left: -0.03em;
-}
-/*
-.bannerShieldContainer.NB.local.three .banner {
-    display: none;
-}
-*/
-
-/* NEWFOUNDLAND & LABRADOR */
-.bannerShieldContainer.NL .routeNumber {
-    font-size: 1.8em;
-    color: var(--black);
-    font-family: "Series EM";
-    top: 0.38em;
-}
-
-.bannerShieldContainer.NL.three .routeNumber {
-    font-size: 1.7em;
-    top: 0.45em;
-    font-family: "Series EM";
-}
-
-/* NORTHWEST TERRITORIES (NOT CREATED) */
-
-/* NOVA SCOTIA */
-/*
-.bannerShieldContainer.NS.three .routeNumber {
-    font-size: 1.05em;
-    top: 0.8em;
-    letter-spacing: .05em;
-    left: 0.02em;
-    color: white;
+.bannerShieldContainer.AB.two .routeNumber {
     font-family: "Series C";
 }
-.bannerShieldContainer.bannerShieldContainer.NS.conn.three .routeNumber {
-    font-size: 1.05em;
-    color: white;
-    top: .51em;
-    letter-spacing: 0.05em;
-    left: .015em;
+.bannerShieldContainer.AB.three .routeNumber {
+    font-family: "Series B";
+}
+.bannerShieldContainer.AB2 .routeNumber {
+    color: var(--black);
+    font-family: "Series C";
+    font-size: 1.6em;
+    top: 0.5em;
+}
+.bannerShieldContainer.AB2.three .routeNumber {
+    font-size: 1.4em;
+    top: 0.67em;
+}
+.bannerShieldContainer.ABTC .routeNumber {
+    color: var(--green);
     font-family: "Series D";
+    font-size: 1.4em;
+    top: 0.45em;
 }
-.bannerShieldContainer.NS.trunk.two .banner,
-.bannerShieldContainer.NS.conn .banner,
-.bannerShieldContainer.NS.arterial.three .banner {
-    display: none;
-}
-*/
-
-/* NUNAVUT (NOT CREATED) */
-
-/* ONTARIO (NOT CREATED) */
-
-/* PRINCE EDWARD ISLAND */
-.bannerShieldContainer.PEI .routeNumber {
+.bannerShieldContainer.ABTC.two .routeNumber {
+    font-family: "Series C";
     font-size: 1.2em;
-    top: 0.5em;
+    top: 0.7em;
+}
+.bannerShieldContainer.ABTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1em;
+    top: 0.9em;
+}
+
+/* British Columbia */
+.bannerShieldContainer.BC .routeNumber {
+    font-family: "Helvetica Neue Bold";
+    color: #1752A9;
+}
+.bannerShieldContainer.BC.one .routeNumber {
+    font-size: 1.5em;
+    top: .75em;
+}
+.bannerShieldContainer.BC.two .routeNumber {
+    font-size: 1.4em;
+    top: 0.8em;
+}
+.bannerShieldContainer.BC.three .routeNumber {
+    font-size: 1.1em;
+    top: 1.1em;
+}
+.bannerShieldContainer.BCYH .routenumber {
+    font-family: "Helvetica Neue Bold";
     color: var(--black);
+}
+.bannerShieldContainer.BCYH.one .routeNumber {
+    font-size: 1.2em;
+    top: 1em;
+}
+.bannerShieldContainer.BCYH.two .routeNumber {
+    font-size: 1em;
+    top: 1.3em;
+}
+.bannerShieldContainer.BCYH.three .routeNumber {
+    font-size: 0.7em;
+    top: 2em;
+}
+.bannerShieldContainer.BCTC .routeNumber {
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.4em;
+    top: 0.45em;
+}
+.bannerShieldContainer.BCTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+
+/* Manitoba */
+.bannerShieldContainer.MB .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.65em;
+    top: 0.58em;
+}
+.bannerShieldContainer.MB.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.45em;
+    top: 0.72em;
+}
+.bannerShieldContainer.MB2 .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 1.5em;
+    top: 0.72em;
+}
+.bannerShieldContainer.MB2.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.25em;
+    top: 0.85em;
+}
+.bannerShieldContainer.MBTC .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.bannerShieldContainer.MBTC.three .routeNumber {
+    color: var(--green);
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+
+/* New Brunswick */
+.bannerShieldContainer.NB .routeNumber,
+.bannerShieldContainer.NBCONN .routeNumber,
+.bannerShieldContainer.NBLOCAL .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.75em;
+    top: 0.48em;
+}
+.bannerShieldContainer.NB.three .routeNumber,
+.bannerShieldContainer.NBCONN.three .routeNumber,
+.bannerShieldContainer.NBLOCAL.three .routeNumber {
+    font-family: "Arial Bold;
+    font-size: 1.5em;
+    top: 0.65em;
+}
+.bannerShieldContainer.NBTC .routeNumber {
+    color: var(--green);
+    font-family: "Arial Bold;
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.bannerShieldContainer.NBTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+
+/* Newfoundland and Labrador */
+.bannerShieldContainer.NL .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.8em;
+    top: 0.7em;
+}
+.bannerShieldContainer.NL.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.55em;
+    top: 0.84em;
+}
+.bannerShieldContainer.NLTC .routeNumber {
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.bannerShieldContainer.NLTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+
+/* Nova Scotia */
+.bannerShieldContainer.NS .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.75em;
+    top: 0.42em;
+}
+.bannerShieldContainer.NS.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.5em;
+    top: 0.58em;
+}
+.bannerShieldContainer.NSCONN .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 1.75em;
+    top: 0.4em;
+}
+.bannerShieldContainer.NSCONN.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.5em;
+    top: 0.58em;
+}
+.bannerShieldContainer.NSTC .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.bannerShieldContainer.NSTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+
+/* Ontario */
+.bannerShieldContainer.ON .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 2.25em;
+    top: 0.25em;
+}
+.bannerShieldContainer.ON.three .routeNumber {
     font-family: "Series C";
 }
-.bannerShieldContainer.PEI.three .routeNumber {
-    font-size: 1.1em;
-    top: .6em;
+.bannerShieldContainer.ON2 .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.7em;
+    top: 0.58em;
+}
+.bannerShieldContainer.ON2.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.45em;
+    top: 0.74em;
+}
+.bannerShieldContainer.ON3 .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.9em;
+    top: 0.42em;
+}
+.bannerShieldContainer.ON3.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.65em;
+    top: 0.58em;
+}
+.bannerShieldContainer.ONTC .routeNumber {
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.bannerShieldContainer.ONTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+
+/* PEI */
+.bannerShieldContainer.PEI .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 1.65em;
+    top: 0.58em;
+}
+.bannerShieldContainer.QCTC .routeNumber {
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.bannerShieldContainer.QCTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
 }
 
 /* QUEBEC */
 .bannerShieldContainer.QC .routeNumber {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
+    top: 0.3em;
     color: var(--white);
-    top: 0.4em;
-    font-family: "Series EM";
+}
+.bannerShieldContainer.QC.one .routeNumber {
+    font-family: "Series E"
 }
 .bannerShieldContainer.QC.two .routeNumber {
     font-family: "Series D";
-    top: 0.42em;
+}
+.bannerShieldContainer.QC.three .routeNumber {
+    font-family: "Series D";
 }
 .bannerShieldContainer.QC2 .routeNumber {
-    font-size: 1.2rem;
+    font-size: 1.75rem;
     color: var(--white);
-    top: 0.4em;
-    font-family: "Series D";
-    font-size: 1.3em;
+    top: 0.35em;
+    font-family: "Series C";
 }
 
-/* SASKATCHEWAN (NOT CREATED) */
+/* Saskatchewan */
+.bannerShieldContainer.SK .routeNumber,
+.bannerShieldContainer.SK2 .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 1.75em;
+    top: 0.45em;
+}
 
-/* YUKON (NOT CREATED) */
+.bannerShieldContainer.SK.three .routeNumber,
+.bannerShieldContainer.SK2.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.5em;
+    top: 0.62em;
+}
 
+.bannerShieldContainer.SKTC .routeNumber {
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
 
-/* block preview fixes for the shields whose numbers are too small / too high */
+.bannerShieldContainer.SKTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
 
 /* === Logo-only / no-route-number shields === */
 
@@ -1340,354 +1564,34 @@
 
 /* Root Trans-Canada */
 .bannerShieldContainer.TCH .routeNumber {
-    color: var(--white);
-    font-family: "Arial Bold";
-    font-size: 1.3em;
-    top: 0.75em;
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.5em;
+    top: 0.45em;
 }
-
-.bannerShieldContainer.TCH.three .routeNumber {
-    font-family: "Arial Bold";
-    font-size: 1.1em;
-    top: 0.9em;
-}
-
-/* Alberta */
-.bannerShieldContainer.AB .routeNumber {
-    color: var(--black);
-    font-size: 2em;
-    top: 0.25em;
-}
-.bannerShieldContainer.AB.one .routeNumber {
-    font-family: "Series E";
-}
-.bannerShieldContainer.AB.two .routeNumber {
+.bannerShieldContainer.TCH.two .routeNumber {
     font-family: "Series C";
 }
-.bannerShieldContainer.AB.three .routeNumber {
+.bannerShieldContainer.TCH.three .routeNumber {
     font-family: "Series B";
 }
-.bannerShieldContainer.AB2 .routeNumber {
-    color: var(--black);
-    font-family: "Series C";
-    font-size: 1.6em;
-    top: 0.5em;
-}
-.bannerShieldContainer.AB2.three .routeNumber {
-    font-size: 1.4em;
-    top: 0.67em;
-}
-.bannerShieldContainer.ABTC .routeNumber {
+
+/* Root Trans-Canada leaf */
+.bannerShieldContainer.TCHLeaf .routeNumber {
     color: var(--green);
-    font-family: "Series D";
-    font-size: 1.4em;
-    top: 0.45em;
-}
-.bannerShieldContainer.ABTC.two .routeNumber {
-    font-family: "Series C";
-    font-size: 1.2em;
-    top: 0.7em;
-}
-.bannerShieldContainer.ABTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1em;
-    top: 0.9em;
-}
-
-/* British Columbia */
-.bannerShieldContainer.BC .routeNumber,
-.bannerShieldContainer.BCYH .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.52em;
-}
-
-.bannerShieldContainer.BC.three .routeNumber,
-.bannerShieldContainer.BCYH.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.7em;
-}
-
-.bannerShieldContainer.BCTC .routeNumber {
-    color: var(--green);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.BCTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* Manitoba */
-.bannerShieldContainer.MB .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.65em;
-    top: 0.58em;
-}
-
-.bannerShieldContainer.MB.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.45em;
-    top: 0.72em;
-}
-
-.bannerShieldContainer.MB2 .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.5em;
-    top: 0.72em;
-}
-
-.bannerShieldContainer.MB2.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.25em;
-    top: 0.85em;
-}
-
-.bannerShieldContainer.MBTC .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.MBTC.three .routeNumber {
-    color: var(--green);
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* New Brunswick */
-.bannerShieldContainer.NB .routeNumber,
-.bannerShieldContainer.NBCONN .routeNumber,
-.bannerShieldContainer.NBLOCAL .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.48em;
-}
-
-.bannerShieldContainer.NB.three .routeNumber,
-.bannerShieldContainer.NBCONN.three .routeNumber,
-.bannerShieldContainer.NBLOCAL.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.65em;
-}
-
-.bannerShieldContainer.NBTC .routeNumber {
-    color: var(--green);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.NBTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* Newfoundland and Labrador */
-.bannerShieldContainer.NL .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.8em;
-    top: 0.7em;
-}
-
-.bannerShieldContainer.NL.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.55em;
-    top: 0.84em;
-}
-
-.bannerShieldContainer.NLTC .routeNumber {
-    color: var(--green);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.NLTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* Nova Scotia */
-.bannerShieldContainer.NS .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.42em;
-}
-
-.bannerShieldContainer.NS.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.58em;
-}
-
-.bannerShieldContainer.NSCONN .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.4em;
-}
-
-.bannerShieldContainer.NSCONN.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.58em;
-}
-
-.bannerShieldContainer.NSTC .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.NSTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* Ontario */
-.bannerShieldContainer.ON .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
+    font-family: "Series E";
     font-size: 2.25em;
+    top: 0.05em;
+}
+.bannerShieldContainer.TCHLEaf.two .routeNumber {
+    font-family: "Series D";
+    font-size: 2em;
+    top: 0.2em;
+}
+.bannerShieldContainer.TCHLeaf.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.8em;
     top: 0.25em;
-}
-
-.bannerShieldContainer.ON.three .routeNumber {
-    font-family: "Series C";
-}
-
-.bannerShieldContainer.ON2 .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.7em;
-    top: 0.58em;
-}
-
-.bannerShieldContainer.ON2.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.45em;
-    top: 0.74em;
-}
-
-.bannerShieldContainer.ON3 .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.9em;
-    top: 0.42em;
-}
-
-.bannerShieldContainer.ON3.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.65em;
-    top: 0.58em;
-}
-
-.bannerShieldContainer.ONTC .routeNumber {
-    color: var(--green);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.ONTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* PEI */
-.bannerShieldContainer.PEI .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.65em;
-    top: 0.58em;
-}
-
-/* Quebec */
-.bannerShieldContainer.QC .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.7em;
-    top: 0.35em;
-}
-
-.bannerShieldContainer.QC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.45em;
-    top: 0.5em;
-}
-
-.bannerShieldContainer.QC2 .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.38em;
-}
-
-.bannerShieldContainer.QC2.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.55em;
-}
-
-.bannerShieldContainer.QCTC .routeNumber {
-    color: var(--green);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.QCTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
-}
-
-/* Saskatchewan */
-.bannerShieldContainer.SK .routeNumber,
-.bannerShieldContainer.SK2 .routeNumber {
-    color: var(--white);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.45em;
-}
-
-.bannerShieldContainer.SK.three .routeNumber,
-.bannerShieldContainer.SK2.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.62em;
-}
-
-.bannerShieldContainer.SKTC .routeNumber {
-    color: var(--green);
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
-}
-
-.bannerShieldContainer.SKTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
 }
 
 /* Canada logo-only shields */
@@ -1901,15 +1805,5 @@
   font-family: "Series C";
 }
 
-/* Wisconsin County */
-.bannerShieldContainer.WICo .routeNumber {
-  color: var(--black);
-  font-size: 2.35em;
-  font-family: "Series D";
-  top: -0.04em;
-}
 
-.bannerShieldContainer.WICo.three .routeNumber {
-  font-family: "Series C";
-  font-size: 2.2em;
-}
+

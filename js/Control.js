@@ -1673,6 +1673,18 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       },
       categories: ["Canada"],
     });
+    ensureShield({
+      value: "TCHLeaf",
+      label: "TCH Leaf",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/Canada",
+      assetName: "TCHLeaf",
+      assetPathByVariant: {
+        "2Digit": "img/shields/Canada/TCHLeaf-2Digit.svg",
+        "3Digit": "img/shields/Canada/TCHLeaf-3Digit.svg",
+      },
+      categories: ["Canada"],
+    });
 
     /* AB */
     ensureShield({

@@ -5636,3 +5636,15 @@ label[for="sdShield_bannerFontSize"] {
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
+
+
+/* Shield picker: expanded folders must not clip long nested lists.
+   The popover itself handles scrolling. */
+.shieldPickerTreeRow.expanded,
+.shieldPickerTreeChildren.expanded {
+  overflow: visible !important;
+}
+
+.shieldPickerTreeChildren.expanded {
+  max-height: none !important;
+}

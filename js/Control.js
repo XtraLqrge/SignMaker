@@ -982,12 +982,12 @@ class ShieldElement extends Shield {
   }
 }
 
-const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN"];
-const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN"];
+const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "WI", "WY"];
+const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "WI", "WY"];
 
 ShieldElement.prototype.defaultShieldBase = "I";
 ShieldElement.prototype.defaultVariant = "Auto";
-ShieldElement.prototype.defaultRouteNumber = "40"; //TEMP
+ShieldElement.prototype.defaultRouteNumber = "1";
 ShieldElement.prototype.defaultBannerType = "None";
 ShieldElement.prototype.defaultBannerPosition = "Right";
 ShieldElement.prototype.defaultBannerPosition2 = "Above";
@@ -1341,6 +1341,21 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       folder: "img/shields/United States/WI",
       assetName: "WICo",
       categories: ["United States", "Wisconsin"],
+    });
+    
+    /* County */
+    ensureShield({
+      value: "C",
+      label: "County",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States",
+      assetName: "C",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/C-2Digit.svg",
+        "3Digit": "img/shields/United States/C-3Digit.svg",
+      },
+      categories: ["United States"],
+      county: true,
     });
 
     /* AZ */
@@ -1952,18 +1967,20 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       },
       categories: ["Canada", "Ontario"],
     });
-
+    
     ensureShield({
       value: "ON3",
-      label: "Ontario Tertiary",
+      label: "ON County",
       variants: ["2 Digit", "3 Digit"],
       assetFolder: "img/shields/Canada/ON",
       assetName: "ON3",
+      className: "ON3",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/ON/ON3-2Digit.svg",
         "3Digit": "img/shields/Canada/ON/ON3-3Digit.svg",
       },
       categories: ["Canada", "Ontario"],
+      county: false,
     });
 
     ensureExactShield("ONDVP", "Don Valley Parkway", "img/shields/Canada/ON/ON-DVP.png");
@@ -2465,7 +2482,8 @@ ShieldElement.prototype.isCountyShield = function (config) {
   const normalized = ShieldElement.prototype.normalizeShieldCode(
     config?.value || config?.assetName || ""
   );
-  return normalized === "C";
+
+  return config?.county === true || normalized === "C";
 };
 
 ShieldElement.prototype.getEffectiveSizeClass = function (routeNumber, variant) {

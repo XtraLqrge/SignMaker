@@ -296,13 +296,21 @@
 /* COUNTY */
 .bannerShieldContainer.C .routeNumber {
 	color: var(--countyYellow);
+    font-family: "Series D";
 	font-size: 1.5em;
 	top: 0.3em;
 }
-.bannerShieldContainer.C.one .routeNumber,
-.bannerShieldContainer.C.two .routeNumber,
+.bannerShieldContainer.C.one .routeNumber {
+    font-size: 1.8em;
+    top: 0.25em;
+}
+.bannerShieldContainer.C.two .routeNumber {
+    font-size: 1.7em;
+    top: 0.3em;
+}
 .bannerShieldContainer.C.three .routeNumber {
-	font-family: "Series D";
+    font-size: 1.5em;
+    top: 0.35em;
 }
 .bannerShieldContainer.C.four .routeNumber {
 	font-family: "Series C";
@@ -987,65 +995,53 @@
 
 /* TEXAS */
 .bannerShieldContainer.TX .routeNumber {
-	color: var(--black);
 	font-size: 2.2em;
 	top: 0.2em;
 }
 .bannerShieldContainer.TX.one .routeNumber,
 .bannerShieldContainer.TX.two .routeNumber,
 .bannerShieldContainer.TX.three .routeNumber {
+    color: var(--black);
 	font-family: "Series D";
 }
 .bannerShieldContainer.TX.four .routeNumber {
+    color: var(--black);
 	font-family: "Series C";
 }
 
-/* Texas extra route-number shields */
-
-.bannerShieldContainer.TX.belt .routeNumber {
+.bannerShieldContainer.TX.BELTWAY .routeNumber,
+.bannerShieldContainer.TX.FM .routeNumber,
+.bannerShieldContainer.TX.LOOP .routeNumber,
+.bannerShieldContainer.TX.PARK .routeNumber,
+.bannerShieldContainer.TX.RM .routeNumber,
+.bannerShieldContainer.TX.SPUR .routeNumber {
     color: var(--black);
     font-family: "Series D";
-    font-size: 2.1em;
-    top: 0.15em;
+    font-size: 2.2em;
+    top: 0.2em;
 }
 
-.bannerShieldContainer.TX.express .routeNumber {
+.bannerShieldContainer.TX.EXPRESS .routeNumber {
     color: var(--white);
     font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.35em;
+    font-size: 2.2em;
+    top: 0.05em;
 }
-
-.bannerShieldContainer.TX.fm .routeNumber,
-.bannerShieldContainer.TX.loop .routeNumber,
-.bannerShieldContainer.TX.park .routeNumber,
-.bannerShieldContainer.TX.rm .routeNumber,
-.bannerShieldContainer.TX.spur .routeNumber {
-    color: var(--black);
-    font-family: "Series D";
-    font-size: 1.85em;
-    top: 0.25em;
-}
-
-.bannerShieldContainer.TX.fm.four .routeNumber,
-.bannerShieldContainer.TX.loop.four .routeNumber,
-.bannerShieldContainer.TX.spur.four .routeNumber {
+.bannerShieldContainer.TX.EXPRESS.three .routeNumber {
     font-family: "Series C";
-    font-size: 1.55em;
-    top: 0.45em;
 }
 
-.bannerShieldContainer.TX.toll .routeNumber {
+.bannerShieldContainer.TX.TOLL .routeNumber {
     color: var(--white);
     font-family: "Series D";
-    font-size: 1.85em;
-    top: 0.25em;
+    font-size: 2.2em;
+    top: -0.18em;
 }
-
-.bannerShieldContainer.TX.toll.three .routeNumber {
+.bannerShieldContainer.TX.TOLL.three .routeNumber {
     font-family: "Series C";
-    font-size: 1.65em;
-    top: 0.35em;
+}
+.bannerShieldContainer.TX.TOLL.four .routeNumber {
+    font-family: "Series B";
 }
 
 /* UTAH */
@@ -1165,8 +1161,8 @@
 /* WYOMING */
 .bannerShieldContainer.WY .routeNumber {
 	color: var(--black);
-	top: 0.125em;
-	font-size: 2em;
+	top: 0.1em;
+	font-size: 2.5em;
 }
 .bannerShieldContainer.WY.one .routeNumber,
 .bannerShieldContainer.WY.two .routeNumber {
@@ -1238,7 +1234,7 @@
     font-size: 1.1em;
     top: 1.1em;
 }
-.bannerShieldContainer.BCYH .routenumber {
+.bannerShieldContainer.BCYH .routeNumber {
     font-family: "Helvetica Neue Bold";
     color: var(--black);
 }
@@ -1402,24 +1398,24 @@
 .bannerShieldContainer.ON2 .routeNumber {
     color: var(--black);
     font-family: "Series D";
-    font-size: 1.7em;
-    top: 0.58em;
+    font-size: 2em;
+    top: 0.4em;
 }
 .bannerShieldContainer.ON2.three .routeNumber {
     font-family: "Series C";
-    font-size: 1.45em;
-    top: 0.74em;
+    font-size: 1.8em;
+    top: 0.55em;
 }
 .bannerShieldContainer.ON3 .routeNumber {
     color: var(--black);
     font-family: "Series D";
-    font-size: 1.9em;
-    top: 0.42em;
+    font-size: 2.2em;
+    top: 0.1em;
 }
 .bannerShieldContainer.ON3.three .routeNumber {
+    font-size: 2em;
+    top: 0.15em;
     font-family: "Series C";
-    font-size: 1.65em;
-    top: 0.58em;
 }
 .bannerShieldContainer.ONTC .routeNumber {
     color: var(--green);
@@ -1553,9 +1549,6 @@
 .bannerShieldContainer.HTR .routeNumber,
 .bannerShieldContainer.SHT .routeNumber,
 .bannerShieldContainer.WPT .routeNumber,
-.bannerShieldContainer.TX.tollctrma .routeNumber,
-.bannerShieldContainer.TX.tollntta .routeNumber,
-.bannerShieldContainer.TX.tollfbtr .routeNumber,
 .bannerShieldContainer.PATPLOGO .routeNumber {
     display: none !important;
 }

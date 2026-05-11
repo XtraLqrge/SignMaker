@@ -2134,7 +2134,7 @@ const getPostThicknessFallback = () =>
             children: [
               { value: "ON", label: "Ontario", asset: "img/shields/Canada/ON/ON-2Digit.svg" },
               { value: "ON2", label: "Ontario Secondary", asset: "img/shields/Canada/ON/ON2-2Digit.svg" },
-              { value: "ON3", label: "Ontario Tertiary", asset: "img/shields/Canada/ON/ON3-2Digit.svg" },
+              { value: "ON3", label: "Ontario County", asset: "img/shields/Canada/ON/ON3-2Digit.svg" },
               { value: "ONDVP", label: "Don Valley Parkway", asset: "img/shields/Canada/ON/ON-DVP.png" },
               { value: "ONGAR", label: "Gardiner Expressway", asset: "img/shields/Canada/ON/ON-GAR.png" },
               { value: "ONTC", label: "Ontario TCH", asset: "img/shields/Canada/ON/ONTC-2Digit.svg" },
@@ -2208,6 +2208,7 @@ const getPostThicknessFallback = () =>
         "US",
         "USCA",
         "US-CA",
+        "C",
         "WI",
         "WICo",
         "WICO",
@@ -2386,17 +2387,27 @@ const getPostThicknessFallback = () =>
 
       ];
         
+        const countyNode = node(
+          "C",
+          "County",
+          "img/shields/United States/C-2Digit.svg"
+        );
+        
         const sortUnitedStatesShieldPickerChildren = () => {
           const getPriority = (entry) => {
             if (entry.id === "us-interstate" || entry.label === "Interstate") {
               return 0;
             }
 
-            if (entry.id === "us-usroute" || entry.label === "U.S. Route") {
-              return 1;
-            }
+              if (entry.id === "us-usroute" || entry.label === "U.S. Route") {
+                return 1;
+              }
 
-            return 2;
+              if (entry.value === "C" || entry.label === "County") {
+                return 2;
+              }
+
+              return 3;
           };
 
           const sortNodes = (nodes) => {
@@ -2436,6 +2447,9 @@ const getPostThicknessFallback = () =>
         usRoot.children.push(...stateFolders);
       } else {
         usRoot.children.splice(insertIndex, 0, ...stateFolders);
+      }
+      if (!usRoot.children.some((entry) => entry.value === "C")) {
+        usRoot.children.push(countyNode);
       }
         sortUnitedStatesShieldPickerChildren();
     };

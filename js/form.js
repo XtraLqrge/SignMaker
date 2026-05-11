@@ -2062,6 +2062,11 @@ const getPostThicknessFallback = () =>
             label: "Trans-Canada Highway",
             asset: "img/shields/Canada/TCH-2Digit.svg",
           },
+          {
+            value: "TCHLeaf",
+            label: "TCH Leaf",
+            asset: "img/shields/Canada/TCHLeaf-2Digit.svg",
+          },
 
           {
             id: "canada-alberta",

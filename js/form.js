@@ -7829,198 +7829,229 @@ const getPostThicknessFallback = () =>
         document.getElementById("exitOnlyDirection").value =
           String(currentPanel.sign.exitguideArrows || "").split(":")[0];
       }
-    // Icon Modal Logic
-    const iconChooseBtn = document.getElementById("sdIcon_chooseBtn");
-    const iconModal = document.getElementById("iconSelectorModal");
-    const closeIconModalBtn = document.getElementById("closeIconSelector");
-    const iconSearch = document.getElementById("iconSearch");
-    const iconGrid = document.getElementById("iconGrid");
-    const iconInput = document.getElementById("sdIcon_icon");
-    const iconLabel = document.getElementById("sdIcon_selectedLabel");
 
-    if (iconChooseBtn && iconModal && !iconChooseBtn.hasAttribute("data-initialized")) {
-      iconChooseBtn.setAttribute("data-initialized", "true");
+      const setupAssetSelectorModal = ({
+        buttonId,
+        modalId,
+        closeId,
+        searchId,
+        gridId,
+        inputId,
+        labelId,
+        sourceObject,
+        defaultKey,
+        itemClassName = "",
+        previewClassName = "",
+      }) => {
+        const chooseBtn = document.getElementById(buttonId);
+        const modal = document.getElementById(modalId);
+        const closeBtn = document.getElementById(closeId);
+        const search = document.getElementById(searchId);
+        const grid = document.getElementById(gridId);
+        const input = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
 
-      const populateGrid = (filter = "") => {
-        lib.clearChildren(iconGrid);
-        const filterText = filter.toLowerCase();
-
-        for (const iconKey in IconElement.prototype.icons) {
-          const iconDef = IconElement.prototype.icons[iconKey];
-          if (iconDef.label.toLowerCase().includes(filterText)) {
-            const item = document.createElement("div");
-            item.className = "iconGridItem";
-
-            const img = document.createElement("img");
-            img.src = iconDef.src;
-            img.loading = "lazy";
-            img.title = iconDef.label; // Tooltip for accessibility
-
-            item.appendChild(img);
-
-            item.onclick = () => {
-              iconInput.value = iconKey;
-              iconLabel.textContent = "Current: " + iconDef.label;
-              readForm(); // Trigger update
-              iconModal.close();
-            };
-
-            iconGrid.appendChild(item);
-          }
+        if (!chooseBtn || !modal || !grid || !input || !sourceObject) {
+          return;
         }
-      };
 
-      iconChooseBtn.onclick = () => {
-        populateGrid();
-        iconSearch.value = "";
-        iconModal.showModal();
-      };
+        const getCurrentKey = () =>
+          sourceObject[input.value] ? input.value : defaultKey;
 
-      closeIconModalBtn.onclick = () => {
-        iconModal.close();
-      };
-
-      iconSearch.oninput = (e) => {
-        populateGrid(e.target.value);
-      };
-    }
-
-    // Update label on form update
-    if (iconInput && iconLabel) {
-      const currentIconKey = iconInput.value || IconElement.prototype.defaultIcon;
-      const currentIconDef = IconElement.prototype.icons[currentIconKey];
-      if (currentIconDef) {
-        iconLabel.textContent = "Current: " + currentIconDef.label;
-      }
-    }
-
-    const tollLogoChooseBtn = document.getElementById("sdTollLogo_chooseBtn");
-    const tollLogoModal = document.getElementById("tollLogoSelectorModal");
-    const closeTollLogoModalBtn = document.getElementById("closeTollLogoSelector");
-    const tollLogoSearch = document.getElementById("tollLogoSearch");
-    const tollLogoGrid = document.getElementById("tollLogoGrid");
-    const tollLogoInput = document.getElementById("sdTollLogo_logo");
-    const tollLogoLabel = document.getElementById("sdTollLogo_selectedLabel");
-
-    if (tollLogoChooseBtn && tollLogoModal && !tollLogoChooseBtn.hasAttribute("data-initialized")) {
-      tollLogoChooseBtn.setAttribute("data-initialized", "true");
-
-      const populateTollGrid = (filter = "") => {
-        lib.clearChildren(tollLogoGrid);
-        const filterText = filter.toLowerCase();
-
-        for (const logoKey in TollLogoElement.prototype.logos) {
-          const logoDef = TollLogoElement.prototype.logos[logoKey];
-          if (logoDef.label.toLowerCase().includes(filterText)) {
-            const item = document.createElement("div");
-            item.className = "iconGridItem";
-
-            const img = document.createElement("img");
-            img.src = logoDef.src;
-            img.loading = "lazy";
-            img.title = logoDef.label; // Tooltip for accessibility
-
-            item.appendChild(img);
-
-            item.onclick = () => {
-              tollLogoInput.value = logoKey;
-              tollLogoLabel.textContent = "Current: " + logoDef.label;
-              readForm(); // Trigger update
-              tollLogoModal.close();
-            };
-
-            tollLogoGrid.appendChild(item);
+        const updateCurrentLabel = () => {
+          if (!label) {
+            return;
           }
-        }
-      };
 
-      tollLogoChooseBtn.onclick = () => {
-        populateTollGrid();
-        tollLogoSearch.value = "";
-        tollLogoModal.showModal();
-      };
+          const currentKey = getCurrentKey();
+          const currentDef = sourceObject[currentKey];
 
-      closeTollLogoModalBtn.onclick = () => {
-        tollLogoModal.close();
-      };
-
-      tollLogoSearch.oninput = (e) => {
-        populateTollGrid(e.target.value);
-      };
-    }
-
-    // Update label on form update for Toll Logo
-    if (tollLogoInput && tollLogoLabel) {
-      const currentLogoKey = tollLogoInput.value || TollLogoElement.prototype.defaultLogo;
-      const currentLogoDef = TollLogoElement.prototype.logos[currentLogoKey];
-      if (currentLogoDef) {
-        tollLogoLabel.textContent = "Current: " + currentLogoDef.label;
-      }
-    }
-
-    const arrowChooseBtn = document.getElementById("sdArrow_chooseBtn");
-    const arrowModal = document.getElementById("arrowSelectorModal");
-    const closeArrowModalBtn = document.getElementById("closeArrowSelector");
-    const arrowSearch = document.getElementById("arrowSearch");
-    const arrowGrid = document.getElementById("arrowGrid");
-    const arrowInput = document.getElementById("sdArrow_arrow");
-    const arrowLabel = document.getElementById("sdArrow_selectedLabel");
-
-    if (arrowChooseBtn && arrowModal && !arrowChooseBtn.hasAttribute("data-initialized")) {
-      arrowChooseBtn.setAttribute("data-initialized", "true");
-
-      const populateArrowGrid = (filter = "") => {
-        lib.clearChildren(arrowGrid);
-        const filterText = filter.toLowerCase();
-
-        for (const arrowKey in ArrowElement.prototype.arrows) {
-          const arrowDef = ArrowElement.prototype.arrows[arrowKey];
-          if (arrowDef.label.toLowerCase().includes(filterText)) {
-            const item = document.createElement("div");
-            item.className = "iconGridItem";
-
-            const img = document.createElement("img");
-            img.src = arrowDef.src;
-            img.loading = "lazy";
-            img.title = arrowDef.label;
-
-            item.appendChild(img);
-
-            item.onclick = () => {
-              arrowInput.value = arrowKey;
-              arrowLabel.textContent = "Current: " + arrowDef.label;
-              readForm(); // Trigger update
-              arrowModal.close();
-            };
-
-            arrowGrid.appendChild(item);
+          if (currentDef) {
+            label.textContent = "Current: " + currentDef.label;
           }
+        };
+
+          const populateGrid = (filter = "") => {
+            lib.clearChildren(grid);
+
+            const filterText = String(filter || "").trim().toLowerCase();
+            const currentKey = getCurrentKey();
+
+            const entries = Object.entries(sourceObject)
+              .filter(([key, definition]) => {
+                const itemLabel = String(definition?.label || definition?.name || key).toLowerCase();
+                const itemKey = String(key).toLowerCase();
+
+                return (
+                  !filterText ||
+                  itemLabel.includes(filterText) ||
+                  itemKey.includes(filterText)
+                );
+              })
+              .sort((a, b) =>
+                String(a[1]?.label || a[1]?.name || a[0]).localeCompare(
+                  String(b[1]?.label || b[1]?.name || b[0])
+                )
+              );
+
+            for (const [key, definition] of entries) {
+              const itemLabel = String(definition?.label || definition?.name || key);
+              const itemSrc = String(definition?.src || definition?.asset || definition?.url || "");
+
+              const item = document.createElement("button");
+              item.type = "button";
+              item.className = ["assetGridCard", itemClassName].filter(Boolean).join(" ");
+              item.title = itemLabel;
+              item.dataset.assetKey = key;
+              item.classList.toggle("selected", key === currentKey);
+
+              const preview = document.createElement("span");
+              preview.className = "assetGridPreview";
+
+              if (itemSrc) {
+                const img = document.createElement("img");
+                img.src = itemSrc;
+                img.alt = itemLabel;
+                img.loading = "lazy";
+                img.decoding = "async";
+                img.draggable = false;
+
+                if (previewClassName) {
+                  img.classList.add(previewClassName);
+                }
+
+                img.onerror = () => {
+                  item.classList.add("assetPreviewMissing");
+                  preview.textContent = "?";
+                  img.remove();
+                };
+
+                preview.appendChild(img);
+              } else {
+                item.classList.add("assetPreviewMissing");
+                preview.textContent = "?";
+              }
+
+              const text = document.createElement("span");
+              text.className = "assetGridLabel";
+              text.textContent = itemLabel;
+
+              item.appendChild(preview);
+              item.appendChild(text);
+
+              item.addEventListener("click", () => {
+                input.value = key;
+                updateCurrentLabel();
+                readForm();
+                modal.close();
+              });
+
+              grid.appendChild(item);
+            }
+
+            if (!entries.length) {
+              const empty = document.createElement("div");
+              empty.className = "assetGridEmpty";
+              empty.textContent = "No matches";
+              grid.appendChild(empty);
+            }
+          };
+
+        if (chooseBtn.dataset.assetSelectorInitialized !== "true") {
+          chooseBtn.dataset.assetSelectorInitialized = "true";
+
+          chooseBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (search) {
+              search.value = "";
+            }
+
+            populateGrid("");
+
+            if (typeof modal.showModal === "function") {
+              modal.showModal();
+            } else {
+              modal.setAttribute("open", "");
+            }
+
+            if (search) {
+              search.focus();
+            }
+          });
+
+          if (closeBtn) {
+            closeBtn.addEventListener("click", (event) => {
+              event.preventDefault();
+              modal.close();
+            });
+          }
+
+          if (search) {
+            search.addEventListener("input", () => {
+              populateGrid(search.value);
+            });
+
+            search.addEventListener("keydown", (event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                modal.close();
+              }
+            });
+          }
+
+          modal.addEventListener("click", (event) => {
+            if (event.target === modal) {
+              modal.close();
+            }
+          });
         }
+
+        updateCurrentLabel();
       };
 
-      arrowChooseBtn.onclick = () => {
-        populateArrowGrid();
-        arrowSearch.value = "";
-        arrowModal.showModal();
-      };
+      setupAssetSelectorModal({
+        buttonId: "sdIcon_chooseBtn",
+        modalId: "iconSelectorModal",
+        closeId: "closeIconSelector",
+        searchId: "iconSearch",
+        gridId: "iconGrid",
+        inputId: "sdIcon_icon",
+        labelId: "sdIcon_selectedLabel",
+        sourceObject: IconElement.prototype.icons,
+        defaultKey: IconElement.prototype.defaultIcon,
+        itemClassName: "IconGridCard",
+        previewClassName: "iconPickerPreviewImage",
+      });
 
-      closeArrowModalBtn.onclick = () => {
-        arrowModal.close();
-      };
+      setupAssetSelectorModal({
+        buttonId: "sdTollLogo_chooseBtn",
+        modalId: "tollLogoSelectorModal",
+        closeId: "closeTollLogoSelector",
+        searchId: "tollLogoSearch",
+        gridId: "tollLogoGrid",
+        inputId: "sdTollLogo_logo",
+        labelId: "sdTollLogo_selectedLabel",
+        sourceObject: TollLogoElement.prototype.logos,
+        defaultKey: TollLogoElement.prototype.defaultLogo,
+        itemClassName: "tollLogoGridCard",
+        previewClassName: "tollLogoPickerPreviewImage",
+      });
 
-      arrowSearch.oninput = (e) => {
-        populateArrowGrid(e.target.value);
-      };
-    }
-
-    // Update label on form update for Arrow
-    if (arrowInput && arrowLabel) {
-      const currentArrowKey = arrowInput.value || ArrowElement.prototype.defaultArrow;
-      const currentArrowDef = ArrowElement.prototype.arrows[currentArrowKey];
-      if (currentArrowDef) {
-        arrowLabel.textContent = "Current: " + currentArrowDef.label;
-      }
-    }
+      setupAssetSelectorModal({
+        buttonId: "sdArrow_chooseBtn",
+        modalId: "arrowSelectorModal",
+        closeId: "closeArrowSelector",
+        searchId: "arrowSearch",
+        gridId: "arrowGrid",
+        inputId: "sdArrow_arrow",
+        labelId: "sdArrow_selectedLabel",
+        sourceObject: ArrowElement.prototype.arrows,
+        defaultKey: ArrowElement.prototype.defaultArrow,
+        itemClassName: "arrowGridCard",
+        previewClassName: "arrowPickerPreviewImage",
+      });
 
     const panel = exposed.getCurrentPanel();
     const sign =

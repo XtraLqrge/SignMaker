@@ -5648,3 +5648,924 @@ label[for="sdShield_bannerFontSize"] {
 .shieldPickerTreeChildren.expanded {
   max-height: none !important;
 }
+
+/* Image asset selector dialogs: icon, toll logo, arrow */
+dialog.assetSelectorDialog {
+  width: min(52rem, 90vw);
+  max-width: min(52rem, 90vw);
+  max-height: min(42rem, 88vh);
+  padding: 0;
+  border: 0;
+  background: var(--hotbarColor);
+  color: var(--textColor);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  flex-direction: column;
+  gap: 0;
+}
+
+dialog.assetSelectorDialog[open] {
+  display: flex !important;
+}
+
+dialog.assetSelectorDialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.assetSelectorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem 0.75rem;
+  background: rgba(var(--baseColor), 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.assetSelectorHeader h3 {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.assetSelectorHeader p {
+  margin: 0.25rem 0 0;
+  opacity: 0.75;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.25;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.assetSelectorClose {
+  width: 2.2rem;
+  height: 2.2rem;
+  min-width: 2.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--textColor);
+  cursor: pointer;
+}
+
+.assetSelectorClose:hover {
+  background: var(--hoverColor);
+}
+
+.assetSelectorSearch {
+  margin: 0.85rem 1rem 0;
+  width: calc(100% - 2rem);
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+}
+
+.assetPickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  max-height: min(30rem, 62vh);
+  overflow-y: auto;
+  padding: 1rem;
+  background: transparent;
+}
+
+.assetPickerItem {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--textColor);
+  min-height: 7.25rem;
+  padding: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.55rem;
+  cursor: pointer;
+  font-family: "Inter", sans-serif;
+  text-align: center;
+}
+
+.assetPickerItem:hover {
+  background: var(--hoverColor);
+}
+
+.assetPickerItem.selected {
+  outline: 2px solid var(--selectedColor);
+  background: rgba(var(--baseColor), 0.45);
+}
+
+.assetPickerPreview {
+  height: 4.25rem;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.assetPickerPreview img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.assetPickerLabel {
+  display: block !important;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  opacity: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.assetPreviewMissing .assetPickerPreview {
+  font-size: 1.4rem;
+  opacity: 0.6;
+}
+
+.assetPickerEmpty {
+  grid-column: 1 / -1;
+  padding: 2rem;
+  text-align: center;
+  opacity: 0.75;
+  font-family: "Inter", sans-serif;
+}
+
+#arrowGrid .assetPickerPreview img,
+.arrowPickerPreviewImage {
+  filter: invert(1);
+}
+
+:root[data-theme="dark"] #iconGrid .assetPickerPreview img {
+  filter: invert(1);
+}
+
+:root[data-theme="dark"] dialog.assetSelectorDialog {
+  background-color: rgb(28, 34, 52);
+  color: rgb(235, 240, 255);
+}
+
+:root[data-theme="dark"] .assetSelectorSearch {
+  background-color: rgb(20, 24, 36);
+  color: white;
+}
+
+
+/* Toll logo picker: full-screen layout */
+#tollLogoSelectorModal.assetSelectorDialog {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+#tollLogoSelectorModal.assetSelectorDialog[open] {
+  display: flex !important;
+  flex-direction: column;
+}
+
+#tollLogoSelectorModal .assetSelectorHeader {
+  flex: 0 0 auto;
+}
+
+#tollLogoSelectorModal .assetSelectorSearch {
+  flex: 0 0 auto;
+}
+
+#tollLogoSelectorModal .assetPickerGrid {
+  flex: 1 1 auto;
+  max-height: none !important;
+  height: auto;
+  overflow-y: auto;
+
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  align-content: start;
+  padding: 1rem;
+}
+
+/* Keep huge/wide toll logos from blowing up the cards */
+#tollLogoSelectorModal .assetPickerPreview {
+  height: 4.5rem;
+  max-height: 4.5rem;
+  padding: 0.35rem;
+  box-sizing: border-box;
+}
+
+#tollLogoSelectorModal .assetPickerPreview img,
+#tollLogoSelectorModal .tollLogoPickerPreviewImage {
+  max-width: 6.5rem !important;
+  max-height: 3.5rem !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* Make toll logo cards consistent */
+#tollLogoSelectorModal .assetPickerItem {
+  min-height: 7.5rem;
+  max-width: 11rem;
+  justify-self: stretch;
+  overflow: hidden;
+}
+
+#tollLogoSelectorModal .assetPickerLabel {
+  min-height: 1.8rem;
+}
+
+/* Toll Logo block editor: streamlined control layout */
+.sMModal.subPanelConfig [data-property="sdTollLogo"]:not(.hidden) {
+  display: grid !important;
+  grid-template-columns: 8rem minmax(6rem, 11rem) 8rem minmax(6rem, 13rem);
+  grid-auto-rows: minmax(2rem, auto);
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+
+  width: min(100%, 50rem);
+  max-width: 100%;
+  min-width: 0;
+
+  padding: 0.85rem;
+  margin: 0 auto;
+
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+}
+
+.sMModal.subPanelConfig [data-property="sdTollLogo"] br {
+  display: none !important;
+}
+
+.sMModal.subPanelConfig [data-property="sdTollLogo"] label {
+  width: auto;
+  max-width: 8rem;
+  margin: 0;
+  text-align: right;
+  line-height: 1.1;
+  white-space: normal;
+  font-size: 0.88rem;
+}
+
+.sMModal.subPanelConfig [data-property="sdTollLogo"] input,
+.sMModal.subPanelConfig [data-property="sdTollLogo"] select,
+.sMModal.subPanelConfig [data-property="sdTollLogo"] button {
+  margin: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.sMModal.subPanelConfig [data-property="sdTollLogo"] input[type="number"],
+.sMModal.subPanelConfig [data-property="sdTollLogo"] select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.28rem 0.35rem;
+}
+
+.sMModal.subPanelConfig [data-property="sdTollLogo"] input[type="checkbox"] {
+  justify-self: start;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Hide the stored value input */
+#sdTollLogo_logo {
+  display: none !important;
+}
+
+/* Row 1: logo picker */
+label[for="sdTollLogo_logo"] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#sdTollLogo_chooseBtn {
+  grid-column: 2;
+  grid-row: 1;
+  width: max-content;
+  max-width: 100%;
+  padding: 0.35rem 0.6rem;
+}
+
+#sdTollLogo_selectedLabel {
+  grid-column: 3 / 5;
+  grid-row: 1;
+
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+
+  padding: 0.35rem 0.55rem;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 0.2rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row 2: size and spacing */
+label[for="sdTollLogo_logoHeight"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#sdTollLogo_logoHeight {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+label[for="sdTollLogo_spacing"] {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+#sdTollLogo_spacing {
+  grid-column: 4;
+  grid-row: 2;
+}
+
+/* Row 3: alignment and background */
+label[for="sdTollLogo_alignment"] {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+#sdTollLogo_alignment {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+label[for="sdTollLogo_background"] {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+#sdTollLogo_background {
+  grid-column: 4;
+  grid-row: 3;
+}
+
+#sdTollLogo_backgroundColor:not(.hidden) {
+  grid-column: 4;
+  grid-row: 3;
+  width: calc(100% - 1.7rem);
+  margin-left: 1.7rem;
+}
+
+/* Row 4: square icon and only block */
+label[for="sdTollLogo_squareIcon"] {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+#sdTollLogo_squareIcon {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+label[for="sdTollLogo_hasOnlyBlock"]:not(.hidden) {
+  grid-column: 3;
+  grid-row: 4;
+}
+
+#sdTollLogo_hasOnlyBlock:not(.hidden) {
+  grid-column: 4;
+  grid-row: 4;
+}
+
+/* Row 5: border radius and horizontal padding */
+label[for="sdTollLogo_borderRadius"]:not(.hidden) {
+  grid-column: 1;
+  grid-row: 5;
+}
+
+#sdTollLogo_borderRadius:not(.hidden) {
+  grid-column: 2;
+  grid-row: 5;
+}
+
+label[for="sdTollLogo_horizontalPadding"]:not(.hidden) {
+  grid-column: 3;
+  grid-row: 5;
+}
+
+#sdTollLogo_horizontalPadding:not(.hidden) {
+  grid-column: 4;
+  grid-row: 5;
+}
+
+/* Row 6: vertical padding */
+label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
+  grid-column: 3;
+  grid-row: 6;
+}
+
+#sdTollLogo_verticalPadding:not(.hidden) {
+  grid-column: 4;
+  grid-row: 6;
+}
+
+/* Keep hidden controls hidden even with explicit grid placement */
+.sMModal.subPanelConfig [data-property="sdTollLogo"] .hidden {
+  display: none !important;
+}
+
+/* Icon picker: full-screen layout */
+#iconSelectorModal.assetSelectorDialog {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+#iconSelectorModal.assetSelectorDialog[open] {
+  display: flex !important;
+  flex-direction: column;
+}
+
+#iconSelectorModal .assetSelectorHeader {
+  flex: 0 0 auto;
+}
+
+#iconSelectorModal .assetSelectorSearch {
+  flex: 0 0 auto;
+}
+
+#iconSelectorModal .assetPickerGrid {
+  flex: 1 1 auto;
+  max-height: none !important;
+  height: auto;
+  overflow-y: auto;
+
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  align-content: start;
+  padding: 1rem;
+}
+
+/* Keep icon cards consistent */
+#iconSelectorModal .assetPickerItem {
+  min-height: 7.5rem;
+  max-width: 11rem;
+  justify-self: stretch;
+  overflow: hidden;
+}
+
+#iconSelectorModal .assetPickerPreview {
+  height: 4.5rem;
+  max-height: 4.5rem;
+  padding: 0.35rem;
+  box-sizing: border-box;
+}
+
+#iconSelectorModal .assetPickerPreview img,
+#iconSelectorModal .iconPickerPreviewImage {
+  max-width: 4rem !important;
+  max-height: 3.6rem !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* Do not invert icon colors in dark mode */
+:root[data-theme="dark"] #iconGrid .assetPickerPreview img,
+:root[data-theme="dark"] #iconSelectorModal .assetPickerPreview img,
+:root[data-theme="dark"] #iconSelectorModal .iconPickerPreviewImage {
+  filter: none !important;
+}
+
+
+/* =========================
+   Image picker dialogs
+   Icon, Toll Logo, Arrow
+   ========================= */
+
+#iconSelectorModal,
+#tollLogoSelectorModal,
+#arrowSelectorModal {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: rgb(31, 40, 66);
+  color: white;
+}
+
+#iconSelectorModal[open],
+#tollLogoSelectorModal[open],
+#arrowSelectorModal[open] {
+  display: grid !important;
+  grid-template-rows: auto auto 1fr auto;
+}
+
+#iconSelectorModal h3,
+#tollLogoSelectorModal h3,
+#arrowSelectorModal h3 {
+  margin: 0;
+  padding: 1rem 1.25rem 0.35rem;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  font-family: "Inter", sans-serif;
+}
+
+#iconSearch,
+#tollLogoSearch,
+#arrowSearch {
+  width: calc(100% - 2.5rem);
+  margin: 0 1.25rem 1rem;
+  padding: 0.8rem 0.95rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.22);
+  color: white;
+}
+
+#iconGrid,
+#tollLogoGrid,
+#arrowGrid {
+  display: grid !important;
+  justify-content: start;
+  align-content: start;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: none !important;
+  background: rgba(255, 255, 255, 0.04);
+  box-sizing: border-box;
+}
+
+#iconGrid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 112px));
+}
+
+#tollLogoGrid {
+  grid-template-columns: repeat(auto-fill, minmax(138px, 138px));
+}
+
+#arrowGrid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 112px));
+}
+
+.assetGridCard {
+  appearance: none;
+  border: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.65rem;
+  box-sizing: border-box;
+  cursor: pointer;
+  text-align: center;
+  border-radius: 0;
+  transition: background-color 0.15s ease, outline-color 0.15s ease;
+  font-family: "Inter", sans-serif;
+}
+
+.iconGridCard,
+.arrowGridCard {
+  grid-template-rows: 82px auto;
+  width: 112px;
+  min-height: 132px;
+}
+
+.tollLogoGridCard {
+  grid-template-rows: 82px auto;
+  width: 138px;
+  min-height: 132px;
+}
+
+.assetGridCard:hover,
+.assetGridCard:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  outline: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.assetGridCard.selected {
+  outline: 2px solid var(--selectedColor);
+  background: rgba(var(--baseColor), 0.35);
+}
+
+.assetGridPreview {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.assetGridPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: none !important;
+}
+
+.tollLogoGridCard .assetGridPreview img {
+  max-width: 6.5rem;
+  max-height: 3.2rem;
+  width: auto;
+  height: auto;
+}
+
+.arrowGridCard .assetGridPreview img {
+  max-width: 4.5rem;
+  max-height: 4.5rem;
+  width: auto;
+  height: auto;
+  filter: invert(1) !important;
+}
+
+.assetGridLabel {
+  font-size: 0.78rem;
+  line-height: 1.15;
+  min-height: 2.1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.assetGridEmpty {
+  grid-column: 1 / -1;
+  padding: 2rem;
+  text-align: center;
+  opacity: 0.75;
+  font-family: "Inter", sans-serif;
+}
+
+.missingPreview {
+  font-size: 1.7rem;
+  opacity: 0.7;
+}
+
+#iconSelectorModal .options,
+#tollLogoSelectorModal .options,
+#arrowSelectorModal .options {
+  margin: 0;
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* Keep the old picker styles from interfering */
+#iconGrid .iconGridItem,
+#tollLogoGrid .iconGridItem,
+#arrowGrid .iconGridItem {
+  all: unset;
+}
+
+/* Dark mode should not invert icon or toll-logo previews */
+:root[data-theme="dark"] #iconGrid .assetGridPreview img,
+:root[data-theme="dark"] #tollLogoGrid .assetGridPreview img {
+  filter: none !important;
+}
+
+/* Arrows should stay visible on the dark preview cards */
+:root[data-theme="dark"] #arrowGrid .assetGridPreview img {
+  filter: invert(1) !important;
+}
+
+/* =========================
+   Image picker light/dark theme fix
+   Icon, Toll Logo, Arrow
+   ========================= */
+
+:root {
+  --assetPickerDialogBg: #eef3ff;
+  --assetPickerHeaderBg: #dbe6ff;
+  --assetPickerGridBg: #e7eeff;
+  --assetPickerCardBg: rgba(255, 255, 255, 0.78);
+  --assetPickerCardHoverBg: rgba(255, 255, 255, 0.95);
+  --assetPickerPreviewBg: rgba(0, 0, 0, 0.035);
+  --assetPickerText: #121827;
+  --assetPickerMutedText: rgba(18, 24, 39, 0.72);
+  --assetPickerInputBg: #ffffff;
+  --assetPickerInputBorder: rgba(0, 0, 0, 0.28);
+  --assetPickerCloseBg: rgba(0, 0, 0, 0.08);
+  --assetPickerCloseHoverBg: rgba(0, 0, 0, 0.16);
+}
+
+:root[data-theme="dark"] {
+  --assetPickerDialogBg: rgb(31, 40, 66);
+  --assetPickerHeaderBg: rgb(18, 23, 38);
+  --assetPickerGridBg: rgba(255, 255, 255, 0.04);
+  --assetPickerCardBg: rgba(255, 255, 255, 0.08);
+  --assetPickerCardHoverBg: rgba(255, 255, 255, 0.16);
+  --assetPickerPreviewBg: rgba(255, 255, 255, 0.05);
+  --assetPickerText: #ffffff;
+  --assetPickerMutedText: rgba(255, 255, 255, 0.72);
+  --assetPickerInputBg: rgba(0, 0, 0, 0.22);
+  --assetPickerInputBorder: rgba(255, 255, 255, 0.18);
+  --assetPickerCloseBg: rgba(0, 0, 0, 0.35);
+  --assetPickerCloseHoverBg: rgba(255, 255, 255, 0.12);
+}
+
+#iconSelectorModal,
+#tollLogoSelectorModal,
+#arrowSelectorModal {
+  background: var(--assetPickerDialogBg) !important;
+  color: var(--assetPickerText) !important;
+}
+
+#iconSelectorModal .assetSelectorHeader,
+#tollLogoSelectorModal .assetSelectorHeader,
+#arrowSelectorModal .assetSelectorHeader {
+  background: var(--assetPickerHeaderBg) !important;
+  color: var(--assetPickerText) !important;
+}
+
+#iconSelectorModal h3,
+#tollLogoSelectorModal h3,
+#arrowSelectorModal h3,
+#iconSelectorModal p,
+#tollLogoSelectorModal p,
+#arrowSelectorModal p {
+  color: var(--assetPickerText) !important;
+}
+
+#iconSelectorModal p,
+#tollLogoSelectorModal p,
+#arrowSelectorModal p {
+  color: var(--assetPickerMutedText) !important;
+}
+
+#iconSearch,
+#tollLogoSearch,
+#arrowSearch {
+  background: var(--assetPickerInputBg) !important;
+  color: var(--assetPickerText) !important;
+  border-color: var(--assetPickerInputBorder) !important;
+}
+
+#iconSearch::placeholder,
+#tollLogoSearch::placeholder,
+#arrowSearch::placeholder {
+  color: var(--assetPickerMutedText) !important;
+}
+
+#iconGrid,
+#tollLogoGrid,
+#arrowGrid {
+  background: var(--assetPickerGridBg) !important;
+}
+
+.assetGridCard,
+#iconGrid .iconGridCard,
+#tollLogoGrid .tollLogoGridCard,
+#arrowGrid .arrowGridCard {
+  background: var(--assetPickerCardBg) !important;
+  color: var(--assetPickerText) !important;
+}
+
+.assetGridCard:hover,
+.assetGridCard:focus-visible,
+#iconGrid .iconGridCard:hover,
+#tollLogoGrid .tollLogoGridCard:hover,
+#arrowGrid .arrowGridCard:hover {
+  background: var(--assetPickerCardHoverBg) !important;
+}
+
+.assetGridPreview,
+.iconGridCardPreview {
+  background: var(--assetPickerPreviewBg) !important;
+}
+
+.assetGridLabel,
+.iconGridCardLabel {
+  color: var(--assetPickerText) !important;
+}
+
+.assetSelectorClose,
+#closeIconSelector,
+#closeTollLogoSelector,
+#closeArrowSelector {
+  background: var(--assetPickerCloseBg) !important;
+  color: var(--assetPickerText) !important;
+}
+
+.assetSelectorClose:hover,
+#closeIconSelector:hover,
+#closeTollLogoSelector:hover,
+#closeArrowSelector:hover {
+  background: var(--assetPickerCloseHoverBg) !important;
+}
+
+/* Light mode: do not invert any picker previews */
+:root[data-theme="light"] #iconGrid img,
+:root[data-theme="light"] #tollLogoGrid img,
+:root[data-theme="light"] #arrowGrid img {
+  filter: none !important;
+}
+
+/* Dark mode: icons/logos stay normal, arrows invert so they remain visible */
+:root[data-theme="dark"] #iconGrid img,
+:root[data-theme="dark"] #tollLogoGrid img {
+  filter: none !important;
+}
+
+:root[data-theme="dark"] #arrowGrid img {
+  filter: invert(1) !important;
+}
+
+/* Toll logo picker: fixed square previews, no overflow */
+#tollLogoGrid {
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 8.5rem)) !important;
+  gap: 1rem !important;
+  align-content: start;
+}
+
+#tollLogoGrid .tollLogoGridCard,
+#tollLogoGrid .assetGridCard {
+  width: 8.5rem !important;
+  height: 8.5rem !important;
+  min-height: 8.5rem !important;
+  display: grid !important;
+  grid-template-rows: 5.8rem 1.7rem !important;
+  padding: 0.55rem !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#tollLogoGrid .assetGridPreview {
+  width: 100% !important;
+  height: 5.8rem !important;
+  aspect-ratio: auto !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 0.25rem !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+#tollLogoGrid .assetGridPreview img,
+#tollLogoGrid .tollLogoPickerPreviewImage {
+  display: block !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  max-width: 100% !important;
+  max-height: 100% !important;
+
+  object-fit: contain !important;
+  object-position: center !important;
+
+  transform: none !important;
+  filter: none !important;
+}
+
+#tollLogoGrid .assetGridLabel {
+  min-height: 0 !important;
+  height: 1.7rem !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  font-size: 0.78rem !important;
+  line-height: 1.05 !important;
+
+  overflow: hidden !important;
+  text-align: center !important;
+}

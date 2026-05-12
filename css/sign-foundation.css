@@ -153,6 +153,67 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
   height: var(--tollLogoHeight);
 }
 
+/* Toll logo block rendering */
+.bE-tollLogoElement {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+
+  width: max-content;
+  max-width: none;
+  min-width: 0;
+
+  margin: 0 var(--spacing, 0rem);
+  padding: 0;
+
+  background: transparent;
+  border-radius: 0;
+  box-sizing: border-box;
+  overflow: visible;
+  line-height: 0;
+}
+
+.bE-tollLogoElement > img {
+  display: block;
+  height: var(--tollLogoHeight, 3rem);
+  width: auto;
+  max-width: calc(var(--tollLogoHeight, 3rem) * 4);
+  max-height: var(--tollLogoHeight, 3rem);
+  object-fit: contain;
+}
+
+.bE-tollLogoElement.hasBackground {
+  background: var(--tollBgColor, white);
+  padding: var(--vertPadding, 0.05rem) var(--horizPadding, 0.2rem);
+  border-radius: var(--borderRadius, 8px);
+  overflow: hidden;
+  line-height: 1;
+}
+
+.bE-tollLogoElement.hasBackground > img {
+  max-width: calc(var(--tollLogoHeight, 3rem) * 4);
+  max-height: var(--tollLogoHeight, 3rem);
+}
+
+.bE-tollLogoElement.hasOnlyBlock {
+  gap: 0.25rem;
+}
+
+.bE-tollOnlyBlock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Series D";
+  font-size: calc(var(--tollLogoHeight, 3rem) * 0.42);
+  line-height: 1;
+  color: white;
+}
+
+.bE-tollLogoElement.inverseColor .bE-tollOnlyBlock {
+  color: black;
+}
+
 .bE-arrowElement {
   --arrowRotation: 0deg;
   --arrowSize: 1.75rem;

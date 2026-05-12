@@ -1288,29 +1288,46 @@
         </div>
       </div>
     </div>
-    <dialog id="iconSelectorModal">
-      <h3>Select an Icon</h3>
-      <input type="text" id="iconSearch" placeholder="Search icons..." />
-      <div id="iconGrid" class="iconGrid"></div>
-      <div class="options">
-        <button id="closeIconSelector">OK</button>
+    <dialog id="iconSelectorModal" class="assetSelectorDialog">
+      <div class="assetSelectorHeader">
+        <div>
+          <h3>Select Icon</h3>
+          <p>Choose an icon preview to apply it to the selected block.</p>
+        </div>
+        <button id="closeIconSelector" class="assetSelectorClose" type="button" aria-label="Close icon selector">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
+      <input type="search" id="iconSearch" class="assetSelectorSearch" placeholder="Search icons..." />
+      <div id="iconGrid" class="iconGrid assetPickerGrid"></div>
     </dialog>
-    <dialog id="tollLogoSelectorModal">
-      <h3>Select a Toll Logo</h3>
-      <input type="text" id="tollLogoSearch" placeholder="Search logos..." />
-      <div id="tollLogoGrid" class="iconGrid"></div>
-      <div class="options">
-        <button id="closeTollLogoSelector">OK</button>
+
+    <dialog id="tollLogoSelectorModal" class="assetSelectorDialog">
+      <div class="assetSelectorHeader">
+        <div>
+          <h3>Select Toll Logo</h3>
+          <p>Choose a toll logo preview to apply it to the selected block.</p>
+        </div>
+        <button id="closeTollLogoSelector" class="assetSelectorClose" type="button" aria-label="Close toll logo selector">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
+      <input type="search" id="tollLogoSearch" class="assetSelectorSearch" placeholder="Search toll logos..." />
+      <div id="tollLogoGrid" class="iconGrid assetPickerGrid"></div>
     </dialog>
-    <dialog id="arrowSelectorModal">
-      <h3>Select an Arrow</h3>
-      <input type="text" id="arrowSearch" placeholder="Search arrows..." />
-      <div id="arrowGrid" class="iconGrid"></div>
-      <div class="options">
-        <button id="closeArrowSelector">OK</button>
+
+    <dialog id="arrowSelectorModal" class="assetSelectorDialog">
+      <div class="assetSelectorHeader">
+        <div>
+          <h3>Select Arrow</h3>
+          <p>Choose an arrow preview to apply it to the selected block.</p>
+        </div>
+        <button id="closeArrowSelector" class="assetSelectorClose" type="button" aria-label="Close arrow selector">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
+      <input type="search" id="arrowSearch" class="assetSelectorSearch" placeholder="Search arrows..." />
+      <div id="arrowGrid" class="iconGrid assetPickerGrid"></div>
     </dialog>
     <div id="signMakerSettingsModal" class="settingsModalShell">
       <div class="settingsModalWindow">

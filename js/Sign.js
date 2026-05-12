@@ -310,6 +310,8 @@ Sign.prototype.guideArrows = [
 	"None",
 	"Side Left",
 	"Side Right",
+  "Down Arrow:C-1",
+  "Up Arrow:C-2",
 	"Exit Only",
 	"Split Exit Only",
 	"Half Exit Only",
@@ -319,8 +321,6 @@ Sign.prototype.guideArrows = [
 	"Right/Down Arrow:A-2",
 	"Right Arrow:D-2",
 	"Right/Up Arrow:A-1",
-	"Down Arrow:C-1",
-	"Up Arrow:C-2",
 	"alt. Left/Down Arrow:B-3",
 	"alt. Left/Up Arrow:B-4",
 	"alt. Right/Up Arrow:B-1",
@@ -330,10 +330,10 @@ Sign.prototype.guideArrows = [
 ];
 Sign.prototype.exitguideArrows = [
 	"Down Arrow:EC-1/C-1",
-	"Left/Up Arrow:EB-4/B-4",
-	"alt. Left/Up Arrow:EA-4/A-4",
-	"Right/Up Arrow:EB-1/B-1",
-	"alt. Right/Up Arrow:EA-1/A-1"
+  "Left/Up Arrow:EA-4/A-4",
+	"Alt. Left/Up Arrow:EB-4/B-4",
+  "Right/Up Arrow:EA-1/A-1",
+	"Alt. Right/Up Arrow:EB-1/B-1",
 
 ];
 

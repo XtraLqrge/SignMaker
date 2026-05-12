@@ -147,6 +147,10 @@ const getPostThicknessFallback = () =>
   const INTERFACE_UI_SCALE_DEFAULT = 100;
 
   const normalizeInterfaceUIScale = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return INTERFACE_UI_SCALE_DEFAULT;
+    }
+
     const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
 
     if (!Number.isFinite(parsed)) {

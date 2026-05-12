@@ -1,3 +1,33 @@
+const cloneSignMakerValue = (value, seen = new WeakMap()) => {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return seen.get(value);
+  }
+
+  if (Array.isArray(value)) {
+    const clonedArray = [];
+    seen.set(value, clonedArray);
+
+    for (const item of value) {
+      clonedArray.push(cloneSignMakerValue(item, seen));
+    }
+
+    return clonedArray;
+  }
+
+  const clonedObject = Object.create(Object.getPrototypeOf(value));
+  seen.set(value, clonedObject);
+
+  for (const key of Object.keys(value)) {
+    clonedObject[key] = cloneSignMakerValue(value[key], seen);
+  }
+
+  return clonedObject;
+};
+
 class Post {
 	/**
 	 * Post that contains the panels.
@@ -54,42 +84,20 @@ class Post {
 	 * Duplicate an existing panel. Add it immediately after the panel being duplicated.
 	 * @param {number} panelIndex - Position of the panel in the array of panels on this post.
 	 */
-	duplicatePanel(panelIndex) {
-		const existingPanel = this.panels[panelIndex];
-		const newSubPanels = [];
-		for (const subPanel of existingPanel.sign.subPanels) {
-			newSubPanels.push(Object.assign(new SubPanels(), subPanel));
-		}
+  /**
+   * Duplicate an existing panel. Add it immediately after the panel being duplicated.
+   * @param {number} panelIndex - Position of the panel in the array of panels on this post.
+   */
+  duplicatePanel(panelIndex) {
+    const existingPanel = this.panels[panelIndex];
 
-		const newExitTabs = [];
-		const cloneExitTab = (tab) => {
-			const clonedTab = Object.assign(new ExitTab(), tab);
-			if (Array.isArray(tab?.nestedExitTabs)) {
-				clonedTab.nestedExitTabs = tab.nestedExitTabs.map((nested) =>
-					cloneExitTab(nested)
-				);
-			} else {
-				clonedTab.nestedExitTabs = [];
-			}
-			return clonedTab;
-		};
-		for (const exitTab of existingPanel.exitTabs) {
-			newExitTabs.push(cloneExitTab(exitTab));
-		}
+    if (!existingPanel) {
+      return;
+    }
 
-		const newSign = new Sign({
-			shieldPosition: existingPanel.sign.shieldPosition,
-			subPanels: newSubPanels,
-			sheildBacks: existingPanel.sign.sheildBacks,
-			guideArrow: existingPanel.sign.guideArrow,
-			guideArrowLanes: existingPanel.sign.guideArrowLanes,
-			useCanadianDownArrows: existingPanel.sign.useCanadianDownArrows,
-		});
-		const newPanel = Object.assign(new Panel(), existingPanel);
-		newPanel.sign = newSign;
-		newPanel.exitTabs = newExitTabs;
-		this.panels.splice(++panelIndex, 0, newPanel);
-	}
+    const newPanel = cloneSignMakerValue(existingPanel);
+    this.panels.splice(panelIndex + 1, 0, newPanel);
+  }
 
 	/**
 	 * Delete an existing panel at the requested index.

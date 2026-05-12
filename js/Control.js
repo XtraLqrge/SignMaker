@@ -674,13 +674,14 @@ class ShieldElement extends Shield {
     to = false,
     bannerType = ShieldElement.prototype.defaultBannerType,
     bannerType2 = ShieldElement.prototype.defaultBannerType,
+    roadName = "",
     bannerPosition = ShieldElement.prototype.defaultBannerPosition,
     bannerPosition2 = ShieldElement.prototype.defaultBannerPosition,
     indentFirstLetter = true,
     indentFirstLetter2 = undefined,
     smallCaps = true,
     smallCaps2 = undefined,
-    fontSize = ShieldElement.prototype.defaultBannerFontSize,
+    fontSize,
     bannerFontFamily = ShieldElement.prototype.defaultBannerFontFamily,
     countyText = "",
     shieldSize,
@@ -719,6 +720,7 @@ class ShieldElement extends Shield {
       this.smallCaps2 = normalizedSmallCapsSecond !== false;
       this.bannerType = ShieldElement.prototype.normalizeBannerType(bannerType);
       this.bannerType2 = ShieldElement.prototype.normalizeBannerType(bannerType2);
+      this.roadName = typeof roadName === "string" ? roadName : "";
 
       const defaultBannerPosition1 = getStoredDefaultsOption(
         { bannerPosition },
@@ -741,10 +743,12 @@ class ShieldElement extends Shield {
       this.bannerPosition2 = ShieldElement.prototype.normalizeBannerPosition(
         defaultBannerPosition2
       );
-
-      this.fontSize = ShieldElement.prototype.normalizeFontSize(fontSize);
       this.bannerFontFamily =
         ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+      this.fontSize = ShieldElement.prototype.normalizeFontSize(
+        fontSize,
+        ShieldElement.prototype.getDefaultBannerFontSizeForFont(this.bannerFontFamily)
+      );
       this.countyText = typeof countyText === "string" ? countyText : "";
 
       const storedShieldSize = getStoredDefaultsOption(
@@ -848,57 +852,108 @@ class ShieldElement extends Shield {
       );
 
 
-    const hasBannerA = ShieldElement.prototype.hasBannerValue(this.bannerType);
-    const hasBannerB = ShieldElement.prototype.hasBannerValue(this.bannerType2);
-    const normalizedBannerPosition =
-      ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition);
-    const normalizedBannerPosition2 =
-      ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition2);
-    const shouldStackSamePosition =
-      hasBannerA &&
-      hasBannerB &&
-      normalizedBannerPosition === normalizedBannerPosition2;
+      const hasBannerA = ShieldElement.prototype.hasBannerValue(this.bannerType);
+      const hasBannerB = ShieldElement.prototype.hasBannerValue(this.bannerType2);
+      const hasRoadName = String(this.roadName || "").trim().length > 0;
 
-    if (shouldStackSamePosition) {
-        const stackedBannerSlot =
-          ShieldElement.prototype.createStackedBannerSlot(
-            normalizedBannerPosition,
-            [
-              {
-                bannerClass: "bannerA",
-                bannerValue: this.bannerType,
-                containerClass: "bannerContainer",
-                indentFirstLetter: this.indentFirstLetter,
-                smallCaps: this.smallCaps,
-              },
-              {
-                bannerClass: "bannerB",
-                bannerValue: this.bannerType2,
-                containerClass: "bannerContainer2",
-                indentFirstLetter: this.indentFirstLetter2,
-                smallCaps: this.smallCaps2,
-              },
-            ],
-            fontSizeCss,
-            this.indentFirstLetter,
-            bannerFontFamily,
-            this.smallCaps
-          );
-      shieldContainer.appendChild(stackedBannerSlot);
-    } else if (hasBannerA) {
-      const bannerContainerElmt = ShieldElement.prototype.createBannerContainer(
-        "bannerContainer",
-        "bannerA",
-        this.bannerType,
-        fontSizeCss,
-        this.indentFirstLetter,
-        bannerFontFamily,
-        false,
-        normalizedBannerPosition,
-        this.smallCaps
-      );
-      shieldContainer.appendChild(bannerContainerElmt);
-    }
+      const normalizedBannerPosition =
+        ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition);
+      const normalizedBannerPosition2 =
+        ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition2);
+
+      const roadNamePosition = hasBannerA
+        ? normalizedBannerPosition
+        : hasBannerB
+          ? normalizedBannerPosition2
+          : normalizedBannerPosition;
+
+      const bannerItems = [];
+
+      if (hasBannerA) {
+        bannerItems.push({
+          position: normalizedBannerPosition,
+          bannerClass: "bannerA",
+          bannerValue: this.bannerType,
+          containerClass: "bannerContainer",
+          indentFirstLetter: this.indentFirstLetter,
+          smallCaps: this.smallCaps,
+        });
+      }
+
+      if (hasBannerB) {
+        bannerItems.push({
+          position: normalizedBannerPosition2,
+          bannerClass: "bannerB",
+          bannerValue: this.bannerType2,
+          containerClass: "bannerContainer2",
+          indentFirstLetter: this.indentFirstLetter2,
+          smallCaps: this.smallCaps2,
+        });
+      }
+
+      if (hasRoadName) {
+        bannerItems.push({
+          position: roadNamePosition,
+          bannerClass: "bannerRoadName",
+          bannerValue: String(this.roadName || "").trim(),
+          containerClass: "roadNameBannerContainer",
+          indentFirstLetter: false,
+          smallCaps: false,
+          isRoadName: true,
+        });
+      }
+
+      const bannerPositions = [
+        ...new Set(bannerItems.map((item) => item.position)),
+      ];
+
+      for (const position of bannerPositions) {
+        const itemsForPosition = bannerItems.filter(
+          (item) => item.position === position
+        );
+
+        if (!itemsForPosition.length) {
+          continue;
+        }
+
+        if (
+          itemsForPosition.length > 1 ||
+          itemsForPosition.some((item) => item.isRoadName)
+        ) {
+          const stackedBannerSlot =
+            ShieldElement.prototype.createStackedBannerSlot(
+              position,
+              itemsForPosition.map(({ position, isRoadName, ...item }) => item),
+              fontSizeCss,
+              this.indentFirstLetter,
+              bannerFontFamily,
+              this.smallCaps
+            );
+
+          if (itemsForPosition.some((item) => item.isRoadName)) {
+            stackedBannerSlot.classList.add("roadNameStackedBanner");
+          }
+
+          shieldContainer.appendChild(stackedBannerSlot);
+          continue;
+        }
+
+        const item = itemsForPosition[0];
+
+        const bannerContainerElmt = ShieldElement.prototype.createBannerContainer(
+          item.containerClass,
+          item.bannerClass,
+          item.bannerValue,
+          fontSizeCss,
+          item.indentFirstLetter,
+          bannerFontFamily,
+          false,
+          position,
+          item.smallCaps
+        );
+
+        shieldContainer.appendChild(bannerContainerElmt);
+      }
 
     const shieldEl = document.createElement("div");
     shieldEl.className = "shield";
@@ -957,24 +1012,9 @@ class ShieldElement extends Shield {
         shieldContainer.classList.toggle("seriesDSpacingFix", usesSeriesD);
       });
 
-    if (!shouldStackSamePosition && hasBannerB) {
-      const bannerContainerElmt2 = ShieldElement.prototype.createBannerContainer(
-        "bannerContainer2",
-        "bannerB",
-        this.bannerType2,
-        fontSizeCss,
-        this.indentFirstLetter2,
-        bannerFontFamily,
-        true,
-        normalizedBannerPosition2,
-        this.smallCaps2
-      );
-      shieldContainer.appendChild(bannerContainerElmt2);
-    }
-
-    if (!hasBannerA && !hasBannerB) {
-      shieldContainer.classList.add("noBanners");
-    }
+      if (!hasBannerA && !hasBannerB && !hasRoadName) {
+        shieldContainer.classList.add("noBanners");
+      }
 
     wrapper.appendChild(shieldContainer);
 
@@ -982,8 +1022,8 @@ class ShieldElement extends Shield {
   }
 }
 
-const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "WI", "WY"];
-const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "WI", "WY"];
+const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "SC", "WI", "WY"];
+const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "SC", "WI", "WY"];
 
 ShieldElement.prototype.defaultShieldBase = "I";
 ShieldElement.prototype.defaultVariant = "Auto";
@@ -991,8 +1031,21 @@ ShieldElement.prototype.defaultRouteNumber = "1";
 ShieldElement.prototype.defaultBannerType = "None";
 ShieldElement.prototype.defaultBannerPosition = "Right";
 ShieldElement.prototype.defaultBannerPosition2 = "Above";
-ShieldElement.prototype.defaultBannerFontSize = 1.6;
+ShieldElement.prototype.defaultHighwayGothicBannerFontSize = 1.6;
+ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize = 1.4;
+ShieldElement.prototype.defaultBannerFontSize =
+  ShieldElement.prototype.defaultHighwayGothicBannerFontSize;
 ShieldElement.prototype.defaultBannerFontFamily = "Series E";
+
+ShieldElement.prototype.isHighwayGothicBannerFont = function (fontFamily) {
+  return /^Series\b/i.test(String(fontFamily || ""));
+};
+
+ShieldElement.prototype.getDefaultBannerFontSizeForFont = function (fontFamily) {
+  return ShieldElement.prototype.isHighwayGothicBannerFont(fontFamily)
+    ? ShieldElement.prototype.defaultHighwayGothicBannerFontSize
+    : ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize;
+};
 ShieldElement.prototype.defaultCountyText = "";
 ShieldElement.prototype.defaultShieldSize = 3;
 ShieldElement.prototype.defaultScaleBannersWithShield = true;
@@ -2167,14 +2220,19 @@ ShieldElement.prototype.normalizeBannerFontFamily = function (value) {
   );
 };
 
-ShieldElement.prototype.normalizeFontSize = function (value) {
+ShieldElement.prototype.normalizeFontSize = function (
+  value,
+  fallbackSize = ShieldElement.prototype.defaultBannerFontSize
+) {
   const parsed = parseFloat(
     typeof value === "string" ? value.replace(/rem$/i, "") : value
   );
+
   if (Number.isFinite(parsed)) {
     return Math.max(parsed, 0.1);
   }
-  return ShieldElement.prototype.defaultBannerFontSize;
+
+  return fallbackSize;
 };
 
 ShieldElement.prototype.getFontSizeCss = function (value) {

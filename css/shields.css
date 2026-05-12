@@ -660,8 +660,8 @@
 /* MICHIGAN */
 .bannerShieldContainer.MI .routeNumber {
 	color: var(--black);
-	font-size: 1.8em;
-	top: 0.25em;
+	font-size: 2em;
+	top: 0.12em;
 }
 .bannerShieldContainer.MI.one .routeNumber,
 .bannerShieldContainer.MI.two .routeNumber {
@@ -672,7 +672,7 @@
 	font-family: "Series C";
 }
 
-/* MINNESOTA (UNFINISHED) */
+/* MINNESOTA */
 .bannerShieldContainer.MN .routeNumber,
 .bannerShieldContainer.MNBUS .routeNumber {
 	color: var(--white);
@@ -1201,7 +1201,7 @@
     top: 0.67em;
 }
 .bannerShieldContainer.ABTC .routeNumber {
-    color: var(--green);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.4em;
     top: 0.45em;
@@ -1251,7 +1251,7 @@
     top: 2em;
 }
 .bannerShieldContainer.BCTC .routeNumber {
-    color: var(--green);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.4em;
     top: 0.45em;
@@ -1266,33 +1266,33 @@
 .bannerShieldContainer.MB .routeNumber {
     color: var(--black);
     font-family: "Series D";
-    font-size: 1.65em;
-    top: 0.58em;
+    font-size: 2em;
+    top: 0.2em;
 }
 .bannerShieldContainer.MB.three .routeNumber {
     font-family: "Series C";
-    font-size: 1.45em;
-    top: 0.72em;
+    font-size: 1.7em;
+    top: 0.3em;
 }
 .bannerShieldContainer.MB2 .routeNumber {
     color: var(--white);
     font-family: "Series D";
-    font-size: 1.5em;
-    top: 0.72em;
-}
-.bannerShieldContainer.MB2.three .routeNumber {
-    font-family: "Series C";
     font-size: 1.25em;
     top: 0.85em;
 }
 .bannerShieldContainer.MBTC .routeNumber {
-    color: var(--white);
+    color: #016B4D;
     font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
+}
+.bannerShieldContainer.MBTC.one .routeNumber {
+  font-size: 1.6em;
+  top: 0.3em;
+}
+.bannerShieldContainer.MBTC.two .routeNumber {
+  font-size: 1.2em;
+  top: 0.7em;
 }
 .bannerShieldContainer.MBTC.three .routeNumber {
-    color: var(--green);
     font-family: "Series C";
     font-size: 1.05em;
     top: 0.9em;
@@ -1303,43 +1303,46 @@
 .bannerShieldContainer.NBCONN .routeNumber,
 .bannerShieldContainer.NBLOCAL .routeNumber {
     color: var(--black);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.48em;
+    font-family: "Arial Bold";
+    font-size: 1.6em;
+    top: 0.4em;
 }
 .bannerShieldContainer.NB.three .routeNumber,
 .bannerShieldContainer.NBCONN.three .routeNumber,
 .bannerShieldContainer.NBLOCAL.three .routeNumber {
-    font-family: "Arial Bold;
-    font-size: 1.5em;
-    top: 0.65em;
+    font-family: "Arial Bold";
+    font-size: 1.15em;
+    top: 0.7em;
 }
-.bannerShieldContainer.NBTC .routeNumber {
-    color: var(--green);
-    font-family: "Arial Bold;
-    font-size: 1.25em;
-    top: 0.76em;
+.bannerShieldContainer.NB.TC .routeNumber {
+    color: #016B4D;
+    font-family: "Arial Bold";
 }
-.bannerShieldContainer.NBTC.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
+.bannerShieldContainer.NB.TC.one .routeNumber {
+  font-size: 1.5em;
+  top: 0.55em;
+}
+.bannerShieldContainer.NB.TC.two .routeNumber {
+  font-size: 1.1em;
+  top: 1.1em;
+}
+.bannerShieldContainer.NB.TC.three .routeNumber {
+    font-size: 0.9em;
+    top: 1.4em;
 }
 
 /* Newfoundland and Labrador */
 .bannerShieldContainer.NL .routeNumber {
     color: var(--black);
-    font-family: "Series D";
+    font-family: "Series E";
     font-size: 1.8em;
-    top: 0.7em;
+    top: 0.42em;
 }
 .bannerShieldContainer.NL.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.55em;
-    top: 0.84em;
+    font-family: "Series E";
 }
 .bannerShieldContainer.NLTC .routeNumber {
-    color: var(--green);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.25em;
     top: 0.76em;
@@ -1374,7 +1377,7 @@
     top: 0.58em;
 }
 .bannerShieldContainer.NSTC .routeNumber {
-    color: var(--white);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.25em;
     top: 0.76em;
@@ -1418,7 +1421,7 @@
     font-family: "Series C";
 }
 .bannerShieldContainer.ONTC .routeNumber {
-    color: var(--green);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.25em;
     top: 0.76em;
@@ -1437,7 +1440,7 @@
     top: 0.58em;
 }
 .bannerShieldContainer.QCTC .routeNumber {
-    color: var(--green);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.25em;
     top: 0.76em;
@@ -1487,7 +1490,7 @@
 }
 
 .bannerShieldContainer.SKTC .routeNumber {
-    color: var(--green);
+    color: #016B4D;
     font-family: "Series D";
     font-size: 1.25em;
     top: 0.76em;
@@ -1748,6 +1751,42 @@
   align-self: flex-end;
 }
 
+/* Single TOLL plaque should match stacked TOLL plaque sizing */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot .TOLL.yellowElmt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 0;
+
+  font-size: calc(1.4rem * var(--shieldScale, 1));
+  line-height: 0.8;
+
+  padding-top: calc(0.10rem * var(--shieldScale, 1));
+  padding-bottom: calc(0.005rem * var(--shieldScale, 1));
+  padding-left: calc(0.18rem * var(--shieldScale, 1));
+  padding-right: calc(0.18rem * var(--shieldScale, 1));
+}
+
+/* Single TOLL banner positioning fixes */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-right,
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-left {
+  margin-top: calc(0.6rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-right {
+  margin-left: calc(0.8rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-left {
+  margin-right: calc(0.8rem * var(--shieldScale, 1));
+}
+
+/* Single TOLL above shield should sit closer to the shield */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-above {
+  margin-bottom: calc(0.08rem * var(--shieldScale, 1));
+}
+
 
 /* Interstate subtype shields */
 .bannerShieldContainer.I.bus .routeNumber,
@@ -1799,4 +1838,34 @@
 }
 
 
+/* Shield block Road Name banner */
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner {
+  gap: calc(0.12rem * var(--shieldScale, 1));
+}
 
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner .bannerRoadName {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--white) !important;
+  font-family: var(--bannerFontFamily, "Series E");
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.62);
+  line-height: 0.95;
+  letter-spacing: 0.08em;
+  padding: 0 !important;
+  margin: calc(0.02rem * var(--shieldScale, 1)) 0 0 !important;
+  text-align: inherit;
+  text-transform: none !important;
+  font-variant: normal !important;
+  position: static !important;
+  top: auto !important;
+}
+
+.bE-shieldElement .bannerRoadName:first-letter {
+  font-size: inherit !important;
+}
+
+.bE-shieldElement .roadNameBannerContainer {
+  position: static;
+  margin: 0;
+  padding: 0;
+}

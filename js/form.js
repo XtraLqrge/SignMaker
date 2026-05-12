@@ -28,6 +28,8 @@ const formHandler = (function () {
         restoreOnRefresh: "signMaker.restoreOnRefresh",
         shortcutOverrides: "signMaker.shortcutOverrides",
         configBarPosition: "signMaker.configBarPosition",
+        interfaceUiScale: "signMaker.interfaceUiScale",
+        interfaceThemeMode: "signMaker.interfaceThemeMode",
         shieldPickerScrollTop: "signMaker.shieldPickerScrollTop",
     };
     let localStorageAvailable;
@@ -137,6 +139,113 @@ const getPostThicknessFallback = () =>
         });
       });
     };
+  
+  
+  const INTERFACE_UI_SCALE_MIN = 50;
+  const INTERFACE_UI_SCALE_MAX = 150;
+  const INTERFACE_UI_SCALE_STEP = 10;
+  const INTERFACE_UI_SCALE_DEFAULT = 100;
+
+  const normalizeInterfaceUIScale = (value) => {
+    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+
+    if (!Number.isFinite(parsed)) {
+      return INTERFACE_UI_SCALE_DEFAULT;
+    }
+
+    const clamped = Math.max(
+      INTERFACE_UI_SCALE_MIN,
+      Math.min(INTERFACE_UI_SCALE_MAX, parsed)
+    );
+
+    return Math.round(clamped / INTERFACE_UI_SCALE_STEP) * INTERFACE_UI_SCALE_STEP;
+  };
+
+  const updateInterfaceUIScaleDisplay = (scaleValue) => {
+    const slider = document.getElementById("settingsInterfaceUIScale");
+    const valueLabel = document.getElementById("settingsInterfaceUIScaleValue");
+
+    if (slider) {
+      slider.min = String(INTERFACE_UI_SCALE_MIN);
+      slider.max = String(INTERFACE_UI_SCALE_MAX);
+      slider.step = String(INTERFACE_UI_SCALE_STEP);
+      slider.value = String(scaleValue);
+    }
+
+    if (valueLabel) {
+      valueLabel.textContent = `${scaleValue}%`;
+    }
+  };
+
+  const getActualInterfaceUIScale = (displayScale) => {
+    const normalized = normalizeInterfaceUIScale(displayScale);
+    return normalized / 150;
+  };
+
+  const applyInterfaceUIScale = (value, { persist = false } = {}) => {
+    const normalized = normalizeInterfaceUIScale(value);
+    const cssScale = getActualInterfaceUIScale(normalized);
+
+    document.documentElement.style.setProperty("--sm-app-zoom", String(cssScale));
+    updateInterfaceUIScaleDisplay(normalized);
+
+    if (persist) {
+      setStoredItem(STORAGE_KEYS.interfaceUiScale, String(normalized));
+    }
+
+    return normalized;
+  };
+  
+  const stepInterfaceUIScale = (direction) => {
+    const currentScale = getStoredInterfaceUIScale();
+    const nextScale = normalizeInterfaceUIScale(
+      currentScale + direction * INTERFACE_UI_SCALE_STEP
+    );
+
+    applyInterfaceUIScale(nextScale, { persist: true });
+    return nextScale;
+  };
+
+  const zoomInterfaceIn = () => {
+    const nextScale = stepInterfaceUIScale(1);
+    return nextScale;
+  };
+
+  const zoomInterfaceOut = () => {
+    const nextScale = stepInterfaceUIScale(-1);
+    return nextScale;
+  };
+
+  const getStoredInterfaceUIScale = () =>
+    normalizeInterfaceUIScale(getStoredItem(STORAGE_KEYS.interfaceUiScale));
+
+  const bindInterfaceUIScaleControl = (root = document) => {
+    const slider = root.getElementById
+      ? root.getElementById("settingsInterfaceUIScale")
+      : document.getElementById("settingsInterfaceUIScale");
+
+    if (!slider) {
+      applyInterfaceUIScale(getStoredInterfaceUIScale());
+      return;
+    }
+
+    applyInterfaceUIScale(getStoredInterfaceUIScale());
+
+    if (slider.dataset.interfaceUiScaleBound === "true") {
+      return;
+    }
+
+    slider.dataset.interfaceUiScaleBound = "true";
+
+    slider.addEventListener("input", () => {
+      const normalized = normalizeInterfaceUIScale(slider.value);
+      updateInterfaceUIScaleDisplay(normalized);
+    });
+
+    slider.addEventListener("change", () => {
+      applyInterfaceUIScale(slider.value, { persist: true });
+    });
+  };
 
   const formatPostKindLabel = (value) => {
     if (typeof value !== "string") {
@@ -1109,6 +1218,8 @@ const getPostThicknessFallback = () =>
     bindConfigPositionControls();
     applyConfigBarPosition(getStoredConfigBarPosition());
     bindUndoControls();
+    applyInterfaceUIScale(getStoredInterfaceUIScale());
+    bindInterfaceUIScaleControl(document);
 
     try {
       //console.log(promptShield(null));
@@ -1642,6 +1753,21 @@ const getPostThicknessFallback = () =>
       `);
     
     const SHIELD_PICKER_MANUAL_ORDER = {
+      
+      "us-georgia": [
+        "GA",
+        "GAALT",
+        "GABYP",
+        "GACONN",
+        "GALOOP",
+        "GASPUR",
+      ],
+      
+      "us-massachusetts": [
+        "MA",
+        "MATP",
+        "MA-PIKE",
+      ],
         
       "us-newjersey": [
         "NJ",
@@ -1685,6 +1811,11 @@ const getPostThicknessFallback = () =>
         "HTR",
         "SHT",
         "WPT",
+      ],
+      
+      "canada": [
+        "TCHLeaf",
+        "TCH",
       ],
     };
 
@@ -1847,8 +1978,8 @@ const getPostThicknessFallback = () =>
             id: "us-montana",
             label: "Montana",
             children: [
-              { value: "MT", label: "Montana", asset: "img/shields/United States/MT/MT-2Digit.svg" },
-              { value: "MT2", label: "Montana (secondary)", asset: "img/shields/United States/MT/MT2-2Digit.svg" },
+              { value: "MT", label: "Montana", asset: "img/shields/United States/MT-2Digit.svg" },
+              { value: "MT2", label: "Montana (secondary)", asset: "img/shields/United States/MT2-2Digit.svg" },
             ],
           },
 
@@ -3505,25 +3636,100 @@ const getPostThicknessFallback = () =>
       typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-color-scheme: dark)")
         : null;
-    let userThemeOverride = false;
+
+    const normalizeInterfaceThemeMode = (value) => {
+      const normalized = String(value || "").toLowerCase();
+
+      if (
+        normalized === "light" ||
+        normalized === "dark" ||
+        normalized === "system"
+      ) {
+        return normalized;
+      }
+
+      return "dark";
+    };
 
     const getSystemTheme = () =>
       prefersDarkScheme && prefersDarkScheme.matches ? "dark" : "light";
+
+    const getResolvedThemeForMode = (themeMode) => {
+      const normalized = normalizeInterfaceThemeMode(themeMode);
+      return normalized === "system" ? getSystemTheme() : normalized;
+    };
 
     const applyTheme = (theme) => {
       if (!theme) {
         return;
       }
+
       htmlElement.dataset.theme = theme;
     };
 
-    const syncThemeWithSystem = () => {
-      const systemTheme = getSystemTheme();
-      if (!userThemeOverride) {
-        applyTheme(systemTheme);
-      } else if (htmlElement.dataset.theme === systemTheme) {
-        userThemeOverride = false;
+    const updateInterfaceThemeControl = (themeMode) => {
+      const normalized = normalizeInterfaceThemeMode(themeMode);
+      const themeModeButtons = document.querySelectorAll("[data-interface-theme-mode]");
+
+      htmlElement.dataset.themeMode = normalized;
+
+      themeModeButtons.forEach((button) => {
+        const buttonMode = normalizeInterfaceThemeMode(
+          button.dataset.interfaceThemeMode
+        );
+
+        button.classList.toggle("active", buttonMode === normalized);
+      });
+    };
+
+    const applyInterfaceThemeMode = (themeMode, { persist = false } = {}) => {
+      const normalized = normalizeInterfaceThemeMode(themeMode);
+      const resolvedTheme = getResolvedThemeForMode(normalized);
+
+      applyTheme(resolvedTheme);
+      updateInterfaceThemeControl(normalized);
+
+      if (persist) {
+        setStoredItem(STORAGE_KEYS.interfaceThemeMode, normalized);
       }
+
+      return normalized;
+    };
+
+    const getStoredInterfaceThemeMode = () =>
+      normalizeInterfaceThemeMode(getStoredItem(STORAGE_KEYS.interfaceThemeMode));
+
+    const toggleInterfaceThemeMode = () => {
+      const nextThemeMode = htmlElement.dataset.theme === "dark" ? "light" : "dark";
+      return applyInterfaceThemeMode(nextThemeMode, { persist: true });
+    };
+
+    const bindInterfaceThemeModeControl = () => {
+      const themeModeButtons = document.querySelectorAll("[data-interface-theme-mode]");
+
+      themeModeButtons.forEach((button) => {
+        if (button.dataset.interfaceThemeModeBound === "true") {
+          return;
+        }
+
+        button.dataset.interfaceThemeModeBound = "true";
+
+        button.addEventListener("click", () => {
+          applyInterfaceThemeMode(button.dataset.interfaceThemeMode, {
+            persist: true,
+          });
+          updateUtilityButtonLabels();
+        });
+      });
+    };
+
+    const handleSystemThemeChange = () => {
+      if (normalizeInterfaceThemeMode(htmlElement.dataset.themeMode) !== "system") {
+        return;
+      }
+
+      applyInterfaceThemeMode("system");
+      updateUtilityButtonLabels();
     };
       const settingsRestoreOnRefresh = document.getElementById("settingsSaveOnRefresh");
       if (settingsRestoreOnRefresh) {
@@ -3598,8 +3804,18 @@ const getPostThicknessFallback = () =>
           console.error("Failed to initialize exit-only direction picker", error);
         }
     };
-    syncThemeWithSystem();
-    updateUtilityButtonLabels();
+      applyInterfaceThemeMode(getStoredInterfaceThemeMode());
+      bindInterfaceThemeModeControl();
+
+      if (prefersDarkScheme) {
+        if (typeof prefersDarkScheme.addEventListener === "function") {
+          prefersDarkScheme.addEventListener("change", handleSystemThemeChange);
+        } else if (typeof prefersDarkScheme.addListener === "function") {
+          prefersDarkScheme.addListener(handleSystemThemeChange);
+        }
+      }
+
+      updateUtilityButtonLabels();
       const exportButton = document.getElementById("export");
       const downloadDialog = document.getElementById("downloadContent");
       const cancelDownloadButton = document.getElementById("cancelDownload");
@@ -4055,17 +4271,6 @@ const getPostThicknessFallback = () =>
           });
         });
       }
-      
-    if (prefersDarkScheme) {
-      if (typeof prefersDarkScheme.addEventListener === "function") {
-        prefersDarkScheme.addEventListener("change", syncThemeWithSystem);
-      } else if (typeof prefersDarkScheme.addListener === "function") {
-        prefersDarkScheme.addListener(syncThemeWithSystem);
-      }
-    }
-      
-      
-      
 
     function reDisplay() {
       for (const holder of document.querySelectorAll(".sMModal")) {
@@ -4590,6 +4795,20 @@ const getPostThicknessFallback = () =>
             if (darkModeButton) {
               darkModeButton.click();
             }
+          },
+        },
+        {
+          fieldId: "settingsControlZoomIn",
+          run: () => {
+            const nextScale = zoomInterfaceIn();
+            showShortcutNotice(`UI Scale: ${nextScale}%`);
+          },
+        },
+        {
+          fieldId: "settingsControlZoomOut",
+          run: () => {
+            const nextScale = zoomInterfaceOut();
+            showShortcutNotice(`UI Scale: ${nextScale}%`);
           },
         },
       ];
@@ -5130,13 +5349,10 @@ const getPostThicknessFallback = () =>
     }
 
     if (nightModeButton) {
-        nightModeButton.addEventListener("click", () => {
-          const nextTheme =
-            htmlElement.dataset.theme === "dark" ? "light" : "dark";
-          applyTheme(nextTheme);
-          userThemeOverride = nextTheme !== getSystemTheme();
-          updateUtilityButtonLabels();
-        });
+      nightModeButton.addEventListener("click", () => {
+        toggleInterfaceThemeMode();
+        updateUtilityButtonLabels();
+      });
     }
 
     document
@@ -6609,10 +6825,32 @@ const getPostThicknessFallback = () =>
       }
       blockBannerFontSelect.addEventListener("change", () => {
         const selectedFont = blockBannerFontSelect.value;
+        const bannerFontSizeInput = document.getElementById("sdShield_fontSize");
+
         if (selectedFont) {
           ShieldElement.prototype.defaultBannerFontFamily = selectedFont;
           setStoredItem(STORAGE_KEYS.bannerFontFamily, selectedFont);
         }
+
+        if (bannerFontSizeInput) {
+          const selectedDefault =
+            ShieldElement.prototype.getDefaultBannerFontSizeForFont(selectedFont);
+
+          const oppositeDefault =
+            ShieldElement.prototype.isHighwayGothicBannerFont(selectedFont)
+              ? ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize
+              : ShieldElement.prototype.defaultHighwayGothicBannerFontSize;
+
+          const currentSize = parseFloat(bannerFontSizeInput.value);
+
+          if (
+            !Number.isFinite(currentSize) ||
+            Math.abs(currentSize - oppositeDefault) < 0.001
+          ) {
+            bannerFontSizeInput.value = selectedDefault;
+          }
+        }
+
         readForm();
       });
     }
@@ -7499,56 +7737,56 @@ const getPostThicknessFallback = () =>
       const element = document.getElementById(elementId);
 
         if (element) {
-            if (blockElemType === "sdShield" && propertyName === "shieldBase") {
-              const selectedShieldBase = syncShieldBasePickerValue(
-                currentBlockElem.shieldBase ||
-                  currentBlockElem.type ||
-                  element.dataset?.pickerValue ||
-                  element.value ||
-                  ShieldElement.prototype.defaultShieldBase ||
-                  "I",
-                { updateBlock: true }
-              );
+          if (blockElemType === "sdShield" && propertyName === "shieldBase") {
+            const selectedShieldBase = syncShieldBasePickerValue(
+              currentBlockElem.shieldBase ||
+                currentBlockElem.type ||
+                element.dataset?.pickerValue ||
+                element.value ||
+                ShieldElement.prototype.defaultShieldBase ||
+                "I",
+              { updateBlock: true }
+            );
 
-              currentBlockElem.shieldBase = selectedShieldBase;
-              currentBlockElem.type = selectedShieldBase;
-              continue;
+            currentBlockElem.shieldBase = selectedShieldBase;
+            currentBlockElem.type = selectedShieldBase;
+            continue;
+          }
+
+          const handleCustomBanner =
+            blockElemType === "sdShield" &&
+            (propertyName === "bannerType" || propertyName === "bannerType2");
+
+          if (handleCustomBanner) {
+            const manualCheckbox = document.getElementById("sdShield_manualBanners");
+            const manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+            const customInputId =
+              propertyName === "bannerType"
+                ? "sdShield_bannerCustomText"
+                : "sdShield_bannerCustomText2";
+
+            const customInput = document.getElementById(customInputId);
+
+            if (manualBanners) {
+              const customValue =
+                customInput && typeof customInput.value === "string"
+                  ? customInput.value.trim()
+                  : "";
+
+              currentBlockElem[propertyName] =
+                customValue || ShieldElement.prototype.defaultBannerType || "None";
+            } else {
+              const selectedValue = element.tagName === "SELECT"
+                ? element.value
+                : ShieldElement.prototype.defaultBannerType || "None";
+
+              currentBlockElem[propertyName] =
+                selectedValue || ShieldElement.prototype.defaultBannerType || "None";
             }
 
-            const handleCustomBanner =
-              blockElemType === "sdShield" &&
-              (propertyName === "bannerType" || propertyName === "bannerType2");
-
-            if (handleCustomBanner) {
-              const manualCheckbox = document.getElementById("sdShield_manualBanners");
-              const manualBanners = !manualCheckbox || manualCheckbox.checked;
-
-              const customInputId =
-                propertyName === "bannerType"
-                  ? "sdShield_bannerCustomText"
-                  : "sdShield_bannerCustomText2";
-
-              const customInput = document.getElementById(customInputId);
-
-              if (manualBanners) {
-                const customValue =
-                  customInput && typeof customInput.value === "string"
-                    ? customInput.value.trim()
-                    : "";
-
-                currentBlockElem[propertyName] =
-                  customValue || ShieldElement.prototype.defaultBannerType || "None";
-              } else {
-                const selectedValue = element.tagName === "SELECT"
-                  ? element.value
-                  : ShieldElement.prototype.defaultBannerType || "None";
-
-                currentBlockElem[propertyName] =
-                  selectedValue || ShieldElement.prototype.defaultBannerType || "None";
-              }
-
-              continue;
-            }
+            continue;
+          }
         if (element.type === "checkbox") {
           currentBlockElem[propertyName] = element.checked;
         } else if (element.type === "radio") {
@@ -7562,14 +7800,19 @@ const getPostThicknessFallback = () =>
         }
       }
     }
-        if (blockElemType === "sdShield") {
-          ensureSdShieldBasePicker();
+    if (blockElemType === "sdShield") {
+      ensureSdShieldBasePicker();
 
-          const manualCheckbox = document.getElementById("sdShield_manualBanners");
-          currentBlockElem.manualBanners = !manualCheckbox || manualCheckbox.checked;
+      const manualCheckbox = document.getElementById("sdShield_manualBanners");
+      currentBlockElem.manualBanners = !manualCheckbox || manualCheckbox.checked;
 
-          syncManualBannerInputMode();
-        }
+      const roadNameInput = document.getElementById("sdShield_roadName");
+      currentBlockElem.roadName = roadNameInput
+        ? String(roadNameInput.value || "").trim()
+        : "";
+
+      syncManualBannerInputMode();
+    }
 
     if (blockElemType === "sdShield") {
       currentBlockElem.shieldSize =
@@ -9192,12 +9435,14 @@ const getPostThicknessFallback = () =>
       for (let item = 0; item < sign.blockElements.rows[row].length; item++) {
         const blockElement = sign.blockElements.rows[row][item];
 
-        const textEditorBlock = document.createElement("button");
+        const currentBlockElemType =
+          Control.prototype.blockToClassElems.getElem(blockElement) ||
+          blockElement.constructor.name;
+
+        const textEditorBlock = document.createElement("div");
         textEditorBlock.className =
           "textEditorBlock " +
-          Control.prototype.blockInternalElements[
-          blockElement.constructor.name
-          ] +
+          Control.prototype.blockInternalElements[currentBlockElemType] +
           (item == exposed.vars.currentlySelectedBlockIndex &&
             row == exposed.vars.currentlySelectedRowIndex
             ? " selected"
@@ -9205,8 +9450,59 @@ const getPostThicknessFallback = () =>
         textEditorBlock.dataset.row = row.toString();
         textEditorBlock.dataset.block = item.toString();
         textEditorBlock.draggable = true;
-        textEditorBlock.textContent =
-          Control.prototype.blockElements[blockElement.constructor.name];
+
+        const blockTypeLabel = document.createElement("span");
+        blockTypeLabel.className = "textEditorBlockLabel";
+        blockTypeLabel.textContent =
+          Control.prototype.blockElements[currentBlockElemType] || "Block";
+
+        const blockTypeChevron = document.createElement("span");
+        blockTypeChevron.className = "blockTypeChevron";
+        blockTypeChevron.textContent = "▾";
+
+        const blockTypeSelect = document.createElement("select");
+        blockTypeSelect.className = "blockTypeInlineSelect";
+        blockTypeSelect.value = currentBlockElemType;
+        blockTypeSelect.setAttribute("aria-label", "Change block type");
+        blockTypeSelect.title = "Change block type";
+
+        for (const element in Control.prototype.blockElements) {
+          lib.appendOption(blockTypeSelect, element, {
+            selected: element === currentBlockElemType,
+            text: Control.prototype.blockElements[element],
+          });
+        }
+
+        blockTypeSelect.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+        });
+
+        blockTypeSelect.addEventListener("click", (event) => {
+          event.stopPropagation();
+        });
+
+        blockTypeSelect.addEventListener("dragstart", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        blockTypeSelect.addEventListener("change", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (typeof exposed.replaceControlElemTypeAt === "function") {
+            exposed.replaceControlElemTypeAt(
+              row,
+              item,
+              blockTypeSelect.value
+            );
+          }
+        });
+
+        textEditorBlock.appendChild(blockTypeLabel);
+        textEditorBlock.appendChild(blockTypeChevron);
+        textEditorBlock.appendChild(blockTypeSelect);
+
         sMControlRow.appendChild(textEditorBlock);
         textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
         textEditorBlock.addEventListener("dragend", handleBlockDragEnd);
@@ -9217,6 +9513,7 @@ const getPostThicknessFallback = () =>
               event.preventDefault();
               return;
             }
+
             exposed.setSelectedRow(row);
             exposed.setSelectedControlElem(item);
           },
@@ -9329,9 +9626,12 @@ const getPostThicknessFallback = () =>
       if (currentBlockElem.smallCaps2 === undefined) {
         currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
       }
-        if (currentBlockElem.manualBanners === undefined) {
-          currentBlockElem.manualBanners = true;
-        }
+      if (currentBlockElem.manualBanners === undefined) {
+        currentBlockElem.manualBanners = true;
+      }
+      if (currentBlockElem.roadName === undefined) {
+        currentBlockElem.roadName = "";
+      }
     }
 
     if (blockElemType === "sdBlocker") {
@@ -9341,104 +9641,104 @@ const getPostThicknessFallback = () =>
         );
     }
 
-      for (const propertyName in currentBlockElem) {
-        const elementId = `${blockElemType}_${propertyName}`;
-        const element = document.getElementById(elementId);
-        const displayElement = document.getElementById(elementId + "Val");
+    for (const propertyName in currentBlockElem) {
+      const elementId = `${blockElemType}_${propertyName}`;
+      const element = document.getElementById(elementId);
+      const displayElement = document.getElementById(elementId + "Val");
 
-        if (element) {
-          const handleCustomBanner =
-            blockElemType === "sdShield" &&
-            (propertyName === "bannerType" || propertyName === "bannerType2");
+      if (element) {
+        const handleCustomBanner =
+          blockElemType === "sdShield" &&
+          (propertyName === "bannerType" || propertyName === "bannerType2");
 
-          if (handleCustomBanner) {
-            const manualCheckbox = document.getElementById("sdShield_manualBanners");
+        if (handleCustomBanner) {
+          const manualCheckbox = document.getElementById("sdShield_manualBanners");
 
-            if (manualCheckbox) {
-              manualCheckbox.checked = currentBlockElem.manualBanners !== false;
-            }
-
-            const customInputId =
-              propertyName === "bannerType"
-                ? "sdShield_bannerCustomText"
-                : "sdShield_bannerCustomText2";
-
-            const customInput = document.getElementById(customInputId);
-            const bannerOptions = Shield.prototype.bannerTypes || [];
-            const currentBanner =
-              currentBlockElem[propertyName] || getDefaultBannerType();
-
-            const matchedPreset = bannerOptions.find(
-              (option) =>
-                String(option).toLowerCase() === String(currentBanner).toLowerCase()
-            );
-
-            const manualBanners = !manualCheckbox || manualCheckbox.checked;
-
-            if (element.tagName === "SELECT") {
-              element.value = matchedPreset || getDefaultBannerType();
-              element.addEventListener("change", readForm, { once: true });
-            }
-
-            if (customInput) {
-              customInput.value = manualBanners ? currentBanner : "";
-              customInput.addEventListener("blur", readForm, { once: true });
-            }
-
-            syncManualBannerInputMode();
-
-            if (displayElement) {
-              displayElement.textContent = currentBanner;
-            }
-
-            continue;
+          if (manualCheckbox) {
+            manualCheckbox.checked = currentBlockElem.manualBanners !== false;
           }
 
-          if (element.type === "checkbox") {
-            element.checked = currentBlockElem[propertyName];
-            element.addEventListener("change", readForm, { once: true });
-          } else if (element.type === "radio") {
-            if (element.value === currentBlockElem[propertyName].toString()) {
-              element.checked = true;
-            }
-            element.addEventListener("change", readForm, { once: true });
-          } else if (element.tagName === "SELECT") {
-            element.value = currentBlockElem[propertyName];
+          const customInputId =
+            propertyName === "bannerType"
+              ? "sdShield_bannerCustomText"
+              : "sdShield_bannerCustomText2";
 
-            element.addEventListener("change", readForm, { once: true });
-            element.addEventListener("blur", readForm, { once: true });
-          } else {
-            element.value = currentBlockElem[propertyName];
-            element.addEventListener(
-              element.type === "text" ? "blur" : "change",
-              readForm,
-              { once: true }
-            );
+          const customInput = document.getElementById(customInputId);
+          const bannerOptions = Shield.prototype.bannerTypes || [];
+          const currentBanner =
+            currentBlockElem[propertyName] || getDefaultBannerType();
 
-            if (
-              element.type === "range" &&
-              displayElement &&
-              !element.dataset.syncDisplay
-            ) {
-              element.addEventListener("input", () => {
-                displayElement.value = element.value;
-              });
-              element.dataset.syncDisplay = "true";
-            }
+          const matchedPreset = bannerOptions.find(
+            (option) =>
+              String(option).toLowerCase() === String(currentBanner).toLowerCase()
+          );
+
+          const manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+          if (element.tagName === "SELECT") {
+            element.value = matchedPreset || getDefaultBannerType();
+            element.addEventListener("change", readForm, { once: true });
           }
+
+          if (customInput) {
+            customInput.value = manualBanners ? currentBanner : "";
+            customInput.addEventListener("blur", readForm, { once: true });
+          }
+
+          syncManualBannerInputMode();
+
+          if (displayElement) {
+            displayElement.textContent = currentBanner;
+          }
+
+          continue;
         }
 
-        if (displayElement) {
+        if (element.type === "checkbox") {
+          element.checked = currentBlockElem[propertyName];
+          element.addEventListener("change", readForm, { once: true });
+        } else if (element.type === "radio") {
+          if (element.value === currentBlockElem[propertyName].toString()) {
+            element.checked = true;
+          }
+          element.addEventListener("change", readForm, { once: true });
+        } else if (element.tagName === "SELECT") {
+          element.value = currentBlockElem[propertyName];
+
+          element.addEventListener("change", readForm, { once: true });
+          element.addEventListener("blur", readForm, { once: true });
+        } else {
+          element.value = currentBlockElem[propertyName];
+          element.addEventListener(
+            element.type === "text" ? "blur" : "change",
+            readForm,
+            { once: true }
+          );
+
           if (
-            displayElement.tagName === "INPUT" &&
-            displayElement.type === "number"
+            element.type === "range" &&
+            displayElement &&
+            !element.dataset.syncDisplay
           ) {
-            displayElement.value = currentBlockElem[propertyName];
-          } else {
-            displayElement.textContent = currentBlockElem[propertyName];
+            element.addEventListener("input", () => {
+              displayElement.value = element.value;
+            });
+            element.dataset.syncDisplay = "true";
           }
         }
       }
+
+      if (displayElement) {
+        if (
+          displayElement.tagName === "INPUT" &&
+          displayElement.type === "number"
+        ) {
+          displayElement.value = currentBlockElem[propertyName];
+        } else {
+          displayElement.textContent = currentBlockElem[propertyName];
+        }
+      }
+    }
 
     if (blockElemType === "sdArrow") {
       const arrowRotationButtons = document.querySelectorAll(

@@ -1004,6 +1004,17 @@ const app = (function () {
         }
         seen.add(element);
 
+        if (element.id === "sMConfigBar") {
+          const configPosition =
+            element.dataset.position ||
+            document.documentElement.dataset.configPosition ||
+            "right";
+
+          if (configPosition === "top" || configPosition === "bottom") {
+            continue;
+          }
+        }
+
         const styles = window.getComputedStyle(element);
 
         if (
@@ -2599,6 +2610,104 @@ const app = (function () {
           currentlySelectedRowIndex,
           ++currentlySelectedBlockIndex
         );
+        formHandler.updateForm();
+        redraw();
+      });
+    };
+  
+    const isTextControlBlock = (blockElement) =>
+      typeof TextElement !== "undefined" && blockElement instanceof TextElement;
+
+    const createReplacementControlElem = (nextElemType, previousBlock) => {
+      const Constructor = Control.prototype.blockToClassElems[nextElemType];
+
+      if (typeof Constructor !== "function") {
+        return null;
+      }
+
+      const previousWasText = isTextControlBlock(previousBlock);
+
+      const nextBlock = new Constructor();
+
+      const nextIsShield =
+        typeof ShieldElement !== "undefined" && nextBlock instanceof ShieldElement;
+
+      // Text-type block -> Shield:
+      // clear the route number so the old text does not become a route number.
+      if (previousWasText && nextIsShield) {
+        nextBlock.routeNumber = "";
+      }
+
+      // Shield -> Control Text / Action Message / Advisory Message:
+      // do not clear textContent. Their constructors already apply the saved/default text.
+      return nextBlock;
+    };
+
+    const replaceControlElemTypeAt = (rowIndex, blockIndex, nextElemType) => {
+      return runWithUndo(() => {
+        if (!Control.prototype.blockToClassElems[nextElemType]) {
+          return;
+        }
+
+        const subPanel = getCurrentSubPanel();
+
+        if (!subPanel || !subPanel.blockElements) {
+          return;
+        }
+
+        const rows = subPanel.blockElements.rows;
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+          return;
+        }
+
+        const normalizedRowIndex = clamp(
+          rowIndex,
+          0,
+          Math.max(0, rows.length - 1)
+        );
+
+        const row = rows[normalizedRowIndex];
+
+        if (!Array.isArray(row) || row.length === 0) {
+          return;
+        }
+
+        const normalizedBlockIndex = clamp(
+          blockIndex,
+          0,
+          Math.max(0, row.length - 1)
+        );
+
+        const previousBlock = row[normalizedBlockIndex];
+
+        if (!previousBlock) {
+          return;
+        }
+
+        const previousElemType =
+          Control.prototype.blockToClassElems.getElem(previousBlock);
+
+        if (previousElemType === nextElemType) {
+          currentlySelectedRowIndex = normalizedRowIndex;
+          currentlySelectedBlockIndex = normalizedBlockIndex;
+          formHandler.updateForm();
+          return;
+        }
+
+        const nextBlock = createReplacementControlElem(
+          nextElemType,
+          previousBlock
+        );
+
+        if (!nextBlock) {
+          return;
+        }
+
+        row[normalizedBlockIndex] = nextBlock;
+        currentlySelectedRowIndex = normalizedRowIndex;
+        currentlySelectedBlockIndex = normalizedBlockIndex;
+
         formHandler.updateForm();
         redraw();
       });
@@ -6703,6 +6812,7 @@ const app = (function () {
         redraw,
         setSelectedRow,
         setSelectedControlElem,
+        replaceControlElemTypeAt,
         beginUndoableChange,
         endUndoableChange,
         undo,

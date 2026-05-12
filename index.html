@@ -5,19 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
   <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer" />
-  <meta name="description" content="The ULTIMATE Sign Maker for highways, expressways, and everything!" />
+  <meta name="description" content="The ULTIMATE Sign Maker for highways, freeways, and everything!" />
   <title>Highway Sign Maker</title>
   <script>
     (function () {
-      if (
-        typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      ) {
-        document.documentElement.dataset.theme = "dark";
-      } else {
-        document.documentElement.dataset.theme = "light";
+      const THEME_MODE_STORAGE_KEY = "signMaker.interfaceThemeMode";
+
+      const getSystemTheme = function () {
+        return (
+          typeof window !== "undefined" &&
+          typeof window.matchMedia === "function" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+        )
+          ? "dark"
+          : "light";
+      };
+
+      let themeMode = "dark";
+
+      try {
+        const storedThemeMode = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
+        if (
+          storedThemeMode === "light" ||
+          storedThemeMode === "dark" ||
+          storedThemeMode === "system"
+        ) {
+          themeMode = storedThemeMode;
+        }
+      } catch (error) {
+        themeMode = "dark";
       }
+
+      document.documentElement.dataset.themeMode = themeMode;
+      document.documentElement.dataset.theme =
+        themeMode === "system" ? getSystemTheme() : themeMode;
     })();
   </script>
   <link rel="icon" type="image/x-icon" href="img/other-symbols/icon.png" />
@@ -827,6 +848,17 @@
                       <label for="sdShield_indentFirstLetter2" class="sdShieldCapLabel">Capitalize First Letter:</label>
                       <input type="checkbox" id="sdShield_indentFirstLetter2" checked />
                     </div>
+                    
+                    <div class="sdShieldRoadNameRow">
+                      <label for="sdShield_roadName">Road Name:</label>
+                      <input
+                        type="text"
+                        id="sdShield_roadName"
+                        class="sdShieldRoadNameInput"
+                        placeholder="SignMaker Fwy"
+                        data-toolTip="Optional road name text shown under the direction banner"
+                      />
+                    </div>
 
                     <div class="sdShieldFontRow">
                       <label for="sdShield_bannerFontFamily">Banner Font:</label>
@@ -1160,7 +1192,7 @@
           <div data-tab="sMStandardArrows" class="sMModalTab selected">
             Standard Arrows
           </div>
-          <div data-tab="sMAPL" class="sMModalTab">APL (Arrow Per Lane)</div>
+          <div data-tab="sMAPL" class="sMModalTab">Arrow-Per-Lane (APL)</div>
         </nav>
         <div class="sMModalContent">
           <div id="sMStandardArrows">
@@ -1445,58 +1477,110 @@
                 </div>
               </section>
 
-            <section id="settingsInterface" class="settingsPage">
-              <div class="settingsInterfaceGrid">
-                  <label>Config position:</label>
-                  <div class="settingsSegmentedRow" id="settingsConfigPosition">
-                    <button
-                      type="button"
-                      id="settingsConfigPositionRight"
-                      class="settingsSegmentButton active"
-                      data-config-position="right"
-                    >
-                      Right
-                    </button>
-                    <button
-                      type="button"
-                      id="settingsConfigPositionBottom"
-                      class="settingsSegmentButton"
-                      data-config-position="bottom"
-                    >
-                      Bottom
-                    </button>
-                    <button
-                      type="button"
-                      id="settingsConfigPositionTop"
-                      class="settingsSegmentButton"
-                      data-config-position="top"
-                    >
-                      Top
-                    </button>
+              <section id="settingsInterface" class="settingsPage">
+                <div class="settingsInterfaceStack">
+                  <div class="settingsInterfaceControlRow">
+                    <label>Config position:</label>
+                    <div class="settingsSegmentedRow" id="settingsConfigPosition">
+                      <button
+                        type="button"
+                        id="settingsConfigPositionRight"
+                        class="settingsSegmentButton active"
+                        data-config-position="right"
+                      >
+                        Right
+                      </button>
+                      <button
+                        type="button"
+                        id="settingsConfigPositionBottom"
+                        class="settingsSegmentButton"
+                        data-config-position="bottom"
+                      >
+                        Bottom
+                      </button>
+                      <button
+                        type="button"
+                        id="settingsConfigPositionTop"
+                        class="settingsSegmentButton"
+                        data-config-position="top"
+                      >
+                        Top
+                      </button>
+                    </div>
                   </div>
 
-                <label for="settingsInterfaceFont">Font:</label>
-                <select id="settingsInterfaceFont">
-                  <option selected>Inter</option>
-                </select>
+                  <div class="settingsInterfaceControlRow">
+                    <label for="settingsInterfaceFont">Font:</label>
+                    <select id="settingsInterfaceFont" class="settingsInterfaceSelect">
+                      <option value="Inter" selected>Inter</option>
+                      <option value="Highway Gothic">Highway Gothic</option>
+                    </select>
+                  </div>
 
-                <label for="settingsInterfaceUIScale">UI Scale:</label>
-                <select id="settingsInterfaceUIScale">
-                  <option selected>Slider 50-150%</option>
-                </select>
+                  <div class="settingsInterfaceControlRow">
+                    <label for="settingsInterfaceUIScale">UI Scale:</label>
+                    <div class="settingsRangeControl">
+                      <input
+                        type="range"
+                        id="settingsInterfaceUIScale"
+                        class="settingsInterfaceRange"
+                        min="50"
+                        max="150"
+                        step="10"
+                        value="100"
+                      />
+                      <span class="settingsRangeValue" id="settingsInterfaceUIScaleValue">100%</span>
+                    </div>
+                  </div>
 
-                <label for="settingsInterfaceTextSize">Text size:</label>
-                <select id="settingsInterfaceTextSize">
-                  <option selected>Slider 50-150%</option>
-                </select>
+                  <div class="settingsInterfaceControlRow">
+                    <label for="settingsInterfaceTextSize">Text size:</label>
+                    <div class="settingsRangeControl">
+                      <input
+                        type="range"
+                        id="settingsInterfaceTextSize"
+                        class="settingsInterfaceRange"
+                        min="50"
+                        max="150"
+                        step="1"
+                        value="100"
+                      />
+                      <span class="settingsRangeValue" id="settingsInterfaceTextSizeValue">100%</span>
+                    </div>
+                  </div>
 
-                <label for="settingsInterfaceDarkMode">Dark Mode:</label>
-                <select id="settingsInterfaceDarkMode">
-                  <option selected>Slider 50-150%</option>
-                </select>
-              </div>
-            </section>
-
+                  <div class="settingsInterfaceControlRow">
+                    <label>Theme:</label>
+                    <div class="settingsSegmentedRow settingsThemeModeButtons" id="settingsInterfaceThemeMode">
+                      <button
+                        type="button"
+                        id="settingsThemeModeDark"
+                        class="settingsSegmentButton active"
+                        data-interface-theme-mode="dark"
+                      >
+                        Dark
+                      </button>
+                      <button
+                        type="button"
+                        id="settingsThemeModeLight"
+                        class="settingsSegmentButton"
+                        data-interface-theme-mode="light"
+                      >
+                        Light
+                      </button>
+                      <button
+                        type="button"
+                        id="settingsThemeModeSystem"
+                        class="settingsSegmentButton"
+                        data-interface-theme-mode="system"
+                      >
+                        System
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              
             <section id="settingsDefaults" class="settingsPage">
               <div class="settingsDefaultsGrid">
                 <div class="settingsDefaultsColumn">
@@ -1826,8 +1910,11 @@
                   <label for="settingsControlDarkMode">Toggle Dark Mode</label>
                   <input id="settingsControlDarkMode" type="text" value="9" />
 
-                  <label for="settingsControlUnused4">&nbsp;</label>
-                  <input id="settingsControlUnused4" type="text" value="" />
+                  <label for="settingsControlZoomIn">Zoom In</label>
+                  <input id="settingsControlZoomIn" type="text" value="=" />
+
+                  <label for="settingsControlZoomOut">Zoom Out</label>
+                  <input id="settingsControlZoomOut" type="text" value="-" />
                 </div>
               </div>
               <div class="settingsControlsActions">
@@ -1860,7 +1947,7 @@
           <div class="panelSpacingControl">
             <label for="panelSpacing">Spacing</label>
             <div class="panelSpacingInputs">
-              <input type="range" id="panelSpacing" min="0" max="10" step="0.25" value="0" />
+              <input type="range" id="panelSpacing" min="0" max="8" step="0.25" value="4" />
               <input type="number" class="num" id="panelSpacingValue" min="0" max="10" step="0.25" value="0" />
             </div>
           </div>

@@ -415,7 +415,7 @@
   visibility: hidden;
   /* hides exitTab by default when loading page */
   float: none;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   padding: 0 0.5rem;
 }
 
@@ -1106,6 +1106,97 @@
 
 .exitTab.fullLeft .fullLeftNumber .exitTabTextSpacer {
   min-width: 0.35rem;
+}
+
+/* BILINGUAL EXIT TABS */
+.exitTab.bilingualExitTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.18rem;
+  padding-bottom: 0.18rem;
+  padding-left: 0.72rem;
+  padding-right: 0.72rem;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.exitTab.bilingualCompactExitTab {
+  width: max-content;
+  min-width: max-content;
+  flex: 0 0 auto;
+}
+
+.exitTabHolder.bilingualCompactExitTabHolder {
+  flex-grow: 0;
+  width: max-content;
+}
+
+.exitTabContainer.bilingualCompactExitTabContainer.edge,
+.exitTabContainer.bilingualCompactExitTabContainer.narrow {
+  width: max-content;
+}
+
+.exitTabContainer.bilingualCompactExitTabContainer.edge.right,
+.exitTabContainer.bilingualCompactExitTabContainer.narrow.right {
+  margin-left: auto;
+}
+
+.exitTabContainer.bilingualCompactExitTabContainer.edge.left,
+.exitTabContainer.bilingualCompactExitTabContainer.narrow.left {
+  margin-right: auto;
+}
+
+.exitTabBilingualBlock {
+  display: grid;
+  grid-template-columns: max-content;
+  grid-template-rows: auto auto;
+  row-gap: 0.08em;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.exitTabBilingualLine {
+  display: flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.exitTabBilingualTopLine {
+  justify-content: flex-start;
+}
+
+.exitTabBilingualBottomLine {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.75em;
+  justify-content: start;
+  align-items: center;
+}
+
+.exitTabBilingualLabelText {
+  display: inline-block;
+}
+
+.exitTabBilingualNumber {
+  display: inline-block;
+  margin-left: 0;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+/* Clearview bilingual tabs need a little more top breathing room */
+.exitTab.bilingualExitTab:not([style*="fhwaBaseline" i]) {
+  padding-top: 0.28rem;
+  padding-bottom: 0.14rem;
+}
+
+/* FHWA bilingual tabs sit lower, so give the bottom more breathing room */
+.exitTab.bilingualExitTab[style*="fhwaBaseline" i] {
+  padding-top: 0.12rem;
+  padding-bottom: 0.34rem;
 }
 
 .action_message {

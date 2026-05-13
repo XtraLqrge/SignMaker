@@ -4415,9 +4415,9 @@ const app = (function () {
                                return;
                            }
                            const normalizedNumberText = String(exitTab.number).replace(
-                                                                                       /\\n/g,
-                                                                                       "\n"
-                                                                                       );
+                             /\\n/g,
+                             "\n"
+                             );
                            const numberLines = normalizedNumberText.split("\n");
                            const renderExitNumberSegments = (targetElmt, lineText) => {
                                if (!targetElmt) {
@@ -4539,7 +4539,62 @@ const app = (function () {
                                renderExitNumberSegments(lineWrapperElmt, lineText || "");
                            });
                        };
-                       
+                     
+                       const appendBilingualExitNumber = (parentElmt) => {
+                         if (!parentElmt) {
+                           return;
+                         }
+
+                         const cleanBilingualExitNumber = (value) => {
+                           return String(value || "")
+                             .replace(/\n/g, " ")
+                             .replace(/\b(EXIT|SORTIE)\b/gi, "")
+                             .replace(/\s+/g, " ")
+                             .trim();
+                         };
+
+                         const numberText = cleanBilingualExitNumber(exitTab.number);
+                         const topText = String(exitTab.bilingualTopText || "EXIT").trim() || "EXIT";
+                         const bottomText =
+                           String(exitTab.bilingualBottomText || "SORTIE").trim() || "SORTIE";
+
+                         const bilingualWrapper = document.createElement("div");
+                         bilingualWrapper.className = "exitTabBilingualBlock";
+                         registerExitTabText(bilingualWrapper);
+
+                         const topLine = document.createElement("div");
+                         topLine.className = "exitTabBilingualLine exitTabBilingualTopLine";
+                         registerExitTabText(topLine);
+
+                         const topLabel = document.createElement("span");
+                         topLabel.className = "exitTabBilingualLabelText";
+                         registerExitTabText(topLabel);
+                         topLabel.appendChild(document.createTextNode(topText.toUpperCase()));
+                         topLine.appendChild(topLabel);
+
+                         const bottomLine = document.createElement("div");
+                         bottomLine.className = "exitTabBilingualLine exitTabBilingualBottomLine";
+                         registerExitTabText(bottomLine);
+
+                         const bottomLabel = document.createElement("span");
+                         bottomLabel.className = "exitTabBilingualLabelText";
+                         registerExitTabText(bottomLabel);
+                         bottomLabel.appendChild(document.createTextNode(bottomText.toUpperCase()));
+                         bottomLine.appendChild(bottomLabel);
+
+                         if (numberText) {
+                           const numberElmt = document.createElement("span");
+                           numberElmt.className = "numeral exitTabBilingualNumber";
+                           registerExitTabText(numberElmt);
+                           numberElmt.appendChild(document.createTextNode(numberText.toUpperCase()));
+                           bottomLine.appendChild(numberElmt);
+                         }
+
+                         bilingualWrapper.appendChild(topLine);
+                         bilingualWrapper.appendChild(bottomLine);
+                         parentElmt.appendChild(bilingualWrapper);
+                       };
+                     
                        const exitTabHolderElmt = document.createElement("div");
                        exitTabHolderElmt.className = "exitTabHolder";
                        exitTabHolderElmt.style.position = "relative";
@@ -4590,7 +4645,34 @@ const app = (function () {
                                        }
                                    }
                                    
+                                 exitTabElmt.classList.remove(
+                                   "bilingualExitTab",
+                                   "bilingualCompactExitTab"
+                                 );
+
+                                 exitTabHolderElmt.classList.remove(
+                                   "bilingualCompactExitTabHolder"
+                                 );
+
+                                 exitTabCont.classList.remove(
+                                   "bilingualCompactExitTabContainer"
+                                 );
+
+                                 if (exitTab.bilingual === true) {
+                                   exitTabElmt.classList.add("bilingualExitTab");
+
+                                   const exitTabWidthClass = String(exitTab.width || "").toLowerCase();
+
+                                   if (exitTabWidthClass === "edge" || exitTabWidthClass === "narrow") {
+                                     exitTabElmt.classList.add("bilingualCompactExitTab");
+                                     exitTabHolderElmt.classList.add("bilingualCompactExitTabHolder");
+                                     exitTabCont.classList.add("bilingualCompactExitTabContainer");
+                                   }
+
+                                   appendBilingualExitNumber(exitTabElmt);
+                                 } else {
                                    appendStandardExitNumber(exitTabElmt);
+                                 }
                                } else if (exitTab.variant == "Toll Logo") {
                                    exitTabCont.classList.add("tollLogoExitTabContainer");
                                    exitTabHolderElmt.classList.add("tollLogoExitHolder");
@@ -4793,12 +4875,7 @@ const app = (function () {
                                  resolvedFontSize = 0;
                                }
 
-                               resolvedFontSize = getRenderedHighwayGothicTextSize(
-                                 resolvedFontSize,
-                                 usesHighwayGothicFont
-                               );
-
-                               exitTabElmt.style.fontSize = resolvedFontSize.toString() + "px";
+                             exitTabElmt.style.fontSize = resolvedFontSize.toString() + "px";
                                // #endregion
                                // Increase minHeight when vertical arrangement is enabled to accommodate stacked content
                                // Large numerals (1.5em scale) need extra space, so increase minHeight more

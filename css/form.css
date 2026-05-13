@@ -4458,6 +4458,93 @@ dialog:not([open]) {
   justify-self: start;
 }
 
+.exitTabMainSettingsGrid {
+  display: grid;
+  grid-template-columns: max-content 8rem 6rem 5rem 5rem 8rem;
+  column-gap: 0.55rem;
+  row-gap: 0.55rem;
+  align-items: center;
+  width: max-content;
+}
+
+.exitTabMainSettingsGrid label {
+  width: auto;
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.exitTabMainSettingsGrid input,
+.exitTabMainSettingsGrid select {
+  margin: 0;
+  min-width: 0;
+}
+
+.exitTabMainTextLabel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.exitTabMainTextInput {
+  grid-column: 2;
+  grid-row: 1;
+  width: 8rem;
+}
+
+.exitTabVariantSelect {
+  grid-column: 3;
+  grid-row: 1;
+  width: 6rem;
+}
+
+.exitTabPositionSelect {
+  grid-column: 4;
+  grid-row: 1;
+  width: 5rem;
+}
+
+.exitTabWidthSelect {
+  grid-column: 5;
+  grid-row: 1;
+  width: 5rem;
+}
+
+.exitTabColorSelect {
+  grid-column: 6;
+  grid-row: 1;
+  width: 8rem;
+}
+
+.exitTabBottomTextLabel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.exitTabBottomTextInput {
+  grid-column: 2;
+  grid-row: 2;
+  width: 8rem;
+}
+
+.exitTabMainSettingsGrid.bilingualMode .exitTabColorSelect {
+  grid-column: 3 / span 2;
+  grid-row: 2;
+  width: 8rem;
+}
+
+.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextLabel,
+.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextInput {
+  display: none;
+}
+
+#exitTabBilingualLabel {
+  display: inline-block;
+  width: 8rem;
+  margin-left: -0.47rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .exitTabSliderValue {
   text-align: left;
   margin: 0;
@@ -5569,6 +5656,16 @@ label[for="sdShield_bannerFontSize"] {
 
 .exitTabConfig .sMModalContent {
   overflow-x: hidden;
+}
+
+.exitTabConfig .sMModalTitle {
+  min-width: 5rem;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.exitTabConfig .sMModalTitle span:not(.material-symbols-outlined) {
+  white-space: nowrap;
 }
 
 .exitTabSliderStack {

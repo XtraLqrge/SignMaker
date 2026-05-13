@@ -279,7 +279,6 @@
               </div>
             </div>
             <div class="listNavOptions">
-              <label class="listNavLabel" id="exitTabControlsLabel">Exit Tab Controls</label>
               <button id="addNestedExitTab" onclick="app.newNestExitTab();">
                 Nest Exit Tab
               </button>
@@ -296,24 +295,60 @@
             </div>
           </nav>
         </nav>
-        <nav class="sMModalBar sMModalSubBar">
-          <div data-tab="sMExitTabSetting" class="sMModalTab selected">
-            Settings
-          </div>
-        </nav>
         <div class="sMModalContent">
           <div id="sMExitTabSetting">
-            <div>
-              <legend>Main Settings</legend>
-              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00"
-                onchange="formHandler.readForm();" />
-              <select id="exitVariant" onchange="formHandler.readForm();"></select>
-              <select id="exitTabPosition" onchange="formHandler.readForm();"></select>
-              <select id="exitTabWidth" onchange="formHandler.readForm();"></select>
-              <select id="exitColor" onchange="formHandler.readForm();"></select>
+            <div class="exitTabMainSettingsGrid" id="exitTabMainSettingsGrid">
+              <label for="exitNumber" id="exitNumberLabel" class="exitTabMainTextLabel">Text:</label>
+              <input
+                type="text"
+                id="exitNumber"
+                name="exitNumber"
+                placeholder="Exit XX"
+                class="exitTabMainTextInput"
+                onchange="formHandler.readForm();"
+              />
+
+              <select
+                id="exitVariant"
+                class="exitTabVariantSelect"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <select
+                id="exitTabPosition"
+                class="exitTabPositionSelect"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <select
+                id="exitTabWidth"
+                class="exitTabWidthSelect"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <label
+                for="exitTabBilingualBottomText"
+                id="exitTabBilingualBottomTextLabel"
+                class="exitTabBottomTextLabel"
+                hidden
+              >Bottom:</label>
+              <input
+                type="text"
+                id="exitTabBilingualBottomText"
+                name="exitTabBilingualBottomText"
+                placeholder="SORTIE"
+                class="exitTabBottomTextInput"
+                onchange="formHandler.readForm();"
+                hidden
+              />
+
+              <select
+                id="exitColor"
+                class="exitTabColorSelect"
+                onchange="formHandler.readForm();"
+              ></select>
             </div>
             <div>
-              <legend>Extra Settings</legend>
               <label for="exitFont" id="exitFontLabel">FHWA Style:</label>
               <input type="checkbox" name="exitFont" id="exitFont" value="exitFont"
                 onchange="formHandler.readForm();" />
@@ -336,6 +371,13 @@
               <label for="caStyle">CA Style:</label>
               <input type="checkbox" id="caStyle" value="caStyle" name="caStyle"
                 onchange="formHandler.readForm();" />
+              <label for="exitTabBilingual" id="exitTabBilingualLabel">Bilingual:</label>
+              <input
+                type="checkbox"
+                id="exitTabBilingual"
+                name="exitTabBilingual"
+                onchange="formHandler.readForm();"
+              />
               <br />
               <div class="exitTabSliderStack">
                 <div class="exitTabSliderGroup">
@@ -363,12 +405,12 @@
                     id="minHeight"
                     min="0"
                     max="5"
-                    value="2.25"
+                    value="2"
                     step="0.05"
                     oninput="document.getElementById('minValue').innerHTML = this.value"
                     onchange="formHandler.readForm();"
                   />
-                  <label for="minHeight" id="minValue" class="exitTabSliderValue">2.25</label>
+                  <label for="minHeight" id="minValue" class="exitTabSliderValue">2</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="minimumReset" aria-label="Reset minimum height">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
@@ -515,11 +557,6 @@
                 onchange="app.changeEditingSubPanel(Math.floor(document.getElementById(this.value - 1)));" min="1" />
             </div>
           </nav>
-        </nav>
-        <nav class="sMModalBar sMModalSubBar">
-          <div data-tab="sMSPBlocks" class="sMModalTab selected">
-            Block Elements
-          </div>
         </nav>
         <div class="sMModalContent">
           <div id="sMSPShield" class="tabHidden">

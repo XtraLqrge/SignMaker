@@ -7327,6 +7327,50 @@ const getPostThicknessFallback = () =>
 
       return hasExitNumber;
     };
+  
+  const getBilingualTopTextFromExitNumber = (value) => {
+    const text = String(value || "")
+      .replace(/\n/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text) {
+      return "EXIT";
+    }
+
+    const match = text.match(/^(.+?)\s+\S*\d\S*$/);
+
+    if (match && match[1]) {
+      return match[1].trim() || "EXIT";
+    }
+
+    return "EXIT";
+  };
+
+  const syncExitTabBilingualControls = (isBilingual) => {
+    const bilingual = isBilingual === true;
+
+    const mainGrid = document.getElementById("exitTabMainSettingsGrid");
+    const exitNumberLabel = document.getElementById("exitNumberLabel");
+    const bottomLabel = document.getElementById("exitTabBilingualBottomTextLabel");
+    const bottomInput = document.getElementById("exitTabBilingualBottomText");
+
+    if (mainGrid) {
+      mainGrid.classList.toggle("bilingualMode", bilingual);
+    }
+
+    if (exitNumberLabel) {
+      exitNumberLabel.textContent = bilingual ? "Top:" : "Text:";
+    }
+
+    if (bottomLabel) {
+      bottomLabel.hidden = !bilingual;
+    }
+
+    if (bottomInput) {
+      bottomInput.hidden = !bilingual;
+    }
+  };
     
   // Handle Form
   // Read the form and update the page by redrawing it.
@@ -7381,6 +7425,25 @@ const getPostThicknessFallback = () =>
 
     // Exit Tab
     exitTab.number = form["exitNumber"].value;
+
+    const exitTabBilingualField = form["exitTabBilingual"];
+    const exitTabBilingualBottomTextField = form["exitTabBilingualBottomText"];
+
+    exitTab.bilingual =
+      exitTabBilingualField && typeof exitTabBilingualField.checked === "boolean"
+        ? exitTabBilingualField.checked
+        : false;
+
+    exitTab.bilingualTopText = getBilingualTopTextFromExitNumber(exitTab.number);
+
+    exitTab.bilingualBottomText =
+      exitTabBilingualBottomTextField &&
+      typeof exitTabBilingualBottomTextField.value === "string" &&
+      exitTabBilingualBottomTextField.value.trim().length
+        ? exitTabBilingualBottomTextField.value
+        : "SORTIE";
+
+    syncExitTabBilingualControls(exitTab.bilingual);
     exitTab.width = exitTab.number.trim() === ""
         ? "Edge"
         : form["exitTabWidth"].value;
@@ -7551,41 +7614,49 @@ const getPostThicknessFallback = () =>
       exitTab.tollLogoSquare = !!exitTab.tollLogoSquare;
     }
 
-        const exitFontCheckbox = form["exitFont"];
-        const fontSizeInput = form["fontSize"];
+      const exitFontCheckbox = form["exitFont"];
+      const fontSizeInput = form["fontSize"];
+      const minHeightInput = form["minHeight"];
 
-        const previousFHWAState =
-          exitFontCheckbox?.dataset.lastFhwaState === "true";
+      const previousFHWAState =
+        exitFontCheckbox?.dataset.lastFhwaState !== undefined
+          ? exitFontCheckbox.dataset.lastFhwaState === "true"
+          : !!exitTab.FHWAFont;
 
-        const nextFHWAState = !!exitFontCheckbox?.checked;
+      const nextFHWAState = !!exitFontCheckbox?.checked;
 
-        if (
-          exitFontCheckbox &&
-          exitFontCheckbox.dataset.lastFhwaState !== undefined &&
-          previousFHWAState !== nextFHWAState
-        ) {
-          const currentFontSize = parseFloat(fontSizeInput?.value);
-
-          if (nextFHWAState === true && Number.isFinite(currentFontSize) && currentFontSize === 20) {
-            fontSizeInput.value = "16";
-            const fontValueEl = document.getElementById("fontValue");
-            if (fontValueEl) {
-              fontValueEl.innerHTML = "16";
-            }
-          } else if (nextFHWAState === false && Number.isFinite(currentFontSize) && currentFontSize === 16) {
-            fontSizeInput.value = "20";
-            const fontValueEl = document.getElementById("fontValue");
-            if (fontValueEl) {
-              fontValueEl.innerHTML = "20";
-            }
-          }
+      const setExitTabSliderValue = (input, valueId, value) => {
+        if (input) {
+          input.value = String(value);
         }
 
-        if (exitFontCheckbox) {
-          exitFontCheckbox.dataset.lastFhwaState = String(nextFHWAState);
+        const valueEl = document.getElementById(valueId);
+        if (valueEl) {
+          valueEl.innerHTML = String(value);
         }
+      };
 
-        exitTab.FHWAFont = nextFHWAState;
+      /*
+       * Only auto-adjust when FHWA Style is toggled.
+       * This keeps the sliders editable after the checkbox change.
+       */
+      if (exitFontCheckbox && previousFHWAState !== nextFHWAState) {
+        if (nextFHWAState === true) {
+          setExitTabSliderValue(fontSizeInput, "fontValue", 24);
+          setExitTabSliderValue(minHeightInput, "minValue", 2);
+          exitTab._fhwaDefaultsApplied = true;
+        } else {
+          setExitTabSliderValue(fontSizeInput, "fontValue", 20);
+          setExitTabSliderValue(minHeightInput, "minValue", 2.5);
+          exitTab._fhwaDefaultsApplied = false;
+        }
+      }
+
+      if (exitFontCheckbox) {
+        exitFontCheckbox.dataset.lastFhwaState = String(nextFHWAState);
+      }
+
+      exitTab.FHWAFont = nextFHWAState;
 
         const hasExitNumberForLeft =
           String(exitTab.number || "").trim() !== "";
@@ -9215,6 +9286,22 @@ const getPostThicknessFallback = () =>
     const exitNumberElmt = document.getElementById("exitNumber");
     exitNumberElmt.value = exitTab.number;
 
+    const exitTabBilingualField = document.getElementById("exitTabBilingual");
+    const exitTabBilingualBottomTextField = document.getElementById("exitTabBilingualBottomText");
+
+    if (exitTabBilingualField) {
+      exitTabBilingualField.checked = exitTab.bilingual === true;
+    }
+
+    if (exitTabBilingualBottomTextField) {
+      exitTabBilingualBottomTextField.value =
+        exitTab.bilingualBottomText && exitTab.bilingualBottomText !== "SORTIE"
+          ? exitTab.bilingualBottomText
+          : "";
+    }
+
+    syncExitTabBilingualControls(exitTab.bilingual === true);
+
     const exitTabPositionSelectElmt =
       document.getElementById("exitTabPosition");
     for (const option of exitTabPositionSelectElmt.options) {
@@ -9389,8 +9476,52 @@ const getPostThicknessFallback = () =>
       resolvedBorderThickness.toString();
 
     const minHeight = document.getElementById("minHeight");
-    minHeight.value = exitTab.minHeight;
-    document.getElementById("minValue").innerHTML = minHeight.value.toString();
+    const fontSize = document.getElementById("fontSize");
+
+    let resolvedMinHeight = (() => {
+      const parsedValue = parseFloat(exitTab.minHeight);
+
+      if (Number.isFinite(parsedValue) && parsedValue >= 0) {
+        return parsedValue;
+      }
+
+      return exitTab.FHWAFont === true ? 2 : 2.5;
+    })();
+
+    let resolvedFontSize = (() => {
+      const parsedValue = parseFloat(exitTab.fontSize);
+
+      if (Number.isFinite(parsedValue) && parsedValue >= 0) {
+        return parsedValue;
+      }
+
+      return exitTab.FHWAFont === true ? 24 : 20;
+    })();
+
+    const shouldNormalizeLoadedFHWA =
+      exitTab.FHWAFont === true &&
+      exitTab._fhwaDefaultsApplied !== true &&
+      (
+        resolvedFontSize === 16 ||
+        resolvedFontSize === 18 ||
+        resolvedFontSize === 20 ||
+        resolvedMinHeight === 2.25 ||
+        resolvedMinHeight === 2.5
+      );
+
+    if (shouldNormalizeLoadedFHWA) {
+      resolvedFontSize = 24;
+      resolvedMinHeight = 2;
+      exitTab._fhwaDefaultsApplied = true;
+    }
+
+    exitTab.minHeight = resolvedMinHeight;
+    minHeight.value = resolvedMinHeight;
+    document.getElementById("minValue").innerHTML = resolvedMinHeight.toString();
+
+    exitTab.fontSize = resolvedFontSize;
+    fontSize.value = resolvedFontSize;
+    document.getElementById("fontValue").innerHTML = resolvedFontSize.toString();
 
     // Nested Tab Spacing (from parent exit tab)
     const nestedTabSpacingInput = document.getElementById("nestedTabSpacing");

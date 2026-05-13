@@ -452,23 +452,17 @@
     color: var(--black);
 }
 .bannerShieldContainer.FL.one .routeNumber,
-.bannerShieldContainer.FL.two .routeNumber {
-	font-family: "Series D";
-    left: -0.05em;
-	font-size: 2.2em;
-	top: 0.15em;
-}
+.bannerShieldContainer.FL.two .routeNumber,
 .bannerShieldContainer.FL.three .routeNumber {
-    font-family: "Series D";
-    left: -0.05em;
-    font-size: 1.9em;
-    top: 0.25em;
+	font-family: "Series D";
+	font-size: 2.2em;
+	top: 0.2em;
 }
+
 .bannerShieldContainer.FL.four .routeNumber {
 	font-family: "Series C";
-	left: -0.05em;
-    font-size: 1.9em;
-	top: 0.25em;
+    font-size: 2.2em;
+	top: 0.2em;
 }
 .bannerShieldContainer.FL.toll .routeNumber,
 .bannerShieldContainer.FL.cfxtoll .routeNumber {

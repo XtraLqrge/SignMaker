@@ -748,6 +748,58 @@ input[type="number"] {
   width: 10rem;
 }
 
+#subPanelList {
+  gap: 0.25rem;
+  align-items: stretch;
+}
+
+.subPanelTabGroup {
+  display: inline-flex;
+  align-items: stretch;
+  background: #000;
+  color: #fff;
+}
+
+.subPanelTabGroup.emptyGlobalTab,
+.subPanelTabGroup.lockedSubPanelTab {
+  background: rgba(var(--baseColor), 0.35);
+}
+
+#subPanelList .subPanelTabButton,
+#subPanelList .subPanelTabDeleteButton {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: "Inter", sans-serif;
+  line-height: 1;
+}
+
+#subPanelList .subPanelTabButton {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+#subPanelList .subPanelTabDeleteButton {
+  width: 1.1rem;
+  min-width: 1.1rem;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#subPanelList .subPanelTabDeleteButton .material-symbols-outlined {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+#subPanelList .subPanelTabDeleteButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .resetClass {
   background-color: rgb(255, 0, 0, 20%);
   padding: 0.3rem;
@@ -1673,6 +1725,7 @@ nav#SMConfigBar.invisible>.sMConfigOption:not(#hideConfig) {
   background-color: var(--green);
   color: white;
 }
+
 
 .sdShieldTopRow,
 .sdShieldSecondRow,
@@ -4458,6 +4511,93 @@ dialog:not([open]) {
   justify-self: start;
 }
 
+.exitTabMainSettingsGrid {
+  display: grid;
+  grid-template-columns: max-content 8rem 6rem 5rem 5rem 8rem;
+  column-gap: 0.55rem;
+  row-gap: 0.55rem;
+  align-items: center;
+  width: max-content;
+}
+
+.exitTabMainSettingsGrid label {
+  width: auto;
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.exitTabMainSettingsGrid input,
+.exitTabMainSettingsGrid select {
+  margin: 0;
+  min-width: 0;
+}
+
+.exitTabMainTextLabel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.exitTabMainTextInput {
+  grid-column: 2;
+  grid-row: 1;
+  width: 8rem;
+}
+
+.exitTabVariantSelect {
+  grid-column: 3;
+  grid-row: 1;
+  width: 6rem;
+}
+
+.exitTabPositionSelect {
+  grid-column: 4;
+  grid-row: 1;
+  width: 5rem;
+}
+
+.exitTabWidthSelect {
+  grid-column: 5;
+  grid-row: 1;
+  width: 5rem;
+}
+
+.exitTabColorSelect {
+  grid-column: 6;
+  grid-row: 1;
+  width: 8rem;
+}
+
+.exitTabBottomTextLabel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.exitTabBottomTextInput {
+  grid-column: 2;
+  grid-row: 2;
+  width: 8rem;
+}
+
+.exitTabMainSettingsGrid.bilingualMode .exitTabColorSelect {
+  grid-column: 3 / span 2;
+  grid-row: 2;
+  width: 8rem;
+}
+
+.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextLabel,
+.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextInput {
+  display: none;
+}
+
+#exitTabBilingualLabel {
+  display: inline-block;
+  width: 8rem;
+  margin-left: -0.47rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .exitTabSliderValue {
   text-align: left;
   margin: 0;
@@ -6755,4 +6895,28 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 
 :root[data-theme="light"] #signMakerSettingsModal .settingsSideTab.active:hover {
   background: rgb(128, 145, 195);
+}
+
+
+.globalBlockControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.globalBlockControls[hidden] {
+  display: none !important;
+}
+
+.globalBlockControls label {
+  margin: 0;
+  width: auto;
+  white-space: nowrap;
+}
+
+.globalBlockControls select {
+  width: 8rem;
 }

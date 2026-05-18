@@ -148,24 +148,24 @@
 
 .bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-left {
 	align-items: flex-end;
-	margin-top: 0.6rem;
+	margin-top: 0rem;
 }
 
 .bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-right {
 	align-items: flex-start;
-	margin-top: 0.6rem;
+	margin-top: 0rem;
 }
 
 .bE-shieldElement .bannerSlot-right .bannerA,
 .bE-shieldElement .bannerSlot-right .bannerB {
-	padding-left: 0.55rem;
-	padding-right: 0;
+  padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-right: 0 !important;
 }
 
 .bE-shieldElement .bannerSlot-left .bannerA,
 .bE-shieldElement .bannerSlot-left .bannerB {
-	padding-right: 0.55rem;
-	padding-left: 0;
+  padding-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-left: 0 !important;
 }
 
 .bE-shieldElement .countyLabel,
@@ -214,8 +214,8 @@
 /* INTERSTATE */
 .bannerShieldContainer.I .routeNumber {
 	color: var(--white);
-	top: 0.08em;
-	font-size: 2.25em;
+	top: 0.02em;
+	font-size: 2.4em;
 }
 .bannerShieldContainer.I.one .routeNumber,
 .bannerShieldContainer.I.two .routeNumber,
@@ -226,9 +226,11 @@
 .bannerShieldContainer.I.three .routeNumber,
 .bannerShieldContainer.I.bus.three .routeNumber {
 	font-family: "Series C";
+  top: 0em !important;
 }
 .bannerShieldContainer.I.four .routeNumber {
 	font-family: "Series B";
+  top: 0em !important;
 }
 .bannerShieldContainer.I.bus .banner {
 	display: none;
@@ -1649,7 +1651,7 @@
   display: flex;
   flex-direction: column;
   gap: calc(0.16rem * var(--shieldScale, 1));
-  margin-top: calc(0.34rem * var(--shieldScale, 1));
+  margin-top: 0;
   align-self: start;
 }
 
@@ -1708,15 +1710,6 @@
 .bE-shieldElement .stackedBannerSlot.tollStackedBanner .TOLL.yellowElmt {
   font-size: calc(1.4rem * var(--shieldScale, 1));
   line-height: 0.8;
-}
-
-/* stacked TOLL + direction: only shift the TOLL plaque, not the direction text */
-.bE-shieldElement .stackedBannerSlot.bannerSlot-right .bannerA,
-.bE-shieldElement .stackedBannerSlot.bannerSlot-right .bannerB,
-.bE-shieldElement .stackedBannerSlot.bannerSlot-left .bannerA,
-.bE-shieldElement .stackedBannerSlot.bannerSlot-left .bannerB {
-  padding-left: 4 !important;
-  padding-right: 4 !important;
 }
 
 /* right side plaque */
@@ -1834,7 +1827,46 @@
 
 /* Shield block Road Name banner */
 .bE-shieldElement .stackedBannerSlot.roadNameStackedBanner {
-  gap: calc(0.12rem * var(--shieldScale, 1));
+  gap: calc(0.16rem * var(--shieldScale, 1));
+}
+
+/* Road-name stacks should sit exactly where normal side banners sit */
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.bannerSlot-right,
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.bannerSlot-left {
+  align-self: start;
+  margin-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.bannerSlot-right {
+  align-items: flex-start;
+  justify-self: start;
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.bannerSlot-left {
+  align-items: flex-start;
+  justify-self: end;
+}
+
+/* Match the side spacing used by normal banners */
+.bE-shieldElement .bannerSlot-right .bannerRoadName {
+  padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-right: 0 !important;
+}
+
+.bE-shieldElement .bannerSlot-left .bannerRoadName {
+  padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-right: 0 !important;
+}
+
+/* Above/below road names should not create extra weird vertical drift */
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.bannerSlot-above {
+  margin-bottom: calc(-0.35rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.bannerSlot-below {
+  margin-top: calc(0.35rem * var(--shieldScale, 1));
 }
 
 .bE-shieldElement .stackedBannerSlot.roadNameStackedBanner .bannerRoadName {
@@ -1842,16 +1874,17 @@
   border: 0 !important;
   color: var(--white) !important;
   font-family: var(--bannerFontFamily, "Series E");
-  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.62);
-  line-height: 0.95;
-  letter-spacing: 0.08em;
-  padding: 0 !important;
-  margin: calc(0.02rem * var(--shieldScale, 1)) 0 0 !important;
-  text-align: inherit;
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.72);
+  line-height: 1.08;
+  letter-spacing: 0em;
+  max-width: none;
+  margin: calc(0.03rem * var(--shieldScale, 1)) 0 0 !important;
+  text-align: left !important;
   text-transform: none !important;
   font-variant: normal !important;
   position: static !important;
   top: auto !important;
+  white-space: pre-line;
 }
 
 .bE-shieldElement .bannerRoadName:first-letter {
@@ -1863,3 +1896,92 @@
   margin: 0;
   padding: 0;
 }
+
+/* Yellow TOLL plaque, whether stacked or single. */
+.bE-shieldElement .TOLL.yellowElmt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 0;
+  white-space: nowrap;
+
+  background: var(--yellow);
+  color: var(--black) !important;
+  border: none !important;
+  border-radius: calc(0.08rem * var(--shieldScale, 1));
+  font-family: var(--bannerFontFamily, "Series E");
+
+  position: static !important;
+  top: auto !important;
+
+  font-size: calc(1.4rem * var(--shieldScale, 1)) !important;
+  line-height: 0.8 !important;
+
+  padding-top: calc(0.10rem * var(--shieldScale, 1)) !important;
+  padding-bottom: calc(0.005rem * var(--shieldScale, 1)) !important;
+  padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
+  padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
+
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* TOLL + direction stacked to the right/left of the shield */
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+  gap: calc(0.20rem * var(--shieldScale, 1));
+  align-items: flex-start;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+  gap: calc(0.20rem * var(--shieldScale, 1));
+  align-items: flex-end;
+}
+
+/* Direction banner keeps the normal side offset */
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerA:not(.TOLL),
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerB:not(.TOLL) {
+  padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-right: 0 !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerA:not(.TOLL),
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerB:not(.TOLL) {
+  padding-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-left: 0 !important;
+}
+
+/* TOLL plaque starts at the same visual side offset as the direction banner */
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .TOLL.yellowElmt {
+  margin-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .TOLL.yellowElmt {
+  margin-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+}
+
+/* Single TOLL side plaques */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-right,
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-left {
+  margin-top: calc(0.6rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-right {
+  margin-left: calc(0.8rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-left {
+  margin-right: calc(0.8rem * var(--shieldScale, 1));
+}
+
+/* Single TOLL above shield */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-above {
+  margin-bottom: calc(0.08rem * var(--shieldScale, 1));
+}
+

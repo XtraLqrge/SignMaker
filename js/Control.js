@@ -672,6 +672,7 @@ class ShieldElement extends Shield {
     type,
     specialBannerType,
     to = false,
+    alignment = "Center",
     bannerType = ShieldElement.prototype.defaultBannerType,
     bannerType2 = ShieldElement.prototype.defaultBannerType,
     roadName = "",
@@ -710,6 +711,8 @@ class ShieldElement extends Shield {
       ) ?? ""}`.trim() || ShieldElement.prototype.defaultRouteNumber;
 
       this.to = !!to;
+      this.alignment =
+        TextElement.prototype.alignment.includes(alignment) ? alignment : "Center";
       this.indentFirstLetter = indentFirstLetter !== false;
       const normalizedIndentSecond =
         indentFirstLetter2 !== undefined ? indentFirstLetter2 : indentFirstLetter;
@@ -2289,22 +2292,34 @@ ShieldElement.prototype.createBannerElement = function (
   bannerEl.className =
     bannerClass + (shouldIndent ? "" : " noIndent") + (smallCaps ? "" : " noSmallCaps");
   bannerEl.style.setProperty("--fontSize", fontSizeCss);
+
   const normalizedFont =
     ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+
   if (normalizedFont) {
     bannerEl.style.setProperty("--bannerFontFamily", `"${normalizedFont}"`);
     bannerEl.style.fontFamily = `"${normalizedFont}"`;
   }
-    const normalizedBannerValue = String(bannerValue || "").trim();
-    const lowerBannerValue = normalizedBannerValue.toLowerCase();
 
-    if (lowerBannerValue === "toll") {
-      bannerEl.classList.add("TOLL", "yellowElmt", "noIndent");
-    }
-    bannerEl.textContent =
-      normalizedBannerValue && normalizedBannerValue !== "None"
-        ? normalizedBannerValue
-        : " ";
+  const normalizedBannerValue = String(bannerValue || "").trim();
+  const lowerBannerValue = normalizedBannerValue.toLowerCase();
+  const isRoadNameBanner = String(bannerClass || "")
+    .split(/\s+/)
+    .includes("bannerRoadName");
+
+  if (lowerBannerValue === "toll") {
+    bannerEl.classList.add("TOLL", "yellowElmt", "noIndent");
+  }
+
+  const displayBannerValue = isRoadNameBanner
+    ? normalizedBannerValue.replace(/\\n/g, "\n")
+    : normalizedBannerValue;
+
+  bannerEl.textContent =
+    normalizedBannerValue && normalizedBannerValue !== "None"
+      ? displayBannerValue
+      : " ";
+
   return bannerEl;
 };
 
@@ -2494,7 +2509,13 @@ ShieldElement.prototype.getRouteSizeClassFromCount = function (count) {
   if (count === 3) {
     return "three";
   }
-  return "four";
+  if (count === 4) {
+    return "four";
+  }
+  if (count === 5) {
+    return "five";
+  }
+  return "six";
 };
 
 ShieldElement.prototype.getVariantFromRoute = function (routeNumber, config) {
@@ -3561,11 +3582,26 @@ Control.prototype.blockToClassElems = {
   ActionMessageElement: ActionMessageElement,
   ElectronicSignElement: ElectronicSignElement,
   getElem: (elemObj) => {
+    if (!elemObj || typeof elemObj !== "object") {
+      return null;
+    }
+
     for (const key in Control.prototype.blockToClassElems) {
-      if (elemObj instanceof Control.prototype.blockToClassElems[key]) {
+      if (key === "getElem") {
+        continue;
+      }
+
+      const ElemClass = Control.prototype.blockToClassElems[key];
+
+      if (typeof ElemClass !== "function" || !ElemClass.prototype) {
+        continue;
+      }
+
+      if (elemObj instanceof ElemClass) {
         return key;
       }
     }
+
     return null;
   },
 };

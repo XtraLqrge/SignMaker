@@ -15,7 +15,7 @@ class Panel {
     if (Object.keys(this.cornerType).includes(corner)) {
       this.corner = corner;
     } else {
-      this.corner = this.cornerType[1];
+      this.corner = this.cornerType[0];
     }
 
     this.sign = sign;

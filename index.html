@@ -303,14 +303,56 @@
         </nav>
         <div class="sMModalContent">
           <div id="sMExitTabSetting">
-            <div>
-              <legend>Main Settings</legend>
-              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00"
-                onchange="formHandler.readForm();" />
-              <select id="exitVariant" onchange="formHandler.readForm();"></select>
-              <select id="exitTabPosition" onchange="formHandler.readForm();"></select>
-              <select id="exitTabWidth" onchange="formHandler.readForm();"></select>
-              <select id="exitColor" onchange="formHandler.readForm();"></select>
+            <div class="exitTabMainSettingsGrid" id="exitTabMainSettingsGrid">
+              <label for="exitNumber" id="exitNumberLabel" class="exitTabMainTextLabel">Text:</label>
+              <input
+                type="text"
+                id="exitNumber"
+                name="exitNumber"
+                placeholder="Exit 00"
+                class="exitTabMainTextInput"
+                onchange="formHandler.readForm();"
+              />
+
+              <select
+                id="exitVariant"
+                class="exitTabVariantSelect"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <select
+                id="exitTabPosition"
+                class="exitTabPositionSelect"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <select
+                id="exitTabWidth"
+                class="exitTabWidthSelect"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <label
+                for="exitTabBilingualBottomText"
+                id="exitTabBilingualBottomTextLabel"
+                class="exitTabBottomTextLabel"
+                hidden
+              >Bottom:</label>
+              <input
+                type="text"
+                id="exitTabBilingualBottomText"
+                name="exitTabBilingualBottomText"
+                placeholder="SORTIE"
+                class="exitTabBottomTextInput"
+                onchange="formHandler.readForm();"
+                hidden
+              />
+
+              <select
+                id="exitColor"
+                class="exitTabColorSelect"
+                onchange="formHandler.readForm();"
+              ></select>
             </div>
             <div>
               <legend>Extra Settings</legend>
@@ -336,6 +378,13 @@
               <label for="caStyle">CA Style:</label>
               <input type="checkbox" id="caStyle" value="caStyle" name="caStyle"
                 onchange="formHandler.readForm();" />
+              <label for="exitTabBilingual" id="exitTabBilingualLabel">Bilingual:</label>
+              <input
+                type="checkbox"
+                id="exitTabBilingual"
+                name="exitTabBilingual"
+                onchange="formHandler.readForm();"
+              />
               <br />
               <div class="exitTabSliderStack">
                 <div class="exitTabSliderGroup">
@@ -499,10 +548,13 @@
           </div>
           <nav class="listNav">
             <div class="scrollMenu horizontal-scroll-on-wheel" id="subPanelList">
-              <button id="global" onclick="app.changeEditingSubPanel(-1);" class="">
-                Global
+              <button id="globalTop" onclick="app.changeEditingSubPanel(-2);" class="">
+                Top
               </button>
-              <button id="sub_edit1" class="active">SubPanel 1</button>
+              <button id="globalBottom" onclick="app.changeEditingSubPanel(-1);" class="">
+                Bottom
+              </button>
+              <button id="sub_edit1" class="active">Subpanel 1</button>
             </div>
             <div class="listNavOptions">
               <button onclick="app.newSubPanel();">+</button>
@@ -510,7 +562,6 @@
               <button onclick="app.duplicateSubPanel();">
                 <span class="material-symbols-outlined">content_copy</span>
               </button>
-              <label for="subPanelNumber">No:</label>
               <input type="number" id="subPanelNumber" name="subPanelNumber" placeholder="1" step="1"
                 onchange="app.changeEditingSubPanel(Math.floor(document.getElementById(this.value - 1)));" min="1" />
             </div>
@@ -817,7 +868,8 @@
                     <div class="sdShieldThirdRow">
                       <label for="sdShield_to">Show TO:</label>
                       <input type="checkbox" id="sdShield_to" />
-
+                      <label for="sdShield_alignment" class="sdShieldAlignmentLabel">Alignment:</label>
+                      <select id="sdShield_alignment" data-toolTip="Shield row alignment"></select>
                       <label for="sdShield_scaleBannersWithShield" class="sdShieldScaleLabel">Scale banners:</label>
                       <input type="checkbox" id="sdShield_scaleBannersWithShield"
                         data-toolTip="When resizing the shield, scale the banners too" checked />
@@ -1948,7 +2000,7 @@
             <label for="panelSpacing">Spacing</label>
             <div class="panelSpacingInputs">
               <input type="range" id="panelSpacing" min="0" max="8" step="0.25" value="4" />
-              <input type="number" class="num" id="panelSpacingValue" min="0" max="10" step="0.25" value="0" />
+              <input type="number" class="num" id="panelSpacingValue" min="0" max="8" step="0.25" value="4" />
             </div>
           </div>
         </div>

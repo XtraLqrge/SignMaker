@@ -571,6 +571,67 @@
   flex-direction: row;
 }
 
+.signContainer > .sign {
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+.signHolder {
+  width: max-content;
+  min-width: 100%;
+  justify-content: center;
+}
+
+.signHolder > .subPanelDisplay:only-of-type {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 100%;
+}
+
+.signHolder > .subPanelDisplay:only-of-type > .signContentContainer {
+  width: 100%;
+  min-width: 100%;
+}
+
+/* Multiple regular subpanels should size to their own content, not split space evenly */
+.signHolder > .subPanelDisplay:not(.hasAplWidthReserve):not(:only-of-type) {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
+  box-sizing: border-box;
+}
+
+.signHolder > .subPanelDisplay:not(.hasAplWidthReserve):not(:only-of-type) > .signContentContainer {
+  width: max-content;
+  min-width: max-content;
+  box-sizing: border-box;
+}
+
+.signHolder > .subDivider {
+  flex: 0 0 auto;
+}
+
+.globalTop,
+.globalBottom {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.globalTop.hasGlobalBlocks,
+.globalBottom.hasGlobalBlocks {
+  padding: 0.45rem 0;
+}
+
+.globalPanelBlockElements {
+  width: 100%;
+}
+
+.globalPanelBlockElements .blockElementRow {
+  width: 100%;
+}
+
 .panel.round .exitTabContainer,
 .panel.round .signContainer {
   visibility: hidden;
@@ -590,15 +651,33 @@
   margin-bottom: auto;
   display: none;
   height: 2.5rem;
+  width: auto;
   padding: 0.2rem;
+  flex: 0 0 auto;
+  object-fit: contain;
+  box-sizing: content-box;
 }
 
 .sideLeftArrow {
-  margin-left: 1rem;
+  margin-left: 0;
+  margin-right: 1rem;
 }
 
 .sideRightArrow {
-  margin-right: 1rem;
+  margin-left: 1rem;
+  margin-right: 0;
+}
+
+.signHolder.hasSideGuideArrow {
+  width: max-content;
+  min-width: max-content;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.signHolder.hasSideGuideArrow > .subPanelDisplay {
+  flex: 0 0 auto;
 }
 
 .signContentContainer {
@@ -1108,6 +1187,95 @@
   min-width: 0.35rem;
 }
 
+/* BILINGUAL EXIT TABS */
+.exitTab.bilingualExitTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.06rem 0.72rem 0.22rem;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.exitTab.bilingualCompactExitTab {
+  width: max-content !important;
+  min-width: max-content !important;
+  flex: 0 0 auto !important;
+}
+
+.exitTabHolder.bilingualCompactExitTabHolder {
+  flex-grow: 0;
+  width: max-content;
+}
+
+.exitTabContainer.bilingualCompactExitTabContainer.edge,
+.exitTabContainer.bilingualCompactExitTabContainer.narrow {
+  width: max-content;
+}
+
+.exitTabContainer.bilingualCompactExitTabContainer.edge.right,
+.exitTabContainer.bilingualCompactExitTabContainer.narrow.right {
+  margin-left: auto;
+}
+
+.exitTabContainer.bilingualCompactExitTabContainer.edge.left,
+.exitTabContainer.bilingualCompactExitTabContainer.narrow.left {
+  margin-right: auto;
+}
+
+.exitTabBilingualBlock {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  grid-template-rows: auto auto;
+  column-gap: 0.85em;
+  row-gap: 0.08em;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.exitTabBilingualLine {
+  display: contents;
+}
+
+.exitTabBilingualTopLine .exitTabBilingualLabelText {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.exitTabBilingualBottomLine .exitTabBilingualLabelText {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.exitTabBilingualLabelText {
+  display: inline-block;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.exitTabBilingualNumber {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: inline-block;
+  margin-left: 0;
+  letter-spacing: 0;
+  line-height: 1;
+  align-self: center;
+  justify-self: end;
+  position: relative;
+}
+
+.exitTab .exitTabTrailing {
+  margin-left: var(--exitTabTrailingGap, 0.04em);
+}
+
+.exitTab .exitTabSeparatedSuffixSpacer {
+  min-width: 1rem;
+}
+
 .action_message {
   --fhwaBaselineOffset: 0px;
   display: inline-flex;
@@ -1493,8 +1661,9 @@
   height: auto;
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
 }
 
 /* Center subpanel content vertically, except for APL subpanels */
@@ -1503,11 +1672,20 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  width: max-content;
+  min-width: max-content;
+  box-sizing: border-box;
 }
 
-/* When APL arrows are present, make subpanels stretch equally */
-.subPanelDisplay:has(.subpanelAplArrows) {
+/* Only APL subpanels should stretch equally by default */
+.signHolder:has(.subpanelAplArrows) .subPanelDisplay {
   flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+.signHolder:has(.subpanelAplArrows) .subPanelDisplay .signContentContainer {
+  width: auto;
   min-width: 0;
 }
 .subPanelDisplay.hasAplExitOnlySubpanel {
@@ -2207,7 +2385,7 @@ img.exitOnlyArrow:last-child {
   box-sizing: border-box;
   min-width: 3.25rem;
   height: 1.35rem;
-  padding: 0.04rem 0.18rem 0;
+  padding: 0.12rem 0.18rem 0;
 
   background-color: var(--yellow);
   color: var(--black);
@@ -2215,9 +2393,9 @@ img.exitOnlyArrow:last-child {
 
   font-family: "Series E", sans-serif;
   font-size: 1.28rem;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: .5;
+  letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
@@ -2227,6 +2405,39 @@ img.exitOnlyArrow:last-child {
 
 .aplExitOnlyOnly {
   left: calc(var(--aplExitOnlyGap) + var(--aplExitOnlyStemOffset));
+}
+
+.aplExitOnlySharedLabel {
+  left: var(--aplExitOnlySharedCenterOffset, 0rem);
+  right: auto;
+  transform: translateX(-50%);
+  min-width: 6.9rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  letter-spacing: 0.08em;
+}
+
+.subDivider.hasSharedExitOnlyBoundary {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.subDivider.hasSharedExitOnlyBoundary .aplExitOnlyBoundarySharedLabel {
+  left: calc(50% + var(--aplExitOnlyBoundaryCenterOffset, 0rem));
+  right: auto;
+  transform: translateX(-50%);
+  min-width: 6.9rem;
+  z-index: 12;
+}
+
+/* Divider has its own arrow, so the shared plaque sits in the normal arrow zone */
+.subDivider.hasSharedExitOnlyBoundary.hasArrow .aplExitOnlyBoundarySharedLabel {
+  bottom: calc(var(--aplDividerArrowBottomOffset, 0.45rem) + 0.05rem);
+}
+
+/* Divider has no arrow, so it has to drop into the APL arrow zone below the divider */
+.subDivider.hasSharedExitOnlyBoundary:not(.hasArrow) .aplExitOnlyBoundarySharedLabel {
+  bottom: calc(-6.2rem + var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
 }
 
 /* Lift regular subpanel APL arrows off the sign border */
@@ -2239,6 +2450,10 @@ img.exitOnlyArrow:last-child {
 }
 
 .subpanelAplArrows > .aplExitOnlyContainer .aplExitOnlyLabel {
+  bottom: calc(var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
+}
+
+.subpanelAplArrows > .aplExitOnlyContainer .aplExitOnlySharedLabel {
   bottom: calc(var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
 }
 
@@ -2422,4 +2637,158 @@ img.exitOnlyArrow:last-child {
 
 .guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow {
   margin: 0 !important;
+}
+
+
+/* Light-background signs should use black borders/dividers instead of white */
+.panel.yellow .sign,
+.panel.white .sign,
+.panel.orange .sign,
+.panel.fluorescent.yellow-green .sign,
+.panel.fluorescent.pink .sign,
+.panel.yellow .exitTab,
+.panel.white .exitTab,
+.panel.orange .exitTab,
+.panel.fluorescent.yellow-green .exitTab,
+.panel.fluorescent.pink .exitTab,
+.panel.yellow .exitTabHolder,
+.panel.white .exitTabHolder,
+.panel.orange .exitTabHolder,
+.panel.fluorescent.yellow-green .exitTabHolder,
+.panel.fluorescent.pink .exitTabHolder {
+  border-color: var(--black) !important;
+  color: var(--black);
+}
+
+/* Divider lines between subpanels */
+.panel.yellow .subDivider,
+.panel.white .subDivider,
+.panel.orange .subDivider,
+.panel.fluorescent.yellow-green .subDivider,
+.panel.fluorescent.pink .subDivider {
+  background-color: var(--black) !important;
+}
+
+/* APL divider pseudo-line */
+.panel.yellow .subDivider.hasArrow::before,
+.panel.white .subDivider.hasArrow::before,
+.panel.orange .subDivider.hasArrow::before,
+.panel.fluorescent.yellow-green .subDivider.hasArrow::before,
+.panel.fluorescent.pink .subDivider.hasArrow::before {
+  background-color: var(--black) !important;
+}
+
+/* Borders inside light-background panel content */
+.panel.yellow .streetName,
+.panel.white .streetName,
+.panel.orange .streetName,
+.panel.fluorescent.yellow-green .streetName,
+.panel.fluorescent.pink .streetName {
+  border-color: var(--black) !important;
+}
+
+/* Guide arrow containers/bands on light-background panels */
+.panel.yellow .guideArrows,
+.panel.white .guideArrows,
+.panel.orange .guideArrows,
+.panel.fluorescent.yellow-green .guideArrows,
+.panel.fluorescent.pink .guideArrows {
+  border-color: var(--black) !important;
+  color: var(--black);
+}
+
+/* Side Left / Side Right guide arrows reserve space inside the sign border */
+.sign.hasSideGuideArrow {
+  --sideGuideArrowReserve: 2.90rem;
+  --sideGuideArrowInset: 0.48rem;
+
+  position: relative !important;
+  overflow: hidden !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  box-sizing: content-box !important;
+}
+
+.sign.hasSideLeftGuideArrow {
+  padding-left: var(--sideGuideArrowReserve) !important;
+}
+
+.sign.hasSideRightGuideArrow {
+  padding-right: var(--sideGuideArrowReserve) !important;
+}
+
+.sign.hasSideGuideArrow .signHolder {
+  position: static !important;
+  overflow: visible !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.sign.hasSideGuideArrow .sideLeftArrow,
+.sign.hasSideGuideArrow .sideRightArrow {
+  position: absolute !important;
+  top: 50% !important;
+  display: none !important;
+
+  height: 2.35rem !important;
+  width: auto !important;
+  max-width: none !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  flex: 0 0 auto !important;
+  object-fit: contain !important;
+  transform: translateY(-50%) !important;
+  z-index: 5;
+  box-sizing: content-box;
+  pointer-events: none;
+}
+
+.sign.hasSideLeftGuideArrow .sideLeftArrow {
+  display: block !important;
+  left: var(--sideGuideArrowInset) !important;
+}
+
+.sign.hasSideRightGuideArrow .sideRightArrow {
+  display: block !important;
+  right: var(--sideGuideArrowInset) !important;
+}
+
+.sign.hasSideLeftGuideArrow .sideRightArrow,
+.sign.hasSideRightGuideArrow .sideLeftArrow {
+  display: none !important;
+}
+
+.sign.hasSideGuideArrow .subPanelDisplay {
+  flex: 0 0 auto !important;
+}
+
+
+.exportCaptureTarget,
+.exportCaptureTarget * {
+  box-sizing: border-box;
+}
+
+#panelContainer.exportCaptureTarget {
+  width: max-content !important;
+  min-width: max-content !important;
+  height: max-content !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  background-image: none !important;
+  align-items: flex-start !important;
+}
+
+#panelContainer.exportCaptureTarget .panel:first-child {
+  padding-left: 0 !important;
+}
+
+#panelContainer.exportCaptureTarget .panel:last-child {
+  padding-right: 0 !important;
 }

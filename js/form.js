@@ -9,9 +9,18 @@ const formHandler = (function () {
     let ensureSubpanelMenuOpenPublic = () => {};
     let ensureExitTabMenuOpenPublic = () => {};
     let ensureGuideArrowMenuOpenPublic = () => {};
+    let exitTabFontCheckboxChangedByUser = false;
+
     const syncPostReference = () => {
       if (exposed && typeof exposed.getPost === "function") {
         post = exposed.getPost();
+      }
+    };
+    const syncGlobalBlockControls = () => {
+      const globalBlockControls = document.getElementById("globalBlockControls");
+
+      if (globalBlockControls) {
+        globalBlockControls.hidden = true;
       }
     };
     const STORAGE_KEYS = {
@@ -1657,7 +1666,7 @@ const getPostThicknessFallback = () =>
           wrapper.classList.remove("open");
         }
       });
-
+      
       document.addEventListener("click", (event) => {
         if (!wrapper.contains(event.target)) {
           wrapper.classList.remove("open");
@@ -5167,6 +5176,16 @@ const getPostThicknessFallback = () =>
       e.preventDefault();
         applyEditorInputBehavior(document);
     };
+    
+    document.addEventListener(
+      "change",
+      (event) => {
+        if (event.target && event.target.id === "exitFont") {
+          exitTabFontCheckboxChangedByUser = true;
+        }
+      },
+      true
+    );
 
     const registerPanelButton = (selector, actionName) => {
       const button = document.querySelector(selector);
@@ -5206,7 +5225,7 @@ const getPostThicknessFallback = () =>
       const normalized =
         Number.isFinite(parsedValue) && parsedValue >= 0
           ? Math.min(parsedValue, 8)
-          : 0;
+          : 4;
       syncPanelSpacingInputs(normalized);
       if (exposed && typeof exposed.setPanelSpacing === "function") {
         exposed.setPanelSpacing(normalized);
@@ -5430,7 +5449,7 @@ const getPostThicknessFallback = () =>
     const cornerTypeSelectElmt = document.getElementById("panelCorner");
     for (const corner of Panel.prototype.cornerType) {
       lib.appendOption(cornerTypeSelectElmt, corner, {
-        selected: corner == "Round",
+        selected: corner == "Sharp",
       });
     }
 
@@ -5561,6 +5580,7 @@ const getPostThicknessFallback = () =>
       document.querySelector("#sdTollLogo_alignment"),
       document.querySelector("#sdBeacon_alignment"),
       document.querySelector("#sdIcon_alignment"),
+      document.querySelector("#sdShield_alignment"),
     ];
     let textElem_bgColorSelects = [
       document.querySelector("#sdCtrlText_backgroundColor"),
@@ -7311,22 +7331,56 @@ const getPostThicknessFallback = () =>
       });
     };
     
-    const updateExitTabLeftControlVisibility = (exitNumberValue) => {
-      const hasExitNumber = String(exitNumberValue || "").trim() !== "";
+  const updateExitTabLeftControlVisibility = (exitNumberValue) => {
+    const hasExitNumber = String(exitNumberValue || "").trim() !== "";
 
-      const showLeftLabel = document.getElementById("showLeftLabel");
-      const showLeft = document.getElementById("showLeft");
+    const showLeftLabel = document.getElementById("showLeftLabel");
+    const showLeft = document.getElementById("showLeft");
 
-      if (showLeftLabel) {
-        showLeftLabel.style.display = hasExitNumber ? "" : "none";
+    if (showLeftLabel) {
+      showLeftLabel.style.display = "";
+    }
+
+    if (showLeft) {
+      showLeft.style.display = "";
+    }
+
+    return hasExitNumber;
+  };
+  
+  const updateExitTabBilingualControls = (exitTab = {}) => {
+    const isBilingual = exitTab.bilingual === true;
+
+    const mainSettingsGrid = document.getElementById("exitTabMainSettingsGrid");
+    const exitNumberLabel = document.getElementById("exitNumberLabel");
+    const bilingualCheckbox = document.getElementById("exitTabBilingual");
+    const bottomTextLabel = document.getElementById("exitTabBilingualBottomTextLabel");
+    const bottomTextInput = document.getElementById("exitTabBilingualBottomText");
+
+    if (mainSettingsGrid) {
+      mainSettingsGrid.classList.toggle("bilingualMode", isBilingual);
+    }
+
+    if (exitNumberLabel) {
+      exitNumberLabel.textContent = isBilingual ? "Top:" : "Text:";
+    }
+
+    if (bilingualCheckbox) {
+      bilingualCheckbox.checked = isBilingual;
+    }
+
+    if (bottomTextLabel) {
+      bottomTextLabel.hidden = !isBilingual;
+    }
+
+    if (bottomTextInput) {
+      bottomTextInput.hidden = !isBilingual;
+
+      if (isBilingual && !bottomTextInput.value.trim()) {
+        bottomTextInput.value = exitTab.bilingualBottomText || "SORTIE";
       }
-
-      if (showLeft) {
-        showLeft.style.display = hasExitNumber ? "" : "none";
-      }
-
-      return hasExitNumber;
-    };
+    }
+  };
     
   // Handle Form
   // Read the form and update the page by redrawing it.
@@ -7341,12 +7395,15 @@ const getPostThicknessFallback = () =>
     try {
     const form = document.forms[0];
     const currentPanel = exposed.getCurrentPanel();
+    const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
     const subPanel =
-      exposed.vars.currentlySelectedSubPanelIndex != -1
-        ? currentPanel.sign.subPanels[
-        exposed.vars.currentlySelectedSubPanelIndex
-        ]
-        : currentPanel.sign;
+      selectedSubPanelIndex >= 0
+        ? currentPanel.sign.subPanels[selectedSubPanelIndex]
+        : exposed.getCurrentSubPanel();
+
+    if (!subPanel) {
+      return;
+    }
     const exitTab =
       exposed.vars.currentlySelectedNestedExitTabIndex != -1
         ? currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex]
@@ -7381,6 +7438,24 @@ const getPostThicknessFallback = () =>
 
     // Exit Tab
     exitTab.number = form["exitNumber"].value;
+      const exitTabBilingualField = form["exitTabBilingual"];
+      const exitTabBilingualBottomTextField = form["exitTabBilingualBottomText"];
+
+      exitTab.bilingual =
+        exitTabBilingualField && typeof exitTabBilingualField.checked === "boolean"
+          ? exitTabBilingualField.checked
+          : false;
+
+      exitTab.bilingualTopText = "EXIT";
+
+      exitTab.bilingualBottomText =
+        exitTabBilingualBottomTextField &&
+        typeof exitTabBilingualBottomTextField.value === "string" &&
+        exitTabBilingualBottomTextField.value.trim().length
+          ? exitTabBilingualBottomTextField.value
+          : "SORTIE";
+
+      updateExitTabBilingualControls(exitTab);
     exitTab.width = exitTab.number.trim() === ""
         ? "Edge"
         : form["exitTabWidth"].value;
@@ -7415,21 +7490,9 @@ const getPostThicknessFallback = () =>
             nextExitTabPosition = "Left";
           }
         }
-
-        /*
-          Position dropdown:
-          - choosing Left checks the Left box
-          - choosing anything else unchecks the Left box
-        */
+      
         if (changedPositionDropdown) {
           nextShowLeft = nextExitTabPosition === "Left";
-        }
-
-        /*
-          No exit number means the Left checkbox should not show or stay active.
-        */
-        if (!hasExitNumberText) {
-          nextShowLeft = false;
         }
 
         exitTab.position = nextExitTabPosition;
@@ -7553,31 +7616,41 @@ const getPostThicknessFallback = () =>
 
         const exitFontCheckbox = form["exitFont"];
         const fontSizeInput = form["fontSize"];
+        const minHeightInput = form["minHeight"];
 
         const previousFHWAState =
-          exitFontCheckbox?.dataset.lastFhwaState === "true";
+          exitFontCheckbox?.dataset.lastFhwaState !== undefined
+            ? exitFontCheckbox.dataset.lastFhwaState === "true"
+            : !!exitTab.FHWAFont;
 
         const nextFHWAState = !!exitFontCheckbox?.checked;
 
+        const setExitTabSliderValue = (input, valueId, value) => {
+          if (input) {
+            input.value = String(value);
+          }
+
+          const valueEl = document.getElementById(valueId);
+          if (valueEl) {
+            valueEl.innerHTML = String(value);
+          }
+        };
+
+        /*
+          Only auto-adjust when the FHWA checkbox itself was changed.
+          Editing subpanels, text, shields, or other fields should not touch these sliders.
+        */
         if (
           exitFontCheckbox &&
-          exitFontCheckbox.dataset.lastFhwaState !== undefined &&
+          exitTabFontCheckboxChangedByUser &&
           previousFHWAState !== nextFHWAState
         ) {
-          const currentFontSize = parseFloat(fontSizeInput?.value);
-
-          if (nextFHWAState === true && Number.isFinite(currentFontSize) && currentFontSize === 20) {
-            fontSizeInput.value = "16";
-            const fontValueEl = document.getElementById("fontValue");
-            if (fontValueEl) {
-              fontValueEl.innerHTML = "16";
-            }
-          } else if (nextFHWAState === false && Number.isFinite(currentFontSize) && currentFontSize === 16) {
-            fontSizeInput.value = "20";
-            const fontValueEl = document.getElementById("fontValue");
-            if (fontValueEl) {
-              fontValueEl.innerHTML = "20";
-            }
+          if (nextFHWAState === true) {
+            setExitTabSliderValue(fontSizeInput, "fontValue", 24);
+            setExitTabSliderValue(minHeightInput, "minValue", 2);
+          } else {
+            setExitTabSliderValue(fontSizeInput, "fontValue", 20);
+            setExitTabSliderValue(minHeightInput, "minValue", 2.5);
           }
         }
 
@@ -7585,6 +7658,7 @@ const getPostThicknessFallback = () =>
           exitFontCheckbox.dataset.lastFhwaState = String(nextFHWAState);
         }
 
+        exitTabFontCheckboxChangedByUser = false;
         exitTab.FHWAFont = nextFHWAState;
 
         const hasExitNumberForLeft =
@@ -7634,8 +7708,10 @@ const getPostThicknessFallback = () =>
       form["paddingLeft"].value.toString() +
       "rem";
     // Global Settings
-    currentPanel.sign.globalPositioning = form["globalPosition"].value;
-
+    if (form["globalPosition"]) {
+      currentPanel.sign.globalPositioning = form["globalPosition"].value;
+    }
+      
     // Shields
     for (
       let shieldIndex = 0, length = subPanel.shields.length;
@@ -8302,9 +8378,9 @@ const getPostThicknessFallback = () =>
 
     const panel = exposed.getCurrentPanel();
     const sign =
-      exposed.vars.currentlySelectedSubPanelIndex != -1
+      exposed.vars.currentlySelectedSubPanelIndex >= 0
         ? panel.sign.subPanels[exposed.vars.currentlySelectedSubPanelIndex]
-        : panel.sign;
+        : exposed.getCurrentSubPanel();
 
     const selectedExitTabIndex = exposed.vars.currentlySelectedExitTabIndex;
     const selectedNestedExitTabIndex =
@@ -8385,16 +8461,6 @@ const getPostThicknessFallback = () =>
 
     while (subPanelList.firstChild) {
       subPanelList.removeChild(subPanelList.lastChild);
-
-      if (subPanelList.lastChild == document.getElementById("global")) {
-        if (exposed.vars.currentlySelectedSubPanelIndex == -1) {
-          document.getElementById("global").className = "active";
-        } else {
-          document.getElementById("global").className = "";
-        }
-
-        break;
-      }
     }
 
     while (exitTabList.firstChild) {
@@ -8484,26 +8550,105 @@ const getPostThicknessFallback = () =>
     if (postThicknessValueInput) {
       postThicknessValueInput.value = resolvedPostThickness;
     }
+    
+    const hasBlockElementContent = (controlData) =>
+      controlData &&
+      Array.isArray(controlData.rows) &&
+      controlData.rows.some(
+        (row) => Array.isArray(row) && row.some(Boolean)
+      );
+
+    const createSubPanelTab = ({
+      id,
+      label,
+      subPanelIndex,
+      deleteLabel,
+      canDelete = true,
+      emptyGlobal = false,
+    }) => {
+      const tabGroup = document.createElement("div");
+      tabGroup.className =
+        "subPanelTabGroup" +
+        (exposed.vars.currentlySelectedSubPanelIndex === subPanelIndex
+          ? " active"
+          : "") +
+        (emptyGlobal ? " emptyGlobalTab" : "") +
+        (!canDelete ? " lockedSubPanelTab" : "");
+
+      const tabButton = document.createElement("button");
+      tabButton.id = id;
+      tabButton.type = "button";
+      tabButton.className = "subPanelTabButton";
+      tabButton.textContent = label;
+
+      tabButton.addEventListener("click", function () {
+        exposed.changeEditingSubPanel(subPanelIndex);
+      });
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "subPanelTabDeleteButton";
+      deleteButton.title = deleteLabel;
+      deleteButton.setAttribute("aria-label", deleteLabel);
+      deleteButton.disabled = !canDelete;
+
+      const deleteIcon = document.createElement("span");
+      deleteIcon.className = "material-symbols-outlined";
+      deleteIcon.textContent = "delete";
+      deleteButton.appendChild(deleteIcon);
+
+      deleteButton.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+
+      deleteButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        app.removeSubPanel(subPanelIndex);
+      });
+
+      tabGroup.appendChild(tabButton);
+      tabGroup.appendChild(deleteButton);
+
+      return tabGroup;
+    };
+
+    subPanelList.appendChild(
+      createSubPanelTab({
+        id: "globalTop",
+        label: "Top",
+        subPanelIndex: -2,
+        deleteLabel: "Clear Top",
+        emptyGlobal: !hasBlockElementContent(panel.sign.globalTopBlockElements),
+      })
+    );
+
+    subPanelList.appendChild(
+      createSubPanelTab({
+        id: "globalBottom",
+        label: "Bottom",
+        subPanelIndex: -1,
+        deleteLabel: "Clear Bottom",
+        emptyGlobal: !hasBlockElementContent(panel.sign.globalBottomBlockElements),
+      })
+    );
 
     for (
       let subPanelIndex = 0, subPanelsLength = panel.sign.subPanels.length;
       subPanelIndex < subPanelsLength;
       subPanelIndex++
     ) {
-      const subPanelButton = document.createElement("button");
-      subPanelButton.id = "sub_edit" + (subPanelIndex + 1);
-      subPanelButton.textContent = "SubPanel " + (subPanelIndex + 1);
-      subPanelButton.className =
-        exposed.vars.currentlySelectedSubPanelIndex == subPanelIndex
-          ? "active"
-          : "";
-
-      subPanelButton.addEventListener("click", function () {
-        exposed.changeEditingSubPanel(subPanelIndex, panel);
-        subPanelButton.className = "active";
-      });
-
-      subPanelList.appendChild(subPanelButton);
+      subPanelList.appendChild(
+        createSubPanelTab({
+          id: "sub_edit" + (subPanelIndex + 1),
+          label: "Subpanel " + (subPanelIndex + 1),
+          subPanelIndex,
+          deleteLabel: "Delete Subpanel " + (subPanelIndex + 1),
+          canDelete: panel.sign.subPanels.length > 1,
+        })
+      );
     }
 
     for (
@@ -8962,7 +9107,7 @@ const getPostThicknessFallback = () =>
 
         if (selectedSubpanelStatus) {
           selectedSubpanelStatus.textContent =
-            "Selected Subpanel: SubPanel " + (selectedSubPanelIndex + 1);
+            "Selected Subpanel: Subpanel " + (selectedSubPanelIndex + 1);
         }
 
           const aplArrows = panel.sign.aplArrows || [];
@@ -9000,7 +9145,7 @@ const getPostThicknessFallback = () =>
 
           const sectionHeader = document.createElement("div");
           sectionHeader.className = "aplSubpanelSectionHeader";
-          sectionHeader.textContent = "SubPanel " + (subPanelIndex + 1);
+          sectionHeader.textContent = "Subpanel " + (subPanelIndex + 1);
 
           sectionHeader.addEventListener("click", () => {
             exposed.changeEditingSubPanel(subPanelIndex);
@@ -9065,7 +9210,7 @@ const getPostThicknessFallback = () =>
 
           const addToSubpanelButton = document.createElement("button");
           addToSubpanelButton.type = "button";
-          addToSubpanelButton.textContent = "Add arrow to SubPanel " + (subPanelIndex + 1);
+          addToSubpanelButton.textContent = "Add arrow to Subpanel " + (subPanelIndex + 1);
 
           addToSubpanelButton.addEventListener("click", () => {
             exposed.changeEditingSubPanel(subPanelIndex);
@@ -9175,17 +9320,17 @@ const getPostThicknessFallback = () =>
     const g_actionMessage = document.getElementById("g_actionMessage");
 
     g_actionMessage.className =
-      exposed.vars.currentlySelectedSubPanelIndex != -1 ? "invisible" : "";
+      exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
     outActionMessage.className =
-      exposed.vars.currentlySelectedSubPanelIndex != -1 ? "invisible" : "";
+      exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
     outActionMessageLabel.className =
-      exposed.vars.currentlySelectedSubPanelIndex != -1 ? "invisible" : "";
+      exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
     g_actionMessage.className =
-      exposed.vars.currentlySelectedSubPanelIndex != -1 ? "invisible" : "";
+      exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
     globalPositioning.className =
-      exposed.vars.currentlySelectedSubPanelIndex != -1 ? "invisible" : "";
+      exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
     globalPositionLabel.className =
-      exposed.vars.currentlySelectedSubPanelIndex != -1 ? "invisible" : "";
+      exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
 
     outActionMessage.checked = panel.sign.advisoryMessage;
 
@@ -9213,6 +9358,19 @@ const getPostThicknessFallback = () =>
 
     // Exit Tabs
     const exitNumberElmt = document.getElementById("exitNumber");
+    const exitTabBilingualField = document.getElementById("exitTabBilingual");
+    const exitTabBilingualBottomTextField = document.getElementById("exitTabBilingualBottomText");
+
+    if (exitTabBilingualField) {
+      exitTabBilingualField.checked = exitTab.bilingual === true;
+    }
+
+    if (exitTabBilingualBottomTextField) {
+      exitTabBilingualBottomTextField.value =
+        exitTab.bilingualBottomText || "SORTIE";
+    }
+
+    updateExitTabBilingualControls(exitTab);
     exitNumberElmt.value = exitTab.number;
 
     const exitTabPositionSelectElmt =
@@ -9229,10 +9387,6 @@ const getPostThicknessFallback = () =>
 
       if (showLeft) {
         showLeft.checked = hasExitNumberText && exitTab.showLeft === true;
-      }
-
-      if (!hasExitNumberText) {
-        exitTab.showLeft = false;
       }
 
     const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
@@ -9389,8 +9543,34 @@ const getPostThicknessFallback = () =>
       resolvedBorderThickness.toString();
 
     const minHeight = document.getElementById("minHeight");
-    minHeight.value = exitTab.minHeight;
-    document.getElementById("minValue").innerHTML = minHeight.value.toString();
+    const resolvedMinHeight = (() => {
+      const parsedValue = parseFloat(exitTab.minHeight);
+
+      if (Number.isFinite(parsedValue) && parsedValue > 0) {
+        return parsedValue;
+      }
+
+      return ExitTab.prototype.defaultMinHeight;
+    })();
+
+    exitTab.minHeight = resolvedMinHeight;
+    minHeight.value = resolvedMinHeight;
+    document.getElementById("minValue").innerHTML = resolvedMinHeight.toString();
+
+    const fontSize = document.getElementById("fontSize");
+    const resolvedFontSize = (() => {
+      const parsedValue = parseFloat(exitTab.fontSize);
+
+      if (Number.isFinite(parsedValue) && parsedValue > 0) {
+        return parsedValue;
+      }
+
+      return ExitTab.prototype.defaultFontSize;
+    })();
+
+    exitTab.fontSize = resolvedFontSize;
+    fontSize.value = resolvedFontSize;
+    document.getElementById("fontValue").innerHTML = resolvedFontSize.toString();
 
     // Nested Tab Spacing (from parent exit tab)
     const nestedTabSpacingInput = document.getElementById("nestedTabSpacing");
@@ -9414,30 +9594,41 @@ const getPostThicknessFallback = () =>
     updateShieldSubform();
 
     // Control Text Revision
+    // Control Text Revision
     const sMSPTextList = document.querySelector("#sMSPTextList");
+    const currentEditingTarget =
+      typeof exposed.getCurrentSubPanel === "function"
+        ? exposed.getCurrentSubPanel()
+        : sign;
+    const currentBlockElements = currentEditingTarget?.blockElements;
+    const currentRows = Array.isArray(currentBlockElements?.rows)
+      ? currentBlockElements.rows
+      : [];
+
     sMSPTextList.innerHTML = "";
+
     document.querySelector("#SMSPSelectLabel").textContent =
       "Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
     document.querySelector("#SMSPElementLabel").textContent =
       "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
+
     document.querySelector("#sMSPDeleteSelectedRow").disabled =
-      exposed.getCurrentSubPanel().blockElements.rows.length == 1;
+      currentRows.length <= 1;
+
     document.querySelector("#smSPDeleteSelectedBlock").disabled =
-      exposed.getCurrentSubPanel().blockElements.rows.length == 1 &&
-      exposed.getCurrentBlockRows().length == 1;
-    for (
-      let row = 0;
-      row < Object.keys(sign.blockElements.rows).length;
-      row++
-    ) {
+      currentRows.length <= 1 &&
+      (!currentRows[exposed.vars.currentlySelectedRowIndex] ||
+        currentRows[exposed.vars.currentlySelectedRowIndex].length <= 1);
+
+    for (let row = 0; row < currentRows.length; row++) {
       const sMControlRow = document.createElement("div");
       sMControlRow.dataset.dataRow = row.toString();
       sMControlRow.className =
         "sMControlRow" +
         (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "");
 
-      for (let item = 0; item < sign.blockElements.rows[row].length; item++) {
-        const blockElement = sign.blockElements.rows[row][item];
+      for (let item = 0; item < currentRows[row].length; item++) {
+        const blockElement = currentRows[row][item];
 
         const currentBlockElemType =
           Control.prototype.blockToClassElems.getElem(blockElement) ||
@@ -9635,6 +9826,9 @@ const getPostThicknessFallback = () =>
       }
       if (currentBlockElem.roadName === undefined) {
         currentBlockElem.roadName = "";
+      }
+      if (currentBlockElem.alignment === undefined) {
+        currentBlockElem.alignment = "Center";
       }
     }
 
@@ -10109,6 +10303,7 @@ const getPostThicknessFallback = () =>
       bindAllFontPreviewSelects(document);
       syncAllFontPickers();
       applyExitOnlyArrowVisibility();
+      syncGlobalBlockControls();
   };
     
     /* END OF UPDATEFORM */
@@ -10118,14 +10313,26 @@ const getPostThicknessFallback = () =>
    */
   const updateShieldSubform = function () {
     const shieldsContainerElmt = document.getElementById("shields");
-    var subPanel;
 
-    if (exposed.vars.currentlySelectedSubPanelIndex == -1) {
-      subPanel = getCurrentPanel().sign;
-    } else {
-      subPanel = exposed.getCurrentSubPanel();
+    if (!shieldsContainerElmt) {
+      return;
     }
-    const shields = subPanel.shields;
+
+    let subPanel;
+
+    if (exposed.vars.currentlySelectedSubPanelIndex < 0) {
+      subPanel =
+        typeof exposed.getCurrentSubPanel === "function"
+          ? exposed.getCurrentSubPanel()
+          : null;
+    } else {
+      subPanel =
+        typeof exposed.getCurrentSubPanel === "function"
+          ? exposed.getCurrentSubPanel()
+          : null;
+    }
+
+    const shields = Array.isArray(subPanel?.shields) ? subPanel.shields : [];
 
     while (shieldsContainerElmt.firstChild) {
       shieldsContainerElmt.removeChild(shieldsContainerElmt.lastChild);

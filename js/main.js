@@ -2399,6 +2399,97 @@ const app = (function () {
   };
 
   // Revised Control Panel
+  
+  const SETTINGS_DEFAULTS_STORAGE_KEY = "signMaker.settingsDefaults";
+
+  const getStoredSettingsDefaultsForNewBlocks = () => {
+    try {
+      const raw = window.localStorage.getItem(SETTINGS_DEFAULTS_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const getSettingsDefaultValue = (defaults, key, fallback) => {
+    return Object.prototype.hasOwnProperty.call(defaults, key)
+      ? defaults[key]
+      : fallback;
+  };
+
+  const getValidShieldBannerPositionDefault = (value, fallback) => {
+    const options = ShieldElement.prototype.blockBannerPositions || [];
+
+    return options.includes(value) ? value : fallback;
+  };
+
+  const applyStoredShieldDefaultsToBlock = (blockElement) => {
+    if (
+      typeof ShieldElement === "undefined" ||
+      !(blockElement instanceof ShieldElement)
+    ) {
+      return blockElement;
+    }
+
+    const defaults = getStoredSettingsDefaultsForNewBlocks();
+
+    const defaultShieldBase =
+      getSettingsDefaultValue(
+        defaults,
+        "settingsDefaultsShieldType",
+        ShieldElement.prototype.defaultShieldBase || "I"
+      ) || ShieldElement.prototype.defaultShieldBase || "I";
+
+    const defaultRouteNumber = getSettingsDefaultValue(
+      defaults,
+      "settingsDefaultsShieldRouteNumber",
+      ""
+    );
+
+    const defaultShieldSizeRaw = getSettingsDefaultValue(
+      defaults,
+      "settingsDefaultsShieldSize",
+      "3"
+    );
+
+    const defaultShieldSize = parseFloat(defaultShieldSizeRaw);
+
+    blockElement.shieldBase = defaultShieldBase;
+    blockElement.type = defaultShieldBase;
+    blockElement.routeNumber =
+      defaultRouteNumber === null || defaultRouteNumber === undefined
+        ? ""
+        : String(defaultRouteNumber);
+
+    if (Number.isFinite(defaultShieldSize) && defaultShieldSize > 0) {
+      blockElement.shieldSize = defaultShieldSize;
+    }
+
+    blockElement.bannerPosition = getValidShieldBannerPositionDefault(
+      getSettingsDefaultValue(defaults, "settingsDefaultsShieldBanner1", "Right"),
+      "Right"
+    );
+
+    blockElement.bannerPosition2 = getValidShieldBannerPositionDefault(
+      getSettingsDefaultValue(defaults, "settingsDefaultsShieldBanner2", "Above"),
+      "Above"
+    );
+
+    return blockElement;
+  };
+
+  const applyStoredShieldDefaultsToCurrentBlock = () => {
+    const row =
+      getCurrentSubPanel()?.blockElements?.rows?.[currentlySelectedRowIndex];
+
+    if (!Array.isArray(row)) {
+      return null;
+    }
+
+    return applyStoredShieldDefaultsToBlock(row[currentlySelectedBlockIndex]);
+  };
+  
     const newRow = (selectedBlock, evt) => {
       return runWithUndo(() => {
         const blockElems = getCurrentSubPanel().blockElements;
@@ -2409,6 +2500,7 @@ const app = (function () {
         } else {
           blockElems.addRow(++currentlySelectedRowIndex, selectedBlock);
         }
+        applyStoredShieldDefaultsToCurrentBlock();
         formHandler.updateForm();
         redraw();
       });
@@ -2585,7 +2677,7 @@ const app = (function () {
         blockElems.addRow(insertIndex, selectedElem);
         currentlySelectedRowIndex = insertIndex;
         currentlySelectedBlockIndex = 0;
-
+        applyStoredShieldDefaultsToCurrentBlock();
         formHandler.updateForm();
         redraw();
       });
@@ -2605,7 +2697,7 @@ const app = (function () {
         blockElems.addRow(insertIndex, selectedElem);
         currentlySelectedRowIndex = insertIndex;
         currentlySelectedBlockIndex = 0;
-
+        applyStoredShieldDefaultsToCurrentBlock();
         formHandler.updateForm();
         redraw();
       });
@@ -2797,6 +2889,9 @@ const app = (function () {
           currentlySelectedRowIndex,
           ++currentlySelectedBlockIndex
         );
+
+        applyStoredShieldDefaultsToCurrentBlock();
+
         formHandler.updateForm();
         redraw();
       });
@@ -2812,17 +2907,13 @@ const app = (function () {
         return null;
       }
 
-      const previousWasText = isTextControlBlock(previousBlock);
-
       const nextBlock = new Constructor();
 
       const nextIsShield =
         typeof ShieldElement !== "undefined" && nextBlock instanceof ShieldElement;
 
-      // Text-type block -> Shield:
-      // clear the route number so the old text does not become a route number.
-      if (previousWasText && nextIsShield) {
-        nextBlock.routeNumber = "";
+      if (nextIsShield) {
+        applyStoredShieldDefaultsToBlock(nextBlock);
       }
 
       // Shield -> Control Text / Action Message / Advisory Message:
@@ -4370,9 +4461,14 @@ const app = (function () {
           return true;
         }
 
-        const pngDataUrl = await htmlToImage.toPng(file, {
-          ...exportOptions,
-          pixelRatio: getExportPixelRatio(width, height, isPreview),
+        const pngExportScale =
+          !isPreview && fileInfo.panel !== -1
+            ? 4
+            : 1;
+
+        const pngDataUrl = await htmlToImagex.toPng(file, {
+          cacheBust: true,
+          pixelRatio: pngExportScale,
         });
 
         if (isPreview) {
@@ -4450,7 +4546,7 @@ const app = (function () {
       downloadPreview.appendChild(loadingBox);
 
       try {
-        const dataUrl = await saveSign(getFile(), true, false);
+        const dataUrl = await saveSign(getFile(), true, true);
 
         while (downloadPreview.firstChild) {
           downloadPreview.removeChild(downloadPreview.lastChild);
@@ -6636,10 +6732,114 @@ const app = (function () {
                }
                
           
-          const sideRightArrowElmt = document.createElement("img");
-          sideRightArrowElmt.className = "sideRightArrow";
-          sideRightArrowElmt.src = "img/arrows/A-1.svg";
-          signHolderElmt.appendChild(sideRightArrowElmt);
+        const sideRightArrowElmt = document.createElement("img");
+        sideRightArrowElmt.className = "sideRightArrow";
+        sideRightArrowElmt.src = "img/arrows/A-1.svg";
+        signHolderElmt.appendChild(sideRightArrowElmt);
+
+        const syncStandardGuideArrowSubpanelWidth = () => {
+          const isStandardGuideArrow =
+            panel.sign.arrowMode !== "apl" &&
+            panel.sign.guideArrow !== "None" &&
+            panel.sign.guideArrow !== "Side Left" &&
+            panel.sign.guideArrow !== "Side Right";
+
+          if (!isStandardGuideArrow || !arrowContElmt || !signHolderElmt) {
+            return;
+          }
+
+          const apply = () => {
+            const arrowContainerWidth = Math.ceil(
+              Math.max(
+                arrowContElmt.scrollWidth || 0,
+                arrowContElmt.getBoundingClientRect().width || 0
+              )
+            );
+
+            if (!arrowContainerWidth) {
+              return;
+            }
+
+            const currentSubpanelGroupWidth = Math.ceil(
+              signHolderElmt.getBoundingClientRect().width || 0
+            );
+
+            if (arrowContainerWidth > currentSubpanelGroupWidth + 1) {
+              signHolderElmt.classList.add("hasStandardGuideArrowWidthReserve");
+              signHolderElmt.style.setProperty(
+                "--standardGuideArrowMinWidth",
+                `${arrowContainerWidth}px`
+              );
+            } else {
+              signHolderElmt.classList.remove("hasStandardGuideArrowWidthReserve");
+              signHolderElmt.style.removeProperty("--standardGuideArrowMinWidth");
+            }
+            const standardDividers = Array.from(
+              signHolderElmt.querySelectorAll(":scope > .subDivider")
+            );
+
+            const standardGuideArrowImgs = Array.from(
+              arrowContElmt.querySelectorAll("img.arrow, img.exitOnlyArrow, img.qcExitOnlyArrow")
+            ).filter((img) => {
+              const rect = img.getBoundingClientRect();
+              const styles = window.getComputedStyle(img);
+
+              return (
+                rect.width > 0 &&
+                rect.height > 0 &&
+                styles.display !== "none" &&
+                styles.visibility !== "hidden"
+              );
+            });
+
+            const arrowRects = standardGuideArrowImgs.map((img) => {
+              const rect = img.getBoundingClientRect();
+
+              return {
+                left: rect.left,
+                right: rect.right,
+                center: rect.left + rect.width / 2,
+                width: rect.width,
+                height: rect.height,
+              };
+            });
+
+            standardDividers.forEach((divider) => {
+              divider.classList.remove("hasStandardGuideArrowBelow");
+              divider.style.removeProperty("--standardGuideArrowDividerStopOffset");
+
+              const dividerRect = divider.getBoundingClientRect();
+              const dividerCenter = dividerRect.left + dividerRect.width / 2;
+
+              const arrowDirectlyBelow = arrowRects.find((arrowRect) => {
+                const horizontalPadding = Math.max(6, arrowRect.width * 0.18);
+
+                return (
+                  dividerCenter >= arrowRect.left - horizontalPadding &&
+                  dividerCenter <= arrowRect.right + horizontalPadding
+                );
+              });
+
+              if (!arrowDirectlyBelow) {
+                return;
+              }
+
+              divider.classList.add("hasStandardGuideArrowBelow");
+              divider.style.setProperty(
+                "--standardGuideArrowDividerStopOffset",
+                `${Math.max(7, Math.min(12, arrowDirectlyBelow.height * 0.18))}px`
+              );
+            });
+          };
+
+          requestAnimationFrame(apply);
+
+          arrowContElmt.querySelectorAll("img").forEach((img) => {
+            if (!img.complete) {
+              img.addEventListener("load", apply, { once: true });
+            }
+          });
+        };
           
           // Guide arrows
           
@@ -7360,6 +7560,9 @@ const app = (function () {
                            }
                   }
           }
+
+          syncStandardGuideArrowSubpanelWidth();
+
           // Bottom Symbols
           
           if (panel.sign.oSNum != "" && panel.sign.otherSymbol != "None") {

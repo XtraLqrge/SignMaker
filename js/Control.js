@@ -250,6 +250,26 @@ const getStoredDefaultsOption = (options, optionKey, storedKey, fallbackValue) =
   return fallbackValue;
 };
 
+const normalizeStoredDefaultsNumber = (value, fallback = 0) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeStoredDefaultsBoolean = (value) =>
+  value === true ||
+  value === "true" ||
+  value === 1 ||
+  value === "1" ||
+  value === "on";
+
+const normalizeStoredDefaultsAlignment = (value) => {
+  const alignments = Array.isArray(TextElement.prototype.alignment)
+    ? TextElement.prototype.alignment
+    : ["Left", "Center", "Right"];
+
+  return alignments.includes(value) ? value : "Center";
+};
+
 const HIGHWAY_GOTHIC_TEXT_RENDER_SCALE = 1.2;
 
 const isHighwayGothicFontFamily = (fontFamily) =>
@@ -2699,31 +2719,69 @@ DividerElement.prototype.dividerColors = [{ value: "Default", label: "Default" }
 );
 
 class IconElement {
-  constructor({
-    icon = "Airplane",
-    iconSize = 3,
-    backgroundColor = "Inherit",
-    border = false,
-    borderRadius = 4,
-    borderColor = "White",
-    spacing = 0,
-    alignment = "Center",
-  } = {}) {
+  constructor(options = {}) {
+    const icon = getStoredDefaultsOption(
+      options,
+      "icon",
+      "settingsDefaultsIconValue",
+      IconElement.prototype.defaultIcon
+    );
+
+    const iconSize = getStoredDefaultsOption(
+      options,
+      "iconSize",
+      "settingsDefaultsIconSize",
+      3
+    );
+
+    const backgroundColor = getStoredDefaultsOption(
+      options,
+      "backgroundColor",
+      "settingsDefaultsIconBgColor",
+      "Inherit"
+    );
+
+    const border = getStoredDefaultsOption(
+      options,
+      "border",
+      "settingsDefaultsIconBorder",
+      false
+    );
+
+    const borderRadius = Object.prototype.hasOwnProperty.call(options, "borderRadius")
+      ? options.borderRadius
+      : 4;
+
+    const borderColor = Object.prototype.hasOwnProperty.call(options, "borderColor")
+      ? options.borderColor
+      : "White";
+
+    const spacing = getStoredDefaultsOption(
+      options,
+      "spacing",
+      "settingsDefaultsIconSpacing",
+      0
+    );
+
+    const alignment = getStoredDefaultsOption(
+      options,
+      "alignment",
+      "settingsDefaultsIconAlignment",
+      "Center"
+    );
+
     this.icon = IconElement.prototype.icons[icon]
       ? icon
       : IconElement.prototype.defaultIcon;
-    this.iconSize = iconSize;
+    this.iconSize = normalizeStoredDefaultsNumber(iconSize, 3);
     this.backgroundColor = backgroundColor;
-    this.border = border;
-    this.borderRadius = borderRadius;
+    this.border = normalizeStoredDefaultsBoolean(border);
+    this.borderRadius = normalizeStoredDefaultsNumber(borderRadius, 4);
     this.borderColor = borderColor;
-    this.spacing = spacing;
-    const validAlignments = Array.isArray(TextElement.prototype.alignment)
-      ? TextElement.prototype.alignment
-      : [];
-    this.alignment = validAlignments.includes(alignment) ? alignment : "Center";
+    this.spacing = normalizeStoredDefaultsNumber(spacing, 0);
+    this.alignment = normalizeStoredDefaultsAlignment(alignment);
   }
-
+  
   createElement() {
     const container = document.createElement("div");
     container.className = "bE-iconElement";
@@ -2981,26 +3039,67 @@ BeaconElement.prototype.backplateColor = "Yellow";
 BeaconElement.prototype.backplateFallbackColor = "#ffd200";
 
 class ArrowElement {
-  constructor({
-    arrow = ArrowElement.prototype.defaultArrow,
-    rotation = 0,
-    size = null,
-    padding = null,
-    paddingHorizontal = null,
-    paddingVertical = null,
-    flip = false,
-  } = {}) {
+  constructor(options = {}) {
+    const arrow = getStoredDefaultsOption(
+      options,
+      "arrow",
+      "settingsDefaultsArrowValue",
+      ArrowElement.prototype.defaultArrow
+    );
+
+    const rotation = getStoredDefaultsOption(
+      options,
+      "rotation",
+      "settingsDefaultsArrowRotation",
+      0
+    );
+
+    const size = getStoredDefaultsOption(
+      options,
+      "size",
+      "settingsDefaultsArrowSize",
+      ArrowElement.prototype.defaultSize
+    );
+
+    const fallbackPadding =
+      Object.prototype.hasOwnProperty.call(options, "padding") &&
+      options.padding !== null &&
+      options.padding !== undefined
+        ? options.padding
+        : 0;
+
+    const paddingHorizontal = getStoredDefaultsOption(
+      options,
+      "paddingHorizontal",
+      "settingsDefaultsArrowHorizontalPadding",
+      fallbackPadding
+    );
+
+    const paddingVertical = getStoredDefaultsOption(
+      options,
+      "paddingVertical",
+      "settingsDefaultsArrowVerticalPadding",
+      fallbackPadding
+    );
+
+    const flip = Object.prototype.hasOwnProperty.call(options, "flip")
+      ? options.flip
+      : false;
+
+    const alignment = getStoredDefaultsOption(
+      options,
+      "alignment",
+      "settingsDefaultsArrowAlignment",
+      "Center"
+    );
+
     const resolveArrowKey = ArrowElement.prototype.arrows[arrow]
       ? arrow
       : ArrowElement.prototype.defaultArrow;
+
     this.arrow = resolveArrowKey;
-    this.rotation = rotation;
-    this.flip =
-      flip === true ||
-      flip === "true" ||
-      flip === 1 ||
-      flip === "1" ||
-      flip === "on";
+    this.rotation = normalizeStoredDefaultsNumber(rotation, 0);
+    this.flip = normalizeStoredDefaultsBoolean(flip);
 
     const arrowDefinition = ArrowElement.prototype.arrows[this.arrow] || {};
     const defaultSize =
@@ -3008,33 +3107,12 @@ class ArrowElement {
         ? arrowDefinition.defaultSize
         : ArrowElement.prototype.defaultSize;
 
-    const normalizeNumber = (value, fallback = 0) => {
-      const parsed = parseFloat(value);
-      return isNaN(parsed) ? fallback : parsed;
-    };
-
-    if (size === null || size === undefined || size === "") {
-      this.size = defaultSize;
-    } else {
-      this.size = normalizeNumber(size, defaultSize);
-    }
-
-    const fallbackPadding =
-      padding !== null && padding !== undefined ? padding : 0;
-    this.paddingHorizontal = normalizeNumber(
-      paddingHorizontal !== null && paddingHorizontal !== undefined
-        ? paddingHorizontal
-        : fallbackPadding,
-      0
-    );
-    this.paddingVertical = normalizeNumber(
-      paddingVertical !== null && paddingVertical !== undefined
-        ? paddingVertical
-        : fallbackPadding,
-      0
-    );
+    this.size = normalizeStoredDefaultsNumber(size, defaultSize);
+    this.paddingHorizontal = normalizeStoredDefaultsNumber(paddingHorizontal, 0);
+    this.paddingVertical = normalizeStoredDefaultsNumber(paddingVertical, 0);
+    this.alignment = normalizeStoredDefaultsAlignment(alignment);
   }
-
+  
   createElement() {
     const container = document.createElement("div");
     container.className = "bE-arrowElement";
@@ -3115,35 +3193,91 @@ ArrowElement.prototype.defaultSize = 1.75;
 ArrowElement.prototype.arrowKeys = Object.keys(ArrowElement.prototype.arrows);
 
 class TollLogoElement {
-  constructor({
-    logo = TollLogoElement.prototype.defaultLogo,
-    logoHeight = 3,
-    spacing = 0,
-    horizontalPadding = 0.2,
-    verticalPadding = 0.05,
-    background = false,
-    backgroundColor = "White",
-    alignment = "Center",
-    squareIcon = false,
-    borderRadius = 8,
-    hasOnlyBlock = false,
-  } = {}) {
+  constructor(options = {}) {
+    const logo = getStoredDefaultsOption(
+      options,
+      "logo",
+      "settingsDefaultsTollLogoValue",
+      TollLogoElement.prototype.defaultLogo
+    );
+
+    const logoHeight = getStoredDefaultsOption(
+      options,
+      "logoHeight",
+      "settingsDefaultsTollLogoSize",
+      3
+    );
+
+    const spacing = getStoredDefaultsOption(
+      options,
+      "spacing",
+      "settingsDefaultsTollLogoSpacing",
+      0
+    );
+
+    const backgroundColor = getStoredDefaultsOption(
+      options,
+      "backgroundColor",
+      "settingsDefaultsTollLogoBgColor",
+      "Inherit"
+    );
+
+    const horizontalPadding = getStoredDefaultsOption(
+      options,
+      "horizontalPadding",
+      "settingsDefaultsTollLogoHorizontalBgPadding",
+      0.2
+    );
+
+    const verticalPadding = getStoredDefaultsOption(
+      options,
+      "verticalPadding",
+      "settingsDefaultsTollLogoVerticalBgPadding",
+      0.05
+    );
+
+    const squareIcon = getStoredDefaultsOption(
+      options,
+      "squareIcon",
+      "settingsDefaultsTollLogoSquareIcon",
+      false
+    );
+
+    const borderRadius = getStoredDefaultsOption(
+      options,
+      "borderRadius",
+      "settingsDefaultsTollLogoBorderRadius",
+      0
+    );
+
+    const hasOnlyBlock = getStoredDefaultsOption(
+      options,
+      "hasOnlyBlock",
+      "settingsDefaultsTollLogoShowOnlyBlock",
+      false
+    );
+
+    const background = Object.prototype.hasOwnProperty.call(options, "background")
+      ? options.background
+      : String(backgroundColor || "Inherit") !== "Inherit";
+
+    const alignment = Object.prototype.hasOwnProperty.call(options, "alignment")
+      ? options.alignment
+      : "Center";
+
     this.logo = TollLogoElement.prototype.logos[logo]
       ? logo
       : TollLogoElement.prototype.defaultLogo;
-    this.logoHeight = logoHeight;
-    this.spacing = spacing;
-    this.background = background;
-    this.squareIcon = squareIcon;
-    this.borderRadius = borderRadius;
+    this.logoHeight = normalizeStoredDefaultsNumber(logoHeight, 3);
+    this.spacing = normalizeStoredDefaultsNumber(spacing, 0);
+    this.background = normalizeStoredDefaultsBoolean(background);
+    this.squareIcon = normalizeStoredDefaultsBoolean(squareIcon);
+    this.borderRadius = normalizeStoredDefaultsNumber(borderRadius, 0);
     this.backgroundColor = backgroundColor;
-    this.horizontalPadding = horizontalPadding;
-    this.verticalPadding = verticalPadding;
-    this.hasOnlyBlock = hasOnlyBlock;
-    const validAlignments = Array.isArray(TextElement.prototype.alignment)
-      ? TextElement.prototype.alignment
-      : [];
-    this.alignment = validAlignments.includes(alignment) ? alignment : "Center";
+    this.horizontalPadding = normalizeStoredDefaultsNumber(horizontalPadding, 0.2);
+    this.verticalPadding = normalizeStoredDefaultsNumber(verticalPadding, 0.05);
+    this.hasOnlyBlock = normalizeStoredDefaultsBoolean(hasOnlyBlock);
+    this.alignment = normalizeStoredDefaultsAlignment(alignment);
   }
 
   createElement() {

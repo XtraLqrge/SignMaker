@@ -1006,13 +1006,26 @@
                 </div>
 
                 <div data-property="sdArrow" class="hidden">
-                  <label for="sdArrow_arrow">Arrow:</label>
-                  <button type="button" id="sdArrow_chooseBtn">Choose Arrow...</button>
-                  <span id="sdArrow_selectedLabel">Current: None</span>
-                  <input type="hidden" id="sdArrow_arrow" value="" />
-                  <label for="sdArrow_rotation">Rotation (deg):</label>
-                  <input type="range" id="sdArrow_rotation" min="0" max="360" step="1" value="0" />
-                  <input id="sdArrow_rotationVal" class="smallVal" type="number" value="0" />
+                  <div class="sdArrowPickerRow">
+                    <label for="sdArrow_arrow">Arrow:</label>
+                    <button type="button" id="sdArrow_chooseBtn">Choose Arrow...</button>
+                    <span id="sdArrow_selectedLabel">Current: None</span>
+                    <input type="hidden" id="sdArrow_arrow" value="" />
+                  </div>
+                  <div class="sdArrowTopControlRow">
+                    <div class="sdArrowInlineControl sdArrowRotationControl">
+                      <label for="sdArrow_rotation">Rotation (deg):</label>
+                      <input type="range" id="sdArrow_rotation" min="0" max="360" step="1" value="0" />
+                      <input id="sdArrow_rotationVal" class="smallVal" type="number" value="0" />
+                    </div>
+
+                    <div class="sdArrowInlineControl sdArrowSizeControl">
+                      <label for="sdArrow_size">Size (rem):</label>
+                      <input type="number" id="sdArrow_size" class="sdTextEditorSmall" min="0" max="20" step="0.01"
+                        value="1.75" />
+                    </div>
+                  </div>
+
                   <div class="sdArrow_rotationButtons">
                     <button type="button" class="sdArrow_rotationPreset" data-degrees="0">
                       0°
@@ -1039,16 +1052,14 @@
                       315°
                     </button>
                   </div>
-                  <br />
-                  <label for="sdArrow_size">Size (rem):</label>
-                  <input type="number" id="sdArrow_size" class="sdTextEditorSmall" min="0" max="20" step="0.01"
-                    value="1.75" />
                   <label for="sdArrow_paddingHorizontal">Horizontal Padding (rem):</label>
                   <input type="number" id="sdArrow_paddingHorizontal" class="sdTextEditorSmall" min="0" max="10"
                     step="0.1" value="0" />
                   <label for="sdArrow_paddingVertical">Vertical Padding (rem):</label>
                   <input type="number" id="sdArrow_paddingVertical" class="sdTextEditorSmall" min="0" max="10"
                     step="0.1" value="0" />
+                  <label for="sdArrow_alignment">Alignment:</label>
+                  <select id="sdArrow_alignment"></select>
                   <br />
                   <input type="hidden" id="sdArrow_flip" value="false" />
                   <button type="button" id="sdArrow_flipButton" class="sdArrow_flipButton" aria-pressed="false">
@@ -1435,8 +1446,29 @@
                 <button type="button" class="settingsSideTab" data-settings-page="settingsInterface">
                   Interface
                 </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaults">
-                  Defaults
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultControlText">
+                  Control Text
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultShields">
+                  Shields
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultActionMessage">
+                  Action Message
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultAdvisoryMessage">
+                  Advisory Message
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultExitTab">
+                  Exit Tab
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultArrow">
+                  Arrow
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultIcon">
+                  Icon
+                </button>
+                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultTollLogo">
+                  Toll Logo
                 </button>
                 <button type="button" class="settingsSideTab" data-settings-page="settingsControls">
                   Controls
@@ -1633,8 +1665,7 @@
                 </div>
               </section>
               
-            <section id="settingsDefaults" class="settingsPage">
-              <div class="settingsDefaultsGrid">
+              <section id="settingsDefaultControlText" class="settingsPage settingsDefaultsSinglePage">
                 <div class="settingsDefaultsColumn">
                   <h3>Control Text</h3>
 
@@ -1645,7 +1676,12 @@
                   <select id="settingsDefaultsControlTextFontFamily"></select>
 
                   <label for="settingsDefaultsControlTextFont">Font:</label>
-                  <select id="settingsDefaultsControlTextFont"></select>
+                  <select id="settingsDefaultsControlTextFont" class="settingsDefaultsFontNativeSelect" hidden></select>
+                  <div
+                    id="settingsDefaultsControlTextFontButtons"
+                    class="settingsDefaultsFontButtonGroup"
+                    data-font-select="settingsDefaultsControlTextFont"
+                  ></div>
 
                   <label for="settingsDefaultsControlTextSize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
@@ -1659,7 +1695,9 @@
                   <label for="settingsDefaultsControlTextBg">Background color:</label>
                   <select id="settingsDefaultsControlTextBg"></select>
                 </div>
+              </section>
 
+              <section id="settingsDefaultShields" class="settingsPage settingsDefaultsSinglePage">
                 <div class="settingsDefaultsColumn">
                   <h3>Shields</h3>
 
@@ -1667,7 +1705,7 @@
                   <select id="settingsDefaultsShieldType"></select>
 
                   <label for="settingsDefaultsShieldRouteNumber">Route number:</label>
-                  <input id="settingsDefaultsShieldRouteNumber" type="text" value="1" />
+                  <input id="settingsDefaultsShieldRouteNumber" type="text" value="" />
 
                   <label for="settingsDefaultsShieldSize">Shield size (rem):</label>
                   <div class="settingsDefaultsSliderRow">
@@ -1685,32 +1723,9 @@
                     Edit favorite shields (Coming Soon)
                   </button>
                 </div>
+              </section>
 
-                <div class="settingsDefaultsColumn">
-                  <h3>Advisory Message</h3>
-
-                  <label for="settingsDefaultsAdvisoryText">Text:</label>
-                  <input id="settingsDefaultsAdvisoryText" type="text" value="Advisory" />
-
-                  <label for="settingsDefaultsAdvisoryFontFamily">Font family:</label>
-                  <select id="settingsDefaultsAdvisoryFontFamily"></select>
-
-                  <label for="settingsDefaultsAdvisoryFont">Font:</label>
-                  <select id="settingsDefaultsAdvisoryFont"></select>
-
-                  <label for="settingsDefaultsAdvisorySize">Text size:</label>
-                  <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsAdvisorySize" type="range" min="50" max="150" step="5" value="100" />
-                    <span id="settingsDefaultsAdvisorySizeValue">100%</span>
-                  </div>
-
-                  <label for="settingsDefaultsAdvisoryColor">Text color:</label>
-                  <select id="settingsDefaultsAdvisoryColor"></select>
-
-                  <label for="settingsDefaultsAdvisoryBg">Background color:</label>
-                  <select id="settingsDefaultsAdvisoryBg"></select>
-                </div>
-
+              <section id="settingsDefaultActionMessage" class="settingsPage settingsDefaultsSinglePage">
                 <div class="settingsDefaultsColumn">
                   <h3>Action Message</h3>
 
@@ -1721,7 +1736,12 @@
                   <select id="settingsDefaultsActionFontFamily"></select>
 
                   <label for="settingsDefaultsActionFont">Font:</label>
-                  <select id="settingsDefaultsActionFont"></select>
+                  <select id="settingsDefaultsActionFont" class="settingsDefaultsFontNativeSelect" hidden></select>
+                  <div
+                    id="settingsDefaultsActionFontButtons"
+                    class="settingsDefaultsFontButtonGroup"
+                    data-font-select="settingsDefaultsActionFont"
+                  ></div>
 
                   <label for="settingsDefaultsActionSize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
@@ -1735,142 +1755,395 @@
                   <label for="settingsDefaultsActionBg">Background color:</label>
                   <select id="settingsDefaultsActionBg"></select>
                 </div>
-                <div class="settingsDefaultsSectionFull">
-                  <h2 class="settingsDefaultsSectionHeading">Exit Tab</h2>
+              </section>
 
-                  <div class="settingsDefaultsExitTabGrid">
-                    <div class="settingsDefaultsColumn">
-                      <label for="settingsDefaultsExitTabText">Exit text:</label>
-                      <input id="settingsDefaultsExitTabText" type="text" value="" />
+              <section id="settingsDefaultAdvisoryMessage" class="settingsPage settingsDefaultsSinglePage">
+                <div class="settingsDefaultsColumn">
+                  <h3>Advisory Message</h3>
 
-                      <label for="settingsDefaultsExitTabType">Type:</label>
-                      <select id="settingsDefaultsExitTabType">
-                        <option selected>Standard</option>
-                        <option>Full Left</option>
-                        <option>Toll Pass</option>
-                      </select>
+                  <label for="settingsDefaultsAdvisoryText">Text:</label>
+                  <input id="settingsDefaultsAdvisoryText" type="text" value="Advisory" />
 
-                      <label for="settingsDefaultsExitTabAlignment">Alignment:</label>
-                      <select id="settingsDefaultsExitTabAlignment">
-                        <option>Left</option>
-                        <option>Center</option>
-                        <option selected>Right</option>
-                      </select>
+                  <label for="settingsDefaultsAdvisoryFontFamily">Font family:</label>
+                  <select id="settingsDefaultsAdvisoryFontFamily"></select>
 
-                      <label for="settingsDefaultsExitTabPosition">Position:</label>
-                      <select id="settingsDefaultsExitTabPosition">
-                        <option selected>Narrow</option>
-                        <option>Wide</option>
-                        <option>Full</option>
-                        <option>Edge</option>
-                        <option>Out</option>
-                        <option>Side</option>
-                      </select>
+                  <label for="settingsDefaultsAdvisoryFont">Font:</label>
+                  <select id="settingsDefaultsAdvisoryFont" class="settingsDefaultsFontNativeSelect" hidden></select>
+                  <div
+                    id="settingsDefaultsAdvisoryFontButtons"
+                    class="settingsDefaultsFontButtonGroup"
+                    data-font-select="settingsDefaultsAdvisoryFont"
+                  ></div>
 
-                      <label for="settingsDefaultsExitTabPanelColor">Panel color:</label>
-                      <select id="settingsDefaultsExitTabPanelColor"></select>
+                  <label for="settingsDefaultsAdvisorySize">Text size:</label>
+                  <div class="settingsDefaultsSliderRow">
+                    <input id="settingsDefaultsAdvisorySize" type="range" min="50" max="150" step="5" value="100" />
+                    <span id="settingsDefaultsAdvisorySizeValue">100%</span>
+                  </div>
 
-                      <label for="settingsDefaultsExitTabBorderThickness">Border thickness (rem):</label>
-                      <div class="settingsDefaultsSliderRow">
-                        <input
-                          id="settingsDefaultsExitTabBorderThickness"
-                          type="range"
-                          min="0"
-                          max="0.2"
-                          step="0.01"
-                          value="0.2"
-                        />
-                        <span id="settingsDefaultsExitTabBorderThicknessValue">0.2</span>
-                      </div>
+                  <label for="settingsDefaultsAdvisoryColor">Text color:</label>
+                  <select id="settingsDefaultsAdvisoryColor"></select>
 
-                      <label for="settingsDefaultsExitTabMinHeight">Minimum height (rem):</label>
-                      <div class="settingsDefaultsSliderRow">
-                        <input
-                          id="settingsDefaultsExitTabMinHeight"
-                          type="range"
-                          min="0"
-                          max="5"
-                          step="0.05"
-                          value="2"
-                        />
-                        <span id="settingsDefaultsExitTabMinHeightValue">2</span>
-                      </div>
+                  <label for="settingsDefaultsAdvisoryBg">Background color:</label>
+                  <select id="settingsDefaultsAdvisoryBg"></select>
+                </div>
+              </section>
 
-                      <label for="settingsDefaultsExitTabTextSize">Text size (px):</label>
-                      <div class="settingsDefaultsSliderRow">
-                        <input
-                          id="settingsDefaultsExitTabTextSize"
-                          type="range"
-                          min="10"
-                          max="40"
-                          step="1"
-                          value="20"
-                        />
-                        <span id="settingsDefaultsExitTabTextSizeValue">20</span>
-                      </div>
+              <section id="settingsDefaultExitTab" class="settingsPage settingsDefaultsSinglePage settingsDefaultsExitTabPage">
+                <h2 class="settingsDefaultsSectionHeading">Exit Tab</h2>
 
-                      <label for="settingsDefaultsExitTabNestedSpacing">Nested tab spacing (rem):</label>
-                      <div class="settingsDefaultsSliderRow">
-                        <input
-                          id="settingsDefaultsExitTabNestedSpacing"
-                          type="range"
-                          min="0"
-                          max="10"
-                          step="0.5"
-                          value="0"
-                        />
-                        <span id="settingsDefaultsExitTabNestedSpacingValue">0</span>
-                      </div>
+                <div class="settingsDefaultsExitTabGrid">
+                  <div class="settingsDefaultsColumn">
+                    <label for="settingsDefaultsExitTabText">Exit text:</label>
+                    <input id="settingsDefaultsExitTabText" type="text" value="" />
+
+                    <label for="settingsDefaultsExitTabType">Type:</label>
+                    <select id="settingsDefaultsExitTabType">
+                      <option selected>Standard</option>
+                      <option>Full Left</option>
+                      <option>Toll Pass</option>
+                    </select>
+
+                    <label for="settingsDefaultsExitTabAlignment">Alignment:</label>
+                    <select id="settingsDefaultsExitTabAlignment">
+                      <option>Left</option>
+                      <option>Center</option>
+                      <option selected>Right</option>
+                    </select>
+
+                    <label for="settingsDefaultsExitTabPosition">Position:</label>
+                    <select id="settingsDefaultsExitTabPosition">
+                      <option selected>Narrow</option>
+                      <option>Wide</option>
+                      <option>Full</option>
+                      <option>Edge</option>
+                      <option>Out</option>
+                      <option>Side</option>
+                    </select>
+
+                    <label for="settingsDefaultsExitTabPanelColor">Panel color:</label>
+                    <select id="settingsDefaultsExitTabPanelColor"></select>
+
+                    <label for="settingsDefaultsExitTabBorderThickness">Border thickness (rem):</label>
+                    <div class="settingsDefaultsSliderRow">
+                      <input
+                        id="settingsDefaultsExitTabBorderThickness"
+                        type="range"
+                        min="0"
+                        max="0.2"
+                        step="0.01"
+                        value="0.2"
+                      />
+                      <span id="settingsDefaultsExitTabBorderThicknessValue">0.2</span>
                     </div>
 
-                    <div class="settingsDefaultsCheckboxColumn">
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabFHWAStyle">FHWA Style:</label>
-                        <input id="settingsDefaultsExitTabFHWAStyle" type="checkbox" />
-                      </div>
+                    <label for="settingsDefaultsExitTabMinHeight">Minimum height (rem):</label>
+                    <div class="settingsDefaultsSliderRow">
+                      <input
+                        id="settingsDefaultsExitTabMinHeight"
+                        type="range"
+                        min="0"
+                        max="5"
+                        step="0.05"
+                        value="2"
+                      />
+                      <span id="settingsDefaultsExitTabMinHeightValue">2</span>
+                    </div>
 
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabLeft">Left:</label>
-                        <input id="settingsDefaultsExitTabLeft" type="checkbox" />
-                      </div>
+                    <label for="settingsDefaultsExitTabTextSize">Text size (px):</label>
+                    <div class="settingsDefaultsSliderRow">
+                      <input
+                        id="settingsDefaultsExitTabTextSize"
+                        type="range"
+                        min="10"
+                        max="40"
+                        step="1"
+                        value="20"
+                      />
+                      <span id="settingsDefaultsExitTabTextSizeValue">20</span>
+                    </div>
 
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabFullBorder">Full border:</label>
-                        <input id="settingsDefaultsExitTabFullBorder" type="checkbox" />
-                      </div>
+                    <label for="settingsDefaultsExitTabNestedSpacing">Nested tab spacing (rem):</label>
+                    <div class="settingsDefaultsSliderRow">
+                      <input
+                        id="settingsDefaultsExitTabNestedSpacing"
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.5"
+                        value="0"
+                      />
+                      <span id="settingsDefaultsExitTabNestedSpacingValue">0</span>
+                    </div>
+                  </div>
 
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabSquareCorners">Square corners:</label>
-                        <input id="settingsDefaultsExitTabSquareCorners" type="checkbox" />
-                      </div>
+                  <div class="settingsDefaultsCheckboxColumn">
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabFHWAStyle">FHWA Style:</label>
+                      <input id="settingsDefaultsExitTabFHWAStyle" type="checkbox" />
+                    </div>
 
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabTopOffset">Top offset:</label>
-                        <input id="settingsDefaultsExitTabTopOffset" type="checkbox" />
-                      </div>
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabLeft">Left:</label>
+                      <input id="settingsDefaultsExitTabLeft" type="checkbox" />
+                    </div>
 
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabVerticalArrangement">Vertical arrangement:</label>
-                        <input id="settingsDefaultsExitTabVerticalArrangement" type="checkbox" />
-                      </div>
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabFullBorder">Full border:</label>
+                      <input id="settingsDefaultsExitTabFullBorder" type="checkbox" />
+                    </div>
 
-                      <div class="settingsDefaultsCheckboxRow">
-                        <label for="settingsDefaultsExitTabCAStyle">CA style:</label>
-                        <input id="settingsDefaultsExitTabCAStyle" type="checkbox" />
-                      </div>
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabSquareCorners">Square corners:</label>
+                      <input id="settingsDefaultsExitTabSquareCorners" type="checkbox" />
+                    </div>
+
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabTopOffset">Top offset:</label>
+                      <input id="settingsDefaultsExitTabTopOffset" type="checkbox" />
+                    </div>
+
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabVerticalArrangement">Vertical arrangement:</label>
+                      <input id="settingsDefaultsExitTabVerticalArrangement" type="checkbox" />
+                    </div>
+
+                    <div class="settingsDefaultsCheckboxRow">
+                      <label for="settingsDefaultsExitTabCAStyle">CA style:</label>
+                      <input id="settingsDefaultsExitTabCAStyle" type="checkbox" />
                     </div>
                   </div>
                 </div>
-              </div>
+              </section>
+
+              <section id="settingsDefaultArrow" class="settingsPage settingsDefaultsSinglePage settingsDefaultsBlockElementPage">
+                <div class="settingsDefaultsColumn settingsDefaultsBlockElementColumn">
+                  <h3>Arrow</h3>
+
+                  <label for="settingsDefaultsArrowChooseButton">Arrow:</label>
+                  <div class="settingsDefaultsPickerRow">
+                    <button type="button" id="settingsDefaultsArrowChooseButton" class="settingsDefaultsChooseButton">
+                      Choose Arrow
+                    </button>
+                    <span class="settingsDefaultsCurrentLabel">Current:</span>
+                    <span id="settingsDefaultsArrowCurrent" class="settingsDefaultsCurrentValue">Type A</span>
+                    <input type="hidden" id="settingsDefaultsArrowValue" value="" />
+                  </div>
+
+                  <label for="settingsDefaultsArrowRotation">Rotation (deg):</label>
+                  <div class="settingsDefaultsRotationRow">
+                    <input id="settingsDefaultsArrowRotation" type="text" value="0" />
+                    <div class="settingsDefaultsPresetButtonGroup settingsDefaultsRotationButtonGroup">
+                      <button type="button" class="settingsDefaultsPresetButton">0</button>
+                      <button type="button" class="settingsDefaultsPresetButton">45</button>
+                      <button type="button" class="settingsDefaultsPresetButton">90</button>
+                      <button type="button" class="settingsDefaultsPresetButton">135</button>
+                      <button type="button" class="settingsDefaultsPresetButton">180</button>
+                      <button type="button" class="settingsDefaultsPresetButton">225</button>
+                      <button type="button" class="settingsDefaultsPresetButton">270</button>
+                      <button type="button" class="settingsDefaultsPresetButton">315</button>
+                    </div>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset arrow rotation">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsArrowSize">Size (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsArrowSize" type="range" min="1" max="2.5" step="0.05" value="1.75" />
+                    <span id="settingsDefaultsArrowSizeValue">1.75</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset arrow size">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsArrowHorizontalPadding">Horizontal padding (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsArrowHorizontalPadding" type="range" min="0" max="10" step="0.5" value="0" />
+                    <span id="settingsDefaultsArrowHorizontalPaddingValue">0</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset horizontal padding">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsArrowVerticalPadding">Vertical padding (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsArrowVerticalPadding" type="range" min="0" max="10" step="0.5" value="0" />
+                    <span id="settingsDefaultsArrowVerticalPaddingValue">0</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset vertical padding">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label>Alignment:</label>
+                  <div class="settingsDefaultsSegmentedButtonGroup">
+                    <button type="button" class="settingsDefaultsSegmentedButton">Left</button>
+                    <button type="button" class="settingsDefaultsSegmentedButton active">Center</button>
+                    <button type="button" class="settingsDefaultsSegmentedButton">Right</button>
+                  </div>
+                  <input type="hidden" id="settingsDefaultsArrowAlignment" value="Center" />
+                </div>
+              </section>
+
+              <section id="settingsDefaultIcon" class="settingsPage settingsDefaultsSinglePage settingsDefaultsBlockElementPage">
+                <div class="settingsDefaultsColumn settingsDefaultsBlockElementColumn">
+                  <h3>Icon</h3>
+
+                  <label for="settingsDefaultsIconChooseButton">Icon:</label>
+                  <div class="settingsDefaultsPickerRow">
+                    <button type="button" id="settingsDefaultsIconChooseButton" class="settingsDefaultsChooseButton">
+                      Choose Icon
+                    </button>
+                    <span class="settingsDefaultsCurrentLabel">Current:</span>
+                    <span id="settingsDefaultsIconCurrent" class="settingsDefaultsCurrentValue">Airport</span>
+                    <input type="hidden" id="settingsDefaultsIconValue" value="" />
+                  </div>
+
+                  <label for="settingsDefaultsIconSize">Size (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsIconSize" type="range" min="1" max="5" step="0.1" value="3" />
+                    <span id="settingsDefaultsIconSizeValue">3</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset icon size">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsIconBgColor">BG Color:</label>
+                  <select id="settingsDefaultsIconBgColor">
+                    <option selected>Inherit</option>
+                    <option>Match BG</option>
+                    <option>White</option>
+                    <option>Black</option>
+                    <option>Green</option>
+                    <option>Blue</option>
+                    <option>Brown</option>
+                    <option>Yellow</option>
+                    <option>Orange</option>
+                    <option>Red</option>
+                    <option>Purple</option>
+                    <option>Fluorescent Yellow-Green</option>
+                    <option>Fluorescent Pink</option>
+                  </select>
+
+                  <label for="settingsDefaultsIconSpacing">Spacing (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsIconSpacing" type="range" min="0" max="3" step="0.1" value="0" />
+                    <span id="settingsDefaultsIconSpacingValue">0</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset icon spacing">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label>Alignment:</label>
+                  <div class="settingsDefaultsSegmentedButtonGroup">
+                    <button type="button" class="settingsDefaultsSegmentedButton">Left</button>
+                    <button type="button" class="settingsDefaultsSegmentedButton active">Center</button>
+                    <button type="button" class="settingsDefaultsSegmentedButton">Right</button>
+                  </div>
+                  <input type="hidden" id="settingsDefaultsIconAlignment" value="Center" />
+
+                  <label for="settingsDefaultsIconBorder">Border:</label>
+                  <div class="settingsDefaultsCheckboxField">
+                    <input id="settingsDefaultsIconBorder" type="checkbox" />
+                  </div>
+                </div>
+              </section>
+
+              <section id="settingsDefaultTollLogo" class="settingsPage settingsDefaultsSinglePage settingsDefaultsBlockElementPage">
+                <div class="settingsDefaultsColumn settingsDefaultsBlockElementColumn">
+                  <h3>Toll Logo</h3>
+
+                  <label for="settingsDefaultsTollLogoChooseButton">Toll Logo:</label>
+                  <div class="settingsDefaultsPickerRow">
+                    <button type="button" id="settingsDefaultsTollLogoChooseButton" class="settingsDefaultsChooseButton">
+                      Choose Logo
+                    </button>
+                    <span class="settingsDefaultsCurrentLabel">Current:</span>
+                    <span id="settingsDefaultsTollLogoCurrent" class="settingsDefaultsCurrentValue">E-ZPass</span>
+                    <input type="hidden" id="settingsDefaultsTollLogoValue" value="" />
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoSize">Size (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsTollLogoSize" type="range" min="1" max="5" step="0.1" value="3" />
+                    <span id="settingsDefaultsTollLogoSizeValue">3</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset toll logo size">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoSpacing">Spacing (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsTollLogoSpacing" type="range" min="0" max="3" step="0.1" value="0" />
+                    <span id="settingsDefaultsTollLogoSpacingValue">0</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset toll logo spacing">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoBorderRadius">Border radius (px):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsTollLogoBorderRadius" type="range" min="0" max="45" step="1" value="0" />
+                    <span id="settingsDefaultsTollLogoBorderRadiusValue">0</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset toll logo border radius">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoBgColor">BG Color:</label>
+                  <select id="settingsDefaultsTollLogoBgColor">
+                    <option selected>Inherit</option>
+                    <option>Match BG</option>
+                    <option>White</option>
+                    <option>Black</option>
+                    <option>Green</option>
+                    <option>Blue</option>
+                    <option>Brown</option>
+                    <option>Yellow</option>
+                    <option>Orange</option>
+                    <option>Red</option>
+                    <option>Purple</option>
+                    <option>Fluorescent Yellow-Green</option>
+                    <option>Fluorescent Pink</option>
+                  </select>
+
+                  <label for="settingsDefaultsTollLogoHorizontalBgPadding">Horizontal BG padding (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsTollLogoHorizontalBgPadding" type="range" min="0" max="1" step="0.05" value="0.2" />
+                    <span id="settingsDefaultsTollLogoHorizontalBgPaddingValue">0.2</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset horizontal background padding">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoVerticalBgPadding">Vertical BG padding (rem):</label>
+                  <div class="settingsDefaultsSliderRow settingsDefaultsSliderRowWithReset">
+                    <input id="settingsDefaultsTollLogoVerticalBgPadding" type="range" min="0" max="1" step="0.05" value="0.05" />
+                    <span id="settingsDefaultsTollLogoVerticalBgPaddingValue">0.05</span>
+                    <button type="button" class="resetBtn clear settingsDefaultsInlineReset" aria-label="Reset vertical background padding">
+                      <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoSquareIcon">Square icon:</label>
+                  <div class="settingsDefaultsCheckboxField">
+                    <input id="settingsDefaultsTollLogoSquareIcon" type="checkbox" />
+                  </div>
+
+                  <label for="settingsDefaultsTollLogoShowOnlyBlock">Show Only Block:</label>
+                  <div class="settingsDefaultsCheckboxField">
+                    <input id="settingsDefaultsTollLogoShowOnlyBlock" type="checkbox" />
+                  </div>
+                </div>
+              </section>
 
               <div class="settingsDefaultsActions">
                 <button type="button" id="settingsResetDefaultsButton">
                   Reset to Defaults
                 </button>
               </div>
-            </section>
 
-            <section id="settingsControls" class="settingsPage">
+              <section id="settingsControls" class="settingsPage">
               <div class="settingsControlsGrid">
                 <div class="settingsControlsColumn">
                   <label for="settingsControlNewPanel">New Panel</label>

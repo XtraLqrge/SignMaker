@@ -1725,11 +1725,10 @@ const getPostThicknessFallback = () =>
           mode: "family",
         });
 
-        createFontPicker({
-          selectEl: fontSelect,
-          mode: "familyFont",
-          linkedFamilySelect: familySelect,
-        });
+        if (fontSelect) {
+          fontSelect.classList.add("settingsDefaultsFontNativeSelect", "hidden");
+          fontSelect.hidden = true;
+        }
 
         if (familySelect && fontSelect && familySelect.dataset.fontPickerPairBound !== "true") {
           familySelect.dataset.fontPickerPairBound = "true";
@@ -1747,6 +1746,7 @@ const getPostThicknessFallback = () =>
               setNativeFontSelectValue(fontSelect, nextFont, { dispatch: true });
             }
 
+            refreshSettingsDefaultsFontButtons(fontId, family, fonts);
             syncAllFontPickers();
           });
         }
@@ -5581,6 +5581,7 @@ const getPostThicknessFallback = () =>
       document.querySelector("#sdBeacon_alignment"),
       document.querySelector("#sdIcon_alignment"),
       document.querySelector("#sdShield_alignment"),
+      document.querySelector("#sdArrow_alignment"),
     ];
     let textElem_bgColorSelects = [
       document.querySelector("#sdCtrlText_backgroundColor"),
@@ -5777,6 +5778,164 @@ const getPostThicknessFallback = () =>
             ? "Helvetica Neue Roman"
             : (helveticaNeueFonts[0] || ""),
       };
+    const settingsDefaultsClearviewFontOrder = [
+      "1B",
+      "1W",
+      "2B",
+      "2W",
+      "3B",
+      "3W",
+      "4B",
+      "4W",
+      "5B",
+      "5W",
+      "5WR",
+      "6B",
+      "6W",
+    ];
+
+    const settingsDefaultsHighwayGothicFontOrder = [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "EEM",
+      "EM",
+      "F",
+    ];
+
+    const settingsDefaultsFontButtonGroupIds = {
+      settingsDefaultsControlTextFont: "settingsDefaultsControlTextFontButtons",
+      settingsDefaultsAdvisoryFont: "settingsDefaultsAdvisoryFontButtons",
+      settingsDefaultsActionFont: "settingsDefaultsActionFontButtons",
+    };
+
+    const shouldUseSettingsDefaultsFontButtons = (family) =>
+      family === "Clearview" || family === "Highway Gothic";
+
+    const getSettingsDefaultsFontSuffix = (font, family) => {
+      if (family === "Clearview") {
+        return String(font || "").replace(/^Clearview\s*/i, "").trim();
+      }
+
+      if (family === "Highway Gothic") {
+        return String(font || "").replace(/^Series\s*/i, "").trim();
+      }
+
+      return String(font || "").trim();
+    };
+
+    const sortSettingsDefaultsFontsForButtons = (family, fonts) => {
+      const order =
+        family === "Highway Gothic"
+          ? settingsDefaultsHighwayGothicFontOrder
+          : settingsDefaultsClearviewFontOrder;
+
+      return [...fonts].sort((a, b) => {
+        const aSuffix = getSettingsDefaultsFontSuffix(a, family);
+        const bSuffix = getSettingsDefaultsFontSuffix(b, family);
+
+        const aIndex = order.indexOf(aSuffix);
+        const bIndex = order.indexOf(bSuffix);
+
+        if (aIndex === -1 && bIndex === -1) {
+          return aSuffix.localeCompare(bSuffix, undefined, {
+            numeric: true,
+            sensitivity: "base",
+          });
+        }
+
+        if (aIndex === -1) {
+          return 1;
+        }
+
+        if (bIndex === -1) {
+          return -1;
+        }
+
+        return aIndex - bIndex;
+      });
+    };
+
+    const refreshSettingsDefaultsFontButtons = (
+      fontId,
+      selectedFamily,
+      matchingFonts
+    ) => {
+      const fontSelect = document.getElementById(fontId);
+      const buttonGroupId = settingsDefaultsFontButtonGroupIds[fontId];
+      const buttonGroup = buttonGroupId
+        ? document.getElementById(buttonGroupId)
+        : null;
+
+      if (!fontSelect || !buttonGroup) {
+        return;
+      }
+
+      const shouldShowButtons =
+        shouldUseSettingsDefaultsFontButtons(selectedFamily) &&
+        Array.isArray(matchingFonts) &&
+        matchingFonts.length > 0;
+
+      buttonGroup.hidden = !shouldShowButtons;
+      buttonGroup.innerHTML = "";
+
+      if (!shouldShowButtons) {
+        return;
+      }
+
+      const orderedFonts = sortSettingsDefaultsFontsForButtons(
+        selectedFamily,
+        matchingFonts
+      );
+
+      buttonGroup.style.setProperty(
+        "--settingsDefaultsFontButtonCount",
+        String(orderedFonts.length || 1)
+      );
+
+      for (const font of orderedFonts) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "settingsDefaultsFontButton";
+        button.dataset.fontValue = font;
+        button.textContent = getSettingsDefaultsFontSuffix(font, selectedFamily);
+        button.classList.toggle("active", fontSelect.value === font);
+
+        button.style.fontFamily = `"${font}", sans-serif`;
+        button.style.fontSize =
+          selectedFamily === "Highway Gothic" ? "0.9rem" : "0.8rem";
+
+        button.addEventListener("click", () => {
+          setNativeFontSelectValue(fontSelect, font, { dispatch: true });
+          refreshSettingsDefaultsFontButtons(
+            fontId,
+            selectedFamily,
+            matchingFonts
+          );
+        });
+
+        buttonGroup.appendChild(button);
+      }
+    };
+
+    const refreshAllSettingsDefaultsFontButtons = () => {
+      Object.entries(settingsDefaultsFontIds).forEach(
+        ([fontFamilyId, fontId]) => {
+          const familySelect = document.getElementById(fontFamilyId);
+          const selectedFamily = familySelect?.value || "";
+          const matchingFonts =
+            settingsDefaultsFontFamilies[selectedFamily] || [];
+
+          refreshSettingsDefaultsFontButtons(
+            fontId,
+            selectedFamily,
+            matchingFonts
+          );
+        }
+      );
+    };
       
       const SETTINGS_DEFAULTS_STORAGE_KEY = "signMaker.settingsDefaults";
 
@@ -5789,7 +5948,7 @@ const getPostThicknessFallback = () =>
         settingsDefaultsControlTextBg: "Inherit",
 
         settingsDefaultsShieldType: ShieldElement.prototype.defaultShieldBase,
-        settingsDefaultsShieldRouteNumber: "1",
+        settingsDefaultsShieldRouteNumber: "",
         settingsDefaultsShieldSize: "3",
         settingsDefaultsShieldBanner1: "Right",
         settingsDefaultsShieldBanner2: "Above",
@@ -5808,22 +5967,46 @@ const getPostThicknessFallback = () =>
         settingsDefaultsActionColor: ControlTextElement.defaultTextColor,
         settingsDefaultsActionBg: "Inherit",
         
-          settingsDefaultsExitTabText: "",
-          settingsDefaultsExitTabType: "Standard",
-          settingsDefaultsExitTabAlignment: "Right",
-          settingsDefaultsExitTabPosition: "Edge",
-          settingsDefaultsExitTabPanelColor: "Panel Color",
-          settingsDefaultsExitTabBorderThickness: 0.2,
-          settingsDefaultsExitTabMinHeight: 2,
-          settingsDefaultsExitTabTextSize: 20,
-          settingsDefaultsExitTabNestedSpacing: 0,
-          settingsDefaultsExitTabFHWAStyle: false,
-          settingsDefaultsExitTabLeft: false,
-          settingsDefaultsExitTabFullBorder: false,
-          settingsDefaultsExitTabSquareCorners: false,
-          settingsDefaultsExitTabTopOffset: false,
-          settingsDefaultsExitTabVerticalArrangement: false,
-          settingsDefaultsExitTabCAStyle: false,
+        settingsDefaultsExitTabText: "",
+        settingsDefaultsExitTabType: "Standard",
+        settingsDefaultsExitTabAlignment: "Right",
+        settingsDefaultsExitTabPosition: "Edge",
+        settingsDefaultsExitTabPanelColor: "Panel Color",
+        settingsDefaultsExitTabBorderThickness: 0.2,
+        settingsDefaultsExitTabMinHeight: 2,
+        settingsDefaultsExitTabTextSize: 20,
+        settingsDefaultsExitTabNestedSpacing: 0,
+        settingsDefaultsExitTabFHWAStyle: false,
+        settingsDefaultsExitTabLeft: false,
+        settingsDefaultsExitTabFullBorder: false,
+        settingsDefaultsExitTabSquareCorners: false,
+        settingsDefaultsExitTabTopOffset: false,
+        settingsDefaultsExitTabVerticalArrangement: false,
+        settingsDefaultsExitTabCAStyle: false,
+        
+        settingsDefaultsArrowValue: ArrowElement.prototype.defaultArrow,
+        settingsDefaultsArrowRotation: "0",
+        settingsDefaultsArrowSize: "1.75",
+        settingsDefaultsArrowHorizontalPadding: "0",
+        settingsDefaultsArrowVerticalPadding: "0",
+        settingsDefaultsArrowAlignment: "Center",
+
+        settingsDefaultsIconValue: IconElement.prototype.defaultIcon,
+        settingsDefaultsIconSize: "3",
+        settingsDefaultsIconBgColor: "Inherit",
+        settingsDefaultsIconSpacing: "0",
+        settingsDefaultsIconAlignment: "Center",
+        settingsDefaultsIconBorder: false,
+
+        settingsDefaultsTollLogoValue: TollLogoElement.prototype.defaultLogo,
+        settingsDefaultsTollLogoSize: "3",
+        settingsDefaultsTollLogoSpacing: "0",
+        settingsDefaultsTollLogoBorderRadius: "0",
+        settingsDefaultsTollLogoBgColor: "Inherit",
+        settingsDefaultsTollLogoHorizontalBgPadding: "0.2",
+        settingsDefaultsTollLogoVerticalBgPadding: "0.05",
+        settingsDefaultsTollLogoSquareIcon: false,
+        settingsDefaultsTollLogoShowOnlyBlock: false,
       };
 
       const getStoredSettingsDefaults = () => {
@@ -5855,7 +6038,21 @@ const getPostThicknessFallback = () =>
       };
       
       const storedSettingsDefaults = getStoredSettingsDefaults();
-      
+    
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          storedSettingsDefaults,
+          "__blankShieldRouteNumberDefaultMigrated"
+        )
+      ) {
+        if (storedSettingsDefaults.settingsDefaultsShieldRouteNumber === "1") {
+          storedSettingsDefaults.settingsDefaultsShieldRouteNumber = "";
+        }
+
+        storedSettingsDefaults.__blankShieldRouteNumberDefaultMigrated = true;
+        setStoredSettingsDefaults(storedSettingsDefaults);
+      }
+    
       const getMergedSettingsDefaults = () => ({
         ...settingsDefaultsFieldDefaults,
         ...getStoredSettingsDefaults(),
@@ -6032,27 +6229,31 @@ const getPostThicknessFallback = () =>
         const defaultFontForFamily =
           matchingFonts.includes(preferredStoredFont)
             ? preferredStoredFont
-            : (settingsDefaultsFontDefaults[selectedFamily] || matchingFonts[0] || "");
+            : settingsDefaultsFontDefaults[selectedFamily] || matchingFonts[0] || "";
 
-          const shouldHideChildFontSelect =
-            selectedFamily === "Transport" || selectedFamily === "DIN 1451";
+        populateSimpleSelect(fontSelect, matchingFonts, defaultFontForFamily);
+        fontSelect.value = defaultFontForFamily;
 
-          populateSimpleSelect(fontSelect, matchingFonts, defaultFontForFamily);
-          fontSelect.value = defaultFontForFamily;
+        fontSelect.classList.add("settingsDefaultsFontNativeSelect", "hidden");
+        fontSelect.hidden = true;
 
-          fontSelect.classList.toggle("hidden", shouldHideChildFontSelect);
+        const shouldShowFontButtons =
+          shouldUseSettingsDefaultsFontButtons(selectedFamily);
 
-          const fontLabel = document.querySelector(`label[for="${fontSelect.id}"]`);
-          if (fontLabel) {
-            fontLabel.classList.toggle("hidden", shouldHideChildFontSelect);
-          }
+        const fontLabel = document.querySelector(`label[for="${fontSelect.id}"]`);
+        if (fontLabel) {
+          fontLabel.classList.toggle("hidden", !shouldShowFontButtons);
+        }
 
-          if (fontSelect._fontPickerApi) {
-            fontSelect._fontPickerApi.sync();
-          }
+        refreshSettingsDefaultsFontButtons(
+          fontId,
+          selectedFamily,
+          matchingFonts
+        );
+
         fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
         fontSelect.style.fontSize =
-            selectedFamily === "Highway Gothic" ? "1.2rem" : "1rem";
+          selectedFamily === "Highway Gothic" ? "1.2rem" : "1rem";
       };
       
       settingsDefaultsFontFamilyIds.forEach((id) => {
@@ -6111,25 +6312,34 @@ const getPostThicknessFallback = () =>
         return;
       }
 
-        const syncDefaultsFontPreview = () => {
-          fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
+      const syncDefaultsFontPreview = () => {
+        fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
 
-          let familySelectId = null;
-          if (fontId === "settingsDefaultsControlTextFont") {
-            familySelectId = "settingsDefaultsControlTextFontFamily";
-          } else if (fontId === "settingsDefaultsAdvisoryFont") {
-            familySelectId = "settingsDefaultsAdvisoryFontFamily";
-          } else if (fontId === "settingsDefaultsActionFont") {
-            familySelectId = "settingsDefaultsActionFontFamily";
-          }
+        let familySelectId = null;
+        if (fontId === "settingsDefaultsControlTextFont") {
+          familySelectId = "settingsDefaultsControlTextFontFamily";
+        } else if (fontId === "settingsDefaultsAdvisoryFont") {
+          familySelectId = "settingsDefaultsAdvisoryFontFamily";
+        } else if (fontId === "settingsDefaultsActionFont") {
+          familySelectId = "settingsDefaultsActionFontFamily";
+        }
 
-          const familySelect = familySelectId
-            ? document.getElementById(familySelectId)
-            : null;
+        const familySelect = familySelectId
+          ? document.getElementById(familySelectId)
+          : null;
 
-          fontSelect.style.fontSize =
-            familySelect && familySelect.value === "Highway Gothic" ? "1.2rem" : "1rem";
-        };
+        const selectedFamily = familySelect?.value || "";
+        const matchingFonts = settingsDefaultsFontFamilies[selectedFamily] || [];
+
+        fontSelect.style.fontSize =
+          selectedFamily === "Highway Gothic" ? "1.2rem" : "1rem";
+
+        refreshSettingsDefaultsFontButtons(
+          fontId,
+          selectedFamily,
+          matchingFonts
+        );
+      };
 
       syncDefaultsFontPreview();
 
@@ -6390,42 +6600,282 @@ const getPostThicknessFallback = () =>
         "settingsDefaultsExitTabNestedSpacingValue",
         (value) => value
       );
-      
-      [
-        "settingsDefaultsControlTextText",
-        "settingsDefaultsControlTextColor",
-        "settingsDefaultsControlTextBg",
-        "settingsDefaultsShieldType",
-        "settingsDefaultsShieldRouteNumber",
-        "settingsDefaultsShieldBanner1",
-        "settingsDefaultsShieldBanner2",
-        "settingsDefaultsAdvisoryText",
-        "settingsDefaultsAdvisoryColor",
-        "settingsDefaultsAdvisoryBg",
-        "settingsDefaultsActionText",
-        "settingsDefaultsActionColor",
-        "settingsDefaultsActionBg",
-        "settingsDefaultsExitTabText",
-        "settingsDefaultsExitTabType",
-        "settingsDefaultsExitTabAlignment",
-        "settingsDefaultsExitTabPosition",
-        "settingsDefaultsExitTabPanelColor",
-      ].forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) {
+    
+    const settingsDefaultsBlockElementSliderIds = [
+      ["settingsDefaultsArrowSize", "settingsDefaultsArrowSizeValue"],
+      ["settingsDefaultsArrowHorizontalPadding", "settingsDefaultsArrowHorizontalPaddingValue"],
+      ["settingsDefaultsArrowVerticalPadding", "settingsDefaultsArrowVerticalPaddingValue"],
+      ["settingsDefaultsIconSize", "settingsDefaultsIconSizeValue"],
+      ["settingsDefaultsIconSpacing", "settingsDefaultsIconSpacingValue"],
+      ["settingsDefaultsTollLogoSize", "settingsDefaultsTollLogoSizeValue"],
+      ["settingsDefaultsTollLogoSpacing", "settingsDefaultsTollLogoSpacingValue"],
+      ["settingsDefaultsTollLogoBorderRadius", "settingsDefaultsTollLogoBorderRadiusValue"],
+      ["settingsDefaultsTollLogoHorizontalBgPadding", "settingsDefaultsTollLogoHorizontalBgPaddingValue"],
+      ["settingsDefaultsTollLogoVerticalBgPadding", "settingsDefaultsTollLogoVerticalBgPaddingValue"],
+    ];
+
+    settingsDefaultsBlockElementSliderIds.forEach(([sliderId, valueId]) => {
+      bindSettingsDefaultsSlider(sliderId, valueId, (value) => value);
+    });
+
+    const dispatchSettingsDefaultsInputAndChange = (el) => {
+      if (!el) {
+        return;
+      }
+
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+
+    const resetSettingsDefaultsField = (id) => {
+      const el = document.getElementById(id);
+
+      if (!el || !Object.prototype.hasOwnProperty.call(settingsDefaultsFieldDefaults, id)) {
+        return;
+      }
+
+      const value = settingsDefaultsFieldDefaults[id];
+
+      if (el.type === "checkbox") {
+        el.checked = !!value;
+      } else {
+        el.value = value == null ? "" : String(value);
+      }
+
+      dispatchSettingsDefaultsInputAndChange(el);
+    };
+
+    const updateSettingsDefaultsSegmentedButtons = (pageId, valueInputId) => {
+      const valueInput = document.getElementById(valueInputId);
+      const page = document.getElementById(pageId);
+
+      if (!valueInput || !page) {
+        return;
+      }
+
+      page
+        .querySelectorAll(".settingsDefaultsSegmentedButton")
+        .forEach((button) => {
+          button.classList.toggle(
+            "active",
+            button.textContent.trim() === valueInput.value
+          );
+        });
+    };
+
+    const bindSettingsDefaultsSegmentedButtons = (pageId, valueInputId) => {
+      const valueInput = document.getElementById(valueInputId);
+      const page = document.getElementById(pageId);
+
+      if (!valueInput || !page) {
+        return;
+      }
+
+      page
+        .querySelectorAll(".settingsDefaultsSegmentedButton")
+        .forEach((button) => {
+          if (button.dataset.defaultsSegmentBound === "true") {
+            return;
+          }
+
+          button.dataset.defaultsSegmentBound = "true";
+
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+
+            valueInput.value = button.textContent.trim();
+            dispatchSettingsDefaultsInputAndChange(valueInput);
+            updateSettingsDefaultsSegmentedButtons(pageId, valueInputId);
+          });
+        });
+
+      updateSettingsDefaultsSegmentedButtons(pageId, valueInputId);
+    };
+
+    bindSettingsDefaultsSegmentedButtons(
+      "settingsDefaultArrow",
+      "settingsDefaultsArrowAlignment"
+    );
+
+    bindSettingsDefaultsSegmentedButtons(
+      "settingsDefaultIcon",
+      "settingsDefaultsIconAlignment"
+    );
+
+    const arrowRotationInput = document.getElementById("settingsDefaultsArrowRotation");
+
+    if (arrowRotationInput) {
+      document
+        .querySelectorAll(
+          "#settingsDefaultArrow .settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton"
+        )
+        .forEach((button) => {
+          if (button.dataset.defaultsRotationBound === "true") {
+            return;
+          }
+
+          button.dataset.defaultsRotationBound = "true";
+
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+
+            arrowRotationInput.value = button.textContent.trim();
+            dispatchSettingsDefaultsInputAndChange(arrowRotationInput);
+
+            document
+              .querySelectorAll(
+                "#settingsDefaultArrow .settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton"
+              )
+              .forEach((rotationButton) => {
+                rotationButton.classList.toggle(
+                  "active",
+                  rotationButton.textContent.trim() === arrowRotationInput.value
+                );
+              });
+          });
+        });
+    }
+
+    const settingsDefaultsInlineResetTargets = {
+      "Reset arrow rotation": "settingsDefaultsArrowRotation",
+      "Reset arrow size": "settingsDefaultsArrowSize",
+      "Reset horizontal padding": "settingsDefaultsArrowHorizontalPadding",
+      "Reset vertical padding": "settingsDefaultsArrowVerticalPadding",
+      "Reset icon size": "settingsDefaultsIconSize",
+      "Reset icon spacing": "settingsDefaultsIconSpacing",
+      "Reset toll logo size": "settingsDefaultsTollLogoSize",
+      "Reset toll logo spacing": "settingsDefaultsTollLogoSpacing",
+      "Reset toll logo border radius": "settingsDefaultsTollLogoBorderRadius",
+      "Reset horizontal background padding": "settingsDefaultsTollLogoHorizontalBgPadding",
+      "Reset vertical background padding": "settingsDefaultsTollLogoVerticalBgPadding",
+    };
+
+    document.querySelectorAll(".settingsDefaultsInlineReset").forEach((button) => {
+      if (button.dataset.defaultsInlineResetBound === "true") {
+        return;
+      }
+
+      const targetId = settingsDefaultsInlineResetTargets[button.getAttribute("aria-label")];
+
+      if (!targetId) {
+        return;
+      }
+
+      button.dataset.defaultsInlineResetBound = "true";
+
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        resetSettingsDefaultsField(targetId);
+      });
+    });
+
+    const refreshSettingsDefaultsAssetLabels = () => {
+      const configs = [
+        {
+          inputId: "settingsDefaultsArrowValue",
+          labelId: "settingsDefaultsArrowCurrent",
+          sourceObject: ArrowElement.prototype.arrows,
+          defaultKey: ArrowElement.prototype.defaultArrow,
+        },
+        {
+          inputId: "settingsDefaultsIconValue",
+          labelId: "settingsDefaultsIconCurrent",
+          sourceObject: IconElement.prototype.icons,
+          defaultKey: IconElement.prototype.defaultIcon,
+        },
+        {
+          inputId: "settingsDefaultsTollLogoValue",
+          labelId: "settingsDefaultsTollLogoCurrent",
+          sourceObject: TollLogoElement.prototype.logos,
+          defaultKey: TollLogoElement.prototype.defaultLogo,
+        },
+      ];
+
+      configs.forEach(({ inputId, labelId, sourceObject, defaultKey }) => {
+        const input = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
+
+        if (!input || !label || !sourceObject) {
           return;
         }
 
-        const value = Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
-          ? storedSettingsDefaults[id]
-          : settingsDefaultsFieldDefaults[id];
+        const key = sourceObject[input.value] ? input.value : defaultKey;
+        const definition = sourceObject[key];
 
-        if (el.type === "checkbox") {
-          el.checked = !!value;
-        } else {
-          el.value = value;
+        if (definition) {
+          label.textContent = String(definition.label || definition.name || key);
         }
       });
+    };
+
+    refreshSettingsDefaultsAssetLabels();
+      
+    const settingsDefaultsSimpleFieldIds = [
+      "settingsDefaultsControlTextText",
+      "settingsDefaultsControlTextColor",
+      "settingsDefaultsControlTextBg",
+      "settingsDefaultsShieldType",
+      "settingsDefaultsShieldRouteNumber",
+      "settingsDefaultsShieldBanner1",
+      "settingsDefaultsShieldBanner2",
+      "settingsDefaultsAdvisoryText",
+      "settingsDefaultsAdvisoryColor",
+      "settingsDefaultsAdvisoryBg",
+      "settingsDefaultsActionText",
+      "settingsDefaultsActionColor",
+      "settingsDefaultsActionBg",
+      "settingsDefaultsExitTabText",
+      "settingsDefaultsExitTabType",
+      "settingsDefaultsExitTabAlignment",
+      "settingsDefaultsExitTabPosition",
+      "settingsDefaultsExitTabPanelColor",
+      "settingsDefaultsArrowValue",
+      "settingsDefaultsArrowRotation",
+      "settingsDefaultsArrowAlignment",
+      "settingsDefaultsIconValue",
+      "settingsDefaultsIconBgColor",
+      "settingsDefaultsIconAlignment",
+      "settingsDefaultsTollLogoValue",
+      "settingsDefaultsTollLogoBgColor",
+    ];
+
+    settingsDefaultsSimpleFieldIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) {
+        return;
+      }
+
+      const value = Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+        ? storedSettingsDefaults[id]
+        : settingsDefaultsFieldDefaults[id];
+
+      if (el.type === "checkbox") {
+        el.checked = !!value;
+      } else {
+        el.value = value;
+      }
+    });
+
+    settingsDefaultsSimpleFieldIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.defaultsPersistBound === "true") {
+        return;
+      }
+
+      el.dataset.defaultsPersistBound = "true";
+
+      const persist = () => {
+        const value = el.type === "checkbox" ? !!el.checked : el.value;
+        saveSettingsDefaultsField(id, value);
+        storedSettingsDefaults[id] = value;
+      };
+
+      el.addEventListener("change", persist);
+
+      if (el.tagName !== "SELECT") {
+        el.addEventListener("input", persist);
+      }
+    });
       
       [
         "settingsDefaultsExitTabFHWAStyle",
@@ -6435,6 +6885,9 @@ const getPostThicknessFallback = () =>
         "settingsDefaultsExitTabTopOffset",
         "settingsDefaultsExitTabVerticalArrangement",
         "settingsDefaultsExitTabCAStyle",
+        "settingsDefaultsIconBorder",
+        "settingsDefaultsTollLogoSquareIcon",
+        "settingsDefaultsTollLogoShowOnlyBlock",
       ].forEach((id) => {
         const el = document.getElementById(id);
         if (!el || el.dataset.defaultsPersistBound === "true") {
@@ -6446,7 +6899,8 @@ const getPostThicknessFallback = () =>
         const persist = () => saveSettingsDefaultsField(id, el.checked);
         el.addEventListener("change", persist);
       });
-
+      
+      /* slider persistence array */
       [
         "settingsDefaultsControlTextSize",
         "settingsDefaultsAdvisorySize",
@@ -6456,6 +6910,16 @@ const getPostThicknessFallback = () =>
         "settingsDefaultsExitTabMinHeight",
         "settingsDefaultsExitTabTextSize",
         "settingsDefaultsExitTabNestedSpacing",
+        "settingsDefaultsArrowSize",
+        "settingsDefaultsArrowHorizontalPadding",
+        "settingsDefaultsArrowVerticalPadding",
+        "settingsDefaultsIconSize",
+        "settingsDefaultsIconSpacing",
+        "settingsDefaultsTollLogoSize",
+        "settingsDefaultsTollLogoSpacing",
+        "settingsDefaultsTollLogoBorderRadius",
+        "settingsDefaultsTollLogoHorizontalBgPadding",
+        "settingsDefaultsTollLogoVerticalBgPadding",
       ].forEach((id) => {
         const el = document.getElementById(id);
         if (!el || el.dataset.defaultsPersistBound === "true") {
@@ -6516,6 +6980,7 @@ const getPostThicknessFallback = () =>
               ].forEach((id) => {
                 syncFontPreviewSelect(document.getElementById(id));
               });
+            refreshAllSettingsDefaultsFontButtons();
 
             Object.entries(settingsDefaultsFieldDefaults).forEach(([id, value]) => {
               saveSettingsDefaultsField(id, value);
@@ -6534,6 +6999,16 @@ const getPostThicknessFallback = () =>
                 "settingsDefaultsExitTabMinHeight",
                 "settingsDefaultsExitTabTextSize",
                 "settingsDefaultsExitTabNestedSpacing",
+                "settingsDefaultsArrowSize",
+                "settingsDefaultsArrowHorizontalPadding",
+                "settingsDefaultsArrowVerticalPadding",
+                "settingsDefaultsIconSize",
+                "settingsDefaultsIconSpacing",
+                "settingsDefaultsTollLogoSize",
+                "settingsDefaultsTollLogoSpacing",
+                "settingsDefaultsTollLogoBorderRadius",
+                "settingsDefaultsTollLogoHorizontalBgPadding",
+                "settingsDefaultsTollLogoVerticalBgPadding",
               ].forEach((id) => {
                 const slider = document.getElementById(id);
                 if (slider) {
@@ -6601,6 +7076,30 @@ const getPostThicknessFallback = () =>
                 fontEl.style.fontFamily = fontEl.value || "Inter";
               }
             });
+            updateSettingsDefaultsSegmentedButtons(
+              "settingsDefaultArrow",
+              "settingsDefaultsArrowAlignment"
+            );
+
+            updateSettingsDefaultsSegmentedButtons(
+              "settingsDefaultIcon",
+              "settingsDefaultsIconAlignment"
+            );
+
+            document
+              .querySelectorAll(
+                "#settingsDefaultArrow .settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton"
+              )
+              .forEach((button) => {
+                const rotationInput = document.getElementById("settingsDefaultsArrowRotation");
+
+                button.classList.toggle(
+                  "active",
+                  rotationInput && button.textContent.trim() === rotationInput.value
+                );
+              });
+
+            refreshSettingsDefaultsAssetLabels();
           });
       }
 
@@ -7913,6 +8412,16 @@ const getPostThicknessFallback = () =>
         currentBlockElem.flip === 1 ||
         currentBlockElem.flip === "1" ||
         currentBlockElem.flip === "on";
+
+      const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
+        ? TextElement.prototype.alignment
+        : ["Left", "Center", "Right"];
+
+      currentBlockElem.alignment = validArrowAlignments.includes(
+        currentBlockElem.alignment
+      )
+        ? currentBlockElem.alignment
+        : "Center";
     }
 
     subPanel.blockElements.blockProperties[
@@ -8165,6 +8674,8 @@ const getPostThicknessFallback = () =>
         defaultKey,
         itemClassName = "",
         previewClassName = "",
+        currentLabelPrefix = "Current: ",
+        shouldReadForm = true,
       }) => {
         const chooseBtn = document.getElementById(buttonId);
         const modal = document.getElementById(modalId);
@@ -8190,7 +8701,8 @@ const getPostThicknessFallback = () =>
           const currentDef = sourceObject[currentKey];
 
           if (currentDef) {
-            label.textContent = "Current: " + currentDef.label;
+            label.textContent =
+              currentLabelPrefix + String(currentDef.label || currentDef.name || currentKey);
           }
         };
 
@@ -8264,8 +8776,15 @@ const getPostThicknessFallback = () =>
 
               item.addEventListener("click", () => {
                 input.value = key;
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+                input.dispatchEvent(new Event("change", { bubbles: true }));
+
                 updateCurrentLabel();
-                readForm();
+
+                if (shouldReadForm) {
+                  readForm();
+                }
+
                 modal.close();
               });
 
@@ -8374,6 +8893,54 @@ const getPostThicknessFallback = () =>
         defaultKey: ArrowElement.prototype.defaultArrow,
         itemClassName: "arrowGridCard",
         previewClassName: "arrowPickerPreviewImage",
+      });
+    
+      setupAssetSelectorModal({
+        buttonId: "settingsDefaultsIconChooseButton",
+        modalId: "iconSelectorModal",
+        closeId: "closeIconSelector",
+        searchId: "iconSearch",
+        gridId: "iconGrid",
+        inputId: "settingsDefaultsIconValue",
+        labelId: "settingsDefaultsIconCurrent",
+        sourceObject: IconElement.prototype.icons,
+        defaultKey: IconElement.prototype.defaultIcon,
+        itemClassName: "iconGridCard",
+        previewClassName: "iconPickerPreviewImage",
+        currentLabelPrefix: "",
+        shouldReadForm: false,
+      });
+
+      setupAssetSelectorModal({
+        buttonId: "settingsDefaultsTollLogoChooseButton",
+        modalId: "tollLogoSelectorModal",
+        closeId: "closeTollLogoSelector",
+        searchId: "tollLogoSearch",
+        gridId: "tollLogoGrid",
+        inputId: "settingsDefaultsTollLogoValue",
+        labelId: "settingsDefaultsTollLogoCurrent",
+        sourceObject: TollLogoElement.prototype.logos,
+        defaultKey: TollLogoElement.prototype.defaultLogo,
+        itemClassName: "tollLogoGridCard",
+        previewClassName: "tollLogoPickerPreviewImage",
+        currentLabelPrefix: "",
+        shouldReadForm: false,
+      });
+
+      setupAssetSelectorModal({
+        buttonId: "settingsDefaultsArrowChooseButton",
+        modalId: "arrowSelectorModal",
+        closeId: "closeArrowSelector",
+        searchId: "arrowSearch",
+        gridId: "arrowGrid",
+        inputId: "settingsDefaultsArrowValue",
+        labelId: "settingsDefaultsArrowCurrent",
+        sourceObject: ArrowElement.prototype.arrows,
+        defaultKey: ArrowElement.prototype.defaultArrow,
+        itemClassName: "arrowGridCard",
+        previewClassName: "arrowPickerPreviewImage",
+        currentLabelPrefix: "",
+        shouldReadForm: false,
       });
 
     const panel = exposed.getCurrentPanel();
@@ -9793,6 +10360,15 @@ const getPostThicknessFallback = () =>
         currentBlockElem.flip === 1 ||
         currentBlockElem.flip === "1" ||
         currentBlockElem.flip === "on";
+        const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
+          ? TextElement.prototype.alignment
+          : ["Left", "Center", "Right"];
+
+        currentBlockElem.alignment = validArrowAlignments.includes(
+          currentBlockElem.alignment
+        )
+          ? currentBlockElem.alignment
+          : "Center";
     }
 
     if (blockElemType === "sdShield") {

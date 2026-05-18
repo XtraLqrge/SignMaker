@@ -607,8 +607,56 @@
   box-sizing: border-box;
 }
 
+/* Standard guide arrows should widen the subpanel group, not fake it with side padding */
+.signHolder.hasStandardGuideArrowWidthReserve {
+  min-width: var(--standardGuideArrowMinWidth) !important;
+  justify-content: stretch;
+}
+
+.signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve):not(:only-of-type) {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+.signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve):not(:only-of-type) > .signContentContainer {
+  width: 100% !important;
+  min-width: max-content !important;
+  box-sizing: border-box;
+}
+
+.signHolder.hasStandardGuideArrowWidthReserve > .subDivider {
+  flex: 0 0 auto;
+}
+
 .signHolder > .subDivider {
   flex: 0 0 auto;
+}
+
+.signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow {
+  background-color: transparent !important;
+  position: relative;
+  overflow: visible;
+}
+
+.signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: var(--standardGuideArrowDividerStopOffset, 1.15rem);
+  left: 0;
+  width: 100%;
+  background-color: var(--white);
+}
+
+.panel.white .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
+.panel.yellow .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
+.panel.orange .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
+.panel.fluorescent.yellow-green .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
+.panel.fluorescent.pink .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before {
+  background-color: var(--black);
 }
 
 .globalTop,

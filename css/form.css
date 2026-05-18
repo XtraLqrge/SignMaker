@@ -1190,6 +1190,72 @@ input[type="button"]:disabled {
   justify-self: center;
 }
 
+[data-property="sdArrow"] .sdArrowTopControlRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin: 0.25rem 0 0.35rem 0;
+}
+
+[data-property="sdArrow"] .sdArrowInlineControl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: max-content;
+}
+
+[data-property="sdArrow"] .sdArrowInlineControl label {
+  width: max-content;
+  min-width: 0;
+  white-space: nowrap;
+  margin: 0;
+}
+
+[data-property="sdArrow"] #sdArrow_rotation {
+  width: 8rem;
+  margin: 0;
+}
+
+[data-property="sdArrow"] #sdArrow_rotationVal {
+  width: 3.25rem;
+  margin: 0;
+}
+
+[data-property="sdArrow"] #sdArrow_size {
+  width: 4.25rem;
+  margin: 0;
+}
+
+[data-property="sdArrow"] .sdArrowPickerRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-items: left;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 0.35rem;
+}
+
+[data-property="sdArrow"] .sdArrowPickerRow label {
+  width: max-content;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+
+[data-property="sdArrow"] #sdArrow_chooseBtn {
+  margin: 0;
+}
+
+[data-property="sdArrow"] #sdArrow_selectedLabel {
+  white-space: nowrap;
+}
+
 .sMControlRow:hover {
   cursor: pointer;
 }
@@ -3405,7 +3471,7 @@ dialog:not([open]) {
 
 .settingsLayout {
   display: grid;
-  grid-template-columns: 10rem 1fr;
+  grid-template-columns: 12rem 1fr;
   gap: 0.6rem;
   height: calc(100% - 4rem);
   box-sizing: border-box;
@@ -3418,7 +3484,7 @@ dialog:not([open]) {
   align-items: stretch;
   justify-content: space-between;
   gap: 0.75rem;
-  min-width: 8.5rem;
+  min-width: 10.5rem;
   height: 100%;
 }
 
@@ -3788,6 +3854,268 @@ dialog:not([open]) {
   .settingsDefaultsColumn label {
     text-align: left;
   }
+}
+
+/* SPLIT DEFAULTS PAGES */
+.settingsDefaultsSinglePage {
+  width: max-content;
+  min-width: 0;
+  margin-top: 0.35rem;
+}
+
+.settingsDefaultsSinglePage .settingsDefaultsColumn {
+  margin-top: 0;
+}
+
+.settingsDefaultsSinglePage .settingsDefaultsColumn h3 {
+  text-align: left;
+  padding-left: 10.4rem;
+  box-sizing: border-box;
+}
+
+.settingsDefaultsPageActions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 1.35rem;
+  margin-left: 10.4rem;
+}
+
+.settingsDefaultsPageReset {
+  min-width: 13rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 1.1rem;
+  font-size: 1rem;
+}
+
+.settingsDefaultsExitTabPage {
+  width: max-content;
+}
+
+.settingsDefaultsExitTabPage .settingsDefaultsSectionHeading {
+  text-align: center;
+  margin-top: 0;
+}
+
+.settingsDefaultsExitTabActions {
+  justify-content: center;
+  margin-left: 0;
+  width: 100%;
+}
+
+.settingsSideTabGroup {
+  max-height: calc(100vh - 16rem);
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+/* DEFAULTS FONT BUTTONS */
+.settingsDefaultsFontNativeSelect {
+  display: none !important;
+}
+
+.settingsDefaultsFontButtonGroup {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.18rem;
+  align-items: center;
+  width: max-content;
+  margin: 0.25rem;
+}
+
+.settingsDefaultsFontButtonGroup[hidden] {
+  display: none !important;
+}
+
+.settingsDefaultsFontButton {
+  width: max-content;
+  min-width: max-content;
+  height: 1.55rem;
+  padding: 0.15rem 0.22rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: rgb(var(--inputColor));
+  color: var(--textColor);
+  box-sizing: border-box;
+}
+
+.settingsDefaultsFontButton.active {
+  background-color: var(--selectedColor);
+  color: var(--textColor);
+}
+
+.settingsDefaultsFontButton:hover {
+  background-color: var(--hoverColor);
+}
+
+/* BLOCK ELEMENT DEFAULTS PAGES */
+.settingsDefaultsBlockElementPage {
+  width: max-content;
+  min-width: 0;
+}
+
+.settingsDefaultsBlockElementColumn {
+  grid-template-columns: 12.5rem max-content;
+  column-gap: 0.9rem;
+  row-gap: 0.75rem;
+}
+
+.settingsDefaultsBlockElementColumn h3 {
+  grid-column: 1 / -1;
+  text-align: left;
+  padding-left: 13.4rem;
+  box-sizing: border-box;
+}
+
+.settingsDefaultsPickerRow {
+  display: inline-grid;
+  grid-template-columns: max-content max-content max-content;
+  align-items: center;
+  column-gap: 0.55rem;
+  width: max-content;
+}
+
+.settingsDefaultsChooseButton {
+  min-height: 2.15rem;
+  min-width: 8.5rem;
+  padding: 0.35rem 0.75rem;
+  background: #111;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.settingsDefaultsCurrentLabel {
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--textColor);
+  white-space: nowrap;
+}
+
+.settingsDefaultsCurrentValue {
+  min-width: 7.5rem;
+  min-height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.32rem 0.5rem;
+  background-color: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+.settingsDefaultsRotationRow {
+  display: inline-grid;
+  grid-template-columns: 4.5rem max-content 2.15rem;
+  align-items: center;
+  column-gap: 0.45rem;
+  width: max-content;
+}
+
+.settingsDefaultsRotationRow input[type="text"] {
+  width: 4.5rem;
+  min-width: 4.5rem;
+}
+
+.settingsDefaultsPresetButtonGroup,
+.settingsDefaultsSegmentedButtonGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: max-content;
+}
+
+.settingsDefaultsPresetButton,
+.settingsDefaultsSegmentedButton {
+  min-height: 2.15rem;
+  padding: 0.35rem 0.65rem;
+  background-color: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton {
+  min-width: 3rem;
+}
+
+.settingsDefaultsSegmentedButton {
+  min-width: 5.25rem;
+}
+
+.settingsDefaultsPresetButton.active,
+.settingsDefaultsSegmentedButton.active {
+  background: var(--selectedColor);
+}
+
+.settingsDefaultsPresetButton:hover,
+.settingsDefaultsSegmentedButton:hover,
+.settingsDefaultsChooseButton:hover {
+  background: var(--hoverColor);
+}
+
+.settingsDefaultsSliderRowWithReset input[type="range"] {
+  width: 12rem;
+}
+
+.settingsDefaultsSliderRowWithReset {
+  grid-template-columns: minmax(0, 12rem) 3.5rem 2.25rem;
+  align-items: center;
+}
+
+.settingsDefaultsInlineReset {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0 !important;
+  display: inline-grid !important;
+  place-items: center;
+  line-height: 1;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.settingsDefaultsInlineReset .material-symbols-outlined {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
+  font-family: "Material Symbols Outlined";
+  font-size: 1.22rem;
+  font-weight: normal;
+  line-height: 1;
+  text-align: center;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  transform: translateY(0.015rem);
+}
+
+.settingsDefaultsCheckboxField {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.15rem;
+}
+
+.settingsDefaultsCheckboxField input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.settingsDefaultsBlockElementColumn select {
+  width: 15.5rem;
 }
 
 /* CONTROLS PAGE*/

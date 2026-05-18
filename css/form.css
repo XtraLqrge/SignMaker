@@ -5711,6 +5711,16 @@ label[for="sdShield_bannerFontSize"] {
   overflow-x: hidden;
 }
 
+.exitTabConfig .sMModalTitle {
+  min-width: 5rem;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.exitTabConfig .sMModalTitle span:not(.material-symbols-outlined) {
+  white-space: nowrap;
+}
+
 .exitTabSliderStack {
   width: 100%;
 }

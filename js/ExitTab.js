@@ -27,7 +27,10 @@ class ExitTab {
       tollLogoSquare = false,
       tollLogoSize = null,
       verticalArrangement = ExitTab.prototype.defaultVerticalArrangement,
-      caStyle = ExitTab.prototype.defaultCAStyle
+      caStyle = ExitTab.prototype.defaultCAStyle,
+      bilingual = false,
+      bilingualTopText = "EXIT",
+      bilingualBottomText = "SORTIE"
     } = {}) {
 		this.number = number;
 		if (this.positions.includes(position)) {
@@ -101,6 +104,15 @@ class ExitTab {
 				ExitTab.prototype.maxNested
 			);
 		}
+      this.bilingual = bilingual === true || bilingual === "true";
+      this.bilingualTopText =
+        typeof bilingualTopText === "string" && bilingualTopText.trim().length
+          ? bilingualTopText
+          : "EXIT";
+      this.bilingualBottomText =
+        typeof bilingualBottomText === "string" && bilingualBottomText.trim().length
+          ? bilingualBottomText
+          : "SORTIE";
 	}
 
 	nestExitTab() {

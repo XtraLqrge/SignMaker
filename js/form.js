@@ -7646,7 +7646,7 @@ const getPostThicknessFallback = () =>
           previousFHWAState !== nextFHWAState
         ) {
           if (nextFHWAState === true) {
-            setExitTabSliderValue(fontSizeInput, "fontValue", 24);
+            setExitTabSliderValue(fontSizeInput, "fontValue", 18);
             setExitTabSliderValue(minHeightInput, "minValue", 2);
           } else {
             setExitTabSliderValue(fontSizeInput, "fontValue", 20);

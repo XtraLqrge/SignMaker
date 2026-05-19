@@ -682,6 +682,82 @@ ElectronicSignElement.prototype.textColors = [
   "Red",
 ];
 
+const getCustomShieldMakerDisplayNumber = (value, fallback = 0) => {
+  const parsed = parseFloat(String(value ?? "").trim());
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getCustomShieldMakerDisplayEm = (value, fallback = 0) => {
+  return getCustomShieldMakerDisplayNumber(value, fallback) / 100 + "em";
+};
+
+const getCustomShieldMakerCssColor = (colorNameOrValue) => {
+  const rawColor = String(colorNameOrValue || "Black").trim();
+  return (lib.colors && lib.colors[rawColor] ? lib.colors[rawColor] : rawColor).toLowerCase();
+};
+
+const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
+  if (!routeEl || !config?.customRouteStyle) {
+    return;
+  }
+
+  const style = config.customRouteStyle || {};
+  const anchor = config.customAnchor || style.anchor || {
+    x: 50,
+    y: 50,
+    seedTop: getCustomShieldMakerDisplayNumber(style.topOffset, 0),
+    seedHorizontal: getCustomShieldMakerDisplayNumber(style.horizontalOffset, 0),
+  };
+
+  const alignment = String(style.alignment || "center").toLowerCase();
+  const anchorX =
+    alignment === "left"
+      ? 0
+      : alignment === "right"
+        ? 100
+        : getCustomShieldMakerDisplayNumber(anchor.x, 50);
+
+  const translateX =
+    alignment === "left" ? "0%" : alignment === "right" ? "-100%" : "-50%";
+
+  const topDisplay = getCustomShieldMakerDisplayNumber(style.topOffset, 0);
+  const horizontalDisplay = getCustomShieldMakerDisplayNumber(
+    style.horizontalOffset,
+    0
+  );
+  const seedTop = getCustomShieldMakerDisplayNumber(anchor.seedTop, topDisplay);
+  const seedHorizontal = getCustomShieldMakerDisplayNumber(
+    anchor.seedHorizontal,
+    horizontalDisplay
+  );
+  const requestedWeight = getCustomShieldMakerDisplayNumber(style.fontWeight, 10) / 10;
+  const cssWeight = Math.min(1000, Math.max(1, requestedWeight));
+
+  routeEl.style.color = getCustomShieldMakerCssColor(style.color);
+  routeEl.style.fontFamily = `"${style.fontFamily || "Series D"}", sans-serif`;
+  routeEl.style.fontSize = getCustomShieldMakerDisplayEm(style.fontSize, 220);
+  routeEl.style.fontWeight = String(cssWeight);
+  routeEl.style.fontVariationSettings = `"wght" ${requestedWeight}`;
+  routeEl.style.letterSpacing = "0";
+  routeEl.style.gap = getCustomShieldMakerDisplayEm(style.letterSpacing, 0);
+  routeEl.style.position = "absolute";
+  routeEl.style.display = "inline-flex";
+  routeEl.style.alignItems = "center";
+  routeEl.style.justifyContent =
+    alignment === "left" ? "flex-start" : alignment === "right" ? "flex-end" : "center";
+  routeEl.style.width = "max-content";
+  routeEl.style.top = `calc(${getCustomShieldMakerDisplayNumber(anchor.y, 50)}% + ${
+    (topDisplay - seedTop) / 100
+  }em)`;
+  routeEl.style.left = `calc(${anchorX}% + ${(horizontalDisplay - seedHorizontal) / 100}em)`;
+  routeEl.style.right = "auto";
+  routeEl.style.transform = `translate(${translateX}, -50%)`;
+  routeEl.style.margin = "0";
+  routeEl.style.lineHeight = "1";
+  routeEl.style.whiteSpace = "nowrap";
+  routeEl.style.textAlign = alignment;
+};
+
 // TEMP: Block-specific shield support will be replaced when the main shield
 // system is integrated. Please treat this class as a stop-gap.
 class ShieldElement extends Shield {
@@ -836,6 +912,9 @@ class ShieldElement extends Shield {
     const shieldContainer = document.createElement("div");
     const containerClass = config.className || config.value;
     shieldContainer.className = `bannerShieldContainer ${containerClass}`;
+    if (config?.customShieldMaker) {
+      shieldContainer.classList.add("customShieldMakerRenderedContainer");
+    }
     const containerSizeClass = ShieldElement.prototype.getContainerSizeClass(
       routeText, variant
     );
@@ -1012,6 +1091,10 @@ class ShieldElement extends Shield {
           return `<span class="routeChar${charClass}">${safeChar}</span>`;
         })
         .join("");
+
+      if (config?.customShieldMaker) {
+        applyCustomShieldMakerRouteStyle(routeEl, config);
+      }
 
       if (ShieldElement.prototype.isCountyShield(config)) {
         const countyLabel = document.createElement("p");

@@ -2494,6 +2494,257 @@ label[for="sdBlock_bottomPadding"] {
   color: rgb(100, 100, 100);
 }
 
+.customShieldMakerOpenButton {
+  width: 100%;
+  margin: 0.65rem 0;
+  padding: 0.65rem 0.8rem;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  background: rgba(var(--baseColor), 0.18);
+  color: var(--textColor);
+  border: 0;
+  cursor: pointer;
+}
+
+.customShieldMakerOpenButton:hover {
+  background: var(--hoverColor);
+}
+
+#customShieldMaker {
+  width: min(94vw, 42rem);
+  max-width: none;
+  height: max-content;
+  max-height: 88vh;
+  margin: auto;
+  padding: 0;
+  position: fixed;
+  inset: 0;
+  background: var(--hotbarColor);
+  color: var(--textColor);
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.35);
+}
+
+#customShieldMaker[open] {
+  display: flex;
+}
+
+.customShieldMakerShell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 88vh;
+}
+
+.customShieldMakerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(var(--baseColor), 0.25);
+}
+
+.customShieldMakerHeader h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: "Inter", sans-serif;
+  font-size: 1.2rem;
+  color: var(--textColor);
+}
+
+#customShieldMakerClose {
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 0, 0, 0.22);
+  color: var(--textColor);
+  border: 0;
+  cursor: pointer;
+}
+
+#customShieldMakerClose:hover {
+  background: rgba(255, 0, 0, 0.45);
+}
+
+.customShieldMakerBody {
+  display: grid;
+  grid-template-columns: 24rem 12rem;
+  gap: 0.8rem;
+  padding: 0.85rem;
+  overflow: auto;
+}
+
+.customShieldMakerPreviewPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.customShieldMakerPreviewFrame {
+  --customShieldPreviewScale: 6;
+  position: relative;
+  width: 24rem;
+  height: 18rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background:
+    linear-gradient(45deg, rgba(var(--baseColor), 0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(var(--baseColor), 0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(var(--baseColor), 0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(var(--baseColor), 0.12) 75%);
+  background-size: 1.2rem 1.2rem;
+  background-position: 0 0, 0 0.6rem, 0.6rem -0.6rem, -0.6rem 0;
+  border: 1px solid rgba(var(--baseColor), 0.28);
+  overflow: hidden;
+}
+
+.customShieldMakerPreviewStage {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  transform: scale(var(--customShieldPreviewScale));
+  transform-origin: center;
+}
+
+#customShieldMakerPreviewImg {
+  display: block;
+  height: 3rem;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
+#customShieldMakerRouteNumber {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  font-family: "Series D", sans-serif;
+  font-size: 2.2em;
+  font-weight: 1;
+  font-variation-settings: "wght" 1;
+  text-align: center;
+  letter-spacing: 0;
+  color: black;
+}
+
+#customShieldMakerEmptyPreview {
+  position: absolute;
+  inset: auto;
+  padding: 0.4rem 0.65rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  background: rgba(var(--baseColor), 0.12);
+  color: var(--textColor);
+  pointer-events: none;
+}
+
+#customShieldMakerUploadButton {
+  width: max-content;
+  padding: 0.6rem 0.85rem;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  background: var(--selectedColor);
+  color: var(--textColor);
+  border: 0;
+  cursor: pointer;
+}
+
+#customShieldMakerUploadButton:hover {
+  background: var(--hoverColor);
+}
+
+.customShieldMakerControls {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 0.45rem;
+  width: 12rem;
+  min-width: 0;
+}
+
+.customShieldMakerField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  font-family: "Inter", sans-serif;
+  color: var(--textColor);
+}
+
+.customShieldMakerField span {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.customShieldMakerField input,
+.customShieldMakerField select {
+  width: 100%;
+  height: 2.15rem;
+  min-height: 2.15rem;
+  box-sizing: border-box;
+  padding: 0.3rem 0.45rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  background: rgba(var(--baseColor), 0.12);
+  color: var(--textColor);
+  border: 1px solid rgba(var(--baseColor), 0.28);
+}
+
+.customShieldMakerField select {
+  appearance: auto;
+}
+
+.customShieldMakerField select option {
+  color: black;
+}
+
+:root[data-theme="dark"] .customShieldMakerField select option {
+  color: white;
+  background: rgb(35, 35, 35);
+}
+
+@media (max-width: 720px) {
+  #customShieldMaker {
+    width: min(94vw, 28rem);
+  }
+
+  .customShieldMakerBody {
+    grid-template-columns: 1fr;
+  }
+
+  .customShieldMakerPreviewFrame {
+    width: 100%;
+    height: 16rem;
+    --customShieldPreviewScale: 5;
+  }
+
+  .customShieldMakerControls {
+    width: 100%;
+  }
+}
+
 #linkUpload {
   width: 15rem;
   border: 1px solid black;
@@ -6184,6 +6435,16 @@ label[for="sdShield_bannerFontSize"] {
   max-height: none !important;
 }
 
+.shieldPickerItem[data-node-value="__customShieldMaker"] {
+  font-weight: 700;
+  border-bottom: 1px solid rgba(var(--baseColor), 0.35);
+  margin-bottom: 0.25rem;
+}
+
+.shieldPickerItem[data-node-value="__customShieldMaker"] .shieldPickerItemLabel {
+  letter-spacing: 0.01em;
+}
+
 /* Image asset selector dialogs: icon, toll logo, arrow */
 dialog.assetSelectorDialog {
   width: min(52rem, 90vw);
@@ -7257,4 +7518,326 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 
 .globalBlockControls select {
   width: 8rem;
+}
+
+/* SETTINGS SIDEBAR DEFAULT GROUPS */
+#signMakerSettingsModal .settingsSideTabGroup {
+  gap: 0.32rem;
+}
+
+#signMakerSettingsModal .settingsSideHeading {
+  width: calc(100% - 0.2rem);
+  margin: 0.55rem 0 0.12rem 0.1rem;
+  padding: 0.1rem 0.15rem;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--textColor);
+  opacity: 0.86;
+  text-align: left;
+  pointer-events: none;
+}
+
+#signMakerSettingsModal .settingsSideTab.settingsSideTabSmall {
+  width: calc(100% - 0.85rem);
+  min-height: 2.08rem;
+  margin-left: 0.85rem;
+  padding: 0.28rem 0.55rem;
+  box-sizing: border-box;
+  border-width: 0.13rem;
+  font-size: 0.82rem;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+#signMakerSettingsModal .settingsSideTab.settingsSideTabSmall.active {
+  font-weight: 700;
+}
+
+#signMakerSettingsModal .settingsDefaultsBlankPage {
+  width: max-content;
+  min-width: 24rem;
+  margin-top: 0.35rem;
+}
+
+#signMakerSettingsModal .settingsDefaultsBlankPageContent {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+#signMakerSettingsModal .settingsDefaultsBlankPageContent h3 {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--textColor);
+}
+
+:root[data-theme="light"] #signMakerSettingsModal .settingsSideHeading {
+  color: #000;
+}
+
+#customShieldMaker {
+  width: min(96vw, 41rem);
+  max-width: none;
+  height: max-content;
+  max-height: 88vh;
+  margin: 0;
+  padding: 0;
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  background: var(--hotbarColor);
+  color: var(--textColor);
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.35);
+}
+
+#customShieldMaker[open] {
+  display: flex;
+}
+
+#customShieldMaker .customShieldMakerShell {
+  width: 100%;
+  max-height: 88vh;
+}
+
+#customShieldMaker .customShieldMakerHeader {
+  padding: 0.55rem 0.7rem;
+}
+
+#customShieldMaker .customShieldMakerHeader h2 {
+  font-size: 1.1rem;
+}
+
+#customShieldMaker .customShieldMakerBody {
+  display: grid;
+  grid-template-columns: 24rem 12rem;
+  grid-template-areas:
+    "name name"
+    "preview controls"
+    "footer footer";
+  gap: 0.6rem;
+  padding: 0.65rem;
+  overflow: auto;
+}
+
+#customShieldMaker .customShieldMakerNameRow {
+  grid-area: name;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: end;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+#customShieldMaker .customShieldMakerNameField {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  width: min(100%, 26rem);
+}
+
+#customShieldMaker .customShieldMakerNameField span {
+  font-size: 0.9rem;
+  opacity: 1;
+}
+
+#customShieldMaker .customShieldMakerNameField input {
+  width: 100%;
+  margin: 0;
+}
+
+#customShieldMaker .customShieldMakerSaveButton,
+#customShieldMaker .customShieldMakerDeleteButton {
+  height: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.25rem 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#customShieldMaker .customShieldMakerSaveButton {
+  background: var(--selectedColor);
+}
+
+#customShieldMaker .customShieldMakerFooter {
+  grid-area: footer;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+#customShieldMaker .customShieldMakerDeleteButton {
+  background: rgba(255, 0, 0, 0.28);
+}
+
+#customShieldMaker .customShieldMakerDeleteButton:hover:enabled {
+  background: rgba(255, 0, 0, 0.48);
+}
+
+#customShieldMaker .customShieldMakerPreviewPanel {
+  grid-area: preview;
+  gap: 0.55rem;
+}
+
+#customShieldMaker .customShieldMakerPreviewFrame {
+  --customShieldPreviewScale: 4.75;
+  width: 24rem;
+  height: 15.25rem;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+#customShieldMaker .customShieldMakerControls {
+  grid-area: controls;
+  width: 12rem;
+  gap: 0.35rem;
+}
+
+#customShieldMaker .customShieldMakerField {
+  gap: 0.12rem;
+}
+
+#customShieldMaker .customShieldMakerField span {
+  font-size: 0.7rem;
+}
+
+#customShieldMaker .customShieldMakerField input,
+#customShieldMaker .customShieldMakerField select {
+  height: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns select {
+  width: 100%;
+}
+
+#customShieldMakerRouteNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+#customShieldMakerRouteNumber .customShieldMakerRouteChar {
+  display: inline-block;
+  line-height: 1;
+}
+
+@media (max-width: 680px) {
+  #customShieldMaker {
+    width: min(96vw, 25rem);
+  }
+
+  #customShieldMaker .customShieldMakerBody {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "name"
+      "preview"
+      "controls"
+      "footer";
+  }
+
+  #customShieldMaker .customShieldMakerPreviewFrame {
+    width: 100%;
+    height: 14rem;
+    --customShieldPreviewScale: 4.25;
+  }
+
+  #customShieldMaker .customShieldMakerControls {
+    width: 100%;
+  }
+}
+
+#customShieldMaker .customShieldMakerShieldShell {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  line-height: 0;
+}
+
+#customShieldMaker #customShieldMakerPreviewImg {
+  display: block;
+  height: 3rem;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
+#customShieldMaker #customShieldMakerRouteNumber {
+  position: absolute;
+  width: max-content;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0;
+}
+
+
+
+/* Custom shield picker entries */
+.shieldPickerTreeRow.customShieldPickerSavedRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2rem;
+  align-items: stretch;
+}
+
+.shieldPickerTreeRow.customShieldPickerSavedRow > .shieldPickerItem {
+  min-width: 0;
+}
+
+.shieldPickerEditCustomShield {
+  width: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--baseColor), 0.16);
+  color: var(--textColor);
+  border: 0;
+}
+
+.shieldPickerEditCustomShield:hover:enabled {
+  background: var(--hoverColor);
+}
+
+.shieldPickerEditCustomShield .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
 }

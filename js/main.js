@@ -4466,8 +4466,8 @@ const app = (function () {
             ? 4
             : 1;
 
-        const pngDataUrl = await htmlToImagex.toPng(file, {
-          cacheBust: true,
+        const pngDataUrl = await htmlToImage.toPng(file, {
+          ...exportOptions,
           pixelRatio: pngExportScale,
         });
 

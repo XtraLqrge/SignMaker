@@ -162,6 +162,12 @@
           </div>
           <div class="shieldUploadDisclaimer">Files are only saved <b>on the client side</b> using IndexedDB. <b>No
               files whatsoever are sent over the server. (and neither is anything really lol)</b></div>
+
+          <button id="openCustomShieldMaker" class="customShieldMakerOpenButton" type="button">
+            <span class="material-symbols-outlined">add_photo_alternate</span>
+            <span>Make Custom Shield</span>
+          </button>
+
           <label for="linkUpload" class="noLabelAlignment">OR Image URL:</label>
           <input type="text" id="linkUpload" placeholder="Image URL" />
           <hr>
@@ -211,6 +217,114 @@
         <footer>
           <button id="setShield">Set Shield</button>
         </footer>
+      </div>
+    </dialog>
+
+    <dialog id="customShieldMaker" aria-labelledby="customShieldMakerTitle">
+      <div class="customShieldMakerShell">
+        <header class="customShieldMakerHeader">
+          <h2 id="customShieldMakerTitle">
+            <span class="material-symbols-outlined">add_photo_alternate</span>
+            Custom Shield Maker
+          </h2>
+          <button id="customShieldMakerClose" type="button" aria-label="Close custom shield maker">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </header>
+
+        <div class="customShieldMakerBody">
+          <div class="customShieldMakerNameRow">
+            <label class="customShieldMakerField customShieldMakerNameField" for="customShieldMakerNameInput">
+              <span>Name:</span>
+              <input id="customShieldMakerNameInput" type="text" value="" placeholder="Custom Shield" />
+            </label>
+
+            <button id="customShieldMakerSaveButton" class="customShieldMakerSaveButton" type="button">
+              <span class="material-symbols-outlined">save</span>
+              <span>Save Shield</span>
+            </button>
+          </div>
+          <section class="customShieldMakerPreviewPanel" aria-label="Custom shield preview">
+            <div class="customShieldMakerPreviewFrame">
+              <div class="customShieldMakerPreviewStage">
+                <div id="customShieldMakerShieldShell" class="shield customShieldMakerShieldShell">
+                  <img id="customShieldMakerPreviewImg" class="shieldImg" alt="Custom shield preview" hidden />
+                  <span id="customShieldMakerRouteNumber" class="routeNumber">123</span>
+                </div>
+              </div>
+              <div id="customShieldMakerEmptyPreview">Upload an SVG or PNG shield</div>
+            </div>
+
+            <button id="customShieldMakerUploadButton" type="button">
+              <span class="material-symbols-outlined">upload_file</span>
+              <span>Upload SVG or PNG</span>
+            </button>
+            <input
+              id="customShieldMakerFile"
+              type="file"
+              accept=".svg,.png,image/svg+xml,image/png"
+              hidden
+            />
+            <div class="customShieldMakerPreviewDropdowns">
+              <label class="customShieldMakerField" for="customShieldMakerRouteColor">
+                <span>Color</span>
+                <select id="customShieldMakerRouteColor">
+                  <option>Black</option>
+                </select>
+              </label>
+
+              <label class="customShieldMakerField" for="customShieldMakerRouteFont">
+                <span>Font</span>
+                <select id="customShieldMakerRouteFont">
+                  <option>Series D</option>
+                </select>
+              </label>
+
+              <label class="customShieldMakerField" for="customShieldMakerRouteAlignment">
+                <span>Alignment</span>
+                <select id="customShieldMakerRouteAlignment">
+                  <option value="left">Left</option>
+                  <option value="center" selected>Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="customShieldMakerControls" aria-label="Route number settings">
+            <label class="customShieldMakerField" for="customShieldMakerRouteInput">
+              <span>Route Number</span>
+              <input id="customShieldMakerRouteInput" type="text" value="" placeholder="Optional" />
+            </label>
+
+            <label class="customShieldMakerField" for="customShieldMakerRouteFontSize">
+              <span>Font Size</span>
+              <input id="customShieldMakerRouteFontSize" type="text" value="220" />
+            </label>
+
+            <label class="customShieldMakerField" for="customShieldMakerRouteLetterSpacing">
+              <span>Letter Spacing</span>
+              <input id="customShieldMakerRouteLetterSpacing" type="text" value="0" />
+            </label>
+
+            <label class="customShieldMakerField" for="customShieldMakerRouteTopOffset">
+              <span>Top Offset</span>
+              <input id="customShieldMakerRouteTopOffset" type="text" value="0" />
+            </label>
+
+            <label class="customShieldMakerField" for="customShieldMakerRouteHorizontalOffset">
+              <span>Right/Left Offset</span>
+              <input id="customShieldMakerRouteHorizontalOffset" type="text" value="0" />
+            </label>
+          </section>
+
+          <footer class="customShieldMakerFooter">
+            <button id="customShieldMakerDeleteButton" class="customShieldMakerDeleteButton" type="button" hidden>
+              <span class="material-symbols-outlined">delete</span>
+              <span>Delete Saved Shield</span>
+            </button>
+          </footer>
+        </div>
       </div>
     </dialog>
   </div>
@@ -1364,7 +1478,7 @@
             <div class="templateSaveSection">
               <h4>Save Current Sign as Template</h4>
               <div class="templateSaveInput">
-                <input type="text" id="templateNameInput" placeholder="Enter template name..." 
+                <input type="text" id="templateNameInput" placeholder="Enter template name..."
                   onkeypress="if(event.key === 'Enter') app.saveTemplate(this.value);" />
                 <button id="saveTemplateBtn" onclick="app.saveTemplate(document.getElementById('templateNameInput').value);">
                   <span class="material-symbols-outlined">save</span>
@@ -1446,30 +1560,43 @@
                 <button type="button" class="settingsSideTab" data-settings-page="settingsInterface">
                   Interface
                 </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultControlText">
-                  Control Text
-                </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultShields">
-                  Shields
-                </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultActionMessage">
-                  Action Message
-                </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultAdvisoryMessage">
-                  Advisory Message
-                </button>
                 <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultExitTab">
                   Exit Tab
                 </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultArrow">
+
+                <div class="settingsSideHeading">Subpanel Defaults</div>
+
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultControlText">
+                  Control Text
+                </button>
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultShields">
+                  Shields
+                </button>
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultActionMessage">
+                  Action Message
+                </button>
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultAdvisoryMessage">
+                  Advisory Message
+                </button>
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultArrow">
                   Arrow
                 </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultIcon">
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultIcon">
                   Icon
                 </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultTollLogo">
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultTollLogo">
                   Toll Logo
                 </button>
+
+                <div class="settingsSideHeading">Guide Arrow Defaults</div>
+
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultStandardArrows">
+                  Standard Arrows
+                </button>
+                <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultAPLArrows">
+                  APL Arrows
+                </button>
+
                 <button type="button" class="settingsSideTab" data-settings-page="settingsControls">
                   Controls
                 </button>
@@ -2134,6 +2261,18 @@
                   <div class="settingsDefaultsCheckboxField">
                     <input id="settingsDefaultsTollLogoShowOnlyBlock" type="checkbox" />
                   </div>
+                </div>
+              </section>
+
+              <section id="settingsDefaultStandardArrows" class="settingsPage settingsDefaultsSinglePage settingsDefaultsBlankPage">
+                <div class="settingsDefaultsBlankPageContent">
+                  <h3>Standard Arrows</h3>
+                </div>
+              </section>
+
+              <section id="settingsDefaultAPLArrows" class="settingsPage settingsDefaultsSinglePage settingsDefaultsBlankPage">
+                <div class="settingsDefaultsBlankPageContent">
+                  <h3>APL Arrows</h3>
                 </div>
               </section>
 

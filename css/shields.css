@@ -216,6 +216,7 @@
 	color: var(--white);
 	top: 0.02em;
 	font-size: 2.4em;
+  font-weight: 1 !important;
 }
 .bannerShieldContainer.I.one .routeNumber,
 .bannerShieldContainer.I.two .routeNumber,

@@ -6941,14 +6941,14 @@ const app = (function () {
           if (panel.sign.arrowPosition == "Left") {
             arrowContElmt.style.marginLeft = "0";
             arrowContElmt.style.marginRight = "auto";
-            arrowContElmt.style.paddingLeft = "1rem";
+            arrowContElmt.style.paddingLeft = "0";
             arrowContElmt.style.paddingRight = "0";
             arrowContElmt.style.justifyContent = "flex-start";
           } else if (panel.sign.arrowPosition == "Right") {
             arrowContElmt.style.marginLeft = "auto";
             arrowContElmt.style.marginRight = "0";
             arrowContElmt.style.paddingLeft = "0";
-            arrowContElmt.style.paddingRight = "1rem";
+            arrowContElmt.style.paddingRight = "0";
             arrowContElmt.style.justifyContent = "flex-end";
           } else {
             arrowContElmt.style.marginLeft = "auto";

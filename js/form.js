@@ -98,7 +98,79 @@ const getPostThicknessFallback = () =>
 
 
   const CUSTOM_SHIELD_MAKER_VALUE_PREFIX = "CUSTOMSHIELD-";
+  const CUSTOM_SHIELD_MAKER_VARIANT_KEYS = ["1", "2", "3", "4"];
   let customShieldMakerRecords = [];
+
+  const getCustomShieldMakerVariantLabel = (variantKey) =>
+    `${variantKey} Digit`;
+
+  const getCustomShieldMakerVariantAssetKey = (variantKey) =>
+    `${variantKey}Digit`;
+
+  const getCustomShieldMakerVariantFallbackOrder = (variantKey) => {
+    const normalized = normalizeCustomShieldMakerVariantKey(variantKey, "2");
+    const fallbackOrders = {
+      "1": ["1", "2", "3", "4"],
+      "2": ["2", "1", "3", "4"],
+      "3": ["3", "2", "4", "1"],
+      "4": ["4", "3", "2", "1"],
+    };
+
+    return fallbackOrders[normalized] || fallbackOrders["2"];
+  };
+
+  const getCustomShieldMakerImageVariantKeys = (imageDataByVariant = {}) =>
+    CUSTOM_SHIELD_MAKER_VARIANT_KEYS.filter((variantKey) => {
+      const imageData = imageDataByVariant?.[variantKey];
+      return typeof imageData === "string" && imageData.trim().length > 0;
+    });
+
+  const normalizeCustomShieldMakerVariantKey = (variantKey, fallback = "2") => {
+    const normalized = String(variantKey || "").trim().replace(/\D+/g, "");
+    return CUSTOM_SHIELD_MAKER_VARIANT_KEYS.includes(normalized)
+      ? normalized
+      : fallback;
+  };
+
+  const getCustomShieldMakerVariantKeyFromRoute = (routeNumber) => {
+    const rawRoute = String(routeNumber || "").trim();
+    let count = 0;
+
+    if (typeof ShieldElement !== "undefined" && ShieldElement.prototype.getRouteCharacterCount) {
+      count = ShieldElement.prototype.getRouteCharacterCount(rawRoute);
+    } else {
+      try {
+        count = (rawRoute.match(/[\p{L}\p{N}]/gu) || []).length;
+      } catch (error) {
+        count = (rawRoute.match(/[A-Za-z0-9]/g) || []).length;
+      }
+    }
+
+    if (count <= 1) {
+      return "1";
+    }
+    if (count === 2) {
+      return "2";
+    }
+    if (count === 3) {
+      return "3";
+    }
+    return "4";
+  };
+
+  const normalizeCustomShieldMakerVariantList = (variants, fallback = ["2"]) => {
+    const source = Array.isArray(variants) && variants.length ? variants : fallback;
+    const normalized = [];
+
+    for (const variant of source) {
+      const variantKey = normalizeCustomShieldMakerVariantKey(variant, "");
+      if (variantKey && !normalized.includes(variantKey)) {
+        normalized.push(variantKey);
+      }
+    }
+
+    return normalized.length ? normalized : ["2"];
+  };
 
   const getCustomShieldMakerValue = (id) =>
     CUSTOM_SHIELD_MAKER_VALUE_PREFIX + String(id || "").replace(/[^a-zA-Z0-9_-]/g, "");
@@ -114,41 +186,115 @@ const getPostThicknessFallback = () =>
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
+  const normalizeCustomShieldMakerRouteStyle = (routeStyle = {}) => ({
+    color: routeStyle.color || "Black",
+    fontFamily: routeStyle.fontFamily || "Series D",
+    fontSize: getCustomShieldMakerDisplayNumber(routeStyle.fontSize, 220),
+    fontWeight: getCustomShieldMakerDisplayNumber(routeStyle.fontWeight, 10),
+    letterSpacing: getCustomShieldMakerDisplayNumber(routeStyle.letterSpacing, 0),
+    topOffset: getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0),
+    horizontalOffset: getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0),
+    alignment: ["left", "center", "right"].includes(String(routeStyle.alignment || "").toLowerCase())
+      ? String(routeStyle.alignment).toLowerCase()
+      : "center",
+  });
+
+  const normalizeCustomShieldMakerAnchor = (anchor = {}, routeStyle = {}) => ({
+    x: getCustomShieldMakerDisplayNumber(anchor.x, 50),
+    y: getCustomShieldMakerDisplayNumber(anchor.y, 50),
+    seedTop: getCustomShieldMakerDisplayNumber(
+      anchor.seedTop,
+      getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0)
+    ),
+    seedHorizontal: getCustomShieldMakerDisplayNumber(
+      anchor.seedHorizontal,
+      getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0)
+    ),
+  });
+
   const normalizeCustomShieldMakerRecord = (record = {}, index = 0) => {
     const id = String(record.id || createCustomShieldMakerId());
     const value = getCustomShieldMakerValue(id);
-    const routeStyle = record.routeStyle || {};
-    const anchor = record.anchor || routeStyle.anchor || {
-      x: 50,
-      y: 50,
-      seedTop: getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0),
-      seedHorizontal: getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0),
-    };
+    const legacyVariantKey = getCustomShieldMakerVariantKeyFromRoute(
+      record.routeNumber || "12"
+    );
+    const rawImageDataByVariant =
+      record.imageDataByVariant && typeof record.imageDataByVariant === "object"
+        ? record.imageDataByVariant
+        : {};
+    const rawStyleByVariant =
+      record.routeStyleByVariant && typeof record.routeStyleByVariant === "object"
+        ? record.routeStyleByVariant
+        : {};
+    const rawAnchorByVariant =
+      record.anchorByVariant && typeof record.anchorByVariant === "object"
+        ? record.anchorByVariant
+        : {};
+
+    const enabledVariants = normalizeCustomShieldMakerVariantList(
+      record.enabledVariants || record.selectedVariants || record.variants,
+      Object.keys(rawImageDataByVariant).length
+        ? Object.keys(rawImageDataByVariant)
+        : [legacyVariantKey]
+    );
+
+    const imageDataByVariant = {};
+    for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
+      const imageData = rawImageDataByVariant[variantKey];
+      if (typeof imageData === "string" && imageData.trim()) {
+        imageDataByVariant[variantKey] = imageData;
+      }
+    }
+
+    if (!Object.keys(imageDataByVariant).length && record.imageData) {
+      imageDataByVariant[legacyVariantKey] = String(record.imageData || "");
+    }
+
+    const routeStyleByVariant = {};
+    const anchorByVariant = {};
+    const legacyRouteStyle = normalizeCustomShieldMakerRouteStyle(record.routeStyle || {});
+    const legacyAnchor = normalizeCustomShieldMakerAnchor(
+      record.anchor || record.routeStyle?.anchor || {},
+      legacyRouteStyle
+    );
+
+    for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
+      const style = normalizeCustomShieldMakerRouteStyle(
+        rawStyleByVariant[variantKey] ||
+          (variantKey === legacyVariantKey ? record.routeStyle : null) ||
+          legacyRouteStyle
+      );
+      routeStyleByVariant[variantKey] = style;
+      anchorByVariant[variantKey] = normalizeCustomShieldMakerAnchor(
+        rawAnchorByVariant[variantKey] ||
+          (variantKey === legacyVariantKey ? record.anchor : null) ||
+          legacyAnchor,
+        style
+      );
+    }
+
+    const activeVariant = normalizeCustomShieldMakerVariantKey(
+      record.activeVariant || legacyVariantKey,
+      legacyVariantKey
+    );
+    const imageData =
+      imageDataByVariant[activeVariant] ||
+      Object.values(imageDataByVariant).find(Boolean) ||
+      String(record.imageData || "");
 
     return {
       id,
       value,
       name: String(record.name || `Custom Shield ${index + 1}`).trim() || `Custom Shield ${index + 1}`,
-      imageData: String(record.imageData || ""),
+      imageData,
+      imageDataByVariant,
+      enabledVariants: getCustomShieldMakerImageVariantKeys(imageDataByVariant),
+      activeVariant,
       routeNumber: String(record.routeNumber ?? "").trim(),
-      routeStyle: {
-        color: routeStyle.color || "Black",
-        fontFamily: routeStyle.fontFamily || "Series D",
-        fontSize: getCustomShieldMakerDisplayNumber(routeStyle.fontSize, 220),
-        fontWeight: getCustomShieldMakerDisplayNumber(routeStyle.fontWeight, 10),
-        letterSpacing: getCustomShieldMakerDisplayNumber(routeStyle.letterSpacing, 0),
-        topOffset: getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0),
-        horizontalOffset: getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0),
-        alignment: ["left", "center", "right"].includes(String(routeStyle.alignment || "").toLowerCase())
-          ? String(routeStyle.alignment).toLowerCase()
-          : "center",
-      },
-      anchor: {
-        x: getCustomShieldMakerDisplayNumber(anchor.x, 50),
-        y: getCustomShieldMakerDisplayNumber(anchor.y, 50),
-        seedTop: getCustomShieldMakerDisplayNumber(anchor.seedTop, getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0)),
-        seedHorizontal: getCustomShieldMakerDisplayNumber(anchor.seedHorizontal, getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0)),
-      },
+      routeStyle: routeStyleByVariant[activeVariant] || legacyRouteStyle,
+      routeStyleByVariant,
+      anchor: anchorByVariant[activeVariant] || legacyAnchor,
+      anchorByVariant,
       dateCreated: record.dateCreated || new Date().toISOString(),
       dateModified: record.dateModified || record.dateCreated || new Date().toISOString(),
     };
@@ -182,21 +328,53 @@ const getPostThicknessFallback = () =>
   const getCustomShieldMakerRecordByValue = (value) =>
     customShieldMakerRecords.find((record) => record.value === value) || null;
 
-  const buildCustomShieldMakerConfig = (record) => ({
-    value: record.value,
-    label: record.name,
-    variants: ["Image"],
-    assetPath: record.imageData,
-    assetName: record.value,
-    assetFolder: "",
-    suppressRouteNumber: false,
-    categories: ["Custom"],
-    className: `CUSTOMSHIELD customShieldMakerSaved customShieldMaker-${record.id}`,
-    customShieldMaker: true,
-    customShieldMakerId: record.id,
-    customRouteStyle: record.routeStyle,
-    customAnchor: record.anchor,
-  });
+  const getCustomShieldMakerVariantImage = (record, variantKey) => {
+    const imageDataByVariant = record?.imageDataByVariant || {};
+    const requestedVariant = normalizeCustomShieldMakerVariantKey(
+      variantKey,
+      record?.activeVariant || "2"
+    );
+
+    for (const fallbackVariant of getCustomShieldMakerVariantFallbackOrder(requestedVariant)) {
+      const fallbackImage = imageDataByVariant[fallbackVariant];
+      if (typeof fallbackImage === "string" && fallbackImage.trim()) {
+        return fallbackImage;
+      }
+    }
+
+    return record?.imageData || Object.values(imageDataByVariant).find(Boolean) || "";
+  };
+
+  const buildCustomShieldMakerConfig = (record) => {
+    const imageVariantKeys = getCustomShieldMakerImageVariantKeys(
+      record.imageDataByVariant
+    );
+    const assetPathByVariant = {};
+
+    for (const variantKey of imageVariantKeys) {
+      assetPathByVariant[getCustomShieldMakerVariantAssetKey(variantKey)] =
+        record.imageDataByVariant[variantKey];
+    }
+
+    return {
+      value: record.value,
+      label: record.name,
+      variants: CUSTOM_SHIELD_MAKER_VARIANT_KEYS.map(getCustomShieldMakerVariantLabel),
+      assetPath: getCustomShieldMakerVariantImage(record, record.activeVariant || imageVariantKeys[0] || "2"),
+      assetPathByVariant,
+      assetName: record.value,
+      assetFolder: "",
+      suppressRouteNumber: false,
+      categories: ["Custom"],
+      className: `CUSTOMSHIELD customShieldMakerSaved customShieldMaker-${record.id}`,
+      customShieldMaker: true,
+      customShieldMakerId: record.id,
+      customRouteStyle: record.routeStyle,
+      customAnchor: record.anchor,
+      customRouteStyleByVariant: record.routeStyleByVariant || {},
+      customAnchorByVariant: record.anchorByVariant || {},
+    };
+  };
 
   const syncCustomShieldMakerConfigs = () => {
     if (
@@ -219,7 +397,7 @@ const getPostThicknessFallback = () =>
     id: `custom-shield-${record.id}`,
     value: record.value,
     label: record.name,
-    asset: record.imageData,
+    asset: getCustomShieldMakerVariantImage(record, record.activeVariant || "2"),
     customSavedShield: true,
     customShieldId: record.id,
   });
@@ -1515,6 +1693,9 @@ const getPostThicknessFallback = () =>
     const routeNumber = document.getElementById("customShieldMakerRouteNumber");
     const routeInput = document.getElementById("customShieldMakerRouteInput");
     const colorSelect = document.getElementById("customShieldMakerRouteColor");
+    const customColorControls = document.getElementById("customShieldMakerCustomColorControls");
+    const customColorInput = document.getElementById("customShieldMakerRouteCustomColor");
+    const customColorSwatch = document.getElementById("customShieldMakerRouteCustomColorSwatch");
     const fontSelect = document.getElementById("customShieldMakerRouteFont");
     const fontSizeInput = document.getElementById("customShieldMakerRouteFontSize");
     const fontWeightInput = document.getElementById("customShieldMakerRouteFontWeight");
@@ -1525,6 +1706,12 @@ const getPostThicknessFallback = () =>
     const nameInput = document.getElementById("customShieldMakerNameInput");
     const saveButton = document.getElementById("customShieldMakerSaveButton");
     const deleteButton = document.getElementById("customShieldMakerDeleteButton");
+    const variantButtons = Array.from(
+      document.querySelectorAll("#customShieldMakerVariantButtons [data-variant-digit]")
+    );
+    const currentVariantLabel = document.getElementById("customShieldMakerCurrentVariantLabel");
+    const variantStatus = document.getElementById("customShieldMakerVariantStatus");
+    const uploadButtonText = document.getElementById("customShieldMakerUploadButtonText");
 
     const appendSelectOption = (select, value, selected = false) => {
       const option = document.createElement("option");
@@ -1569,6 +1756,91 @@ const getPostThicknessFallback = () =>
       return normalizeNumericInput(input?.value, fallback);
     };
 
+    const CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE = "__custom";
+
+    const normalizeCustomShieldMakerHexColor = (value, fallback = "#000000") => {
+      const rawValue = String(value || "").trim();
+      return /^#[0-9a-f]{6}$/i.test(rawValue) ? rawValue : fallback;
+    };
+
+    const isCustomShieldMakerHexColor = (value) =>
+      /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
+
+    const getCustomShieldMakerRouteColorValue = () => {
+      if (colorSelect?.value === CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE) {
+        return normalizeCustomShieldMakerHexColor(customColorInput?.value);
+      }
+
+      return colorSelect?.value || "Black";
+    };
+
+    const updateCustomShieldMakerCustomColorControls = () => {
+      const isCustomColor = colorSelect?.value === CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE;
+      const nextColor = normalizeCustomShieldMakerHexColor(customColorInput?.value);
+
+      if (customColorControls) {
+        customColorControls.hidden = !isCustomColor;
+      }
+
+      if (customColorInput) {
+        customColorInput.value = nextColor;
+      }
+
+      if (customColorSwatch) {
+        customColorSwatch.style.backgroundColor = nextColor;
+      }
+    };
+
+    const setCustomShieldMakerRouteColorControlValue = (value) => {
+      const normalizedValue = String(value || "Black").trim() || "Black";
+
+      if (isCustomShieldMakerHexColor(normalizedValue)) {
+        setSelectValueSafely(
+          colorSelect,
+          CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE,
+          CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE
+        );
+
+        if (customColorInput) {
+          customColorInput.value = normalizeCustomShieldMakerHexColor(normalizedValue);
+        }
+      } else {
+        setSelectValueSafely(colorSelect, normalizedValue, "Black");
+      }
+
+      updateCustomShieldMakerCustomColorControls();
+    };
+
+    const getCustomShieldMakerLastPreviewVariant = () => {
+      const state = dialog._customShieldMakerVariantState;
+      const lastVariant = normalizeCustomShieldMakerVariantKey(
+        dialog._customShieldMakerLastRouteVariant || state?.activeVariant || "2",
+        "2"
+      );
+
+      if (state?.imageDataByVariant?.[lastVariant]) {
+        return lastVariant;
+      }
+
+      const firstVariantWithImage = getCustomShieldMakerImageVariantKeys(
+        state?.imageDataByVariant || {}
+      )[0];
+
+      return firstVariantWithImage || lastVariant;
+    };
+
+    const getCustomShieldMakerVariantKeyForEditor = () => {
+      const routeText = String(routeInput?.value || "").trim();
+
+      if (routeText) {
+        const nextVariant = getCustomShieldMakerVariantKeyFromRoute(routeText);
+        dialog._customShieldMakerLastRouteVariant = nextVariant;
+        return nextVariant;
+      }
+
+      return getCustomShieldMakerLastPreviewVariant();
+    };
+
     const setCustomShieldMakerAnchor = ({
       x = 50,
       y = 50,
@@ -1587,6 +1859,209 @@ const getPostThicknessFallback = () =>
             ? seedHorizontal
             : getDisplayInputValue(horizontalOffsetInput, 0),
       };
+    };
+
+    const createEmptyCustomShieldMakerVariantState = () => {
+      const activeVariant = getCustomShieldMakerVariantKeyForEditor();
+
+      return {
+        enabledVariants: [],
+        activeVariant,
+        imageDataByVariant: {},
+        routeStyleByVariant: {},
+        anchorByVariant: {},
+      };
+    };
+
+    const ensureCustomShieldMakerVariantState = () => {
+      if (!dialog._customShieldMakerVariantState) {
+        dialog._customShieldMakerVariantState = createEmptyCustomShieldMakerVariantState();
+      }
+
+      const state = dialog._customShieldMakerVariantState;
+      state.imageDataByVariant = state.imageDataByVariant || {};
+      state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+        state.imageDataByVariant
+      );
+      state.activeVariant = normalizeCustomShieldMakerVariantKey(
+        state.activeVariant,
+        getCustomShieldMakerVariantKeyForEditor()
+      );
+
+      state.routeStyleByVariant = state.routeStyleByVariant || {};
+      state.anchorByVariant = state.anchorByVariant || {};
+
+      return state;
+    };
+
+    const getCustomShieldMakerEditorStyle = () => ({
+      color: getCustomShieldMakerRouteColorValue(),
+      fontFamily: fontSelect?.value || "Series D",
+      fontSize: getDisplayInputValue(fontSizeInput, 220),
+      fontWeight: getDisplayInputValue(fontWeightInput, 10),
+      letterSpacing: getDisplayInputValue(letterSpacingInput, 0),
+      topOffset: getDisplayInputValue(topOffsetInput, 0),
+      horizontalOffset: getDisplayInputValue(horizontalOffsetInput, 0),
+      alignment: alignmentSelect?.value || "center",
+    });
+
+    const getCustomShieldMakerEditorAnchor = () =>
+      dialog._customShieldMakerAnchor || {
+        x: 50,
+        y: 50,
+        seedTop: getDisplayInputValue(topOffsetInput, 0),
+        seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
+      };
+
+    const getFirstCustomShieldMakerVariantImage = (state) =>
+      Object.values(state?.imageDataByVariant || {}).find(Boolean) ||
+      (previewImg && !previewImg.hidden ? previewImg.src : "");
+
+    const getCustomShieldMakerEditorVariantImage = (state, variantKey) => {
+      const requestedVariant = normalizeCustomShieldMakerVariantKey(
+        variantKey,
+        state?.activeVariant || "2"
+      );
+      const imageDataByVariant = state?.imageDataByVariant || {};
+
+      for (const fallbackVariant of getCustomShieldMakerVariantFallbackOrder(requestedVariant)) {
+        const fallbackImage = imageDataByVariant[fallbackVariant];
+        if (typeof fallbackImage === "string" && fallbackImage.trim()) {
+          return fallbackImage;
+        }
+      }
+
+      return getFirstCustomShieldMakerVariantImage(state) || "";
+    };
+
+    const persistCurrentCustomShieldMakerVariantState = () => {
+      const state = ensureCustomShieldMakerVariantState();
+      const activeVariant = normalizeCustomShieldMakerVariantKey(
+        state.activeVariant,
+        getCustomShieldMakerVariantKeyForEditor()
+      );
+
+      state.activeVariant = activeVariant;
+
+      state.routeStyleByVariant[activeVariant] = getCustomShieldMakerEditorStyle();
+      state.anchorByVariant[activeVariant] = getCustomShieldMakerEditorAnchor();
+      state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+        state.imageDataByVariant
+      );
+
+      return state;
+    };
+
+    const setInputValueIfPresent = (input, value) => {
+      if (input) {
+        input.value = formatCustomShieldNumber(value, "0");
+      }
+    };
+
+    const updateCustomShieldMakerVariantButtons = () => {
+      const state = ensureCustomShieldMakerVariantState();
+      const activeVariant = normalizeCustomShieldMakerVariantKey(
+        state.activeVariant,
+        getCustomShieldMakerVariantKeyForEditor()
+      );
+
+      for (const button of variantButtons) {
+        const variantKey = normalizeCustomShieldMakerVariantKey(button.dataset.variantDigit, "");
+        const hasDedicatedImage = !!state.imageDataByVariant[variantKey];
+        const isCurrent = variantKey === activeVariant;
+        button.classList.toggle("selected", hasDedicatedImage);
+        button.classList.toggle("currentVariant", isCurrent);
+        button.setAttribute("aria-pressed", String(hasDedicatedImage));
+        button.title = isCurrent
+          ? "This is the variant currently being edited. Change the route number length to edit another variant."
+          : hasDedicatedImage
+            ? "This digit-count variant has its own uploaded shield image."
+            : "This digit-count variant will use the closest custom shield image fallback.";
+      }
+
+      if (currentVariantLabel) {
+        currentVariantLabel.textContent = `Editing ${activeVariant} digit`;
+      }
+
+      if (uploadButtonText) {
+        uploadButtonText.textContent = `Upload ${activeVariant} Digit SVG or PNG`;
+      }
+
+      const hasDedicatedImage = !!state.imageDataByVariant[activeVariant];
+      const fallbackImage = getCustomShieldMakerEditorVariantImage(state, activeVariant);
+
+      if (variantStatus) {
+        variantStatus.textContent = hasDedicatedImage
+          ? `${activeVariant} digit has its own shield image.`
+          : fallbackImage
+            ? `${activeVariant} digit does not have its own shield image.`
+            : "Route number length selects the variant being edited.";
+      }
+    };
+
+    const applyCustomShieldMakerVariantToEditor = (variantKey, { preserveRouteNumber = true } = {}) => {
+      const state = ensureCustomShieldMakerVariantState();
+      const normalizedVariant = normalizeCustomShieldMakerVariantKey(variantKey, state.activeVariant || "2");
+      const fallbackVariant = state.activeVariant || normalizedVariant;
+      const fallbackStyle =
+        state.routeStyleByVariant[normalizedVariant] ||
+        state.routeStyleByVariant[fallbackVariant] ||
+        getCustomShieldMakerEditorStyle();
+      const fallbackAnchor =
+        state.anchorByVariant[normalizedVariant] ||
+        state.anchorByVariant[fallbackVariant] ||
+        getCustomShieldMakerEditorAnchor();
+      const imageData = getCustomShieldMakerEditorVariantImage(state, normalizedVariant);
+
+      state.activeVariant = normalizedVariant;
+      state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+        state.imageDataByVariant
+      );
+
+      if (previewImg) {
+        previewImg.src = imageData;
+        previewImg.hidden = !imageData;
+      }
+
+      if (emptyPreview) {
+        emptyPreview.hidden = !!imageData;
+      }
+
+      const style = normalizeCustomShieldMakerRouteStyle(fallbackStyle);
+      setCustomShieldMakerRouteColorControlValue(style.color || "Black");
+      setSelectValueSafely(fontSelect, style.fontFamily || "Series D", "Series D");
+      setInputValueIfPresent(fontSizeInput, style.fontSize);
+      setInputValueIfPresent(fontWeightInput, style.fontWeight);
+      setInputValueIfPresent(letterSpacingInput, style.letterSpacing);
+      setInputValueIfPresent(topOffsetInput, style.topOffset);
+      setInputValueIfPresent(horizontalOffsetInput, style.horizontalOffset);
+
+      if (alignmentSelect) {
+        alignmentSelect.value = style.alignment || "center";
+      }
+
+      setCustomShieldMakerAnchor(normalizeCustomShieldMakerAnchor(fallbackAnchor, style));
+      updateCustomShieldMakerVariantButtons();
+
+      if (!preserveRouteNumber && routeInput) {
+        routeInput.value = normalizedVariant === "1" ? "1" : "1".repeat(Number(normalizedVariant));
+      }
+    };
+
+    const syncCustomShieldMakerVariantFromRouteNumber = () => {
+      const state = ensureCustomShieldMakerVariantState();
+      const nextVariant = getCustomShieldMakerVariantKeyForEditor();
+
+      if (nextVariant !== state.activeVariant) {
+        persistCurrentCustomShieldMakerVariantState();
+        applyCustomShieldMakerVariantToEditor(nextVariant);
+      } else {
+        state.activeVariant = nextVariant;
+        state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+          state.imageDataByVariant
+        );
+        updateCustomShieldMakerVariantButtons();
+      }
     };
 
     const parseCssEmValue = (value, fallback = null) => {
@@ -1696,6 +2171,17 @@ const getPostThicknessFallback = () =>
       }
     };
 
+    const applyCustomShieldMakerLetterSpacing = (spacingValue) => {
+      if (!routeNumber) {
+        return;
+      }
+
+      routeNumber.style.gap = "0";
+      Array.from(routeNumber.children).forEach((characterSpan, index) => {
+        characterSpan.style.marginLeft = index === 0 ? "0" : spacingValue;
+      });
+    };
+
     const getResolvedCssColor = (value) => {
       const probe = document.createElement("span");
       probe.style.color = value;
@@ -1786,7 +2272,12 @@ const getPostThicknessFallback = () =>
         for (const colorName of colorNames) {
           appendSelectOption(colorSelect, colorName, colorName === "Black");
         }
+
+        appendSelectOption(colorSelect, CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE);
+        colorSelect.querySelector(`option[value="${CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE}"]`).textContent = "Custom";
       }
+
+      updateCustomShieldMakerCustomColorControls();
 
       if (fontSelect && fontSelect.options.length <= 1) {
         const fontNames =
@@ -1842,7 +2333,7 @@ const getPostThicknessFallback = () =>
         pendingSource.routeNumber ||
         sdRouteInput?.value ||
         currentBlockElem?.routeNumber ||
-        "123";
+        "";
 
       const alignment =
         pendingSource.alignment ||
@@ -1873,8 +2364,14 @@ const getPostThicknessFallback = () =>
       sampleShield.shieldBase = source.shieldBase;
       sampleShield.type = source.shieldBase;
       sampleShield.shieldType = source.shieldType;
-      sampleShield.routeNumber = String(source.routeNumber ?? "").trim() || "123";
+      const sourceRouteNumber = String(source.routeNumber ?? "").trim();
+      const fallbackSeedVariant = dialog._customShieldMakerLastRouteVariant || "2";
+      sampleShield.routeNumber = sourceRouteNumber || "1".repeat(Number(fallbackSeedVariant));
       sampleShield.alignment = source.alignment || "Center";
+
+      if (sourceRouteNumber) {
+        dialog._customShieldMakerLastRouteVariant = getCustomShieldMakerVariantKeyFromRoute(sourceRouteNumber);
+      }
 
       const sampleRoot = document.createElement("div");
       sampleRoot.style.position = "absolute";
@@ -1900,7 +2397,7 @@ const getPostThicknessFallback = () =>
       }
 
       if (routeInput) {
-        routeInput.value = sampleShield.routeNumber;
+        routeInput.value = "";
       }
 
       if (alignmentSelect) {
@@ -1958,7 +2455,7 @@ const getPostThicknessFallback = () =>
         const colorName = findNamedColorFromComputedColor(computedRoute.color);
         const fontName = getFontOptionFromComputedFamily(computedRoute.fontFamily);
 
-        setSelectValueSafely(colorSelect, colorName, "Black");
+        setCustomShieldMakerRouteColorControlValue(colorName || "Black");
         setSelectValueSafely(fontSelect, fontName, "Series D");
 
         if (fontSizeInput) {
@@ -2026,6 +2523,18 @@ const getPostThicknessFallback = () =>
       if (!sampleRoute) {
         setCustomShieldMakerAnchor();
       }
+
+      const seedVariantKey = getCustomShieldMakerVariantKeyForEditor();
+      dialog._customShieldMakerVariantState = {
+        enabledVariants: [seedVariantKey],
+        activeVariant: seedVariantKey,
+        imageDataByVariant: previewImg && !previewImg.hidden && previewImg.src
+          ? { [seedVariantKey]: previewImg.src }
+          : {},
+        routeStyleByVariant: { [seedVariantKey]: getCustomShieldMakerEditorStyle() },
+        anchorByVariant: { [seedVariantKey]: getCustomShieldMakerEditorAnchor() },
+      };
+      updateCustomShieldMakerVariantButtons();
       
       sampleRoot.remove();
     };
@@ -2036,7 +2545,9 @@ const getPostThicknessFallback = () =>
       }
 
       const routeText = String(routeInput?.value || "").trim();
-      const selectedColor = colorSelect?.value || "Black";
+      updateCustomShieldMakerCustomColorControls();
+
+      const selectedColor = getCustomShieldMakerRouteColorValue();
       const selectedFont = fontSelect?.value || "Series D";
       const selectedAlignment = alignmentSelect?.value || "center";
       const cssColor =
@@ -2085,7 +2596,7 @@ const getPostThicknessFallback = () =>
       routeNumber.style.fontWeight = String(cssWeight);
       routeNumber.style.fontVariationSettings = `"wght" ${requestedWeight}`;
       routeNumber.style.letterSpacing = "0";
-      routeNumber.style.gap = letterSpacingValue;
+      applyCustomShieldMakerLetterSpacing(letterSpacingValue);
       const topDeltaValue = displayDeltaToEm(
         getDisplayInputValue(topOffsetInput, 0) - anchor.seedTop
       );
@@ -2118,6 +2629,234 @@ const getPostThicknessFallback = () =>
       }
     };
 
+    let customShieldMakerUndoStack = [];
+    let customShieldMakerRedoStack = [];
+    let customShieldMakerLastHistoryKey = "";
+    let customShieldMakerRestoringHistory = false;
+
+    const cloneCustomShieldMakerObject = (value) => {
+      try {
+        return JSON.parse(JSON.stringify(value || {}));
+      } catch (error) {
+        return {};
+      }
+    };
+
+    const getCustomShieldMakerHistorySnapshot = () => {
+      const previewSrc = previewImg && !previewImg.hidden ? previewImg.src : "";
+
+      return {
+        name: nameInput?.value || "",
+        routeNumber: routeInput?.value || "",
+        color: colorSelect?.value || "Black",
+        customColor: normalizeCustomShieldMakerHexColor(customColorInput?.value),
+        fontFamily: fontSelect?.value || "Series D",
+        fontSize: fontSizeInput?.value || "",
+        fontWeight: fontWeightInput?.value || "",
+        letterSpacing: letterSpacingInput?.value || "",
+        topOffset: topOffsetInput?.value || "",
+        horizontalOffset: horizontalOffsetInput?.value || "",
+        alignment: alignmentSelect?.value || "center",
+        previewSrc,
+        previewHidden: !previewSrc,
+        emptyPreviewHidden: !!emptyPreview?.hidden,
+        userUploaded: dialog.dataset.customShieldMakerUserUploaded === "true",
+        activeVariant: dialog._customShieldMakerVariantState?.activeVariant || "2",
+        lastRouteVariant: dialog._customShieldMakerLastRouteVariant || "",
+        variantState: cloneCustomShieldMakerObject(dialog._customShieldMakerVariantState),
+        anchor: cloneCustomShieldMakerObject(dialog._customShieldMakerAnchor),
+      };
+    };
+
+    const restoreCustomShieldMakerHistorySnapshot = (snapshot) => {
+      if (!snapshot) {
+        return;
+      }
+
+      customShieldMakerRestoringHistory = true;
+
+      try {
+        if (nameInput) nameInput.value = snapshot.name || "";
+        if (routeInput) routeInput.value = snapshot.routeNumber || "";
+        if (fontSelect) fontSelect.value = snapshot.fontFamily || "Series D";
+        if (fontSizeInput) fontSizeInput.value = snapshot.fontSize || "";
+        if (fontWeightInput) fontWeightInput.value = snapshot.fontWeight || "";
+        if (letterSpacingInput) letterSpacingInput.value = snapshot.letterSpacing || "";
+        if (topOffsetInput) topOffsetInput.value = snapshot.topOffset || "";
+        if (horizontalOffsetInput) horizontalOffsetInput.value = snapshot.horizontalOffset || "";
+        if (alignmentSelect) alignmentSelect.value = snapshot.alignment || "center";
+
+        if (colorSelect) {
+          setSelectValueSafely(colorSelect, snapshot.color || "Black", "Black");
+        }
+
+        if (customColorInput) {
+          customColorInput.value = normalizeCustomShieldMakerHexColor(snapshot.customColor);
+        }
+
+        dialog._customShieldMakerVariantState = cloneCustomShieldMakerObject(snapshot.variantState);
+        dialog._customShieldMakerAnchor = cloneCustomShieldMakerObject(snapshot.anchor);
+        dialog._customShieldMakerLastRouteVariant = snapshot.lastRouteVariant || "";
+
+        if (snapshot.userUploaded) {
+          dialog.dataset.customShieldMakerUserUploaded = "true";
+        } else {
+          delete dialog.dataset.customShieldMakerUserUploaded;
+        }
+
+        if (previewImg) {
+          previewImg.src = snapshot.previewSrc || "";
+          previewImg.hidden = !!snapshot.previewHidden || !snapshot.previewSrc;
+        }
+
+        if (emptyPreview) {
+          emptyPreview.hidden = !!snapshot.previewSrc;
+        }
+
+        updateCustomShieldMakerCustomColorControls();
+        updateCustomShieldMakerVariantButtons();
+        updateCustomShieldMakerPreview();
+      } finally {
+        customShieldMakerRestoringHistory = false;
+      }
+    };
+
+    const resetCustomShieldMakerHistory = () => {
+      const snapshot = getCustomShieldMakerHistorySnapshot();
+      customShieldMakerUndoStack = [snapshot];
+      customShieldMakerRedoStack = [];
+      customShieldMakerLastHistoryKey = JSON.stringify(snapshot);
+    };
+
+    const recordCustomShieldMakerHistoryCheckpoint = () => {
+      if (customShieldMakerRestoringHistory || !dialog.open) {
+        return;
+      }
+
+      const snapshot = getCustomShieldMakerHistorySnapshot();
+      const snapshotKey = JSON.stringify(snapshot);
+
+      if (snapshotKey === customShieldMakerLastHistoryKey) {
+        return;
+      }
+
+      customShieldMakerUndoStack.push(snapshot);
+
+      if (customShieldMakerUndoStack.length > 100) {
+        customShieldMakerUndoStack.shift();
+      }
+
+      customShieldMakerRedoStack = [];
+      customShieldMakerLastHistoryKey = snapshotKey;
+    };
+
+    const undoCustomShieldMakerEdit = () => {
+      if (customShieldMakerUndoStack.length <= 1) {
+        return;
+      }
+
+      const currentSnapshot = customShieldMakerUndoStack.pop();
+      customShieldMakerRedoStack.push(currentSnapshot);
+      const previousSnapshot = customShieldMakerUndoStack[customShieldMakerUndoStack.length - 1];
+      customShieldMakerLastHistoryKey = JSON.stringify(previousSnapshot);
+      restoreCustomShieldMakerHistorySnapshot(previousSnapshot);
+    };
+
+    const redoCustomShieldMakerEdit = () => {
+      if (!customShieldMakerRedoStack.length) {
+        return;
+      }
+
+      const nextSnapshot = customShieldMakerRedoStack.pop();
+      customShieldMakerUndoStack.push(nextSnapshot);
+      customShieldMakerLastHistoryKey = JSON.stringify(nextSnapshot);
+      restoreCustomShieldMakerHistorySnapshot(nextSnapshot);
+    };
+
+    const isCustomShieldMakerUndoShortcut = (event) => {
+      const primaryModifier = isMacOS ? event.metaKey : event.ctrlKey;
+      return primaryModifier && !event.altKey && !event.shiftKey && String(event.key).toLowerCase() === "z";
+    };
+
+    const isCustomShieldMakerRedoShortcut = (event) => {
+      const primaryModifier = isMacOS ? event.metaKey : event.ctrlKey;
+      const key = String(event.key).toLowerCase();
+
+      if (primaryModifier && event.shiftKey && !event.altKey && key === "z") {
+        return true;
+      }
+
+      return !isMacOS && primaryModifier && !event.shiftKey && !event.altKey && key === "y";
+    };
+
+    const isCustomShieldMakerTypingTarget = (target) => {
+      if (!target || !dialog.contains(target)) {
+        return false;
+      }
+
+      const tagName = target.tagName;
+      const inputType = String(target.type || "").toLowerCase();
+
+      return (
+        target.isContentEditable ||
+        tagName === "TEXTAREA" ||
+        tagName === "SELECT" ||
+        (tagName === "INPUT" &&
+          ![
+            "button",
+            "checkbox",
+            "file",
+            "hidden",
+            "image",
+            "radio",
+            "range",
+            "reset",
+            "submit",
+          ].includes(inputType))
+      );
+    };
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (!dialog.open) {
+          return;
+        }
+
+        if (event.key === "Escape") {
+          return;
+        }
+
+        if (isCustomShieldMakerUndoShortcut(event)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          undoCustomShieldMakerEdit();
+          return;
+        }
+
+        if (isCustomShieldMakerRedoShortcut(event)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          redoCustomShieldMakerEdit();
+          return;
+        }
+
+        const isPlainTypingKey =
+          isCustomShieldMakerTypingTarget(event.target) &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey;
+
+        if (isPlainTypingKey) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      true
+    );
+
     const showCustomShieldMakerDialog = () => {
       updateCustomShieldMakerPreview();
       setCustomShieldMakerDeleteVisibility();
@@ -2131,6 +2870,8 @@ const getPostThicknessFallback = () =>
       if (!dialog.open) {
         dialog.showModal();
       }
+
+      resetCustomShieldMakerHistory();
     };
 
     const applyCustomShieldMakerRecordToEditor = (record) => {
@@ -2139,61 +2880,49 @@ const getPostThicknessFallback = () =>
       }
 
       populateCustomShieldMakerSelects();
-      dialog._editingCustomShieldId = record.id;
+      const normalizedRecord = normalizeCustomShieldMakerRecord(record);
+      const activeVariant = normalizeCustomShieldMakerVariantKey(
+        normalizedRecord.activeVariant ||
+          getCustomShieldMakerVariantKeyFromRoute(normalizedRecord.routeNumber || routeInput?.value || ""),
+        getCustomShieldMakerVariantKeyForEditor()
+      );
+      const enabledVariants = getCustomShieldMakerImageVariantKeys(
+        normalizedRecord.imageDataByVariant
+      );
+
+      dialog._editingCustomShieldId = normalizedRecord.id;
       dialog.dataset.customShieldMakerUserUploaded = "true";
       dialog._customShieldMakerSource = {
-        shieldBase: record.value,
-        type: record.value,
-        routeNumber: record.routeNumber || routeInput?.value || "123",
-        alignment: record.routeStyle?.alignment || "center",
+        shieldBase: normalizedRecord.value,
+        type: normalizedRecord.value,
+        routeNumber: normalizedRecord.routeNumber || routeInput?.value || "",
+        alignment: normalizedRecord.routeStyleByVariant?.[activeVariant]?.alignment || "center",
+      };
+      dialog._customShieldMakerVariantState = {
+        enabledVariants,
+        activeVariant,
+        imageDataByVariant: { ...(normalizedRecord.imageDataByVariant || {}) },
+        routeStyleByVariant: { ...(normalizedRecord.routeStyleByVariant || {}) },
+        anchorByVariant: { ...(normalizedRecord.anchorByVariant || {}) },
       };
 
       if (nameInput) {
-        nameInput.value = record.name || getDefaultCustomShieldMakerName();
-      }
-
-      if (previewImg) {
-        previewImg.src = record.imageData;
-        previewImg.hidden = false;
-      }
-
-      if (emptyPreview) {
-        emptyPreview.hidden = true;
+        nameInput.value = normalizedRecord.name || getDefaultCustomShieldMakerName();
       }
 
       if (routeInput) {
-        routeInput.value = record.routeNumber || routeInput.value || "";
+        routeInput.value = normalizedRecord.routeNumber || "";
       }
 
-      const style = record.routeStyle || {};
-      setSelectValueSafely(colorSelect, style.color || "Black", "Black");
-      setSelectValueSafely(fontSelect, style.fontFamily || "Series D", "Series D");
-
-      if (fontSizeInput) {
-        fontSizeInput.value = formatCustomShieldNumber(style.fontSize, "220");
-      }
-      if (fontWeightInput) {
-        fontWeightInput.value = formatCustomShieldNumber(style.fontWeight, "10");
-      }
-      if (letterSpacingInput) {
-        letterSpacingInput.value = formatCustomShieldNumber(style.letterSpacing, "0");
-      }
-      if (topOffsetInput) {
-        topOffsetInput.value = formatCustomShieldNumber(style.topOffset, "0");
-      }
-      if (horizontalOffsetInput) {
-        horizontalOffsetInput.value = formatCustomShieldNumber(style.horizontalOffset, "0");
-      }
-      if (alignmentSelect) {
-        alignmentSelect.value = style.alignment || "center";
+      if (normalizedRecord.routeNumber) {
+        dialog._customShieldMakerLastRouteVariant = getCustomShieldMakerVariantKeyFromRoute(
+          normalizedRecord.routeNumber
+        );
+      } else {
+        dialog._customShieldMakerLastRouteVariant = activeVariant;
       }
 
-      setCustomShieldMakerAnchor(record.anchor || style.anchor || {
-        x: 50,
-        y: 50,
-        seedTop: getDisplayInputValue(topOffsetInput, 0),
-        seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
-      });
+      applyCustomShieldMakerVariantToEditor(activeVariant);
     };
 
     const collectCustomShieldMakerRecordFromEditor = () => {
@@ -2201,7 +2930,20 @@ const getPostThicknessFallback = () =>
         ? getCustomShieldMakerRecordById(dialog._editingCustomShieldId)
         : null;
 
-      const imageData = previewImg && !previewImg.hidden ? previewImg.src : "";
+      const state = persistCurrentCustomShieldMakerVariantState();
+      const activeVariant = normalizeCustomShieldMakerVariantKey(
+        state.activeVariant,
+        getCustomShieldMakerVariantKeyForEditor()
+      );
+      const enabledVariants = getCustomShieldMakerImageVariantKeys(
+        state.imageDataByVariant
+      );
+
+      const imageData =
+        state.imageDataByVariant[activeVariant] ||
+        getFirstCustomShieldMakerVariantImage(state) ||
+        "";
+
       if (!imageData) {
         window.alert("Upload or select a shield image before saving.");
         return null;
@@ -2211,30 +2953,32 @@ const getPostThicknessFallback = () =>
       const now = new Date().toISOString();
       const fallbackName = existingRecord?.name || getDefaultCustomShieldMakerName();
       const name = String(nameInput?.value || fallbackName).trim() || fallbackName;
-      const anchor = dialog._customShieldMakerAnchor || {
-        x: 50,
-        y: 50,
-        seedTop: getDisplayInputValue(topOffsetInput, 0),
-        seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
-      };
+      const routeStyleByVariant = {};
+      const anchorByVariant = {};
+
+      for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
+        routeStyleByVariant[variantKey] = normalizeCustomShieldMakerRouteStyle(
+          state.routeStyleByVariant[variantKey] || state.routeStyleByVariant[activeVariant] || {}
+        );
+        anchorByVariant[variantKey] = normalizeCustomShieldMakerAnchor(
+          state.anchorByVariant[variantKey] || state.anchorByVariant[activeVariant] || {},
+          routeStyleByVariant[variantKey]
+        );
+      }
 
       return {
         id,
         value: getCustomShieldMakerValue(id),
         name,
         imageData,
+        imageDataByVariant: { ...(state.imageDataByVariant || {}) },
+        enabledVariants,
+        activeVariant,
         routeNumber: String(routeInput?.value || "").trim(),
-        routeStyle: {
-          color: colorSelect?.value || "Black",
-          fontFamily: fontSelect?.value || "Series D",
-          fontSize: getDisplayInputValue(fontSizeInput, 220),
-          fontWeight: getDisplayInputValue(fontWeightInput, existingRecord?.routeStyle?.fontWeight || 10),
-          letterSpacing: getDisplayInputValue(letterSpacingInput, 0),
-          topOffset: getDisplayInputValue(topOffsetInput, 0),
-          horizontalOffset: getDisplayInputValue(horizontalOffsetInput, 0),
-          alignment: alignmentSelect?.value || "center",
-        },
-        anchor,
+        routeStyle: routeStyleByVariant[activeVariant],
+        routeStyleByVariant,
+        anchor: anchorByVariant[activeVariant],
+        anchorByVariant,
         dateCreated: existingRecord?.dateCreated || now,
         dateModified: now,
       };
@@ -2287,6 +3031,12 @@ const getPostThicknessFallback = () =>
 
         applyCustomShieldMakerRecordToEditor(savedRecord);
         refreshAfterCustomShieldMutation();
+        closeCustomShieldMaker();
+        window.setTimeout(() => {
+          if (typeof ensureSubpanelMenuOpenPublic === "function") {
+            ensureSubpanelMenuOpenPublic();
+          }
+        }, 0);
       } finally {
         if (exposed && typeof exposed.endUndoableChange === "function") {
           exposed.endUndoableChange();
@@ -2389,6 +3139,7 @@ const getPostThicknessFallback = () =>
 
     openButton?.addEventListener("click", () => {
       dialog._editingCustomShieldId = null;
+      dialog._customShieldMakerVariantState = null;
       delete dialog.dataset.customShieldMakerUserUploaded;
       if (nameInput) {
         nameInput.value = getDefaultCustomShieldMakerName();
@@ -2441,14 +3192,45 @@ const getPostThicknessFallback = () =>
           seedTop: getDisplayInputValue(topOffsetInput, 0),
           seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
         });
+
+        const state = ensureCustomShieldMakerVariantState();
+        const activeVariant = normalizeCustomShieldMakerVariantKey(
+          state.activeVariant,
+          getCustomShieldMakerVariantKeyForEditor()
+        );
+        state.activeVariant = activeVariant;
+
+        state.imageDataByVariant[activeVariant] = readerEvent.target.result;
+        state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+          state.imageDataByVariant
+        );
+        state.routeStyleByVariant[activeVariant] = getCustomShieldMakerEditorStyle();
+        state.anchorByVariant[activeVariant] = getCustomShieldMakerEditorAnchor();
+        updateCustomShieldMakerVariantButtons();
+        updateCustomShieldMakerPreview();
+        recordCustomShieldMakerHistoryCheckpoint();
       };
 
       reader.readAsDataURL(file);
     });
 
+    routeInput?.addEventListener("input", () => {
+      syncCustomShieldMakerVariantFromRouteNumber();
+      updateCustomShieldMakerPreview();
+      persistCurrentCustomShieldMakerVariantState();
+      recordCustomShieldMakerHistoryCheckpoint();
+    });
+    routeInput?.addEventListener("change", () => {
+      syncCustomShieldMakerVariantFromRouteNumber();
+      updateCustomShieldMakerPreview();
+      persistCurrentCustomShieldMakerVariantState();
+      recordCustomShieldMakerHistoryCheckpoint();
+    });
+
     [
-      routeInput,
+      nameInput,
       colorSelect,
+      customColorInput,
       fontSelect,
       fontSizeInput,
       fontWeightInput,
@@ -2457,11 +3239,56 @@ const getPostThicknessFallback = () =>
       horizontalOffsetInput,
       alignmentSelect,
     ].forEach((input) => {
-      input?.addEventListener("input", updateCustomShieldMakerPreview);
-      input?.addEventListener("change", updateCustomShieldMakerPreview);
+      input?.addEventListener("input", () => {
+        updateCustomShieldMakerCustomColorControls();
+        updateCustomShieldMakerPreview();
+        persistCurrentCustomShieldMakerVariantState();
+        recordCustomShieldMakerHistoryCheckpoint();
+      });
+      input?.addEventListener("change", () => {
+        updateCustomShieldMakerCustomColorControls();
+        updateCustomShieldMakerPreview();
+        persistCurrentCustomShieldMakerVariantState();
+        recordCustomShieldMakerHistoryCheckpoint();
+      });
     });
 
+    for (const button of variantButtons) {
+      button.addEventListener("click", () => {
+        const state = ensureCustomShieldMakerVariantState();
+        const variantKey = normalizeCustomShieldMakerVariantKey(
+          button.dataset.variantDigit,
+          state.activeVariant || "2"
+        );
+
+        if (state.imageDataByVariant[variantKey]) {
+          delete state.imageDataByVariant[variantKey];
+          delete state.enabledVariants;
+          state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+            state.imageDataByVariant
+          );
+          updateCustomShieldMakerVariantButtons();
+          if (variantKey === state.activeVariant) {
+            applyCustomShieldMakerVariantToEditor(variantKey);
+            updateCustomShieldMakerPreview();
+          }
+          recordCustomShieldMakerHistoryCheckpoint();
+          return;
+        }
+
+        if (variantKey === state.activeVariant) {
+          uploadButton?.click();
+          return;
+        }
+
+        updateCustomShieldMakerVariantButtons();
+        recordCustomShieldMakerHistoryCheckpoint();
+      });
+    }
+
     populateCustomShieldMakerSelects();
+    ensureCustomShieldMakerVariantState();
+    updateCustomShieldMakerVariantButtons();
     updateCustomShieldMakerPreview();
   };
   
@@ -4273,7 +5100,7 @@ const getPostThicknessFallback = () =>
           sdRouteInput?.value ||
           currentBlockElem?.routeNumber ||
           document.querySelector(".sdShieldRouteNumberInput")?.value ||
-          "123";
+          "";
 
         if (dialog) {
           dialog._editingCustomShieldId = null;

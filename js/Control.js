@@ -691,18 +691,75 @@ const getCustomShieldMakerDisplayEm = (value, fallback = 0) => {
   return getCustomShieldMakerDisplayNumber(value, fallback) / 100 + "em";
 };
 
+const getCustomShieldMakerVariantKeyFromVariant = (variantKey) => {
+  const raw = String(variantKey || "").trim();
+  const digitMatch = raw.match(/[1-4]/);
+  return digitMatch ? digitMatch[0] : "2";
+};
+
+const getCustomShieldMakerVariantKeyFromRoute = (routeNumber) => {
+  const count = ShieldElement.prototype.getRouteCharacterCount(routeNumber);
+
+  if (count <= 1) {
+    return "1";
+  }
+  if (count === 2) {
+    return "2";
+  }
+  if (count === 3) {
+    return "3";
+  }
+  return "4";
+};
+
+const getCustomShieldMakerVariantLabelFromKey = (variantKey) =>
+  `${getCustomShieldMakerVariantKeyFromVariant(variantKey)} Digit`;
+
+const getCustomShieldMakerVariantFallbackOrder = (variantKey) => {
+  const normalized = getCustomShieldMakerVariantKeyFromVariant(variantKey);
+  const fallbackOrders = {
+    "1": ["1", "2", "3", "4"],
+    "2": ["2", "1", "3", "4"],
+    "3": ["3", "2", "4", "1"],
+    "4": ["4", "3", "2", "1"],
+  };
+
+  return fallbackOrders[normalized] || fallbackOrders["2"];
+};
+
+const getCustomShieldMakerVariantAssetKey = (variantKey) =>
+  `${getCustomShieldMakerVariantKeyFromVariant(variantKey)}Digit`;
+
+const applyCustomShieldMakerLetterSpacing = (routeEl, spacingValue) => {
+  if (!routeEl) {
+    return;
+  }
+
+  routeEl.style.gap = "0";
+  Array.from(routeEl.children).forEach((characterSpan, index) => {
+    characterSpan.style.marginLeft = index === 0 ? "0" : spacingValue;
+  });
+};
+
 const getCustomShieldMakerCssColor = (colorNameOrValue) => {
   const rawColor = String(colorNameOrValue || "Black").trim();
   return (lib.colors && lib.colors[rawColor] ? lib.colors[rawColor] : rawColor).toLowerCase();
 };
 
-const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
-  if (!routeEl || !config?.customRouteStyle) {
+const applyCustomShieldMakerRouteStyle = (routeEl, config, variantKey) => {
+  if (!routeEl || (!config?.customRouteStyle && !config?.customRouteStyleByVariant)) {
     return;
   }
 
-  const style = config.customRouteStyle || {};
-  const anchor = config.customAnchor || style.anchor || {
+  const customVariantKey = getCustomShieldMakerVariantKeyFromVariant(variantKey);
+  const style =
+    config.customRouteStyleByVariant?.[customVariantKey] ||
+    config.customRouteStyle ||
+    {};
+  const anchor =
+    config.customAnchorByVariant?.[customVariantKey] ||
+    config.customAnchor ||
+    style.anchor || {
     x: 50,
     y: 50,
     seedTop: getCustomShieldMakerDisplayNumber(style.topOffset, 0),
@@ -739,7 +796,10 @@ const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
   routeEl.style.fontWeight = String(cssWeight);
   routeEl.style.fontVariationSettings = `"wght" ${requestedWeight}`;
   routeEl.style.letterSpacing = "0";
-  routeEl.style.gap = getCustomShieldMakerDisplayEm(style.letterSpacing, 0);
+  applyCustomShieldMakerLetterSpacing(
+    routeEl,
+    getCustomShieldMakerDisplayEm(style.letterSpacing, 0)
+  );
   routeEl.style.position = "absolute";
   routeEl.style.display = "inline-flex";
   routeEl.style.alignItems = "center";
@@ -883,12 +943,19 @@ class ShieldElement extends Shield {
     );
     const normalizedRoute = `${this.routeNumber ?? ""}`.trim();
     const routeText = normalizedRoute;
-    const variant = ShieldElement.prototype.resolveBlockVariant(
-      this.shieldType,
-      routeText,
-      config
-    );
-    const variantKey = ShieldElement.prototype.formatVariantKey(variant);
+    const routeVariantKey = config?.customShieldMaker
+      ? getCustomShieldMakerVariantAssetKey(
+          getCustomShieldMakerVariantKeyFromRoute(routeText)
+        )
+      : null;
+    const variant = config?.customShieldMaker
+      ? getCustomShieldMakerVariantLabelFromKey(routeVariantKey)
+      : ShieldElement.prototype.resolveBlockVariant(
+          this.shieldType,
+          routeText,
+          config
+        );
+    const variantKey = routeVariantKey || ShieldElement.prototype.formatVariantKey(variant);
     const shieldPath = ShieldElement.prototype.getShieldAssetPath(
       config,
       variantKey
@@ -1093,7 +1160,7 @@ class ShieldElement extends Shield {
         .join("");
 
       if (config?.customShieldMaker) {
-        applyCustomShieldMakerRouteStyle(routeEl, config);
+        applyCustomShieldMakerRouteStyle(routeEl, config, variantKey);
       }
 
       if (ShieldElement.prototype.isCountyShield(config)) {
@@ -2569,6 +2636,12 @@ ShieldElement.prototype.resolveBlockVariant = function (
   routeNumber,
   config
 ) {
+  if (config?.customShieldMaker) {
+    return getCustomShieldMakerVariantLabelFromKey(
+      getCustomShieldMakerVariantKeyFromRoute(routeNumber)
+    );
+  }
+
   const allowed = config?.variants || [];
   if (!allowed.length) {
     return "";
@@ -2623,14 +2696,37 @@ ShieldElement.prototype.getRouteSizeClassFromCount = function (count) {
 
 ShieldElement.prototype.getVariantFromRoute = function (routeNumber, config) {
   const characterCount = ShieldElement.prototype.getRouteCharacterCount(routeNumber);
-  const supportsFourDigit =
-    Array.isArray(config?.variants) && config.variants.includes("4 Digit");
+  const variants = Array.isArray(config?.variants) ? config.variants : [];
 
-  if (supportsFourDigit && characterCount >= 4) {
+  if (characterCount <= 1 && variants.includes("1 Digit")) {
+    return "1 Digit";
+  }
+
+  if (characterCount === 2 && variants.includes("2 Digit")) {
+    return "2 Digit";
+  }
+
+  if (characterCount === 3 && variants.includes("3 Digit")) {
+    return "3 Digit";
+  }
+
+  if (characterCount >= 4 && variants.includes("4 Digit")) {
     return "4 Digit";
   }
 
-  return characterCount >= 3 ? "3 Digit" : "2 Digit";
+  if (characterCount >= 4 && variants.includes("3 Digit")) {
+    return "3 Digit";
+  }
+
+  if (characterCount >= 3 && variants.includes("3 Digit")) {
+    return "3 Digit";
+  }
+
+  if (variants.includes("2 Digit")) {
+    return "2 Digit";
+  }
+
+  return variants[0] || "2 Digit";
 };
 
 ShieldElement.prototype.getContainerSizeClass = function (routeNumber) {
@@ -2646,6 +2742,15 @@ ShieldElement.prototype.getImageSizeClass = function (routeNumber) {
 };
 
 ShieldElement.prototype.getShieldAssetPath = function (config, variantKey) {
+  if (config?.customShieldMaker && config?.assetPathByVariant) {
+    for (const fallbackVariant of getCustomShieldMakerVariantFallbackOrder(variantKey)) {
+      const fallbackAssetKey = getCustomShieldMakerVariantAssetKey(fallbackVariant);
+      if (config.assetPathByVariant[fallbackAssetKey]) {
+        return config.assetPathByVariant[fallbackAssetKey];
+      }
+    }
+  }
+
   if (config?.assetPathByVariant && config.assetPathByVariant[variantKey]) {
     return config.assetPathByVariant[variantKey];
   }

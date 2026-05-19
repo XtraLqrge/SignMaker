@@ -249,15 +249,29 @@
               <div class="customShieldMakerPreviewStage">
                 <div id="customShieldMakerShieldShell" class="shield customShieldMakerShieldShell">
                   <img id="customShieldMakerPreviewImg" class="shieldImg" alt="Custom shield preview" hidden />
-                  <span id="customShieldMakerRouteNumber" class="routeNumber">123</span>
+                  <span id="customShieldMakerRouteNumber" class="routeNumber"></span>
                 </div>
               </div>
               <div id="customShieldMakerEmptyPreview">Upload an SVG or PNG shield</div>
             </div>
 
+            <div class="customShieldMakerVariantSection" aria-label="Custom shield variant settings">
+              <div class="customShieldMakerVariantHeader">
+                <span>Shield Variants</span>
+                <span id="customShieldMakerCurrentVariantLabel">Editing 2 digit</span>
+              </div>
+              <div id="customShieldMakerVariantButtons" class="customShieldMakerVariantButtons" role="group" aria-label="Available custom shield digit variants">
+                <button type="button" class="customShieldMakerVariantButton" data-variant-digit="1" aria-pressed="false">1</button>
+                <button type="button" class="customShieldMakerVariantButton" data-variant-digit="2" aria-pressed="true">2</button>
+                <button type="button" class="customShieldMakerVariantButton" data-variant-digit="3" aria-pressed="false">3</button>
+                <button type="button" class="customShieldMakerVariantButton" data-variant-digit="4" aria-pressed="false">4</button>
+              </div>
+              <div id="customShieldMakerVariantStatus" class="customShieldMakerVariantStatus">Route number length selects the variant being edited.</div>
+            </div>
+
             <button id="customShieldMakerUploadButton" type="button">
               <span class="material-symbols-outlined">upload_file</span>
-              <span>Upload SVG or PNG</span>
+              <span id="customShieldMakerUploadButtonText">Upload SVG or PNG</span>
             </button>
             <input
               id="customShieldMakerFile"
@@ -271,6 +285,10 @@
                 <select id="customShieldMakerRouteColor">
                   <option>Black</option>
                 </select>
+                <div id="customShieldMakerCustomColorControls" class="customShieldMakerCustomColorControls" hidden>
+                  <input id="customShieldMakerRouteCustomColor" type="color" value="#000000" aria-label="Custom route number color" />
+                  <span id="customShieldMakerRouteCustomColorSwatch" class="customShieldMakerRouteCustomColorSwatch" aria-hidden="true"></span>
+                </div>
               </label>
 
               <label class="customShieldMakerField" for="customShieldMakerRouteFont">

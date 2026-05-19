@@ -7702,9 +7702,10 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 
 #customShieldMaker .customShieldMakerPreviewDropdowns {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
   width: 100%;
+  align-items: end;
 }
 
 #customShieldMaker .customShieldMakerControls {
@@ -7771,6 +7772,10 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 
   #customShieldMaker .customShieldMakerControls {
     width: 100%;
+  }
+
+  #customShieldMaker .customShieldMakerPreviewDropdowns {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -7840,4 +7845,103 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 .shieldPickerEditCustomShield .material-symbols-outlined {
   font-size: 1rem;
   line-height: 1;
+}
+
+/* Custom shield maker variant controls */
+#customShieldMaker .customShieldMakerVariantSection {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+  width: 100%;
+  font-family: "Inter", sans-serif;
+  color: var(--textColor);
+}
+
+#customShieldMaker .customShieldMakerVariantHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+#customShieldMakerCurrentVariantLabel {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+#customShieldMaker .customShieldMakerVariantButtons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+  width: 100%;
+}
+
+#customShieldMaker .customShieldMakerVariantButton {
+  width: 100%;
+  min-width: 0;
+  padding: 0.38rem 0.25rem;
+  background: rgba(var(--baseColor), 0.18);
+  color: var(--textColor);
+  border: 1px solid rgba(var(--baseColor), 0.28);
+  font-family: "Inter", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+#customShieldMaker .customShieldMakerVariantButton.selected,
+#customShieldMaker .customShieldMakerVariantButton[aria-pressed="true"] {
+  background: var(--selectedColor);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+#customShieldMaker .customShieldMakerVariantButton.currentVariant {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: -2px;
+}
+
+#customShieldMaker .customShieldMakerVariantStatus {
+  min-height: 1rem;
+  font-size: 0.64rem;
+  line-height: 1.2;
+  opacity: 0.78;
+}
+
+#customShieldMakerRouteNumber .customShieldMakerRouteChar,
+.customShieldMakerRenderedContainer .routeNumber .routeChar {
+  display: inline-block;
+  line-height: 1;
+}
+
+#customShieldMaker .customShieldMakerCustomColorControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.9rem;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+#customShieldMaker .customShieldMakerCustomColorControls[hidden] {
+  display: none !important;
+}
+
+#customShieldMaker #customShieldMakerRouteCustomColor {
+  width: 100%;
+  min-width: 0;
+  height: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.1rem;
+  box-sizing: border-box;
+}
+
+#customShieldMaker .customShieldMakerRouteCustomColorSwatch {
+  display: inline-block;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: #000000;
+  box-sizing: border-box;
 }

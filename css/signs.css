@@ -672,7 +672,7 @@
 
 .globalTop.hasGlobalBlocks,
 .globalBottom.hasGlobalBlocks {
-  padding: 0.45rem 0;
+  padding: 0.45rem 0.75rem;
 }
 
 .globalPanelBlockElements {

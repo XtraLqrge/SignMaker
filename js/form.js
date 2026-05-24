@@ -11937,13 +11937,36 @@ const getPostThicknessFallback = () =>
       exitTabList.removeChild(exitTabList.lastChild);
     }
 
+      const getPanelListNumber = (panelIndex) => {
+        let visibleNumber = 0;
+
+        for (let index = 0; index <= panelIndex; index++) {
+          if (!post.panels[index]?.stackedWithPrevious) {
+            visibleNumber++;
+          }
+        }
+
+        return Math.max(1, visibleNumber);
+      };
+
+      const getPanelListLabel = (panelIndex) => {
+        const labelNumber = getPanelListNumber(panelIndex);
+        const suffix = post.panels[panelIndex]?.stackedWithPrevious ? "A" : "";
+
+        return "Panel " + labelNumber + suffix;
+      };
+
       for (
         let panelIndex = 0, panelsLength = post.panels.length;
         panelIndex < panelsLength;
         panelIndex++
       ) {
         const panelRow = document.createElement("div");
-        panelRow.className = "panelListRow";
+        panelRow.className =
+          "panelListRow" +
+          (post.panels[panelIndex]?.hiddenFromPost === true
+            ? " hiddenFromPost"
+            : "");
 
         const panelButton = document.createElement("button");
         panelButton.id = "edit" + (panelIndex + 1);
@@ -11958,7 +11981,8 @@ const getPostThicknessFallback = () =>
 
         const label = document.createElement("span");
         label.className = "panelListLabel";
-        label.textContent = "Panel " + (panelIndex + 1);
+        const panelLabelText = getPanelListLabel(panelIndex);
+        label.textContent = panelLabelText;
         panelButton.appendChild(label);
 
         panelButton.addEventListener("click", function () {
@@ -11967,11 +11991,45 @@ const getPostThicknessFallback = () =>
         panelButton.addEventListener("dragstart", handlePanelDragStart);
         panelButton.addEventListener("dragend", handlePanelDragEnd);
 
+        const hideButton = document.createElement("button");
+        hideButton.type = "button";
+        hideButton.className =
+          "panelVisibilityButton" +
+          (post.panels[panelIndex]?.hiddenFromPost === true ? " isHidden" : "");
+        hideButton.title =
+          (post.panels[panelIndex]?.hiddenFromPost === true ? "Show " : "Hide ") +
+          panelLabelText;
+        hideButton.setAttribute(
+          "aria-label",
+          (post.panels[panelIndex]?.hiddenFromPost === true ? "Show " : "Hide ") +
+            panelLabelText
+        );
+
+        const hideIcon = document.createElement("span");
+        hideIcon.className = "material-symbols-outlined";
+        hideIcon.textContent =
+          post.panels[panelIndex]?.hiddenFromPost === true
+            ? "visibility_off"
+            : "visibility";
+        hideButton.appendChild(hideIcon);
+
+        hideButton.addEventListener("mousedown", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        hideButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          app.togglePanelHidden(panelIndex);
+        });
+
         const deleteButton = document.createElement("button");
         deleteButton.type = "button";
         deleteButton.className = "panelDeleteButton";
-        deleteButton.title = "Delete Panel " + (panelIndex + 1);
-        deleteButton.setAttribute("aria-label", "Delete Panel " + (panelIndex + 1));
+        deleteButton.title = "Delete " + panelLabelText;
+        deleteButton.setAttribute("aria-label", "Delete " + panelLabelText);
 
         const deleteIcon = document.createElement("span");
         deleteIcon.className = "material-symbols-outlined";
@@ -11990,6 +12048,7 @@ const getPostThicknessFallback = () =>
             app.deletePanelAt(panelIndex);
           });
         panelRow.appendChild(panelButton);
+        panelRow.appendChild(hideButton);
         panelRow.appendChild(deleteButton);
         panelList.appendChild(panelRow);
       }

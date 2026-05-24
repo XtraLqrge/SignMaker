@@ -490,7 +490,8 @@ label span.toolTip,
   margin-bottom: 0;
 }
 
-.panelDeleteButton {
+.panelDeleteButton,
+.panelVisibilityButton {
   flex: 0 0 auto;
   width: 1.4rem;
   height: 1.4rem;
@@ -503,7 +504,21 @@ label span.toolTip,
   cursor: pointer;
 }
 
-.panelDeleteButton .material-symbols-outlined {
+.panelVisibilityButton {
+  opacity: 0.9;
+}
+
+.panelVisibilityButton.isHidden {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.panelListRow.hiddenFromPost .panelListButton {
+  opacity: 0.62;
+}
+
+.panelDeleteButton .material-symbols-outlined,
+.panelVisibilityButton .material-symbols-outlined {
   font-size: 1rem;
   line-height: 1;
 }
@@ -1498,6 +1513,59 @@ textarea {
 
 #singularPanel {
   display: none;
+}
+
+#selectPanelLabel {
+  display: block;
+  width: auto;
+  text-align: left;
+  margin: 0 0 0.35rem;
+}
+
+.downloadPanelButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 100%;
+  margin-bottom: 0.4rem;
+}
+
+.downloadPanelSelectButton {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: #111827;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.downloadPanelSelectButton.selected {
+  background: var(--selectedColor);
+  border-color: rgba(255, 255, 255, 0.75);
+}
+
+.downloadPanelButtonsMessage {
+  min-height: 1rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  opacity: 0.75;
+}
+
+.downloadPrimaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.downloadPrimaryButton:disabled:hover {
+  background: #8f5a69;
 }
 
 :root[data-theme="light"] .activated {

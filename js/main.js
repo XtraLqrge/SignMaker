@@ -11,6 +11,7 @@ const app = (function () {
   let fileInfo = {
     fileType: "png",
     panel: -1,
+    selectedPanelIndices: [],
   };
 
   let currentlySelectedAPLArrowIndex = 0;
@@ -253,6 +254,121 @@ const app = (function () {
   };
 
   const clamp = (number, min, max) => Math.max(min, Math.min(number, max));
+
+  const isPanelConfiguredHidden = (panelIndex) =>
+    !!(
+      post &&
+      Array.isArray(post.panels) &&
+      post.panels[panelIndex] &&
+      post.panels[panelIndex].hiddenFromPost === true
+    );
+
+  const isPanelHiddenForLiveRender = (panelIndex) => {
+    if (!post || !Array.isArray(post.panels) || !post.panels[panelIndex]) {
+      return false;
+    }
+
+    const panel = post.panels[panelIndex];
+    const topIndex = isStackedPanelBottom(panelIndex) ? panelIndex - 1 : panelIndex;
+    const topPanelHidden =
+      topIndex >= 0 && post.panels[topIndex]?.hiddenFromPost === true;
+
+    const hiddenByOwnSetting = panel.hiddenFromPost === true;
+    const hiddenByStackTop = isStackedPanelBottom(panelIndex) && topPanelHidden;
+
+    return (hiddenByOwnSetting || hiddenByStackTop) &&
+      panelIndex !== currentlySelectedPanelIndex;
+  };
+
+  const isPanelHiddenForExport = (panelIndex) => {
+    if (!post || !Array.isArray(post.panels) || !post.panels[panelIndex]) {
+      return false;
+    }
+
+    const topIndex = isStackedPanelBottom(panelIndex) ? panelIndex - 1 : panelIndex;
+
+    return (
+      post.panels[panelIndex].hiddenFromPost === true ||
+      (topIndex >= 0 && post.panels[topIndex]?.hiddenFromPost === true)
+    );
+  };
+
+  const getPanelDisplayNumber = (panelIndex) => {
+    if (!post || !Array.isArray(post.panels)) {
+      return 1;
+    }
+
+    let panelNumber = 0;
+    const normalizedPanelIndex = clamp(
+      Number(panelIndex),
+      0,
+      Math.max(0, post.panels.length - 1)
+    );
+
+    for (let index = 0; index <= normalizedPanelIndex; index++) {
+      if (!post.panels[index]?.stackedWithPrevious) {
+        panelNumber++;
+      }
+    }
+
+    return Math.max(1, panelNumber);
+  };
+
+  const getPanelDisplayLabel = (panelIndex) => {
+    const number = getPanelDisplayNumber(panelIndex);
+    const suffix = isStackedPanelBottom(panelIndex) ? "A" : "";
+
+    return `${number}${suffix}`;
+  };
+
+  const getExportablePanelGroups = ({ includeHidden = false } = {}) => {
+    if (!post || !Array.isArray(post.panels)) {
+      return [];
+    }
+
+    const groups = [];
+
+    for (let panelIndex = 0; panelIndex < post.panels.length; panelIndex++) {
+      if (post.panels[panelIndex]?.stackedWithPrevious === true) {
+        continue;
+      }
+
+      if (!includeHidden && isPanelHiddenForExport(panelIndex)) {
+        continue;
+      }
+
+      const bottomIndex = getStackedPanelBottomIndex(panelIndex);
+      groups.push({
+        label: String(getPanelDisplayNumber(panelIndex)),
+        topIndex: panelIndex,
+        bottomIndex,
+        indices: bottomIndex >= 0 ? [panelIndex, bottomIndex] : [panelIndex],
+      });
+    }
+
+    return groups;
+  };
+
+  const getDownloadPanelSelection = () => {
+    if (!Array.isArray(fileInfo.selectedPanelIndices)) {
+      fileInfo.selectedPanelIndices = [];
+    }
+
+    const validTopPanelIndices = new Set(
+      getExportablePanelGroups().map((group) => group.topIndex)
+    );
+
+    fileInfo.selectedPanelIndices = fileInfo.selectedPanelIndices
+      .map((panelIndex) => Number(panelIndex))
+      .filter(
+        (panelIndex, index, panelIndices) =>
+          Number.isInteger(panelIndex) &&
+          validTopPanelIndices.has(panelIndex) &&
+          panelIndices.indexOf(panelIndex) === index
+      );
+
+    return fileInfo.selectedPanelIndices;
+  };
   const normalizePostThickness = (value) => {
     const parsed =
       typeof value === "string" ? parseFloat(value) : Number(value);
@@ -355,6 +471,13 @@ const app = (function () {
             typeof selection.fileInfo.panel === "number"
               ? selection.fileInfo.panel
               : fileInfo.panel,
+          selectedPanelIndices: Array.isArray(selection.fileInfo.selectedPanelIndices)
+            ? selection.fileInfo.selectedPanelIndices
+                .map((panelIndex) => Number(panelIndex))
+                .filter((panelIndex) => Number.isInteger(panelIndex) && panelIndex >= 0)
+            : Array.isArray(fileInfo.selectedPanelIndices)
+              ? fileInfo.selectedPanelIndices
+              : [],
         };
       }
     };
@@ -464,6 +587,8 @@ const app = (function () {
           fileInfo.panel = -1;
         }
       }
+
+      getDownloadPanelSelection();
     };
 
 
@@ -1257,6 +1382,7 @@ const app = (function () {
         fileInfo = {
           fileType: "png",
           panel: -1,
+          selectedPanelIndices: [],
         };
 
         post.newPanel();
@@ -2059,6 +2185,32 @@ const app = (function () {
 
         formHandler.updateForm();
         redraw();
+      });
+    };
+
+    const togglePanelHidden = function (panelIndex = currentlySelectedPanelIndex) {
+      return runWithUndo(() => {
+        if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
+          return;
+        }
+
+        const normalizedIndex = clamp(panelIndex, 0, post.panels.length - 1);
+        const panel = post.panels[normalizedIndex];
+
+        if (!panel) {
+          return;
+        }
+
+        panel.hiddenFromPost = panel.hiddenFromPost !== true;
+        getDownloadPanelSelection();
+
+        formHandler.updateForm();
+        redraw();
+
+        const downloadDialog = document.getElementById("downloadContent");
+        if (downloadDialog && downloadDialog.open) {
+          updatePreview();
+        }
       });
     };
 
@@ -5158,7 +5310,13 @@ const app = (function () {
       return document.querySelector("#postContainer");
     }
 
-    return document.getElementById("panel" + fileInfo.panel.toString());
+    const selectedPanels = getDownloadPanelSelection();
+
+    if (!selectedPanels.length) {
+      return null;
+    }
+
+    return document.querySelector("#panelContainer");
   }
 
   const downloadFile = function (dataURL, ending) {
@@ -5470,27 +5628,81 @@ const app = (function () {
     };
   };
 
+  const isPanelExportSourceElement = (child) =>
+    child?.classList &&
+    (child.classList.contains("panel") || child.classList.contains("panelStack"));
+
+  const getPanelExportTopIndexFromElement = (element) => {
+    if (!element || !element.dataset) {
+      return null;
+    }
+
+    if (element.classList.contains("panelStack")) {
+      const stackIndex = Number(element.dataset.stackTopPanelIndex);
+      return Number.isInteger(stackIndex) ? stackIndex : null;
+    }
+
+    const panelIndex = Number(element.dataset.panelIndex);
+    return Number.isInteger(panelIndex) ? panelIndex : null;
+  };
+
+  const getSelectedExportPanelIndexSet = () => {
+    if (fileInfo.panel == -1) {
+      return null;
+    }
+
+    const selectedPanels = getDownloadPanelSelection();
+
+    if (!selectedPanels.length) {
+      return new Set();
+    }
+
+    return new Set(selectedPanels);
+  };
+
+  const isPanelSourceAllowedForExport = (element, selectedPanelIndexSet) => {
+    if (!isPanelExportSourceElement(element)) {
+      return false;
+    }
+
+    const topPanelIndex = getPanelExportTopIndexFromElement(element);
+
+    if (selectedPanelIndexSet) {
+      return selectedPanelIndexSet.has(topPanelIndex);
+    }
+
+    return true;
+  };
+
   const getExportCloneSourceElements = (element) => {
     if (!element) {
       return [];
     }
 
+    const selectedPanelIndexSet = getSelectedExportPanelIndexSet();
+
     if (element.id === "panelContainer") {
-      return Array.from(element.children).filter(
-        (child) => child.classList && child.classList.contains("panel")
+      return Array.from(element.children).filter((child) =>
+        isPanelSourceAllowedForExport(child, selectedPanelIndexSet)
       );
     }
 
     if (element.id === "postContainer") {
       const panelContainer = element.querySelector("#panelContainer");
       const panels = panelContainer
-        ? Array.from(panelContainer.children).filter(
-            (child) => child.classList && child.classList.contains("panel")
+        ? Array.from(panelContainer.children).filter((child) =>
+            isPanelSourceAllowedForExport(child, selectedPanelIndexSet)
           )
         : [];
-      const posts = Array.from(element.children).filter(
-        (child) => child.classList && child.classList.contains("post") && isElementVisibleForExport(child)
-      );
+      const posts =
+        selectedPanelIndexSet && selectedPanelIndexSet.size > 0
+          ? []
+          : Array.from(element.children).filter(
+              (child) =>
+                child.classList &&
+                child.classList.contains("post") &&
+                isElementVisibleForExport(child)
+            );
 
       return [...posts, ...panels];
     }
@@ -5536,22 +5748,56 @@ const app = (function () {
       return null;
     }
 
+    const selectedPanelIndexSet = getSelectedExportPanelIndexSet();
+    const shouldCompactSelectedPanels =
+      selectedPanelIndexSet &&
+      selectedPanelIndexSet.size > 0 &&
+      (element.id === "panelContainer" || element.id === "postContainer");
+
     const layoutScale = getExportLayoutScale(element);
     const normalizeMeasurement = (value) => value / layoutScale;
 
-    const rects = [];
-    for (const sourceElement of sourceElements) {
-      const bounds = getElementAndDescendantBounds(sourceElement);
-      rects.push(bounds);
-    }
+    const panelContainer =
+      element.id === "panelContainer"
+        ? element
+        : element.querySelector("#panelContainer");
+    const panelContainerStyle = panelContainer
+      ? window.getComputedStyle(panelContainer)
+      : null;
+    const selectedPanelGap = shouldCompactSelectedPanels
+      ? normalizeMeasurement(
+          parseFloat(
+            panelContainerStyle?.columnGap ||
+              panelContainerStyle?.gap ||
+              panelContainerStyle?.getPropertyValue("gap") ||
+              "0"
+          ) || 0
+        )
+      : 0;
 
-    const left = Math.min(...rects.map((rect) => rect.left));
-    const top = Math.min(...rects.map((rect) => rect.top));
-    const right = Math.max(...rects.map((rect) => rect.right));
-    const bottom = Math.max(...rects.map((rect) => rect.bottom));
+    const sourceInfos = sourceElements.map((sourceElement) => ({
+      sourceElement,
+      sourceRect: sourceElement.getBoundingClientRect(),
+      bounds: getElementAndDescendantBounds(sourceElement),
+    }));
+
+    const left = Math.min(...sourceInfos.map((info) => info.bounds.left));
+    const top = Math.min(...sourceInfos.map((info) => info.bounds.top));
+    const right = Math.max(...sourceInfos.map((info) => info.bounds.right));
+    const bottom = Math.max(...sourceInfos.map((info) => info.bounds.bottom));
     const padding = 12;
 
-    const exportWidth = Math.ceil(normalizeMeasurement(right - left) + padding * 2);
+    const compactContentWidth = sourceInfos.reduce((totalWidth, info, index) => {
+      const boundsWidth = normalizeMeasurement(info.bounds.width);
+      return totalWidth + boundsWidth + (index > 0 ? selectedPanelGap : 0);
+    }, 0);
+
+    const exportWidth = Math.ceil(
+      (shouldCompactSelectedPanels
+        ? compactContentWidth
+        : normalizeMeasurement(right - left)) +
+        padding * 2
+    );
     const exportHeight = Math.ceil(normalizeMeasurement(bottom - top) + padding * 2);
 
     const host = document.createElement("div");
@@ -5579,22 +5825,60 @@ const app = (function () {
     wrapper.style.pointerEvents = "none";
     wrapper.style.boxSizing = "border-box";
 
-    sourceElements.forEach((sourceElement) => {
-      const sourceRect = sourceElement.getBoundingClientRect();
+    let compactLeft = padding;
+
+    sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
+
+      if (clone.classList.contains("panelHiddenFromPost")) {
+        return;
+      }
+
+      Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
+        (hiddenPanelClone) => hiddenPanelClone.remove()
+      );
+
+      if (clone.classList.contains("panelStack") && !clone.querySelector(".panel")) {
+        return;
+      }
+
+      const cloneLeft = shouldCompactSelectedPanels
+        ? compactLeft + normalizeMeasurement(sourceRect.left - bounds.left)
+        : normalizeMeasurement(sourceRect.left - left) + padding;
+
+      const sourceStyle = window.getComputedStyle(sourceElement);
+      const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
 
       clone.classList.add("exportStaticCaptureClone");
       clone.style.position = "absolute";
-      clone.style.left = normalizeMeasurement(sourceRect.left - left) + padding + "px";
+      clone.style.left = cloneLeft + "px";
       clone.style.top = normalizeMeasurement(sourceRect.top - top) + padding + "px";
-      clone.style.width = normalizeMeasurement(sourceRect.width) + "px";
-      clone.style.height = normalizeMeasurement(sourceRect.height) + "px";
+      clone.style.boxSizing = sourceStyle.boxSizing || "content-box";
+      clone.style.paddingTop = sourceStyle.paddingTop;
+      clone.style.paddingRight = sourceStyle.paddingRight;
+      clone.style.paddingBottom = sourceStyle.paddingBottom;
+      clone.style.paddingLeft = sourceStyle.paddingLeft;
+      clone.style.width = isPanelLikeClone
+        ? sourceStyle.width
+        : normalizeMeasurement(sourceRect.width) + "px";
+      clone.style.height = isPanelLikeClone
+        ? sourceStyle.height
+        : normalizeMeasurement(sourceRect.height) + "px";
+      clone.style.minWidth = isPanelLikeClone ? sourceStyle.minWidth : "0";
+      clone.style.maxWidth = isPanelLikeClone ? sourceStyle.maxWidth : "none";
+      clone.style.minHeight = isPanelLikeClone ? sourceStyle.minHeight : "0";
+      clone.style.maxHeight = isPanelLikeClone ? sourceStyle.maxHeight : "none";
       clone.style.margin = "0";
+      clone.style.overflow = "visible";
       clone.style.transform = "none";
       clone.style.transition = "none";
       clone.style.pointerEvents = "none";
 
       wrapper.appendChild(clone);
+
+      if (shouldCompactSelectedPanels) {
+        compactLeft += normalizeMeasurement(bounds.width) + selectedPanelGap;
+      }
     });
 
     host.appendChild(wrapper);
@@ -5711,60 +5995,160 @@ const app = (function () {
     }
   };
 
-    const syncDownloadSelection = () => {
-      const entirePost_option = document.getElementById("entirePost");
-      const panelNumberSelector = document.getElementById("singularPanel");
+    const setDownloadButtonsDisabled = (disabled) => {
+      ["downloadPNG", "downloadSVG"].forEach((buttonId) => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+          button.disabled = !!disabled;
+        }
+      });
+    };
 
-      if (entirePost_option && entirePost_option.checked === true) {
-        fileInfo.panel = -1;
-        if (panelNumberSelector) {
-          panelNumberSelector.style.display = "none";
+    const renderDownloadPanelButtons = () => {
+      const buttonContainer = document.getElementById("downloadPanelButtons");
+      const message = document.getElementById("downloadPanelButtonsMessage");
+
+      if (!buttonContainer) {
+        return;
+      }
+
+      const groups = getExportablePanelGroups();
+      const selectedPanels = new Set(getDownloadPanelSelection());
+
+      buttonContainer.replaceChildren();
+
+      groups.forEach((group) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className =
+          "downloadPanelSelectButton" +
+          (selectedPanels.has(group.topIndex) ? " selected" : "");
+        button.textContent = group.label;
+        button.dataset.panelIndex = String(group.topIndex);
+        button.setAttribute(
+          "aria-pressed",
+          selectedPanels.has(group.topIndex) ? "true" : "false"
+        );
+        button.title = "Export Panel " + group.label;
+
+        button.addEventListener("click", () => {
+          const currentSelection = new Set(getDownloadPanelSelection());
+
+          if (currentSelection.has(group.topIndex)) {
+            currentSelection.delete(group.topIndex);
+          } else {
+            currentSelection.add(group.topIndex);
+          }
+
+          fileInfo.selectedPanelIndices = Array.from(currentSelection);
+          fileInfo.panel = fileInfo.selectedPanelIndices.length
+            ? fileInfo.selectedPanelIndices[0]
+            : null;
+
+          updatePreview();
+        });
+
+        buttonContainer.appendChild(button);
+      });
+
+      if (message) {
+        if (!groups.length) {
+          message.textContent = "No visible panels are available to export.";
+        } else if (!selectedPanels.size) {
+          message.textContent = "Select at least one panel to export.";
+        } else {
+          message.textContent = "";
         }
-        document.getElementById("downloadContents").style.verticalAlign = "10rem";
-      } else {
-        const panelNumber = document.getElementById("selectPanel");
-        if (panelNumber) {
-          fileInfo.panel = Number(panelNumber.value) - 1;
-        }
-        if (panelNumberSelector) {
-          panelNumberSelector.style.display = "block";
-        }
-        document.getElementById("downloadContents").style.verticalAlign = "";
       }
     };
 
+    const syncDownloadSelection = () => {
+      const entirePost_option = document.getElementById("entirePost");
+      const panelNumberSelector = document.getElementById("singularPanel");
+      const downloadContents = document.getElementById("downloadContents");
+
+      if (entirePost_option && entirePost_option.checked === true) {
+        fileInfo.panel = -1;
+        fileInfo.selectedPanelIndices = [];
+
+        if (panelNumberSelector) {
+          panelNumberSelector.style.display = "none";
+        }
+
+        if (downloadContents) {
+          downloadContents.style.verticalAlign = "10rem";
+        }
+
+        setDownloadButtonsDisabled(false);
+        return true;
+      }
+
+      if (panelNumberSelector) {
+        panelNumberSelector.style.display = "block";
+      }
+
+      if (downloadContents) {
+        downloadContents.style.verticalAlign = "";
+      }
+
+      renderDownloadPanelButtons();
+
+      const selectedPanels = getDownloadPanelSelection();
+      fileInfo.panel = selectedPanels.length ? selectedPanels[0] : null;
+
+      const hasSelection = selectedPanels.length > 0;
+      setDownloadButtonsDisabled(!hasSelection);
+
+      return hasSelection;
+    };
+
     const downloadPNGSign = async function () {
-      syncDownloadSelection();
-      await saveSign(getFile(), false, false);
+      if (!syncDownloadSelection()) {
+        return;
+      }
+
+      const file = getFile();
+
+      if (!file) {
+        return;
+      }
+
+      await saveSign(file, false, false);
     };
 
     const downloadSVGSign = async function () {
-      syncDownloadSelection();
-      await saveSign(getFile(), false, true);
+      if (!syncDownloadSelection()) {
+        return;
+      }
+
+      const file = getFile();
+
+      if (!file) {
+        return;
+      }
+
+      await saveSign(file, false, true);
     };
 
     const updatePreview = async function () {
       const downloadPreview = document.getElementById("downloadPreview");
-      const entirePost_option = document.getElementById("entirePost");
-      const panelNumberSelector = document.getElementById("singularPanel");
 
       if (!downloadPreview) {
         return;
       }
 
-      if (entirePost_option.checked === true) {
-        fileInfo.panel = -1;
-        panelNumberSelector.style.display = "none";
-        document.getElementById("downloadContents").style.verticalAlign = "10rem";
-      } else {
-        const panelNumber = document.getElementById("selectPanel");
-        fileInfo.panel = panelNumber.value - 1;
-        panelNumberSelector.style.display = "block";
-        document.getElementById("downloadContents").style.verticalAlign = "";
-      }
+      const hasSelection = syncDownloadSelection();
 
       while (downloadPreview.firstChild) {
         downloadPreview.removeChild(downloadPreview.lastChild);
+      }
+
+      if (!hasSelection) {
+        const emptyBox = document.createElement("div");
+        emptyBox.textContent = "Select at least one panel to preview or download.";
+        emptyBox.className = "downloadPreviewLoading";
+        downloadPreview.appendChild(emptyBox);
+        return;
       }
 
       const loadingBox = document.createElement("div");
@@ -5773,7 +6157,13 @@ const app = (function () {
       downloadPreview.appendChild(loadingBox);
 
       try {
-        const dataUrl = await saveSign(getFile(), true, true);
+        const file = getFile();
+
+        if (!file) {
+          throw new Error("No export target found");
+        }
+
+        const dataUrl = await saveSign(file, true, true);
 
         while (downloadPreview.firstChild) {
           downloadPreview.removeChild(downloadPreview.lastChild);
@@ -5901,11 +6291,26 @@ const app = (function () {
     var firstExitTab = null;
     let currentPanelStackElmt = null;
 
+      const isPanelVisibleInCurrentPost = (panelIndex) =>
+        !isPanelHiddenForLiveRender(panelIndex);
+
+
+
       for (let index = 0; index < post.panels.length; index++) {
           const panel = post.panels[index];
-          
+
+          if (!isPanelVisibleInCurrentPost(index)) {
+            if (!isStackedPanelBottom(index)) {
+              currentPanelStackElmt = null;
+            }
+            continue;
+          }
+
           const panelElmt = document.createElement("div");
           panelElmt.className = `panel ${panel.color.toLowerCase()} ${panel.corner.toLowerCase()}`;
+          if (isPanelConfiguredHidden(index)) {
+            panelElmt.classList.add("panelHiddenFromPost");
+          }
           const numericPanelBorderRadius =
           typeof panel.borderRadius === "number"
           ? panel.borderRadius
@@ -5941,7 +6346,8 @@ const app = (function () {
             index > 0 && panel.stackedWithPrevious === true;
           const nextPanelIsStackedUnderThis =
             index + 1 < post.panels.length &&
-            post.panels[index + 1]?.stackedWithPrevious === true;
+            post.panels[index + 1]?.stackedWithPrevious === true &&
+            isPanelVisibleInCurrentPost(index + 1);
 
           if (isBottomStackedPanel && currentPanelStackElmt) {
             panelElmt.classList.add("stackedPanelBottom");
@@ -9173,6 +9579,7 @@ const app = (function () {
         newPanel: (...args) => runWithUndo(() => newPanel(...args)),
         duplicatePanel: (...args) => runWithUndo(() => duplicatePanel(...args)),
         deletePanel: (...args) => runWithUndo(() => deletePanel(...args)),
+        togglePanelHidden,
         changeEditingSubPanel,
         addSubPanel: (...args) => runWithUndo(() => addSubPanel(...args)),
         removeSubPanel: (...args) => runWithUndo(() => removeSubPanel(...args)),
@@ -9694,6 +10101,7 @@ const app = (function () {
         duplicatePanel: (...args) => runWithUndo(() => duplicatePanel(...args)),
         deletePanel: (...args) => runWithUndo(() => deletePanel(...args)),
         deletePanelAt: deletePanelAt,
+        togglePanelHidden: togglePanelHidden,
         shiftLeft: shiftLeft,
         shiftRight: shiftRight,
         movePanel: (...args) => runWithUndo(() => movePanel(...args)),

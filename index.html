@@ -111,17 +111,9 @@
         </div>
 
         <div id="singularPanel">
-          <label for="selectPanel" id="selectPanelLabel">Panel Number</label>
-          <input
-            type="number"
-            id="selectPanel"
-            name="selectPanel"
-            onchange="app.updatePreview();"
-            min="1"
-            step="1"
-            value="1"
-          />
-          <br />
+          <label id="selectPanelLabel">Panel Number</label>
+          <div id="downloadPanelButtons" class="downloadPanelButtons" aria-label="Select panels to export"></div>
+          <div id="downloadPanelButtonsMessage" class="downloadPanelButtonsMessage"></div>
         </div>
 
         <div class="options downloadActionButtons">
@@ -1117,7 +1109,7 @@
                     <div class="sdIconControlRow sdIconSizeRow">
                       <label for="sdIcon_iconSizeSlider">Size:</label>
                       <input type="range" id="sdIcon_iconSizeSlider" min="0.5" max="10" step="0.5" value="3" />
-                      <input type="number" id="sdIcon_iconSize" class="sdIconSizeInput" placeholder="3" min="0.5" max="10" step="0.5" value="3" />
+                      <input type="number" id="sdIcon_iconSize" class="sdIconSizeInput" placeholder="3" min="0.5" max="10" step="any" value="3" />
                       <button type="button" id="sdIcon_sizeReset" class="sdIconResetButton" aria-label="Reset icon size">
                         <span class="material-symbols-outlined">restart_alt</span>
                       </button>
@@ -1169,8 +1161,8 @@
 
                     <div class="sdIconControlRow sdIconPaddingRow sdIconPaddingVerticalRow">
                       <label for="sdIcon_paddingVertical">Vertical Padding:</label>
-                      <input type="range" id="sdIcon_paddingVertical" min="-2" max="8" step="0.1" value="0" />
-                      <input id="sdIcon_paddingVerticalVal" class="smallVal" type="number" min="-2" max="8" step="0.1" value="0" />
+                      <input type="range" id="sdIcon_paddingVertical" min="-5" max="8" step="0.1" value="0" />
+                      <input id="sdIcon_paddingVerticalVal" class="smallVal" type="number" min="-5" max="8" step="0.1" value="0" />
                       <button type="button" id="sdIcon_paddingVerticalReset" class="sdIconResetButton" aria-label="Reset vertical padding">
                         <span class="material-symbols-outlined">restart_alt</span>
                       </button>

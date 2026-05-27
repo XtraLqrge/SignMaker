@@ -8348,7 +8348,8 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 }
 
 .sdIconSizeRow,
-.sdIconPaddingHorizontalRow {
+.sdIconPaddingHorizontalRow,
+.sdIconPaddingVerticalRow {
   grid-template-columns: var(--sd-icon-label-width) minmax(8rem, 1fr) 4rem 1.8rem;
 }
 
@@ -8502,35 +8503,8 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   min-width: 0;
 }
 
-.sdIconPaddingVerticalRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 4rem 1.8rem;
-  row-gap: 0.25rem;
-  column-gap: 0.35rem;
-  align-items: center;
-  width: 100%;
-}
-
 .sdIconPaddingVerticalRow > label {
-  grid-column: 1 / -1;
-  width: 100%;
-  text-align: center;
-  min-height: 1.7rem;
-  display: flex;
-  align-items: end;
-  justify-content: center;
-}
-
-.sdIconPaddingVerticalRow input[type="range"] {
-  grid-column: 1;
-}
-
-.sdIconPaddingVerticalRow .smallVal {
-  grid-column: 2;
-}
-
-.sdIconPaddingVerticalRow .sdIconResetButton {
-  grid-column: 3;
+  text-align: right;
 }
 
 #smSPProperties > [data-property="sdIcon"] {
@@ -8699,4 +8673,70 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 
 .stackedPanelOptionsCheckboxRow input[type="checkbox"] {
   margin: 0;
+}
+
+/* Subpanel tab drag and additional panel control fixes */
+.sMModal.subPanelConfig,
+.sMModal.subPanelConfig .sMModalBar,
+.sMModal.subPanelConfig .sMModalSubBar,
+.stackedPanelList {
+  overflow: visible;
+}
+
+.subPanelTabGroup[data-draggable-subpanel="true"] {
+  cursor: grab;
+  position: relative;
+}
+
+.subPanelTabGroup[data-draggable-subpanel="true"].dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.subPanelTabGroup.dropBefore::before,
+.subPanelTabGroup.dropAfter::after {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 0.16rem;
+  border-radius: 0.1rem;
+  background: var(--selectedColor);
+  pointer-events: none;
+  z-index: 12;
+}
+
+.subPanelTabGroup.dropBefore::before {
+  left: -0.12rem;
+}
+
+.subPanelTabGroup.dropAfter::after {
+  right: -0.12rem;
+}
+
+.stackedPanelTabGroup.addStackedPanelSlot {
+  background: rgba(var(--baseColor), 0.14);
+}
+
+.stackedPanelOptionsDropdown {
+  z-index: 5000;
+  overflow: visible;
+}
+
+.stackedPanelOptionsWrapper.open .stackedPanelOptionsDropdown {
+  max-height: none;
+}
+
+
+.stackedPanelTabGroup.additionalStackedPanelSlot {
+  background: rgba(var(--baseColor), 0.22);
+}
+
+.stackedPanelTabGroup.additionalStackedPanelSlot .stackedPanelTabButton {
+  min-width: 2.25rem;
+  text-align: center;
+}
+
+.stackedPanelTabGroup.additionalStackedPanelSlot .stackedPanelDeleteButton {
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
 }

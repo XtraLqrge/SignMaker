@@ -1152,13 +1152,6 @@
                       </button>
                     </div>
 
-                  </div>
-
-                  <div class="sdIconPreviewColumn">
-                    <div id="sdIcon_previewBox" class="sdIconPreviewBox" aria-label="Selected icon preview">
-                      <img id="sdIcon_previewImage" alt="Selected icon preview" />
-                    </div>
-
                     <div class="sdIconControlRow sdIconPaddingRow sdIconPaddingVerticalRow">
                       <label for="sdIcon_paddingVertical">Vertical Padding:</label>
                       <input type="range" id="sdIcon_paddingVertical" min="-5" max="8" step="0.1" value="0" />
@@ -1166,6 +1159,13 @@
                       <button type="button" id="sdIcon_paddingVerticalReset" class="sdIconResetButton" aria-label="Reset vertical padding">
                         <span class="material-symbols-outlined">restart_alt</span>
                       </button>
+                    </div>
+
+                  </div>
+
+                  <div class="sdIconPreviewColumn">
+                    <div id="sdIcon_previewBox" class="sdIconPreviewBox" aria-label="Selected icon preview">
+                      <img id="sdIcon_previewImage" alt="Selected icon preview" />
                     </div>
                   </div>
                 </div>
@@ -2474,6 +2474,18 @@
 
                   <label for="settingsControlRedoEdit">Redo Edit</label>
                   <input id="settingsControlRedoEdit" type="text" value="CTRL+SHIFT+Z" />
+
+                  <label for="settingsControlCopyElements">Copy element(s)</label>
+                  <input id="settingsControlCopyElements" type="text" value="CTRL+C" />
+
+                  <label for="settingsControlPasteElements">Paste element(s)</label>
+                  <input id="settingsControlPasteElements" type="text" value="CTRL+V" />
+
+                  <label for="settingsControlPasteElementsPlain">Paste element(s) without formatting</label>
+                  <input id="settingsControlPasteElementsPlain" type="text" value="CTRL+SHIFT+V" />
+
+                  <label for="settingsControlCutElements">Cut element(s)</label>
+                  <input id="settingsControlCutElements" type="text" value="CTRL+X" />
 
                   <label for="settingsControlClearAll">Clear All</label>
                   <input id="settingsControlClearAll" type="text" value="CTRL+Backspace" />

@@ -2421,9 +2421,24 @@ img.exitOnlyArrow:last-child {
   --aplExitOnlyStemOffset: 0rem;
 }
 
-.aplExitOnlyContainer[data-arrow-type*="TURN"] {
-  --aplExitOnlyGap: 1.1rem;
-  --aplExitOnlyStemOffset: -0.75rem;
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"],
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"] {
+  --aplExitOnlyGap: 0.72rem;
+}
+
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"]:not([data-flipped="true"]),
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"]:not([data-flipped="true"]) {
+  --aplExitOnlyStemOffset: -1.1rem;
+}
+
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"],
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"][data-flipped="true"] {
+  --aplExitOnlyStemOffset: 1.1rem;
+}
+
+.aplExitOnlyContainer[data-arrow-type="APL_DUAL_TURN"] {
+  --aplExitOnlyGap: 0.35rem;
+  --aplExitOnlyStemOffset: 0rem;
 }
 
 .aplExitOnlyLabel {
@@ -3090,4 +3105,49 @@ img.exitOnlyArrow:last-child {
 
 #postContainer.polePositionCenter .panelStack {
   margin-top: -22.5rem;
+}
+
+/* Additional panels stacked above or below a main panel */
+.panelStack .stackedPanelAdditional,
+.panelStack .stackedPanelAbove,
+.panelStack .stackedPanelBelow,
+.panelStack .stackedPanelMain {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.panelStack > .panel > .exitTabContainer.emptyExitTab {
+  display: none;
+}
+
+
+/* Collapse hidden exit-tab placeholders inside stacked panel groups so zero spacing is truly zero. */
+.panelStack > .panel > .exitTabContainer:not(.tabVisible) {
+  display: none;
+}
+
+.panelStack.zeroStackedPanelSpacing {
+  gap: 0 !important;
+  row-gap: 0 !important;
+}
+
+
+/* Allow stacked panel spacing to overlap when set below zero. */
+.panelStack.negativeStackedPanelSpacing {
+  gap: 0 !important;
+}
+
+.panelStack.negativeStackedPanelSpacing > .panel:not(:first-child) {
+  margin-top: var(--stackedPanelOverlap, 0rem) !important;
+}
+
+/* The old I-PASS toll logo asset has transparent padding in its SVG viewBox. */
+.exitTab.tollLogoExitTab .tollLogoImageHolder:has(.tollLogoImage[src$="I-Pass.svg"]) {
+  overflow: visible;
+}
+
+.exitTab.tollLogoExitTab .tollLogoImage[src$="I-Pass.svg"],
+.bE-tollLogoElement > img[src$="I-Pass.svg"] {
+  transform: scale(2.15);
+  transform-origin: center center;
 }

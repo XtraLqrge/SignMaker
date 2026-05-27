@@ -85,14 +85,92 @@ const app = (function () {
       return 0;
     }
 
-    const normalizedIndex = clamp(
+    let normalizedIndex = clamp(
       typeof panelIndex === "number" ? panelIndex : currentlySelectedPanelIndex,
       0,
       post.panels.length - 1
     );
 
-    return isStackedPanelBottom(normalizedIndex) ? normalizedIndex - 1 : normalizedIndex;
+    while (
+      normalizedIndex > 0 &&
+      post.panels[normalizedIndex]?.stackedWithPrevious === true
+    ) {
+      normalizedIndex--;
+    }
+
+    return normalizedIndex;
   };
+
+  const getStackedPanelGroupIndices = (panelIndex = currentlySelectedPanelIndex) => {
+    if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
+      return [];
+    }
+
+    const topIndex = getStackedPanelTopIndex(panelIndex);
+    const indices = [topIndex];
+
+    for (let index = topIndex + 1; index < post.panels.length; index++) {
+      if (post.panels[index]?.stackedWithPrevious !== true) {
+        break;
+      }
+      indices.push(index);
+    }
+
+    return indices;
+  };
+
+  const isStackedPanelAboveMain = (panelIndex) =>
+    isStackedPanelBottom(panelIndex) &&
+    String(post?.panels?.[panelIndex]?.stackedPanelPlacement || "below").toLowerCase() === "above";
+
+  const getStackedPanelVerticalOrder = (panelIndex = currentlySelectedPanelIndex) => {
+    const indices = getStackedPanelGroupIndices(panelIndex);
+
+    if (indices.length <= 1) {
+      return indices;
+    }
+
+    const topIndex = indices[0];
+    const additionalIndices = indices.slice(1);
+    const aboveIndices = additionalIndices.filter(isStackedPanelAboveMain);
+    const belowIndices = additionalIndices.filter((index) => !isStackedPanelAboveMain(index));
+
+    return [...aboveIndices, topIndex, ...belowIndices];
+  };
+
+  const getStackedPanelAdditionalIndicesTopToBottom = (panelIndex = currentlySelectedPanelIndex) => {
+    const topIndex = getStackedPanelTopIndex(panelIndex);
+    return getStackedPanelVerticalOrder(topIndex).filter((index) => index !== topIndex);
+  };
+
+  const getAdditionalPanelLetter = (panelIndex) => {
+    if (!isStackedPanelBottom(panelIndex)) {
+      return "";
+    }
+
+    const topIndex = getStackedPanelTopIndex(panelIndex);
+    const additionalIndices = getStackedPanelAdditionalIndicesTopToBottom(topIndex);
+    const additionalOrderIndex = additionalIndices.indexOf(panelIndex);
+
+    if (additionalOrderIndex < 0) {
+      return "A";
+    }
+
+    let n = additionalOrderIndex + 1;
+    let label = "";
+
+    while (n > 0) {
+      n--;
+      label = String.fromCharCode(65 + (n % 26)) + label;
+      n = Math.floor(n / 26);
+    }
+
+    return label;
+  };
+
+  const isEmptyDefaultExitTab = (exitTab = {}) =>
+    String(exitTab?.variant || "Default") === "Default" &&
+    String(exitTab?.number ?? "").trim() === "";
 
   const getStackedPanelBottomIndex = (panelIndex = currentlySelectedPanelIndex) => {
     if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
@@ -100,12 +178,11 @@ const app = (function () {
     }
 
     const topIndex = getStackedPanelTopIndex(panelIndex);
-    const possibleBottomIndex = topIndex + 1;
+    const belowIndex = getStackedPanelGroupIndices(topIndex)
+      .slice(1)
+      .find((index) => !isStackedPanelAboveMain(index));
 
-    return possibleBottomIndex < post.panels.length &&
-      post.panels[possibleBottomIndex]?.stackedWithPrevious === true
-      ? possibleBottomIndex
-      : -1;
+    return typeof belowIndex === "number" ? belowIndex : -1;
   };
 
   const normalizeStackedPanelSpacing = (value) => {
@@ -115,7 +192,7 @@ const app = (function () {
       return DEFAULT_STACKED_PANEL_SPACING;
     }
 
-    return Math.max(0, Math.min(4, parsed));
+    return Math.max(-4, Math.min(4, parsed));
   };
 
   const getStackedPanelSettingsForTopIndex = (topIndex) => {
@@ -147,14 +224,28 @@ const app = (function () {
 
   const getCurrentStackedPanelInfo = () => {
     const topIndex = getStackedPanelTopIndex(currentlySelectedPanelIndex);
-    const bottomIndex = getStackedPanelBottomIndex(topIndex);
+    const groupIndices = getStackedPanelGroupIndices(topIndex);
+    const additionalIndices = groupIndices.slice(1);
+    const aboveIndices = additionalIndices.filter(isStackedPanelAboveMain);
+    const belowIndices = additionalIndices.filter((index) => !isStackedPanelAboveMain(index));
+    const verticalOrder = getStackedPanelVerticalOrder(topIndex);
     const settings = getStackedPanelSettingsForTopIndex(topIndex);
 
     return {
       topIndex,
-      bottomIndex,
-      selectedSlot: currentlySelectedPanelIndex === bottomIndex ? "Bottom" : "Top",
-      hasBottom: bottomIndex >= 0,
+      mainIndex: topIndex,
+      bottomIndex: belowIndices[0] ?? -1,
+      selectedSlot:
+        currentlySelectedPanelIndex === topIndex
+          ? "Main"
+          : getPanelDisplayLabel(currentlySelectedPanelIndex),
+      hasBottom: belowIndices.length > 0,
+      hasAdditional: additionalIndices.length > 0,
+      groupIndices,
+      additionalIndices,
+      aboveIndices,
+      belowIndices,
+      verticalOrder,
       spacing: settings.spacing,
       matchWidth: settings.matchWidth,
     };
@@ -269,7 +360,7 @@ const app = (function () {
     }
 
     const panel = post.panels[panelIndex];
-    const topIndex = isStackedPanelBottom(panelIndex) ? panelIndex - 1 : panelIndex;
+    const topIndex = isStackedPanelBottom(panelIndex) ? getStackedPanelTopIndex(panelIndex) : panelIndex;
     const topPanelHidden =
       topIndex >= 0 && post.panels[topIndex]?.hiddenFromPost === true;
 
@@ -285,7 +376,7 @@ const app = (function () {
       return false;
     }
 
-    const topIndex = isStackedPanelBottom(panelIndex) ? panelIndex - 1 : panelIndex;
+    const topIndex = isStackedPanelBottom(panelIndex) ? getStackedPanelTopIndex(panelIndex) : panelIndex;
 
     return (
       post.panels[panelIndex].hiddenFromPost === true ||
@@ -316,7 +407,9 @@ const app = (function () {
 
   const getPanelDisplayLabel = (panelIndex) => {
     const number = getPanelDisplayNumber(panelIndex);
-    const suffix = isStackedPanelBottom(panelIndex) ? "A" : "";
+    const suffix = isStackedPanelBottom(panelIndex)
+      ? getAdditionalPanelLetter(panelIndex)
+      : "";
 
     return `${number}${suffix}`;
   };
@@ -337,12 +430,23 @@ const app = (function () {
         continue;
       }
 
-      const bottomIndex = getStackedPanelBottomIndex(panelIndex);
+      const groupIndices = getStackedPanelGroupIndices(panelIndex);
+      const verticalOrder = getStackedPanelVerticalOrder(panelIndex);
+      const exportIndices = verticalOrder.filter(
+        (index) => includeHidden || !isPanelHiddenForExport(index)
+      );
+
+      if (!exportIndices.length) {
+        continue;
+      }
+
       groups.push({
         label: String(getPanelDisplayNumber(panelIndex)),
         topIndex: panelIndex,
-        bottomIndex,
-        indices: bottomIndex >= 0 ? [panelIndex, bottomIndex] : [panelIndex],
+        bottomIndex: getStackedPanelBottomIndex(panelIndex),
+        indices: exportIndices,
+        groupIndices,
+        verticalOrder,
       });
     }
 
@@ -368,6 +472,103 @@ const app = (function () {
       );
 
     return fileInfo.selectedPanelIndices;
+  };
+
+  const isPanelEffectivelyHiddenWithOverride = (
+    panelIndex,
+    overrideIndex = -1,
+    overrideHidden = null
+  ) => {
+    if (!post || !Array.isArray(post.panels) || !post.panels[panelIndex]) {
+      return false;
+    }
+
+    const getHiddenValue = (index) => {
+      if (index === overrideIndex && overrideHidden !== null) {
+        return overrideHidden === true;
+      }
+
+      return post.panels[index]?.hiddenFromPost === true;
+    };
+
+    const topIndex = isStackedPanelBottom(panelIndex) ? getStackedPanelTopIndex(panelIndex) : panelIndex;
+
+    return (
+      getHiddenValue(panelIndex) ||
+      (isStackedPanelBottom(panelIndex) &&
+        topIndex >= 0 &&
+        getHiddenValue(topIndex))
+    );
+  };
+
+  const getNearestVisiblePanelIndex = (
+    startIndex,
+    overrideIndex = -1,
+    overrideHidden = null
+  ) => {
+    if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
+      return -1;
+    }
+
+    const normalizedStart = clamp(startIndex, 0, post.panels.length - 1);
+
+    for (let panelIndex = normalizedStart + 1; panelIndex < post.panels.length; panelIndex++) {
+      if (!isPanelEffectivelyHiddenWithOverride(panelIndex, overrideIndex, overrideHidden)) {
+        return panelIndex;
+      }
+    }
+
+    for (let panelIndex = normalizedStart - 1; panelIndex >= 0; panelIndex--) {
+      if (!isPanelEffectivelyHiddenWithOverride(panelIndex, overrideIndex, overrideHidden)) {
+        return panelIndex;
+      }
+    }
+
+    return -1;
+  };
+
+  const resetSelectionForPanelChange = ({ preserveSubPanel = false } = {}) => {
+    if (!preserveSubPanel) {
+      currentlySelectedSubPanelIndex = 0;
+    } else {
+      const subPanelCount =
+        post.panels[currentlySelectedPanelIndex]?.sign?.subPanels?.length || 0;
+
+      currentlySelectedSubPanelIndex = clamp(
+        currentlySelectedSubPanelIndex,
+        0,
+        Math.max(0, subPanelCount - 1)
+      );
+    }
+
+    currentlySelectedRowIndex = 0;
+    currentlySelectedBlockIndex = 0;
+    currentlySelectedAPLArrowIndex = 0;
+  };
+
+  const unhidePanelForSelection = (panelIndex) => {
+    if (!post || !Array.isArray(post.panels) || !post.panels[panelIndex]) {
+      return false;
+    }
+
+    let changed = false;
+    const panel = post.panels[panelIndex];
+
+    if (panel.hiddenFromPost === true) {
+      panel.hiddenFromPost = false;
+      changed = true;
+    }
+
+    if (isStackedPanelBottom(panelIndex)) {
+      const topIndex = getStackedPanelTopIndex(panelIndex);
+
+      if (topIndex >= 0 && post.panels[topIndex]?.hiddenFromPost === true) {
+        post.panels[topIndex].hiddenFromPost = false;
+        changed = true;
+      }
+    }
+
+    return changed;
   };
   const normalizePostThickness = (value) => {
     const parsed =
@@ -1983,6 +2184,67 @@ const app = (function () {
     };
     
 
+
+    const clearPanelGlobalBlockElements = (panel) => {
+      if (!panel || !panel.sign) {
+        return;
+      }
+
+      delete panel.sign.globalTopBlockElements;
+      delete panel.sign.globalBottomBlockElements;
+      delete panel.sign.blockElements;
+    };
+
+    const setPanelDefaultAdvisoryMessage = (panel) => {
+      if (!panel?.sign || !Array.isArray(panel.sign.subPanels) || !panel.sign.subPanels.length) {
+        return;
+      }
+
+      panel.sign.subPanels[0].blockElements = new Control({
+        rows: [[new AdvisoryMessageElement()]],
+        blockProperties: [new Block()],
+      });
+    };
+
+    const setPanelDefaultActionMessage = (panel) => {
+      if (!panel?.sign || !Array.isArray(panel.sign.subPanels) || !panel.sign.subPanels.length) {
+        return;
+      }
+
+      panel.sign.subPanels[0].blockElements = new Control({
+        rows: [[new ActionMessageElement()]],
+        blockProperties: [new Block()],
+      });
+    };
+
+    const createFreshPanelFromDefaults = ({
+      clearGlobals = true,
+      advisoryMessage = false,
+      actionMessage = false,
+    } = {}) => {
+      post.newPanel();
+      const newPanel = post.panels.pop();
+
+      if (!newPanel) {
+        return null;
+      }
+
+      newPanel.stackedWithPrevious = false;
+      delete newPanel.stackedPanelPlacement;
+
+      if (clearGlobals) {
+        clearPanelGlobalBlockElements(newPanel);
+      }
+
+      if (actionMessage) {
+        setPanelDefaultActionMessage(newPanel);
+      } else if (advisoryMessage) {
+        setPanelDefaultAdvisoryMessage(newPanel);
+      }
+
+      return newPanel;
+    };
+
     const bindPostViewportLayoutWatcher = () => {
       if (postViewportLayoutObserver) {
         return;
@@ -2099,7 +2361,13 @@ const app = (function () {
   // Create a new panel, set the current editing panel to that panel, update the form, and redraw.
     const newPanel = function () {
       return runWithUndo(() => {
-        post.newPanel();
+        const newPanel = createFreshPanelFromDefaults({ clearGlobals: true });
+
+        if (!newPanel) {
+          return;
+        }
+
+        post.panels.push(newPanel);
         currentlySelectedPanelIndex = post.panels.length - 1;
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
@@ -2151,26 +2419,39 @@ const app = (function () {
         }
 
         const deleteIndex = clamp(panelIndex, 0, post.panels.length - 1);
-        const deletedPanelWasTopOfStack =
-          !isStackedPanelBottom(deleteIndex) &&
-          getStackedPanelBottomIndex(deleteIndex) >= 0;
+        const indicesToDelete = isStackedPanelBottom(deleteIndex)
+          ? [deleteIndex]
+          : getStackedPanelGroupIndices(deleteIndex);
+        const firstDeletedIndex = indicesToDelete[0];
+        const selectedPanelRef =
+          currentlySelectedPanelIndex >= 0 &&
+          currentlySelectedPanelIndex < post.panels.length
+            ? post.panels[currentlySelectedPanelIndex]
+            : null;
 
-        post.deletePanel(deleteIndex);
-
-        if (deletedPanelWasTopOfStack && post.panels[deleteIndex]) {
-          post.panels[deleteIndex].stackedWithPrevious = false;
+        for (let i = indicesToDelete.length - 1; i >= 0; i--) {
+          post.deletePanel(indicesToDelete[i]);
         }
 
         if (post.panels[0]) {
           post.panels[0].stackedWithPrevious = false;
+          delete post.panels[0].stackedPanelPlacement;
         }
 
         if (!post.panels.length) {
-          post.newPanel();
+          const replacementPanel = createFreshPanelFromDefaults({ clearGlobals: true });
+          if (replacementPanel) {
+            post.panels.push(replacementPanel);
+          } else {
+            post.newPanel();
+            clearPanelGlobalBlockElements(post.panels[post.panels.length - 1]);
+          }
           currentlySelectedPanelIndex = 0;
+        } else if (selectedPanelRef && post.panels.includes(selectedPanelRef)) {
+          currentlySelectedPanelIndex = post.panels.indexOf(selectedPanelRef);
         } else {
           currentlySelectedPanelIndex = clamp(
-            deleteIndex,
+            firstDeletedIndex,
             0,
             post.panels.length - 1
           );
@@ -2183,6 +2464,7 @@ const app = (function () {
         currentlySelectedBlockIndex = 0;
         currentlySelectedAPLArrowIndex = 0;
 
+        normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
       });
@@ -2201,7 +2483,30 @@ const app = (function () {
           return;
         }
 
-        panel.hiddenFromPost = panel.hiddenFromPost !== true;
+        const willHide = panel.hiddenFromPost !== true;
+        const selectedPanelWouldBeHidden =
+          willHide &&
+          isPanelEffectivelyHiddenWithOverride(
+            currentlySelectedPanelIndex,
+            normalizedIndex,
+            true
+          );
+
+        panel.hiddenFromPost = willHide;
+
+        if (selectedPanelWouldBeHidden) {
+          const nextPanelIndex = getNearestVisiblePanelIndex(
+            currentlySelectedPanelIndex,
+            normalizedIndex,
+            true
+          );
+
+          if (nextPanelIndex >= 0) {
+            currentlySelectedPanelIndex = nextPanelIndex;
+            resetSelectionForPanelChange();
+          }
+        }
+
         getDownloadPanelSelection();
 
         formHandler.updateForm();
@@ -2234,13 +2539,14 @@ const app = (function () {
       if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
         return;
       }
-      const nextIndex = clamp(
-        currentlySelectedPanelIndex + 1,
-        0,
-        post.panels.length - 1
-      );
-      if (nextIndex !== currentlySelectedPanelIndex) {
-        changeEditingPanel(nextIndex);
+
+      const currentMainIndex = getStackedPanelTopIndex(currentlySelectedPanelIndex);
+
+      for (let panelIndex = currentMainIndex + 1; panelIndex < post.panels.length; panelIndex++) {
+        if (post.panels[panelIndex]?.stackedWithPrevious !== true) {
+          changeEditingPanel(panelIndex);
+          return;
+        }
       }
     };
 
@@ -2248,13 +2554,14 @@ const app = (function () {
       if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
         return;
       }
-      const prevIndex = clamp(
-        currentlySelectedPanelIndex - 1,
-        0,
-        post.panels.length - 1
-      );
-      if (prevIndex !== currentlySelectedPanelIndex) {
-        changeEditingPanel(prevIndex);
+
+      const currentMainIndex = getStackedPanelTopIndex(currentlySelectedPanelIndex);
+
+      for (let panelIndex = currentMainIndex - 1; panelIndex >= 0; panelIndex--) {
+        if (post.panels[panelIndex]?.stackedWithPrevious !== true) {
+          changeEditingPanel(panelIndex);
+          return;
+        }
       }
     };
 
@@ -2264,21 +2571,32 @@ const app = (function () {
           return;
         }
 
-        const normalizedFrom = clamp(
+        const fromPanelIndex = clamp(
           typeof fromIndex === "number" ? fromIndex : currentlySelectedPanelIndex,
           0,
           post.panels.length - 1
         );
-        let normalizedTo = clamp(
-          typeof toIndex === "number" ? toIndex : normalizedFrom,
+        const fromGroup = getStackedPanelGroupIndices(fromPanelIndex);
+        const fromStart = fromGroup[0];
+        const fromCount = fromGroup.length;
+        const fromEnd = fromStart + fromCount;
+        let targetIndex = clamp(
+          typeof toIndex === "number" ? toIndex : fromStart,
           0,
           post.panels.length
         );
 
         if (
-          normalizedFrom === normalizedTo ||
-          normalizedFrom + 1 === normalizedTo
+          targetIndex < post.panels.length &&
+          post.panels[targetIndex]?.stackedWithPrevious === true
         ) {
+          const targetGroup = getStackedPanelGroupIndices(targetIndex);
+          targetIndex = targetGroup.length
+            ? targetGroup[targetGroup.length - 1] + 1
+            : targetIndex;
+        }
+
+        if (targetIndex >= fromStart && targetIndex <= fromEnd) {
           return;
         }
 
@@ -2287,26 +2605,26 @@ const app = (function () {
           currentlySelectedPanelIndex < post.panels.length
             ? post.panels[currentlySelectedPanelIndex]
             : null;
+        const movingPanels = post.panels.splice(fromStart, fromCount);
 
-        post.movePanel(normalizedFrom, normalizedTo);
+        if (targetIndex > fromStart) {
+          targetIndex -= fromCount;
+        }
+
+        post.panels.splice(targetIndex, 0, ...movingPanels);
+
+        if (post.panels[0]) {
+          post.panels[0].stackedWithPrevious = false;
+          delete post.panels[0].stackedPanelPlacement;
+        }
 
         if (selectedPanelRef) {
           const updatedIndex = post.panels.indexOf(selectedPanelRef);
-          if (updatedIndex !== -1) {
-            currentlySelectedPanelIndex = updatedIndex;
-          } else {
-            currentlySelectedPanelIndex = clamp(
-              currentlySelectedPanelIndex,
-              0,
-              post.panels.length - 1
-            );
-          }
+          currentlySelectedPanelIndex = updatedIndex !== -1
+            ? updatedIndex
+            : clamp(targetIndex, 0, post.panels.length - 1);
         } else {
-          currentlySelectedPanelIndex = clamp(
-            currentlySelectedPanelIndex,
-            0,
-            post.panels.length - 1
-          );
+          currentlySelectedPanelIndex = clamp(targetIndex, 0, post.panels.length - 1);
         }
 
         formHandler.updateForm();
@@ -2470,23 +2788,18 @@ const app = (function () {
       panelNumber,
       { suppressFlash = false, preserveSubPanel = false } = {}
     ) {
-      currentlySelectedPanelIndex = clamp(panelNumber, 0, post.panels.length - 1);
-
-      if (!preserveSubPanel) {
-        currentlySelectedSubPanelIndex = 0;
-      } else {
-        const subPanelCount =
-          post.panels[currentlySelectedPanelIndex]?.sign?.subPanels?.length || 0;
-
-        currentlySelectedSubPanelIndex = clamp(
-          currentlySelectedSubPanelIndex,
-          0,
-          Math.max(0, subPanelCount - 1)
-        );
+      if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
+        return;
       }
 
-      currentlySelectedRowIndex = 0;
-      currentlySelectedBlockIndex = 0;
+      currentlySelectedPanelIndex = clamp(panelNumber, 0, post.panels.length - 1);
+
+      const unhidPanel = unhidePanelForSelection(currentlySelectedPanelIndex);
+      if (unhidPanel) {
+        getDownloadPanelSelection();
+      }
+
+      resetSelectionForPanelChange({ preserveSubPanel });
 
       formHandler.updateForm();
       redraw();
@@ -2618,11 +2931,108 @@ const app = (function () {
   // Duplicate the current subpanel, set the editing to that subpanel, update the form, and redraw.
     const duplicateSubPanel = function () {
       return runWithUndo(() => {
-        const sign = getCurrentPanel().sign;
-        sign.duplicateSubPanel(currentlySelectedSubPanelIndex);
-        currentlySelectedSubPanelIndex++;
+        const sign = getCurrentPanel()?.sign;
+
+        if (
+          !sign ||
+          !Array.isArray(sign.subPanels) ||
+          currentlySelectedSubPanelIndex < 0 ||
+          currentlySelectedSubPanelIndex >= sign.subPanels.length
+        ) {
+          return;
+        }
+
+        const sourceIndex = currentlySelectedSubPanelIndex;
+
+        if (typeof sign.duplicateSubPanel === "function") {
+          sign.duplicateSubPanel(sourceIndex);
+        } else {
+          const sourcePanel = sign.subPanels[sourceIndex];
+          const duplicatePanel = new SubPanels({});
+          Object.assign(
+            duplicatePanel,
+            JSON.parse(JSON.stringify(sourcePanel || {}))
+          );
+          duplicatePanel.blockElements = normalizeGlobalBlockElements(
+            duplicatePanel.blockElements
+          );
+          sign.subPanels.splice(sourceIndex + 1, 0, duplicatePanel);
+        }
+
+        currentlySelectedSubPanelIndex = sourceIndex + 1;
+        currentlySelectedRowIndex = 0;
+        currentlySelectedBlockIndex = 0;
+        currentlySelectedAPLArrowIndex = 0;
+
+        normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
+        flashSelectedSubPanel({ waitForPostTransform: true });
+      });
+    };
+
+    const moveSubPanel = function (fromIndex, toIndex) {
+      return runWithUndo(() => {
+        const sign = getCurrentPanel()?.sign;
+
+        if (!sign || !Array.isArray(sign.subPanels) || sign.subPanels.length < 2) {
+          return;
+        }
+
+        const normalizedFrom = clamp(Number(fromIndex), 0, sign.subPanels.length - 1);
+        let normalizedTo = clamp(Number(toIndex), 0, sign.subPanels.length);
+
+        if (
+          normalizedFrom === normalizedTo ||
+          normalizedFrom + 1 === normalizedTo
+        ) {
+          return;
+        }
+
+        const oldOrder = sign.subPanels.slice();
+        const selectedSubPanelRef = sign.subPanels[currentlySelectedSubPanelIndex] || null;
+        const [movedSubPanel] = sign.subPanels.splice(normalizedFrom, 1);
+
+        if (normalizedTo > normalizedFrom) {
+          normalizedTo--;
+        }
+
+        sign.subPanels.splice(normalizedTo, 0, movedSubPanel);
+
+        if (Array.isArray(sign.aplArrows)) {
+          sign.aplArrows.forEach((arrow) => {
+            const oldIndex = clamp(
+              typeof arrow.subPanelIndex === "number" ? arrow.subPanelIndex : 0,
+              0,
+              oldOrder.length - 1
+            );
+            const subPanelRef = oldOrder[oldIndex];
+            const newIndex = sign.subPanels.indexOf(subPanelRef);
+
+            if (newIndex >= 0) {
+              arrow.subPanelIndex = newIndex;
+            }
+          });
+        }
+
+        if (selectedSubPanelRef) {
+          const updatedSelectedIndex = sign.subPanels.indexOf(selectedSubPanelRef);
+          currentlySelectedSubPanelIndex = updatedSelectedIndex >= 0
+            ? updatedSelectedIndex
+            : clamp(normalizedTo, 0, sign.subPanels.length - 1);
+        } else {
+          currentlySelectedSubPanelIndex = clamp(normalizedTo, 0, sign.subPanels.length - 1);
+        }
+
+        currentlySelectedRowIndex = 0;
+        currentlySelectedBlockIndex = 0;
+        currentlySelectedAPLArrowIndex = 0;
+
+        normalizeSubpanelDividerSettings(sign);
+        normalizeSelectionForCurrentPost();
+        formHandler.updateForm();
+        redraw();
+        flashSelectedSubPanel({ waitForPostTransform: true });
       });
     };
 
@@ -3338,10 +3748,17 @@ const app = (function () {
           return;
         }
 
-        const insertIndex = clamp(currentlySelectedPanelIndex + 1, 0, post.panels.length);
-        post.newPanel();
+        const selectedGroup = getStackedPanelGroupIndices(currentlySelectedPanelIndex);
+        const groupEndIndex = selectedGroup.length
+          ? selectedGroup[selectedGroup.length - 1] + 1
+          : currentlySelectedPanelIndex + 1;
+        const insertIndex = clamp(groupEndIndex, 0, post.panels.length);
+        const newPanel = createFreshPanelFromDefaults({ clearGlobals: true });
 
-        const newPanel = post.panels.pop();
+        if (!newPanel) {
+          return;
+        }
+
         post.panels.splice(insertIndex, 0, newPanel);
 
         currentlySelectedPanelIndex = insertIndex;
@@ -3361,10 +3778,13 @@ const app = (function () {
           return;
         }
 
-        const insertIndex = clamp(currentlySelectedPanelIndex, 0, post.panels.length);
-        post.newPanel();
+        const insertIndex = clamp(getStackedPanelTopIndex(currentlySelectedPanelIndex), 0, post.panels.length);
+        const newPanel = createFreshPanelFromDefaults({ clearGlobals: true });
 
-        const newPanel = post.panels.pop();
+        if (!newPanel) {
+          return;
+        }
+
         post.panels.splice(insertIndex, 0, newPanel);
 
         currentlySelectedPanelIndex = insertIndex;
@@ -3378,41 +3798,38 @@ const app = (function () {
       });
     };
 
-    const createStackedPanelBelowSelected = () => {
+    const createAdditionalPanelForCurrentStack = (placement = "below") => {
       return runWithUndo(() => {
         if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
           return;
         }
 
         const topIndex = getStackedPanelTopIndex(currentlySelectedPanelIndex);
-        const existingBottomIndex = getStackedPanelBottomIndex(topIndex);
+        const topPanel = post.panels[topIndex];
 
-        if (existingBottomIndex >= 0) {
-          currentlySelectedPanelIndex = existingBottomIndex;
-          currentlySelectedSubPanelIndex = 0;
-          currentlySelectedRowIndex = 0;
-          currentlySelectedBlockIndex = 0;
-          normalizeSelectionForCurrentPost();
-          redraw();
-          formHandler.updateForm();
+        if (!topPanel) {
           return;
         }
 
-        const topPanel = post.panels[topIndex];
-        if (topPanel) {
-          getStackedPanelSettingsForTopIndex(topIndex);
-        }
+        getStackedPanelSettingsForTopIndex(topIndex);
 
-        const insertIndex = clamp(topIndex + 1, 0, post.panels.length);
-        post.newPanel();
+        const groupIndices = getStackedPanelGroupIndices(topIndex);
+        const insertIndex = groupIndices.length
+          ? groupIndices[groupIndices.length - 1] + 1
+          : topIndex + 1;
+        const newPanel = createFreshPanelFromDefaults({
+          clearGlobals: true,
+          actionMessage: true,
+        });
 
-        const newPanel = post.panels.pop();
         if (!newPanel) {
           return;
         }
 
-        newPanel.color = "Yellow";
         newPanel.stackedWithPrevious = true;
+        newPanel.color = topPanel.color;
+        newPanel.stackedPanelPlacement =
+          String(placement || "below").toLowerCase() === "above" ? "above" : "below";
         post.panels.splice(insertIndex, 0, newPanel);
 
         currentlySelectedPanelIndex = insertIndex;
@@ -3427,20 +3844,39 @@ const app = (function () {
       });
     };
 
+    const createStackedPanelAboveSelected = () => createAdditionalPanelForCurrentStack("above");
+    const createStackedPanelBelowSelected = () => createAdditionalPanelForCurrentStack("below");
+
     const changeEditingStackedPanelSlot = (slot) => {
       if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
         return;
       }
 
-      const normalizedSlot = String(slot || "Top").toLowerCase();
+      const normalizedSlot = String(slot || "Main").toLowerCase();
       const topIndex = getStackedPanelTopIndex(currentlySelectedPanelIndex);
-      const bottomIndex = getStackedPanelBottomIndex(topIndex);
 
-      if (normalizedSlot === "bottom") {
-        if (bottomIndex >= 0) {
-          changeEditingPanel(bottomIndex);
+      if (normalizedSlot === "bottom" || normalizedSlot === "below") {
+        const belowIndex = getStackedPanelGroupIndices(topIndex)
+          .slice(1)
+          .find((index) => !isStackedPanelAboveMain(index));
+
+        if (typeof belowIndex === "number") {
+          changeEditingPanel(belowIndex);
         } else {
           createStackedPanelBelowSelected();
+        }
+        return;
+      }
+
+      if (normalizedSlot === "above") {
+        const aboveIndex = getStackedPanelGroupIndices(topIndex)
+          .slice(1)
+          .find(isStackedPanelAboveMain);
+
+        if (typeof aboveIndex === "number") {
+          changeEditingPanel(aboveIndex);
+        } else {
+          createStackedPanelAboveSelected();
         }
         return;
       }
@@ -3454,30 +3890,39 @@ const app = (function () {
           return;
         }
 
-        const normalizedSlot = String(slot || "Bottom").toLowerCase();
+        const numericSlot =
+          typeof slot === "number"
+            ? slot
+            : /^\d+$/.test(String(slot || "").trim())
+              ? parseInt(String(slot).trim(), 10)
+              : NaN;
+        const normalizedSlot = String(slot || "current").toLowerCase();
         const topIndex = getStackedPanelTopIndex(currentlySelectedPanelIndex);
-        const bottomIndex = getStackedPanelBottomIndex(topIndex);
+        const groupIndices = getStackedPanelGroupIndices(topIndex);
+        let deleteIndex = -1;
 
-        if (normalizedSlot === "bottom") {
-          if (bottomIndex < 0) {
-            return;
-          }
-
-          post.deletePanel(bottomIndex);
-          currentlySelectedPanelIndex = topIndex;
-        } else {
-          if (bottomIndex < 0 || post.panels.length <= 1) {
-            return;
-          }
-
-          post.deletePanel(topIndex);
-          const promotedIndex = clamp(topIndex, 0, post.panels.length - 1);
-          if (post.panels[promotedIndex]) {
-            post.panels[promotedIndex].stackedWithPrevious = false;
-          }
-          currentlySelectedPanelIndex = promotedIndex;
+        if (
+          Number.isInteger(numericSlot) &&
+          numericSlot >= 0 &&
+          numericSlot < post.panels.length &&
+          post.panels[numericSlot]?.stackedWithPrevious === true &&
+          groupIndices.includes(numericSlot)
+        ) {
+          deleteIndex = numericSlot;
+        } else if (normalizedSlot === "above") {
+          deleteIndex = groupIndices.slice(1).find(isStackedPanelAboveMain) ?? -1;
+        } else if (normalizedSlot === "bottom" || normalizedSlot === "below") {
+          deleteIndex = groupIndices.slice(1).find((index) => !isStackedPanelAboveMain(index)) ?? -1;
+        } else if (isStackedPanelBottom(currentlySelectedPanelIndex)) {
+          deleteIndex = currentlySelectedPanelIndex;
         }
 
+        if (deleteIndex < 0) {
+          return;
+        }
+
+        post.deletePanel(deleteIndex);
+        currentlySelectedPanelIndex = clamp(topIndex, 0, post.panels.length - 1);
         currentlySelectedSubPanelIndex = 0;
         currentlySelectedRowIndex = 0;
         currentlySelectedBlockIndex = 0;
@@ -4199,8 +4644,8 @@ const app = (function () {
         const APL_EDGE_PADDING_REM = 0.45;
         const APL_EXIT_ONLY_LABEL_WIDTH_REM = 3.25;
         const APL_EXIT_ONLY_STRAIGHT_GAP_REM = 1.15;
-        const APL_EXIT_ONLY_TURN_GAP_REM = 1.1;
-        const APL_EXIT_ONLY_TURN_STEM_OFFSET_REM = -0.75;
+        const APL_EXIT_ONLY_TURN_GAP_REM = 0.72;
+        const APL_EXIT_ONLY_TURN_STEM_OFFSET_REM = 1.1;
         const APL_ARROW_ZONE_EXTRA_REM = 1.15;
         const APL_DIVIDER_ARROW_BOTTOM_OFFSET_REM = 0.45;
         const APL_DIVIDER_LINE_GAP_REM = 0.25;
@@ -5689,11 +6134,7 @@ const app = (function () {
 
     if (element.id === "postContainer") {
       const panelContainer = element.querySelector("#panelContainer");
-      const panels = panelContainer
-        ? Array.from(panelContainer.children).filter((child) =>
-            isPanelSourceAllowedForExport(child, selectedPanelIndexSet)
-          )
-        : [];
+
       const posts =
         selectedPanelIndexSet && selectedPanelIndexSet.size > 0
           ? []
@@ -5703,6 +6144,21 @@ const app = (function () {
                 child.classList.contains("post") &&
                 isElementVisibleForExport(child)
             );
+
+      if (!selectedPanelIndexSet) {
+        const fullPanelContainer =
+          panelContainer && isElementVisibleForExport(panelContainer)
+            ? [panelContainer]
+            : [];
+
+        return [...posts, ...fullPanelContainer];
+      }
+
+      const panels = panelContainer
+        ? Array.from(panelContainer.children).filter((child) =>
+            isPanelSourceAllowedForExport(child, selectedPanelIndexSet)
+          )
+        : [];
 
       return [...posts, ...panels];
     }
@@ -5847,6 +6303,38 @@ const app = (function () {
         : normalizeMeasurement(sourceRect.left - left) + padding;
 
       const sourceStyle = window.getComputedStyle(sourceElement);
+      const exportComputedPropertiesToCopy = [
+        "background",
+        "background-color",
+        "background-image",
+        "background-position",
+        "background-size",
+        "background-repeat",
+        "background-origin",
+        "background-clip",
+      ];
+
+      exportComputedPropertiesToCopy.forEach((propertyName) => {
+        const propertyValue = sourceStyle.getPropertyValue(propertyName);
+        if (propertyValue) {
+          clone.style.setProperty(propertyName, propertyValue);
+        }
+      });
+
+      [
+        "--post-color-mid",
+        "--post-color-light",
+        "--post-color-dark",
+        "--postThickness",
+        "--postGradient",
+        "--panelSpacing",
+      ].forEach((propertyName) => {
+        const propertyValue = sourceStyle.getPropertyValue(propertyName);
+        if (propertyValue) {
+          clone.style.setProperty(propertyName, propertyValue);
+        }
+      });
+
       const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
 
       clone.classList.add("exportStaticCaptureClone");
@@ -6338,32 +6826,62 @@ const app = (function () {
                   flashTarget: event.currentTarget.querySelector(".subPanelDisplay"),
               });
           });
-          panelElmt.draggable = post.panels.length > 1;
-          panelElmt.addEventListener("dragstart", handleRenderedPanelDragStart);
-          panelElmt.addEventListener("dragend", handleRenderedPanelDragEnd);
+          const isAdditionalStackedPanel = isStackedPanelBottom(index);
+          panelElmt.draggable = !isAdditionalStackedPanel && post.panels.length > 1;
+          if (panelElmt.draggable) {
+            panelElmt.addEventListener("dragstart", handleRenderedPanelDragStart);
+            panelElmt.addEventListener("dragend", handleRenderedPanelDragEnd);
+          }
 
-          const isBottomStackedPanel =
-            index > 0 && panel.stackedWithPrevious === true;
-          const nextPanelIsStackedUnderThis =
-            index + 1 < post.panels.length &&
-            post.panels[index + 1]?.stackedWithPrevious === true &&
-            isPanelVisibleInCurrentPost(index + 1);
+          const stackTopIndex = getStackedPanelTopIndex(index);
+          const visibleAdditionalPanelsForThisMain = !isAdditionalStackedPanel
+            ? getStackedPanelGroupIndices(index)
+                .slice(1)
+                .some((stackIndex) => isPanelVisibleInCurrentPost(stackIndex))
+            : false;
+          const panelIsPartOfStack = isAdditionalStackedPanel || visibleAdditionalPanelsForThisMain;
 
-          if (isBottomStackedPanel && currentPanelStackElmt) {
-            panelElmt.classList.add("stackedPanelBottom");
-            currentPanelStackElmt.appendChild(panelElmt);
-          } else if (nextPanelIsStackedUnderThis) {
+          if (isAdditionalStackedPanel && currentPanelStackElmt) {
+            const isAboveMain = isStackedPanelAboveMain(index);
+            panelElmt.classList.add(
+              "stackedPanelAdditional",
+              isAboveMain ? "stackedPanelAbove" : "stackedPanelBelow"
+            );
+
+            if (isAboveMain) {
+              const mainPanelElmt = currentPanelStackElmt.querySelector(".stackedPanelMain");
+              if (mainPanelElmt) {
+                currentPanelStackElmt.insertBefore(panelElmt, mainPanelElmt);
+              } else {
+                currentPanelStackElmt.appendChild(panelElmt);
+              }
+            } else {
+              currentPanelStackElmt.appendChild(panelElmt);
+            }
+          } else if (visibleAdditionalPanelsForThisMain) {
             currentPanelStackElmt = document.createElement("div");
             const stackedPanelSettings = getStackedPanelSettingsForTopIndex(index);
+            const rawStackedPanelSpacing = Number(stackedPanelSettings.spacing);
+            const normalizedStackedPanelSpacing = Number.isFinite(rawStackedPanelSpacing)
+              ? Math.max(-4, Math.min(4, rawStackedPanelSpacing))
+              : 0;
+            const positiveStackedPanelGap = Math.max(0, normalizedStackedPanelSpacing);
+            const negativeStackedPanelOverlap = Math.min(0, normalizedStackedPanelSpacing);
             currentPanelStackElmt.className =
               "panelStack" +
-              (stackedPanelSettings.matchWidth ? " stackedPanelMatchWidth" : "");
+              (stackedPanelSettings.matchWidth ? " stackedPanelMatchWidth" : "") +
+              (normalizedStackedPanelSpacing <= 0 ? " zeroStackedPanelSpacing" : "") +
+              (normalizedStackedPanelSpacing < 0 ? " negativeStackedPanelSpacing" : "");
             currentPanelStackElmt.dataset.stackTopPanelIndex = String(index);
             currentPanelStackElmt.style.setProperty(
               "--stackedPanelSpacing",
-              stackedPanelSettings.spacing + "rem"
+              positiveStackedPanelGap + "rem"
             );
-            panelElmt.classList.add("stackedPanelTop");
+            currentPanelStackElmt.style.setProperty(
+              "--stackedPanelOverlap",
+              negativeStackedPanelOverlap + "rem"
+            );
+            panelElmt.classList.add("stackedPanelMain");
             panelContainerElmt.appendChild(currentPanelStackElmt);
             currentPanelStackElmt.appendChild(panelElmt);
           } else {
@@ -6383,6 +6901,11 @@ const app = (function () {
                    
                    const exitTabCont = document.createElement("div");
                    exitTabCont.className = `exitTabContainer ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
+                   const shouldCollapseEmptyExitTab = panelIsPartOfStack && isEmptyDefaultExitTab(exitTab);
+                   if (shouldCollapseEmptyExitTab) {
+                     exitTabCont.classList.add("emptyExitTab");
+                     exitTabCont.style.display = "none";
+                   }
                    exitTabCont.style.position = "relative";
                    exitTabCont.style.zIndex = "1";
                    
@@ -6856,8 +7379,10 @@ const app = (function () {
                                let hasRightEdgeExitTab = false;
                                let hasLeftEdgeExitTab = false;
                                
-                               exitTabElmt.style.visibility = "visible";
-                               exitTabCont.className += " tabVisible";
+                               if (!shouldCollapseEmptyExitTab) {
+                                   exitTabElmt.style.visibility = "visible";
+                                   exitTabCont.classList.add("tabVisible");
+                               }
                                if (exitTab.variant === "Default" || exitTab.variant === "Full Left") {
                                    const exitTabPosition =
                                    typeof exitTab.position === "string" ? exitTab.position.toLowerCase() : "";
@@ -7384,7 +7909,10 @@ const app = (function () {
           signElmt.style.position = "relative";
           signElmt.style.zIndex = "2";
           
-          if (panel.exitTabs.length > 0 && panel.exitTabs[0].number != null) {
+          if (
+              panel.exitTabs.length > 0 &&
+              panel.exitTabs.some((exitTab) => !isEmptyDefaultExitTab(exitTab))
+          ) {
               signElmt.className += " tabVisible";
           }
           
@@ -7732,8 +8260,8 @@ const app = (function () {
           const APL_EDGE_PADDING_REM = 1;
           const APL_EXIT_ONLY_LABEL_WIDTH_REM = 3.25;
           const APL_EXIT_ONLY_STRAIGHT_GAP_REM = 1.15;
-          const APL_EXIT_ONLY_TURN_GAP_REM = 1.1;
-          const APL_EXIT_ONLY_TURN_STEM_OFFSET_REM = -0.75;
+          const APL_EXIT_ONLY_TURN_GAP_REM = 0.72;
+          const APL_EXIT_ONLY_TURN_STEM_OFFSET_REM = 1.1;
 
           const getSafeAPLSpacingRem = (value) => {
             const parsed = parseFloat(value);
@@ -7749,6 +8277,45 @@ const app = (function () {
             }
 
             return getDefaultAPLArrowSizeRem(arrow?.type);
+          };
+
+          const isAPLTurnArrowWithOffset = (arrow) => {
+            const type = String(arrow?.type || "");
+            return type === "APL_TURN" || type === "APL_UP_TURN";
+          };
+
+          const getAPLExitOnlyGapRem = (arrow) =>
+            isAPLTurnArrowWithOffset(arrow)
+              ? APL_EXIT_ONLY_TURN_GAP_REM
+              : APL_EXIT_ONLY_STRAIGHT_GAP_REM;
+
+          const getAPLExitOnlyStemOffsetRem = (arrow) => {
+            if (!isAPLTurnArrowWithOffset(arrow)) {
+              return 0;
+            }
+
+            const sizeBasedOffset = getSafeAPLSizeRem(arrow) * 0.32;
+            const offset = Math.max(
+              0.9,
+              Math.min(1.2, sizeBasedOffset || APL_EXIT_ONLY_TURN_STEM_OFFSET_REM)
+            );
+
+            return arrow?.flip ? offset : -offset;
+          };
+
+          const applyAPLExitOnlyLabelPlacementStyles = (slot, arrow) => {
+            if (!slot || !arrow) {
+              return;
+            }
+
+            slot.style.setProperty(
+              "--aplExitOnlyGap",
+              `${getAPLExitOnlyGapRem(arrow)}rem`
+            );
+            slot.style.setProperty(
+              "--aplExitOnlyStemOffset",
+              `${getAPLExitOnlyStemOffsetRem(arrow)}rem`
+            );
           };
           
           const getAPLArrowZoneHeightRem = () => {
@@ -7809,18 +8376,8 @@ const app = (function () {
             return { left: 0, right: 0 };
           }
 
-          const type = String(arrow.type || "");
-          const isTurnArrow = type.includes("TURN");
-
-          const gap = isTurnArrow
-            ? APL_EXIT_ONLY_TURN_GAP_REM
-            : APL_EXIT_ONLY_STRAIGHT_GAP_REM;
-
-          let stemOffset = isTurnArrow ? APL_EXIT_ONLY_TURN_STEM_OFFSET_REM : 0;
-
-          if (arrow.flip) {
-            stemOffset *= -1;
-          }
+          const gap = getAPLExitOnlyGapRem(arrow);
+          const stemOffset = getAPLExitOnlyStemOffsetRem(arrow);
 
           const renderedSides = getAPLExitOnlyRenderedSides(arrow, subPanelIndex);
 
@@ -8154,6 +8711,7 @@ const app = (function () {
                                      isBoundarySharedExitOnlyDividerArrow(subPanelIndex);
 
                                    divArrowSlot.classList.add("aplExitOnlyContainer");
+                                   applyAPLExitOnlyLabelPlacementStyles(divArrowSlot, dividerArrow);
 
                                    if (boundarySharedExitOnly) {
                                        divArrowSlot.classList.add("aplExitOnlySharedRunMember");
@@ -8436,6 +8994,7 @@ const app = (function () {
                                  isInSharedExitOnlyRun(arrowGroup, gi);
 
                                arrowSlot.classList.add("aplExitOnlyContainer");
+                               applyAPLExitOnlyLabelPlacementStyles(arrowSlot, arrow);
 
                                if (boundarySharedExitOnly || sameSubpanelSharedRun) {
                                    arrowSlot.classList.add("aplExitOnlySharedRunMember");
@@ -9584,6 +10143,7 @@ const app = (function () {
         addSubPanel: (...args) => runWithUndo(() => addSubPanel(...args)),
         removeSubPanel: (...args) => runWithUndo(() => removeSubPanel(...args)),
         duplicateSubPanel: (...args) => runWithUndo(() => duplicateSubPanel(...args)),
+        moveSubPanel,
         changeEditingExitTab,
         newExitTab: (...args) => runWithUndo(() => newExitTab(...args)),
         duplicateExitTab: (...args) => runWithUndo(() => duplicateExitTab(...args)),
@@ -10116,6 +10676,7 @@ const app = (function () {
         removeSubPanel: (...args) => runWithUndo(() => removeSubPanel(...args)),
         changeEditingSubPanel: changeEditingSubPanel,
         duplicateSubPanel: (...args) => runWithUndo(() => duplicateSubPanel(...args)),
+        moveSubPanel,
         downloadPNGSign: downloadPNGSign,
         downloadSVGSign: downloadSVGSign,
         updatePreview: updatePreview,
@@ -10157,6 +10718,7 @@ const app = (function () {
         
         createPanelRightOfSelected,
         createPanelLeftOfSelected,
+        createStackedPanelAboveSelected,
         createStackedPanelBelowSelected,
         changeEditingStackedPanelSlot,
         removeStackedPanelSlot,

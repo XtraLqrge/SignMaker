@@ -2994,6 +2994,444 @@ DividerElement.prototype.dividerColors = [{ value: "Default", label: "Default" }
   }))
 );
 
+
+const isProbablySvgImageSource = (source = "") => {
+  const normalizedSource = String(source || "").trim().toLowerCase();
+
+  return (
+    normalizedSource.startsWith("data:image/svg+xml") ||
+    normalizedSource.includes(".svg") ||
+    normalizedSource.includes("image/svg+xml")
+  );
+};
+
+const getSvgTextFromImageSource = async (source = "") => {
+  const rawSource = String(source || "").trim();
+
+  if (!rawSource) {
+    return "";
+  }
+
+  if (rawSource.toLowerCase().startsWith("data:image/svg+xml")) {
+    const commaIndex = rawSource.indexOf(",");
+
+    if (commaIndex < 0) {
+      return "";
+    }
+
+    const metadata = rawSource.slice(0, commaIndex).toLowerCase();
+    const payload = rawSource.slice(commaIndex + 1);
+
+    try {
+      return metadata.includes(";base64")
+        ? atob(payload)
+        : decodeURIComponent(payload);
+    } catch (error) {
+      try {
+        return decodeURIComponent(escape(atob(payload)));
+      } catch (fallbackError) {
+        return "";
+      }
+    }
+  }
+
+  if (typeof fetch !== "function") {
+    return "";
+  }
+
+  try {
+    const response = await fetch(rawSource, { cache: "force-cache" });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    return await response.text();
+  } catch (error) {
+    return "";
+  }
+};
+
+const isTransparentSvgPaintValue = (value = "") => {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+
+  return (
+    !normalizedValue ||
+    normalizedValue === "none" ||
+    normalizedValue === "transparent" ||
+    /^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(normalizedValue) ||
+    /^hsla\([^)]*,\s*0(?:\.0+)?\)$/.test(normalizedValue)
+  );
+};
+
+const getSvgNumericStyle = (value = "", fallback = 1) => {
+  const parsed = parseFloat(String(value || ""));
+
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const hasVisibleSvgPaint = (element) => {
+  if (!element || typeof window === "undefined") {
+    return false;
+  }
+
+  const tagName = String(element.tagName || "").toLowerCase();
+
+  if (["image", "use"].includes(tagName)) {
+    return true;
+  }
+
+  let computedStyle = null;
+
+  try {
+    computedStyle = window.getComputedStyle(element);
+  } catch (error) {
+    computedStyle = null;
+  }
+
+  const display = computedStyle?.display || element.getAttribute("display") || "";
+  const visibility = computedStyle?.visibility || element.getAttribute("visibility") || "";
+  const opacity = computedStyle?.opacity || element.getAttribute("opacity") || "1";
+
+  if (
+    String(display).toLowerCase() === "none" ||
+    String(visibility).toLowerCase() === "hidden" ||
+    getSvgNumericStyle(opacity, 1) <= 0
+  ) {
+    return false;
+  }
+
+  const fill = computedStyle?.fill || element.getAttribute("fill") || "";
+  const stroke = computedStyle?.stroke || element.getAttribute("stroke") || "";
+  const fillOpacity =
+    computedStyle?.fillOpacity || element.getAttribute("fill-opacity") || "1";
+  const strokeOpacity =
+    computedStyle?.strokeOpacity || element.getAttribute("stroke-opacity") || "1";
+  const strokeWidth =
+    computedStyle?.strokeWidth || element.getAttribute("stroke-width") || "1";
+
+  const hasVisibleFill =
+    !isTransparentSvgPaintValue(fill) &&
+    getSvgNumericStyle(fillOpacity, 1) > 0;
+  const hasVisibleStroke =
+    !isTransparentSvgPaintValue(stroke) &&
+    getSvgNumericStyle(strokeOpacity, 1) > 0 &&
+    getSvgNumericStyle(strokeWidth, 1) > 0;
+
+  return hasVisibleFill || hasVisibleStroke;
+};
+
+const getVisibleSvgBounds = (svgElement) => {
+  if (!svgElement || typeof svgElement.querySelectorAll !== "function") {
+    return null;
+  }
+
+  const graphicSelector = [
+    "path",
+    "rect",
+    "circle",
+    "ellipse",
+    "polygon",
+    "polyline",
+    "line",
+    "text",
+    "tspan",
+    "image",
+    "use",
+  ].join(",");
+
+  const graphicElements = Array.from(svgElement.querySelectorAll(graphicSelector));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const element of graphicElements) {
+    if (!hasVisibleSvgPaint(element)) {
+      continue;
+    }
+
+    try {
+      const bounds = element.getBBox();
+
+      if (
+        !bounds ||
+        !Number.isFinite(bounds.x) ||
+        !Number.isFinite(bounds.y) ||
+        !Number.isFinite(bounds.width) ||
+        !Number.isFinite(bounds.height) ||
+        bounds.width <= 0 ||
+        bounds.height <= 0
+      ) {
+        continue;
+      }
+
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+    } catch (error) {
+      continue;
+    }
+  }
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY) ||
+    maxX <= minX ||
+    maxY <= minY
+  ) {
+    try {
+      const fallbackBounds = svgElement.getBBox();
+
+      if (
+        fallbackBounds &&
+        Number.isFinite(fallbackBounds.x) &&
+        Number.isFinite(fallbackBounds.y) &&
+        Number.isFinite(fallbackBounds.width) &&
+        Number.isFinite(fallbackBounds.height) &&
+        fallbackBounds.width > 0 &&
+        fallbackBounds.height > 0
+      ) {
+        return fallbackBounds;
+      }
+    } catch (error) {
+      return null;
+    }
+
+    return null;
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+};
+
+const cropSvgImageToVisibleBounds = async (img, source) => {
+  if (!img || img.dataset.tightIconBoundsApplied === "true") {
+    return false;
+  }
+
+  const svgText = await getSvgTextFromImageSource(source);
+
+  if (!svgText || !svgText.trim()) {
+    return false;
+  }
+
+  try {
+    const parser = new DOMParser();
+    const parsedDocument = parser.parseFromString(svgText, "image/svg+xml");
+    const parserError = parsedDocument.querySelector("parsererror");
+
+    if (parserError) {
+      return false;
+    }
+
+    const parsedSvg = parsedDocument.documentElement;
+
+    if (!parsedSvg || String(parsedSvg.tagName || "").toLowerCase() !== "svg") {
+      return false;
+    }
+
+    const measuringSvg = document.importNode(parsedSvg, true);
+    measuringSvg.style.position = "absolute";
+    measuringSvg.style.left = "-100000px";
+    measuringSvg.style.top = "-100000px";
+    measuringSvg.style.visibility = "hidden";
+    measuringSvg.style.pointerEvents = "none";
+    measuringSvg.style.width = "auto";
+    measuringSvg.style.height = "auto";
+    measuringSvg.setAttribute("aria-hidden", "true");
+
+    document.body.appendChild(measuringSvg);
+
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+
+    const bounds = getVisibleSvgBounds(measuringSvg);
+
+    measuringSvg.remove();
+
+    if (
+      !bounds ||
+      !Number.isFinite(bounds.x) ||
+      !Number.isFinite(bounds.y) ||
+      !Number.isFinite(bounds.width) ||
+      !Number.isFinite(bounds.height) ||
+      bounds.width <= 0 ||
+      bounds.height <= 0
+    ) {
+      return false;
+    }
+
+    const cropPadding = 0;
+    const x = bounds.x - cropPadding;
+    const y = bounds.y - cropPadding;
+    const width = bounds.width + cropPadding * 2;
+    const height = bounds.height + cropPadding * 2;
+
+    parsedSvg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+    parsedSvg.removeAttribute("width");
+    parsedSvg.removeAttribute("height");
+    parsedSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+    const serializedSvg = new XMLSerializer().serializeToString(parsedSvg);
+
+    img.dataset.tightIconBoundsApplied = "true";
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(serializedSvg);
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+const cropRasterImageToVisibleBounds = (img) => {
+  if (
+    !img ||
+    img.dataset.tightIconBoundsApplied === "true" ||
+    !img.naturalWidth ||
+    !img.naturalHeight
+  ) {
+    return false;
+  }
+
+  const width = img.naturalWidth;
+  const height = img.naturalHeight;
+  const pixelCount = width * height;
+
+  if (pixelCount <= 0 || pixelCount > 12000000) {
+    return false;
+  }
+
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      return false;
+    }
+
+    context.drawImage(img, 0, 0, width, height);
+
+    const pixels = context.getImageData(0, 0, width, height).data;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const alpha = pixels[(y * width + x) * 4 + 3];
+
+        if (alpha > 2) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    if (maxX < minX || maxY < minY) {
+      return false;
+    }
+
+    const cropPadding = 1;
+    minX = Math.max(0, minX - cropPadding);
+    minY = Math.max(0, minY - cropPadding);
+    maxX = Math.min(width - 1, maxX + cropPadding);
+    maxY = Math.min(height - 1, maxY + cropPadding);
+
+    const croppedWidth = maxX - minX + 1;
+    const croppedHeight = maxY - minY + 1;
+
+    if (croppedWidth === width && croppedHeight === height) {
+      return false;
+    }
+
+    const croppedCanvas = document.createElement("canvas");
+    croppedCanvas.width = croppedWidth;
+    croppedCanvas.height = croppedHeight;
+
+    const croppedContext = croppedCanvas.getContext("2d");
+    if (!croppedContext) {
+      return false;
+    }
+
+    croppedContext.drawImage(
+      canvas,
+      minX,
+      minY,
+      croppedWidth,
+      croppedHeight,
+      0,
+      0,
+      croppedWidth,
+      croppedHeight
+    );
+
+    img.dataset.tightIconBoundsApplied = "true";
+    img.src = croppedCanvas.toDataURL("image/png");
+
+    return true;
+  } catch (error) {
+    img.dataset.tightIconBoundsFailed = "true";
+    return false;
+  }
+};
+
+const applyTightImageBounds = (img) => {
+  if (!img || img.dataset.tightIconBoundsAttached === "true") {
+    return;
+  }
+
+  img.dataset.tightIconBoundsAttached = "true";
+
+  const cropTransparentPixels = async () => {
+    if (
+      img.dataset.tightIconBoundsApplied === "true" ||
+      !img.naturalWidth ||
+      !img.naturalHeight
+    ) {
+      return;
+    }
+
+    const source = img.currentSrc || img.src || "";
+
+    if (cropRasterImageToVisibleBounds(img)) {
+      return;
+    }
+
+    if (isProbablySvgImageSource(source)) {
+      await cropSvgImageToVisibleBounds(img, source);
+    }
+  };
+
+  if (img.complete && img.naturalWidth && img.naturalHeight) {
+    requestAnimationFrame(cropTransparentPixels);
+  } else {
+    img.addEventListener(
+      "load",
+      () => requestAnimationFrame(cropTransparentPixels),
+      { once: true }
+    );
+  }
+};
+
+if (typeof window !== "undefined") {
+  window.applyTightImageBounds = applyTightImageBounds;
+}
+
+
 class IconElement {
   constructor(options = {}) {
     const icon = getStoredDefaultsOption(
@@ -3166,18 +3604,19 @@ class IconElement {
       const img = document.createElement("img");
       img.src = iconDefinition.src;
       img.alt = iconDefinition.label;
-      img.loading = "lazy";
+      img.loading = "eager";
       img.decoding = "async";
       img.draggable = false;
       img.style.display = "block";
       img.style.gridColumn = "2";
       img.style.gridRow = "2";
-      img.style.height = "var(--iconSize, 3rem)";
-      img.style.width = "auto";
-      img.style.maxWidth = "none";
-      img.style.maxHeight = "none";
+      img.style.setProperty("height", "var(--iconSize, 3rem)", "important");
+      img.style.setProperty("width", "auto", "important");
+      img.style.setProperty("max-width", "none", "important");
+      img.style.setProperty("max-height", "none", "important");
       img.style.objectFit = "contain";
       img.style.lineHeight = "0";
+      applyTightImageBounds(img);
       iconBox.appendChild(img);
     } else {
       iconBox.textContent = "Icon unavailable";
@@ -3646,6 +4085,16 @@ class TollLogoElement {
   createElement() {
     const container = document.createElement("div");
     container.className = "bE-tollLogoElement";
+    container.style.setProperty("display", "inline-flex", "important");
+    container.style.setProperty("align-items", "center", "important");
+    container.style.setProperty("justify-content", "center", "important");
+    container.style.setProperty("width", "max-content", "important");
+    container.style.setProperty("height", "max-content", "important");
+    container.style.setProperty("min-width", "0", "important");
+    container.style.setProperty("min-height", "0", "important");
+    container.style.setProperty("box-sizing", "border-box", "important");
+    container.style.setProperty("line-height", "0", "important");
+    container.style.setProperty("font-size", "0", "important");
 
     const parsedSpacing = parseFloat(this.spacing);
     const spacing = isNaN(parsedSpacing) ? 0 : parsedSpacing;
@@ -3661,13 +4110,21 @@ class TollLogoElement {
     );
     container.style.setProperty("--vertPadding", this.verticalPadding + "rem");
     container.style.setProperty("--tollLogoHeight", this.logoHeight + "rem");
+    container.style.setProperty("margin-left", "var(--spacing, 0rem)", "important");
+    container.style.setProperty("margin-right", "var(--spacing, 0rem)", "important");
+    container.style.setProperty("padding", "var(--vertPadding, 0rem) var(--horizPadding, 0rem)", "important");
+    container.style.setProperty("border-radius", "var(--borderRadius, 0px)", "important");
+    container.style.setProperty("aspect-ratio", "auto", "important");
 
     if (this.background) {
       container.classList.add("hasBackground");
     }
 
     if (this.squareIcon) {
-      container.style.aspectRatio = "1 / 1";
+      container.classList.add("squareIcon");
+      container.style.setProperty("aspect-ratio", "1 / 1", "important");
+      container.style.setProperty("width", "var(--tollLogoHeight, 3rem)", "important");
+      container.style.setProperty("height", "var(--tollLogoHeight, 3rem)", "important");
     }
 
     const logoDefinition =
@@ -3678,9 +4135,16 @@ class TollLogoElement {
       const img = document.createElement("img");
       img.src = logoDefinition.src;
       img.alt = logoDefinition.label;
-      img.loading = "lazy";
+      img.loading = "eager";
       img.decoding = "async";
       img.draggable = false;
+      img.style.setProperty("display", "block", "important");
+      img.style.setProperty("height", "var(--tollLogoHeight, 3rem)", "important");
+      img.style.setProperty("width", "auto", "important");
+      img.style.setProperty("max-width", "none", "important");
+      img.style.setProperty("max-height", "none", "important");
+      img.style.objectFit = "contain";
+      img.style.lineHeight = "0";
       container.appendChild(img);
     } else {
       container.textContent = "Toll logo unavailable";

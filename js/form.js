@@ -5,6 +5,7 @@ const formHandler = (function () {
     let panelDragState = null;
     let exitTabDragState = null;
     let rowDragState = null;
+    let subPanelTabDragState = null;
     let newRowDropTargetButton = null;
     let ensureSubpanelMenuOpenPublic = () => {};
     let ensureExitTabMenuOpenPublic = () => {};
@@ -14,6 +15,26 @@ const formHandler = (function () {
     const syncPostReference = () => {
       if (exposed && typeof exposed.getPost === "function") {
         post = exposed.getPost();
+      }
+    };
+
+    const runShieldUndoableCommit = (callback) => {
+      const canUseUndo =
+        exposed && typeof exposed.beginUndoableChange === "function" &&
+        typeof exposed.endUndoableChange === "function";
+
+      if (canUseUndo) {
+        exposed.beginUndoableChange();
+      }
+
+      try {
+        if (typeof callback === "function") {
+          callback();
+        }
+      } finally {
+        if (canUseUndo) {
+          exposed.endUndoableChange();
+        }
       }
     };
     const syncGlobalBlockControls = () => {
@@ -1484,6 +1505,157 @@ const getPostThicknessFallback = () =>
   const handlePanelDragEnd = () => {
     if (panelDragState) {
       endPanelDrag();
+    }
+  };
+
+
+  // --- Subpanel tab drag and drop ---
+  const clearSubPanelTabDropIndicators = () => {
+    document
+      .querySelectorAll(
+        ".subPanelTabGroup.dropBefore, .subPanelTabGroup.dropAfter"
+      )
+      .forEach((tab) => tab.classList.remove("dropBefore", "dropAfter"));
+  };
+
+  const endSubPanelTabDrag = () => {
+    clearSubPanelTabDropIndicators();
+    document
+      .querySelectorAll(".subPanelTabGroup.dragging")
+      .forEach((tab) => {
+        tab.classList.remove("dragging");
+        delete tab.dataset.dragging;
+      });
+    subPanelTabDragState = null;
+  };
+
+  const getSubPanelTabDropPosition = (container, clientX) => {
+    const tabs = Array.from(
+      container.querySelectorAll('.subPanelTabGroup[data-draggable-subpanel="true"]')
+    );
+
+    if (!tabs.length) {
+      return { dropIndex: 0, targetTab: null, placement: null };
+    }
+
+    let dropIndex = Number(tabs[tabs.length - 1].dataset.subpanelIndex || 0) + 1;
+    let targetTab = null;
+    let placement = "after";
+    let foundPosition = false;
+
+    for (const tab of tabs) {
+      const rect = tab.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+
+      if (clientX < midpoint) {
+        dropIndex = Number(tab.dataset.subpanelIndex || 0);
+        placement = "before";
+        foundPosition = true;
+        targetTab = tab.dataset.dragging === "true" ? null : tab;
+        break;
+      }
+    }
+
+    if (!foundPosition) {
+      const lastTab = tabs[tabs.length - 1];
+      if (lastTab.dataset.dragging !== "true") {
+        targetTab = lastTab;
+        placement = "after";
+      } else {
+        placement = null;
+      }
+    } else if (!targetTab) {
+      placement = null;
+    }
+
+    return { dropIndex, targetTab, placement };
+  };
+
+  const handleSubPanelTabDragStart = (event) => {
+    const tab = event.currentTarget;
+    const fromIndex = Number(tab.dataset.subpanelIndex);
+
+    if (!Number.isInteger(fromIndex) || fromIndex < 0) {
+      return;
+    }
+
+    subPanelTabDragState = { fromIndex, dropIndex: fromIndex };
+    tab.dataset.dragging = "true";
+    tab.classList.add("dragging");
+    clearSubPanelTabDropIndicators();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.setData("text/plain", "");
+    }
+  };
+
+  const handleSubPanelTabDragOver = (event) => {
+    if (!subPanelTabDragState) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+
+    const container = document.getElementById("subPanelList");
+    if (!container) {
+      return;
+    }
+
+    const { dropIndex, targetTab, placement } = getSubPanelTabDropPosition(
+      container,
+      event.clientX
+    );
+    subPanelTabDragState.dropIndex = dropIndex;
+
+    clearSubPanelTabDropIndicators();
+    if (targetTab && placement) {
+      targetTab.classList.add(placement === "before" ? "dropBefore" : "dropAfter");
+    }
+  };
+
+  const handleSubPanelTabDrop = (event) => {
+    if (!subPanelTabDragState) {
+      return;
+    }
+
+    event.preventDefault();
+    const fromIndex = subPanelTabDragState.fromIndex;
+    const dropIndex =
+      typeof subPanelTabDragState.dropIndex === "number"
+        ? subPanelTabDragState.dropIndex
+        : fromIndex;
+
+    if (exposed && typeof exposed.moveSubPanel === "function") {
+      exposed.moveSubPanel(fromIndex, dropIndex);
+    }
+
+    endSubPanelTabDrag();
+  };
+
+  const handleSubPanelTabDragLeave = (event) => {
+    if (!subPanelTabDragState) {
+      return;
+    }
+
+    const container = document.getElementById("subPanelList");
+    const related = event.relatedTarget;
+
+    if (container && related && container.contains(related)) {
+      return;
+    }
+
+    clearSubPanelTabDropIndicators();
+  };
+
+  const handleSubPanelTabDragEnd = () => {
+    if (subPanelTabDragState) {
+      endSubPanelTabDrag();
     }
   };
 
@@ -5642,13 +5814,15 @@ const getPostThicknessFallback = () =>
               return;
             }
 
-            syncShieldBasePickerValue(nextValue, { updateBlock: true });
+            runShieldUndoableCommit(() => {
+              syncShieldBasePickerValue(nextValue, { updateBlock: true });
 
-            updateShieldCountyVisibility();
+              updateShieldCountyVisibility();
 
-            if (typeof readForm === "function") {
-              readForm();
-            }
+              if (typeof readForm === "function") {
+                readForm();
+              }
+            });
           },
         });
 
@@ -9773,12 +9947,18 @@ const getPostThicknessFallback = () =>
 
         if (shield_shieldBase) {
           shield_shieldBase.addEventListener("change", () => {
-            populateVariantOptions(
-              shield_shieldBase.dataset?.pickerValue ||
-                shield_shieldBase.value ||
-                ShieldElement.prototype.defaultShieldBase,
-              AUTO_VARIANT_VALUE
-            );
+            runShieldUndoableCommit(() => {
+              populateVariantOptions(
+                shield_shieldBase.dataset?.pickerValue ||
+                  shield_shieldBase.value ||
+                  ShieldElement.prototype.defaultShieldBase,
+                AUTO_VARIANT_VALUE
+              );
+
+              if (typeof readForm === "function") {
+                readForm();
+              }
+            });
           });
         }
       }
@@ -9790,6 +9970,30 @@ const getPostThicknessFallback = () =>
           readForm();
         });
       }
+
+      const bindShieldUndoField = (fieldId, eventNames = ["change"]) => {
+        const field = document.getElementById(fieldId);
+
+        if (!field || field.dataset.shieldUndoBound === "true") {
+          return;
+        }
+
+        field.dataset.shieldUndoBound = "true";
+
+        for (const eventName of eventNames) {
+          field.addEventListener(eventName, () => {
+            runShieldUndoableCommit(() => {
+              if (typeof readForm === "function") {
+                readForm();
+              }
+            });
+          });
+        }
+      };
+
+      bindShieldUndoField("sdShield_routeNumber", ["change", "blur"]);
+      bindShieldUndoField("sdShield_shieldType", ["change"]);
+      bindShieldUndoField("sdShield_shieldSize", ["change", "blur"]);
 
       /* Populate the fixed Shield banner dropdowns */
       const blockShieldBannerSelects = [
@@ -10436,6 +10640,9 @@ const getPostThicknessFallback = () =>
     if (previewImage) {
       const src = String(definition?.src || definition?.asset || definition?.url || "");
       const invertInput = document.getElementById("sdIcon_invertColors");
+      delete previewImage.dataset.tightIconBoundsAttached;
+      delete previewImage.dataset.tightIconBoundsApplied;
+      delete previewImage.dataset.tightIconBoundsFailed;
       previewImage.src = src;
       previewImage.alt = displayName;
       previewImage.hidden = !src;
@@ -10443,6 +10650,10 @@ const getPostThicknessFallback = () =>
         "sdIconPreviewInvert",
         !!invertInput && invertInput.checked
       );
+
+      if (src && typeof applyTightImageBounds === "function") {
+        applyTightImageBounds(previewImage);
+      }
     }
   };
 
@@ -11415,8 +11626,57 @@ const getPostThicknessFallback = () =>
           ? post.panels.indexOf(selectedPanel)
           : -1;
 
-        const panelNumber = (selectedPanelIndex >= 0 ? selectedPanelIndex : 0) + 1;
-        currentPanelLabel.textContent = "Panel " + panelNumber;
+        let panelNumber = 0;
+        let additionalOrderIndex = -1;
+        const selectedIsAdditional =
+          selectedPanelIndex >= 0 && post.panels[selectedPanelIndex]?.stackedWithPrevious === true;
+
+        for (let index = 0; index <= Math.max(0, selectedPanelIndex); index++) {
+          if (post.panels[index]?.stackedWithPrevious !== true) {
+            panelNumber++;
+          }
+        }
+
+        if (selectedIsAdditional) {
+          let mainIndex = selectedPanelIndex;
+          while (mainIndex > 0 && post.panels[mainIndex]?.stackedWithPrevious === true) {
+            mainIndex--;
+          }
+
+          const groupAdditional = [];
+          for (let index = mainIndex + 1; index < post.panels.length; index++) {
+            if (post.panels[index]?.stackedWithPrevious !== true) {
+              break;
+            }
+            groupAdditional.push(index);
+          }
+
+          const above = groupAdditional.filter(
+            (index) => String(post.panels[index]?.stackedPanelPlacement || "below").toLowerCase() === "above"
+          );
+          const below = groupAdditional.filter(
+            (index) => String(post.panels[index]?.stackedPanelPlacement || "below").toLowerCase() !== "above"
+          );
+          additionalOrderIndex = [...above, ...below].indexOf(selectedPanelIndex);
+        }
+
+        const getPanelLetter = (orderIndex) => {
+          let n = orderIndex + 1;
+          let label = "";
+
+          while (n > 0) {
+            n--;
+            label = String.fromCharCode(65 + (n % 26)) + label;
+            n = Math.floor(n / 26);
+          }
+
+          return label || "A";
+        };
+
+        currentPanelLabel.textContent =
+          "Panel " +
+          Math.max(1, panelNumber) +
+          (selectedIsAdditional ? getPanelLetter(Math.max(0, additionalOrderIndex)) : "");
       }
       
       const currentPanel =
@@ -11889,6 +12149,7 @@ const getPostThicknessFallback = () =>
     clearExitTabDropIndicators();
     exitTabDragState = null;
     endPanelDrag();
+    endSubPanelTabDrag();
     togglePanelListWiggle(false);
 
     if (exitTabList && !exitTabList.dataset.exitTabDragAttached) {
@@ -11903,6 +12164,13 @@ const getPostThicknessFallback = () =>
       panelList.addEventListener("drop", handlePanelDrop);
       panelList.addEventListener("dragleave", handlePanelDragLeave);
       panelList.dataset.panelDragAttached = "true";
+    }
+
+    if (subPanelList && !subPanelList.dataset.subPanelTabDragAttached) {
+      subPanelList.addEventListener("dragover", handleSubPanelTabDragOver);
+      subPanelList.addEventListener("drop", handleSubPanelTabDrop);
+      subPanelList.addEventListener("dragleave", handleSubPanelTabDragLeave);
+      subPanelList.dataset.subPanelTabDragAttached = "true";
     }
 
     const postPositionSelectElmt = document.getElementById("postPosition");
@@ -11951,9 +12219,8 @@ const getPostThicknessFallback = () =>
 
       const getPanelListLabel = (panelIndex) => {
         const labelNumber = getPanelListNumber(panelIndex);
-        const suffix = post.panels[panelIndex]?.stackedWithPrevious ? "A" : "";
 
-        return "Panel " + labelNumber + suffix;
+        return "Panel " + labelNumber;
       };
 
       for (
@@ -11961,6 +12228,10 @@ const getPostThicknessFallback = () =>
         panelIndex < panelsLength;
         panelIndex++
       ) {
+        if (post.panels[panelIndex]?.stackedWithPrevious === true) {
+          continue;
+        }
+
         const panelRow = document.createElement("div");
         panelRow.className =
           "panelListRow" +
@@ -11986,6 +12257,9 @@ const getPostThicknessFallback = () =>
         panelButton.appendChild(label);
 
         panelButton.addEventListener("click", function () {
+          if (post.panels[panelIndex]?.hiddenFromPost === true) {
+            app.togglePanelHidden(panelIndex);
+          }
           exposed.changeEditingPanel(panelIndex);
         });
         panelButton.addEventListener("dragstart", handlePanelDragStart);
@@ -12109,6 +12383,15 @@ const getPostThicknessFallback = () =>
         (emptyGlobal ? " emptyGlobalTab" : "") +
         (!canDelete ? " lockedSubPanelTab" : "");
 
+      tabGroup.dataset.subpanelIndex = String(subPanelIndex);
+
+      if (subPanelIndex >= 0) {
+        tabGroup.draggable = true;
+        tabGroup.dataset.draggableSubpanel = "true";
+        tabGroup.addEventListener("dragstart", handleSubPanelTabDragStart);
+        tabGroup.addEventListener("dragend", handleSubPanelTabDragEnd);
+      }
+
       const tabButton = document.createElement("button");
       tabButton.id = id;
       tabButton.type = "button";
@@ -12176,9 +12459,9 @@ const getPostThicknessFallback = () =>
             ? exposed.getCurrentStackedPanelInfo()
             : {
                 topIndex: exposed?.vars?.currentlySelectedPanelIndex || 0,
-                bottomIndex: -1,
-                selectedSlot: "Top",
-                hasBottom: false,
+                mainIndex: exposed?.vars?.currentlySelectedPanelIndex || 0,
+                selectedSlot: "Main",
+                hasAdditional: false,
                 spacing: 0,
                 matchWidth: false,
               };
@@ -12190,8 +12473,8 @@ const getPostThicknessFallback = () =>
           const toggleButton = document.createElement("button");
           toggleButton.type = "button";
           toggleButton.className = "stackedPanelOptionsButton";
-          toggleButton.title = "Bottom panel settings";
-          toggleButton.setAttribute("aria-label", "Bottom panel settings");
+          toggleButton.title = "Additional panel settings";
+          toggleButton.setAttribute("aria-label", "Additional panel settings");
 
           const toggleIcon = document.createElement("span");
           toggleIcon.className = "material-symbols-outlined";
@@ -12225,13 +12508,16 @@ const getPostThicknessFallback = () =>
 
           const spacingInput = document.createElement("input");
           spacingInput.type = "number";
-          spacingInput.min = "0";
+          spacingInput.min = "-4";
           spacingInput.max = "4";
           spacingInput.step = "0.1";
           spacingInput.value = String(stackInfo.spacing ?? 0);
           spacingInput.className = "stackedPanelSpacingInput";
           spacingInput.addEventListener("change", () => {
-            const value = Math.max(0, Math.min(4, parseFloat(spacingInput.value) || 0));
+            const parsedValue = parseFloat(spacingInput.value);
+            const value = Number.isFinite(parsedValue)
+              ? Math.max(-4, Math.min(4, parsedValue))
+              : 0;
             spacingInput.value = String(value);
 
             if (typeof app.setStackedPanelSpacing === "function") {
@@ -12268,82 +12554,130 @@ const getPostThicknessFallback = () =>
           return wrapper;
         };
 
-        const createStackButtonGroup = ({ slot, label, exists, canDelete, title, hasOptions }) => {
+        const getAdditionalPanelLetter = (orderIndex) => {
+          let n = Number(orderIndex) + 1;
+          let label = "";
+
+          while (n > 0) {
+            n--;
+            label = String.fromCharCode(65 + (n % 26)) + label;
+            n = Math.floor(n / 26);
+          }
+
+          return label || "A";
+        };
+
+        const createStackButtonGroup = ({ label, title, active = false, onClick, onDelete = null, deleteTitle = "", extraClass = "" }) => {
           const group = document.createElement("div");
           group.className =
             "stackedPanelTabGroup" +
-            (stackInfo.selectedSlot === slot ? " active" : "") +
-            (!exists ? " emptyStackedPanelSlot" : "");
+            (active ? " active" : "") +
+            (extraClass ? " " + extraClass : "");
 
           const slotButton = document.createElement("button");
           slotButton.type = "button";
           slotButton.className = "stackedPanelTabButton";
           slotButton.textContent = label;
           slotButton.title = title || label;
-          slotButton.addEventListener("click", () => {
-            if (typeof app.changeEditingStackedPanelSlot === "function") {
-              app.changeEditingStackedPanelSlot(slot);
-            }
-          });
+          slotButton.addEventListener("click", onClick);
           group.appendChild(slotButton);
 
-          if (hasOptions) {
-            group.appendChild(createStackedPanelOptions());
+          if (typeof onDelete === "function") {
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.className = "stackedPanelDeleteButton";
+            deleteButton.title = deleteTitle || "Delete additional panel";
+            deleteButton.setAttribute("aria-label", deleteButton.title);
+
+            const deleteIcon = document.createElement("span");
+            deleteIcon.className = "material-symbols-outlined";
+            deleteIcon.textContent = "delete";
+            deleteButton.appendChild(deleteIcon);
+
+            deleteButton.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onDelete();
+            });
+
+            group.appendChild(deleteButton);
           }
-
-          const deleteButton = document.createElement("button");
-          deleteButton.type = "button";
-          deleteButton.className = "stackedPanelDeleteButton";
-          deleteButton.disabled = !canDelete;
-          deleteButton.title = canDelete ? `Delete ${label}` : `${label} cannot be deleted`;
-          deleteButton.setAttribute("aria-label", deleteButton.title);
-
-          const deleteIcon = document.createElement("span");
-          deleteIcon.className = "material-symbols-outlined";
-          deleteIcon.textContent = "delete";
-          deleteButton.appendChild(deleteIcon);
-
-          deleteButton.addEventListener("mousedown", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          });
-
-          deleteButton.addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            if (canDelete && typeof app.removeStackedPanelSlot === "function") {
-              app.removeStackedPanelSlot(slot);
-            }
-          });
-
-          group.appendChild(deleteButton);
 
           return group;
         };
 
         stackedPanelList.appendChild(
           createStackButtonGroup({
-            slot: "Top",
-            label: "Top Panel",
-            exists: true,
-            canDelete: stackInfo.hasBottom,
-            title: "Edit the upper panel",
+            label: "Main Panel",
+            active: stackInfo.selectedSlot === "Main",
+            title: "Edit the main panel",
+            onClick: () => {
+              if (typeof app.changeEditingStackedPanelSlot === "function") {
+                app.changeEditingStackedPanelSlot("Main");
+              }
+            },
           })
         );
 
+        const selectedPanelIndex = exposed?.vars?.currentlySelectedPanelIndex;
+        const mainPanelIndex = Number.isInteger(stackInfo.mainIndex)
+          ? stackInfo.mainIndex
+          : stackInfo.topIndex;
+        const additionalPanelIndices = Array.isArray(stackInfo.verticalOrder)
+          ? stackInfo.verticalOrder.filter((panelIndex) => panelIndex !== mainPanelIndex)
+          : Array.isArray(stackInfo.additionalIndices)
+            ? stackInfo.additionalIndices
+            : [];
+
+        additionalPanelIndices.forEach((panelIndex, orderIndex) => {
+          const letter = getAdditionalPanelLetter(orderIndex);
+
+          stackedPanelList.appendChild(
+            createStackButtonGroup({
+              label: letter,
+              active: selectedPanelIndex === panelIndex,
+              title: `Edit additional panel ${letter}`,
+              extraClass: "additionalStackedPanelSlot",
+              onClick: () => {
+                if (typeof app.changeEditingPanel === "function") {
+                  app.changeEditingPanel(panelIndex);
+                }
+              },
+              onDelete: () => {
+                if (typeof app.removeStackedPanelSlot === "function") {
+                  app.removeStackedPanelSlot(panelIndex);
+                }
+              },
+              deleteTitle: `Delete additional panel ${letter}`,
+            })
+          );
+        });
+
         stackedPanelList.appendChild(
           createStackButtonGroup({
-            slot: "Bottom",
-            label: stackInfo.hasBottom ? "Bottom Panel" : "+ Bottom Panel",
-            exists: stackInfo.hasBottom,
-            canDelete: stackInfo.hasBottom,
-            title: stackInfo.hasBottom
-              ? "Edit the lower panel"
-              : "Add a yellow panel below this panel",
-            hasOptions: true,
+            label: "Add Panel Above",
+            title: "Add an additional panel above this main panel",
+            extraClass: "addStackedPanelSlot",
+            onClick: () => {
+              if (typeof app.createStackedPanelAboveSelected === "function") {
+                app.createStackedPanelAboveSelected();
+              }
+            },
           })
         );
+
+        const addBelowGroup = createStackButtonGroup({
+          label: "Add Panel Below",
+          title: "Add an additional panel below this main panel",
+          extraClass: "addStackedPanelSlot",
+          onClick: () => {
+            if (typeof app.createStackedPanelBelowSelected === "function") {
+              app.createStackedPanelBelowSelected();
+            }
+          },
+        });
+        addBelowGroup.appendChild(createStackedPanelOptions());
+        stackedPanelList.appendChild(addBelowGroup);
       };
 
       const renderSubPanelDividerControls = (sign) => {

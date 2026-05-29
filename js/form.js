@@ -70,6 +70,41 @@ const formHandler = (function () {
     let localStorageWarningLogged = false;
     const LIMON_TRIGGER_VALUE = "limon";
     const LIMON_VIDEO_URL = "https://www.youtube.com/watch?v=qA7qUG6uEbY";
+    const EXIT_TAB_APL_EDGE_WIDTH = "APL Edge";
+
+    const isAplEdgeExitTabWidth = (width) =>
+      String(width || "").trim().toLowerCase() ===
+      EXIT_TAB_APL_EDGE_WIDTH.toLowerCase();
+
+    const canUseAplEdgeExitTab = () =>
+      !!(exposed && typeof exposed.canUseAplEdgeExitTab === "function" && exposed.canUseAplEdgeExitTab());
+
+    const syncExitTabWidthOptions = (exitTab = null) => {
+      const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
+
+      if (!exitTabWidthSelectElmt) {
+        return false;
+      }
+
+      const shouldAllowAplEdge = canUseAplEdgeExitTab();
+
+      Array.from(exitTabWidthSelectElmt.options)
+        .filter((option) => isAplEdgeExitTabWidth(option.value))
+        .forEach((option) => option.remove());
+
+      if (shouldAllowAplEdge) {
+        const option = document.createElement("option");
+        option.value = EXIT_TAB_APL_EDGE_WIDTH;
+        option.textContent = EXIT_TAB_APL_EDGE_WIDTH;
+        exitTabWidthSelectElmt.appendChild(option);
+      } else if (exitTab && isAplEdgeExitTabWidth(exitTab.width)) {
+        exitTab.width = "Edge";
+      }
+
+      return shouldAllowAplEdge;
+    };
+
+    const getNestedExitTabLimit = () => 1;
 const getPostThicknessFallback = () =>
     typeof Post.prototype.defaultThickness === "number"
       ? Post.prototype.defaultThickness
@@ -120,6 +155,591 @@ const getPostThicknessFallback = () =>
     }
   };
 
+
+
+  const subpanelClipboardSelection = {
+    contextKey: "",
+    selectedBlocks: new Set(),
+    selectedRows: new Set(),
+    anchor: null,
+    multiActive: false,
+    lastAppSelectionKey: "",
+  };
+
+  const getSubpanelSelectionContextKey = () => {
+    if (!exposed || !exposed.vars) {
+      return "";
+    }
+
+    return [
+      exposed.vars.currentlySelectedPanelIndex,
+      exposed.vars.currentlySelectedSubPanelIndex,
+    ].join(":");
+  };
+
+  const getSubpanelAppSelectionKey = () => {
+    if (!exposed || !exposed.vars) {
+      return "";
+    }
+
+    return [
+      exposed.vars.currentlySelectedRowIndex,
+      exposed.vars.currentlySelectedBlockIndex,
+    ].join(":");
+  };
+
+  const getSubpanelBlockSelectionKey = (rowIndex, blockIndex) =>
+    `${Number(rowIndex)}:${Number(blockIndex)}`;
+
+  const parseSubpanelBlockSelectionKey = (key) => {
+    const parts = String(key || "").split(":");
+    return {
+      rowIndex: Number(parts[0]),
+      blockIndex: Number(parts[1]),
+    };
+  };
+
+  const isSubpanelClipboardSelectionAllowed = () => {
+    if (!exposed || !exposed.vars || typeof exposed.getCurrentSubPanel !== "function") {
+      return false;
+    }
+
+    const currentTarget = exposed.getCurrentSubPanel();
+    const rows = currentTarget?.blockElements?.rows;
+
+    return Array.isArray(rows);
+  };
+
+  const showSubpanelClipboardNotice = (message) => {
+    if (!message) {
+      return;
+    }
+
+    let notice = document.getElementById("shortcutActionNotice");
+
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = "shortcutActionNotice";
+      notice.style.position = "fixed";
+      notice.style.top = "1rem";
+      notice.style.left = "50%";
+      notice.style.transform = "translateX(-50%)";
+      notice.style.zIndex = "5000";
+      notice.style.padding = "0.4rem 0.8rem";
+      notice.style.background = "rgba(0, 0, 0, 0.75)";
+      notice.style.color = "#fff";
+      notice.style.borderRadius = "0.35rem";
+      notice.style.fontFamily = "Inter, sans-serif";
+      notice.style.fontSize = "0.95rem";
+      notice.style.opacity = "0";
+      notice.style.pointerEvents = "none";
+      notice.style.transition = "opacity 0.2s ease";
+      document.body.appendChild(notice);
+    }
+
+    notice.textContent = message;
+    notice.style.opacity = "1";
+
+    clearTimeout(notice._hideTimer);
+    notice._hideTimer = setTimeout(() => {
+      notice.style.opacity = "0";
+    }, 900);
+  };
+
+  const resetSubpanelClipboardSelectionToStandard = (rows = []) => {
+    subpanelClipboardSelection.contextKey = getSubpanelSelectionContextKey();
+    subpanelClipboardSelection.selectedBlocks.clear();
+    subpanelClipboardSelection.selectedRows.clear();
+    subpanelClipboardSelection.multiActive = false;
+    subpanelClipboardSelection.anchor = null;
+    subpanelClipboardSelection.lastAppSelectionKey = getSubpanelAppSelectionKey();
+
+    if (!isSubpanelClipboardSelectionAllowed()) {
+      return;
+    }
+
+    const rowIndex = Number(exposed?.vars?.currentlySelectedRowIndex);
+    const blockIndex = Number(exposed?.vars?.currentlySelectedBlockIndex);
+    const row = rows[rowIndex];
+
+    if (
+      Array.isArray(row) &&
+      row.length > 0 &&
+      Number.isInteger(blockIndex) &&
+      blockIndex >= 0 &&
+      blockIndex < row.length
+    ) {
+      subpanelClipboardSelection.selectedBlocks.add(
+        getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+      );
+      subpanelClipboardSelection.anchor = {
+        kind: "block",
+        rowIndex,
+        blockIndex,
+      };
+    }
+  };
+
+  const pruneSubpanelClipboardSelection = (rows = []) => {
+    if (!Array.isArray(rows) || !rows.length || !isSubpanelClipboardSelectionAllowed()) {
+      subpanelClipboardSelection.selectedBlocks.clear();
+      subpanelClipboardSelection.selectedRows.clear();
+      subpanelClipboardSelection.anchor = null;
+      return;
+    }
+
+    for (const key of Array.from(subpanelClipboardSelection.selectedBlocks)) {
+      const { rowIndex, blockIndex } = parseSubpanelBlockSelectionKey(key);
+      const row = rows[rowIndex];
+
+      if (
+        !Array.isArray(row) ||
+        !Number.isInteger(blockIndex) ||
+        blockIndex < 0 ||
+        blockIndex >= row.length
+      ) {
+        subpanelClipboardSelection.selectedBlocks.delete(key);
+      }
+    }
+
+    for (const rowIndex of Array.from(subpanelClipboardSelection.selectedRows)) {
+      const row = rows[rowIndex];
+      if (!Array.isArray(row) || row.length === 0) {
+        subpanelClipboardSelection.selectedRows.delete(rowIndex);
+        continue;
+      }
+
+      for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+        subpanelClipboardSelection.selectedBlocks.add(
+          getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+        );
+      }
+    }
+
+    if (subpanelClipboardSelection.multiActive) {
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex];
+        if (!Array.isArray(row) || row.length === 0) {
+          subpanelClipboardSelection.selectedRows.delete(rowIndex);
+          continue;
+        }
+
+        const entireRowSelected = row.every((_, blockIndex) =>
+          subpanelClipboardSelection.selectedBlocks.has(
+            getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+          )
+        );
+
+        if (entireRowSelected) {
+          subpanelClipboardSelection.selectedRows.add(rowIndex);
+        } else {
+          subpanelClipboardSelection.selectedRows.delete(rowIndex);
+        }
+      }
+    }
+  };
+
+  const ensureSubpanelClipboardSelectionForRows = (rows = []) => {
+    const contextKey = getSubpanelSelectionContextKey();
+    const appSelectionKey = getSubpanelAppSelectionKey();
+
+    if (
+      subpanelClipboardSelection.contextKey !== contextKey ||
+      subpanelClipboardSelection.lastAppSelectionKey !== appSelectionKey
+    ) {
+      resetSubpanelClipboardSelectionToStandard(rows);
+      return;
+    }
+
+    pruneSubpanelClipboardSelection(rows);
+  };
+
+  const getSubpanelClipboardSelectedBlockCount = () =>
+    subpanelClipboardSelection.selectedBlocks.size;
+
+  const getSubpanelClipboardSelectionPayload = (rows = []) => {
+    ensureSubpanelClipboardSelectionForRows(rows);
+
+    if (!isSubpanelClipboardSelectionAllowed()) {
+      return {
+        panelIndex: exposed?.vars?.currentlySelectedPanelIndex ?? -1,
+        subPanelIndex: exposed?.vars?.currentlySelectedSubPanelIndex ?? -1,
+        rows: [],
+        selectedBlockCount: 0,
+        selectedRowCount: 0,
+        standardOnly: false,
+        allowEmpty: true,
+      };
+    }
+
+    const rowEntries = [];
+    let selectedBlockCount = 0;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+      if (!Array.isArray(row) || row.length === 0) {
+        continue;
+      }
+
+      const selectedBlockIndices = [];
+      for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+        if (
+          subpanelClipboardSelection.selectedBlocks.has(
+            getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+          )
+        ) {
+          selectedBlockIndices.push(blockIndex);
+        }
+      }
+
+      if (!selectedBlockIndices.length) {
+        continue;
+      }
+
+      const fullRow =
+        subpanelClipboardSelection.selectedRows.has(rowIndex) &&
+        selectedBlockIndices.length === row.length;
+
+      selectedBlockCount += selectedBlockIndices.length;
+      rowEntries.push({
+        rowIndex,
+        selectedBlockIndices,
+        fullRow,
+      });
+    }
+
+    return {
+      panelIndex: exposed?.vars?.currentlySelectedPanelIndex ?? -1,
+      subPanelIndex: exposed?.vars?.currentlySelectedSubPanelIndex ?? -1,
+      rows: rowEntries,
+      selectedBlockCount,
+      selectedRowCount: rowEntries.length,
+      standardOnly:
+        !subpanelClipboardSelection.multiActive &&
+        selectedBlockCount === 1 &&
+        rowEntries.length === 1 &&
+        subpanelClipboardSelection.selectedRows.size === 0,
+      allowEmpty: subpanelClipboardSelection.multiActive,
+    };
+  };
+
+  const getSubpanelSelectionLinearPositions = (rows = []) => {
+    const positions = [];
+
+    rows.forEach((row, rowIndex) => {
+      if (!Array.isArray(row)) {
+        return;
+      }
+
+      row.forEach((_, blockIndex) => {
+        positions.push({ rowIndex, blockIndex });
+      });
+    });
+
+    return positions;
+  };
+
+  const getSubpanelSelectionRangeIndexes = (point, rows = []) => {
+    const positions = getSubpanelSelectionLinearPositions(rows);
+
+    if (!positions.length || !point) {
+      return null;
+    }
+
+    const indexesForRow = positions
+      .map((position, index) => ({ position, index }))
+      .filter(({ position }) => position.rowIndex === point.rowIndex)
+      .map(({ index }) => index);
+
+    if (point.kind === "row") {
+      if (!indexesForRow.length) {
+        return null;
+      }
+      return {
+        start: indexesForRow[0],
+        end: indexesForRow[indexesForRow.length - 1],
+        positions,
+      };
+    }
+
+    const foundIndex = positions.findIndex(
+      (position) =>
+        position.rowIndex === point.rowIndex &&
+        position.blockIndex === point.blockIndex
+    );
+
+    if (foundIndex < 0) {
+      return null;
+    }
+
+    return {
+      start: foundIndex,
+      end: foundIndex,
+      positions,
+    };
+  };
+
+  const addSubpanelSelectionRange = (targetPoint, rows = []) => {
+    const anchorPoint = subpanelClipboardSelection.anchor || targetPoint;
+    const positions = getSubpanelSelectionLinearPositions(rows);
+
+    if (!positions.length) {
+      return;
+    }
+
+    const getRangeForPoint = (point) => {
+      if (!point) {
+        return null;
+      }
+
+      const rowIndexes = positions
+        .map((position, index) => ({ position, index }))
+        .filter(({ position }) => position.rowIndex === point.rowIndex)
+        .map(({ index }) => index);
+
+      if (point.kind === "row") {
+        if (!rowIndexes.length) {
+          return null;
+        }
+        return {
+          start: rowIndexes[0],
+          end: rowIndexes[rowIndexes.length - 1],
+        };
+      }
+
+      const foundIndex = positions.findIndex(
+        (position) =>
+          position.rowIndex === point.rowIndex &&
+          position.blockIndex === point.blockIndex
+      );
+
+      if (foundIndex < 0) {
+        return null;
+      }
+
+      return { start: foundIndex, end: foundIndex };
+    };
+
+    const anchorRange = getRangeForPoint(anchorPoint);
+    const targetRange = getRangeForPoint(targetPoint);
+
+    if (!anchorRange || !targetRange) {
+      return;
+    }
+
+
+    const start = Math.min(anchorRange.start, targetRange.start);
+    const end = Math.max(anchorRange.end, targetRange.end);
+
+    for (let index = start; index <= end; index++) {
+      const position = positions[index];
+      if (!position) {
+        continue;
+      }
+
+      subpanelClipboardSelection.selectedBlocks.add(
+        getSubpanelBlockSelectionKey(position.rowIndex, position.blockIndex)
+      );
+    }
+  };
+
+  const setSubpanelClipboardRowSelected = (rowIndex, rows = [], selected = true) => {
+    const row = rows[rowIndex];
+
+    if (!Array.isArray(row) || row.length === 0) {
+      return;
+    }
+
+    if (selected) {
+      subpanelClipboardSelection.selectedRows.add(rowIndex);
+      for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+        subpanelClipboardSelection.selectedBlocks.add(
+          getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+        );
+      }
+    } else {
+      subpanelClipboardSelection.selectedRows.delete(rowIndex);
+      for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+        subpanelClipboardSelection.selectedBlocks.delete(
+          getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+        );
+      }
+    }
+  };
+
+  const rowIsFullySelectedForSubpanelClipboard = (rowIndex, rows = []) => {
+    const row = rows[rowIndex];
+
+    if (!Array.isArray(row) || row.length === 0) {
+      return false;
+    }
+
+    return row.every((_, blockIndex) =>
+      subpanelClipboardSelection.selectedBlocks.has(
+        getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+      )
+    );
+  };
+
+  const refreshSubpanelClipboardSelectionDisplay = () => {
+    const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+    const root = document.getElementById("sMSPTextList");
+
+    if (!root) {
+      return;
+    }
+
+    pruneSubpanelClipboardSelection(rows);
+
+    root.querySelectorAll(".textEditorBlock").forEach((block) => {
+      const rowIndex = Number(block.dataset.row);
+      const blockIndex = Number(block.dataset.block);
+      const selected = subpanelClipboardSelection.selectedBlocks.has(
+        getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+      );
+      block.classList.toggle("clipboardSelected", selected);
+    });
+
+    root.querySelectorAll(".sMControlRow").forEach((rowElement) => {
+      const rowIndex = Number(rowElement.dataset.dataRow);
+      rowElement.classList.toggle(
+        "clipboardRowSelected",
+        rowIsFullySelectedForSubpanelClipboard(rowIndex, rows)
+      );
+    });
+  };
+
+  const announceSubpanelClipboardSelectionCount = () => {
+    const count = getSubpanelClipboardSelectedBlockCount();
+    showSubpanelClipboardNotice(
+      `${count} element${count === 1 ? "" : "s"} selected`
+    );
+  };
+
+  const handleSubpanelBlockSelectionClick = (rowIndex, blockIndex, event, rows = []) => {
+    ensureSubpanelClipboardSelectionForRows(rows);
+    subpanelClipboardSelection.contextKey = getSubpanelSelectionContextKey();
+    subpanelClipboardSelection.multiActive = true;
+
+    if (event.shiftKey) {
+      addSubpanelSelectionRange(
+        { kind: "block", rowIndex, blockIndex },
+        rows
+      );
+    } else {
+      const key = getSubpanelBlockSelectionKey(rowIndex, blockIndex);
+      if (subpanelClipboardSelection.selectedBlocks.has(key)) {
+        subpanelClipboardSelection.selectedBlocks.delete(key);
+        subpanelClipboardSelection.selectedRows.delete(rowIndex);
+      } else {
+        subpanelClipboardSelection.selectedBlocks.add(key);
+      }
+    }
+
+    subpanelClipboardSelection.anchor = {
+      kind: "block",
+      rowIndex,
+      blockIndex,
+    };
+
+    pruneSubpanelClipboardSelection(rows);
+    refreshSubpanelClipboardSelectionDisplay();
+    announceSubpanelClipboardSelectionCount();
+  };
+
+  const handleSubpanelRowSelectionClick = (rowIndex, event, rows = []) => {
+    ensureSubpanelClipboardSelectionForRows(rows);
+    subpanelClipboardSelection.contextKey = getSubpanelSelectionContextKey();
+    subpanelClipboardSelection.multiActive = true;
+
+    if (event.shiftKey) {
+      addSubpanelSelectionRange({ kind: "row", rowIndex }, rows);
+    } else {
+      const selected = rowIsFullySelectedForSubpanelClipboard(rowIndex, rows);
+      setSubpanelClipboardRowSelected(rowIndex, rows, !selected);
+    }
+
+    subpanelClipboardSelection.anchor = {
+      kind: "row",
+      rowIndex,
+    };
+
+    pruneSubpanelClipboardSelection(rows);
+    refreshSubpanelClipboardSelectionDisplay();
+    announceSubpanelClipboardSelectionCount();
+  };
+
+  const copyCurrentSubpanelClipboardSelection = () => {
+    const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+    const result =
+      exposed && typeof exposed.copySubpanelClipboard === "function"
+        ? exposed.copySubpanelClipboard(getSubpanelClipboardSelectionPayload(rows))
+        : { copied: false, copiedBlockCount: 0, reason: "Copy is not available." };
+
+    if (result?.copied) {
+      const count = result.copiedBlockCount || 0;
+      showSubpanelClipboardNotice(
+        `${count} element${count === 1 ? "" : "s"} copied`
+      );
+      if (typeof updateForm === "function") {
+        updateForm();
+      }
+    } else {
+      showSubpanelClipboardNotice(result?.reason || "No elements selected");
+    }
+  };
+
+  const cutCurrentSubpanelClipboardSelection = () => {
+    const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+    const result =
+      exposed && typeof exposed.cutSubpanelClipboard === "function"
+        ? exposed.cutSubpanelClipboard(getSubpanelClipboardSelectionPayload(rows))
+        : { cut: false, copiedBlockCount: 0, reason: "Cut is not available." };
+
+    if (result?.cut) {
+      const count = result.copiedBlockCount || 0;
+      showSubpanelClipboardNotice(
+        `${count} element${count === 1 ? "" : "s"} cut`
+      );
+      if (typeof updateForm === "function") {
+        updateForm();
+      }
+    } else {
+      showSubpanelClipboardNotice(result?.reason || "No elements selected");
+    }
+  };
+
+  const pasteCurrentSubpanelClipboardSelection = (
+    targetRowIndex = null,
+    { pasteAfter = false } = {}
+  ) => {
+    if (!exposed || typeof exposed.pasteSubpanelClipboard !== "function") {
+      showSubpanelClipboardNotice("Paste is not available.");
+      return;
+    }
+
+    const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+    const result = exposed.pasteSubpanelClipboard({
+      targetRowIndex,
+      selection: getSubpanelClipboardSelectionPayload(rows),
+      pasteAfter,
+    });
+
+    if (result?.pasted) {
+      const count = result.pastedBlockCount || 0;
+      const suffix = pasteAfter ? " pasted after" : " pasted";
+      showSubpanelClipboardNotice(
+        `${count} element${count === 1 ? "" : "s"}${suffix}`
+      );
+    } else {
+      showSubpanelClipboardNotice(result?.reason || "Nothing to paste");
+    }
+  };
+
+  const subpanelMenuIsOpen = () => {
+    const configBar = document.getElementById("sMConfigBar");
+    return !!configBar && configBar.dataset.currentMenu === "subPanelConfig";
+  };
 
   const CUSTOM_ICON_VALUE_PREFIX = "CUSTOMICON-";
   let customIconRecords = [];
@@ -7432,6 +8052,44 @@ const getPostThicknessFallback = () =>
           },
         },
         {
+          fieldId: "settingsControlCopyElements",
+          run: () => {
+            if (!subpanelMenuIsOpen()) {
+              return;
+            }
+            copyCurrentSubpanelClipboardSelection();
+          },
+        },
+        {
+          fieldId: "settingsControlCutElements",
+          run: () => {
+            if (!subpanelMenuIsOpen()) {
+              return;
+            }
+            cutCurrentSubpanelClipboardSelection();
+          },
+        },
+        {
+          fieldId: "settingsControlPasteElements",
+          run: () => {
+            if (!subpanelMenuIsOpen()) {
+              return;
+            }
+            pasteCurrentSubpanelClipboardSelection();
+          },
+        },
+        {
+          fieldId: "settingsControlPasteElementsAfter",
+          run: () => {
+            if (!subpanelMenuIsOpen()) {
+              return;
+            }
+            pasteCurrentSubpanelClipboardSelection(null, {
+              pasteAfter: true,
+            });
+          },
+        },
+        {
           fieldId: "settingsControlClearAll",
           run: () => {
             if (typeof app !== "undefined" && typeof app.clearAll === "function") {
@@ -7990,6 +8648,29 @@ const getPostThicknessFallback = () =>
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
 
+    document.addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+
+      if (!subpanelMenuIsOpen()) {
+        return;
+      }
+
+      const subpanelModal = document.querySelector(".sMModal.subPanelConfig");
+      if (!subpanelModal || !subpanelModal.contains(event.target)) {
+        return;
+      }
+
+      if (event.target.closest("#sMSPTextList")) {
+        return;
+      }
+
+      const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+      resetSubpanelClipboardSelectionToStandard(rows);
+      refreshSubpanelClipboardSelectionDisplay();
+    });
+
       document.getElementById("cancelDownload").onclick = function (event) {
         event.preventDefault();
         const dialog = document.querySelector("#downloadContent");
@@ -8169,6 +8850,7 @@ const getPostThicknessFallback = () =>
         selected: width == "Full",
       });
     }
+    syncExitTabWidthOptions();
 
     // Populate the exit color options
     const exitColorSelectElement = document.getElementById("exitColor");
@@ -10915,9 +11597,16 @@ const getPostThicknessFallback = () =>
           : "SORTIE";
 
       updateExitTabBilingualControls(exitTab);
+    const aplEdgeAllowed = syncExitTabWidthOptions(exitTab);
+    const requestedExitTabWidth = form["exitTabWidth"]
+      ? form["exitTabWidth"].value
+      : exitTab.width || "Full";
+
     exitTab.width = exitTab.number.trim() === ""
         ? "Edge"
-        : form["exitTabWidth"].value;
+        : isAplEdgeExitTabWidth(requestedExitTabWidth) && !aplEdgeAllowed
+          ? "Edge"
+          : requestedExitTabWidth;
         const exitTabPositionField = form["exitTabPosition"];
         const showLeftField = form["showLeft"];
 
@@ -12117,8 +12806,7 @@ const getPostThicknessFallback = () =>
       exposed.vars.currentlySelectedNestedExitTabIndex;
     const currentExitTab = panel.exitTabs[selectedExitTabIndex];
 
-    const maxNested =
-      ExitTab.prototype.maxNested != null ? ExitTab.prototype.maxNested : 1;
+    const maxNested = getNestedExitTabLimit();
 
     if (currentExitTab && currentExitTab.nestedExitTabs.length > maxNested) {
       currentExitTab.nestedExitTabs.splice(maxNested);
@@ -12789,8 +13477,10 @@ const getPostThicknessFallback = () =>
         exitTabButton.classList.add("active");
       }
 
-      exitTabButton.addEventListener("click", function () {
-        exposed.changeEditingExitTab(exitTabIndex);
+      exitTabButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        exposed.changeEditingExitTab(exitTabIndex, -1);
       });
 
       exitTabButton.dataset.exitTabIndex = exitTabIndex.toString();
@@ -12826,7 +13516,9 @@ const getPostThicknessFallback = () =>
           nestedButton.classList.add("active");
         }
 
-        nestedButton.addEventListener("click", function () {
+        nestedButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
           exposed.changeEditingExitTab(exitTabIndex, nestIndex);
         });
 
@@ -13533,11 +14225,18 @@ const getPostThicknessFallback = () =>
       }
 
     const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
+    syncExitTabWidthOptions(exitTab);
+    let exitTabWidthMatched = false;
     for (const option of exitTabWidthSelectElmt.options) {
       if (option.value == exitTab.width) {
         option.selected = true;
+        exitTabWidthMatched = true;
         break;
       }
+    }
+    if (!exitTabWidthMatched) {
+      exitTab.width = "Edge";
+      exitTabWidthSelectElmt.value = "Edge";
     }
 
     const exitTabColorElmt = document.querySelector("#exitColor");
@@ -13749,6 +14448,7 @@ const getPostThicknessFallback = () =>
       : [];
 
     sMSPTextList.innerHTML = "";
+    ensureSubpanelClipboardSelectionForRows(currentRows);
 
     document.querySelector("#SMSPSelectLabel").textContent =
       "Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
@@ -13758,7 +14458,7 @@ const getPostThicknessFallback = () =>
     document.querySelector("#sMSPDeleteSelectedRow").disabled =
       currentRows.length <= 1;
 
-    document.querySelector("#smSPDeleteSelectedBlock").disabled =
+    document.querySelector("#sMSPDeleteSelectedBlock").disabled =
       currentRows.length <= 1 &&
       (!currentRows[exposed.vars.currentlySelectedRowIndex] ||
         currentRows[exposed.vars.currentlySelectedRowIndex].length <= 1);
@@ -13768,7 +14468,10 @@ const getPostThicknessFallback = () =>
       sMControlRow.dataset.dataRow = row.toString();
       sMControlRow.className =
         "sMControlRow" +
-        (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "");
+        (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "") +
+        (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
+          ? " clipboardRowSelected"
+          : "");
 
       for (let item = 0; item < currentRows[row].length; item++) {
         const blockElement = currentRows[row][item];
@@ -13778,13 +14481,18 @@ const getPostThicknessFallback = () =>
           blockElement.constructor.name;
 
         const textEditorBlock = document.createElement("div");
+        const clipboardBlockSelected = subpanelClipboardSelection.selectedBlocks.has(
+          getSubpanelBlockSelectionKey(row, item)
+        );
+
         textEditorBlock.className =
           "textEditorBlock " +
           Control.prototype.blockInternalElements[currentBlockElemType] +
           (item == exposed.vars.currentlySelectedBlockIndex &&
             row == exposed.vars.currentlySelectedRowIndex
             ? " selected"
-            : "");
+            : "") +
+          (clipboardBlockSelected ? " clipboardSelected" : "");
         textEditorBlock.dataset.row = row.toString();
         textEditorBlock.dataset.block = item.toString();
         textEditorBlock.draggable = true;
@@ -13852,6 +14560,14 @@ const getPostThicknessFallback = () =>
             return;
           }
 
+          if (event.ctrlKey || event.metaKey || event.shiftKey) {
+            event.preventDefault();
+            handleSubpanelBlockSelectionClick(row, item, event, currentRows);
+            return;
+          }
+
+          subpanelClipboardSelection.lastAppSelectionKey = "";
+
           if (typeof exposed.setSelectedRowAndBlock === "function") {
             exposed.setSelectedRowAndBlock(row, item);
           } else {
@@ -13859,6 +14575,33 @@ const getPostThicknessFallback = () =>
             exposed.setSelectedControlElem(item);
           }
         });
+      }
+
+      if (
+        isSubpanelClipboardSelectionAllowed() &&
+        exposed &&
+        typeof exposed.hasSubpanelClipboard === "function" &&
+        exposed.hasSubpanelClipboard()
+      ) {
+        const pasteRowButton = document.createElement("button");
+        pasteRowButton.type = "button";
+        pasteRowButton.className = "sMControlRowPasteButton";
+        pasteRowButton.title = "Paste copied elements here";
+        pasteRowButton.setAttribute("aria-label", "Paste copied elements here");
+        pasteRowButton.innerHTML =
+          '<span class="material-symbols-outlined">content_paste</span>';
+
+        pasteRowButton.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+        });
+
+        pasteRowButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          pasteCurrentSubpanelClipboardSelection(row);
+        });
+
+        sMControlRow.appendChild(pasteRowButton);
       }
 
       sMSPTextList.appendChild(sMControlRow);
@@ -13870,7 +14613,19 @@ const getPostThicknessFallback = () =>
       sMControlRow.addEventListener("dragover", handleRowDragOver);
       sMControlRow.addEventListener("dragleave", handleRowDragLeave);
       sMControlRow.addEventListener("drop", handleRowDrop);
-      sMControlRow.addEventListener("click", () => {
+      sMControlRow.addEventListener("click", (event) => {
+        if (event.target.closest(".sMControlRowPasteButton")) {
+          return;
+        }
+
+        if (event.ctrlKey || event.metaKey || event.shiftKey) {
+          event.preventDefault();
+          handleSubpanelRowSelectionClick(row, event, currentRows);
+          return;
+        }
+
+        subpanelClipboardSelection.lastAppSelectionKey = "";
+
         if (typeof exposed.setSelectedRowAndBlock === "function") {
           exposed.setSelectedRowAndBlock(row, 0);
         } else {

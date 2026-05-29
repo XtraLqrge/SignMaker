@@ -8740,3 +8740,60 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 .stackedPanelTabGroup.additionalStackedPanelSlot .stackedPanelDeleteButton {
   border-left: 1px solid rgba(255, 255, 255, 0.16);
 }
+
+/* Subpanel copy/paste selection */
+.sMControlRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgb(var(--baseColor), 0.15);
+  padding: 0.25rem 3rem 0.25rem 0.25rem;
+  width: 100%;
+  min-height: 2.5rem;
+  position: relative;
+  box-sizing: border-box;
+}
+
+:root[data-theme="dark"] .sMControlRow.selected {
+  background-color: rgb(var(--baseColor), 0.25);
+}
+
+.sMControlRow.selected {
+  background-color: rgb(var(--baseColor), 0.5);
+}
+
+.textEditorBlock.clipboardSelected .textEditorBlockLabel {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.sMControlRow.clipboardRowSelected .textEditorBlock.clipboardSelected .textEditorBlockLabel {
+  font-weight: 900;
+}
+
+.sMControlRowPasteButton {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 0.25rem;
+  background-color: rgb(var(--inputColor));
+  color: var(--textColor);
+  z-index: 3;
+}
+
+.sMControlRowPasteButton:hover:enabled {
+  background-color: var(--selectedColor);
+}
+
+.sMControlRowPasteButton .material-symbols-outlined {
+  font-size: 1.15rem;
+  line-height: 1;
+}

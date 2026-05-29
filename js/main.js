@@ -21,6 +21,7 @@ const app = (function () {
   const DEFAULT_STACKED_PANEL_MATCH_WIDTH = false;
   const APP_STORAGE_KEY = "signMaker.autosave.v1";
   const RESTORE_ON_REFRESH_STORAGE_KEY = "signMaker.restoreOnRefresh";
+  const SUBPANEL_BLOCK_CLIPBOARD_STORAGE_KEY = "signMaker.subpanelBlockClipboard.v1";
 
 
   const ensureExtendedGuideArrowOptions = () => {
@@ -253,6 +254,11 @@ const app = (function () {
 
   const GLOBAL_TOP_SUBPANEL_INDEX = -2;
   const GLOBAL_BOTTOM_SUBPANEL_INDEX = -1;
+  const EXIT_TAB_APL_EDGE_WIDTH = "APL Edge";
+
+  const isAplEdgeExitTabWidth = (width) =>
+    String(width || "").trim().toLowerCase() ===
+    EXIT_TAB_APL_EDGE_WIDTH.toLowerCase();
 
   const getGlobalBlockPositionFromIndex = (subPanelIndex) =>
     subPanelIndex === GLOBAL_TOP_SUBPANEL_INDEX ? "Top" : "Bottom";
@@ -915,6 +921,59 @@ const app = (function () {
         .map((group) => group.end)
         .filter((dividerIndex) => isSubpanelDividerVisibleForSign(sign, dividerIndex));
 
+    const signHasVisibleSubpanelDivider = (sign) =>
+      getVisibleAPLDividerIndicesForSign(sign).length > 0;
+
+    const canUseAplEdgeExitTab = (panel = getCurrentPanel()) =>
+      !!(panel && panel.sign && signHasVisibleSubpanelDivider(panel.sign));
+
+    const normalizeExitTabAplEdgeAvailabilityForPanel = (panel) => {
+      if (!panel || !Array.isArray(panel.exitTabs)) {
+        return false;
+      }
+
+      const hasVisibleDivider = canUseAplEdgeExitTab(panel);
+      let changed = false;
+
+      if (hasVisibleDivider) {
+        return false;
+      }
+
+      const normalizeTab = (tab) => {
+        if (!tab || typeof tab !== "object") {
+          return;
+        }
+
+        if (isAplEdgeExitTabWidth(tab.width)) {
+          tab.width = "Edge";
+          changed = true;
+        }
+      };
+
+      panel.exitTabs.forEach((tab) => {
+        normalizeTab(tab);
+
+        if (Array.isArray(tab?.nestedExitTabs)) {
+          tab.nestedExitTabs.forEach(normalizeTab);
+        }
+      });
+
+      return changed;
+    };
+
+    const getAplEdgeDividerForExitTab = (sign, position = "Right") => {
+      const visibleDividers = getVisibleAPLDividerIndicesForSign(sign);
+
+      if (!visibleDividers.length) {
+        return null;
+      }
+
+      const normalizedPosition = String(position || "Right").toLowerCase();
+      return normalizedPosition === "left"
+        ? visibleDividers[0]
+        : visibleDividers[visibleDividers.length - 1];
+    };
+
     const getNearestVisibleAPLDividerIndex = (sign, dividerIndex) => {
       const visibleDividers = getVisibleAPLDividerIndicesForSign(sign);
 
@@ -988,6 +1047,7 @@ const app = (function () {
         disabledDividers[normalizedIndex] = visible === false;
 
         normalizeAPLArrowsForSubpanelDividerGroups(sign);
+        normalizeExitTabAplEdgeAvailabilityForPanel(getCurrentPanel());
 
         formHandler.updateForm();
         redraw();
@@ -3368,11 +3428,82 @@ const app = (function () {
       );
     };
 
+  const copyExitTabFormatting = (sourceTab, targetTab) => {
+    if (!sourceTab || !targetTab) {
+      return targetTab;
+    }
+
+    const formattingKeys = [
+      "variant",
+      "position",
+      "width",
+      "color",
+      "borderThickness",
+      "minHeight",
+      "fontSize",
+      "FHWAFont",
+      "showLeft",
+      "fullBorder",
+      "squareCorners",
+      "topOffset",
+      "verticalArrangement",
+      "caStyle",
+      "bilingual",
+      "bilingualBottomText",
+      "icon",
+      "useTextBasedIcon",
+      "tollLogoOnly",
+      "tollLogoSize",
+      "tollLogoSquare",
+      "nestedTabSpacing",
+    ];
+
+    formattingKeys.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(sourceTab, key)) {
+        try {
+          targetTab[key] = JSON.parse(JSON.stringify(sourceTab[key]));
+        } catch (error) {
+          targetTab[key] = sourceTab[key];
+        }
+      }
+    });
+
+    return targetTab;
+  };
+
+  const getNestedExitTabLimit = () => 1;
+
+  const trimNestedExitTabsToLimit = (exitTab) => {
+    if (!exitTab || !Array.isArray(exitTab.nestedExitTabs)) {
+      return;
+    }
+
+    exitTab.nestedExitTabs.splice(getNestedExitTabLimit());
+  };
+
   // Create a new exit tab, update the form, and redraw.
     const newExitTab = function () {
       return runWithUndo(() => {
         const panel = getCurrentPanel();
+        if (!panel) {
+          return;
+        }
+
+        const previousExitTab = Array.isArray(panel.exitTabs) && panel.exitTabs.length
+          ? panel.exitTabs[panel.exitTabs.length - 1]
+          : null;
+
         panel.newExitTab();
+
+        const newTab = panel.exitTabs[panel.exitTabs.length - 1];
+        if (newTab && previousExitTab) {
+          copyExitTabFormatting(previousExitTab, newTab);
+          newTab.number = "";
+          newTab.bilingualTopText = "EXIT";
+          newTab.nestedExitTabs = [];
+        }
+
+        normalizeExitTabAplEdgeAvailabilityForPanel(panel);
         currentlySelectedExitTabIndex = panel.exitTabs.length - 1;
         currentlySelectedNestedExitTabIndex = -1;
         formHandler.updateForm();
@@ -3387,15 +3518,55 @@ const app = (function () {
         if (!panel || !panel.exitTabs.length) {
           return;
         }
-        const exitTab = panel.exitTabs[currentlySelectedExitTabIndex];
-        if (!exitTab) {
+
+        const parentExitTab = panel.exitTabs[currentlySelectedExitTabIndex];
+        if (!parentExitTab) {
           return;
         }
-        const nested = exitTab.nestExitTab();
-        if (!nested) {
+
+        if (!Array.isArray(parentExitTab.nestedExitTabs)) {
+          parentExitTab.nestedExitTabs = [];
+        }
+
+        if (parentExitTab.nestedExitTabs.length >= getNestedExitTabLimit()) {
+          currentlySelectedNestedExitTabIndex = 0;
+          formHandler.updateForm();
+          redraw();
           return;
         }
-        currentlySelectedNestedExitTabIndex = exitTab.nestedExitTabs.length - 1;
+
+        if (typeof ExitTab !== "undefined" && ExitTab.prototype) {
+          ExitTab.prototype.maxNested = Math.max(
+            getNestedExitTabLimit(),
+            Number(ExitTab.prototype.maxNested) || 0
+          );
+        }
+
+        const nested =
+          typeof parentExitTab.nestExitTab === "function"
+            ? parentExitTab.nestExitTab()
+            : null;
+
+        let createdNested =
+          nested || parentExitTab.nestedExitTabs[parentExitTab.nestedExitTabs.length - 1];
+
+        if (!createdNested && typeof ExitTab !== "undefined") {
+          createdNested = new ExitTab();
+          parentExitTab.nestedExitTabs.push(createdNested);
+        }
+
+        if (!createdNested) {
+          return;
+        }
+
+        copyExitTabFormatting(parentExitTab, createdNested);
+        createdNested.number = "";
+        createdNested.bilingualTopText = "EXIT";
+        createdNested.nestedExitTabs = [];
+        trimNestedExitTabsToLimit(parentExitTab);
+        normalizeExitTabAplEdgeAvailabilityForPanel(panel);
+
+        currentlySelectedNestedExitTabIndex = parentExitTab.nestedExitTabs.length - 1;
         formHandler.updateForm();
         redraw();
       });
@@ -3520,21 +3691,32 @@ const app = (function () {
     };
 
   // Set the current editing exit tab based off paramter number, its child, within the correct range (0 < # of exit Tabs - 1 // Secondary: 0 < # of child exit Tabs)
-  const changeEditingExitTab = function (exitTabNumber, nestedExitTabNumber) {
+  const changeEditingExitTab = function (exitTabNumber, nestedExitTabNumber = -1) {
+    const panel = getCurrentPanel();
+
+    if (!panel || !Array.isArray(panel.exitTabs) || !panel.exitTabs.length) {
+      currentlySelectedExitTabIndex = 0;
+      currentlySelectedNestedExitTabIndex = -1;
+      formHandler.updateForm();
+      return;
+    }
+
     currentlySelectedExitTabIndex = clamp(
-      exitTabNumber,
+      Number(exitTabNumber),
       0,
-      getCurrentPanel().exitTabs.length - 1
+      panel.exitTabs.length - 1
     );
+
+    const currentExitTab = panel.exitTabs[currentlySelectedExitTabIndex];
+    const nestedTabs = Array.isArray(currentExitTab?.nestedExitTabs)
+      ? currentExitTab.nestedExitTabs
+      : [];
+
     currentlySelectedNestedExitTabIndex =
-      nestedExitTabNumber != null
-        ? clamp(
-          nestedExitTabNumber,
-          -1,
-          getCurrentPanel().exitTabs[currentlySelectedExitTabIndex]
-            .nestedExitTabs.length - 1
-        )
+      nestedExitTabNumber != null && Number(nestedExitTabNumber) >= 0
+        ? clamp(Number(nestedExitTabNumber), 0, nestedTabs.length - 1)
         : -1;
+
     formHandler.updateForm();
   };
 
@@ -3733,7 +3915,11 @@ const app = (function () {
 
         blockElems.deleteRow(deleteIndex);
 
-        currentlySelectedRowIndex = Math.max(0, deleteIndex - 1);
+        currentlySelectedRowIndex = clamp(
+          deleteIndex,
+          0,
+          Math.max(0, blockElems.rows.length - 1)
+        );
         currentlySelectedBlockIndex = 0;
 
         normalizeSelectionForCurrentPost();
@@ -4183,7 +4369,8 @@ const app = (function () {
 
     const deleteCurrentRowShortcut = () => {
       return runWithUndo(() => {
-        const rows = getCurrentSubPanel()?.blockElements?.rows || [];
+        const blockElements = getCurrentSubPanel()?.blockElements;
+        const rows = blockElements?.rows || [];
         if (rows.length <= 1) {
           return null;
         }
@@ -4194,8 +4381,12 @@ const app = (function () {
           rows.length - 1
         );
 
-        getCurrentSubPanel().blockElements.deleteRow(deleteIndex);
-        currentlySelectedRowIndex = Math.max(0, deleteIndex - 1);
+        blockElements.deleteRow(deleteIndex);
+        currentlySelectedRowIndex = clamp(
+          deleteIndex,
+          0,
+          Math.max(0, blockElements.rows.length - 1)
+        );
         currentlySelectedBlockIndex = 0;
 
         normalizeSelectionForCurrentPost();
@@ -4391,19 +4582,990 @@ const app = (function () {
     const delControlElem = () => {
       return runWithUndo(() => {
         const blockElems = getCurrentSubPanel().blockElements;
-        if (
-          blockElems.removeElement(
-            currentlySelectedRowIndex,
-            currentlySelectedBlockIndex
-          )
-        ) {
-          currentlySelectedRowIndex--;
-          currentlySelectedBlockIndex = getCurrentBlockRows().length - 1;
+        const deleteRowIndex = clamp(
+          currentlySelectedRowIndex,
+          0,
+          Math.max(0, blockElems.rows.length - 1)
+        );
+        const rowBeforeDelete = blockElems.rows[deleteRowIndex] || [];
+        const deleteBlockIndex = clamp(
+          currentlySelectedBlockIndex,
+          0,
+          Math.max(0, rowBeforeDelete.length - 1)
+        );
+        const removedWholeRow = blockElems.removeElement(
+          deleteRowIndex,
+          deleteBlockIndex
+        );
+
+        if (removedWholeRow) {
+          currentlySelectedRowIndex = clamp(
+            deleteRowIndex,
+            0,
+            Math.max(0, blockElems.rows.length - 1)
+          );
+          currentlySelectedBlockIndex = 0;
         } else {
-          currentlySelectedBlockIndex--;
+          const rowAfterDelete = blockElems.rows[deleteRowIndex] || [];
+          currentlySelectedRowIndex = deleteRowIndex;
+          currentlySelectedBlockIndex = clamp(
+            deleteBlockIndex,
+            0,
+            Math.max(0, rowAfterDelete.length - 1)
+          );
         }
+
+        normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
+      });
+    };
+
+    const getCurrentEditableSubPanelForClipboard = () => {
+      const panel = getCurrentPanel();
+      const sign = panel?.sign;
+
+      if (!sign) {
+        return null;
+      }
+
+      if (currentlySelectedSubPanelIndex < 0) {
+        const currentTarget = getCurrentSubPanel();
+        return currentTarget?.blockElements ? currentTarget : null;
+      }
+
+      const subPanels = sign.subPanels;
+
+      if (!Array.isArray(subPanels)) {
+        return null;
+      }
+
+      return subPanels[currentlySelectedSubPanelIndex] || null;
+    };
+
+    const serializeSubpanelClipboardValue = (value) => {
+      try {
+        const serialized = JSON.parse(JSON.stringify(value, historyReplacer));
+
+        if (serialized && typeof serialized === "object") {
+          const blockElemType = Control.prototype.blockToClassElems?.getElem?.(value);
+          if (blockElemType) {
+            serialized._elementType = blockElemType;
+          }
+        }
+
+        return serialized;
+      } catch (error) {
+        console.error("Unable to serialize copied subpanel block", error);
+        return null;
+      }
+    };
+
+    const reviveSubpanelClipboardValue = (value) => {
+      try {
+        if (!value || typeof value !== "object") {
+          return value;
+        }
+
+        const data = JSON.parse(JSON.stringify(value));
+        const elemType = data._elementType || data.__undoType;
+
+        if (
+          elemType &&
+          Control.prototype.blockToClassElems &&
+          Control.prototype.blockToClassElems[elemType]
+        ) {
+          const ElemClass = Control.prototype.blockToClassElems[elemType];
+          const elem = new ElemClass(data);
+          Object.assign(elem, data);
+          delete elem._elementType;
+          delete elem.__undoType;
+          return elem;
+        }
+
+        if (
+          elemType === "Block" ||
+          data.topPadding !== undefined ||
+          data.bottomPadding !== undefined ||
+          data.backgroundFullWidth !== undefined
+        ) {
+          const block = new Block(data);
+          Object.assign(block, data);
+          delete block.__undoType;
+          return block;
+        }
+
+        return JSON.parse(JSON.stringify(value), historyReviver);
+      } catch (error) {
+        console.error("Unable to restore copied subpanel block", error);
+        return null;
+      }
+    };
+
+    const cloneSubpanelClipboardValue = (value) =>
+      reviveSubpanelClipboardValue(serializeSubpanelClipboardValue(value));
+
+    const createDefaultSubpanelBlockElements = () => {
+      const sign = getCurrentPanel()?.sign;
+
+      if (
+        sign &&
+        Array.isArray(sign.subPanels) &&
+        typeof sign.newSubPanel === "function"
+      ) {
+        const originalLength = sign.subPanels.length;
+        const originalDisabledDividers = Array.isArray(sign.disabledSubpanelDividers)
+          ? [...sign.disabledSubpanelDividers]
+          : null;
+
+        sign.newSubPanel();
+        const defaultSubPanel = sign.subPanels.pop();
+        sign.subPanels.length = originalLength;
+
+        if (originalDisabledDividers) {
+          sign.disabledSubpanelDividers = originalDisabledDividers;
+        }
+
+        if (defaultSubPanel?.blockElements) {
+          const defaultBlockElements = defaultSubPanel.blockElements;
+          return new Control({
+            rows: Array.isArray(defaultBlockElements.rows)
+              ? defaultBlockElements.rows.map((row) =>
+                  Array.isArray(row)
+                    ? row.map(cloneSubpanelClipboardValue).filter(Boolean)
+                    : []
+                )
+              : [],
+            blockProperties: Array.isArray(defaultBlockElements.blockProperties)
+              ? defaultBlockElements.blockProperties.map(
+                  (blockProperty) =>
+                    cloneSubpanelClipboardValue(blockProperty) || new Block()
+                )
+              : [],
+          });
+        }
+      }
+
+      return new Control({
+        rows: [[new ControlTextElement()]],
+        blockProperties: [new Block()],
+      });
+    };
+
+    const ensureSubpanelHasEditableRows = (subPanel) => {
+      if (!subPanel) {
+        return null;
+      }
+
+      const rows = subPanel.blockElements?.rows;
+
+      if (Array.isArray(rows) && rows.some((row) => Array.isArray(row) && row.length > 0)) {
+        return subPanel.blockElements;
+      }
+
+      const defaultBlockElements = createDefaultSubpanelBlockElements();
+      subPanel.blockElements = defaultBlockElements;
+
+      if (subPanel.isGlobalBlockTarget) {
+        const sign = getCurrentPanel()?.sign;
+        if (sign) {
+          sign[getGlobalBlockKey(subPanel.globalBlockPosition)] = defaultBlockElements;
+        }
+      }
+
+      return subPanel.blockElements;
+    };
+
+    const getSubpanelClipboardPayload = () => {
+      try {
+        const raw = window.localStorage.getItem(SUBPANEL_BLOCK_CLIPBOARD_STORAGE_KEY);
+        if (!raw) {
+          return null;
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.type !== "subpanel-block-elements") {
+          return null;
+        }
+
+        if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) {
+          return null;
+        }
+
+        return parsed;
+      } catch (error) {
+        console.warn("Unable to read copied subpanel elements", error);
+        return null;
+      }
+    };
+
+    const hasSubpanelClipboard = () => !!getSubpanelClipboardPayload();
+
+    const saveSubpanelClipboardPayload = (payload) => {
+      try {
+        window.localStorage.setItem(
+          SUBPANEL_BLOCK_CLIPBOARD_STORAGE_KEY,
+          JSON.stringify(payload)
+        );
+        return true;
+      } catch (error) {
+        console.error("Unable to save copied subpanel elements", error);
+        return false;
+      }
+    };
+
+    const normalizeSubpanelSelectionPayload = (selection, rows) => {
+      const normalizedRows = Array.isArray(rows) ? rows : [];
+      const allowEmpty = selection?.allowEmpty === true;
+      const entriesByRow = new Map();
+
+      const addEntry = (rowIndex, blockIndices, fullRow = false) => {
+        const normalizedRowIndex = Number(rowIndex);
+
+        if (
+          !Number.isInteger(normalizedRowIndex) ||
+          normalizedRowIndex < 0 ||
+          normalizedRowIndex >= normalizedRows.length
+        ) {
+          return;
+        }
+
+        const row = normalizedRows[normalizedRowIndex];
+        if (!Array.isArray(row) || row.length === 0) {
+          return;
+        }
+
+        const existing = entriesByRow.get(normalizedRowIndex) || {
+          rowIndex: normalizedRowIndex,
+          selectedBlockIndices: [],
+          fullRow: false,
+        };
+
+        const selectedIndices = fullRow
+          ? row.map((_, index) => index)
+          : Array.isArray(blockIndices)
+            ? blockIndices
+            : [];
+
+        for (const blockIndex of selectedIndices) {
+          const normalizedBlockIndex = Number(blockIndex);
+          if (
+            Number.isInteger(normalizedBlockIndex) &&
+            normalizedBlockIndex >= 0 &&
+            normalizedBlockIndex < row.length &&
+            !existing.selectedBlockIndices.includes(normalizedBlockIndex)
+          ) {
+            existing.selectedBlockIndices.push(normalizedBlockIndex);
+          }
+        }
+
+        existing.selectedBlockIndices.sort((a, b) => a - b);
+        existing.fullRow =
+          existing.fullRow ||
+          fullRow === true ||
+          (selection?.standardOnly !== true && existing.selectedBlockIndices.length === row.length);
+
+        entriesByRow.set(normalizedRowIndex, existing);
+      };
+
+      if (
+        selection &&
+        Number(selection.panelIndex) === currentlySelectedPanelIndex &&
+        Number(selection.subPanelIndex) === currentlySelectedSubPanelIndex &&
+        Array.isArray(selection.rows)
+      ) {
+        for (const rowSelection of selection.rows) {
+          addEntry(
+            rowSelection.rowIndex,
+            rowSelection.selectedBlockIndices,
+            rowSelection.fullRow === true
+          );
+        }
+      }
+
+      if (!entriesByRow.size && !allowEmpty) {
+        const currentRow = normalizedRows[currentlySelectedRowIndex];
+        if (Array.isArray(currentRow) && currentRow.length > 0) {
+          addEntry(currentlySelectedRowIndex, [currentlySelectedBlockIndex], false);
+        }
+      }
+
+      const rowEntries = Array.from(entriesByRow.values())
+        .filter((entry) => entry.selectedBlockIndices.length > 0)
+        .sort((a, b) => a.rowIndex - b.rowIndex);
+
+      return {
+        rows: rowEntries,
+        selectedBlockCount: rowEntries.reduce(
+          (total, entry) => total + entry.selectedBlockIndices.length,
+          0
+        ),
+        selectedRowCount: rowEntries.length,
+      };
+    };
+
+    const copySubpanelClipboard = (selection) => {
+      const subPanel = getCurrentEditableSubPanelForClipboard();
+      const blockElements = subPanel?.blockElements;
+      const rows = Array.isArray(blockElements?.rows) ? blockElements.rows : [];
+
+      if (!subPanel || !rows.length) {
+        return {
+          copied: false,
+          copiedBlockCount: 0,
+          rowCount: 0,
+          reason: "No subpanel is selected.",
+        };
+      }
+
+      const normalizedSelection = normalizeSubpanelSelectionPayload(selection, rows);
+
+      if (!normalizedSelection.selectedBlockCount) {
+        return {
+          copied: false,
+          copiedBlockCount: 0,
+          rowCount: 0,
+          reason: "No elements selected.",
+        };
+      }
+
+      const payloadRows = normalizedSelection.rows.map((rowSelection) => {
+        const row = rows[rowSelection.rowIndex] || [];
+        const blockProperty =
+          blockElements.blockProperties?.[rowSelection.rowIndex] || new Block();
+
+        return {
+          rowIndex: rowSelection.rowIndex,
+          fullRow: rowSelection.fullRow === true,
+          selectedBlockIndices: [...rowSelection.selectedBlockIndices],
+          rowProperty: serializeSubpanelClipboardValue(blockProperty),
+          blocks: rowSelection.selectedBlockIndices
+            .map((blockIndex) => ({
+              blockIndex,
+              block: serializeSubpanelClipboardValue(row[blockIndex]),
+            }))
+            .filter((entry) => entry.block),
+        };
+      }).filter((rowPayload) => rowPayload.blocks.length > 0);
+
+      const copiedBlockCount = payloadRows.reduce(
+        (total, rowPayload) => total + rowPayload.blocks.length,
+        0
+      );
+
+      if (!copiedBlockCount) {
+        return {
+          copied: false,
+          copiedBlockCount: 0,
+          rowCount: 0,
+          reason: "No elements selected.",
+        };
+      }
+
+      const payload = {
+        type: "subpanel-block-elements",
+        version: 1,
+        dateCopied: new Date().toISOString(),
+        rows: payloadRows,
+        copiedBlockCount,
+        rowCount: payloadRows.length,
+      };
+
+      const saved = saveSubpanelClipboardPayload(payload);
+
+      return {
+        copied: saved,
+        copiedBlockCount,
+        rowCount: payloadRows.length,
+        reason: saved ? "" : "Unable to save copied elements.",
+      };
+    };
+
+    const getNormalizedClipboardRows = () => {
+      const payload = getSubpanelClipboardPayload();
+
+      if (!payload) {
+        return [];
+      }
+
+      return payload.rows
+        .map((rowPayload) => {
+          const blocks = Array.isArray(rowPayload.blocks)
+            ? rowPayload.blocks
+                .map((entry) => reviveSubpanelClipboardValue(entry.block))
+                .filter(Boolean)
+            : [];
+
+          if (!blocks.length) {
+            return null;
+          }
+
+          const rowProperty = reviveSubpanelClipboardValue(rowPayload.rowProperty) || new Block();
+
+          return {
+            blocks,
+            rowProperty,
+            fullRow: rowPayload.fullRow === true,
+          };
+        })
+        .filter(Boolean);
+    };
+
+    const cloneSubpanelClipboardRowBlocks = (clipboardRow) =>
+      Array.isArray(clipboardRow?.blocks)
+        ? clipboardRow.blocks.map(cloneSubpanelClipboardValue).filter(Boolean)
+        : [];
+
+    const cloneSubpanelClipboardRowProperty = (clipboardRow) =>
+      cloneSubpanelClipboardValue(clipboardRow?.rowProperty || new Block()) ||
+      new Block();
+
+    const replaceSubpanelRowsWithClipboardRows = (
+      blockElements,
+      targetRowIndices,
+      clipboardRows
+    ) => {
+      const rows = blockElements?.rows;
+      const blockProperties = blockElements?.blockProperties;
+
+      if (!Array.isArray(rows) || !Array.isArray(blockProperties)) {
+        return null;
+      }
+
+      const validTargetRows = Array.from(
+        new Set(
+          (Array.isArray(targetRowIndices) ? targetRowIndices : [])
+            .map((rowIndex) => Number(rowIndex))
+            .filter(
+              (rowIndex) =>
+                Number.isInteger(rowIndex) && rowIndex >= 0 && rowIndex < rows.length
+            )
+        )
+      ).sort((a, b) => a - b);
+
+      if (!validTargetRows.length || !clipboardRows.length) {
+        return null;
+      }
+
+      const insertIndex = validTargetRows[0];
+
+      for (let index = validTargetRows.length - 1; index >= 0; index--) {
+        const rowIndex = validTargetRows[index];
+        rows.splice(rowIndex, 1);
+        blockProperties.splice(rowIndex, 1);
+      }
+
+      const rowsToInsert = clipboardRows
+        .map(cloneSubpanelClipboardRowBlocks)
+        .filter((row) => row.length > 0);
+      const propertiesToInsert = clipboardRows
+        .map(cloneSubpanelClipboardRowProperty)
+        .slice(0, rowsToInsert.length);
+
+      if (!rowsToInsert.length) {
+        return null;
+      }
+
+      rows.splice(insertIndex, 0, ...rowsToInsert);
+      blockProperties.splice(insertIndex, 0, ...propertiesToInsert);
+
+      currentlySelectedRowIndex = clamp(insertIndex, 0, Math.max(0, rows.length - 1));
+      currentlySelectedBlockIndex = 0;
+
+      return {
+        rowIndex: currentlySelectedRowIndex,
+        blockIndex: currentlySelectedBlockIndex,
+      };
+    };
+
+    const replaceSubpanelBlocksWithClipboardBlocks = (
+      blockElements,
+      targetRowIndex,
+      targetBlockIndices,
+      clipboardRow
+    ) => {
+      const rows = blockElements?.rows;
+
+      if (!Array.isArray(rows) || !clipboardRow || !Array.isArray(clipboardRow.blocks)) {
+        return null;
+      }
+
+      const rowIndex = Number(targetRowIndex);
+      if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) {
+        return null;
+      }
+
+      const row = rows[rowIndex];
+      if (!Array.isArray(row) || row.length === 0 || !clipboardRow.blocks.length) {
+        return null;
+      }
+
+      const validBlockIndices = Array.from(
+        new Set(
+          (Array.isArray(targetBlockIndices) ? targetBlockIndices : [])
+            .map((blockIndex) => Number(blockIndex))
+            .filter(
+              (blockIndex) =>
+                Number.isInteger(blockIndex) && blockIndex >= 0 && blockIndex < row.length
+            )
+        )
+      ).sort((a, b) => a - b);
+
+      if (!validBlockIndices.length) {
+        return null;
+      }
+
+      const insertIndex = validBlockIndices[0];
+
+      for (let index = validBlockIndices.length - 1; index >= 0; index--) {
+        row.splice(validBlockIndices[index], 1);
+      }
+
+      const blocksToInsert = cloneSubpanelClipboardRowBlocks(clipboardRow);
+
+      if (!blocksToInsert.length) {
+        return null;
+      }
+
+      row.splice(insertIndex, 0, ...blocksToInsert);
+
+      currentlySelectedRowIndex = rowIndex;
+      currentlySelectedBlockIndex = clamp(insertIndex, 0, Math.max(0, row.length - 1));
+
+      return {
+        rowIndex: currentlySelectedRowIndex,
+        blockIndex: currentlySelectedBlockIndex,
+      };
+    };
+
+    const insertSubpanelClipboardRowsAfterRow = (
+      blockElements,
+      targetRowIndex,
+      clipboardRows
+    ) => {
+      const rows = blockElements?.rows;
+      const blockProperties = blockElements?.blockProperties;
+
+      if (!Array.isArray(rows) || !Array.isArray(blockProperties) || !clipboardRows.length) {
+        return null;
+      }
+
+      const rowIndex = Number(targetRowIndex);
+      if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) {
+        return null;
+      }
+
+      const rowsToInsert = clipboardRows
+        .map(cloneSubpanelClipboardRowBlocks)
+        .filter((row) => row.length > 0);
+      const propertiesToInsert = clipboardRows
+        .map(cloneSubpanelClipboardRowProperty)
+        .slice(0, rowsToInsert.length);
+
+      if (!rowsToInsert.length) {
+        return null;
+      }
+
+      const insertIndex = clamp(rowIndex + 1, 0, rows.length);
+      rows.splice(insertIndex, 0, ...rowsToInsert);
+      blockProperties.splice(insertIndex, 0, ...propertiesToInsert);
+
+      currentlySelectedRowIndex = clamp(insertIndex, 0, Math.max(0, rows.length - 1));
+      currentlySelectedBlockIndex = 0;
+
+      return {
+        rowIndex: currentlySelectedRowIndex,
+        blockIndex: currentlySelectedBlockIndex,
+      };
+    };
+
+    const insertSubpanelClipboardAfterBlock = (
+      blockElements,
+      targetRowIndex,
+      targetBlockIndex,
+      clipboardRows
+    ) => {
+      const rows = blockElements?.rows;
+      const blockProperties = blockElements?.blockProperties;
+
+      if (!Array.isArray(rows) || !Array.isArray(blockProperties) || !clipboardRows.length) {
+        return null;
+      }
+
+      const rowIndex = Number(targetRowIndex);
+      if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) {
+        return null;
+      }
+
+      const row = rows[rowIndex];
+      if (!Array.isArray(row) || row.length === 0) {
+        return null;
+      }
+
+      const blockIndex = clamp(
+        Number.isInteger(Number(targetBlockIndex)) ? Number(targetBlockIndex) : row.length - 1,
+        0,
+        Math.max(0, row.length - 1)
+      );
+      const firstClipboardRow = clipboardRows[0];
+      const firstBlocks = cloneSubpanelClipboardRowBlocks(firstClipboardRow);
+
+      if (!firstBlocks.length) {
+        return null;
+      }
+
+      const insertBlockIndex = clamp(blockIndex + 1, 0, row.length);
+      row.splice(insertBlockIndex, 0, ...firstBlocks);
+
+      const additionalRows = clipboardRows.slice(1);
+      const rowsToInsert = additionalRows
+        .map(cloneSubpanelClipboardRowBlocks)
+        .filter((nextRow) => nextRow.length > 0);
+      const propertiesToInsert = additionalRows
+        .map(cloneSubpanelClipboardRowProperty)
+        .slice(0, rowsToInsert.length);
+
+      if (rowsToInsert.length) {
+        rows.splice(rowIndex + 1, 0, ...rowsToInsert);
+        blockProperties.splice(rowIndex + 1, 0, ...propertiesToInsert);
+      }
+
+      currentlySelectedRowIndex = rowIndex;
+      currentlySelectedBlockIndex = clamp(insertBlockIndex, 0, Math.max(0, row.length - 1));
+
+      return {
+        rowIndex: currentlySelectedRowIndex,
+        blockIndex: currentlySelectedBlockIndex,
+      };
+    };
+
+    const pasteSubpanelClipboardAfterSelection = (
+      blockElements,
+      normalizedSelection,
+      clipboardRows
+    ) => {
+      const rows = blockElements?.rows;
+
+      if (!Array.isArray(rows) || !clipboardRows.length) {
+        return null;
+      }
+
+      const selectedRows = Array.isArray(normalizedSelection?.rows)
+        ? normalizedSelection.rows.slice().sort((a, b) => a.rowIndex - b.rowIndex)
+        : [];
+
+      if (!selectedRows.length || !normalizedSelection?.selectedBlockCount) {
+        return null;
+      }
+
+      const latestRowSelection = selectedRows[selectedRows.length - 1];
+      const rowIndex = Number(latestRowSelection?.rowIndex);
+      const row = rows[rowIndex];
+
+      if (!Array.isArray(row) || row.length === 0) {
+        return null;
+      }
+
+      const selectedBlockIndices = Array.isArray(latestRowSelection.selectedBlockIndices)
+        ? latestRowSelection.selectedBlockIndices
+            .map((blockIndex) => Number(blockIndex))
+            .filter(
+              (blockIndex) =>
+                Number.isInteger(blockIndex) && blockIndex >= 0 && blockIndex < row.length
+            )
+        : [];
+
+      if (!selectedBlockIndices.length) {
+        return null;
+      }
+
+      const rowIsFullySelected =
+        latestRowSelection.fullRow === true || selectedBlockIndices.length >= row.length;
+
+      if (rowIsFullySelected) {
+        return insertSubpanelClipboardRowsAfterRow(
+          blockElements,
+          rowIndex,
+          clipboardRows
+        );
+      }
+
+      return insertSubpanelClipboardAfterBlock(
+        blockElements,
+        rowIndex,
+        Math.max(...selectedBlockIndices),
+        clipboardRows
+      );
+    };
+
+    const removeSubpanelSelectionFromBlockElements = (
+      blockElements,
+      normalizedSelection
+    ) => {
+      const rows = blockElements?.rows;
+      const blockProperties = blockElements?.blockProperties;
+
+      if (
+        !Array.isArray(rows) ||
+        !Array.isArray(blockProperties) ||
+        !normalizedSelection?.selectedBlockCount
+      ) {
+        return false;
+      }
+
+      const rowSelections = Array.isArray(normalizedSelection.rows)
+        ? normalizedSelection.rows.slice().sort((a, b) => b.rowIndex - a.rowIndex)
+        : [];
+
+      let changed = false;
+
+      for (const rowSelection of rowSelections) {
+        const rowIndex = Number(rowSelection.rowIndex);
+
+        if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= rows.length) {
+          continue;
+        }
+
+        const row = rows[rowIndex];
+
+        if (!Array.isArray(row) || row.length === 0) {
+          continue;
+        }
+
+        const selectedBlockIndices = Array.from(
+          new Set(
+            (Array.isArray(rowSelection.selectedBlockIndices)
+              ? rowSelection.selectedBlockIndices
+              : []
+            )
+              .map((blockIndex) => Number(blockIndex))
+              .filter(
+                (blockIndex) =>
+                  Number.isInteger(blockIndex) &&
+                  blockIndex >= 0 &&
+                  blockIndex < row.length
+              )
+          )
+        ).sort((a, b) => b - a);
+
+        if (!selectedBlockIndices.length) {
+          continue;
+        }
+
+        const removeWholeRow =
+          rowSelection.fullRow === true || selectedBlockIndices.length >= row.length;
+
+        if (removeWholeRow) {
+          rows.splice(rowIndex, 1);
+          blockProperties.splice(rowIndex, 1);
+          changed = true;
+          continue;
+        }
+
+        for (const blockIndex of selectedBlockIndices) {
+          row.splice(blockIndex, 1);
+          changed = true;
+        }
+
+        if (row.length === 0) {
+          rows.splice(rowIndex, 1);
+          blockProperties.splice(rowIndex, 1);
+        }
+      }
+
+      return changed;
+    };
+
+    const cutSubpanelClipboard = (selection) => {
+      const subPanel = getCurrentEditableSubPanelForClipboard();
+      const blockElements = subPanel?.blockElements;
+      const rows = Array.isArray(blockElements?.rows) ? blockElements.rows : [];
+
+      if (!subPanel || !rows.length) {
+        return {
+          cut: false,
+          copiedBlockCount: 0,
+          rowCount: 0,
+          reason: "No subpanel is selected.",
+        };
+      }
+
+      const normalizedSelection = normalizeSubpanelSelectionPayload(selection, rows);
+
+      if (!normalizedSelection.selectedBlockCount) {
+        return {
+          cut: false,
+          copiedBlockCount: 0,
+          rowCount: 0,
+          reason: "No elements selected.",
+        };
+      }
+
+      const copied = copySubpanelClipboard(selection);
+
+      if (!copied?.copied) {
+        return {
+          cut: false,
+          copiedBlockCount: 0,
+          rowCount: 0,
+          reason: copied?.reason || "Unable to copy selected elements before cutting.",
+        };
+      }
+
+      return runWithUndo(() => {
+        const changed = removeSubpanelSelectionFromBlockElements(
+          blockElements,
+          normalizedSelection
+        );
+
+        if (!changed) {
+          return {
+            cut: false,
+            copiedBlockCount: copied.copiedBlockCount || 0,
+            rowCount: copied.rowCount || 0,
+            reason: "Could not cut the selected elements.",
+          };
+        }
+
+        ensureSubpanelHasEditableRows(subPanel);
+        normalizeSelectionForCurrentPost();
+        formHandler.updateForm();
+        redraw();
+
+        return {
+          cut: true,
+          copiedBlockCount: copied.copiedBlockCount || 0,
+          rowCount: copied.rowCount || 0,
+          reason: "",
+        };
+      });
+    };
+
+    const pasteSubpanelClipboard = ({
+      targetRowIndex = null,
+      selection = null,
+      pasteAfter = false,
+    } = {}) => {
+      const subPanel = getCurrentEditableSubPanelForClipboard();
+      const blockElements = subPanel?.blockElements;
+      const rows = Array.isArray(blockElements?.rows) ? blockElements.rows : [];
+      const clipboardRows = getNormalizedClipboardRows();
+
+      if (!subPanel || !rows.length) {
+        return {
+          pasted: false,
+          pastedBlockCount: 0,
+          rowCount: 0,
+          reason: "Open a subpanel before pasting.",
+        };
+      }
+
+      if (!clipboardRows.length) {
+        return {
+          pasted: false,
+          pastedBlockCount: 0,
+          rowCount: 0,
+          reason: "Nothing has been copied yet.",
+        };
+      }
+
+      return runWithUndo(() => {
+        let pasteResult = null;
+
+        if (pasteAfter === true) {
+          const normalizedSelection = normalizeSubpanelSelectionPayload(selection, rows);
+          pasteResult = pasteSubpanelClipboardAfterSelection(
+            blockElements,
+            normalizedSelection,
+            clipboardRows
+          );
+
+          if (!pasteResult) {
+            return {
+              pasted: false,
+              pastedBlockCount: 0,
+              rowCount: 0,
+              reason: "Select a block or row before pasting after.",
+            };
+          }
+        } else if (
+          targetRowIndex !== null &&
+          targetRowIndex !== undefined &&
+          targetRowIndex !== "" &&
+          Number.isInteger(Number(targetRowIndex))
+        ) {
+          const normalizedTargetRow = clamp(
+            Number(targetRowIndex),
+            0,
+            Math.max(0, rows.length - 1)
+          );
+          pasteResult = replaceSubpanelRowsWithClipboardRows(
+            blockElements,
+            [normalizedTargetRow],
+            clipboardRows
+          );
+        } else {
+          const normalizedSelection = normalizeSubpanelSelectionPayload(selection, rows);
+          const selectedRows = normalizedSelection.rows;
+          const selectedBlockCount = normalizedSelection.selectedBlockCount;
+
+          if (!selectedRows.length || !selectedBlockCount) {
+            return {
+              pasted: false,
+              pastedBlockCount: 0,
+              rowCount: 0,
+              reason: "Select a block or row before pasting.",
+            };
+          }
+
+          const allSelectedRowsAreFull = selectedRows.every(
+            (rowSelection) => rowSelection.fullRow === true
+          );
+
+          if (
+            selectedRows.length === 1 &&
+            selectedBlockCount >= 1 &&
+            allSelectedRowsAreFull === false &&
+            clipboardRows.length === 1
+          ) {
+            pasteResult = replaceSubpanelBlocksWithClipboardBlocks(
+              blockElements,
+              selectedRows[0].rowIndex,
+              selectedRows[0].selectedBlockIndices,
+              clipboardRows[0]
+            );
+          } else {
+            pasteResult = replaceSubpanelRowsWithClipboardRows(
+              blockElements,
+              selectedRows.map((rowSelection) => rowSelection.rowIndex),
+              clipboardRows
+            );
+          }
+        }
+
+        if (!pasteResult) {
+          return {
+            pasted: false,
+            pastedBlockCount: 0,
+            rowCount: 0,
+            reason: "Could not paste the copied elements here.",
+          };
+        }
+
+        normalizeSelectionForCurrentPost();
+        formHandler.updateForm();
+        redraw();
+
+        return {
+          pasted: true,
+          pastedBlockCount: clipboardRows.reduce(
+            (total, clipboardRow) => total + clipboardRow.blocks.length,
+            0
+          ),
+          rowCount: clipboardRows.length,
+          after: pasteAfter === true,
+          reason: "",
+        };
       });
     };
 
@@ -6030,10 +7192,13 @@ const app = (function () {
     return rect.width > 0 && rect.height > 0;
   };
 
-  const getElementAndDescendantBounds = (element) => {
+  const getElementAndDescendantBounds = (
+    element,
+    { includeSelf = true, includePanelContainerBackground = false } = {}
+  ) => {
     const rects = [];
-    const addRect = (node) => {
-      if (!isElementVisibleForExport(node)) {
+    const addRect = (node, { force = false } = {}) => {
+      if (!force && !isElementVisibleForExport(node)) {
         return;
       }
 
@@ -6043,8 +7208,15 @@ const app = (function () {
       }
     };
 
-    addRect(element);
-    element.querySelectorAll("*").forEach(addRect);
+    if (includeSelf) {
+      addRect(element);
+    }
+
+    element.querySelectorAll("*").forEach((node) => {
+      const forcePanelContainerBackground =
+        includePanelContainerBackground && node.id === "panelContainer";
+      addRect(node, { force: forcePanelContainerBackground });
+    });
 
     if (!rects.length) {
       const fallbackRect = element.getBoundingClientRect();
@@ -6191,9 +7363,100 @@ const app = (function () {
     return Math.max(0.01, Math.min(...scales));
   };
 
+  const createFullPostStaticExportClone = (element) => {
+    if (!element || element.id !== "postContainer" || !element.isConnected) {
+      return null;
+    }
+
+    const layoutScale = getExportLayoutScale(element);
+    const normalizeMeasurement = (value) => value / layoutScale;
+    const sourceRect = element.getBoundingClientRect();
+    const bounds = getElementAndDescendantBounds(element, {
+      includeSelf: false,
+      includePanelContainerBackground: true,
+    });
+    const padding = 0;
+    const exportWidth = Math.ceil(normalizeMeasurement(bounds.width) + padding * 2);
+    const exportHeight = Math.ceil(normalizeMeasurement(bounds.height) + padding * 2);
+
+    const host = document.createElement("div");
+    host.className = "exportStaticCaptureHost";
+    host.style.position = "fixed";
+    host.style.left = "calc(100vw + 100px)";
+    host.style.top = "0";
+    host.style.width = exportWidth + "px";
+    host.style.height = exportHeight + "px";
+    host.style.overflow = "hidden";
+    host.style.background = "transparent";
+    host.style.pointerEvents = "none";
+    host.style.zIndex = "0";
+    host.style.boxSizing = "border-box";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "exportStaticCaptureWrapper";
+    wrapper.style.position = "relative";
+    wrapper.style.left = "0";
+    wrapper.style.top = "0";
+    wrapper.style.width = exportWidth + "px";
+    wrapper.style.height = exportHeight + "px";
+    wrapper.style.overflow = "hidden";
+    wrapper.style.background = "transparent";
+    wrapper.style.pointerEvents = "none";
+    wrapper.style.boxSizing = "border-box";
+
+    const clone = element.cloneNode(true);
+    Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
+      (hiddenPanelClone) => hiddenPanelClone.remove()
+    );
+
+    const sourceStyle = window.getComputedStyle(element);
+    [
+      "--post-color-mid",
+      "--post-color-light",
+      "--post-color-dark",
+      "--postThickness",
+      "--postGradient",
+      "--panelSpacing",
+    ].forEach((propertyName) => {
+      const propertyValue = sourceStyle.getPropertyValue(propertyName);
+      if (propertyValue) {
+        clone.style.setProperty(propertyName, propertyValue);
+      }
+    });
+
+    clone.classList.add("exportStaticFullPostClone");
+    clone.style.position = "absolute";
+    clone.style.left =
+      normalizeMeasurement(sourceRect.left - bounds.left) + padding + "px";
+    clone.style.top =
+      normalizeMeasurement(sourceRect.top - bounds.top) + padding + "px";
+    clone.style.width = normalizeMeasurement(sourceRect.width) + "px";
+    clone.style.height = normalizeMeasurement(sourceRect.height) + "px";
+    clone.style.margin = "0";
+    clone.style.transform = "none";
+    clone.style.transition = "none";
+    clone.style.pointerEvents = "none";
+    clone.style.overflow = "visible";
+
+    wrapper.appendChild(clone);
+    host.appendChild(wrapper);
+    document.body.appendChild(host);
+
+    return {
+      node: wrapper,
+      cleanup: () => host.remove(),
+    };
+  };
+
   const createStaticExportClone = (element) => {
     if (!element || !element.isConnected) {
       return null;
+    }
+
+    const selectedPanelIndexSet = getSelectedExportPanelIndexSet();
+
+    if (element.id === "postContainer" && !selectedPanelIndexSet) {
+      return createFullPostStaticExportClone(element);
     }
 
     const sourceElements = getExportCloneSourceElements(element).filter(
@@ -6204,7 +7467,6 @@ const app = (function () {
       return null;
     }
 
-    const selectedPanelIndexSet = getSelectedExportPanelIndexSet();
     const shouldCompactSelectedPanels =
       selectedPanelIndexSet &&
       selectedPanelIndexSet.size > 0 &&
@@ -6234,14 +7496,16 @@ const app = (function () {
     const sourceInfos = sourceElements.map((sourceElement) => ({
       sourceElement,
       sourceRect: sourceElement.getBoundingClientRect(),
-      bounds: getElementAndDescendantBounds(sourceElement),
+      bounds: getElementAndDescendantBounds(sourceElement, {
+        includeSelf: !isPanelExportSourceElement(sourceElement),
+      }),
     }));
 
     const left = Math.min(...sourceInfos.map((info) => info.bounds.left));
     const top = Math.min(...sourceInfos.map((info) => info.bounds.top));
     const right = Math.max(...sourceInfos.map((info) => info.bounds.right));
     const bottom = Math.max(...sourceInfos.map((info) => info.bounds.bottom));
-    const padding = 12;
+    const padding = 0;
 
     const compactContentWidth = sourceInfos.reduce((totalWidth, info, index) => {
       const boundsWidth = normalizeMeasurement(info.bounds.width);
@@ -6787,6 +8051,8 @@ const app = (function () {
       for (let index = 0; index < post.panels.length; index++) {
           const panel = post.panels[index];
 
+          normalizeExitTabAplEdgeAvailabilityForPanel(panel);
+
           if (!isPanelVisibleInCurrentPost(index)) {
             if (!isStackedPanelBottom(index)) {
               currentPanelStackElmt = null;
@@ -6901,6 +8167,10 @@ const app = (function () {
                    
                    const exitTabCont = document.createElement("div");
                    exitTabCont.className = `exitTabContainer ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
+                   if (isAplEdgeExitTabWidth(exitTab.width)) {
+                     exitTabCont.classList.add("aplEdge");
+                     exitTabCont.dataset.aplEdgePosition = String(exitTab.position || "Right");
+                   }
                    const shouldCollapseEmptyExitTab = panelIsPartOfStack && isEmptyDefaultExitTab(exitTab);
                    if (shouldCollapseEmptyExitTab) {
                      exitTabCont.classList.add("emptyExitTab");
@@ -6949,6 +8219,9 @@ const app = (function () {
                        
                        const exitTabElmt = document.createElement("div");
                        exitTabElmt.className = `exitTab ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
+                       if (isAplEdgeExitTabWidth(exitTab.width)) {
+                         exitTabElmt.classList.add("aplEdge");
+                       }
                        if (exitTab.squareCorners) {
                            exitTabElmt.className += " squareCorners";
                        }
@@ -7224,6 +8497,10 @@ const app = (function () {
                            ) {
                                if (exitTab.variant == "Default") {
                                    const leftElmt = document.createElement("div");
+                                   const shouldLeftAlignFullLeftExitTab =
+                                     exitTab.showLeft === true &&
+                                     String(exitTab.position || "").toLowerCase() === "left" &&
+                                     String(exitTab.width || "").toLowerCase() === "full";
                                    
                                    if (exitTab.showLeft) {
                                        leftElmt.classList.add("yellowElmt");
@@ -7231,6 +8508,9 @@ const app = (function () {
                                        leftElmt.appendChild(document.createTextNode("LEFT"));
                                        exitTabElmt.appendChild(leftElmt);
                                        exitTabElmt.style.display = "inline-block";
+                                       if (shouldLeftAlignFullLeftExitTab) {
+                                           exitTabElmt.classList.add("fullLeftPositionedWithLeftLabel");
+                                       }
                                        
                                        if (exitTab.number) {
                                            leftElmt.style.marginRight = "0.4rem";
@@ -7390,7 +8670,7 @@ const app = (function () {
                                    const exitTabWidth =
                                    typeof exitTab.width === "string" ? exitTab.width.toLowerCase() : "";
                                    
-                                   if (exitTabWidth === "edge") {
+                                   if (exitTabWidth === "edge" || isAplEdgeExitTabWidth(exitTab.width)) {
                                        if (exitTabPosition === "right") {
                                            hasRightEdgeExitTab = true;
                                        } else if (exitTabPosition === "left") {
@@ -7927,6 +9207,76 @@ const app = (function () {
           const signHolderElmt = document.createElement("div");
           signHolderElmt.className = `signHolder`;
           signElmt.appendChild(signHolderElmt);
+
+          const applyAplEdgeExitTabLayout = () => {
+            const aplEdgeTabs = Array.from(
+              panelElmt.querySelectorAll(
+                ":scope > .exitTabContainer.aplEdge, :scope > .exitTabContainer .exitTabContainer.aplEdge"
+              )
+            );
+
+            if (!aplEdgeTabs.length || !signElmt || !signHolderElmt) {
+              return;
+            }
+
+            const signRect = signElmt.getBoundingClientRect();
+            if (!signRect.width) {
+              return;
+            }
+
+            aplEdgeTabs.forEach((tabContainer) => {
+              const tabPosition = String(
+                tabContainer.dataset.aplEdgePosition ||
+                (tabContainer.classList.contains("left") ? "Left" : "Right")
+              ).toLowerCase();
+
+              const dividerIndex = getAplEdgeDividerForExitTab(
+                panel.sign,
+                tabPosition
+              );
+
+              if (dividerIndex == null) {
+                tabContainer.classList.remove("aplEdge");
+                tabContainer.style.removeProperty("--aplEdgeTabWidth");
+                tabContainer.style.removeProperty("width");
+                tabContainer.style.removeProperty("min-width");
+                tabContainer.style.removeProperty("max-width");
+                return;
+              }
+
+              const dividerElmt = signHolderElmt.querySelector(
+                `:scope > #subDivider${dividerIndex + 1}`
+              );
+
+              if (!dividerElmt) {
+                return;
+              }
+
+              const dividerRect = dividerElmt.getBoundingClientRect();
+              const rawWidth = tabPosition === "left"
+                ? dividerRect.right - signRect.left
+                : signRect.right - dividerRect.left;
+
+              const tabWidth = Math.max(0, Math.ceil(rawWidth));
+
+              if (!tabWidth) {
+                return;
+              }
+
+              tabContainer.style.setProperty("--aplEdgeTabWidth", `${tabWidth}px`);
+              tabContainer.style.width = `${tabWidth}px`;
+              tabContainer.style.minWidth = `${tabWidth}px`;
+              tabContainer.style.maxWidth = `${tabWidth}px`;
+
+              if (tabPosition === "left") {
+                tabContainer.style.marginLeft = "0";
+                tabContainer.style.marginRight = "auto";
+              } else {
+                tabContainer.style.marginLeft = "auto";
+                tabContainer.style.marginRight = "0";
+              }
+            });
+          };
           
           const g_bottom = document.createElement("div");
           g_bottom.className = `globalBottom`;
@@ -9057,6 +10407,8 @@ const app = (function () {
                    }
                    
                }
+
+        applyAplEdgeExitTabLayout();
                
           
         const sideRightArrowElmt = document.createElement("img");
@@ -10127,6 +11479,10 @@ const app = (function () {
         setSelectedControlElem,
         setSelectedRowAndBlock,
         replaceControlElemTypeAt,
+        copySubpanelClipboard,
+        cutSubpanelClipboard,
+        pasteSubpanelClipboard,
+        hasSubpanelClipboard,
         beginUndoableChange,
         endUndoableChange,
         undo,
@@ -10154,6 +11510,7 @@ const app = (function () {
         setPanelSpacing: setPanelSpacing,
         setSubpanelDividerVisible,
         isSubpanelDividerVisible,
+        canUseAplEdgeExitTab,
         getAPLSubpanelGroups: getAPLSubpanelGroupsForCurrentPanel,
         duplicateBlockIntoNewRow: (...args) =>
         runWithUndo(() => duplicateBlockIntoNewRow(...args)),
@@ -10669,6 +12026,7 @@ const app = (function () {
         setPanelSpacing: (...args) => runWithUndo(() => setPanelSpacing(...args)),
         setSubpanelDividerVisible,
         isSubpanelDividerVisible,
+        canUseAplEdgeExitTab,
         getAPLSubpanelGroups: getAPLSubpanelGroupsForCurrentPanel,
         newShield: (...args) => runWithUndo(() => newShield(...args)),
         clearShields: (...args) => runWithUndo(() => clearShields(...args)),
@@ -10699,6 +12057,10 @@ const app = (function () {
         delRow: (...args) => runWithUndo(() => delRow(...args)),
         newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
         delControlElem: (...args) => runWithUndo(() => delControlElem(...args)),
+        copySubpanelClipboard,
+        cutSubpanelClipboard,
+        pasteSubpanelClipboard,
+        hasSubpanelClipboard,
         clearAll: clearAll,
         saveTemplate: saveTemplate,
         savePanelTemplate: savePanelTemplate,

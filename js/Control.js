@@ -1149,7 +1149,9 @@ class ShieldElement extends Shield {
 
       const hasBannerA = ShieldElement.prototype.hasBannerValue(this.bannerType);
       const hasBannerB = ShieldElement.prototype.hasBannerValue(this.bannerType2);
-      const hasRoadName = String(this.roadName || "").trim().length > 0;
+      const rawRoadName = String(this.roadName || "");
+      const hasRoadName = rawRoadName.trim().length > 0;
+      const roadNameIsMultiline = /\\n|\n/.test(rawRoadName);
 
       const normalizedBannerPosition =
         ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition);
@@ -1190,11 +1192,12 @@ class ShieldElement extends Shield {
         bannerItems.push({
           position: roadNamePosition,
           bannerClass: "bannerRoadName",
-          bannerValue: String(this.roadName || "").trim(),
+          bannerValue: rawRoadName.trim(),
           containerClass: "roadNameBannerContainer",
           indentFirstLetter: false,
           smallCaps: false,
           isRoadName: true,
+          isMultilineRoadName: roadNameIsMultiline,
         });
       }
 
@@ -1227,6 +1230,10 @@ class ShieldElement extends Shield {
 
           if (itemsForPosition.some((item) => item.isRoadName)) {
             stackedBannerSlot.classList.add("roadNameStackedBanner");
+          }
+
+          if (itemsForPosition.some((item) => item.isMultilineRoadName)) {
+            stackedBannerSlot.classList.add("roadNameMultilineStack");
           }
 
           shieldContainer.appendChild(stackedBannerSlot);
@@ -2571,8 +2578,44 @@ ShieldElement.prototype.normalizeScaleBannersWithShield = function (value) {
   return true;
 };
 
+ShieldElement.prototype.getBannerDisplayInfo = function (value) {
+  const rawValue = String(value ?? "").trim();
+  let displayValue = rawValue;
+  let quoted = false;
+
+  if (rawValue.length >= 2) {
+    const firstChar = rawValue.charAt(0);
+    const lastChar = rawValue.charAt(rawValue.length - 1);
+    const matchingQuotes =
+      (firstChar === '"' && lastChar === '"') ||
+      (firstChar === "'" && lastChar === "'") ||
+      (firstChar === "\u201c" && lastChar === "\u201d") ||
+      (firstChar === "\u2018" && lastChar === "\u2019");
+
+    if (matchingQuotes) {
+      quoted = true;
+      displayValue = rawValue.slice(1, -1).trim();
+    }
+  }
+
+  const normalizedValue = displayValue.toUpperCase().replace(/\s+/g, " ").trim();
+
+  return {
+    rawValue,
+    displayValue,
+    normalizedValue,
+    quoted,
+    isTollPlaque: normalizedValue === "TOLL",
+    isTruckPlaque: normalizedValue === "TRUCKS" || normalizedValue === "NO TRUCKS",
+  };
+};
+
 ShieldElement.prototype.hasBannerValue = function (value) {
-  return typeof value === "string" && value !== "None" && value.trim().length > 0;
+  const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(value);
+  return (
+    bannerInfo.displayValue !== "" &&
+    bannerInfo.normalizedValue !== "NONE"
+  );
 };
 
 ShieldElement.prototype.createBannerElement = function (
@@ -2597,14 +2640,22 @@ ShieldElement.prototype.createBannerElement = function (
     bannerEl.style.fontFamily = `"${normalizedFont}"`;
   }
 
-  const normalizedBannerValue = String(bannerValue || "").trim();
-  const lowerBannerValue = normalizedBannerValue.toLowerCase();
+  const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
+  const normalizedBannerValue = bannerInfo.displayValue;
   const isRoadNameBanner = String(bannerClass || "")
     .split(/\s+/)
     .includes("bannerRoadName");
 
-  if (lowerBannerValue === "toll") {
+  if (!bannerInfo.quoted && bannerInfo.isTollPlaque) {
     bannerEl.classList.add("TOLL", "yellowElmt", "noIndent");
+  }
+
+  if (!bannerInfo.quoted && bannerInfo.isTruckPlaque) {
+    bannerEl.classList.add("truckPlaque", "whiteElmt", "noIndent");
+  }
+
+  if (isRoadNameBanner && /\\n|\n/.test(normalizedBannerValue)) {
+    bannerEl.classList.add("multilineRoadName");
   }
 
   const displayBannerValue = isRoadNameBanner
@@ -2612,7 +2663,7 @@ ShieldElement.prototype.createBannerElement = function (
     : normalizedBannerValue;
 
   bannerEl.textContent =
-    normalizedBannerValue && normalizedBannerValue !== "None"
+    normalizedBannerValue && bannerInfo.normalizedValue !== "NONE"
       ? displayBannerValue
       : " ";
 
@@ -2662,11 +2713,21 @@ ShieldElement.prototype.createStackedBannerSlot = function (
   }
 
   const hasTollBanner = banners.some((banner) => {
-    return String(banner.bannerValue || "").trim().toUpperCase() === "TOLL";
+    const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
+    return !bannerInfo.quoted && bannerInfo.isTollPlaque;
+  });
+
+  const hasTruckBanner = banners.some((banner) => {
+    const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
+    return !bannerInfo.quoted && bannerInfo.isTruckPlaque;
   });
 
   if (hasTollBanner) {
     container.classList.add("tollStackedBanner");
+  }
+
+  if (hasTruckBanner) {
+    container.classList.add("truckStackedBanner");
   }
 
   banners.forEach(
@@ -2676,6 +2737,7 @@ ShieldElement.prototype.createStackedBannerSlot = function (
       containerClass,
       indentFirstLetter: bannerSpecificIndent,
       smallCaps: bannerSpecificSmallCaps,
+      isMultilineRoadName,
     }) => {
       if (containerClass) {
         container.classList.add(containerClass);
@@ -2699,6 +2761,10 @@ ShieldElement.prototype.createStackedBannerSlot = function (
         bannerFontFamily,
         bannerSmallCaps
       );
+
+      if (isMultilineRoadName) {
+        bannerEl.classList.add("multilineRoadName");
+      }
 
       container.appendChild(bannerEl);
     }
@@ -2727,10 +2793,14 @@ ShieldElement.prototype.createBannerContainer = function (
   );
   container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
 
-  const normalizedBannerValue = String(bannerValue || "").trim().toUpperCase();
+  const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
 
-  if (normalizedBannerValue === "TOLL") {
+  if (!bannerInfo.quoted && bannerInfo.isTollPlaque) {
     container.classList.add("tollBannerSlot");
+  }
+
+  if (!bannerInfo.quoted && bannerInfo.isTruckPlaque) {
+    container.classList.add("truckBannerSlot");
   }
 
   const bannerEl = ShieldElement.prototype.createBannerElement(
@@ -4537,6 +4607,22 @@ class Control {
         }
 
         const blockElmt = elem.createElement(panel, subPanel);
+
+        if (elem instanceof ShieldElement) {
+          const hasBlockBefore = blockIdx > 0 && row[blockIdx - 1];
+          const hasBlockAfter = blockIdx < row.length - 1 && row[blockIdx + 1];
+
+          if (hasBlockBefore) {
+            blockElmt.classList.add("shieldAdjacentLeft");
+            blockElmt.style.marginLeft = "calc(-0.16rem * var(--shieldScale, 1))";
+          }
+
+          if (hasBlockAfter) {
+            blockElmt.classList.add("shieldAdjacentRight");
+            blockElmt.style.marginRight = "calc(-0.16rem * var(--shieldScale, 1))";
+          }
+        }
+
         blockElmt.dataset.signRow = i;
         blockElmt.dataset.signBlock = blockIdx;
         activeAlignmentGroup.appendChild(blockElmt);

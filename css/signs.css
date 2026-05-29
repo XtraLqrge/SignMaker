@@ -538,6 +538,18 @@
   border-radius: var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) 0 0;
 }
 
+.exitTab.full.left.fullLeftPositionedWithLeftLabel {
+  text-align: left;
+}
+
+.exitTab.full.left.fullLeftPositionedWithLeftLabel .exitTabNumberLinesContainer {
+  align-items: flex-start;
+}
+
+.exitTab.full.left.fullLeftPositionedWithLeftLabel .exitTabNumberLine {
+  justify-content: flex-start;
+}
+
 .sign.full.tabVisible {
   border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
 }
@@ -969,7 +981,7 @@
 
 .exitTab .exitTabVerticalContainer {
   display: flex;
-  flex-direction: column;Im
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   gap: 0.4rem;
@@ -2451,7 +2463,8 @@ img.exitOnlyArrow:last-child {
   justify-content: center;
 
   box-sizing: border-box;
-  min-width: 3.25rem;
+  min-width: 4rem;
+  max-width: 4rem;
   height: 1.35rem;
   padding: 0.12rem 0.18rem 0;
 
@@ -2461,9 +2474,9 @@ img.exitOnlyArrow:last-child {
 
   font-family: "Series E", sans-serif;
   font-size: 1.28rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: 0.05em;
+  letter-spacing: 0em;
   white-space: nowrap;
 }
 
@@ -2479,10 +2492,10 @@ img.exitOnlyArrow:last-child {
   left: var(--aplExitOnlySharedCenterOffset, 0rem);
   right: auto;
   transform: translateX(-50%);
-  min-width: 6.9rem;
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
-  letter-spacing: 0.08em;
+  min-width: 7rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  letter-spacing: 0em;
 }
 
 .subDivider.hasSharedExitOnlyBoundary {
@@ -3150,4 +3163,42 @@ img.exitOnlyArrow:last-child {
 .bE-tollLogoElement > img[src$="I-Pass.svg"] {
   transform: scale(2.15);
   transform-origin: center center;
+}
+
+/* APL Edge exit tabs */
+.exitTabContainer.aplEdge {
+  width: var(--aplEdgeTabWidth, auto);
+  min-width: var(--aplEdgeTabWidth, auto);
+  max-width: var(--aplEdgeTabWidth, none);
+  box-sizing: border-box;
+}
+
+.exitTabContainer.aplEdge.left {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.exitTabContainer.aplEdge.right {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.exitTab.aplEdge {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.exitTab.aplEdge.left {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.exitTab.aplEdge.right {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.exitTab.aplEdge.center {
+  justify-content: center;
+  text-align: center;
 }

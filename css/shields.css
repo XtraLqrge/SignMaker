@@ -1,53 +1,53 @@
 .shield {
-	margin: 0.07rem;
-	position: relative;
+  margin: 0.07rem;
+  position: relative;
 }
 
 .shieldImg {
-	height: 3rem;
+  height: 3rem;
 }
 
 .to {
-	--fhwaBaselineOffset: 0px;
-	display: none;
-	margin: auto 0 auto auto;
-	padding-left: 0.25rem;
-	font-family: "Clearview 5WR";
-	margin-bottom: 1.8rem;
-	margin-right: 1.8rem;
-	font-size: 1.5rem;
-	position: relative;
-	top: -0.55rem;
+  --fhwaBaselineOffset: 0px;
+  display: none;
+  margin: auto 0 auto auto;
+  padding-left: 0.25rem;
+  font-family: "Clearview 5WR";
+  margin-bottom: 1.8rem;
+  margin-right: 1.8rem;
+  font-size: 1.5rem;
+  position: relative;
+  top: -0.55rem;
 }
 
 .bannerShieldContainer {
-	display: flex;
-	flex-direction: column;
-	padding: 0.1rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.1rem;
 }
 
 .bannerShieldContainer.bannerPositionLeft {
-	flex-direction: row;
+  flex-direction: row;
 }
 
 .bannerShieldContainer.bannerPositionAbove {
-	flex-direction: column;
+  flex-direction: column;
 }
 
 .bannerShieldContainer.bannerPositionRight {
-	flex-direction: row-reverse;
+  flex-direction: row-reverse;
 }
 
 .bannerA,
 .bannerB {
-	--fhwaBaselineOffset: 0px;
-	border-radius: 0.1rem;
-	font-size: var(--fontSize);
-	text-transform: uppercase;
-	font-family: var(--bannerFontFamily, "Series E");
-	margin-bottom: auto;
-	position: relative;
-	top: -0.4rem;
+  --fhwaBaselineOffset: 0px;
+  border-radius: 0.1rem;
+  font-size: var(--fontSize);
+  text-transform: uppercase;
+  font-family: var(--bannerFontFamily, "Series E");
+  margin-bottom: auto;
+  position: relative;
+  top: -0.4rem;
 }
 
 .bannerA:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter,
@@ -57,104 +57,104 @@
 }
 
 .bE-shieldElement {
-	--shieldScale: 1;
-	--bannerScale: var(--shieldScale, 1);
-	--shieldSize: calc(3rem * var(--shieldScale, 1));
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 0.5rem;
-	margin: 0 var(--spacing, 0.15rem);
+  --shieldScale: 1;
+  --bannerScale: var(--shieldScale, 1);
+  --shieldSize: calc(3rem * var(--shieldScale, 1));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0 var(--spacing, 0.15rem);
 }
 
 /* this should be updated when the new shields ui is done */
 .bannerA.noSmallCaps,
 .bannerB.noSmallCaps {
-	text-transform: none;
-	font-variant: normal;
+  text-transform: none;
+  font-variant: normal;
 }
 
 .bE-shieldElement .bannerShieldContainer {
-	display: grid;
-	grid-template-columns: auto auto auto;
-	grid-template-rows: auto auto auto;
-	grid-template-areas:
-		". top ."
-		"left center right"
-		". bottom .";
-	align-items: center;
-	justify-items: center;
-	margin: 0;
-	padding: calc(0.2rem * var(--shieldScale, 1));
-	font-size: calc(1rem * var(--shieldScale, 1));
+  display: grid;
+  grid-template-columns: auto auto auto;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    ". top ."
+    "left center right"
+    ". bottom .";
+  align-items: center;
+  justify-items: center;
+  margin: 0;
+  padding: calc(0.2rem * var(--shieldScale, 1));
+  font-size: calc(1rem * var(--shieldScale, 1));
 }
 
 .bE-shieldElement .bannerShieldContainer.noBanners {
-	padding: 0;
-	gap: 0;
+  padding: 0;
+  gap: 0;
 }
 
 .bE-shieldElement .to {
-	margin: 0;
-	order: -1;
-	position: static;
-	padding: 0;
-	align-self: center;
-	margin-right: 0.35rem;
-	flex: 0 0 auto;
+  margin: 0;
+  order: -1;
+  position: static;
+  padding: 0;
+  align-self: center;
+  margin-right: 0.35rem;
+  flex: 0 0 auto;
 }
 
 .bE-shieldElement .bannerShieldContainer .shield {
-	grid-area: center;
+  grid-area: center;
 }
 
 .bE-shieldElement .shield {
-	margin: calc(0.07rem * var(--shieldScale, 1));
+  margin: calc(0.07rem * var(--shieldScale, 1));
 }
 
 .bE-shieldElement .shieldImg {
-	height: var(--shieldSize);
+  height: var(--shieldSize);
 }
 
 .bE-shieldElement .bannerSlot-above {
-	grid-area: top;
-	margin-bottom: -0.5rem;
+  grid-area: top;
+  margin-bottom: -0.5rem;
 }
 
 .bE-shieldElement .bannerSlot-below {
-	grid-area: bottom;
-	margin-top: 0.5rem;
+  grid-area: bottom;
+  margin-top: 0.5rem;
 }
 
 .bE-shieldElement .bannerSlot-left {
-	grid-area: left;
-	justify-self: end;
-	align-self: start;
-	margin-top: -0rem;
+  grid-area: left;
+  justify-self: end;
+  align-self: start;
+  margin-top: -0rem;
 }
 
 .bE-shieldElement .bannerSlot-right {
-	grid-area: right;
-	justify-self: start;
-	align-self: start;
-	margin-top: -0rem;
+  grid-area: right;
+  justify-self: start;
+  align-self: start;
+  margin-top: -0rem;
 }
 
 .bE-shieldElement .bannerShieldContainer .stackedBannerSlot {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: -2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: -2rem;
 }
 
 .bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-left {
-	align-items: flex-end;
-	margin-top: 0rem;
+  align-items: flex-end;
+  margin-top: 0rem;
 }
 
 .bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-right {
-	align-items: flex-start;
-	margin-top: 0rem;
+  align-items: flex-start;
+  margin-top: 0rem;
 }
 
 .bE-shieldElement .bannerSlot-right .bannerA,
@@ -171,25 +171,25 @@
 
 .bE-shieldElement .countyLabel,
 .bannerShieldContainer .countyLabel {
-	position: absolute;
-	top: 0.3rem;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 100%;
-	text-align: center;
-	font-family: "Series D";
-	font-size: 0.5rem;
-	line-height: 0.8rem;
-	color: var(--countyYellow);
+  position: absolute;
+  top: 0.3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
+  font-family: "Series D";
+  font-size: 0.5rem;
+  line-height: 0.8rem;
+  color: var(--countyYellow);
 }
 
 .bE-shieldElement .routeNumber {
-	font-size: calc(1.5rem * var(--shieldScale, 1));
+  font-size: calc(1.5rem * var(--shieldScale, 1));
 }
 
 .bE-shieldElement .bannerA,
 .bE-shieldElement .bannerB {
-	font-size: calc(var(--fontSize) * var(--bannerScale, 1));
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1));
 }
 
 .bE-shieldElement .bannerA:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter,
@@ -199,14 +199,14 @@
 }
 
 .bE-shieldElement .to {
-	font-size: calc(1.5rem * var(--shieldScale, 1));
+  font-size: calc(1.5rem * var(--shieldScale, 1));
 }
 
 .bE-shieldElement .countyLabel,
 .bE-shieldElement .bannerShieldContainer .countyLabel {
-	top: calc(0.3rem * var(--shieldScale, 1));
-	font-size: calc(0.5rem * var(--shieldScale, 1));
-	line-height: calc(0.8rem * var(--shieldScale, 1));
+  top: calc(0.3rem * var(--shieldScale, 1));
+  font-size: calc(0.5rem * var(--shieldScale, 1));
+  line-height: calc(0.8rem * var(--shieldScale, 1));
 }
 
 /* === Number offsets start === */
@@ -215,38 +215,38 @@
 
 /* INTERSTATE */
 .bannerShieldContainer.I .routeNumber {
-	color: var(--white);
-	top: 0.02em;
-	font-size: 2.4em;
+  color: var(--white);
+  top: 0.02em;
+  font-size: 2.4em;
   font-weight: 1 !important;
 }
 .bannerShieldContainer.I.one .routeNumber,
 .bannerShieldContainer.I.two .routeNumber,
 .bannerShieldContainer.I.bus.one .routeNumber,
 .bannerShieldContainer.I.bus.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.I.three .routeNumber,
 .bannerShieldContainer.I.bus.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
   top: 0em !important;
 }
 .bannerShieldContainer.I.four .routeNumber {
-	font-family: "Series B";
+  font-family: "Series B";
   top: 0em !important;
 }
 .bannerShieldContainer.I.bus .banner {
-	display: none;
+  display: none;
 }
 
 .bannerShieldContainer.cir .routeNumber,
 .bannerShieldContainer.elp .routeNumber,
 .bannerShieldContainer.rec .routeNumber,
 .bannerShieldContainer.rec2 .routeNumber {
-	color: var(--black);
-	font-size: 2.2em;
-	font-family: "Series D";
-	top: 0em;
+  color: var(--black);
+  font-size: 2.2em;
+  font-family: "Series D";
+  top: 0em;
 }
 
 /* Series D digit-3 spacing correction */
@@ -300,10 +300,10 @@
 
 /* COUNTY */
 .bannerShieldContainer.C .routeNumber {
-	color: var(--countyYellow);
+  color: var(--countyYellow);
     font-family: "Series D";
-	font-size: 1.5em;
-	top: 0.3em;
+  font-size: 1.5em;
+  top: 0.3em;
 }
 .bannerShieldContainer.C.one .routeNumber {
     font-size: 1.8em;
@@ -318,15 +318,15 @@
     top: 0.35em;
 }
 .bannerShieldContainer.C.four .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 /* ALABAMA */
 .bannerShieldContainer.AL .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: -0.13em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.13em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.AL.three .routeNumber {
     font-family: "Series C";
@@ -334,15 +334,15 @@
 
 /* ALASKA */
 .bannerShieldContainer.AK .routeNumber {
-	color: var(--black);
-	top: 0em;
+  color: var(--black);
+  top: 0em;
     font-size: 2em;
 }
 .bannerShieldContainer.AK.one .routeNumber {
-	font-family: "Series E";
-	text-align: center;
+  font-family: "Series E";
+  text-align: center;
     top: 0.05em;
-	left: 0.275em;
+  left: 0.275em;
     font-size: 2em;
 }
 .bannerShieldContainer.AK.two .routeNumber {
@@ -353,20 +353,20 @@
     font-size: 1.75em;
 }
 .bannerShieldContainer.AK.three .routeNumber {
-	font-family: "Series C";
-	text-align: center;
+  font-family: "Series C";
+  text-align: center;
     top: 0.25em;
-	left: 0.25em;
+  left: 0.25em;
     font-size: 1.5em;
 }
 
 /* ARIZONA */
 .bannerShieldContainer.AZ .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
+  color: var(--black);
+  font-family: "Series D";
     text-align: center;
-	top: 0em;
-	font-size: 2.5em;
+  top: 0em;
+  font-size: 2.5em;
 }
 
 .bannerShieldContainer.AZLOOP .routeNumber,
@@ -380,28 +380,28 @@
 
 /* ARKANSAS */
 .bannerShieldContainer.AR .routeNumber {
-	color: var(--black);
+  color: var(--black);
     font-family: "Series B";
     text-align: center;
-	top: -0.05em;
-	right: 0em;
-	font-size: 2.5em;
+  top: -0.05em;
+  right: 0em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.AR.one .routeNumber,
 .bannerShieldContainer.AR.two .routeNumber {
-	font-family: "Series B";
+  font-family: "Series B";
 }
 .bannerShieldContainer.AR.three .routeNumber {
-	font-family: "Series B";
-	right: 0.1em;
+  font-family: "Series B";
+  right: 0.1em;
 }
 
 /* CALIFORNIA */
 .bannerShieldContainer.CA .routeNumber {
-	color: var(--white);
-	font-family: "Series D";
-	top: 0.3em;
-	font-size: 2em;
+  color: var(--white);
+  font-family: "Series D";
+  top: 0.3em;
+  font-size: 2em;
 }
 .bannerShieldContainer.CA.three .routeNumber {
     font-family: "Series D"
@@ -409,16 +409,16 @@
 
 /* COLORADO */
 .bannerShieldContainer.CO .routeNumber {
-	color: var(--black);
-	font-size: 1.9em;
-	top: 0.51em;
+  color: var(--black);
+  font-size: 1.9em;
+  top: 0.51em;
 }
 .bannerShieldContainer.CO.one .routeNumber,
 .bannerShieldContainer.CO.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.CO.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 /* CONNECTICUT */
@@ -446,10 +446,10 @@
 
 /* DISTRICT OF COLUMBIA */
 .bannerShieldContainer.DC .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	font-size: 1.5em;
-	top: 0.65em;
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 1.5em;
+  top: 0.65em;
 }
 
 /* FLORIDA */
@@ -459,36 +459,36 @@
 .bannerShieldContainer.FL.one .routeNumber,
 .bannerShieldContainer.FL.two .routeNumber,
 .bannerShieldContainer.FL.three .routeNumber {
-	font-family: "Series D";
-	font-size: 2.2em;
-	top: 0.2em;
+  font-family: "Series D";
+  font-size: 2.2em;
+  top: 0.2em;
 }
 
 .bannerShieldContainer.FL.four .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
     font-size: 2.2em;
-	top: 0.2em;
+  top: 0.2em;
 }
 .bannerShieldContainer.FL.toll .routeNumber,
 .bannerShieldContainer.FL.cfxtoll .routeNumber {
-	font-family: "Series C";
-	font-size: 1.3em;
-	top: 0.72em;
+  font-family: "Series C";
+  font-size: 1.3em;
+  top: 0.72em;
     left: -0.15em;
 }
 
 /* GEORGIA */
 .bannerShieldContainer.GA .routeNumber {
-	color: var(--black);
+  color: var(--black);
     font-size: 2.5em;
-	top: 0em;
+  top: 0em;
 }
 .bannerShieldContainer.GA.one .routeNumber,
 .bannerShieldContainer.GA.two .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 .bannerShieldContainer.GA.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
     font-size: 2.4em;
     top: 0.01em;
 }
@@ -505,18 +505,18 @@
 
 /* HAWAII */
 .bannerShieldContainer.HI .routeNumber {
-	color: var(--black);
-	font-size: 1.75em;
+  color: var(--black);
+  font-size: 1.75em;
 }
 .bannerShieldContainer.HI.one .routeNumber,
 .bannerShieldContainer.HI.two .routeNumber {
-	font-family: "Series D";
-	top: 0.5em;
+  font-family: "Series D";
+  top: 0.5em;
 }
 .bannerShieldContainer.HI.three .routeNumber {
-	font-family: "Series C";
-	font-size: 1.75em;
-	top: 0.5em;
+  font-family: "Series C";
+  font-size: 1.75em;
+  top: 0.5em;
 }
 .bannerShieldContainer.HI.four .routeNumber {
     font-family: "Series C";
@@ -527,39 +527,39 @@
 /* IDAHO */
 .bannerShieldContainer.ID .routeNumber {
     color: var(--black);
-	font-family: "Series C";
-	text-align: right;
-	top: -0.15em;
-	font-size: 2em;
+  font-family: "Series C";
+  text-align: right;
+  top: -0.15em;
+  font-size: 2em;
 }
 .bannerShieldContainer.ID.one .routeNumber,
 .bannerShieldContainer.ID.two .routeNumber {
-	right: 0.075em;
+  right: 0.075em;
 }
 .bannerShieldContainer.ID.three .routeNumber {
-	font-family: "Series B"
+  font-family: "Series B"
 }
 .shieldsContainer.shieldBacks.ID .routeNumber {
-	color: var(--white);
+  color: var(--white);
 }
 .shieldsContainer:not(.shieldBacks) .ID .routeNumber {
-	color: var(--black);
+  color: var(--black);
 }
 
 /* ILLINOIS */
 .bannerShieldContainer.IL .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: 0.175em;
-	font-size: 2.25em;
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.175em;
+  font-size: 2.25em;
 }
 
 /* INDIANA */
 .bannerShieldContainer.IN .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: 0.1em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.1em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.IN.three .routeNumber {
     font-family: "Series C";
@@ -614,10 +614,10 @@
 
 /* LOUISIANA */
 .bannerShieldContainer.LA .routeNumber {
-	color: var(--black);
-	font-family: "Series C";
-	font-size: 1.75em;
-	top: 0.45em;
+  color: var(--black);
+  font-family: "Series C";
+  font-size: 1.75em;
+  top: 0.45em;
 }
 .bannerShieldContainer.LA.three .routeNumber {
     font-size: 1.5em;
@@ -639,10 +639,10 @@
 
 /* MARYLAND */
 .bannerShieldContainer.MD .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: 0.135em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.135em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.MD.three .routeNumber {
     font-family: "Series C";
@@ -658,27 +658,27 @@
 
 /* MICHIGAN */
 .bannerShieldContainer.MI .routeNumber {
-	color: var(--black);
-	font-size: 2em;
-	top: 0.12em;
+  color: var(--black);
+  font-size: 2em;
+  top: 0.12em;
 }
 .bannerShieldContainer.MI.one .routeNumber,
 .bannerShieldContainer.MI.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 
 .bannerShieldContainer.MI.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 /* MINNESOTA */
 .bannerShieldContainer.MN .routeNumber,
 .bannerShieldContainer.MNBUS .routeNumber {
-	color: var(--white);
+  color: var(--white);
     text-align: center;
-	font-family: "Series D";
-	font-size: 2.25em;
-	top: 0.15em;
+  font-family: "Series D";
+  font-size: 2.25em;
+  top: 0.15em;
 }
 .bannerShieldContainer.MN.three .routeNumber,
 .bannerShieldContainer.MNBUS.three .routeNumber {
@@ -698,7 +698,7 @@
 
 /* MISSOURI */
 .bannerShieldContainer.MO .routeNumber {
-	color: var(--black);
+  color: var(--black);
     font-size: 2.5em;
     top: -0.1em;
 }
@@ -706,48 +706,48 @@
     font-family: "Series D"
 }
 .bannerShieldContainer.MO.two .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
     left: -0.02em;
 }
 .bannerShieldContainer.MO.three .routeNumber {
-	font-family: "Series B";
+  font-family: "Series B";
     left: -0.02em;
 }
 
 /* MONTANA */
 .bannerShieldContainer.MT .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: 0.125em;
-	font-size: 2.25em;
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.125em;
+  font-size: 2.25em;
 }
 .bannerShieldContainer.MT.one .routeNumber {
     font-family: "Series E"
 }
 .bannerShieldContainer.MT2 .routeNumber {
-	color: var(--black);
+  color: var(--black);
 }
 .bannerShieldContainer.MT2.one .routeNumber,
 .bannerShieldContainer.MT2.two .routeNumber {
     font-size: 1.75em;
-	top: 0.1em;
+  top: 0.1em;
 }
 .bannerShieldContainer.MT2.three .routeNumber {
-	font-size: 1.5em;
-	top: 0.3em;
+  font-size: 1.5em;
+  top: 0.3em;
 }
 .bannerShieldContainer.MT2.one .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.MT2.two .routeNumber,
 .bannerShieldContainer.MT2.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 /* NEBRASKA */
 .bannerShieldContainer.NE .routeNumber {
-	color: var(--black);
-	top: 0.03em;
+  color: var(--black);
+  top: 0.03em;
     font-size: 1.8em;
     font-family: "Series D"
 }
@@ -758,10 +758,10 @@
 
 /* NEVADA */
 .bannerShieldContainer.NV .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	font-size: 1.35em;
-	top: 0.05em;
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 1.35em;
+  top: 0.05em;
 }
 .bannerShieldContainer.NV.three .routeNumber {
     font-family: "Series D";
@@ -771,14 +771,14 @@
 
 /* NEW HAMPSHIRE */
 .bannerShieldContainer.NH .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
+  color: var(--black);
+  font-family: "Series D";
     top: -0.05em;
     right: -0.05em;
     font-size: 2.5em;
 }
 .bannerShieldContainer.NH.three .routeNumber {
-	font-family: "Series B";
+  font-family: "Series B";
 }
 
 
@@ -792,14 +792,14 @@
 
 /* NEW MEXICO */
 .bannerShieldContainer.NM .routeNumber {
-	color: var(--black);
+  color: var(--black);
 }
 .bannerShieldContainer.NM.one .routeNumber,
 .bannerShieldContainer.NM.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.NM.one .routeNumber {
-	top: 0.15em;
+  top: 0.15em;
 }
 .bannerShieldContainer.NM.two .routeNumber {
     color: var(--black);
@@ -809,17 +809,17 @@
     top: 0.175em;
 }
 .bannerShieldContainer.NM.three .routeNumber {
-	font-family: "Series C";
-	font-size: 1.25em;
-	top: 0.55em;
+  font-family: "Series C";
+  font-size: 1.25em;
+  top: 0.55em;
 }
 
 /* NEW YORK */
 .bannerShieldContainer.NY .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: -0.05em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.05em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.NY.three .routeNumber {
     font-family: "Series D";
@@ -834,25 +834,25 @@
 
 /* NORTH CAROLINA */
 .bannerShieldContainer.NC .routeNumber {
-	color: var(--black);
-	font-size: 1.9em;
-	top: 0.15em;
+  color: var(--black);
+  font-size: 1.9em;
+  top: 0.15em;
 }
 .bannerShieldContainer.NC.one .routeNumber,
 .bannerShieldContainer.NC.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.NC.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
     font-size: 1.75em;
     top: 0.2em;
 }
 
 /* NORTH DAKOTA */
 .bannerShieldContainer.ND .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: 0.075em;
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.075em;
     right: 0.025em;
     font-size: 2.5em;
 }
@@ -871,10 +871,10 @@
 
 /* OHIO */
 .bannerShieldContainer.OH .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
+  color: var(--black);
+  font-family: "Series D";
     font-size: 2.5em;
-	top: -0.075em;
+  top: -0.075em;
 }
 .bannerShieldContainer.OH.three .routeNumber {
     font-size: 2.2em;
@@ -883,8 +883,8 @@
 
 /* OKLAHOMA */
 .bannerShieldContainer.OK .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
+  color: var(--black);
+  font-family: "Series D";
     top: 0.13em;
     font-size: 2.5em;
 }
@@ -894,24 +894,24 @@
 
 /* OREGON */
 .bannerShieldContainer.OR .routeNumber {
-	color: var(--black);
-	top: -0.125em;
-	font-size: 2.5em;
+  color: var(--black);
+  top: -0.125em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.OR.one .routeNumber {
     font-family: "Series D";
 }
 .bannerShieldContainer.OR.two .routeNumber,
 .bannerShieldContainer.OR.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 /* PENNSYLVANIA */
 .bannerShieldContainer.PA .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: -0.05em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.05em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.PA.three .routeNumber {
     font-family: "Series C";
@@ -927,9 +927,9 @@
 
 /* RHODE ISLAND */
 .bannerShieldContainer.RI .routeNumber {
-	color: var(--black);
-	top: 0.1em;
-	font-size: 2.5em;
+  color: var(--black);
+  top: 0.1em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.RI.one .routeNumber {
     font-family: "Series E";
@@ -943,10 +943,10 @@
 
 /* SOUTH CAROLINA */
 .bannerShieldContainer.SC .routeNumber {
-	color: var(--blue);
-	font-family: "Series D";
-	top: 0.18em;
-	font-size: 2.5em;
+  color: var(--blue);
+  font-family: "Series D";
+  top: 0.18em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.SC.three .routeNumber {
     font-family: "Series C";
@@ -954,10 +954,10 @@
 
 /* SOUTH DAKOTA */
 .bannerShieldContainer.SD .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: -0.075em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.075em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.SD.three .routeNumber {
     font-family: "Series C";
@@ -965,16 +965,16 @@
 
 /* TENNESSEE */
 .bannerShieldContainer.TN .routeNumber {
-	color: var(--black);
-	font-family: "Series D";
-	top: -0.15em;
-	font-size: 2.5em;
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.15em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.TN.three .routeNumber {
     font-family: "Series C"
 }
 .bannerShieldContainer.TN2 .routeNumber {
-	color: var(--black);
+  color: var(--black);
 }
 .bannerShieldContainer.TN2.one .routeNumber {
     font-family: "Series D";
@@ -982,30 +982,30 @@
     top: -0.2em;
 }
 .bannerShieldContainer.TN2.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
     font-size: 2em;
     top: -0.15em;
 }
 .bannerShieldContainer.TN2.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
     font-size: 1.85em;
     top: -0.175em;
 }
 
 /* TEXAS */
 .bannerShieldContainer.TX .routeNumber {
-	font-size: 2.2em;
-	top: 0.2em;
+  font-size: 2.2em;
+  top: 0.2em;
 }
 .bannerShieldContainer.TX.one .routeNumber,
 .bannerShieldContainer.TX.two .routeNumber,
 .bannerShieldContainer.TX.three .routeNumber {
     color: var(--black);
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.TX.four .routeNumber {
     color: var(--black);
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 .bannerShieldContainer.TX.BELTWAY .routeNumber,
@@ -1045,24 +1045,24 @@
 
 /* UTAH */
 .bannerShieldContainer.UT .routeNumber {
-	color: var(--black);
+  color: var(--black);
     font-size: 1.75em;
     top: 0.19em;
 }
 .bannerShieldContainer.UT.one .routeNumber,
 .bannerShieldContainer.UT.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.UT.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 /* VERMONT */
 .bannerShieldContainer.VT .routeNumber {
-	color: var(--green);
-	font-family: "Series D";
-	top: 0.15em;
-	font-size: 2.4em;
+  color: var(--green);
+  font-family: "Series D";
+  top: 0.15em;
+  font-size: 2.4em;
 }
 .bannerShieldContainer.VT.three .routeNumber {
     font-family: "Series C"
@@ -1070,7 +1070,7 @@
 
 /* VIRGINIA */
 .bannerShieldContainer.VA .routeNumber {
-	color: var(--black);
+  color: var(--black);
     top: -0.15em;
     font-size: 2.5em;
 
@@ -1086,7 +1086,7 @@
 }
 /* FUTURE: make this default when Virginia route number is >599, exclude 785 and 895 */
 .bannerShieldContainer.VA2 .routeNumber {
-	color: var(--black);
+  color: var(--black);
 }
 .bannerShieldContainer.VA2.one .routeNumber {
     font-size: 2.5em;
@@ -1106,7 +1106,7 @@
 
 /* WASHINGTON */
 .bannerShieldContainer.WA .routeNumber {
-	color: var(--black);
+  color: var(--black);
     font-family: "Series C";
 }
 .bannerShieldContainer.WA.one .routeNumber {
@@ -1114,12 +1114,12 @@
     top: -0.1em;
 }
 .bannerShieldContainer.WA.two .routeNumber {
-	font-size: 2.1em;
-	top: 0em;
+  font-size: 2.1em;
+  top: 0em;
 }
 .bannerShieldContainer.WA.three .routeNumber {
-	font-size: 1.75em;
-	top: 0.1em;
+  font-size: 1.75em;
+  top: 0.1em;
 }
 
 /* WEST VIRGINIA */
@@ -1145,7 +1145,7 @@
     font-family: "Series D";
 }
 .bannerShieldContainer.WI.three .routeNumber {
-	font-family: "Series B";
+  font-family: "Series B";
 }
 .bannerShieldContainer.WICo .routeNumber {
   color: var(--black);
@@ -1159,16 +1159,16 @@
 
 /* WYOMING */
 .bannerShieldContainer.WY .routeNumber {
-	color: var(--black);
-	top: 0.1em;
-	font-size: 2.5em;
+  color: var(--black);
+  top: 0.1em;
+  font-size: 2.5em;
 }
 .bannerShieldContainer.WY.one .routeNumber,
 .bannerShieldContainer.WY.two .routeNumber {
-	font-family: "Series D";
+  font-family: "Series D";
 }
 .bannerShieldContainer.WY.three .routeNumber {
-	font-family: "Series C";
+  font-family: "Series C";
 }
 
 
@@ -1678,8 +1678,8 @@
   line-height: 0.95;
 }
 
-.bE-shieldElement .stackedBannerSlot:not(.bilingualDirectionBanner) .bannerA:not(.TOLL),
-.bE-shieldElement .stackedBannerSlot:not(.bilingualDirectionBanner) .bannerB:not(.TOLL) {
+.bE-shieldElement .stackedBannerSlot:not(.bilingualDirectionBanner) .bannerA:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot:not(.bilingualDirectionBanner) .bannerB:not(.TOLL):not(.truckPlaque) {
   color: var(--white);
 }
 
@@ -1948,14 +1948,14 @@
 }
 
 /* Direction banner keeps the normal side offset */
-.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerA:not(.TOLL),
-.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerB:not(.TOLL) {
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerA:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerB:not(.TOLL):not(.truckPlaque) {
   padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
   padding-right: 0 !important;
 }
 
-.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerA:not(.TOLL),
-.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerB:not(.TOLL) {
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerA:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerB:not(.TOLL):not(.truckPlaque) {
   padding-right: calc(0.5rem * var(--shieldScale, 1)) !important;
   padding-left: 0 !important;
 }
@@ -1988,3 +1988,183 @@
   margin-bottom: calc(0.08rem * var(--shieldScale, 1));
 }
 
+/* Custom shield block tightening and special plaques */
+.bE-shieldElement.shieldAdjacentLeft {
+  margin-left: calc(-0.16rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement.shieldAdjacentRight {
+  margin-right: calc(-0.16rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .truckPlaque.whiteElmt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 0;
+  white-space: nowrap;
+
+  background: var(--white);
+  color: var(--black) !important;
+  border: none !important;
+  border-radius: calc(0.08rem * var(--shieldScale, 1));
+  font-family: var(--bannerFontFamily, "Series E");
+
+  position: static !important;
+  top: auto !important;
+
+  font-size: calc(1.4rem * var(--shieldScale, 1)) !important;
+  line-height: 0.8 !important;
+
+  padding-top: calc(0.10rem * var(--shieldScale, 1)) !important;
+  padding-bottom: calc(0.005rem * var(--shieldScale, 1)) !important;
+  padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
+  padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
+
+  margin: 0 !important;
+  text-align: center;
+}
+
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+  gap: calc(0.20rem * var(--shieldScale, 1));
+  align-items: flex-start;
+}
+
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+  gap: calc(0.20rem * var(--shieldScale, 1));
+  align-items: flex-end;
+}
+
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .bannerA:not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .bannerB:not(.truckPlaque) {
+  padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-right: 0 !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .bannerA:not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .bannerB:not(.truckPlaque) {
+  padding-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-left: 0 !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .truckPlaque.whiteElmt {
+  margin-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .truckPlaque.whiteElmt {
+  margin-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-right,
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-left {
+  margin-top: calc(0.6rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-right {
+  margin-left: calc(0.8rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-left {
+  margin-right: calc(0.8rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-above {
+  margin-bottom: calc(0.08rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner {
+  gap: calc(0.06rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack {
+  gap: calc(0.01rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack.bannerSlot-above {
+  margin-bottom: calc(-0.55rem * var(--shieldScale, 1));
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack .bannerRoadName.multilineRoadName {
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.48);
+  line-height: 0.92;
+  margin-top: calc(-0.04rem * var(--shieldScale, 1)) !important;
+}
+
+
+/* Latest banner tightening overrides */
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-right:not(.bilingualDirectionBanner),
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.bannerSlot-left:not(.bilingualDirectionBanner) {
+  gap: calc(0.025rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right,
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left,
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right,
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left,
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner {
+  gap: 0 !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner .bannerRoadName {
+  margin-top: calc(-0.12rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack {
+  gap: 0 !important;
+  margin-top: calc(-0.06rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack.bannerSlot-above,
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack.bannerSlot-below {
+  margin-bottom: calc(-0.72rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack .bannerRoadName.multilineRoadName {
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.42) !important;
+  line-height: 0.86 !important;
+  margin-top: calc(-0.20rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .TOLL.yellowElmt,
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .truckPlaque.whiteElmt,
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerA:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .bannerB:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .bannerA:not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .bannerB:not(.truckPlaque) {
+  margin-left: 0 !important;
+  padding-left: calc(0.32rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .TOLL.yellowElmt,
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .truckPlaque.whiteElmt,
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerA:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .bannerB:not(.TOLL):not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .bannerA:not(.truckPlaque),
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .bannerB:not(.truckPlaque) {
+  margin-right: 0 !important;
+  padding-right: calc(0.32rem * var(--shieldScale, 1)) !important;
+}
+
+
+/* Align plaque box edge with the start of adjacent banner text.
+   The previous rule aligned the plaque text itself, which pushed the box too far left/right. */
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .TOLL.yellowElmt,
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-right .truckPlaque.whiteElmt {
+  margin-left: calc(0.32rem * var(--shieldScale, 1)) !important;
+  padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
+  padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-left .TOLL.yellowElmt,
+.bE-shieldElement .stackedBannerSlot.truckStackedBanner.bannerSlot-left .truckPlaque.whiteElmt {
+  margin-right: calc(0.32rem * var(--shieldScale, 1)) !important;
+  padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
+  padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
+}

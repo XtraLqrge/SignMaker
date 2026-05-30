@@ -11643,8 +11643,14 @@ const getPostThicknessFallback = () =>
           nextShowLeft = nextExitTabPosition === "Left";
         }
 
+        const showLeftChangedFromPrevious = previousShowLeft !== nextShowLeft;
+
         exitTab.position = nextExitTabPosition;
         exitTab.showLeft = nextShowLeft;
+
+        if (showLeftChangedFromPrevious && form["topOffset"]) {
+          form["topOffset"].checked = nextShowLeft;
+        }
 
         if (exitTabPositionField) {
           exitTabPositionField.value = exitTab.position;
@@ -11812,15 +11818,28 @@ const getPostThicknessFallback = () =>
         const hasExitNumberForLeft =
           String(exitTab.number || "").trim() !== "";
 
+        const showLeftBeforeNumberCleanup = exitTab.showLeft === true;
+
         if (!hasExitNumberForLeft) {
           exitTab.showLeft = false;
+        }
+
+        if (showLeftBeforeNumberCleanup !== (exitTab.showLeft === true) && form["topOffset"]) {
+          form["topOffset"].checked = exitTab.showLeft === true;
+        }
+
+        const previousCaStyleState = exitTab.caStyle === true;
+        const nextCaStyleState = form["caStyle"].checked === true;
+
+        if (nextCaStyleState && !previousCaStyleState && !form["fullBorder"].checked) {
+          form["fullBorder"].checked = true;
         }
 
         exitTab.fullBorder = form["fullBorder"].checked;
         exitTab.squareCorners = form["squareCorners"].checked;
         exitTab.topOffset = form["topOffset"].checked;
         exitTab.verticalArrangement = form["verticalArrangement"].checked;
-        exitTab.caStyle = form["caStyle"].checked;
+        exitTab.caStyle = nextCaStyleState;
 
         setStoredItem(STORAGE_KEYS.exitTabFHWAFont, String(!!exitTab.FHWAFont));
         setStoredItem(STORAGE_KEYS.exitTabFullBorder, String(!!exitTab.fullBorder));

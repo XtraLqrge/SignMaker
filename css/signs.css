@@ -3202,3 +3202,143 @@ img.exitOnlyArrow:last-child {
   justify-content: center;
   text-align: center;
 }
+
+/* Nested exit tabs with different alignments should use the full panel width. */
+.exitTabContainer.mixedNestedExitAlignment {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  gap: 0 !important;
+  justify-content: space-between !important;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.exitTabContainer.mixedNestedExitAlignment .exitTabHolder {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.exitTabContainer.mixedNestedExitAlignment .exitTabHolder.left {
+  order: 0;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.exitTabContainer.mixedNestedExitAlignment .exitTabHolder.center {
+  order: 1;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.exitTabContainer.mixedNestedExitAlignment .exitTabHolder.right {
+  order: 2;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Center vertical exit tabs and keep separated letter suffixes attached to the number. */
+.exitTab.verticalArrangement {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalContainer {
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.15rem;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalText,
+.exitTab.verticalArrangement .exitTabVerticalNumber {
+  width: 100%;
+  text-align: center;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalNumber {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0;
+  line-height: 1;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalTrailing {
+  margin-left: var(--exitTabTrailingGap, 0.04em);
+  position: relative;
+  top: 0;
+}
+
+.exitTab.verticalArrangement .exitTabSeparatedSuffixSpacer {
+  min-width: 0;
+}
+
+/* Nested exit tab cleanup: keep nested tabs touching the sign, remove holder color between tabs. */
+.exitTabContainer.hasNestedExitTabs {
+  align-items: flex-end !important;
+  background: transparent !important;
+}
+
+.exitTabContainer.hasNestedExitTabs .exitTabHolder {
+  align-self: flex-end !important;
+  flex-grow: 0 !important;
+  background: transparent !important;
+}
+
+.exitTabContainer.hasNestedExitTabs.mixedNestedExitAlignment {
+  align-items: flex-end !important;
+}
+
+.exitTabContainer.hasNestedExitTabs.mixedNestedExitAlignment .exitTabHolder {
+  align-self: flex-end !important;
+}
+
+/* Vertical exit tabs: center the stacked EXIT/number group inside the tab. */
+.exitTab.verticalArrangement {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.exitTab.verticalArrangement .exitTabText {
+  top: 0 !important;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalContainer {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 0.12rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalText,
+.exitTab.verticalArrangement .exitTabVerticalNumber,
+.exitTab.verticalArrangement .exitTabVerticalNumber .numeral {
+  line-height: 1 !important;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalNumber {
+  display: inline-flex !important;
+  align-items: baseline !important;
+  justify-content: center !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+

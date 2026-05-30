@@ -8210,11 +8210,38 @@ const app = (function () {
                        });
                    });
                    
-                   var nestedExitTabs = exitTab.nestedExitTabs.length;
+                   const parentExitTabForNestedLayout = exitTab;
+                   const parentExitTabAlignment = String(
+                     parentExitTabForNestedLayout?.position || "Right"
+                   ).toLowerCase();
+                   const nestedExitTabListForLayout = Array.isArray(
+                     parentExitTabForNestedLayout?.nestedExitTabs
+                   )
+                     ? parentExitTabForNestedLayout.nestedExitTabs
+                     : [];
+                   const hasMixedNestedExitTabAlignment = nestedExitTabListForLayout.some(
+                     (nestedTab) =>
+                       String(
+                         nestedTab?.position || parentExitTabForNestedLayout?.position || "Right"
+                       ).toLowerCase() !== parentExitTabAlignment
+                   );
+
+                   if (hasMixedNestedExitTabAlignment) {
+                     exitTabCont.classList.add("mixedNestedExitAlignment");
+                   }
+
+                   var nestedExitTabs = nestedExitTabListForLayout.length;
+                   if (nestedExitTabs > 0) {
+                     exitTabCont.classList.add("hasNestedExitTabs");
+                   }
                    
                    for (let nestIndex = -1; nestIndex < nestedExitTabs; nestIndex++) {
                        if (nestIndex != -1) {
-                           exitTab = exitTab.nestedExitTabs[nestIndex];
+                           exitTab = nestedExitTabListForLayout[nestIndex];
+                       }
+
+                       if (!exitTab) {
+                           continue;
                        }
                        
                        const exitTabElmt = document.createElement("div");
@@ -8306,7 +8333,7 @@ const app = (function () {
                                    bottomNumberElmt.appendChild(spanNumeralElmt);
                                    if (trailingText) {
                                        const trailingSpanElmt = document.createElement("span");
-                                       trailingSpanElmt.className = "numeral exitTabTrailing";
+                                       trailingSpanElmt.className = "numeral exitTabTrailing exitTabVerticalTrailing";
                                        trailingSpanElmt.textContent = trailingText;
 
                                        if (suffixWasSeparated) {
@@ -8318,7 +8345,7 @@ const app = (function () {
                                        }
 
                                        registerExitTabText(trailingSpanElmt);
-                                       targetElmt.appendChild(trailingSpanElmt);
+                                       bottomNumberElmt.appendChild(trailingSpanElmt);
                                    }
                                    verticalContainer.appendChild(bottomNumberElmt);
                                    targetElmt.appendChild(verticalContainer);
@@ -8462,6 +8489,18 @@ const app = (function () {
                        
                        const exitTabHolderElmt = document.createElement("div");
                        exitTabHolderElmt.className = "exitTabHolder";
+                       const exitTabHolderPositionClass = String(
+                         exitTab.position || "Right"
+                       ).toLowerCase();
+                       const exitTabHolderWidthClass = isAplEdgeExitTabWidth(exitTab.width)
+                         ? "aplEdge"
+                         : String(exitTab.width || "Narrow")
+                             .toLowerCase()
+                             .replace(/\s+/g, "");
+                       exitTabHolderElmt.classList.add(
+                         exitTabHolderPositionClass,
+                         exitTabHolderWidthClass
+                       );
                        exitTabHolderElmt.style.position = "relative";
                        exitTabHolderElmt.style.zIndex = "1";
                        exitTabHolderElmt.appendChild(exitTabElmt);

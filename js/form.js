@@ -5460,6 +5460,18 @@ const getPostThicknessFallback = () =>
           },
         ],
       },
+            {
+        id: "australia",
+        label: "Australia",
+        children: [
+          {
+            value: "ALPHANUM",
+            label: "Alphanumeric",
+            asset: "img/shields/Australia/Alphanumeric/ALPHANUM_thumb.svg",
+          },
+          
+        ],
+      },
     ];
     
     const patchShieldPickerTreeForUploadedStateFolders = () => {

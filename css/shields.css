@@ -2168,3 +2168,10 @@
   padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
   padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
 }
+
+.bannerShieldContainer.ALPHANUM .routeNumber {
+  color: var(--yellow);
+  font-size: 2.2em;
+  font-family: "Series EM";
+  top: 0.0em;
+}

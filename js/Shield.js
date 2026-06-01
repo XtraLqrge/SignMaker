@@ -553,6 +553,14 @@ Shield.prototype.shieldDirectory = {
       },
     },
   },
+  Australia: {
+    type: "category",
+    ALPHANUM: {
+      type: "shield",
+      name: "Alphanumeric",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+    }
+  },
 };
 
 Shield.prototype.bannerTypes = [

@@ -564,7 +564,32 @@ Shield.prototype.shieldDirectory = {
       type: "shield",
       name: "National Route",
       variants: ["1 Digit", "2 Digit", "3 Digit"],
-    }
+    },
+    SR: {
+      type: "shield",
+      name: "State Route",
+      variants: ["2 Digit"],
+    },
+    NR: {
+      type: "shield",
+      name: "National Route",
+      variants: ["2 Digit"],
+    },
+    MR: {
+      type: "shield",
+      name: "Metroad",
+      variants: ["1 Digit", "2 Digit"],
+    },
+    "TOLLBLUE": {
+        type: "shield",
+        name: "Tollway",
+        variants: ["2 Digit", "3 Digit", "4 Digit"],
+    },
+    "TD": {
+        type: "shield",
+        name: "Tourist Drive",
+        variants: ["2 Digit", "3 Digit"],
+    },
   },
 };
 

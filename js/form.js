@@ -5460,6 +5460,23 @@ const getPostThicknessFallback = () =>
           },
         ],
       },
+            {
+        id: "australia",
+        label: "Australia",
+        children: [
+          {
+            value: "ALPHANUM",
+            label: "Alphanumeric",
+            asset: "img/shields/Australia/THUMBS/ALPHANUM_thumb.svg",
+          },
+          {
+            value: "NAT",
+            label: "National Route",
+            asset: "img/shields/Australia/NAT-1Digit.svg",
+          },
+          
+        ],
+      },
     ];
     
     const patchShieldPickerTreeForUploadedStateFolders = () => {

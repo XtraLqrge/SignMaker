@@ -553,6 +553,19 @@ Shield.prototype.shieldDirectory = {
       },
     },
   },
+  Australia: {
+    type: "category",
+    ALPHANUM: {
+      type: "shield",
+      name: "Alphanumeric",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+    },
+    NAT: {
+      type: "shield",
+      name: "National Route",
+      variants: ["1 Digit", "2 Digit", "3 Digit"],
+    }
+  },
 };
 
 Shield.prototype.bannerTypes = [

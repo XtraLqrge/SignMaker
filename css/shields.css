@@ -2168,3 +2168,27 @@
   padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
   padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
 }
+
+/*
+  Australian Road Signs
+*/
+.bannerShieldContainer.ALPHANUM .routeNumber {
+  color: #ffa709;
+  font-size: 2.2em;
+  font-family: "Series EM";
+  top: 0.0em;
+}
+
+.bannerShieldContainer.NAT .routeNumber {
+  color: #ffa709;
+  font-size: 2em;
+  font-family: "Series D";
+  top: 0.15em;
+}
+
+.bannerShieldContainer.NAT.two .routeNumber {
+  color: #ffa709;
+  font-size: 2em;
+  font-family: "Series EM";
+  top: 0.15em;
+}

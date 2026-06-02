@@ -559,6 +559,11 @@ Shield.prototype.shieldDirectory = {
       type: "shield",
       name: "Alphanumeric",
       variants: ["2 Digit", "3 Digit", "4 Digit"],
+    },
+    NAT: {
+      type: "shield",
+      name: "National Route",
+      variants: ["1 Digit", "2 Digit", "3 Digit"],
     }
   },
 };

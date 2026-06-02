@@ -5467,7 +5467,12 @@ const getPostThicknessFallback = () =>
           {
             value: "ALPHANUM",
             label: "Alphanumeric",
-            asset: "img/shields/Australia/Alphanumeric/ALPHANUM_thumb.svg",
+            asset: "img/shields/Australia/THUMBS/ALPHANUM_thumb.svg",
+          },
+          {
+            value: "NAT",
+            label: "National Route",
+            asset: "img/shields/Australia/NAT-1Digit.svg",
           },
           
         ],

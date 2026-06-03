@@ -5502,7 +5502,7 @@ const getPostThicknessFallback = () =>
           {
             value: "FNSW",
             label: "Freeway - NSW (Retired)",
-            asset: "img/shields/Australia/FXOLD-2Digit.svg",
+            asset: "img/shields/Australia/FNSW-2Digit.svg",
           },
         ],
       },

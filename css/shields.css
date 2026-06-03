@@ -2263,9 +2263,16 @@
   top: 0.15em;
 }
 
-.bannerShieldContainer.FXOLD .routeNumber {
+.bannerShieldContainer.FNSW .routeNumber {
   color: rgb(255, 255, 255);
   font-size: 2.1em;
   font-family: "Series C";
   top: 0.15em;
+}
+
+.bannerShieldContainer.SH .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.4em;
+  font-family: "Series D";
+  top: -0.15em;
 }

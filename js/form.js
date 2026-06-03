@@ -5460,7 +5460,7 @@ const getPostThicknessFallback = () =>
           },
         ],
       },
-            {
+      {
         id: "australia",
         label: "Australia",
         children: [
@@ -5500,9 +5500,20 @@ const getPostThicknessFallback = () =>
             asset: "img/shields/Australia/TD-3Digit.svg",
           },
           {
-            value: "FXOLD",
-            label: "Freeway (Retired)",
+            value: "FNSW",
+            label: "Freeway - NSW (Retired)",
             asset: "img/shields/Australia/FXOLD-2Digit.svg",
+          },
+        ],
+      },
+      {
+        id: "nz",
+        label: "New Zealand",
+        children: [
+          {
+            value: "SH",
+            label: "State Highway",
+            asset: "img/shields/New Zealand/SH-1Digit.svg",
           },
         ],
       },

@@ -590,6 +590,19 @@ Shield.prototype.shieldDirectory = {
         name: "Tourist Drive",
         variants: ["2 Digit", "3 Digit"],
     },
+    "FNSW": {
+        type: "shield",
+        name: "Freeway - NSW (Retired)",
+        variants: ["2 Digit"],
+    },
+  },
+  "New Zealand": {
+    type: "category",
+    SH: {
+      type: "shield",
+      name: "State Highway",
+      variants: ["1 Digit", "2 Digit"],
+    },
   },
 };
 

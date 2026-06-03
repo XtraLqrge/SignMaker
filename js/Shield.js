@@ -590,6 +590,11 @@ Shield.prototype.shieldDirectory = {
         name: "Tourist Drive",
         variants: ["2 Digit", "3 Digit"],
     },
+    "FXOLD": {
+        type: "shield",
+        name: "Freeway (Retired)",
+        variants: ["2 Digit"],
+    },
   },
 };
 

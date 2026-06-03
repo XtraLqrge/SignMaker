@@ -5499,6 +5499,11 @@ const getPostThicknessFallback = () =>
             label: "Tourist Drive",
             asset: "img/shields/Australia/TD-3Digit.svg",
           },
+          {
+            value: "FXOLD",
+            label: "Freeway (Retired)",
+            asset: "img/shields/Australia/FXOLD-2Digit.svg",
+          },
         ],
       },
     ];

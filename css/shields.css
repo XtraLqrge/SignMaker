@@ -2163,3 +2163,111 @@
   padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
   padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
 }
+
+/*
+  Australian Road Signs
+*/
+.bannerShieldContainer.ALPHANUM .routeNumber {
+  color: #ffa709;
+  font-size: 2.2em;
+  font-family: "Series EM";
+  top: 0.0em;
+}
+
+.bannerShieldContainer.NAT .routeNumber {
+  color: var(--yellow);
+  font-size: 2em;
+  font-family: "Series D";
+  top: 0.15em;
+}
+
+.bannerShieldContainer.NAT.two .routeNumber {
+  color: var(--yellow);
+  font-size: 2em;
+  font-family: "Series EM";
+  top: 0.15em;
+}
+
+.bannerShieldContainer.NAT.onev .routeNumber {
+  color: var(--yellow);
+  font-size: 2em;
+  font-family: "Series EM";
+  top: 0.15em;
+}
+
+.bannerShieldContainer.TOLLBLUE .routeNumber {
+  color: var(--yellow);
+  font-size: 2.2em;
+  font-family: "Series EM";
+  top: 0.0em;
+}
+
+.bannerShieldContainer.SR .routeNumber {
+  color: white;
+  font-size: 2.5em;
+  font-family: "Series C";
+  top: -0.10em;
+}
+
+.bannerShieldContainer.SR.one .routeNumber {
+  color: white;
+  font-size: 2.5em;
+  font-family: "Series EM";
+  top: -0.10em;
+}
+
+.bannerShieldContainer.NR .routeNumber {
+  color: black;
+  font-size: 2.5em;
+  font-family: "Series C";
+  top: -0.10em;
+}
+
+.bannerShieldContainer.NR.one .routeNumber {
+  color: black;
+  font-size: 2.5em;
+  font-family: "Series EM";
+  top: -0.10em;
+}
+
+.bannerShieldContainer.MR .routeNumber {
+  color: rgb(0, 67, 123);
+  font-size: 2.5em;
+  font-family: "Series D";
+  top: -0.05em;
+}
+
+.bannerShieldContainer.MR.one .routeNumber {
+  color: rgb(0, 67, 123);
+  font-size: 2.5em;
+  font-family: "Series EM";
+  top: -0.05em;
+}
+
+.bannerShieldContainer.TD .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.2em;
+  font-family: "Series D";
+  top: 0.10em;
+}
+
+.bannerShieldContainer.TD.three .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2em;
+  font-family: "Series B";
+  top: 0.15em;
+}
+
+.bannerShieldContainer.FNSW .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.1em;
+  font-family: "Series C";
+  top: 0.15em;
+}
+
+.bannerShieldContainer.SH .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.4em;
+  font-family: "Series D";
+  top: -0.15em;
+}

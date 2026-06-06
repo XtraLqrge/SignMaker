@@ -553,6 +553,57 @@ Shield.prototype.shieldDirectory = {
       },
     },
   },
+  Australia: {
+    type: "category",
+    ALPHANUM: {
+      type: "shield",
+      name: "Alphanumeric",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+    },
+    NAT: {
+      type: "shield",
+      name: "National Route",
+      variants: ["1 Digit", "2 Digit", "3 Digit"],
+    },
+    SR: {
+      type: "shield",
+      name: "State Route",
+      variants: ["2 Digit"],
+    },
+    NR: {
+      type: "shield",
+      name: "National Route",
+      variants: ["2 Digit"],
+    },
+    MR: {
+      type: "shield",
+      name: "Metroad",
+      variants: ["1 Digit", "2 Digit"],
+    },
+    "TOLLBLUE": {
+        type: "shield",
+        name: "Tollway",
+        variants: ["2 Digit", "3 Digit", "4 Digit"],
+    },
+    "TD": {
+        type: "shield",
+        name: "Tourist Drive",
+        variants: ["2 Digit", "3 Digit"],
+    },
+    "FNSW": {
+        type: "shield",
+        name: "Freeway - NSW (Retired)",
+        variants: ["2 Digit"],
+    },
+  },
+  "New Zealand": {
+    type: "category",
+    SH: {
+      type: "shield",
+      name: "State Highway",
+      variants: ["1 Digit", "2 Digit"],
+    },
+  },
 };
 
 Shield.prototype.bannerTypes = [

@@ -6520,6 +6520,63 @@ const getPostThicknessFallback = () =>
           },
         ],
       },
+      {
+        id: "australia",
+        label: "Australia",
+        children: [
+          {
+            value: "ALPHANUM",
+            label: "Alphanumeric",
+            asset: "img/shields/Australia/THUMBS/ALPHANUM_thumb.svg",
+          },
+          {
+            value: "NAT",
+            label: "National Route",
+            asset: "img/shields/Australia/NAT-1Digit.svg",
+          },
+          {
+            value: "NR",
+            label: "National Route",
+            asset: "img/shields/Australia/NR-2Digit.svg",
+          },
+          {
+            value: "SR",
+            label: "State Route",
+            asset: "img/shields/Australia/SR-2Digit.svg",
+          },
+          {
+            value: "MR",
+            label: "Metroad",
+            asset: "img/shields/Australia/MR-2Digit.svg",
+          },
+          {
+            value: "TOLLBLUE",
+            label: "Tollway (blue)",
+            asset: "img/shields/Australia/THUMBS/TOLL.svg",
+          },
+          {
+            value: "TD",
+            label: "Tourist Drive",
+            asset: "img/shields/Australia/TD-3Digit.svg",
+          },
+          {
+            value: "FNSW",
+            label: "Freeway - NSW (Retired)",
+            asset: "img/shields/Australia/FNSW-2Digit.svg",
+          },
+        ],
+      },
+      {
+        id: "nz",
+        label: "New Zealand",
+        children: [
+          {
+            value: "SH",
+            label: "State Highway",
+            asset: "img/shields/New Zealand/SH-1Digit.svg",
+          },
+        ],
+      },
     ];
     
     const patchShieldPickerTreeForUploadedStateFolders = () => {

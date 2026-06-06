@@ -1678,11 +1678,6 @@
   line-height: 0.95;
 }
 
-.bE-shieldElement .stackedBannerSlot:not(.bilingualDirectionBanner) .bannerA:not(.TOLL):not(.truckPlaque),
-.bE-shieldElement .stackedBannerSlot:not(.bilingualDirectionBanner) .bannerB:not(.TOLL):not(.truckPlaque) {
-  color: var(--white);
-}
-
 /* Yellow TOLL plaque, whether stacked or single. */
 .bE-shieldElement .TOLL.yellowElmt {
   background: var(--yellow);
@@ -2127,9 +2122,9 @@
 }
 
 .bE-shieldElement .stackedBannerSlot.roadNameStackedBanner.roadNameMultilineStack .bannerRoadName.multilineRoadName {
-  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.42) !important;
-  line-height: 0.86 !important;
-  margin-top: calc(-0.20rem * var(--shieldScale, 1)) !important;
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.6) !important;
+  line-height: 1 !important;
+  margin-top: calc(-0.10rem * var(--shieldScale, 1)) !important;
 }
 
 .bE-shieldElement .stackedBannerSlot.tollStackedBanner.bannerSlot-right .TOLL.yellowElmt,

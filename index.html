@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-  <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer" />
-  <meta name="description" content="The ULTIMATE Sign Maker for highways, freeways, and everything!" />
-  <title>Highway Sign Maker</title>
+  <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer, XtraLqrge" />
+  <meta name="description" content="The BEST Highway Sign Maker" />
+  <title>Highway Sign Maker (v2.19)</title>
   <script>
     (function () {
       const THEME_MODE_STORAGE_KEY = "signMaker.interfaceThemeMode";
@@ -309,22 +309,22 @@
 
             <label class="customShieldMakerField" for="customShieldMakerRouteFontSize">
               <span>Font Size</span>
-              <input id="customShieldMakerRouteFontSize" type="text" value="220" />
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteFontSize" type="range" min="50" max="350" step="1" value="220" /><input id="customShieldMakerRouteFontSizeVal" class="customShieldMakerSliderValue" type="number" min="50" max="350" step="1" value="220" /></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteLetterSpacing">
               <span>Letter Spacing</span>
-              <input id="customShieldMakerRouteLetterSpacing" type="text" value="0" />
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteLetterSpacing" type="range" min="-100" max="100" step="1" value="0" /><input id="customShieldMakerRouteLetterSpacingVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0" /></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteTopOffset">
               <span>Top Offset</span>
-              <input id="customShieldMakerRouteTopOffset" type="text" value="0" />
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteTopOffset" type="range" min="-100" max="100" step="1" value="0" /><input id="customShieldMakerRouteTopOffsetVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0" /></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteHorizontalOffset">
               <span>Right/Left Offset</span>
-              <input id="customShieldMakerRouteHorizontalOffset" type="text" value="0" />
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteHorizontalOffset" type="range" min="-100" max="100" step="1" value="0" /><input id="customShieldMakerRouteHorizontalOffsetVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0" /></div>
             </label>
           </section>
 
@@ -880,7 +880,7 @@
                   <span>New: </span>
                   <select id="sMSPElementSelect" style="width: 30%"></select>
                   <button id="sMSPCreateElement"
-                    onclick="app.newControlElem(document.querySelector('#sMSPElementSelect').value);">
+                    onclick="app.newControlElem(document.querySelector('#sMSPElementSelect').value, event);">
                     <span class="material-symbols-outlined">add</span> Add
                   </button>
                   <button id="sMSPDuplicateSelectedBlock" onclick="app.duplicateControlElem();">
@@ -1169,17 +1169,21 @@
                     </div>
                   </div>
                 </div>
-                <div data-property="sdBeacon" class="hidden">
-                  <label for="sdBeacon_size">Size (rem): </label>
-                  <input type="number" id="sdBeacon_size" placeholder="2" min="0.5" step="0.25" value="2" />
-                  <label for="sdBeacon_color">Color: </label>
-                  <select id="sdBeacon_color"></select>
-                  <label for="sdBeacon_backplate">Backplate:</label>
-                  <input type="checkbox" id="sdBeacon_backplate" />
-                  <label for="sdBeacon_flashOpposite">Flash Opposite:</label>
-                  <input type="checkbox" id="sdBeacon_flashOpposite" />
-                  <label for="sdBeacon_alignment">Alignment: </label>
-                  <select id="sdBeacon_alignment"></select>
+                <div data-property="sdBeacon" class="hidden sdBeaconEditorLayout">
+                  <div class="sdBeaconControlRow sdBeaconMainRow">
+                    <label for="sdBeacon_size">Size (rem): </label>
+                    <input type="number" id="sdBeacon_size" placeholder="2" min="0.5" step="0.25" value="2" />
+                    <label for="sdBeacon_color">Color: </label>
+                    <select id="sdBeacon_color"></select>
+                  </div>
+                  <div class="sdBeaconControlRow sdBeaconOptionsRow">
+                    <label for="sdBeacon_backplate">Backplate:</label>
+                    <input type="checkbox" id="sdBeacon_backplate" />
+                    <label for="sdBeacon_flashOpposite">Flash Opposite:</label>
+                    <input type="checkbox" id="sdBeacon_flashOpposite" />
+                    <label for="sdBeacon_alignment">Alignment: </label>
+                    <select id="sdBeacon_alignment"></select>
+                  </div>
                 </div>
 
                 <div data-property="sdArrow" class="hidden">
@@ -1347,11 +1351,11 @@
                 <h4>Block Properties</h4>
                 <label for="sdBlock_topPadding">Top Margin (rem): </label>
                 <input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" />
-                <input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" step=".01" />
+                <input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-1" max="10" step=".01" />
                 <label for="sdBlock_bottomPadding">Bottom Margin (rem):
                 </label>
                 <input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" />
-                <input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" step=".01" />
+                <input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-1" max="10" step=".01" />
                 <br />
                 <label for="sdBlock_backgroundColor">BG:</label>
                 <select id="sdBlock_backgroundColor"></select>

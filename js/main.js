@@ -586,6 +586,182 @@ const app = (function () {
       ? Post.prototype.defaultThickness
       : 1;
   };
+
+  const SPECIAL_COLOR_VALUES = new Set([
+    "",
+    "Inherit",
+    "Match BG",
+    "Default",
+    "Panel Color",
+    "Transparent",
+  ]);
+
+  const getColorClassToken = (value, fallback = "green") =>
+    String(value || fallback).trim().toLowerCase();
+
+  const getResolvedCssColorValue = (value) => {
+    const rawValue = String(value || "").trim();
+    if (!rawValue || SPECIAL_COLOR_VALUES.has(rawValue)) {
+      return "";
+    }
+
+    if (typeof lib !== "undefined" && lib.colors && lib.colors[rawValue]) {
+      return lib.colors[rawValue];
+    }
+
+    return rawValue;
+  };
+
+  const isPresetColorName = (value) =>
+    !!(typeof lib !== "undefined" && lib.colors && lib.colors[String(value || "").trim()]);
+
+  const isCssColorValue = (value) => {
+    const resolvedValue = getResolvedCssColorValue(value);
+    if (!resolvedValue) {
+      return false;
+    }
+
+    if (typeof CSS !== "undefined" && typeof CSS.supports === "function") {
+      return CSS.supports("color", resolvedValue);
+    }
+
+    const probe = document.createElement("span");
+    probe.style.color = "";
+    probe.style.color = resolvedValue;
+    return !!probe.style.color;
+  };
+
+  const isCustomCssColorValue = (value) => {
+    const rawValue = String(value || "").trim();
+    return !!rawValue && !SPECIAL_COLOR_VALUES.has(rawValue) && !isPresetColorName(rawValue) && isCssColorValue(rawValue);
+  };
+
+  const resolveCssColorToRgb = (value) => {
+    const resolvedValue = getResolvedCssColorValue(value);
+    if (!resolvedValue) {
+      return null;
+    }
+
+    const probe = document.createElement("span");
+    probe.style.position = "absolute";
+    probe.style.left = "-9999px";
+    probe.style.color = resolvedValue;
+    document.body.appendChild(probe);
+    const computedColor = window.getComputedStyle(probe).color;
+    probe.remove();
+
+    const match = computedColor.match(/rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)/i);
+    if (!match) {
+      return null;
+    }
+
+    return {
+      r: Math.max(0, Math.min(255, Math.round(Number(match[1])))),
+      g: Math.max(0, Math.min(255, Math.round(Number(match[2])))),
+      b: Math.max(0, Math.min(255, Math.round(Number(match[3])))),
+      a: Math.max(0, Math.min(1, Number(match[4] ?? 1))),
+    };
+  };
+
+  const rgbToCssString = (rgb = {}) => {
+    if (!rgb) {
+      return "";
+    }
+
+    const { r, g, b, a = 1 } = rgb;
+    const red = Math.max(0, Math.min(255, Math.round(Number(r) || 0)));
+    const green = Math.max(0, Math.min(255, Math.round(Number(g) || 0)));
+    const blue = Math.max(0, Math.min(255, Math.round(Number(b) || 0)));
+    const alpha = Math.max(0, Math.min(1, Number(a)));
+
+    return alpha < 1
+      ? `rgba(${red}, ${green}, ${blue}, ${Number(alpha.toFixed(3))})`
+      : `rgb(${red}, ${green}, ${blue})`;
+  };
+
+  const shadeRgb = (rgb, amount = 0) => {
+    if (!rgb) {
+      return null;
+    }
+
+    const mix = amount >= 0 ? 255 : 0;
+    const weight = Math.min(1, Math.abs(amount));
+    return {
+      r: rgb.r + (mix - rgb.r) * weight,
+      g: rgb.g + (mix - rgb.g) * weight,
+      b: rgb.b + (mix - rgb.b) * weight,
+      a: rgb.a,
+    };
+  };
+
+  const getReadableTextColorForCssColor = (value) => {
+    const rgb = resolveCssColorToRgb(value);
+    if (!rgb) {
+      return "var(--white)";
+    }
+
+    const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) * (rgb.a || 1);
+    return luminance > 155 ? "var(--black)" : "var(--white)";
+  };
+
+  const applyCustomPanelColorVars = (panelElmt, colorValue) => {
+    if (!panelElmt || !isCustomCssColorValue(colorValue)) {
+      return false;
+    }
+
+    const resolvedColor = getResolvedCssColorValue(colorValue);
+    const textColor = getReadableTextColorForCssColor(resolvedColor);
+    panelElmt.classList.add("customPanelColor");
+    panelElmt.style.setProperty("--panelCustomBg", resolvedColor);
+    panelElmt.style.setProperty("--panelCustomFg", textColor);
+    panelElmt.style.setProperty(
+      "--panelCustomArrowFilter",
+      textColor === "var(--black)" ? "invert(100%)" : "none"
+    );
+    return true;
+  };
+
+  const applyCustomExitTabColorVars = (exitTabElmt, exitTabHolderElmt, colorValue) => {
+    if (!exitTabElmt || !exitTabHolderElmt || !isCustomCssColorValue(colorValue)) {
+      return false;
+    }
+
+    const resolvedColor = getResolvedCssColorValue(colorValue);
+    const textColor = getReadableTextColorForCssColor(resolvedColor);
+    [exitTabElmt, exitTabHolderElmt].forEach((element) => {
+      element.classList.add("customExitTabColor");
+      element.style.setProperty("--exitTabCustomBg", resolvedColor);
+      element.style.setProperty("--exitTabCustomFg", textColor);
+    });
+    return true;
+  };
+
+  const applyCustomPostColorVars = (postContainerElmt, colorValue) => {
+    if (!postContainerElmt || !isCustomCssColorValue(colorValue)) {
+      [
+        "--post-color-mid",
+        "--post-color-light",
+        "--post-color-dark",
+        "--postGradient",
+      ].forEach((propertyName) => postContainerElmt?.style.removeProperty(propertyName));
+      return false;
+    }
+
+    const rgb = resolveCssColorToRgb(colorValue);
+    const resolvedColor = getResolvedCssColorValue(colorValue);
+    const lightColor = rgbToCssString(shadeRgb(rgb, 0.28)) || resolvedColor;
+    const darkColor = rgbToCssString(shadeRgb(rgb, -0.38)) || resolvedColor;
+
+    postContainerElmt.style.setProperty("--post-color-mid", resolvedColor);
+    postContainerElmt.style.setProperty("--post-color-light", lightColor);
+    postContainerElmt.style.setProperty("--post-color-dark", darkColor);
+    postContainerElmt.style.setProperty(
+      "--postGradient",
+      `linear-gradient(90deg, ${resolvedColor} 0%, ${lightColor} 40%, ${darkColor} 100%)`
+    );
+    return true;
+  };
+
   const FHWA_BASELINE_OFFSET_VAR = "var(--fhwaBaselineShift)";
     const HIGHWAY_GOTHIC_TEXT_RENDER_SCALE = 1.5;
     const isHighwayGothicTextFont = (fontFamily) =>
@@ -1685,69 +1861,64 @@ const app = (function () {
     }
 
     const computed = window.getComputedStyle(signElmt);
+
+    const getNamedColor = (name, fallback) =>
+      typeof lib !== "undefined" && lib.colors && lib.colors[name]
+        ? lib.colors[name]
+        : fallback;
+
+    const isTransparentColor = (value) => {
+      const normalized = String(value || "").replace(/\s+/g, "").toLowerCase();
+      return (
+        !normalized ||
+        normalized === "transparent" ||
+        normalized === "rgba(0,0,0,0)" ||
+        normalized === "rgb(0,0,0,0)"
+      );
+    };
+
     const fillColor =
-      computed.backgroundColor && computed.backgroundColor !== "rgba(0, 0, 0, 0)"
+      computed.backgroundColor && !isTransparentColor(computed.backgroundColor)
         ? computed.backgroundColor
         : "transparent";
+
     const defaultBorderColor =
-      computed.borderTopColor && computed.borderTopColor !== "rgba(0, 0, 0, 0)"
+      computed.borderTopColor && !isTransparentColor(computed.borderTopColor)
         ? computed.borderTopColor
-        : "currentColor";
+        : computed.color && !isTransparentColor(computed.color)
+          ? computed.color
+          : getNamedColor("White", "white");
 
-    const syncDynamicCornerPatches = (topCornerColor, bottomCornerColor) => {
-      const signContainerElmt = signElmt.closest(".signContainer");
+    const getSignContainer = () => signElmt.closest(".signContainer");
 
-      if (!signContainerElmt) {
-        return;
-      }
+    const removeDynamicArtifacts = () => {
+      const signContainerElmt = getSignContainer();
 
-      const ensurePatch = (position) => {
-        const className = `dynamicSignCornerPatch ${position}`;
-        let patchElmt = signContainerElmt.querySelector(
-          `:scope > .dynamicSignCornerPatch.${position}`
-        );
+      signElmt
+        .querySelectorAll(
+          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch"
+        )
+        .forEach((overlay) => overlay.remove());
 
-        if (!patchElmt) {
-          patchElmt = document.createElement("div");
-          patchElmt.className = className;
-          signContainerElmt.insertBefore(patchElmt, signContainerElmt.firstChild);
-        }
+      signContainerElmt
+        ?.querySelectorAll(
+          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch"
+        )
+        .forEach((overlay) => overlay.remove());
 
-        return patchElmt;
-      };
-
-      const syncPatch = (position, color) => {
-        const patchElmt = signContainerElmt.querySelector(
-          `:scope > .dynamicSignCornerPatch.${position}`
-        );
-
-        if (!color) {
-          patchElmt?.remove();
-          signContainerElmt.removeAttribute(`data-dynamic-${position}-corner`);
-          signContainerElmt.style.removeProperty(
-            `--dynamicSign${position === "top" ? "Top" : "Bottom"}CornerColor`
-          );
-          return;
-        }
-
-        const nextPatch = ensurePatch(position);
-        nextPatch.style.backgroundColor = color;
-        signContainerElmt.dataset[`dynamic${position[0].toUpperCase()}${position.slice(1)}Corner`] = "true";
-        signContainerElmt.style.setProperty(
-          `--dynamicSign${position === "top" ? "Top" : "Bottom"}CornerColor`,
-          color
-        );
-      };
-
-      syncPatch("top", topCornerColor);
-      syncPatch("bottom", bottomCornerColor);
-
-      const hasPatches = !!signContainerElmt.querySelector(
-        ":scope > .dynamicSignCornerPatch"
+      signElmt.classList.remove("hasDynamicSignBorderOverlay");
+      signContainerElmt?.classList.remove(
+        "hasDynamicSignBorderOverlay",
+        "hasDynamicSignCornerPatches"
       );
-      signContainerElmt.classList.toggle(
-        "hasDynamicSignCornerPatches",
-        hasPatches
+
+      ["topLeft", "topRight", "bottomLeft", "bottomRight"].forEach(
+        (position) => {
+          signContainerElmt?.removeAttribute(`data-dynamic-${position}-corner`);
+          signContainerElmt?.style.removeProperty(
+            `--dynamicSign${position[0].toUpperCase()}${position.slice(1)}CornerColor`
+          );
+        }
       );
     };
 
@@ -1758,15 +1929,12 @@ const app = (function () {
       signElmt.style.removeProperty("background-repeat");
       signElmt.style.removeProperty("background-position");
       signElmt.style.removeProperty("background-size");
+      signElmt.style.removeProperty("background-color");
       signElmt.style.removeProperty("border-color");
-      syncDynamicCornerPatches(null, null);
+      removeDynamicArtifacts();
     };
 
-    const backgroundRows = Array.from(
-      signElmt.querySelectorAll(".blockElementRow[data-full-bleed-background-color]")
-    ).filter((row) => row.dataset.fullBleedBackgroundColor);
-
-    const borderRows = Array.from(
+    const fullBleedRows = Array.from(
       signElmt.querySelectorAll(
         ".blockElementRow[data-full-bleed-background-color], .blockElementRow[data-full-bleed-border-color]"
       )
@@ -1776,48 +1944,39 @@ const app = (function () {
         (row.dataset.fullBleedBackgroundColor || row.dataset.fullBleedBorderColor)
     );
 
-    if (!backgroundRows.length && !borderRows.length) {
+    if (!fullBleedRows.length) {
       clearDynamicPanelBackground();
       return;
     }
 
     const signRect = signElmt.getBoundingClientRect();
-    const signHeight = signRect.height;
+    const signCssWidth = signElmt.offsetWidth || signRect.width;
+    const signCssHeight = signElmt.offsetHeight || signRect.height;
+    const signScaleX = signRect.width ? signCssWidth / signRect.width : 1;
+    const signScaleY = signRect.height ? signCssHeight / signRect.height : signScaleX;
+    const signWidth = signCssWidth;
+    const signHeight = signCssHeight;
+    const borderWidths = {
+      top: parseFloat(computed.borderTopWidth) || 0,
+      right: parseFloat(computed.borderRightWidth) || 0,
+      bottom: parseFloat(computed.borderBottomWidth) || 0,
+      left: parseFloat(computed.borderLeftWidth) || 0,
+    };
+    const borderWidth = Math.max(
+      1,
+      borderWidths.top,
+      borderWidths.right,
+      borderWidths.bottom,
+      borderWidths.left
+    );
 
-    if (!signHeight) {
+    if (!signWidth || !signHeight) {
       clearDynamicPanelBackground();
       return;
     }
 
-    const getRowsInside = (root, dataAttribute) => {
-      if (!root) {
-        return [];
-      }
-
-      return Array.from(
-        root.querySelectorAll(`.blockElementRow[${dataAttribute}]`)
-      ).filter((row) => row.dataset[dataAttribute.replace(/^data-/, "").replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())]);
-    };
-
-    const getBackgroundRowsInside = (root) =>
-      root
-        ? Array.from(
-            root.querySelectorAll(".blockElementRow[data-full-bleed-background-color]")
-          ).filter((row) => row.dataset.fullBleedBackgroundColor)
-        : [];
-
-    const getBorderRowsInside = (root) =>
-      root
-        ? Array.from(
-            root.querySelectorAll(
-              ".blockElementRow[data-full-bleed-background-color], .blockElementRow[data-full-bleed-border-color]"
-            )
-          ).filter(
-            (row, index, rows) =>
-              rows.indexOf(row) === index &&
-              (row.dataset.fullBleedBackgroundColor || row.dataset.fullBleedBorderColor)
-          )
-        : [];
+    const toSignCssX = (screenPx) => screenPx * signScaleX;
+    const toSignCssY = (screenPx) => screenPx * signScaleY;
 
     const resolveCssColor = (color) => {
       const rawColor = String(color || "").trim();
@@ -1862,178 +2021,583 @@ const app = (function () {
 
       const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
       return luminance > 0.58
-        ? ((lib?.colors && lib.colors.Black) || "black")
-        : ((lib?.colors && lib.colors.White) || "white");
+        ? getNamedColor("Black", "black")
+        : getNamedColor("White", "white");
     };
 
-    const getRowSpan = (rowEl, rowsInGlobalTop, rowsInGlobalBottom) => {
-      const rowRect = rowEl.getBoundingClientRect();
-      let start = rowRect.top - signRect.top;
-      let end = rowRect.bottom - signRect.top;
+    const globalTopElmt = signElmt.querySelector(":scope > .globalTop");
+    const globalBottomElmt = signElmt.querySelector(":scope > .globalBottom");
+    const hasGlobalTopRows = !!globalTopElmt?.querySelector(".blockElementRow");
+    const hasGlobalBottomRows = !!globalBottomElmt?.querySelector(".blockElementRow");
 
-      if (end <= start) {
+    const getRowsInMaster = (rowEl) => {
+      const blockMaster = rowEl.closest(".blockElementMaster");
+      return blockMaster
+        ? Array.from(blockMaster.querySelectorAll(":scope > .blockElementRow"))
+        : [];
+    };
+
+    const getGlobalRows = (root) =>
+      root ? Array.from(root.querySelectorAll(".blockElementRow")) : [];
+
+    const clampRectValue = (value, min, max) =>
+      Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
+
+    const snapCssValue = (value) =>
+      Number.isFinite(value) ? Math.round(value * 1000) / 1000 : 0;
+
+    const cssLengthToPx = (value, contextElmt = signElmt) => {
+      const rawValue = String(value || "").trim();
+
+      if (!rawValue || rawValue === "0") {
+        return 0;
+      }
+
+      const numericValue = parseFloat(rawValue);
+
+      if (!Number.isFinite(numericValue)) {
+        return 0;
+      }
+
+      if (rawValue.endsWith("px")) {
+        return numericValue;
+      }
+
+      if (rawValue.endsWith("rem")) {
+        const rootFontSize = parseFloat(
+          window.getComputedStyle(document.documentElement).fontSize
+        );
+        return numericValue * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
+      }
+
+      if (rawValue.endsWith("em")) {
+        const contextFontSize = parseFloat(
+          window.getComputedStyle(contextElmt || signElmt).fontSize
+        );
+        return numericValue * (Number.isFinite(contextFontSize) ? contextFontSize : 16);
+      }
+
+      if (rawValue.endsWith("%")) {
+        return 0;
+      }
+
+      return numericValue;
+    };
+
+    const edgeSnapTolerance = Math.max(1.5, borderWidth + 0.5);
+
+    const getLocalizedRowRect = (rowEl) => {
+      const rowRect = rowEl.getBoundingClientRect();
+
+      if (!rowRect.width || !rowRect.height) {
         return null;
       }
 
       const globalTop = rowEl.closest(".globalTop");
       const globalBottom = rowEl.closest(".globalBottom");
+      const subPanelDisplay = rowEl.closest(".subPanelDisplay");
+      const rowsInMaster = getRowsInMaster(rowEl);
+      const rowsInGlobalTop = globalTop ? getGlobalRows(globalTop) : [];
+      const rowsInGlobalBottom = globalBottom ? getGlobalRows(globalBottom) : [];
+
+      let left = toSignCssX(rowRect.left - signRect.left);
+      let right = toSignCssX(rowRect.right - signRect.left);
+      let top = toSignCssY(rowRect.top - signRect.top);
+      let bottom = toSignCssY(rowRect.bottom - signRect.top);
+
+      if (globalTop || globalBottom) {
+        left = 0;
+        right = signWidth;
+      } else if (subPanelDisplay) {
+        const signHolder = subPanelDisplay.closest(".signHolder");
+        const blockMaster = rowEl.closest(".blockElementMaster");
+        const rawSubPanelIndex =
+          blockMaster?.dataset?.subpanel ??
+          subPanelDisplay?.dataset?.subpanelIndex ??
+          "";
+        const subPanelIndex = Number(rawSubPanelIndex);
+        const subPanelRect = subPanelDisplay.getBoundingClientRect();
+        let groupLeft = toSignCssX(subPanelRect.left - signRect.left);
+        let groupRight = toSignCssX(subPanelRect.right - signRect.left);
+
+        if (signHolder && Number.isFinite(subPanelIndex)) {
+          const dividerEntries = Array.from(
+            signHolder.querySelectorAll(":scope > .subDivider")
+          )
+            .map((dividerElmt) => {
+              const match = String(dividerElmt.id || "").match(/subDivider(\d+)/);
+              const boundaryIndex = match ? Number(match[1]) : NaN;
+              return Number.isFinite(boundaryIndex)
+                ? { dividerElmt, boundaryIndex }
+                : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.boundaryIndex - b.boundaryIndex);
+
+          const leftBoundary = [...dividerEntries]
+            .reverse()
+            .find((entry) => entry.boundaryIndex <= subPanelIndex);
+          const rightBoundary = dividerEntries.find(
+            (entry) => entry.boundaryIndex > subPanelIndex
+          );
+
+          if (leftBoundary) {
+            const dividerRect = leftBoundary.dividerElmt.getBoundingClientRect();
+            groupLeft = toSignCssX(dividerRect.right - signRect.left);
+          } else {
+            groupLeft = 0;
+          }
+
+          if (rightBoundary) {
+            const dividerRect = rightBoundary.dividerElmt.getBoundingClientRect();
+            groupRight = toSignCssX(dividerRect.left - signRect.left);
+          } else {
+            groupRight = signWidth;
+          }
+        }
+
+        left = groupLeft;
+        right = groupRight;
+      }
+
+      const rowComputed = window.getComputedStyle(rowEl);
+      const bleedTop = cssLengthToPx(
+        rowComputed.getPropertyValue("--blockBleedTop"),
+        rowEl
+      );
+      const bleedBottom = cssLengthToPx(
+        rowComputed.getPropertyValue("--blockBleedBottom"),
+        rowEl
+      );
+
+      const extendTopToEdge = () => {
+        top -= bleedTop;
+
+        if (top <= edgeSnapTolerance) {
+          top = 0;
+        }
+      };
+
+      const extendBottomToEdge = () => {
+        bottom += bleedBottom;
+
+        if (bottom >= signHeight - edgeSnapTolerance) {
+          bottom = signHeight;
+        }
+      };
 
       if (globalTop && rowsInGlobalTop[0] === rowEl) {
-        start = 0;
+        extendTopToEdge();
       }
 
       if (
         globalBottom &&
         rowsInGlobalBottom[rowsInGlobalBottom.length - 1] === rowEl
       ) {
-        end = signHeight;
+        extendBottomToEdge();
       }
 
-      const startPct = Math.max(0, Math.min(100, (start / signHeight) * 100));
-      const endPct = Math.max(0, Math.min(100, (end / signHeight) * 100));
+      const isLocalSubpanelRow = !globalTop && !globalBottom;
 
-      if (endPct <= startPct) {
+      if (isLocalSubpanelRow && rowsInMaster[0] === rowEl && !hasGlobalTopRows) {
+        extendTopToEdge();
+      }
+
+      if (
+        isLocalSubpanelRow &&
+        rowsInMaster[rowsInMaster.length - 1] === rowEl &&
+        !hasGlobalBottomRows
+      ) {
+        extendBottomToEdge();
+      }
+
+      left = clampRectValue(left, 0, signWidth);
+      right = clampRectValue(right, 0, signWidth);
+      top = clampRectValue(top, 0, signHeight);
+      bottom = clampRectValue(bottom, 0, signHeight);
+
+      if (right <= left || bottom <= top) {
         return null;
       }
 
       return {
-        start: startPct,
-        end: endPct,
+        left: snapCssValue(left),
+        top: snapCssValue(top),
+        width: snapCssValue(right - left),
+        height: snapCssValue(bottom - top),
       };
     };
 
-    const buildSegments = (rows, getColor, getGlobalRows) => {
-      const segments = [];
+    const makeRectLayer = (color, rect) => ({
+      image: `linear-gradient(${color}, ${color})`,
+      position: `${rect.left}px ${rect.top}px`,
+      size: `${rect.width}px ${rect.height}px`,
+    });
 
-      for (const rowEl of rows) {
-        const color = getColor(rowEl);
-
-        if (!color) {
-          continue;
-        }
-
-        const globalTop = rowEl.closest(".globalTop");
-        const globalBottom = rowEl.closest(".globalBottom");
-        const rowsInGlobalTop = globalTop ? getGlobalRows(globalTop) : [];
-        const rowsInGlobalBottom = globalBottom ? getGlobalRows(globalBottom) : [];
-        const span = getRowSpan(rowEl, rowsInGlobalTop, rowsInGlobalBottom);
-
-        if (!span) {
-          continue;
-        }
-
-        segments.push({
-          ...span,
-          color,
-        });
-      }
-
-      segments.sort((a, b) => a.start - b.start);
-
-      const mergedSegments = [];
-      for (const segment of segments) {
-        const previous = mergedSegments[mergedSegments.length - 1];
-
-        if (
-          previous &&
-          previous.color === segment.color &&
-          segment.start <= previous.end
-        ) {
-          previous.end = Math.max(previous.end, segment.end);
-        } else {
-          mergedSegments.push({ ...segment });
-        }
-      }
-
-      return mergedSegments;
+    const touchesSignEdge = (rect, edge) => {
+      const epsilon = Math.max(1.5, borderWidth + 0.5);
+      if (edge === "left") return rect.left <= epsilon;
+      if (edge === "right") return rect.left + rect.width >= signWidth - epsilon;
+      if (edge === "top") return rect.top <= epsilon;
+      if (edge === "bottom") return rect.top + rect.height >= signHeight - epsilon;
+      return false;
     };
 
-    const buildGradient = (segments, gapColor) => {
-      const gradientStops = [];
-      let cursor = 0;
+    const contentLayers = [];
+    const rowInfos = [];
+    const cornerColors = {};
 
-      const addSegment = (color, start, end) => {
-        const startClamped = Math.max(0, Math.min(100, start));
-        const endClamped = Math.max(0, Math.min(100, end));
+    fullBleedRows.forEach((rowEl) => {
+      const rect = getLocalizedRowRect(rowEl);
 
-        if (endClamped <= startClamped) {
-          return;
-        }
-
-        gradientStops.push(
-          `${color} ${startClamped.toFixed(4)}%`,
-          `${color} ${endClamped.toFixed(4)}%`
-        );
-      };
-
-      for (const segment of segments) {
-        if (segment.start > cursor) {
-          addSegment(gapColor, cursor, segment.start);
-        }
-
-        addSegment(segment.color, Math.max(cursor, segment.start), segment.end);
-        cursor = Math.max(cursor, segment.end);
+      if (!rect) {
+        return;
       }
 
-      if (cursor < 100) {
-        addSegment(gapColor, cursor, 100);
+      const backgroundColor = rowEl.dataset.fullBleedBackgroundColor || "";
+      const borderColor =
+        rowEl.dataset.fullBleedBorderColor ||
+        (backgroundColor ? getContrastingBorderColor(backgroundColor) : "");
+
+      rowEl.style.setProperty(
+        "--fullBleedResolvedBackgroundColor",
+        backgroundColor || "transparent"
+      );
+      rowEl.style.setProperty(
+        "--fullBleedResolvedBorderColor",
+        borderColor || defaultBorderColor
+      );
+
+      ["Top", "Right", "Bottom", "Left"].forEach((edgeName) => {
+        rowEl.style.setProperty(`--fullBleed${edgeName}EdgeColor`, "transparent");
+      });
+
+      rowEl.classList.toggle("fullBleedHasResolvedBackground", !!backgroundColor);
+
+      if (backgroundColor) {
+        contentLayers.push(makeRectLayer(backgroundColor, rect));
+
+        if (touchesSignEdge(rect, "top") && touchesSignEdge(rect, "left")) {
+          cornerColors.topLeft = backgroundColor;
+        }
+        if (touchesSignEdge(rect, "top") && touchesSignEdge(rect, "right")) {
+          cornerColors.topRight = backgroundColor;
+        }
+        if (touchesSignEdge(rect, "bottom") && touchesSignEdge(rect, "left")) {
+          cornerColors.bottomLeft = backgroundColor;
+        }
+        if (touchesSignEdge(rect, "bottom") && touchesSignEdge(rect, "right")) {
+          cornerColors.bottomRight = backgroundColor;
+        }
       }
 
-      return `linear-gradient(to bottom, ${gradientStops.join(", ")})`;
-    };
+      if (borderColor) {
+        rowInfos.push({ rect, borderColor });
+      }
+    });
 
-    const backgroundSegments = buildSegments(
-      backgroundRows,
-      (row) => row.dataset.fullBleedBackgroundColor,
-      getBackgroundRowsInside
-    );
-
-    const borderSegments = buildSegments(
-      borderRows,
-      (row) =>
-        row.dataset.fullBleedBorderColor ||
-        getContrastingBorderColor(row.dataset.fullBleedBackgroundColor),
-      getBorderRowsInside
-    );
-
-    if (!backgroundSegments.length && !borderSegments.length) {
+    if (!contentLayers.length && !rowInfos.length) {
       clearDynamicPanelBackground();
       return;
     }
 
-    const contentGradient = buildGradient(backgroundSegments, fillColor);
-    const borderGradient = buildGradient(borderSegments, defaultBorderColor);
+    removeDynamicArtifacts();
 
-    const getBackgroundSegmentTouchingEdge = (edge) => {
-      if (!backgroundSegments.length) {
-        return null;
+    const syncDynamicCornerPatches = () => {
+      const signContainerElmt = getSignContainer();
+
+      if (!signContainerElmt) {
+        return;
       }
 
-      if (edge === "top") {
-        return (
-          backgroundSegments.find((segment) => segment.start <= 0.001) || null
+      const signContainerRect = signContainerElmt.getBoundingClientRect();
+      const containerScaleX = signContainerRect.width
+        ? (signContainerElmt.offsetWidth || signContainerRect.width) / signContainerRect.width
+        : 1;
+      const containerScaleY = signContainerRect.height
+        ? (signContainerElmt.offsetHeight || signContainerRect.height) / signContainerRect.height
+        : containerScaleX;
+      const signLeft = (signRect.left - signContainerRect.left) * containerScaleX;
+      const signTop = (signRect.top - signContainerRect.top) * containerScaleY;
+      const radius = Math.max(
+        0,
+        Math.min(
+          parseFloat(computed.borderTopLeftRadius) || 0,
+          signWidth / 2,
+          signHeight / 2
+        )
+      );
+      const patchSize = Math.ceil(radius + borderWidth + 1);
+      const positions = ["topLeft", "topRight", "bottomLeft", "bottomRight"];
+
+      const ensurePatch = (position) => {
+        let patchElmt = signContainerElmt.querySelector(
+          `:scope > .dynamicSignCornerPatch.${position}`
         );
-      }
 
-      return (
-        [...backgroundSegments]
-          .reverse()
-          .find((segment) => segment.end >= 99.999) || null
+        if (!patchElmt) {
+          patchElmt = document.createElement("div");
+          patchElmt.className = `dynamicSignCornerPatch ${position}`;
+          signContainerElmt.insertBefore(patchElmt, signContainerElmt.firstChild);
+        }
+
+        return patchElmt;
+      };
+
+      positions.forEach((position) => {
+        const color = cornerColors[position] || "";
+
+        if (!color) {
+          signContainerElmt
+            .querySelector(`:scope > .dynamicSignCornerPatch.${position}`)
+            ?.remove();
+          signContainerElmt.removeAttribute(`data-dynamic-${position}-corner`);
+          signContainerElmt.style.removeProperty(
+            `--dynamicSign${position[0].toUpperCase()}${position.slice(1)}CornerColor`
+          );
+          return;
+        }
+
+        const patchElmt = ensurePatch(position);
+        const isRight = position.toLowerCase().includes("right");
+        const isBottom = position.toLowerCase().includes("bottom");
+        patchElmt.style.width = `${patchSize}px`;
+        patchElmt.style.height = `${patchSize}px`;
+        patchElmt.style.left = `${snapCssValue(signLeft + (isRight ? signWidth - patchSize : 0))}px`;
+        patchElmt.style.top = `${snapCssValue(signTop + (isBottom ? signHeight - patchSize : 0))}px`;
+        patchElmt.style.backgroundColor = color;
+        signContainerElmt.dataset[`dynamic${position[0].toUpperCase()}${position.slice(1)}Corner`] = "true";
+        signContainerElmt.style.setProperty(
+          `--dynamicSign${position[0].toUpperCase()}${position.slice(1)}CornerColor`,
+          color
+        );
+      });
+
+      const hasPatches = !!signContainerElmt.querySelector(
+        ":scope > .dynamicSignCornerPatch"
+      );
+      signContainerElmt.classList.toggle(
+        "hasDynamicSignCornerPatches",
+        hasPatches
       );
     };
 
-    syncDynamicCornerPatches(
-      getBackgroundSegmentTouchingEdge("top")?.color || null,
-      getBackgroundSegmentTouchingEdge("bottom")?.color || null
+    const renderDynamicBorderOverlay = () => {
+      const signContainerElmt = getSignContainer();
+
+      if (!signContainerElmt || !rowInfos.length) {
+        return;
+      }
+
+      let overlay = signContainerElmt.querySelector(
+        ":scope > .dynamicSignBorderOverlay"
+      );
+
+      if (!overlay) {
+        overlay = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        overlay.classList.add("dynamicSignBorderOverlay");
+        signContainerElmt.appendChild(overlay);
+      }
+
+      while (overlay.firstChild) {
+        overlay.removeChild(overlay.firstChild);
+      }
+
+      const safeWidth = Math.max(1, signWidth);
+      const safeHeight = Math.max(1, signHeight);
+      const radius = Math.max(
+        borderWidth / 2,
+        Math.min(
+          parseFloat(computed.borderTopLeftRadius) || 0,
+          safeWidth / 2,
+          safeHeight / 2
+        )
+      );
+      const strokeRadius = Math.max(0, radius - borderWidth / 2);
+      const leftX = borderWidth / 2;
+      const rightX = safeWidth - borderWidth / 2;
+      const topY = borderWidth / 2;
+      const bottomY = safeHeight - borderWidth / 2;
+      const minSegmentLength = 0.15;
+      const segmentOverlap = Math.max(0.35, borderWidth * 0.35);
+
+      const addSvgElmt = (tagName, attrs = {}) => {
+        const elmt = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+        Object.entries(attrs).forEach(([name, value]) => {
+          elmt.setAttribute(name, String(value));
+        });
+        overlay.appendChild(elmt);
+        return elmt;
+      };
+
+      const commonStrokeAttrs = (color) => ({
+        fill: "none",
+        stroke: color,
+        "stroke-width": borderWidth,
+        "stroke-linecap": "butt",
+        "stroke-linejoin": "round",
+      });
+
+      const addLine = (x1, y1, x2, y2, color) => {
+        if (
+          Math.abs(x2 - x1) < minSegmentLength &&
+          Math.abs(y2 - y1) < minSegmentLength
+        ) {
+          return;
+        }
+        addSvgElmt("line", {
+          x1: snapCssValue(x1),
+          y1: snapCssValue(y1),
+          x2: snapCssValue(x2),
+          y2: snapCssValue(y2),
+          ...commonStrokeAttrs(color),
+        });
+      };
+
+      const addPath = (d, color) => {
+        addSvgElmt("path", {
+          d,
+          ...commonStrokeAttrs(color),
+        });
+      };
+
+      const signContainerRect = signContainerElmt.getBoundingClientRect();
+      const containerScaleX = signContainerRect.width
+        ? (signContainerElmt.offsetWidth || signContainerRect.width) / signContainerRect.width
+        : 1;
+      const containerScaleY = signContainerRect.height
+        ? (signContainerElmt.offsetHeight || signContainerRect.height) / signContainerRect.height
+        : containerScaleX;
+      const overlayLeft = (signRect.left - signContainerRect.left) * containerScaleX;
+      const overlayTop = (signRect.top - signContainerRect.top) * containerScaleY;
+
+      overlay.setAttribute("viewBox", `0 0 ${safeWidth} ${safeHeight}`);
+      overlay.setAttribute("width", safeWidth);
+      overlay.setAttribute("height", safeHeight);
+      overlay.style.left = `${snapCssValue(overlayLeft)}px`;
+      overlay.style.top = `${snapCssValue(overlayTop)}px`;
+      overlay.style.width = `${safeWidth}px`;
+      overlay.style.height = `${safeHeight}px`;
+
+      for (const { rect, borderColor } of rowInfos) {
+        const rowLeft = clampRectValue(rect.left, 0, safeWidth);
+        const rowRight = clampRectValue(rect.left + rect.width, 0, safeWidth);
+        const rowTop = clampRectValue(rect.top, 0, safeHeight);
+        const rowBottom = clampRectValue(rect.top + rect.height, 0, safeHeight);
+        const reachesLeft = rowLeft <= edgeSnapTolerance;
+        const reachesRight = rowRight >= safeWidth - edgeSnapTolerance;
+        const reachesTop = rowTop <= edgeSnapTolerance;
+        const reachesBottom = rowBottom >= safeHeight - edgeSnapTolerance;
+
+        if (reachesTop) {
+          const x1 = reachesLeft ? radius : rowLeft;
+          const x2 = reachesRight ? safeWidth - radius : rowRight;
+          addLine(x1, topY, x2, topY, borderColor);
+        }
+
+        if (reachesBottom) {
+          const x1 = reachesLeft ? radius : rowLeft;
+          const x2 = reachesRight ? safeWidth - radius : rowRight;
+          addLine(x1, bottomY, x2, bottomY, borderColor);
+        }
+
+        if (reachesLeft) {
+          const y1 = reachesTop ? radius : Math.max(topY, rowTop - segmentOverlap);
+          const y2 = reachesBottom ? safeHeight - radius : Math.min(bottomY, rowBottom + segmentOverlap);
+          addLine(leftX, y1, leftX, y2, borderColor);
+        }
+
+        if (reachesRight) {
+          const y1 = reachesTop ? radius : Math.max(topY, rowTop - segmentOverlap);
+          const y2 = reachesBottom ? safeHeight - radius : Math.min(bottomY, rowBottom + segmentOverlap);
+          addLine(rightX, y1, rightX, y2, borderColor);
+        }
+
+        if (strokeRadius > 0 && reachesTop && reachesLeft) {
+          addPath(
+            `M ${leftX} ${radius} A ${strokeRadius} ${strokeRadius} 0 0 1 ${radius} ${topY}`,
+            borderColor
+          );
+        }
+
+        if (strokeRadius > 0 && reachesTop && reachesRight) {
+          addPath(
+            `M ${safeWidth - radius} ${topY} A ${strokeRadius} ${strokeRadius} 0 0 1 ${rightX} ${radius}`,
+            borderColor
+          );
+        }
+
+        if (strokeRadius > 0 && reachesBottom && reachesRight) {
+          addPath(
+            `M ${rightX} ${safeHeight - radius} A ${strokeRadius} ${strokeRadius} 0 0 1 ${safeWidth - radius} ${bottomY}`,
+            borderColor
+          );
+        }
+
+        if (strokeRadius > 0 && reachesBottom && reachesLeft) {
+          addPath(
+            `M ${radius} ${bottomY} A ${strokeRadius} ${strokeRadius} 0 0 1 ${leftX} ${safeHeight - radius}`,
+            borderColor
+          );
+        }
+      }
+
+      signElmt.classList.add("hasDynamicSignBorderOverlay");
+      signContainerElmt.classList.add("hasDynamicSignBorderOverlay");
+    };
+
+    const layerImages = [];
+    const layerPositions = [];
+    const layerSizes = [];
+    const layerOrigins = [];
+    const layerClips = [];
+    const layerRepeats = [];
+
+    const addLayer = (layer, clip = "padding-box") => {
+      layerImages.push(layer.image);
+      layerPositions.push(layer.position);
+      layerSizes.push(layer.size);
+      layerOrigins.push("border-box");
+      layerClips.push(clip);
+      layerRepeats.push("no-repeat");
+    };
+
+    contentLayers.forEach((layer) => addLayer(layer, "padding-box"));
+
+    addLayer(
+      {
+        image: `linear-gradient(${fillColor}, ${fillColor})`,
+        position: "0 0",
+        size: "100% 100%",
+      },
+      "padding-box"
     );
 
-    signElmt.style.borderColor = "transparent";
-    signElmt.style.backgroundImage = `${contentGradient}, ${borderGradient}`;
-    signElmt.style.backgroundOrigin = "border-box, border-box";
-    signElmt.style.backgroundClip = "padding-box, border-box";
-    signElmt.style.backgroundRepeat = "no-repeat, no-repeat";
-    signElmt.style.backgroundPosition = "0 0, 0 0";
-    signElmt.style.backgroundSize = "100% 100%, 100% 100%";
+    syncDynamicCornerPatches();
+    renderDynamicBorderOverlay();
+
+    signElmt.style.borderColor = defaultBorderColor;
+    signElmt.style.backgroundColor = fillColor;
+    signElmt.style.backgroundImage = layerImages.join(", ");
+    signElmt.style.backgroundOrigin = layerOrigins.join(", ");
+    signElmt.style.backgroundClip = layerClips.join(", ");
+    signElmt.style.backgroundRepeat = layerRepeats.join(", ");
+    signElmt.style.backgroundPosition = layerPositions.join(", ");
+    signElmt.style.backgroundSize = layerSizes.join(", ");
+  };
+
+  const refreshDynamicPanelBorders = (rootElmt) => {
+    if (!rootElmt) {
+      return;
+    }
+
+    const signs = rootElmt.classList?.contains("sign")
+      ? [rootElmt]
+      : Array.from(rootElmt.querySelectorAll(".sign"));
+
+    for (const signElmt of signs) {
+      applyPanelBorderGradient(signElmt);
+    }
   };
 
   const schedulePanelBorderGradientUpdate = (panelContainerElmt) => {
@@ -2041,17 +2605,54 @@ const app = (function () {
       return;
     }
 
+    let pending = false;
     const update = () => {
-      const signs = panelContainerElmt.querySelectorAll(".sign");
-      for (const signElmt of signs) {
-        applyPanelBorderGradient(signElmt);
+      pending = false;
+      refreshDynamicPanelBorders(panelContainerElmt);
+    };
+
+    const runAfterLayout = () => {
+      if (pending) {
+        return;
+      }
+      pending = true;
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(update);
+        });
+      } else {
+        update();
       }
     };
 
+    runAfterLayout();
+
     if (typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(update);
-    } else {
-      update();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(runAfterLayout);
+        });
+      });
+    }
+
+    panelContainerElmt.querySelectorAll("img").forEach((img) => {
+      if (!img.complete) {
+        img.addEventListener("load", runAfterLayout, { once: true });
+      }
+    });
+
+    if (typeof ResizeObserver === "function") {
+      const resizeTargets = [
+        ...panelContainerElmt.querySelectorAll(
+          ".sign, .blockElementRow.fullBleed, .blockElementRow[data-full-bleed-background-color], .blockElementRow[data-full-bleed-border-color]"
+        ),
+      ];
+
+      if (resizeTargets.length) {
+        const observer = new ResizeObserver(runAfterLayout);
+        resizeTargets.forEach((target) => observer.observe(target));
+        window.setTimeout(() => observer.disconnect(), 1200);
+      }
     }
   };
     
@@ -2250,8 +2851,14 @@ const app = (function () {
         return;
       }
 
-      delete panel.sign.globalTopBlockElements;
-      delete panel.sign.globalBottomBlockElements;
+      panel.sign.globalTopBlockElements = new Control({
+        rows: [],
+        blockProperties: [],
+      });
+      panel.sign.globalBottomBlockElements = new Control({
+        rows: [],
+        blockProperties: [],
+      });
       delete panel.sign.blockElements;
     };
 
@@ -2282,8 +2889,28 @@ const app = (function () {
       advisoryMessage = false,
       actionMessage = false,
     } = {}) => {
+      const previousPanels = Array.isArray(post.panels)
+        ? post.panels.slice()
+        : [];
       post.newPanel();
-      const newPanel = post.panels.pop();
+
+      let newPanelIndex = -1;
+
+      if (Array.isArray(post.panels)) {
+        newPanelIndex = post.panels.findIndex(
+          (panel) => !previousPanels.includes(panel)
+        );
+
+        if (newPanelIndex < 0 && post.panels.length > previousPanels.length) {
+          newPanelIndex = post.panels.length - 1;
+        }
+      }
+
+      const newPanel = newPanelIndex >= 0 ? post.panels[newPanelIndex] : null;
+
+      if (newPanelIndex >= 0) {
+        post.panels.splice(newPanelIndex, 1);
+      }
 
       if (!newPanel) {
         return null;
@@ -3267,20 +3894,69 @@ const app = (function () {
         formHandler.ensureSubpanelMenuOpen();
       }
 
-        const flashInfo = {
-          panelIndex: selectedPanelIndex,
-          subPanelIndex: currentlySelectedSubPanelIndex,
-          exitTabIndex,
-          targetType:
-            menu === "exitTabs"
+        const flashTargetKind = flashTarget?.matches?.("[data-sign-row][data-sign-block]")
+          ? "block"
+          : flashTarget?.classList?.contains("blockElementRow")
+            ? "row"
+            : menu === "exitTabs"
               ? "exitTab"
               : menu === "guideArrows"
                 ? "guideArrows"
-                : "subpanel",
+                : "subpanel";
+
+        const resolveFlashTargetAfterRedraw = () => {
+          const panelElmt = document.getElementById("panel" + selectedPanelIndex);
+
+          if (!panelElmt) {
+            return null;
+          }
+
+          if (flashTargetKind === "exitTab") {
+            return panelElmt.querySelector(
+              `[data-exit-tab-index="${currentlySelectedExitTabIndex}"]`
+            ) || panelElmt.querySelector(".exitTabContainer.tabVisible");
+          }
+
+          if (flashTargetKind === "guideArrows") {
+            return panelElmt.querySelector(".guideArrows, .aplArrows");
+          }
+
+          if (currentlySelectedSubPanelIndex === GLOBAL_TOP_SUBPANEL_INDEX) {
+            return panelElmt.querySelector(".globalTop");
+          }
+
+          if (currentlySelectedSubPanelIndex === GLOBAL_BOTTOM_SUBPANEL_INDEX) {
+            return panelElmt.querySelector(".globalBottom");
+          }
+
+          const blockMaster = panelElmt.querySelector(
+            `.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`
+          );
+
+          if (flashTargetKind === "block") {
+            return blockMaster?.querySelector(
+              `[data-sign-row="${currentlySelectedRowIndex}"][data-sign-block="${currentlySelectedBlockIndex}"]`
+            ) || null;
+          }
+
+          if (flashTargetKind === "row") {
+            return blockMaster?.querySelector(
+              `.blockElementRow[data-sign-row="${currentlySelectedRowIndex}"]`
+            ) || null;
+          }
+
+          return panelElmt.querySelector(
+            `[data-subpanel-index="${currentlySelectedSubPanelIndex}"]`
+          );
         };
 
         redraw();
-        flashSelectedSubPanel({ waitForPostTransform: true });
+
+        if (flashTarget) {
+          flashElementAfterPostTransform(resolveFlashTargetAfterRedraw);
+        } else {
+          flashSelectedSubPanel({ waitForPostTransform: true });
+        }
     };
 
     const getElementVisualScale = (element) => {
@@ -4468,15 +5144,22 @@ const app = (function () {
       redraw();
     };
 
-    const newControlElem = (selectedElem) => {
+    const newControlElem = (selectedElem, evt = null) => {
       return runWithUndo(() => {
         const blockElems = getCurrentSubPanel().blockElements;
+        const insertBeforeSelected = !!(evt && evt.shiftKey);
+        const insertIndex = insertBeforeSelected
+          ? currentlySelectedBlockIndex
+          : currentlySelectedBlockIndex + 1;
+
         blockElems.addElement(
           Control.prototype.blockToClassElems[selectedElem],
           {},
           currentlySelectedRowIndex,
-          ++currentlySelectedBlockIndex
+          insertIndex
         );
+
+        currentlySelectedBlockIndex = insertIndex;
 
         applyStoredShieldDefaultsToCurrentBlock();
 
@@ -7497,7 +8180,7 @@ const app = (function () {
       sourceElement,
       sourceRect: sourceElement.getBoundingClientRect(),
       bounds: getElementAndDescendantBounds(sourceElement, {
-        includeSelf: !isPanelExportSourceElement(sourceElement),
+        includeSelf: true,
       }),
     }));
 
@@ -7546,6 +8229,100 @@ const app = (function () {
     wrapper.style.boxSizing = "border-box";
 
     let compactLeft = padding;
+
+    const parseCssPixelValue = (value) => {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const getExactCssSizeForBorderBox = (rect, computedStyle, axis) => {
+      const borderBoxSize = normalizeMeasurement(
+        axis === "height" ? rect.height : rect.width
+      );
+
+      if (String(computedStyle.boxSizing || "content-box") === "border-box") {
+        return Math.max(0, borderBoxSize) + "px";
+      }
+
+      const horizontalAdjustment =
+        parseCssPixelValue(computedStyle.paddingLeft) +
+        parseCssPixelValue(computedStyle.paddingRight) +
+        parseCssPixelValue(computedStyle.borderLeftWidth) +
+        parseCssPixelValue(computedStyle.borderRightWidth);
+      const verticalAdjustment =
+        parseCssPixelValue(computedStyle.paddingTop) +
+        parseCssPixelValue(computedStyle.paddingBottom) +
+        parseCssPixelValue(computedStyle.borderTopWidth) +
+        parseCssPixelValue(computedStyle.borderBottomWidth);
+
+      const adjustment = axis === "height" ? verticalAdjustment : horizontalAdjustment;
+      return Math.max(0, borderBoxSize - adjustment) + "px";
+    };
+
+    const freezeStaticCloneLayoutMetrics = (sourceRoot, cloneRoot) => {
+      if (!sourceRoot || !cloneRoot) {
+        return;
+      }
+
+      const layoutSelectors = [
+        ".panel",
+        ".panelStack",
+        ".exitTabContainer",
+        ".exitTabHolder",
+        ".exitTab",
+        ".signContainer",
+        ".sign",
+        ".signHolder",
+        ".globalTop",
+        ".globalBottom",
+        ".subPanelDisplay",
+        ".signContentContainer",
+        ".blockElementMaster",
+        ".guideArrows",
+        ".aplArrows",
+      ].join(", ");
+
+      const sourceNodes = [sourceRoot, ...sourceRoot.querySelectorAll("*")];
+      const cloneNodes = [cloneRoot, ...cloneRoot.querySelectorAll("*")];
+
+      sourceNodes.forEach((sourceNode, nodeIndex) => {
+        const cloneNode = cloneNodes[nodeIndex];
+
+        if (!cloneNode || !sourceNode.matches || !sourceNode.matches(layoutSelectors)) {
+          return;
+        }
+
+        const rect = sourceNode.getBoundingClientRect();
+
+        if (!rect.width || !rect.height) {
+          return;
+        }
+
+        const computedStyle = window.getComputedStyle(sourceNode);
+        const widthPx = getExactCssSizeForBorderBox(rect, computedStyle, "width");
+        const heightPx = getExactCssSizeForBorderBox(rect, computedStyle, "height");
+
+        cloneNode.style.boxSizing = computedStyle.boxSizing || "content-box";
+        cloneNode.style.width = widthPx;
+        cloneNode.style.minWidth = widthPx;
+        cloneNode.style.maxWidth = widthPx;
+
+        if (
+          sourceNode.classList.contains("sign") ||
+          sourceNode.classList.contains("signContainer") ||
+          sourceNode.classList.contains("exitTabContainer") ||
+          sourceNode.classList.contains("exitTabHolder") ||
+          sourceNode.classList.contains("exitTab") ||
+          sourceNode.classList.contains("globalTop") ||
+          sourceNode.classList.contains("globalBottom") ||
+          sourceNode.classList.contains("guideArrows") ||
+          sourceNode.classList.contains("aplArrows")
+        ) {
+          cloneNode.style.height = heightPx;
+          cloneNode.style.minHeight = heightPx;
+        }
+      });
+    };
 
     sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
@@ -7600,6 +8377,20 @@ const app = (function () {
       });
 
       const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
+      const isSinglePanelClone =
+        sourceElement.classList && sourceElement.classList.contains("panel");
+      const cloneWidthPx = getExactCssSizeForBorderBox(
+        sourceRect,
+        sourceStyle,
+        "width"
+      );
+      const cloneHeightPx = getExactCssSizeForBorderBox(
+        sourceRect,
+        sourceStyle,
+        "height"
+      );
+
+      freezeStaticCloneLayoutMetrics(sourceElement, clone);
 
       clone.classList.add("exportStaticCaptureClone");
       clone.style.position = "absolute";
@@ -7610,16 +8401,23 @@ const app = (function () {
       clone.style.paddingRight = sourceStyle.paddingRight;
       clone.style.paddingBottom = sourceStyle.paddingBottom;
       clone.style.paddingLeft = sourceStyle.paddingLeft;
-      clone.style.width = isPanelLikeClone
-        ? sourceStyle.width
-        : normalizeMeasurement(sourceRect.width) + "px";
-      clone.style.height = isPanelLikeClone
-        ? sourceStyle.height
-        : normalizeMeasurement(sourceRect.height) + "px";
-      clone.style.minWidth = isPanelLikeClone ? sourceStyle.minWidth : "0";
-      clone.style.maxWidth = isPanelLikeClone ? sourceStyle.maxWidth : "none";
-      clone.style.minHeight = isPanelLikeClone ? sourceStyle.minHeight : "0";
-      clone.style.maxHeight = isPanelLikeClone ? sourceStyle.maxHeight : "none";
+
+      if (isSinglePanelClone) {
+        clone.style.width = cloneWidthPx;
+        clone.style.height = cloneHeightPx;
+        clone.style.minWidth = cloneWidthPx;
+        clone.style.maxWidth = cloneWidthPx;
+        clone.style.minHeight = cloneHeightPx;
+        clone.style.maxHeight = "none";
+      } else {
+        clone.style.width = cloneWidthPx;
+        clone.style.height = cloneHeightPx;
+        clone.style.minWidth = isPanelLikeClone ? cloneWidthPx : "0";
+        clone.style.maxWidth = isPanelLikeClone ? cloneWidthPx : "none";
+        clone.style.minHeight = isPanelLikeClone ? cloneHeightPx : "0";
+        clone.style.maxHeight = isPanelLikeClone ? "none" : "none";
+      }
+
       clone.style.margin = "0";
       clone.style.overflow = "visible";
       clone.style.transform = "none";
@@ -7675,7 +8473,25 @@ const app = (function () {
 
       await waitForNextFrame();
       await waitForImagesInElement(exportElement);
+      if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === "function") {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise((resolve) => setTimeout(resolve, 700)),
+        ]);
+      }
       await waitForNextFrame();
+
+      // Static export clones do not keep the exact same layout metrics as the
+      // live editor node, so any full-bleed border/background measurements
+      // cloned from the live sign can be stale. Recalculate them on the actual
+      // export node immediately before measuring and rasterizing, then run one
+      // more pass after layout settles so action/advisory text changes cannot
+      // leave the sign-level background or border overlay one frame behind.
+      refreshDynamicPanelBorders(exportElement);
+      await waitForNextFrame();
+      refreshDynamicPanelBorders(exportElement);
+      await waitForNextFrame();
+
       const box = getExportBox(exportElement);
       return await callback(box, exportElement);
     } finally {
@@ -7974,11 +8790,13 @@ const app = (function () {
       : availablePolePositions[0];
     const polePositionClass = `polePosition${polePosition}`;
     const availableColors = Post.prototype.colors;
-    const normalizedPostColor = availableColors.includes(post.color)
+    const postUsesCustomColor = isCustomCssColorValue(post.color);
+    const normalizedPostColor = !postUsesCustomColor && availableColors.includes(post.color)
       ? post.color
       : availableColors[0];
-    const colorClass = normalizedPostColor ? ` postColor${normalizedPostColor}` : "";
+    const colorClass = normalizedPostColor && !postUsesCustomColor ? ` postColor${normalizedPostColor}` : "";
     postContainerElmt.className = `${polePositionClass}${colorClass}`;
+    applyCustomPostColorVars(postContainerElmt, postUsesCustomColor ? post.color : "");
     const normalizedThickness = post.normalizeThickness(post.thickness);
     post.thickness = normalizedThickness;
     postContainerElmt.style.setProperty(
@@ -8061,7 +8879,11 @@ const app = (function () {
           }
 
           const panelElmt = document.createElement("div");
-          panelElmt.className = `panel ${panel.color.toLowerCase()} ${panel.corner.toLowerCase()}`;
+          const panelColorClass = isCustomCssColorValue(panel.color)
+            ? "customPanelColor"
+            : getColorClassToken(panel.color, "green");
+          panelElmt.className = `panel ${panelColorClass} ${panel.corner.toLowerCase()}`;
+          applyCustomPanelColorVars(panelElmt, panel.color);
           if (isPanelConfiguredHidden(index)) {
             panelElmt.classList.add("panelHiddenFromPost");
           }
@@ -8507,12 +9329,15 @@ const app = (function () {
                        
                        exitTabCont.appendChild(exitTabHolderElmt);
                        
-                       if (exitTab.color != "Panel Color" && exitTab.color != undefined) {
-                           exitTabElmt.className += ` ${exitTab.color.toLowerCase()}`;
-                           exitTabHolderElmt.className += ` ${exitTab.color.toLowerCase()}`;
-                       } else {
-                           exitTabElmt.className += ` ${panel.color.toLowerCase()}`;
-                           exitTabHolderElmt.className += ` ${panel.color.toLowerCase()}`;
+                       const resolvedExitTabColor =
+                         exitTab.color != "Panel Color" && exitTab.color != undefined
+                           ? exitTab.color
+                           : panel.color;
+
+                       if (!applyCustomExitTabColorVars(exitTabElmt, exitTabHolderElmt, resolvedExitTabColor)) {
+                           const exitTabColorClass = getColorClassToken(resolvedExitTabColor, panel.color || "green");
+                           exitTabElmt.classList.add(...exitTabColorClass.split(/\s+/).filter(Boolean));
+                           exitTabHolderElmt.classList.add(...exitTabColorClass.split(/\s+/).filter(Boolean));
                        }
                        
                        if (exitTab.verticalArrangement && exitTab.variant == "Default") {
@@ -9122,9 +9947,9 @@ const app = (function () {
                   p.appendChild(document.createTextNode(txtFrac[0]));
                   
                   if (
-                      (i.actionMessage.includes("½") ||
-                       i.actionMessage.includes("¼") ||
-                       i.actionMessage.includes("¾")) &&
+                      (i.actionMessage.includes("Ã‚Â½") ||
+                       i.actionMessage.includes("Ã‚Â¼") ||
+                       i.actionMessage.includes("Ã‚Â¾")) &&
                       txtArr.length > 2
                       ) {
                           const spanElmt = document.createElement("span");
@@ -9198,7 +10023,7 @@ const app = (function () {
                   if (line.includes("</>")) {
                       line = line.split("</>");
                       p.appendChild(
-                                    document.createTextNode(line[0] + "⠀⠀⠀⠀⠀⠀⠀⠀⠀" + line[1])
+                                    document.createTextNode(line[0] + "Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬" + line[1])
                                     );
                   } else if (line.includes("<-->")) {
                   } else {
@@ -11065,7 +11890,7 @@ const app = (function () {
                                                            applyExitOnlyTextSizing(textExitOnlySpanElmt);
                                                        } else {
                                                            textExitOnlySpanElmt.appendChild(
-                                                                                            document.createTextNode("⠀⠀⠀⠀ ⠀⠀⠀⠀")
+                                                                                            document.createTextNode("Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬ Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬")
                                                                                             );
                                                            textExitOnlySpanElmt.className = "exitOnlyText";
                                                            applyExitOnlyTextSizing(textExitOnlySpanElmt);
@@ -11112,7 +11937,7 @@ const app = (function () {
                                                                                          );
                                                               } else {
                                                                   fullTextEl.appendChild(
-                                                                                         document.createTextNode("⠀⠀⠀⠀ ⠀⠀⠀⠀")
+                                                                                         document.createTextNode("Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬ Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬")
                                                                                          );
                                                               }
                                                               fullTextEl.className = "exitOnlyText exitOnlyTextFull";
@@ -11168,7 +11993,7 @@ const app = (function () {
                                                        applyExitOnlyTextSizing(leftTextEl);
                                                    } else {
                                                        leftTextEl.appendChild(
-                                                                              document.createTextNode("⠀⠀⠀⠀")
+                                                                              document.createTextNode("Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬")
                                                                               );
                                                        leftTextEl.className = "exitOnlyText";
                                                        applyExitOnlyTextSizing(leftTextEl);
@@ -11205,7 +12030,7 @@ const app = (function () {
                                                        applyExitOnlyTextSizing(rightTextEl);
                                                    } else {
                                                        rightTextEl.appendChild(
-                                                                               document.createTextNode("⠀⠀⠀⠀")
+                                                                               document.createTextNode("Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬Ã¢ â‚¬")
                                                                                );
                                                        rightTextEl.className = "exitOnlyText";
                                                        applyExitOnlyTextSizing(rightTextEl);

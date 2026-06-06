@@ -371,7 +371,7 @@ label span.toolTip,
   right: calc(100% + 0.5rem);
   left: auto;
   padding: 0.5rem;
-  gap: 0.5rem;
+  gap: 0.38rem;
   z-index: 2;
   box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.2);
   border-radius: 0;
@@ -1134,8 +1134,8 @@ input[type="button"]:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 0.65rem;
+  height: 0.65rem;
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 900;
@@ -4437,8 +4437,8 @@ dialog:not([open]) {
   background-color: rgb(var(--inputColor));
   color: var(--textColor);
   font-family: "Inter", sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 500;
   box-sizing: border-box;
 }
 
@@ -6096,7 +6096,7 @@ label[for="sdShield_bannerFontSize"] {
   border: 0;
   background: transparent;
   color: white;
-  padding: 0.45rem 0.75rem;
+  padding: 0.28rem 0.55rem;
   text-align: left;
   cursor: pointer;
   font-weight: 700;
@@ -8796,4 +8796,669 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 .sMControlRowPasteButton .material-symbols-outlined {
   font-size: 1.15rem;
   line-height: 1;
+}
+
+
+/* Flashing beacon editor layout */
+.sMModal.subPanelConfig [data-property="sdBeacon"].sdBeaconEditorLayout:not(.hidden) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.sdBeaconControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: max-content;
+  max-width: 100%;
+}
+
+.sdBeaconControlRow label {
+  width: max-content;
+  min-width: 0;
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sdBeaconControlRow input[type="checkbox"] {
+  margin: 0 0.35rem 0 0;
+}
+
+#sdBeacon_size {
+  width: 10rem;
+  min-width: 0;
+  flex: 0 0 10rem;
+}
+
+#sdBeacon_color,
+#sdBeacon_alignment {
+  width: 8.5rem;
+  min-width: 0;
+  flex: 0 0 8.5rem;
+}
+
+/* Light-mode inactive subpanel tabs */
+:root[data-theme="light"] #subPanelList .subPanelTabGroup:not(.active) {
+  background: rgba(0, 0, 0, 0.08);
+  color: #111;
+}
+
+:root[data-theme="light"] #subPanelList .subPanelTabGroup:not(.active):hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="light"] #subPanelList .subPanelTabGroup.emptyGlobalTab,
+:root[data-theme="light"] #subPanelList .subPanelTabGroup.lockedSubPanelTab {
+  background: rgba(0, 0, 0, 0.07);
+  color: #111;
+}
+
+:root[data-theme="light"] #subPanelList .subPanelTabGroup.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+}
+
+/* Custom color dropdowns */
+.colorPicker {
+  position: relative;
+  display: inline-block;
+  min-width: 7.5rem;
+  max-width: 100%;
+  vertical-align: middle;
+  z-index: 60;
+}
+
+.colorPicker.hidden {
+  display: none !important;
+}
+
+.colorPickerNativeSelect {
+  display: none !important;
+}
+
+.colorPicker.open,
+.colorPicker.addingCustomColor {
+  z-index: 9999998 !important;
+}
+
+.colorPickerTrigger {
+  position: relative !important;
+  z-index: 2;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.45rem !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  min-height: 1.45rem !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.colorPickerTriggerLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colorPickerSwatch {
+  flex: 0 0 auto;
+  width: 0.68rem;
+  height: 0.68rem;
+  display: inline-block;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: transparent;
+}
+
+:root[data-theme="light"] .colorPickerSwatch {
+  border-color: rgba(0, 0, 0, 0.75);
+}
+
+.colorPickerTriggerSwatch {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.colorPickerSwatch.specialColorSwatch {
+  background:
+    linear-gradient(45deg, transparent 0 42%, currentColor 42% 58%, transparent 58% 100%),
+    linear-gradient(45deg, rgba(255,255,255,0.3) 25%, transparent 25% 75%, rgba(255,255,255,0.3) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.3) 25%, transparent 25% 75%, rgba(255,255,255,0.3) 75%);
+  background-position: 0 0, 0 0, 0.25rem 0.25rem;
+  background-size: auto, 0.5rem 0.5rem, 0.5rem 0.5rem;
+}
+
+.colorPickerTriggerCaret {
+  flex: 0 0 auto;
+  font-family: "Material Symbols Outlined";
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.colorPicker.open .colorPickerTriggerCaret {
+  transform: rotate(180deg);
+}
+
+.colorPickerMenu,
+.colorPickerCustomPanel {
+  position: absolute !important;
+  top: calc(100% + 0.15rem) !important;
+  z-index: 1000000 !important;
+  min-width: 100% !important;
+  width: max-content !important;
+  max-width: min(28rem, 86vw) !important;
+  max-height: min(34rem, 75vh) !important;
+  overflow-y: auto !important;
+  background: #101010;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.32);
+  font-family: "Inter", sans-serif;
+  opacity: 0;
+  transform: translateY(-0.25rem) scaleY(0.96);
+  transform-origin: top center;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  box-sizing: border-box;
+}
+
+.colorPickerMenu {
+  left: 0 !important;
+}
+
+.colorPickerCustomPanel {
+  left: calc(100% + 0.45rem) !important;
+  padding: 0.75rem;
+  min-width: 15.5rem !important;
+  overflow: visible !important;
+}
+
+.colorPicker.open .colorPickerMenu,
+.colorPicker.addingCustomColor .colorPickerCustomPanel {
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  pointer-events: auto !important;
+}
+
+.colorPickerItem {
+  width: 100%;
+  min-width: 16rem;
+  border: 0;
+  background: transparent;
+  color: white;
+  padding: 0.45rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.1;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.colorPickerItem:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.colorPickerItem.selected {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.colorPickerDeleteCustom {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.1rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: currentColor;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.colorPickerDeleteCustom:hover {
+  background: rgba(255, 80, 80, 0.7);
+}
+
+.colorPickerAddIcon {
+  flex: 0 0 auto;
+  width: 0.85rem;
+  height: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.colorPickerMenuDivider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.colorPickerCustomField,
+.colorPickerRgbaField {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  margin: 0 0 0.55rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.colorPickerCustomField input,
+.colorPickerRgbaField input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #050505;
+  color: white;
+  font-family: "Inter", sans-serif;
+  font-size: 0.9rem;
+}
+
+.colorPickerWheel {
+  width: 100% !important;
+  height: 2.1rem;
+  padding: 0.1rem !important;
+}
+
+.colorPickerRgbaBlock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.colorPickerRgbaField {
+  margin-bottom: 0;
+}
+
+.colorPickerCustomActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.colorPickerCustomActions button {
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+  padding: 0.35rem 0.7rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.colorPickerCustomActions button:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+:root[data-theme="light"] .colorPickerMenu,
+:root[data-theme="light"] .colorPickerCustomPanel {
+  background: #f4f4f4;
+  color: #050505;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="light"] .colorPickerItem {
+  color: #050505;
+}
+
+:root[data-theme="light"] .colorPickerItem:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="light"] .colorPickerItem.selected {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="light"] .colorPickerMenuDivider {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+:root[data-theme="light"] .colorPickerDeleteCustom {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="light"] .colorPickerDeleteCustom:hover {
+  background: rgba(255, 80, 80, 0.75);
+}
+
+:root[data-theme="light"] .colorPickerCustomField input,
+:root[data-theme="light"] .colorPickerRgbaField input {
+  background: #ffffff;
+  color: #050505;
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="light"] .colorPickerCustomActions button {
+  background: rgba(0, 0, 0, 0.08);
+  color: #050505;
+}
+
+:root[data-theme="light"] .colorPickerCustomActions button:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.sMModal.subPanelConfig .colorPickerMenu,
+.sMModal.subPanelConfig .colorPickerCustomPanel,
+.sMModal.exitTabConfig .colorPickerMenu,
+.sMModal.exitTabConfig .colorPickerCustomPanel,
+.sMModal.guideArrowConfig .colorPickerMenu,
+.sMModal.guideArrowConfig .colorPickerCustomPanel {
+  z-index: 9999999 !important;
+}
+
+.sMModal.subPanelConfig,
+.sMModal.subPanelConfig .sMModalContent,
+.sMModal.exitTabConfig,
+.sMModal.exitTabConfig .sMModalContent,
+.sMModal.guideArrowConfig,
+.sMModal.guideArrowConfig .sMModalContent {
+  overflow: visible !important;
+}
+
+
+
+/* Color picker refinements */
+.colorPickerMenu,
+.colorPickerCustomPanel {
+  position: fixed !important;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  max-width: min(22rem, calc(100vw - 1rem)) !important;
+  z-index: 10000000 !important;
+  overscroll-behavior: contain;
+}
+
+.colorPickerMenu.hidden,
+.colorPickerCustomPanel.hidden {
+  display: none !important;
+}
+
+.colorPicker.open .colorPickerMenu,
+.colorPicker.addingCustomColor .colorPickerCustomPanel,
+.colorPickerMenu.open,
+.colorPickerCustomPanel.open {
+  pointer-events: auto !important;
+}
+
+.colorPickerTrigger {
+  min-width: 100% !important;
+}
+
+.colorPickerTriggerSwatch {
+  display: inline-block !important;
+}
+
+.colorPickerTriggerCaret {
+  margin-left: auto;
+}
+
+.colorPickerItemLabel,
+.colorPickerTriggerLabel {
+  font-family: "Inter", sans-serif;
+}
+
+.colorPickerMenu::-webkit-scrollbar,
+.colorPickerCustomPanel::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.colorPickerMenu::-webkit-scrollbar-thumb,
+.colorPickerCustomPanel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+:root[data-theme="light"] .colorPickerMenu::-webkit-scrollbar-thumb,
+:root[data-theme="light"] .colorPickerCustomPanel::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+#customShieldMaker .customShieldMakerSliderField {
+  display: grid;
+  grid-template-columns: 1fr 4.4rem;
+  column-gap: 0.35rem;
+  align-items: center;
+}
+
+#customShieldMaker .customShieldMakerSliderField > span {
+  grid-column: 1 / -1;
+}
+
+#customShieldMaker .customShieldMakerSliderField input[type="range"] {
+  width: 100%;
+  min-width: 10.5rem;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+#customShieldMaker .customShieldMakerSliderField input.customShieldMakerSliderValue {
+  width: 4.4rem;
+  min-width: 4.4rem;
+  margin: 0;
+}
+
+#customShieldMaker .customShieldMakerControls {
+  width: 16rem;
+}
+
+#customShieldMaker .customShieldMakerBody {
+  grid-template-columns: 24rem 16rem;
+}
+
+label .colorPicker,
+label .colorPickerTrigger {
+  pointer-events: auto;
+}
+
+.colorPickerMenu.open,
+.colorPickerCustomPanel.open {
+  opacity: 1 !important;
+  transform: translateY(0) scaleY(1) !important;
+  pointer-events: auto !important;
+}
+
+
+.colorPickerMenu {
+  min-width: 7.5rem !important;
+}
+
+.colorPickerItem {
+  min-height: 1.75rem;
+}
+
+/* Color picker open, sizing, and swatch follow-up fixes */
+.colorPicker {
+  overflow: visible !important;
+}
+
+.colorPickerTrigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.45rem !important;
+  padding-right: 0.35rem !important;
+  min-width: 9.25rem !important;
+  max-width: none !important;
+}
+
+.colorPickerTriggerLabel {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.colorPickerTriggerCaret {
+  margin-left: auto !important;
+  flex: 0 0 auto !important;
+  text-align: right !important;
+}
+
+.colorPickerMenu,
+.colorPickerCustomPanel {
+  position: fixed !important;
+  right: auto;
+  bottom: auto;
+  max-width: min(22rem, calc(100vw - 1rem)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+.colorPickerMenu.open,
+.colorPickerCustomPanel.open {
+  display: block !important;
+  opacity: 1 !important;
+  transform: translateY(0) scaleY(1) !important;
+  pointer-events: auto !important;
+}
+
+.colorPickerSwatch:not(.specialColorSwatch) {
+  background-clip: padding-box;
+}
+
+/* Color picker menu scale: match the visual size of the other custom dropdowns. */
+.colorPickerMenu,
+.colorPickerCustomPanel {
+  font-size: calc(1rem * var(--sm-app-zoom, 0.6667)) !important;
+  max-width: min(calc(22rem * var(--sm-app-zoom, 0.6667)), calc(100vw - 1rem)) !important;
+}
+
+.colorPickerItem {
+  min-width: 14em !important;
+  padding: 0.45em 0.75em !important;
+  gap: 0.5em !important;
+  font-size: 1em !important;
+  line-height: 1.1 !important;
+}
+
+.colorPickerSwatch {
+  width: 0.85em !important;
+  height: 0.85em !important;
+}
+
+.colorPickerDeleteCustom {
+  width: 1em !important;
+  height: 1em !important;
+  font-size: 0.9em !important;
+}
+
+.colorPickerAddIcon {
+  width: 0.85em !important;
+  height: 0.85em !important;
+  font-size: 1em !important;
+}
+
+.colorPickerCustomField,
+.colorPickerRgbaField {
+  font-size: 0.8em !important;
+  margin-bottom: 0.55em !important;
+}
+
+.colorPickerCustomField input,
+.colorPickerRgbaField input {
+  font-size: 0.9em !important;
+  padding: 0.35em 0.45em !important;
+}
+
+.colorPickerRgbaBlock {
+  gap: 0.35em !important;
+  margin-bottom: 0.55em !important;
+}
+
+.colorPickerCustomActions {
+  gap: 0.45em !important;
+  margin-top: 0.7em !important;
+}
+
+.colorPickerCustomActions button {
+  padding: 0.35em 0.7em !important;
+}
+
+/* Color picker compact menu sizing: fixed-position color menus are outside the scaled modal,
+   so keep their open menu dimensions visually in line with the other custom dropdowns. */
+.colorPickerMenu {
+  min-width: 18rem !important;
+  width: 18rem !important;
+  max-width: min(20rem, calc(100vw - 1rem)) !important;
+}
+
+.colorPickerItem {
+  min-height: 0 !important;
+  height: auto !important;
+  min-width: 18rem !important;
+  padding: 0.26rem 0.6rem !important;
+  gap: 0.42rem !important;
+  font-size: 0.72rem !important;
+  line-height: 1.02 !important;
+}
+
+.colorPickerMenuDivider {
+  margin: 0.12rem 0 !important;
+}
+
+.colorPickerSwatch {
+  width: 0.68rem !important;
+  height: 0.68rem !important;
+}
+
+.colorPickerTriggerSwatch {
+  width: 0.75rem !important;
+  height: 0.75rem !important;
+}
+
+.colorPickerDeleteCustom {
+  width: 0.72rem !important;
+  height: 0.72rem !important;
+  font-size: 0.68rem !important;
+}
+
+.colorPickerAddIcon {
+  width: 0.68rem !important;
+  height: 0.68rem !important;
+  font-size: 0.8rem !important;
+}
+
+
+/* Final color picker width tuning. */
+.colorPickerMenu {
+  min-width: 22rem !important;
+  width: 22rem !important;
+  max-width: min(24rem, calc(100vw - 1rem)) !important;
+}
+
+.colorPickerItem {
+  min-width: 22rem !important;
 }

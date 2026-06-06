@@ -932,7 +932,11 @@ const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
   routeEl.style.fontWeight = String(cssWeight);
   routeEl.style.fontVariationSettings = `"wght" ${requestedWeight}`;
   routeEl.style.letterSpacing = "0";
-  routeEl.style.gap = getCustomShieldMakerDisplayEm(style.letterSpacing, 0);
+  routeEl.style.gap = "0";
+  const characterSpacing = getCustomShieldMakerDisplayEm(style.letterSpacing, 0);
+  Array.from(routeEl.children || []).forEach((characterSpan, index) => {
+    characterSpan.style.marginLeft = index === 0 ? "0" : characterSpacing;
+  });
   routeEl.style.position = "absolute";
   routeEl.style.display = "inline-flex";
   routeEl.style.alignItems = "center";
@@ -3831,8 +3835,26 @@ class BeaconElement {
     const availableColors = Array.isArray(BeaconElement.prototype.colors)
       ? BeaconElement.prototype.colors
       : [];
-    this.color = availableColors.includes(color)
-      ? color
+    const normalizedColor = String(color || "").trim();
+    const isCustomCssColor = (() => {
+      if (!normalizedColor) {
+        return false;
+      }
+
+      if (typeof lib !== "undefined" && lib.colors && lib.colors[normalizedColor]) {
+        return true;
+      }
+
+      if (typeof CSS !== "undefined" && typeof CSS.supports === "function") {
+        return CSS.supports("color", normalizedColor);
+      }
+
+      return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalizedColor) ||
+        /^rgba?\(/i.test(normalizedColor);
+    })();
+
+    this.color = availableColors.includes(normalizedColor) || isCustomCssColor
+      ? normalizedColor
       : availableColors[0] || "Yellow";
     this.backplate =
       backplate === true ||

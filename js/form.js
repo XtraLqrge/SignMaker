@@ -64,6 +64,7 @@ const formHandler = (function () {
         shieldPickerScrollTop: "signMaker.shieldPickerScrollTop",
         customShieldMakerShields: "signMaker.customShieldMaker.shields.v1",
         customIconPickerIcons: "signMaker.customIconPicker.icons.v1",
+        customColors: "signMaker.customColors.v1",
         templateLoadWarning: "signMaker.templateLoadWarning",
     };
     let localStorageAvailable;
@@ -2756,9 +2757,49 @@ const getPostThicknessFallback = () =>
     const topOffsetInput = document.getElementById("customShieldMakerRouteTopOffset");
     const horizontalOffsetInput = document.getElementById("customShieldMakerRouteHorizontalOffset");
     const alignmentSelect = document.getElementById("customShieldMakerRouteAlignment");
+    const fontSizeValueInput = document.getElementById("customShieldMakerRouteFontSizeVal");
+    const letterSpacingValueInput = document.getElementById("customShieldMakerRouteLetterSpacingVal");
+    const topOffsetValueInput = document.getElementById("customShieldMakerRouteTopOffsetVal");
+    const horizontalOffsetValueInput = document.getElementById("customShieldMakerRouteHorizontalOffsetVal");
     const nameInput = document.getElementById("customShieldMakerNameInput");
     const saveButton = document.getElementById("customShieldMakerSaveButton");
     const deleteButton = document.getElementById("customShieldMakerDeleteButton");
+    const bindCustomShieldMakerRangePair = (slider, valueInput) => {
+      if (!slider || !valueInput || slider.dataset.customShieldRangePairBound === "true") {
+        return;
+      }
+
+      slider.dataset.customShieldRangePairBound = "true";
+
+      const syncValueFromSlider = () => {
+        valueInput.value = slider.value;
+      };
+
+      const syncSliderFromValue = () => {
+        const parsed = parseFloat(valueInput.value);
+        if (!Number.isFinite(parsed)) {
+          return;
+        }
+        const min = parseFloat(slider.min);
+        const max = parseFloat(slider.max);
+        slider.value = Math.max(
+          Number.isFinite(min) ? min : parsed,
+          Math.min(Number.isFinite(max) ? max : parsed, parsed)
+        );
+        slider.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+
+      slider.addEventListener("input", syncValueFromSlider);
+      valueInput.addEventListener("input", syncSliderFromValue);
+      valueInput.addEventListener("change", syncSliderFromValue);
+      syncValueFromSlider();
+    };
+
+    bindCustomShieldMakerRangePair(fontSizeInput, fontSizeValueInput);
+    bindCustomShieldMakerRangePair(letterSpacingInput, letterSpacingValueInput);
+    bindCustomShieldMakerRangePair(topOffsetInput, topOffsetValueInput);
+    bindCustomShieldMakerRangePair(horizontalOffsetInput, horizontalOffsetValueInput);
+
     const variantButtons = Array.from(
       document.querySelectorAll("#customShieldMakerVariantButtons [data-variant-digit]")
     );
@@ -2809,31 +2850,21 @@ const getPostThicknessFallback = () =>
       return normalizeNumericInput(input?.value, fallback);
     };
 
-    const CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE = "__custom";
-
     const normalizeCustomShieldMakerHexColor = (value, fallback = "#000000") => {
       const rawValue = String(value || "").trim();
       return /^#[0-9a-f]{6}$/i.test(rawValue) ? rawValue : fallback;
     };
 
-    const isCustomShieldMakerHexColor = (value) =>
-      /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
-
     const getCustomShieldMakerRouteColorValue = () => {
-      if (colorSelect?.value === CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE) {
-        return normalizeCustomShieldMakerHexColor(customColorInput?.value);
-      }
-
       return colorSelect?.value || "Black";
     };
 
     const updateCustomShieldMakerCustomColorControls = () => {
-      const isCustomColor = colorSelect?.value === CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE;
-      const nextColor = normalizeCustomShieldMakerHexColor(customColorInput?.value);
-
       if (customColorControls) {
-        customColorControls.hidden = !isCustomColor;
+        customColorControls.hidden = true;
       }
+
+      const nextColor = normalizeCustomShieldMakerHexColor(customColorInput?.value);
 
       if (customColorInput) {
         customColorInput.value = nextColor;
@@ -2846,21 +2877,10 @@ const getPostThicknessFallback = () =>
 
     const setCustomShieldMakerRouteColorControlValue = (value) => {
       const normalizedValue = String(value || "Black").trim() || "Black";
-
-      if (isCustomShieldMakerHexColor(normalizedValue)) {
-        setSelectValueSafely(
-          colorSelect,
-          CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE,
-          CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE
-        );
-
-        if (customColorInput) {
-          customColorInput.value = normalizeCustomShieldMakerHexColor(normalizedValue);
-        }
-      } else {
-        setSelectValueSafely(colorSelect, normalizedValue, "Black");
+      setSelectValueSafely(colorSelect, normalizedValue, "Black");
+      if (typeof syncAllColorPickers === "function") {
+        syncAllColorPickers();
       }
-
       updateCustomShieldMakerCustomColorControls();
     };
 
@@ -3326,8 +3346,6 @@ const getPostThicknessFallback = () =>
           appendSelectOption(colorSelect, colorName, colorName === "Black");
         }
 
-        appendSelectOption(colorSelect, CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE);
-        colorSelect.querySelector(`option[value="${CUSTOM_SHIELD_MAKER_CUSTOM_COLOR_VALUE}"]`).textContent = "Custom";
       }
 
       updateCustomShieldMakerCustomColorControls();
@@ -3596,6 +3614,16 @@ const getPostThicknessFallback = () =>
       if (!routeNumber) {
         return;
       }
+
+      const syncPairedValueInput = (slider, valueInput) => {
+        if (slider && valueInput && document.activeElement !== valueInput) {
+          valueInput.value = slider.value;
+        }
+      };
+      syncPairedValueInput(fontSizeInput, fontSizeValueInput);
+      syncPairedValueInput(letterSpacingInput, letterSpacingValueInput);
+      syncPairedValueInput(topOffsetInput, topOffsetValueInput);
+      syncPairedValueInput(horizontalOffsetInput, horizontalOffsetValueInput);
 
       const routeText = String(routeInput?.value || "").trim();
       updateCustomShieldMakerCustomColorControls();
@@ -4352,6 +4380,7 @@ const getPostThicknessFallback = () =>
     loadCustomIconRecords();
     await initUI();
     initCustomShieldMaker();
+    initializeColorPickers();
     bindConfigPositionControls();
     bindKeybindModeButtons(document);
     applyConfigBarPosition(getStoredConfigBarPosition());
@@ -4880,6 +4909,1037 @@ const getPostThicknessFallback = () =>
       syncAllFontPickers();
     };
     
+
+
+    const CUSTOM_COLOR_VALUE_PREFIX = "__customColor:";
+    let customColorRecords = [];
+    let customColorRecordsLoaded = false;
+
+    const normalizeCustomColorHexInput = (value = "") =>
+      String(value || "")
+        .replace(/#/g, "")
+        .replace(/[^0-9a-f]/gi, "")
+        .slice(0, 6)
+        .toUpperCase();
+
+    const clampCustomColorChannel = (value, fallback = 0) => {
+      const parsed = parseInt(value, 10);
+      if (!Number.isFinite(parsed)) {
+        return fallback;
+      }
+      return Math.max(0, Math.min(255, parsed));
+    };
+
+    const clampCustomColorAlpha = (value, fallback = 1) => {
+      const parsed = parseFloat(value);
+      if (!Number.isFinite(parsed)) {
+        return fallback;
+      }
+      return Math.max(0, Math.min(1, parsed));
+    };
+
+    const getCustomColorId = () =>
+      "ccolor_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random().toString(36).slice(2, 8);
+
+    const rgbToCustomColorHex = (r, g, b) =>
+      "#" +
+      [r, g, b]
+        .map((channel) => clampCustomColorChannel(channel).toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+
+    const normalizeCustomCssColorValue = (value = "") => {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return "";
+      }
+
+      const hexValue = normalizeCustomColorHexInput(rawValue);
+      if (/^#?[0-9a-f]{6}$/i.test(rawValue) && hexValue.length === 6) {
+        return "#" + hexValue;
+      }
+
+      const rgbaMatch = rawValue.match(
+        /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i
+      );
+
+      if (rgbaMatch) {
+        const r = clampCustomColorChannel(rgbaMatch[1]);
+        const g = clampCustomColorChannel(rgbaMatch[2]);
+        const b = clampCustomColorChannel(rgbaMatch[3]);
+        const a = clampCustomColorAlpha(rgbaMatch[4] ?? 1);
+
+        if (a >= 1) {
+          return rgbToCustomColorHex(r, g, b);
+        }
+
+        return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
+      }
+
+      return rawValue;
+    };
+
+    const customColorValuesMatch = (a, b) =>
+      normalizeCustomCssColorValue(a).toLowerCase() ===
+      normalizeCustomCssColorValue(b).toLowerCase();
+
+    const getCustomColorDisplayName = (record = {}) => {
+      const value = normalizeCustomCssColorValue(record.value);
+      const name = String(record.name || "").trim();
+      return name || value || "Custom Color";
+    };
+
+    const normalizeCustomColorRecord = (record = {}, index = 0) => {
+      const value = normalizeCustomCssColorValue(record.value || record.color || "");
+      if (!value) {
+        return null;
+      }
+
+      return {
+        id: String(record.id || getCustomColorId()),
+        value,
+        name: String(record.name || "").trim() || value,
+        createdAt: record.createdAt || new Date().toISOString(),
+        order: Number.isFinite(Number(record.order)) ? Number(record.order) : index,
+      };
+    };
+
+    const loadCustomColorRecords = () => {
+      if (customColorRecordsLoaded) {
+        return customColorRecords;
+      }
+
+      customColorRecordsLoaded = true;
+
+      try {
+        const parsed = JSON.parse(getStoredItem(STORAGE_KEYS.customColors) || "[]");
+        const normalizedRecords = Array.isArray(parsed)
+          ? parsed.map(normalizeCustomColorRecord).filter(Boolean)
+          : [];
+        const seenValues = new Set();
+
+        customColorRecords = normalizedRecords.filter((record) => {
+          const key = normalizeCustomCssColorValue(record.value).toLowerCase();
+          if (!key || seenValues.has(key)) {
+            return false;
+          }
+          seenValues.add(key);
+          return true;
+        });
+      } catch (error) {
+        customColorRecords = [];
+      }
+
+      return customColorRecords;
+    };
+
+    const saveCustomColorRecords = () => {
+      loadCustomColorRecords();
+      setStoredItem(STORAGE_KEYS.customColors, JSON.stringify(customColorRecords));
+    };
+
+    const isStoredCustomColorValue = (value) => {
+      const normalizedValue = normalizeCustomCssColorValue(value);
+      if (!normalizedValue) {
+        return false;
+      }
+      return loadCustomColorRecords().some((record) =>
+        customColorValuesMatch(record.value, normalizedValue)
+      );
+    };
+
+    const upsertCustomColorRecord = ({ value, name = "" } = {}) => {
+      const normalizedValue = normalizeCustomCssColorValue(value);
+      if (!normalizedValue) {
+        return null;
+      }
+
+      loadCustomColorRecords();
+
+      const existingRecord = customColorRecords.find((record) =>
+        customColorValuesMatch(record.value, normalizedValue)
+      );
+
+      if (existingRecord) {
+        return existingRecord;
+      }
+
+      const record = {
+        id: getCustomColorId(),
+        value: normalizedValue,
+        name: String(name || "").trim() || normalizedValue,
+        createdAt: new Date().toISOString(),
+        order: customColorRecords.length,
+      };
+
+      customColorRecords.push(record);
+      saveCustomColorRecords();
+      return record;
+    };
+
+    const deleteCustomColorRecord = (id) => {
+      loadCustomColorRecords();
+      const initialLength = customColorRecords.length;
+      customColorRecords = customColorRecords.filter(
+        (record) => String(record.id) !== String(id)
+      );
+
+      if (customColorRecords.length !== initialLength) {
+        saveCustomColorRecords();
+        syncAllColorPickers();
+      }
+    };
+
+    const getColorSelectLabelText = (selectEl) => {
+      if (!selectEl) {
+        return "";
+      }
+
+      if (selectEl.id) {
+        const escapedId =
+          typeof CSS !== "undefined" && typeof CSS.escape === "function"
+            ? CSS.escape(selectEl.id)
+            : String(selectEl.id).replace(/\"/g, '\\"');
+        const label = document.querySelector(`label[for="${escapedId}"]`);
+        if (label) {
+          return label.textContent || "";
+        }
+      }
+
+      return "";
+    };
+
+    const isColorSelectElement = (selectEl) => {
+      if (!selectEl || selectEl.tagName !== "SELECT") {
+        return false;
+      }
+
+      if (selectEl.classList.contains("fontPickerNativeSelect")) {
+        return false;
+      }
+
+      const descriptor = [
+        selectEl.id,
+        selectEl.name,
+        selectEl.className,
+        selectEl.dataset.tooltip,
+        selectEl.getAttribute("data-toolTip"),
+        getColorSelectLabelText(selectEl),
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      if (/font|alignment|position|variant|width|corner|measurement|orientation|shield|icon|logo|arrow|lane|spacing|padding/i.test(descriptor)) {
+        if (!/color|bg|background|border/i.test(descriptor)) {
+          return false;
+        }
+      }
+
+      return /color|bg|background|border/i.test(descriptor);
+    };
+
+    const getResolvedColorValue = (value) => {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return "";
+      }
+
+      if (typeof lib !== "undefined" && lib.colors && lib.colors[rawValue]) {
+        return lib.colors[rawValue];
+      }
+
+      return rawValue;
+    };
+
+    const isValidCssColorValue = (value) => {
+      const resolvedValue = getResolvedColorValue(value);
+      if (!resolvedValue) {
+        return false;
+      }
+
+      if (typeof CSS !== "undefined" && CSS.supports) {
+        return CSS.supports("color", resolvedValue);
+      }
+
+      const probe = document.createElement("span");
+      probe.style.color = "";
+      probe.style.color = resolvedValue;
+      return !!probe.style.color;
+    };
+
+    const getCurrentPanelColorForPicker = () => {
+      try {
+        const panel = exposed && typeof exposed.getCurrentPanel === "function"
+          ? exposed.getCurrentPanel()
+          : null;
+        return panel?.color || "Green";
+      } catch (error) {
+        return "Green";
+      }
+    };
+
+    const getSiblingColorSelectValue = (selectEl, matchers = []) => {
+      if (!selectEl || !Array.isArray(matchers) || matchers.length === 0) {
+        return "";
+      }
+
+      const candidates = [];
+      const id = String(selectEl.id || "");
+
+      matchers.forEach(([fromText, toText]) => {
+        if (id && id.includes(fromText)) {
+          candidates.push("#" + id.replace(fromText, toText));
+        }
+      });
+
+      const searchRoots = [
+        selectEl.closest("[data-property]"),
+        selectEl.closest(".controlInputRow"),
+        selectEl.closest(".settingsDefaultsColumn"),
+        selectEl.closest(".sMModalContent"),
+        document,
+      ].filter(Boolean);
+
+      for (const selector of candidates) {
+        for (const root of searchRoots) {
+          try {
+            const found = root.querySelector(selector);
+            if (found && found !== selectEl) {
+              return found.value || "";
+            }
+          } catch (error) {
+            continue;
+          }
+        }
+      }
+
+      return "";
+    };
+
+    const getEffectiveSpecialColorValue = (value, selectEl = null, depth = 0) => {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || depth > 4) {
+        return "";
+      }
+
+      const lowerValue = rawValue.toLowerCase();
+
+      if (lowerValue === "inherit" || lowerValue === "panel color" || lowerValue === "default") {
+        return getCurrentPanelColorForPicker();
+      }
+
+      if (lowerValue === "match bg" || lowerValue === "match background") {
+        const siblingBackgroundValue = getSiblingColorSelectValue(selectEl, [
+          ["borderColor", "backgroundColor"],
+          ["border", "background"],
+          ["Border", "Background"],
+          ["Border", "BG"],
+        ]);
+
+        return siblingBackgroundValue
+          ? getEffectiveSpecialColorValue(siblingBackgroundValue, selectEl, depth + 1)
+          : getCurrentPanelColorForPicker();
+      }
+
+      return rawValue;
+    };
+
+    const getColorOptionIconValue = (value, selectEl = null) => {
+      const effectiveValue = getEffectiveSpecialColorValue(value, selectEl);
+      const resolvedValue = getResolvedColorValue(effectiveValue);
+      return isValidCssColorValue(resolvedValue) ? resolvedValue : "";
+    };
+
+    const ensureNativeColorSelectOption = (selectEl, value, label = "") => {
+      if (!selectEl || value === undefined || value === null || value === "") {
+        return null;
+      }
+
+      const normalizedValue = normalizeCustomCssColorValue(value);
+      let existingOption = Array.from(selectEl.options || []).find(
+        (option) => option.value === normalizedValue || option.value === value
+      );
+
+      if (existingOption) {
+        return existingOption;
+      }
+
+      existingOption = document.createElement("option");
+      existingOption.value = normalizedValue;
+      existingOption.textContent = label || normalizedValue;
+      existingOption.dataset.customColor = "true";
+      selectEl.appendChild(existingOption);
+      return existingOption;
+    };
+
+    const ensureCustomColorOptionsForSelect = (selectEl) => {
+      if (!isColorSelectElement(selectEl)) {
+        return;
+      }
+
+      if (!selectEl.options.length && typeof lib !== "undefined" && lib.colors) {
+        Object.keys(lib.colors).forEach((colorName) => {
+          const option = document.createElement("option");
+          option.value = colorName;
+          option.textContent = colorName;
+          selectEl.appendChild(option);
+        });
+      }
+
+      loadCustomColorRecords().forEach((record) => {
+        ensureNativeColorSelectOption(selectEl, record.value, getCustomColorDisplayName(record));
+      });
+    };
+
+    const ensureCustomColorOptionsForAllColorSelects = (root = document) => {
+      root.querySelectorAll("select").forEach((selectEl) => {
+        ensureCustomColorOptionsForSelect(selectEl);
+      });
+    };
+
+    const closeAllColorPickers = (except = null) => {
+      document.querySelectorAll(".colorPicker.open, .colorPicker.addingCustomColor").forEach((picker) => {
+        if (picker !== except) {
+          picker.classList.remove("open", "addingCustomColor");
+        }
+      });
+    };
+
+    const syncAllColorPickers = () => {
+      ensureCustomColorOptionsForAllColorSelects(document);
+      document.querySelectorAll("select.colorPickerNativeSelect").forEach((selectEl) => {
+        if (selectEl._colorPickerApi) {
+          selectEl._colorPickerApi.sync();
+        }
+      });
+    };
+
+    const createColorPicker = (selectEl) => {
+      if (!isColorSelectElement(selectEl)) {
+        return null;
+      }
+
+      ensureCustomColorOptionsForSelect(selectEl);
+
+      if (selectEl._colorPickerApi) {
+        selectEl._colorPickerApi.sync();
+        return selectEl._colorPickerApi;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "colorPicker";
+      wrapper.dataset.sourceSelectId = selectEl.id || "";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "colorPickerTrigger";
+
+      const triggerIcon = document.createElement("span");
+      triggerIcon.className = "colorPickerSwatch colorPickerTriggerSwatch";
+
+      const triggerLabel = document.createElement("span");
+      triggerLabel.className = "colorPickerTriggerLabel";
+
+      const triggerCaret = document.createElement("span");
+      triggerCaret.className = "colorPickerTriggerCaret";
+      triggerCaret.textContent = "arrow_drop_down";
+
+      const menu = document.createElement("div");
+      menu.className = "colorPickerMenu";
+      menu.dataset.ownerColorPicker = wrapper.dataset.sourceSelectId || "";
+
+      const customPanel = document.createElement("div");
+      customPanel.className = "colorPickerCustomPanel";
+      customPanel.dataset.ownerColorPicker = wrapper.dataset.sourceSelectId || "";
+
+      const nameLabel = document.createElement("label");
+      nameLabel.className = "colorPickerCustomField colorPickerNameField";
+      nameLabel.textContent = "Name";
+
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.className = "colorPickerCustomName";
+      nameInput.placeholder = "Custom color";
+      nameLabel.appendChild(nameInput);
+
+      const wheelLabel = document.createElement("label");
+      wheelLabel.className = "colorPickerCustomField colorPickerWheelField";
+      wheelLabel.textContent = "Color";
+
+      const wheelInput = document.createElement("input");
+      wheelInput.type = "color";
+      wheelInput.className = "colorPickerWheel";
+      wheelInput.value = "#000000";
+      wheelLabel.appendChild(wheelInput);
+
+      const rgbaBlock = document.createElement("div");
+      rgbaBlock.className = "colorPickerRgbaBlock";
+
+      const rgbaInputs = [
+        ["R", "255", "0", "255", "1"],
+        ["G", "0", "0", "255", "1"],
+        ["B", "0", "0", "255", "1"],
+        ["A", "1", "0", "1", "0.01"],
+      ].map(([labelText, value, min, max, step]) => {
+        const label = document.createElement("label");
+        label.className = "colorPickerRgbaField";
+        label.textContent = labelText;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.value = value;
+        input.min = min;
+        input.max = max;
+        input.step = step;
+        label.appendChild(input);
+        rgbaBlock.appendChild(label);
+        return input;
+      });
+
+      const hexLabel = document.createElement("label");
+      hexLabel.className = "colorPickerCustomField colorPickerHexField";
+      hexLabel.textContent = "Hex";
+
+      const hexInput = document.createElement("input");
+      hexInput.type = "text";
+      hexInput.className = "colorPickerHexInput";
+      hexInput.value = "#000000";
+      hexInput.maxLength = 7;
+      hexInput.spellcheck = false;
+      hexInput.autocomplete = "off";
+      hexLabel.appendChild(hexInput);
+
+      const customActions = document.createElement("div");
+      customActions.className = "colorPickerCustomActions";
+
+      const addButton = document.createElement("button");
+      addButton.type = "button";
+      addButton.className = "colorPickerAddButton";
+      addButton.textContent = "Add";
+
+      const cancelButton = document.createElement("button");
+      cancelButton.type = "button";
+      cancelButton.className = "colorPickerCancelButton";
+      cancelButton.textContent = "Cancel";
+
+      customActions.appendChild(addButton);
+      customActions.appendChild(cancelButton);
+
+      customPanel.appendChild(nameLabel);
+      customPanel.appendChild(wheelLabel);
+      customPanel.appendChild(rgbaBlock);
+      customPanel.appendChild(hexLabel);
+      customPanel.appendChild(customActions);
+
+      trigger.appendChild(triggerIcon);
+      trigger.appendChild(triggerLabel);
+      trigger.appendChild(triggerCaret);
+      wrapper.appendChild(trigger);
+
+      selectEl.insertAdjacentElement("afterend", wrapper);
+      document.body.appendChild(menu);
+      document.body.appendChild(customPanel);
+      selectEl.classList.add("colorPickerNativeSelect");
+
+      const getOptionLabel = (option) =>
+        option?.textContent?.trim() || option?.label || option?.value || "Color";
+
+      const copySelectVisualsToTrigger = () => {
+        const wasNativeHidden = selectEl.classList.contains("colorPickerNativeSelect");
+        if (wasNativeHidden) {
+          selectEl.classList.remove("colorPickerNativeSelect");
+        }
+
+        const computed = window.getComputedStyle(selectEl);
+        const rect = selectEl.getBoundingClientRect();
+
+        if (wasNativeHidden) {
+          selectEl.classList.add("colorPickerNativeSelect");
+        }
+
+        const styleProperties = [
+          "width",
+          "minWidth",
+          "height",
+          "padding",
+          "paddingTop",
+          "paddingRight",
+          "paddingBottom",
+          "paddingLeft",
+          "border",
+          "borderRadius",
+          "background",
+          "backgroundColor",
+          "color",
+          "fontFamily",
+          "fontSize",
+          "fontWeight",
+          "letterSpacing",
+          "lineHeight",
+          "textTransform",
+          "boxSizing",
+        ];
+
+        styleProperties.forEach((propertyName) => {
+          const cssName = propertyName.replace(/[A-Z]/g, (match) => "-" + match.toLowerCase());
+          const propertyValue = computed.getPropertyValue(cssName);
+          if (propertyValue) {
+            trigger.style.setProperty(cssName, propertyValue);
+          }
+        });
+
+        trigger.style.backgroundImage = "none";
+        trigger.style.backgroundRepeat = "no-repeat";
+        trigger.style.backgroundPosition = "initial";
+        trigger.style.paddingRight = "0.35rem";
+        trigger.style.display = "inline-flex";
+        trigger.style.alignItems = "center";
+        trigger.style.justifyContent = "space-between";
+
+        wrapper.style.margin = computed.margin;
+        wrapper.style.verticalAlign = computed.verticalAlign || "middle";
+
+        const rootFontSize = parseFloat(
+          window.getComputedStyle(document.documentElement).fontSize
+        ) || 16;
+        const currentOptionForWidth = Array.from(selectEl.options || []).find(
+          (option) => option.value === selectEl.value
+        );
+        const currentLabelForWidth = getOptionLabel(currentOptionForWidth) || selectEl.value || "Color";
+        const labelBasedMinimumWidth = Math.min(
+          rootFontSize * 14,
+          Math.max(rootFontSize * 9.25, currentLabelForWidth.length * rootFontSize * 0.62 + rootFontSize * 4.25)
+        );
+        const minimumColorPickerWidth = labelBasedMinimumWidth;
+        const minimumColorPickerHeight = rootFontSize * 1.45;
+        const computedWidth = parseFloat(computed.width);
+        const computedMinWidth = parseFloat(computed.minWidth);
+        const computedHeight = parseFloat(computed.height);
+        const targetWidth = Math.max(
+          Number.isFinite(rect.width) ? rect.width : 0,
+          Number.isFinite(computedWidth) ? computedWidth : 0,
+          Number.isFinite(computedMinWidth) ? computedMinWidth : 0,
+          minimumColorPickerWidth
+        );
+        const targetHeight = Math.max(
+          Number.isFinite(rect.height) ? rect.height : 0,
+          Number.isFinite(computedHeight) ? computedHeight : 0,
+          minimumColorPickerHeight
+        );
+
+        wrapper.style.width = targetWidth + "px";
+        wrapper.style.minWidth = minimumColorPickerWidth + "px";
+        wrapper.style.maxWidth = "none";
+        trigger.style.width = "100%";
+        trigger.style.minWidth = "100%";
+        trigger.style.height = targetHeight + "px";
+        trigger.style.minHeight = minimumColorPickerHeight + "px";
+      };
+
+      const updateCustomPanelInputsFromHex = (hexValue) => {
+        const sanitizedHex = normalizeCustomColorHexInput(hexValue).padEnd(6, "0").slice(0, 6);
+        const fullHex = "#" + sanitizedHex.toUpperCase();
+        hexInput.value = fullHex;
+        wheelInput.value = fullHex;
+        rgbaInputs[0].value = parseInt(sanitizedHex.slice(0, 2), 16) || 0;
+        rgbaInputs[1].value = parseInt(sanitizedHex.slice(2, 4), 16) || 0;
+        rgbaInputs[2].value = parseInt(sanitizedHex.slice(4, 6), 16) || 0;
+      };
+
+      const getCurrentCustomPanelColorValue = () => {
+        const r = clampCustomColorChannel(rgbaInputs[0].value);
+        const g = clampCustomColorChannel(rgbaInputs[1].value);
+        const b = clampCustomColorChannel(rgbaInputs[2].value);
+        const a = clampCustomColorAlpha(rgbaInputs[3].value);
+
+        if (a >= 1) {
+          return rgbToCustomColorHex(r, g, b);
+        }
+
+        return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
+      };
+
+      const syncHexFromRgba = () => {
+        const r = clampCustomColorChannel(rgbaInputs[0].value);
+        const g = clampCustomColorChannel(rgbaInputs[1].value);
+        const b = clampCustomColorChannel(rgbaInputs[2].value);
+        const hexValue = rgbToCustomColorHex(r, g, b);
+        hexInput.value = hexValue;
+        wheelInput.value = hexValue;
+        rgbaInputs[0].value = r;
+        rgbaInputs[1].value = g;
+        rgbaInputs[2].value = b;
+        rgbaInputs[3].value = clampCustomColorAlpha(rgbaInputs[3].value);
+      };
+
+      const showCustomPanel = () => {
+        const currentColor = getColorOptionIconValue(selectEl.value, selectEl) || "#000000";
+        updateCustomPanelInputsFromHex(currentColor);
+        rgbaInputs[3].value = "1";
+        nameInput.value = "";
+        wrapper.classList.add("addingCustomColor");
+        positionFloatingColorPickerPanels();
+        nameInput.focus();
+      };
+
+      const makeColorIcon = (value) => {
+        const icon = document.createElement("span");
+        icon.className = "colorPickerSwatch";
+        const resolvedValue = getColorOptionIconValue(value, selectEl);
+        if (resolvedValue) {
+          icon.style.background = resolvedValue;
+        } else {
+          icon.classList.add("specialColorSwatch");
+        }
+        return icon;
+      };
+
+      const setSelectValue = (value, { dispatch = true } = {}) => {
+        ensureNativeColorSelectOption(selectEl, value);
+        selectEl.value = normalizeCustomCssColorValue(value) || value;
+
+        if (dispatch) {
+          selectEl.dispatchEvent(new Event("input", { bubbles: true }));
+          selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+          selectEl.dispatchEvent(new Event("blur"));
+        }
+      };
+
+      const makeColorButton = ({ value, label, customRecord = null }) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "colorPickerItem";
+        item.dataset.colorValue = value;
+
+        if (customRecord) {
+          item.classList.add("customColorPickerItem");
+          item.dataset.customColorId = customRecord.id;
+        }
+
+        if (selectEl.value === value) {
+          item.classList.add("selected");
+        }
+
+        if (customRecord) {
+          const deleteButton = document.createElement("span");
+          deleteButton.className = "colorPickerDeleteCustom";
+          deleteButton.textContent = "×";
+          deleteButton.setAttribute("role", "button");
+          deleteButton.setAttribute("aria-label", "Delete custom color");
+          deleteButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            deleteCustomColorRecord(customRecord.id);
+          });
+          item.appendChild(deleteButton);
+        }
+
+        item.appendChild(makeColorIcon(value));
+
+        const labelSpan = document.createElement("span");
+        labelSpan.className = "colorPickerItemLabel";
+        labelSpan.textContent = label || value;
+        item.appendChild(labelSpan);
+
+        item.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setSelectValue(value);
+          wrapper.classList.remove("open", "addingCustomColor");
+          syncAllColorPickers();
+        });
+
+        return item;
+      };
+
+      const render = () => {
+        ensureCustomColorOptionsForSelect(selectEl);
+        menu.innerHTML = "";
+
+        const customColorButton = document.createElement("button");
+        customColorButton.type = "button";
+        customColorButton.className = "colorPickerItem colorPickerCustomColorButton";
+        customColorButton.innerHTML = `<span class="colorPickerAddIcon">+</span><span class="colorPickerItemLabel">Custom color</span>`;
+        customColorButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          showCustomPanel();
+        });
+        menu.appendChild(customColorButton);
+
+        Array.from(selectEl.options || [])
+          .filter((option) => option.value && option.dataset.customColor !== "true")
+          .forEach((option) => {
+            menu.appendChild(
+              makeColorButton({
+                value: option.value,
+                label: getOptionLabel(option),
+              })
+            );
+          });
+
+        const records = loadCustomColorRecords();
+        if (records.length) {
+          const divider = document.createElement("div");
+          divider.className = "colorPickerMenuDivider";
+          menu.appendChild(divider);
+        }
+
+        records.forEach((record) => {
+          menu.appendChild(
+            makeColorButton({
+              value: record.value,
+              label: getCustomColorDisplayName(record),
+              customRecord: record,
+            })
+          );
+        });
+      };
+
+      const updateTrigger = () => {
+        ensureCustomColorOptionsForSelect(selectEl);
+        const currentValue = selectEl.value || "";
+        const currentOption = Array.from(selectEl.options || []).find(
+          (option) => option.value === currentValue
+        );
+        triggerLabel.textContent = getOptionLabel(currentOption) || currentValue || "Color";
+        const resolvedValue = getColorOptionIconValue(currentValue, selectEl);
+        triggerIcon.style.background = resolvedValue || "";
+        triggerIcon.classList.toggle("specialColorSwatch", !resolvedValue);
+      };
+
+      const syncFloatingColorPickerPanelClasses = () => {
+        const isOpen = wrapper.classList.contains("open");
+        const isAddingCustomColor = wrapper.classList.contains("addingCustomColor");
+        menu.classList.toggle("open", isOpen);
+        customPanel.classList.toggle("open", isAddingCustomColor);
+      };
+
+      const positionFloatingColorPickerPanels = () => {
+        syncFloatingColorPickerPanelClasses();
+        if (!wrapper.classList.contains("open") && !wrapper.classList.contains("addingCustomColor")) {
+          return;
+        }
+
+        const triggerRect = trigger.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        const appZoom = parseFloat(
+          window.getComputedStyle(document.documentElement).getPropertyValue("--sm-app-zoom")
+        ) || 1;
+        const scaledPx = (value) => value * appZoom;
+        const edgePadding = 8;
+        const menuWidth = Math.min(scaledPx(420), Math.max(triggerRect.width, scaledPx(252)));
+        const preferredMenuHeight = Math.min(scaledPx(360), Math.max(scaledPx(160), viewportHeight - edgePadding * 2));
+        const spaceBelow = Math.max(0, viewportHeight - triggerRect.bottom - edgePadding - 3);
+        const spaceAbove = Math.max(0, triggerRect.top - edgePadding - 3);
+        const openUpward = spaceBelow < 160 && spaceAbove > spaceBelow;
+        const availableSpace = Math.max(80, openUpward ? spaceAbove : spaceBelow);
+        const maxPanelHeight = Math.min(preferredMenuHeight, availableSpace);
+        const top = openUpward
+          ? Math.max(edgePadding, triggerRect.top - maxPanelHeight - 3)
+          : Math.min(
+              Math.max(edgePadding, triggerRect.bottom + 3),
+              Math.max(edgePadding, viewportHeight - maxPanelHeight - edgePadding)
+            );
+        const left = Math.min(
+          Math.max(edgePadding, triggerRect.left),
+          Math.max(edgePadding, viewportWidth - menuWidth - edgePadding)
+        );
+
+        menu.style.setProperty("position", "fixed", "important");
+        menu.style.setProperty("left", left + "px", "important");
+        menu.style.setProperty("top", top + "px", "important");
+        menu.style.setProperty("right", "auto", "important");
+        menu.style.setProperty("bottom", "auto", "important");
+        menu.style.setProperty("width", menuWidth + "px", "important");
+        menu.style.setProperty("min-width", Math.max(triggerRect.width, 1) + "px", "important");
+        menu.style.setProperty("max-height", maxPanelHeight + "px", "important");
+        menu.style.setProperty("overflow-y", "auto", "important");
+        menu.style.setProperty("overscroll-behavior", "contain");
+
+        const panelWidth = scaledPx(248);
+        const panelLeftCandidate = left + menuWidth + scaledPx(7);
+        const panelLeft = panelLeftCandidate + panelWidth + edgePadding <= viewportWidth
+          ? panelLeftCandidate
+          : Math.max(edgePadding, left - panelWidth - scaledPx(7));
+
+        customPanel.style.setProperty("position", "fixed", "important");
+        customPanel.style.setProperty("left", panelLeft + "px", "important");
+        customPanel.style.setProperty("top", top + "px", "important");
+        customPanel.style.setProperty("right", "auto", "important");
+        customPanel.style.setProperty("bottom", "auto", "important");
+        customPanel.style.setProperty("width", panelWidth + "px", "important");
+        customPanel.style.setProperty("min-width", panelWidth + "px", "important");
+        customPanel.style.setProperty("max-height", maxPanelHeight + "px", "important");
+        customPanel.style.setProperty("overflow-y", "auto", "important");
+        customPanel.style.setProperty("overscroll-behavior", "contain");
+      };
+
+      const syncHiddenState = () => {
+        const hidden =
+          selectEl.hidden ||
+          selectEl.classList.contains("hidden") ||
+          selectEl.closest("[hidden]");
+        wrapper.classList.toggle("hidden", !!hidden);
+        menu.classList.toggle("hidden", !!hidden);
+        customPanel.classList.toggle("hidden", !!hidden);
+        syncFloatingColorPickerPanelClasses();
+      };
+
+      const sync = () => {
+        copySelectVisualsToTrigger();
+        syncHiddenState();
+        updateTrigger();
+        if (wrapper.classList.contains("open")) {
+          render();
+          positionFloatingColorPickerPanels();
+        }
+      };
+
+      const toggleColorPickerOpen = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const willOpen = !wrapper.classList.contains("open");
+        closeAllColorPickers(wrapper);
+        if (willOpen) {
+          render();
+          wrapper.classList.add("open");
+          requestAnimationFrame(positionFloatingColorPickerPanels);
+        } else {
+          wrapper.classList.remove("open", "addingCustomColor");
+        }
+      };
+
+      let ignoreNextColorPickerClick = false;
+      trigger.addEventListener("pointerdown", (event) => {
+        ignoreNextColorPickerClick = true;
+        toggleColorPickerOpen(event);
+      });
+
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (ignoreNextColorPickerClick) {
+          ignoreNextColorPickerClick = false;
+          return;
+        }
+        toggleColorPickerOpen(event);
+      });
+
+      menu.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+
+      customPanel.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target) && !menu.contains(event.target) && !customPanel.contains(event.target)) {
+          wrapper.classList.remove("open", "addingCustomColor");
+        }
+      });
+
+      window.addEventListener("resize", positionFloatingColorPickerPanels);
+      window.addEventListener("scroll", positionFloatingColorPickerPanels, true);
+
+      const wrapperClassObserver = new MutationObserver(() => {
+        syncFloatingColorPickerPanelClasses();
+        positionFloatingColorPickerPanels();
+      });
+      wrapperClassObserver.observe(wrapper, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      wheelInput.addEventListener("input", () => {
+        updateCustomPanelInputsFromHex(wheelInput.value);
+        rgbaInputs[3].value = "1";
+      });
+
+      hexInput.addEventListener("input", () => {
+        const sanitized = normalizeCustomColorHexInput(hexInput.value);
+        hexInput.value = "#" + sanitized;
+        if (sanitized.length === 6) {
+          updateCustomPanelInputsFromHex(sanitized);
+        }
+      });
+
+      rgbaInputs.forEach((input) => {
+        input.addEventListener("input", syncHexFromRgba);
+      });
+
+      addButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const value = getCurrentCustomPanelColorValue();
+        const record = upsertCustomColorRecord({
+          value,
+          name: nameInput.value,
+        });
+
+        if (!record) {
+          return;
+        }
+
+        document.querySelectorAll("select").forEach((otherSelect) => {
+          if (isColorSelectElement(otherSelect)) {
+            ensureNativeColorSelectOption(
+              otherSelect,
+              record.value,
+              getCustomColorDisplayName(record)
+            );
+          }
+        });
+
+        setSelectValue(record.value);
+        wrapper.classList.remove("addingCustomColor", "open");
+        syncAllColorPickers();
+      });
+
+      cancelButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        wrapper.classList.remove("addingCustomColor");
+      });
+
+      selectEl.addEventListener("change", () => {
+        sync();
+      });
+
+      const observer = new MutationObserver(syncHiddenState);
+      observer.observe(selectEl, {
+        attributes: true,
+        attributeFilter: ["class", "hidden", "style"],
+      });
+
+      const api = {
+        wrapper,
+        trigger,
+        menu,
+        customPanel,
+        sync,
+        render,
+        position: positionFloatingColorPickerPanels,
+      };
+
+      selectEl._colorPickerApi = api;
+      sync();
+      return api;
+    };
+
+    const initializeColorPickers = (root = document) => {
+      ensureCustomColorOptionsForAllColorSelects(root);
+      root.querySelectorAll("select").forEach((selectEl) => {
+        if (isColorSelectElement(selectEl)) {
+          createColorPicker(selectEl);
+        }
+      });
+      syncAllColorPickers();
+    };
 
     const SHIELD_DROPDOWN_PLACEHOLDER_ICON =
       "data:image/svg+xml;utf8," +
@@ -9849,6 +10909,13 @@ const getPostThicknessFallback = () =>
         if (el.type === "checkbox") {
           el.checked = !!storedValue;
         } else if (el.tagName === "SELECT") {
+          if (isColorSelectElement(el)) {
+            ensureCustomColorOptionsForSelect(el);
+            if (storedValue) {
+              ensureNativeColorSelectOption(el, storedValue);
+            }
+          }
+
           const hasMatchingOption = Array.from(el.options).some(
             (option) => option.value === storedValue
           );
@@ -10865,6 +11932,17 @@ const getPostThicknessFallback = () =>
       });
     }
 
+    ["sdBlock_topPadding", "sdBlock_bottomPadding"].forEach((controlId) => {
+      const slider = document.getElementById(controlId);
+      const valueInput = document.getElementById(controlId + "Val");
+      if (slider && valueInput && slider.dataset.blockMarginSliderBound !== "true") {
+        slider.dataset.blockMarginSliderBound = "true";
+        slider.addEventListener("input", () => {
+          valueInput.value = slider.value;
+        });
+      }
+    });
+
     document.querySelectorAll(".smallVal").forEach((valEl) => {
       const onChange = (e) => {
         const id = valEl.id || "";
@@ -10872,7 +11950,12 @@ const getPostThicknessFallback = () =>
           const controlId = id.slice(0, -3);
           const control = document.getElementById(controlId);
           if (control) {
-            if (
+            if (controlId === "sdBlock_topPadding" || controlId === "sdBlock_bottomPadding") {
+              const parsed = parseFloat(valEl.value);
+              const normalized = Number.isFinite(parsed) ? Math.max(-1, Math.min(10, parsed)) : 0;
+              valEl.value = normalized;
+              control.value = Math.max(0, Math.min(3, normalized));
+            } else if (
               control.type === "range" ||
               control.type === "number" ||
               control.tagName === "INPUT" ||
@@ -11554,11 +12637,7 @@ const getPostThicknessFallback = () =>
     // Post
     post.polePosition = form["postPosition"].value;
     const requestedPostColor = form["postColor"] ? form["postColor"].value : null;
-    if (
-      requestedPostColor &&
-      Array.isArray(Post.prototype.colors) &&
-      Post.prototype.colors.includes(requestedPostColor)
-    ) {
+    if (requestedPostColor) {
       post.color = requestedPostColor;
     }
     post.showPost = form["showPost"].checked;
@@ -12119,12 +13198,35 @@ const getPostThicknessFallback = () =>
         : "Center";
     }
 
+    const normalizeBlockMarginInputValue = (value, fallback = 0) => {
+      const parsed = parseFloat(value);
+      if (!Number.isFinite(parsed)) {
+        return fallback;
+      }
+      return Math.max(-1, Math.min(10, parsed));
+    };
+    const topMarginManualEl = document.querySelector("#sdBlock_topPaddingVal");
+    const bottomMarginManualEl = document.querySelector("#sdBlock_bottomPaddingVal");
+    const topMarginValue = normalizeBlockMarginInputValue(
+      topMarginManualEl?.value ?? document.querySelector("#sdBlock_topPadding")?.value,
+      0
+    );
+    const bottomMarginValue = normalizeBlockMarginInputValue(
+      bottomMarginManualEl?.value ?? document.querySelector("#sdBlock_bottomPadding")?.value,
+      0
+    );
+    if (topMarginManualEl) topMarginManualEl.value = topMarginValue;
+    if (bottomMarginManualEl) bottomMarginManualEl.value = bottomMarginValue;
+    const topMarginSliderEl = document.querySelector("#sdBlock_topPadding");
+    const bottomMarginSliderEl = document.querySelector("#sdBlock_bottomPadding");
+    if (topMarginSliderEl) topMarginSliderEl.value = Math.max(0, Math.min(3, topMarginValue));
+    if (bottomMarginSliderEl) bottomMarginSliderEl.value = Math.max(0, Math.min(3, bottomMarginValue));
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
-    ].topPadding = document.querySelector("#sdBlock_topPadding").value;
+    ].topPadding = topMarginValue;
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
-    ].bottomPadding = document.querySelector("#sdBlock_bottomPadding").value;
+    ].bottomPadding = bottomMarginValue;
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].backgroundColor = document.querySelector(
@@ -12323,6 +13425,7 @@ const getPostThicknessFallback = () =>
    */
   const updateForm = function () {
     syncPostReference();
+    ensureCustomColorOptionsForAllColorSelects(document);
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {
         const selectedPanel =
@@ -12887,6 +13990,8 @@ const getPostThicknessFallback = () =>
 
     const postColorSelectElmt = document.getElementById("postColor");
     if (postColorSelectElmt && post.color) {
+      ensureCustomColorOptionsForSelect(postColorSelectElmt);
+      ensureNativeColorSelectOption(postColorSelectElmt, post.color);
       postColorSelectElmt.value = post.color;
     }
 
@@ -14140,6 +15245,8 @@ const getPostThicknessFallback = () =>
 
     // Panel Config
     const panelColorSelectElmt = document.getElementById("panelColor");
+    ensureCustomColorOptionsForSelect(panelColorSelectElmt);
+    ensureNativeColorSelectOption(panelColorSelectElmt, panel.color);
     for (const option of panelColorSelectElmt.options) {
       if (option.value == panel.color) {
         option.selected = true;
@@ -14259,6 +15366,8 @@ const getPostThicknessFallback = () =>
     }
 
     const exitTabColorElmt = document.querySelector("#exitColor");
+    ensureCustomColorOptionsForSelect(exitTabColorElmt);
+    ensureNativeColorSelectOption(exitTabColorElmt, exitTab.color);
     for (const option of exitTabColorElmt.options) {
       if (option.value == exitTab.color) {
         option.selected = true;
@@ -14927,14 +16036,22 @@ const getPostThicknessFallback = () =>
     const selectedBlockProperties =
       currentBlockProperties[exposed.vars.currentlySelectedRowIndex] || new Block();
 
+    const clampBlockMarginSliderValue = (value) => {
+      const parsed = parseFloat(value);
+      if (!Number.isFinite(parsed)) {
+        return 0;
+      }
+      return Math.max(0, Math.min(3, parsed));
+    };
+
     document.querySelector("#sdBlock_topPadding").value =
-      selectedBlockProperties.topPadding;
+      clampBlockMarginSliderValue(selectedBlockProperties.topPadding);
     document
       .querySelector("#sdBlock_topPadding")
       .addEventListener("change", readForm, { once: true });
 
     document.querySelector("#sdBlock_bottomPadding").value =
-      selectedBlockProperties.bottomPadding;
+      clampBlockMarginSliderValue(selectedBlockProperties.bottomPadding);
     document
       .querySelector("#sdBlock_bottomPadding")
       .addEventListener("change", readForm, { once: true });
@@ -15235,6 +16352,7 @@ const getPostThicknessFallback = () =>
       applyEditorInputBehavior(document);
       bindAllFontPreviewSelects(document);
       syncAllFontPickers();
+      syncAllColorPickers();
       applyExitOnlyArrowVisibility();
       syncGlobalBlockControls();
   };
@@ -15562,9 +16680,17 @@ const getPostThicknessFallback = () =>
     }
 
     document.querySelector("#selectedShieldBacks").value = selected.shieldBacks;
-    document.querySelector("#selectedBackColor").value = selected.backColor;
+    const selectedBackColorElmt = document.querySelector("#selectedBackColor");
+    if (selectedBackColorElmt) {
+      ensureCustomColorOptionsForSelect(selectedBackColorElmt);
+      if (selected.backColor) {
+        ensureNativeColorSelectOption(selectedBackColorElmt, selected.backColor);
+      }
+      selectedBackColorElmt.value = selected.backColor;
+    }
     document.querySelector("#selectedBackRoudness").value =
       selected.shieldBorderRadius;
+    syncAllColorPickers();
   };
 
   const promptShield = function (currentValue, returnMethod = null) {

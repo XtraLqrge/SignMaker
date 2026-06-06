@@ -575,6 +575,7 @@
   clear: both;
   visibility: visible;
   overflow: hidden;
+  position: relative;
 }
 
 .signHolder {
@@ -947,7 +948,7 @@
   --fhwaBaselineOffset: 0px;
   display: flex;
   align-items: center;
-  font-family: "Clearview 4W";
+  font-family: "Clearview 5W";
   font-size: 18px;
 }
 
@@ -2875,36 +2876,44 @@ img.exitOnlyArrow:last-child {
 }
 
 
-/* Dynamic full-bleed row corner fill
-   These patches fill only the square area behind rounded sign corners.
-   The sign itself stays above them, so only the outside corner color changes. */
+/* Dynamic full-bleed row border/corner paint.
+   The full-width row background is painted on .sign; these absolute layers only
+   repaint the real outer border segments and the rounded-corner fill areas that
+   belong to a full-bleed row. */
+.signContainer.hasDynamicSignBorderOverlay,
 .signContainer.hasDynamicSignCornerPatches {
   position: relative !important;
-  overflow: hidden !important;
 }
 
-.signContainer.hasDynamicSignCornerPatches > :not(.dynamicSignCornerPatch) {
+.signContainer.hasDynamicSignCornerPatches > :not(.dynamicSignCornerPatch),
+.signContainer.hasDynamicSignBorderOverlay > :not(.dynamicSignBorderOverlay) {
   position: relative;
   z-index: 2;
 }
 
-.signContainer.hasDynamicSignCornerPatches > .dynamicSignCornerPatch {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: calc(var(--signBorderRadius, 0.75rem) + 0.35rem);
-  z-index: 1;
-  pointer-events: none;
+.signContainer > .dynamicSignCornerPatch {
+  position: absolute !important;
+  display: block !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  box-sizing: border-box !important;
 }
 
-.signContainer.hasDynamicSignCornerPatches > .dynamicSignCornerPatch.top {
-  top: 0;
-  background-color: var(--dynamicSignTopCornerColor, transparent);
+.signContainer > .dynamicSignBorderOverlay {
+  position: absolute !important;
+  display: block !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+  z-index: 40 !important;
 }
 
-.signContainer.hasDynamicSignCornerPatches > .dynamicSignCornerPatch.bottom {
-  bottom: 0;
-  background-color: var(--dynamicSignBottomCornerColor, transparent);
+.sign > .dynamicSignCornerPatch,
+.sign > .dynamicSignBorderOverlay {
+  display: none !important;
+}
+
+.sign.hasDynamicSignBorderOverlay {
+  position: relative !important;
 }
 
 /* Rendered sign selection and icon spacing fixes */
@@ -3342,3 +3351,114 @@ img.exitOnlyArrow:last-child {
   margin: 0 !important;
 }
 
+
+/* Custom color support for rendered panels, exit tabs, and post colors */
+.panel.customPanelColor .sign,
+.panel.customPanelColor .signContainer,
+.panel.customPanelColor .exitTabContainer,
+.panel.customPanelColor .guideArrows {
+  background-color: var(--panelCustomBg);
+  border-color: var(--panelCustomFg);
+  color: var(--panelCustomFg);
+}
+
+.panel.customPanelColor .dividerElement {
+  background-color: var(--panelCustomFg);
+}
+
+.panel.customPanelColor .arrow {
+  filter: var(--panelCustomArrowFilter, none);
+  -webkit-filter: var(--panelCustomArrowFilter, none);
+}
+
+.exitTab.customExitTabColor,
+.exitTabHolder.customExitTabColor {
+  background-color: var(--exitTabCustomBg);
+  border-color: var(--exitTabCustomFg);
+  color: var(--exitTabCustomFg);
+}
+
+/* Full-bleed block rows.
+   The row content stays real DOM. main.js paints the row background and matching
+   border band on .sign using background layers. */
+.sign .blockElementRow.fullBleed {
+  position: relative;
+  z-index: 1;
+  background-color: transparent !important;
+  background-image: none !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  align-items: center;
+}
+
+.sign .blockElementRow.fullBleed::before,
+.sign .blockElementRow.fullBleed::after {
+  content: none !important;
+  display: none !important;
+}
+
+.sign .blockElementRow.fullBleed > * {
+  position: relative;
+  z-index: 2;
+}
+
+.sign .blockElementRow.fullBleed > .blockElementLeft,
+.sign .blockElementRow.fullBleed > .blockElementCenter,
+.sign .blockElementRow.fullBleed > .blockElementRight {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.sign .blockElementRow.fullBleed > .blockElementLeft {
+  justify-content: flex-start;
+}
+
+.sign .blockElementRow.fullBleed > .blockElementCenter {
+  justify-content: center;
+}
+
+.sign .blockElementRow.fullBleed > .blockElementRight {
+  justify-content: flex-end;
+}
+
+.sign .blockElementRow.fullBleed .bE-advisoryMessage,
+.sign .blockElementRow.fullBleed .bE-textElement {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  box-sizing: border-box;
+  line-height: 1;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  vertical-align: middle;
+}
+
+.panel.white .bE-arrowElement,
+.panel.orange .bE-arrowElement,
+.panel.yellow .bE-arrowElement,
+.panel.fluorescent.yellow-green .bE-arrowElement,
+.panel.white .arrow,
+.panel.orange .arrow,
+.panel.yellow .arrow,
+.panel.fluorescent.yellow-green .arrow,
+.panel.white .halfarrow,
+.panel.orange .halfarrow,
+.panel.yellow .halfarrow,
+.panel.fluorescent.yellow-green .halfarrow,
+.panel.white .exitOnlyArrow,
+.panel.orange .exitOnlyArrow,
+.panel.yellow .exitOnlyArrow,
+.panel.fluorescent.yellow-green .exitOnlyArrow,
+.panel.white .sideLeftArrow,
+.panel.yellow .sideLeftArrow,
+.panel.orange .sideLeftArrow,
+.panel.fluorescent.yellow-green .sideLeftArrow,
+.panel.white .sideRightArrow,
+.panel.orange .sideRightArrow,
+.panel.yellow .sideRightArrow,
+.panel.fluorescent.yellow-green .sideRightArrow {
+  filter: invert(100%) !important;
+  -webkit-filter: invert(100%) !important;
+}

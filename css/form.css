@@ -9462,3 +9462,134 @@ label .colorPickerTrigger {
 .colorPickerItem {
   min-width: 22rem !important;
 }
+
+
+/* Keep detached/closed custom color panels from sitting invisibly over the editor. */
+.colorPickerMenu:not(.open),
+.colorPickerCustomPanel:not(.open) {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Action and Advisory text editors now use the same compact layout as Control Text. */
+#smSPProperties > [data-property="sdAdvisory"],
+#smSPProperties > [data-property="sdActionMessage"] {
+  width: var(--sm-block-property-width, 38rem) !important;
+  max-width: var(--sm-block-property-width, 38rem) !important;
+  min-width: var(--sm-block-property-width, 38rem) !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdAdvisory"] .sdCtrlTextTopRow,
+#smSPProperties > [data-property="sdAdvisory"] .sdCtrlTextSecondRow,
+#smSPProperties > [data-property="sdAdvisory"] .sdCtrlTextSettingsRow,
+#smSPProperties > [data-property="sdActionMessage"] .sdCtrlTextTopRow,
+#smSPProperties > [data-property="sdActionMessage"] .sdCtrlTextSecondRow,
+#smSPProperties > [data-property="sdActionMessage"] .sdCtrlTextSettingsRow {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+
+#sdAdvisory_backgroundColor,
+#sdAdvisory_textColor,
+#sdAdvisory_alignment,
+#sdActionMessage_backgroundColor,
+#sdActionMessage_textColor,
+#sdActionMessage_alignment {
+  width: 8.5rem !important;
+}
+
+#sdAdvisory_spacing,
+#sdActionMessage_spacing {
+  width: 4.25rem !important;
+}
+
+#sdAdvisory_borderRadius,
+#sdAdvisory_horizPaddingVal,
+#sdAdvisory_vertPaddingVal {
+  width: 4.25rem !important;
+}
+
+
+/* Temporary row-properties cleanup requested in Sign Maker Chat #7. */
+.sdBlockStretchControls {
+  display: none !important;
+}
+
+/* Color dropdowns stay detached like the font/shield menus, but their open list
+   is compact and scrolls inside the available viewport height instead of running
+   past the bottom of the window. */
+.colorPickerMenu,
+.colorPickerCustomPanel {
+  display: block !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transform: translateY(-0.25rem) scaleY(0.96) !important;
+  transform-origin: top center !important;
+  pointer-events: none !important;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s !important;
+}
+
+.colorPickerMenu.open,
+.colorPickerCustomPanel.open {
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: translateY(0) scaleY(1) !important;
+  pointer-events: auto !important;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0s !important;
+}
+
+.colorPickerMenu {
+  min-width: 14rem !important;
+  width: max-content !important;
+  max-width: min(22rem, calc(100vw - 1rem)) !important;
+}
+
+.colorPickerItem {
+  min-width: 14rem !important;
+  min-height: 0 !important;
+  padding: 0.22rem 0.52rem !important;
+  gap: 0.36rem !important;
+  font-size: 0.74rem !important;
+  font-weight: 400 !important;
+  line-height: 1.02 !important;
+}
+
+.colorPickerItemLabel {
+  font-size: inherit !important;
+  font-weight: 400 !important;
+  line-height: inherit !important;
+}
+
+.colorPickerCustomColorButton .colorPickerItemLabel {
+  font-weight: 400 !important;
+}
+
+.colorPickerAddIcon {
+  font-weight: 500 !important;
+}
+
+.colorPickerMenu .colorPickerSwatch {
+  width: 0.58rem !important;
+  height: 0.58rem !important;
+}
+
+.colorPickerMenu .colorPickerAddIcon,
+.colorPickerMenu .colorPickerDeleteCustom {
+  width: 0.62rem !important;
+  height: 0.62rem !important;
+  font-size: 0.68rem !important;
+}
+
+.colorPickerMenu:not(.open),
+.colorPickerCustomPanel:not(.open) {
+  display: block !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

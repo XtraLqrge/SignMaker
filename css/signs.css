@@ -620,25 +620,27 @@
   box-sizing: border-box;
 }
 
-/* Standard guide arrows widen the actual subpanel group so the sign body matches the arrow band. */
+/* Standard guide arrows may widen the overall sign, but they should not make every
+   subpanel share that added width. Each subpanel stays at its content width unless
+   its own content or arrow reserve requires a larger minimum. */
 .signHolder.hasStandardGuideArrowWidthReserve {
   width: var(--standardGuideArrowMinWidth) !important;
   min-width: var(--standardGuideArrowMinWidth) !important;
   max-width: none !important;
-  justify-content: stretch;
+  justify-content: center;
   box-sizing: border-box;
 }
 
 .signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve) {
-  flex: 1 1 0 !important;
-  width: auto !important;
-  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  width: max-content !important;
+  min-width: max-content !important;
   max-width: none !important;
   box-sizing: border-box;
 }
 
 .signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve) > .signContentContainer {
-  width: 100% !important;
+  width: max-content !important;
   min-width: max-content !important;
   box-sizing: border-box;
 }
@@ -749,6 +751,7 @@
   width: 100%;
   padding: 0.3rem 0.75rem 0.3rem 0.75rem;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .signContentContainer.shieldPositionLeft {
@@ -1743,16 +1746,17 @@
   box-sizing: border-box;
 }
 
-/* Only APL subpanels should stretch equally by default */
+/* APL arrows can reserve width for the subpanel they belong to, but APL mode
+   should not make every subpanel split the sign width equally by default. */
 .signHolder:has(.subpanelAplArrows) .subPanelDisplay {
-  flex: 1 1 0;
-  width: auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
 }
 
 .signHolder:has(.subpanelAplArrows) .subPanelDisplay .signContentContainer {
-  width: auto;
-  min-width: 0;
+  width: max-content;
+  min-width: max-content;
 }
 .subPanelDisplay.hasAplExitOnlySubpanel {
   --aplExitOnlySubpanelReserve: 5.7rem;
@@ -2279,8 +2283,9 @@ img.exitOnlyArrow:last-child {
 
 .subPanelDisplay.hasAplWidthReserve {
   flex: 0 0 auto !important;
-  width: max-content;
-  min-width: var(--aplSubpanelMinWidth) !important;
+  width: var(--linkedSubpanelWidth, max-content);
+  min-width: var(--linkedSubpanelWidth, var(--aplSubpanelMinWidth)) !important;
+  box-sizing: border-box;
 }
 
 .subPanelDisplay.hasAplWidthReserve .signContentContainer {
@@ -3380,15 +3385,24 @@ img.exitOnlyArrow:last-child {
 
 /* Full-bleed block rows.
    The row content stays real DOM. main.js paints the row background and matching
-   border band on .sign using background layers. */
+   border band on .sign using background layers. Keep the row's own background
+   active as an immediate fallback so redraws do not flash the base panel color. */
 .sign .blockElementRow.fullBleed {
   position: relative;
   z-index: 1;
-  background-color: transparent !important;
+  background-color: var(
+    --fullBleedResolvedBackgroundColor,
+    var(--fullBleedInitialBackgroundColor, transparent)
+  ) !important;
   background-image: none !important;
   outline: 0 !important;
   box-shadow: none !important;
   align-items: center;
+  overflow: hidden;
+  border-top-left-radius: var(--fullBleedTopLeftRadius, 0px);
+  border-top-right-radius: var(--fullBleedTopRightRadius, 0px);
+  border-bottom-right-radius: var(--fullBleedBottomRightRadius, 0px);
+  border-bottom-left-radius: var(--fullBleedBottomLeftRadius, 0px);
 }
 
 .sign .blockElementRow.fullBleed::before,
@@ -3461,4 +3475,198 @@ img.exitOnlyArrow:last-child {
 .panel.fluorescent.yellow-green .sideRightArrow {
   filter: invert(100%) !important;
   -webkit-filter: invert(100%) !important;
+}
+
+/* Widening features can make the sign wider than the subpanel content, but they
+   should not automatically distribute that extra space evenly across every
+   subpanel. Keep the holder as wide as the sign while each subpanel remains at
+   its own measured minimum width. */
+.signHolder.forceWidenedSubpanels,
+.signHolder.aplContentHolder,
+.signHolder.aplBottomRow {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  justify-content: center !important;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.signHolder.forceWidenedSubpanels > .subPanelDisplay,
+.signHolder.aplContentHolder > .subPanelDisplay,
+.signHolder.aplBottomRow > .subPanelDisplay {
+  flex: 0 0 auto !important;
+  width: var(--linkedSubpanelWidth, max-content) !important;
+  min-width: var(--linkedSubpanelWidth, max-content) !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+.signHolder.forceWidenedSubpanels > .subPanelDisplay.hasAplWidthReserve,
+.signHolder.aplContentHolder > .subPanelDisplay.hasAplWidthReserve,
+.signHolder.aplBottomRow > .subPanelDisplay.hasAplWidthReserve {
+  min-width: var(--linkedSubpanelWidth, var(--aplSubpanelMinWidth, max-content)) !important;
+}
+
+.signHolder.forceWidenedSubpanels > .subPanelDisplay > .signContentContainer,
+.signHolder.aplContentHolder > .subPanelDisplay > .signContentContainer {
+  width: max-content !important;
+  min-width: max-content !important;
+  box-sizing: border-box;
+}
+
+.signHolder.aplContentHolder > .subPanelDisplay.hasAplWidthReserve > .signContentContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.signHolder.forceWidenedSubpanels > .subDivider,
+.signHolder.aplContentHolder > .subDivider,
+.signHolder.aplBottomRow > .subDivider {
+  flex: 0 0 auto;
+}
+
+.signHolder.aplBottomRow {
+  clear: both;
+}
+
+.signHolder.aplBottomRow .aplArrowSubPanelDisplay {
+  justify-content: flex-end;
+}
+
+.signHolder.aplBottomRow .subpanelAplArrows {
+  display: flex !important;
+  visibility: visible !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider {
+  margin-bottom: 0 !important;
+}
+
+.signHolder.aplContentHolder > .subDivider.hasArrow::before {
+  display: none;
+}
+
+
+/* The separate APL arrow row may contain cloned divider cells only to hold divider arrows.
+   Those cells must not draw divider bars below the global bottom row, and they must not clip
+   the wider arrow artwork centered on the divider. */
+.signHolder.aplBottomRow > .subDivider,
+.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider {
+  background-color: transparent !important;
+  position: relative !important;
+  overflow: visible !important;
+  align-self: stretch !important;
+  margin: 0 !important;
+}
+
+.signHolder.aplBottomRow > .subDivider::before,
+.signHolder.aplBottomRow > .subDivider.hasArrow::before,
+.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider::before,
+.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider.hasArrow::before {
+  content: none !important;
+  display: none !important;
+}
+
+.signHolder.aplBottomRow > .subDivider .aplDividerArrowSlot {
+  display: block !important;
+  visibility: visible !important;
+  overflow: visible !important;
+}
+
+
+/* Dynamic full-bleed fill layer.
+   The SVG layer is clipped to the sign's rounded outer shape, so full-bleed
+   bottom/top rows get real rounded-corner fills instead of square CSS patches. */
+.sign.hasDynamicSignFullBleedLayer {
+  position: relative !important;
+}
+
+.sign > .dynamicSignFullBleedLayer {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  z-index: 0 !important;
+}
+
+.sign.hasDynamicSignFullBleedLayer > :not(.dynamicSignFullBleedLayer):not(.dynamicSignBorderOverlay):not(.dynamicSignCornerPatch) {
+  position: relative;
+  z-index: 1;
+}
+
+.sign.hasDynamicSignFullBleedLayer .blockElementRow.fullBleed {
+  background-color: var(
+    --fullBleedResolvedBackgroundColor,
+    var(--fullBleedInitialBackgroundColor, transparent)
+  ) !important;
+}
+
+/* Clearview fraction rendering. Highway Gothic keeps the existing single-glyph fraction behavior.
+   The custom Clearview fraction uses natural inline flow so wider numerators or
+   denominators push the following fraction pieces right instead of shifting left. */
+.bE-tightClearviewFractionSpace {
+  font-size: var(--tightClearviewFractionSpaceScale, 0.245em);
+}
+
+.bE-clearviewFractionNumeral {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  position: relative;
+  height: 0.9em;
+  line-height: 1;
+  vertical-align: -0.004em;
+  margin-left: 0.052em;
+  margin-right: 0.018em;
+  white-space: nowrap;
+}
+
+.bE-clearviewFractionNumeral .bE-clearviewFractionDigit,
+.bE-clearviewFractionNumeral .bE-clearviewFractionSlash {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  letter-spacing: 0;
+}
+
+.bE-clearviewFractionNumeral .bE-clearviewFractionDigit {
+  font-size: 0.685em;
+  min-width: 0.27em;
+  text-align: center;
+}
+
+.bE-clearviewFractionNumeral .bE-clearviewFractionNumerator {
+  top: -0.184em;
+  margin-right: -0.063em;
+}
+
+.bE-clearviewFractionNumeral .bE-clearviewFractionDenominator {
+  top: 0.144em;
+  margin-left: 0.082em;
+}
+
+.bE-clearviewFractionNumeral .bE-clearviewFractionSlash {
+  top: -0.032em;
+  width: 0.322em;
+  font-size: 0.87em;
+  line-height: 1;
+  text-align: center;
+  transform: scaleX(0.9) scaleY(0.92);
+  transform-origin: center center;
+  margin-left: -0.052em;
+  margin-right: 0.006em;
+}
+
+/* Do not let an unused default exit-tab placeholder contribute to editor/export bounds. */
+.panel > .exitTabContainer.emptyExitTab {
+  display: none !important;
 }

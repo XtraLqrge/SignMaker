@@ -1896,17 +1896,17 @@ const app = (function () {
 
       signElmt
         .querySelectorAll(
-          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch"
+          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch, :scope > .dynamicSignFullBleedLayer"
         )
         .forEach((overlay) => overlay.remove());
 
       signContainerElmt
         ?.querySelectorAll(
-          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch"
+          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch, :scope > .dynamicSignFullBleedLayer"
         )
         .forEach((overlay) => overlay.remove());
 
-      signElmt.classList.remove("hasDynamicSignBorderOverlay");
+      signElmt.classList.remove("hasDynamicSignBorderOverlay", "hasDynamicSignFullBleedLayer");
       signContainerElmt?.classList.remove(
         "hasDynamicSignBorderOverlay",
         "hasDynamicSignCornerPatches"
@@ -2187,14 +2187,23 @@ const app = (function () {
       };
 
       if (globalTop && rowsInGlobalTop[0] === rowEl) {
-        extendTopToEdge();
+        // Global full-bleed rows sit inside .globalTop padding, not the normal
+        // subpanel sign padding that --blockBleedTop is based on. If we only add
+        // --blockBleedTop, the row never quite reaches the sign's rounded edge,
+        // so the border painter treats the corner as square. Full-bleed global
+        // edge rows should own the real sign edge.
+        top = 0;
       }
 
       if (
         globalBottom &&
         rowsInGlobalBottom[rowsInGlobalBottom.length - 1] === rowEl
       ) {
-        extendBottomToEdge();
+        // Same issue at the bottom: .globalBottom padding is separate from the
+        // subpanel padding used to calculate --blockBleedBottom. Force the last
+        // full-bleed global row to the sign's actual bottom so the existing
+        // rounded border/corner logic can work.
+        bottom = signHeight;
       }
 
       const isLocalSubpanelRow = !globalTop && !globalBottom;
@@ -2244,13 +2253,53 @@ const app = (function () {
     };
 
     const contentLayers = [];
+    const fillInfos = [];
     const rowInfos = [];
     const cornerColors = {};
+
+    const getCornerRadius = (cssPropertyName) =>
+      Math.max(
+        0,
+        Math.min(
+          parseFloat(computed[cssPropertyName]) || 0,
+          signWidth / 2,
+          signHeight / 2
+        )
+      );
+
+    const signOuterCornerRadii = {
+      topLeft: getCornerRadius("borderTopLeftRadius"),
+      topRight: getCornerRadius("borderTopRightRadius"),
+      bottomRight: getCornerRadius("borderBottomRightRadius"),
+      bottomLeft: getCornerRadius("borderBottomLeftRadius"),
+    };
+
+    const fullBleedInnerCornerRadii = {
+      topLeft: Math.max(0, signOuterCornerRadii.topLeft - borderWidth),
+      topRight: Math.max(0, signOuterCornerRadii.topRight - borderWidth),
+      bottomRight: Math.max(0, signOuterCornerRadii.bottomRight - borderWidth),
+      bottomLeft: Math.max(0, signOuterCornerRadii.bottomLeft - borderWidth),
+    };
+
+    const setRowCornerRadius = (rowEl, cornerName, shouldRound) => {
+      const cssName = `--fullBleed${cornerName[0].toUpperCase()}${cornerName.slice(1)}Radius`;
+      const radius = shouldRound ? fullBleedInnerCornerRadii[cornerName] || 0 : 0;
+      rowEl.style.setProperty(cssName, `${snapCssValue(radius)}px`);
+    };
 
     fullBleedRows.forEach((rowEl) => {
       const rect = getLocalizedRowRect(rowEl);
 
       if (!rect) {
+        ["TopLeft", "TopRight", "BottomRight", "BottomLeft"].forEach(
+          (cornerName) => rowEl.style.setProperty(`--fullBleed${cornerName}Radius`, "0px")
+        );
+        rowEl.classList.remove(
+          "fullBleedTouchesTop",
+          "fullBleedTouchesRight",
+          "fullBleedTouchesBottom",
+          "fullBleedTouchesLeft"
+        );
         return;
       }
 
@@ -2258,6 +2307,19 @@ const app = (function () {
       const borderColor =
         rowEl.dataset.fullBleedBorderColor ||
         (backgroundColor ? getContrastingBorderColor(backgroundColor) : "");
+      const reachesTop = touchesSignEdge(rect, "top");
+      const reachesRight = touchesSignEdge(rect, "right");
+      const reachesBottom = touchesSignEdge(rect, "bottom");
+      const reachesLeft = touchesSignEdge(rect, "left");
+
+      rowEl.classList.toggle("fullBleedTouchesTop", reachesTop);
+      rowEl.classList.toggle("fullBleedTouchesRight", reachesRight);
+      rowEl.classList.toggle("fullBleedTouchesBottom", reachesBottom);
+      rowEl.classList.toggle("fullBleedTouchesLeft", reachesLeft);
+      setRowCornerRadius(rowEl, "topLeft", reachesTop && reachesLeft);
+      setRowCornerRadius(rowEl, "topRight", reachesTop && reachesRight);
+      setRowCornerRadius(rowEl, "bottomRight", reachesBottom && reachesRight);
+      setRowCornerRadius(rowEl, "bottomLeft", reachesBottom && reachesLeft);
 
       rowEl.style.setProperty(
         "--fullBleedResolvedBackgroundColor",
@@ -2276,17 +2338,18 @@ const app = (function () {
 
       if (backgroundColor) {
         contentLayers.push(makeRectLayer(backgroundColor, rect));
+        fillInfos.push({ rect, color: backgroundColor });
 
-        if (touchesSignEdge(rect, "top") && touchesSignEdge(rect, "left")) {
+        if (reachesTop && reachesLeft) {
           cornerColors.topLeft = backgroundColor;
         }
-        if (touchesSignEdge(rect, "top") && touchesSignEdge(rect, "right")) {
+        if (reachesTop && reachesRight) {
           cornerColors.topRight = backgroundColor;
         }
-        if (touchesSignEdge(rect, "bottom") && touchesSignEdge(rect, "left")) {
+        if (reachesBottom && reachesLeft) {
           cornerColors.bottomLeft = backgroundColor;
         }
-        if (touchesSignEdge(rect, "bottom") && touchesSignEdge(rect, "right")) {
+        if (reachesBottom && reachesRight) {
           cornerColors.bottomRight = backgroundColor;
         }
       }
@@ -2319,16 +2382,16 @@ const app = (function () {
         : containerScaleX;
       const signLeft = (signRect.left - signContainerRect.left) * containerScaleX;
       const signTop = (signRect.top - signContainerRect.top) * containerScaleY;
-      const radius = Math.max(
-        0,
-        Math.min(
-          parseFloat(computed.borderTopLeftRadius) || 0,
-          signWidth / 2,
-          signHeight / 2
-        )
-      );
-      const patchSize = Math.ceil(radius + borderWidth + 1);
       const positions = ["topLeft", "topRight", "bottomLeft", "bottomRight"];
+      const getPatchRadius = (position) =>
+        Math.max(
+          0,
+          Math.min(
+            signOuterCornerRadii[position] || 0,
+            signWidth / 2,
+            signHeight / 2
+          )
+        );
 
       const ensurePatch = (position) => {
         let patchElmt = signContainerElmt.querySelector(
@@ -2361,6 +2424,8 @@ const app = (function () {
         const patchElmt = ensurePatch(position);
         const isRight = position.toLowerCase().includes("right");
         const isBottom = position.toLowerCase().includes("bottom");
+        const patchRadius = getPatchRadius(position);
+        const patchSize = Math.ceil(patchRadius + borderWidth + 1);
         patchElmt.style.width = `${patchSize}px`;
         patchElmt.style.height = `${patchSize}px`;
         patchElmt.style.left = `${snapCssValue(signLeft + (isRight ? signWidth - patchSize : 0))}px`;
@@ -2380,6 +2445,110 @@ const app = (function () {
         "hasDynamicSignCornerPatches",
         hasPatches
       );
+    };
+
+    const renderDynamicFullBleedLayer = () => {
+      let layer = signElmt.querySelector(":scope > .dynamicSignFullBleedLayer");
+
+      if (!fillInfos.length) {
+        layer?.remove();
+        signElmt.classList.remove("hasDynamicSignFullBleedLayer");
+        return;
+      }
+
+      if (!layer) {
+        layer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        layer.classList.add("dynamicSignFullBleedLayer");
+        signElmt.insertBefore(layer, signElmt.firstChild);
+      }
+
+      while (layer.firstChild) {
+        layer.removeChild(layer.firstChild);
+      }
+
+      const safeWidth = Math.max(
+        1,
+        signElmt.clientWidth || signWidth - borderWidths.left - borderWidths.right
+      );
+      const safeHeight = Math.max(
+        1,
+        signElmt.clientHeight || signHeight - borderWidths.top - borderWidths.bottom
+      );
+      const radius = Math.max(
+        0,
+        Math.min(
+          (parseFloat(computed.borderTopLeftRadius) || 0) - borderWidth,
+          safeWidth / 2,
+          safeHeight / 2
+        )
+      );
+
+      const clipId =
+        signElmt.dataset.dynamicFullBleedClipId ||
+        `dynamicFullBleedClip-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2)}`;
+      signElmt.dataset.dynamicFullBleedClipId = clipId;
+
+      layer.setAttribute("viewBox", `0 0 ${safeWidth} ${safeHeight}`);
+      layer.setAttribute("width", safeWidth);
+      layer.setAttribute("height", safeHeight);
+      layer.style.width = `${safeWidth}px`;
+      layer.style.height = `${safeHeight}px`;
+
+      const addSvgElmt = (parent, tagName, attrs = {}) => {
+        const elmt = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+        Object.entries(attrs).forEach(([name, value]) => {
+          elmt.setAttribute(name, String(value));
+        });
+        parent.appendChild(elmt);
+        return elmt;
+      };
+
+      const defs = addSvgElmt(layer, "defs");
+      const clipPath = addSvgElmt(defs, "clipPath", { id: clipId });
+      addSvgElmt(clipPath, "rect", {
+        x: 0,
+        y: 0,
+        width: safeWidth,
+        height: safeHeight,
+        rx: radius,
+        ry: radius,
+      });
+
+      const fillGroup = addSvgElmt(layer, "g", {
+        "clip-path": `url(#${clipId})`,
+      });
+
+      for (const { rect, color } of fillInfos) {
+        const reachesLeft = touchesSignEdge(rect, "left");
+        const reachesRight = touchesSignEdge(rect, "right");
+        const reachesTop = touchesSignEdge(rect, "top");
+        const reachesBottom = touchesSignEdge(rect, "bottom");
+        const overlap = Math.max(0.75, borderWidth * 0.5);
+        const contentLeft = rect.left - borderWidths.left;
+        const contentTop = rect.top - borderWidths.top;
+        const contentRight = rect.left + rect.width - borderWidths.left;
+        const contentBottom = rect.top + rect.height - borderWidths.top;
+        const x = reachesLeft ? -overlap : clampRectValue(contentLeft, 0, safeWidth);
+        const y = reachesTop ? -overlap : clampRectValue(contentTop, 0, safeHeight);
+        const right = reachesRight
+          ? safeWidth + overlap
+          : clampRectValue(contentRight, 0, safeWidth);
+        const bottom = reachesBottom
+          ? safeHeight + overlap
+          : clampRectValue(contentBottom, 0, safeHeight);
+
+        addSvgElmt(fillGroup, "rect", {
+          x: snapCssValue(x),
+          y: snapCssValue(y),
+          width: snapCssValue(Math.max(0, right - x)),
+          height: snapCssValue(Math.max(0, bottom - y)),
+          fill: color,
+        });
+      }
+
+      signElmt.classList.add("hasDynamicSignFullBleedLayer");
     };
 
     const renderDynamicBorderOverlay = () => {
@@ -2405,15 +2574,12 @@ const app = (function () {
 
       const safeWidth = Math.max(1, signWidth);
       const safeHeight = Math.max(1, signHeight);
-      const radius = Math.max(
-        borderWidth / 2,
-        Math.min(
-          parseFloat(computed.borderTopLeftRadius) || 0,
-          safeWidth / 2,
-          safeHeight / 2
-        )
-      );
-      const strokeRadius = Math.max(0, radius - borderWidth / 2);
+      const strokeRadii = {
+        tl: Math.max(0, signOuterCornerRadii.topLeft - borderWidth / 2),
+        tr: Math.max(0, signOuterCornerRadii.topRight - borderWidth / 2),
+        br: Math.max(0, signOuterCornerRadii.bottomRight - borderWidth / 2),
+        bl: Math.max(0, signOuterCornerRadii.bottomLeft - borderWidth / 2),
+      };
       const leftX = borderWidth / 2;
       const rightX = safeWidth - borderWidth / 2;
       const topY = borderWidth / 2;
@@ -2479,7 +2645,49 @@ const app = (function () {
       overlay.style.width = `${safeWidth}px`;
       overlay.style.height = `${safeHeight}px`;
 
-      for (const { rect, borderColor } of rowInfos) {
+      const addSvgChild = (parent, tagName, attrs = {}) => {
+        const elmt = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+        Object.entries(attrs).forEach(([name, value]) => {
+          elmt.setAttribute(name, String(value));
+        });
+        parent.appendChild(elmt);
+        return elmt;
+      };
+
+      const defs = addSvgElmt("defs");
+      const borderClipBaseId =
+        signElmt.dataset.dynamicBorderClipBaseId ||
+        `dynamicSignBorderClip-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2)}`;
+      signElmt.dataset.dynamicBorderClipBaseId = borderClipBaseId;
+
+      const limitRadius = (value, width, height) =>
+        Math.max(0, Math.min(value || 0, width / 2, height / 2));
+
+      const makeRoundedRectPath = (x1, y1, x2, y2, radii = {}) => {
+        const width = Math.max(0, x2 - x1);
+        const height = Math.max(0, y2 - y1);
+        const tl = limitRadius(radii.tl, width, height);
+        const tr = limitRadius(radii.tr, width, height);
+        const br = limitRadius(radii.br, width, height);
+        const bl = limitRadius(radii.bl, width, height);
+
+        return [
+          `M ${snapCssValue(x1 + tl)} ${snapCssValue(y1)}`,
+          `H ${snapCssValue(x2 - tr)}`,
+          tr ? `Q ${snapCssValue(x2)} ${snapCssValue(y1)} ${snapCssValue(x2)} ${snapCssValue(y1 + tr)}` : "",
+          `V ${snapCssValue(y2 - br)}`,
+          br ? `Q ${snapCssValue(x2)} ${snapCssValue(y2)} ${snapCssValue(x2 - br)} ${snapCssValue(y2)}` : "",
+          `H ${snapCssValue(x1 + bl)}`,
+          bl ? `Q ${snapCssValue(x1)} ${snapCssValue(y2)} ${snapCssValue(x1)} ${snapCssValue(y2 - bl)}` : "",
+          `V ${snapCssValue(y1 + tl)}`,
+          tl ? `Q ${snapCssValue(x1)} ${snapCssValue(y1)} ${snapCssValue(x1 + tl)} ${snapCssValue(y1)}` : "",
+          "Z",
+        ].filter(Boolean).join(" ");
+      };
+
+      rowInfos.forEach(({ rect, borderColor }, rowInfoIndex) => {
         const rowLeft = clampRectValue(rect.left, 0, safeWidth);
         const rowRight = clampRectValue(rect.left + rect.width, 0, safeWidth);
         const rowTop = clampRectValue(rect.top, 0, safeHeight);
@@ -2488,59 +2696,38 @@ const app = (function () {
         const reachesRight = rowRight >= safeWidth - edgeSnapTolerance;
         const reachesTop = rowTop <= edgeSnapTolerance;
         const reachesBottom = rowBottom >= safeHeight - edgeSnapTolerance;
+        const clipBleed = Math.max(0.2, borderWidth * 0.15);
+        const clipLeft = reachesLeft ? 0 : clampRectValue(rowLeft - clipBleed, 0, safeWidth);
+        const clipRight = reachesRight ? safeWidth : clampRectValue(rowRight + clipBleed, 0, safeWidth);
+        const clipTop = reachesTop ? 0 : clampRectValue(rowTop - clipBleed, 0, safeHeight);
+        const clipBottom = reachesBottom ? safeHeight : clampRectValue(rowBottom + clipBleed, 0, safeHeight);
 
-        if (reachesTop) {
-          const x1 = reachesLeft ? radius : rowLeft;
-          const x2 = reachesRight ? safeWidth - radius : rowRight;
-          addLine(x1, topY, x2, topY, borderColor);
+        if (clipRight <= clipLeft || clipBottom <= clipTop) {
+          return;
         }
 
-        if (reachesBottom) {
-          const x1 = reachesLeft ? radius : rowLeft;
-          const x2 = reachesRight ? safeWidth - radius : rowRight;
-          addLine(x1, bottomY, x2, bottomY, borderColor);
-        }
+        const clipId = `${borderClipBaseId}-${rowInfoIndex}`;
+        const clipPath = addSvgChild(defs, "clipPath", {
+          id: clipId,
+          clipPathUnits: "userSpaceOnUse",
+        });
 
-        if (reachesLeft) {
-          const y1 = reachesTop ? radius : Math.max(topY, rowTop - segmentOverlap);
-          const y2 = reachesBottom ? safeHeight - radius : Math.min(bottomY, rowBottom + segmentOverlap);
-          addLine(leftX, y1, leftX, y2, borderColor);
-        }
+        addSvgChild(clipPath, "rect", {
+          x: snapCssValue(clipLeft),
+          y: snapCssValue(clipTop),
+          width: snapCssValue(clipRight - clipLeft),
+          height: snapCssValue(clipBottom - clipTop),
+        });
 
-        if (reachesRight) {
-          const y1 = reachesTop ? radius : Math.max(topY, rowTop - segmentOverlap);
-          const y2 = reachesBottom ? safeHeight - radius : Math.min(bottomY, rowBottom + segmentOverlap);
-          addLine(rightX, y1, rightX, y2, borderColor);
-        }
+        const clippedGroup = addSvgElmt("g", {
+          "clip-path": `url(#${clipId})`,
+        });
 
-        if (strokeRadius > 0 && reachesTop && reachesLeft) {
-          addPath(
-            `M ${leftX} ${radius} A ${strokeRadius} ${strokeRadius} 0 0 1 ${radius} ${topY}`,
-            borderColor
-          );
-        }
-
-        if (strokeRadius > 0 && reachesTop && reachesRight) {
-          addPath(
-            `M ${safeWidth - radius} ${topY} A ${strokeRadius} ${strokeRadius} 0 0 1 ${rightX} ${radius}`,
-            borderColor
-          );
-        }
-
-        if (strokeRadius > 0 && reachesBottom && reachesRight) {
-          addPath(
-            `M ${rightX} ${safeHeight - radius} A ${strokeRadius} ${strokeRadius} 0 0 1 ${safeWidth - radius} ${bottomY}`,
-            borderColor
-          );
-        }
-
-        if (strokeRadius > 0 && reachesBottom && reachesLeft) {
-          addPath(
-            `M ${radius} ${bottomY} A ${strokeRadius} ${strokeRadius} 0 0 1 ${leftX} ${safeHeight - radius}`,
-            borderColor
-          );
-        }
-      }
+        addSvgChild(clippedGroup, "path", {
+          d: makeRoundedRectPath(leftX, topY, rightX, bottomY, strokeRadii),
+          ...commonStrokeAttrs(borderColor),
+        });
+      });
 
       signElmt.classList.add("hasDynamicSignBorderOverlay");
       signContainerElmt.classList.add("hasDynamicSignBorderOverlay");
@@ -2562,7 +2749,13 @@ const app = (function () {
       layerRepeats.push("no-repeat");
     };
 
-    contentLayers.forEach((layer) => addLayer(layer, "padding-box"));
+    // Paint full-bleed row fills on the sign background itself, not in an
+    // absolutely positioned child. A child SVG starts inside the sign's border
+    // box, so rows that reach the bottom edge could never fill the rounded
+    // corner area. Background layers are clipped by the sign's own radius,
+    // which makes a white full-bleed bottom row curve like a normal rounded
+    // white panel.
+    contentLayers.forEach((layer) => addLayer(layer, "border-box"));
 
     addLayer(
       {
@@ -2604,6 +2797,13 @@ const app = (function () {
     if (!panelContainerElmt) {
       return;
     }
+
+    /*
+      Paint full-bleed row backgrounds immediately during redraw.
+      Without this, the new DOM is visible for a frame with the normal panel
+      background before the rAF border/background pass paints the row color.
+    */
+    refreshDynamicPanelBorders(panelContainerElmt);
 
     let pending = false;
     const update = () => {
@@ -7881,6 +8081,16 @@ const app = (function () {
   ) => {
     const rects = [];
     const addRect = (node, { force = false } = {}) => {
+      const isTransparentPanelWrapper =
+        node &&
+        node.classList &&
+        (node.classList.contains("panel") ||
+          node.classList.contains("panelStack"));
+
+      if (!force && isTransparentPanelWrapper) {
+        return;
+      }
+
       if (!force && !isElementVisibleForExport(node)) {
         return;
       }
@@ -8054,9 +8264,22 @@ const app = (function () {
     const layoutScale = getExportLayoutScale(element);
     const normalizeMeasurement = (value) => value / layoutScale;
     const sourceRect = element.getBoundingClientRect();
+    const panelContainerElmt = element.querySelector("#panelContainer");
+    const panelContainerStyle = panelContainerElmt
+      ? window.getComputedStyle(panelContainerElmt)
+      : null;
+    const panelContainerHasPaintedBackground = !!(
+      panelContainerStyle &&
+      (
+        (panelContainerStyle.backgroundImage && panelContainerStyle.backgroundImage !== "none") ||
+        (panelContainerStyle.backgroundColor &&
+          !/^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*(?:,\s*0\s*)?\)$/i.test(panelContainerStyle.backgroundColor) &&
+          panelContainerStyle.backgroundColor !== "transparent")
+      )
+    );
     const bounds = getElementAndDescendantBounds(element, {
       includeSelf: false,
-      includePanelContainerBackground: true,
+      includePanelContainerBackground: panelContainerHasPaintedBackground,
     });
     const padding = 0;
     const exportWidth = Math.ceil(normalizeMeasurement(bounds.width) + padding * 2);
@@ -8230,35 +8453,6 @@ const app = (function () {
 
     let compactLeft = padding;
 
-    const parseCssPixelValue = (value) => {
-      const parsed = parseFloat(value);
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
-
-    const getExactCssSizeForBorderBox = (rect, computedStyle, axis) => {
-      const borderBoxSize = normalizeMeasurement(
-        axis === "height" ? rect.height : rect.width
-      );
-
-      if (String(computedStyle.boxSizing || "content-box") === "border-box") {
-        return Math.max(0, borderBoxSize) + "px";
-      }
-
-      const horizontalAdjustment =
-        parseCssPixelValue(computedStyle.paddingLeft) +
-        parseCssPixelValue(computedStyle.paddingRight) +
-        parseCssPixelValue(computedStyle.borderLeftWidth) +
-        parseCssPixelValue(computedStyle.borderRightWidth);
-      const verticalAdjustment =
-        parseCssPixelValue(computedStyle.paddingTop) +
-        parseCssPixelValue(computedStyle.paddingBottom) +
-        parseCssPixelValue(computedStyle.borderTopWidth) +
-        parseCssPixelValue(computedStyle.borderBottomWidth);
-
-      const adjustment = axis === "height" ? verticalAdjustment : horizontalAdjustment;
-      return Math.max(0, borderBoxSize - adjustment) + "px";
-    };
-
     const freezeStaticCloneLayoutMetrics = (sourceRoot, cloneRoot) => {
       if (!sourceRoot || !cloneRoot) {
         return;
@@ -8299,10 +8493,10 @@ const app = (function () {
         }
 
         const computedStyle = window.getComputedStyle(sourceNode);
-        const widthPx = getExactCssSizeForBorderBox(rect, computedStyle, "width");
-        const heightPx = getExactCssSizeForBorderBox(rect, computedStyle, "height");
+        const widthPx = normalizeMeasurement(rect.width) + "px";
+        const heightPx = normalizeMeasurement(rect.height) + "px";
 
-        cloneNode.style.boxSizing = computedStyle.boxSizing || "content-box";
+        cloneNode.style.boxSizing = computedStyle.boxSizing || "border-box";
         cloneNode.style.width = widthPx;
         cloneNode.style.minWidth = widthPx;
         cloneNode.style.maxWidth = widthPx;
@@ -8379,16 +8573,6 @@ const app = (function () {
       const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
       const isSinglePanelClone =
         sourceElement.classList && sourceElement.classList.contains("panel");
-      const cloneWidthPx = getExactCssSizeForBorderBox(
-        sourceRect,
-        sourceStyle,
-        "width"
-      );
-      const cloneHeightPx = getExactCssSizeForBorderBox(
-        sourceRect,
-        sourceStyle,
-        "height"
-      );
 
       freezeStaticCloneLayoutMetrics(sourceElement, clone);
 
@@ -8403,18 +8587,28 @@ const app = (function () {
       clone.style.paddingLeft = sourceStyle.paddingLeft;
 
       if (isSinglePanelClone) {
-        clone.style.width = cloneWidthPx;
-        clone.style.height = cloneHeightPx;
-        clone.style.minWidth = cloneWidthPx;
-        clone.style.maxWidth = cloneWidthPx;
-        clone.style.minHeight = cloneHeightPx;
+        clone.style.width = normalizeMeasurement(sourceRect.width) + "px";
+        clone.style.height = normalizeMeasurement(sourceRect.height) + "px";
+        clone.style.minWidth = normalizeMeasurement(sourceRect.width) + "px";
+        clone.style.maxWidth = normalizeMeasurement(sourceRect.width) + "px";
+        clone.style.minHeight = normalizeMeasurement(sourceRect.height) + "px";
         clone.style.maxHeight = "none";
       } else {
-        clone.style.width = cloneWidthPx;
-        clone.style.height = cloneHeightPx;
-        clone.style.minWidth = isPanelLikeClone ? cloneWidthPx : "0";
-        clone.style.maxWidth = isPanelLikeClone ? cloneWidthPx : "none";
-        clone.style.minHeight = isPanelLikeClone ? cloneHeightPx : "0";
+        clone.style.width = isPanelLikeClone
+          ? normalizeMeasurement(sourceRect.width) + "px"
+          : normalizeMeasurement(sourceRect.width) + "px";
+        clone.style.height = isPanelLikeClone
+          ? normalizeMeasurement(sourceRect.height) + "px"
+          : normalizeMeasurement(sourceRect.height) + "px";
+        clone.style.minWidth = isPanelLikeClone
+          ? normalizeMeasurement(sourceRect.width) + "px"
+          : "0";
+        clone.style.maxWidth = isPanelLikeClone
+          ? normalizeMeasurement(sourceRect.width) + "px"
+          : "none";
+        clone.style.minHeight = isPanelLikeClone
+          ? normalizeMeasurement(sourceRect.height) + "px"
+          : "0";
         clone.style.maxHeight = isPanelLikeClone ? "none" : "none";
       }
 
@@ -8993,7 +9187,11 @@ const app = (function () {
                      exitTabCont.classList.add("aplEdge");
                      exitTabCont.dataset.aplEdgePosition = String(exitTab.position || "Right");
                    }
-                   const shouldCollapseEmptyExitTab = panelIsPartOfStack && isEmptyDefaultExitTab(exitTab);
+                   const exitTabHasNestedTabs =
+                     Array.isArray(exitTab?.nestedExitTabs) &&
+                     exitTab.nestedExitTabs.length > 0;
+                   const shouldCollapseEmptyExitTab =
+                     isEmptyDefaultExitTab(exitTab) && !exitTabHasNestedTabs;
                    if (shouldCollapseEmptyExitTab) {
                      exitTabCont.classList.add("emptyExitTab");
                      exitTabCont.style.display = "none";
@@ -10072,6 +10270,46 @@ const app = (function () {
           signHolderElmt.className = `signHolder`;
           signElmt.appendChild(signHolderElmt);
 
+          const hasGuideArrowThatCanWidenPanel =
+            panel.sign.arrowMode === "apl"
+              ? Array.isArray(panel.sign.aplArrows) && panel.sign.aplArrows.length > 0
+              : String(panel.sign.guideArrow || "None") !== "None";
+
+          const hasExitTabThatCanWidenPanel =
+            Array.isArray(panel.exitTabs) &&
+            panel.exitTabs.some((tab) => !isEmptyDefaultExitTab(tab));
+
+          if (hasGuideArrowThatCanWidenPanel || hasExitTabThatCanWidenPanel) {
+            signElmt.classList.add("hasWideningPanelFeature");
+            signHolderElmt.classList.add("forceWidenedSubpanels");
+          }
+
+          const syncWidenedSubpanelFill = () => {
+            const apply = () => {
+              if (!signElmt || !signHolderElmt) {
+                return;
+              }
+
+              const signWidth = Math.ceil(signElmt.getBoundingClientRect().width || 0);
+              const holderWidth = Math.ceil(signHolderElmt.getBoundingClientRect().width || 0);
+
+              if (
+                hasGuideArrowThatCanWidenPanel ||
+                hasExitTabThatCanWidenPanel ||
+                (signWidth > 0 && holderWidth > 0 && signWidth > holderWidth + 1)
+              ) {
+                signElmt.classList.add("hasWideningPanelFeature");
+                signHolderElmt.classList.add("forceWidenedSubpanels");
+              }
+            };
+
+            apply();
+            requestAnimationFrame(() => {
+              apply();
+              requestAnimationFrame(apply);
+            });
+          };
+
           const applyAplEdgeExitTabLayout = () => {
             const aplEdgeTabs = Array.from(
               panelElmt.querySelectorAll(
@@ -10543,12 +10781,24 @@ const app = (function () {
           };
 
           const aplArrowZoneHeightRem = getAPLArrowZoneHeightRem();
+          const aplUnifiedDividerStopOffsetRem = Math.max(
+            0,
+            aplArrowZoneHeightRem -
+              APL_ARROW_ZONE_EXTRA_REM +
+              APL_DIVIDER_LINE_GAP_REM
+          );
 
           if (panel.sign.arrowMode === "apl" && aplArrows.length > 0) {
-            signHolderElmt.style.setProperty(
-              "--aplArrowZoneHeight",
-              `${aplArrowZoneHeightRem}rem`
-            );
+            [signElmt, signHolderElmt].forEach((targetElmt) => {
+              targetElmt.style.setProperty(
+                "--aplArrowZoneHeight",
+                `${aplArrowZoneHeightRem}rem`
+              );
+              targetElmt.style.setProperty(
+                "--aplUnifiedDividerStopOffset",
+                `${aplUnifiedDividerStopOffsetRem}rem`
+              );
+            });
           }
 
           const getAPLExitOnlyRenderedSides = (arrow, subPanelIndex) => {
@@ -11272,6 +11522,259 @@ const app = (function () {
                    
                }
 
+        const relocateAplArrowsBelowGlobalBottom = () => {
+          if (
+            panel.sign.arrowMode !== "apl" ||
+            !Array.isArray(panel.sign.aplArrows) ||
+            panel.sign.aplArrows.length === 0 ||
+            !signHolderElmt ||
+            !g_bottom
+          ) {
+            return;
+          }
+
+          const subpanelArrowContainers = signHolderElmt.querySelectorAll(
+            ":scope > .subPanelDisplay > .subpanelAplArrows"
+          );
+
+          if (!subpanelArrowContainers.length) {
+            return;
+          }
+
+          const aplBottomRow = document.createElement("div");
+          aplBottomRow.className = "signHolder aplBottomRow forceWidenedSubpanels";
+          aplBottomRow.dataset.aplBottomRow = "true";
+          aplBottomRow.style.setProperty(
+            "--aplArrowZoneHeight",
+            `${aplArrowZoneHeightRem}rem`
+          );
+          aplBottomRow.style.setProperty(
+            "--aplUnifiedDividerStopOffset",
+            `${aplUnifiedDividerStopOffsetRem}rem`
+          );
+
+          Array.from(signHolderElmt.children).forEach((child) => {
+            if (child.classList.contains("subPanelDisplay")) {
+              const arrowCell = document.createElement("div");
+              arrowCell.className = "subPanelDisplay aplArrowSubPanelDisplay";
+              arrowCell.dataset.panelIndex = child.dataset.panelIndex || String(index);
+              arrowCell.dataset.subpanelIndex = child.dataset.subpanelIndex || "";
+
+              [
+                "hasAplWidthReserve",
+                "hasAplExitOnlySubpanel",
+                "hasAplExitOnlyLeftEdge",
+                "hasAplExitOnlyRightEdge",
+              ].forEach((className) => {
+                if (child.classList.contains(className)) {
+                  arrowCell.classList.add(className);
+                }
+              });
+
+              const aplMinWidth = child.style.getPropertyValue("--aplSubpanelMinWidth");
+              if (aplMinWidth) {
+                arrowCell.style.setProperty("--aplSubpanelMinWidth", aplMinWidth);
+              }
+
+              const arrowContainer = child.querySelector(":scope > .subpanelAplArrows");
+              if (arrowContainer) {
+                arrowContainer.remove();
+                arrowCell.appendChild(arrowContainer);
+              }
+
+              aplBottomRow.appendChild(arrowCell);
+              return;
+            }
+
+            if (child.classList.contains("subDivider")) {
+              const arrowDivider = child.cloneNode(true);
+              arrowDivider.id = child.id ? `${child.id}AplArrowRow` : "";
+              arrowDivider.classList.add("aplArrowRowDivider");
+              arrowDivider.dataset.aplArrowRowDivider = "true";
+              aplBottomRow.appendChild(arrowDivider);
+
+              child.querySelectorAll(".aplArrowSlot, .aplExitOnlyLabel").forEach((element) => {
+                element.remove();
+              });
+              child.classList.remove("hasArrow", "hasSharedExitOnlyBoundary");
+              child.style.removeProperty("--aplDividerStopOffset");
+              child.style.removeProperty("--aplDividerArrowBottomOffset");
+              child.style.removeProperty("margin-bottom");
+              child.style.backgroundColor = "";
+            }
+          });
+
+          const syncAplDetachedColumnWidths = () => {
+            if (!signHolderElmt || !aplBottomRow) {
+              return;
+            }
+
+            const contentCells = Array.from(
+              signHolderElmt.querySelectorAll(
+                ":scope > .subPanelDisplay:not(.aplArrowSubPanelDisplay)"
+              )
+            );
+            const arrowCells = Array.from(
+              aplBottomRow.querySelectorAll(":scope > .aplArrowSubPanelDisplay")
+            );
+
+            if (!contentCells.length || contentCells.length !== arrowCells.length) {
+              return;
+            }
+
+            const readRemPx = () => {
+              const rootFontSize = parseFloat(
+                window.getComputedStyle(document.documentElement).fontSize
+              );
+              return Number.isFinite(rootFontSize) && rootFontSize > 0
+                ? rootFontSize
+                : 16;
+            };
+
+            const clearLinkedWidth = (cell) => {
+              if (!cell) {
+                return;
+              }
+
+              cell.style.removeProperty("--linkedSubpanelWidth");
+              cell.style.removeProperty("width");
+              cell.style.removeProperty("min-width");
+              cell.style.removeProperty("max-width");
+              cell.style.removeProperty("flex");
+            };
+
+            const getNaturalWidth = (element) => {
+              if (!element) {
+                return 0;
+              }
+
+              const rect = element.getBoundingClientRect();
+              return Math.max(
+                rect.width || 0,
+                element.scrollWidth || 0,
+                element.offsetWidth || 0
+              );
+            };
+
+            const remPx = readRemPx();
+
+            /*
+              Clear the previous linked widths before measuring. Otherwise a prior
+              APL/guide-arrow reserve becomes the new "natural" width and later
+              arrow changes cannot widen or shrink the owning subpanel correctly.
+            */
+            [...contentCells, ...arrowCells].forEach(clearLinkedWidth);
+
+            const desiredWidths = contentCells.map((contentCell, cellIndex) => {
+              const arrowCell = arrowCells[cellIndex];
+              const contentContainer = contentCell.querySelector(
+                ":scope > .signContentContainer"
+              );
+              const arrowContainer = arrowCell.querySelector(
+                ":scope > .subpanelAplArrows"
+              );
+              const aplReserveRem = parseFloat(
+                contentCell.style.getPropertyValue("--aplSubpanelMinWidth") ||
+                  arrowCell.style.getPropertyValue("--aplSubpanelMinWidth") ||
+                  "0"
+              );
+              const aplReservePx = Number.isFinite(aplReserveRem)
+                ? aplReserveRem * remPx
+                : 0;
+
+              return Math.ceil(
+                Math.max(
+                  getNaturalWidth(contentCell),
+                  getNaturalWidth(contentContainer),
+                  getNaturalWidth(arrowCell),
+                  getNaturalWidth(arrowContainer),
+                  aplReservePx,
+                  1
+                )
+              );
+            });
+
+            /*
+              Divider-mounted APL arrows are external to both adjacent subpanels.
+              Give the neighboring columns enough minimum width for the visible
+              half of that divider arrow so it can widen the lane instead of just
+              floating on top of a too-narrow subpanel layout.
+            */
+            const arrowRowChildren = Array.from(aplBottomRow.children);
+            arrowRowChildren.forEach((child, childIndex) => {
+              if (!child.classList.contains("subDivider")) {
+                return;
+              }
+
+              const dividerSlot = child.querySelector(
+                ".aplDividerArrowSlot, .aplDividerArrow"
+              );
+
+              if (!dividerSlot) {
+                return;
+              }
+
+              const dividerRect = child.getBoundingClientRect();
+              const slotRect = dividerSlot.getBoundingClientRect();
+
+              if (!dividerRect.width || !slotRect.width) {
+                return;
+              }
+
+              const dividerCenter = dividerRect.left + dividerRect.width / 2;
+              const leftNeeded = Math.max(0, dividerCenter - slotRect.left);
+              const rightNeeded = Math.max(0, slotRect.right - dividerCenter);
+              const leftCellIndex = arrowRowChildren
+                .slice(0, childIndex)
+                .filter((node) => node.classList.contains("aplArrowSubPanelDisplay"))
+                .length - 1;
+              const rightCellIndex = leftCellIndex + 1;
+
+              if (leftCellIndex >= 0 && leftCellIndex < desiredWidths.length) {
+                desiredWidths[leftCellIndex] = Math.ceil(
+                  Math.max(desiredWidths[leftCellIndex], leftNeeded * 2)
+                );
+              }
+
+              if (rightCellIndex >= 0 && rightCellIndex < desiredWidths.length) {
+                desiredWidths[rightCellIndex] = Math.ceil(
+                  Math.max(desiredWidths[rightCellIndex], rightNeeded * 2)
+                );
+              }
+            });
+
+            desiredWidths.forEach((resolvedWidth, cellIndex) => {
+              const widthPx = `${resolvedWidth}px`;
+              const contentCell = contentCells[cellIndex];
+              const arrowCell = arrowCells[cellIndex];
+
+              [contentCell, arrowCell].forEach((cell) => {
+                if (!cell) {
+                  return;
+                }
+
+                cell.style.setProperty("--linkedSubpanelWidth", widthPx);
+                cell.style.flex = "0 0 auto";
+                cell.style.width = widthPx;
+                cell.style.minWidth = widthPx;
+                cell.style.maxWidth = "none";
+              });
+            });
+          };
+
+          signHolderElmt.classList.add("aplContentHolder", "forceWidenedSubpanels");
+          g_bottom.insertAdjacentElement("afterend", aplBottomRow);
+          syncAplDetachedColumnWidths();
+          requestAnimationFrame(() => {
+            syncAplDetachedColumnWidths();
+            requestAnimationFrame(syncAplDetachedColumnWidths);
+          });
+          if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(syncAplDetachedColumnWidths).catch(() => {});
+          }
+        };
+
+        relocateAplArrowsBelowGlobalBottom();
         applyAplEdgeExitTabLayout();
                
           
@@ -12165,6 +12668,7 @@ const app = (function () {
           }
 
           syncStandardGuideArrowSubpanelWidth();
+          syncWidenedSubpanelFill();
 
           // Bottom Symbols
           

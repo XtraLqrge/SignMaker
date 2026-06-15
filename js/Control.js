@@ -1,4 +1,3 @@
-// Control.js
 const fractionMap = {
   "1/2": "½",
   "1/3": "⅓",
@@ -20,6 +19,10 @@ const fractionMap = {
   "1/10": "⅒",
 };
 const fractionRegex = new RegExp(Object.keys(fractionMap).join("|"), "g");
+const inputFractionRegex = /^(\d+)\/(\d+)/;
+
+const isClearviewTextFontFamily = (fontFamily) =>
+  /^Clearview\s/i.test(String(fontFamily || ""));
 
 class TextElement {
   constructor({
@@ -56,7 +59,10 @@ class TextElement {
       .replace(/\\t/g, "\t")
       .replace(/\\n/g, "\n");
 
-    const textWithFractions = this.useNumeralFormatting
+    const usesClearviewFractions =
+      this.useNumeralFormatting && isClearviewTextFontFamily(this.fontFamily);
+
+    const textWithFractions = this.useNumeralFormatting && !usesClearviewFractions
       ? rawText.replace(fractionRegex, (match) => fractionMap[match])
       : rawText;
 
@@ -105,6 +111,21 @@ class TextElement {
       }
 
       if (this.useNumeralFormatting) {
+        if (usesClearviewFractions) {
+          const clearviewFractionMatch = remaining.match(inputFractionRegex);
+          if (clearviewFractionMatch && fractionMap[clearviewFractionMatch[0]]) {
+            tokens.push({
+              type: "numeral",
+              value: clearviewFractionMatch[0],
+              numeralKind: "clearviewFraction",
+              numerator: clearviewFractionMatch[1],
+              denominator: clearviewFractionMatch[2],
+            });
+            index += clearviewFractionMatch[0].length;
+            continue;
+          }
+        }
+
         const fractionMatch = remaining.match(fractionTokenRegex);
         if (fractionMatch && fractionMatch[0]) {
           tokens.push({ type: "numeral", value: fractionMatch[0], numeralKind: "fraction" });
@@ -134,7 +155,17 @@ class TextElement {
       if (this.useNumeralFormatting) {
         for (let offset = 1; offset < remaining.length; offset++) {
           const slice = remaining.slice(offset);
-          if (slice.match(fractionTokenRegex) || slice.match(routeNumeralRegex)) {
+          const clearviewFractionMatch = usesClearviewFractions
+            ? slice.match(inputFractionRegex)
+            : null;
+          const hasClearviewFraction =
+            !!(clearviewFractionMatch && fractionMap[clearviewFractionMatch[0]]);
+
+          if (
+            hasClearviewFraction ||
+            slice.match(fractionTokenRegex) ||
+            slice.match(routeNumeralRegex)
+          ) {
             nextSpecialIndex = Math.min(nextSpecialIndex, offset);
             break;
           }
@@ -156,7 +187,9 @@ class TextElement {
     const isNumeralToken = (token) => token && token.type === "numeral";
     const isFractionNumeralToken = (token) =>
       isNumeralToken(token) &&
-      (token.numeralKind === "fraction" || /^[\u00BC-\u00BE\u2150-\u215E]+$/.test(String(token.value || "")));
+      (token.numeralKind === "fraction" ||
+        token.numeralKind === "clearviewFraction" ||
+        /^[\u00BC-\u00BE\u2150-\u215E]+$/.test(String(token.value || "")));
     const endsWithInputNumber = (token) => /\d$/.test(String(token?.value || ""));
 
     const spacedTokens = tokens.map((token, tokenIndex) => {
@@ -171,7 +204,11 @@ class TextElement {
         endsWithInputNumber(previousToken) &&
         isFractionNumeralToken(nextToken)
       ) {
-        return { ...token, type: "tightNumeralSpace" };
+        return {
+          ...token,
+          type: "tightNumeralSpace",
+          clearviewFractionSpace: nextToken?.numeralKind === "clearviewFraction",
+        };
       }
 
       return token;
@@ -235,7 +272,13 @@ class TextElement {
       "--bannerFirstLetterSize",
       this.bannerFirstLetterSize
     );
-    newText.style.setProperty("--lineHeight", this.lineHeight);
+    const normalizedLineHeight = (() => {
+      const parsedLineHeight = parseFloat(this.lineHeight);
+      return Number.isFinite(parsedLineHeight) ? Math.max(0, parsedLineHeight) : 100;
+    })();
+
+    newText.style.setProperty("--lineHeight", normalizedLineHeight);
+    newText.style.lineHeight = normalizedLineHeight / 100;
     if (usesHighwayGothic) {
       newText.style.setProperty(
         "--fhwaBaselineOffset",
@@ -304,6 +347,27 @@ class TextElement {
       }
     };
 
+    const appendClearviewFraction = (fragment, text) => {
+      fragment.classList.add("bE-clearviewFractionNumeral");
+      fragment.dataset.rawFraction = String(text.value || "");
+
+      const numerator = document.createElement("span");
+      numerator.className = "bE-clearviewFractionDigit bE-clearviewFractionNumerator";
+      numerator.textContent = text.numerator || String(text.value || "").split("/")[0] || "";
+
+      const slash = document.createElement("span");
+      slash.className = "bE-clearviewFractionSlash";
+      slash.textContent = "/";
+
+      const denominator = document.createElement("span");
+      denominator.className = "bE-clearviewFractionDigit bE-clearviewFractionDenominator";
+      denominator.textContent = text.denominator || String(text.value || "").split("/")[1] || "";
+
+      fragment.appendChild(numerator);
+      fragment.appendChild(slash);
+      fragment.appendChild(denominator);
+    };
+
     const createTextFragment = (text) => {
       const newTextFragment = document.createElement("span");
       newTextFragment.className = "bE-" + text.type;
@@ -311,9 +375,16 @@ class TextElement {
       if (text.type === "banner" && this.useBannerFormatting) {
         appendTextWithRealFirstLetter(newTextFragment, text.value);
       } else if (text.type === "numeral") {
-        appendNumeralTextWithTightSpaces(newTextFragment, text.value);
+        if (text.numeralKind === "clearviewFraction") {
+          appendClearviewFraction(newTextFragment, text);
+        } else {
+          appendNumeralTextWithTightSpaces(newTextFragment, text.value);
+        }
       } else if (text.type === "tightNumeralSpace") {
         newTextFragment.classList.add("bE-tightSpace");
+        if (text.clearviewFractionSpace) {
+          newTextFragment.classList.add("bE-tightClearviewFractionSpace");
+        }
         newTextFragment.textContent = text.value || " ";
       } else {
         newTextFragment.textContent = text.value;
@@ -329,6 +400,9 @@ class TextElement {
     };
 
     let splitTextContent = this.splitString();
+    if (splitTextContent.some((token) => token?.numeralKind === "clearviewFraction")) {
+      newText.classList.add("bE-hasClearviewFraction");
+    }
     const lineElements = [createLineElement()];
 
     for (let i = 0; i < splitTextContent.length; i++) {
@@ -673,9 +747,19 @@ class ActionMessageElement extends TextElement {
       ? resolvedOptions.useNumeralFormatting
       : true;
 
+    const spacing = Object.prototype.hasOwnProperty.call(options, "spacing")
+      ? options.spacing
+      : 0;
+
+    const smallCapitals = Object.prototype.hasOwnProperty.call(options, "smallCapitals")
+      ? options.smallCapitals
+      : false;
+
     super(resolvedOptions);
 
     this.useNumeralFormatting = useNumeralFormatting;
+    this.spacing = spacing;
+    this.smallCapitals = smallCapitals;
     this.textColor =
       typeof textColor === "string" && textColor.trim().length
         ? textColor
@@ -684,6 +768,11 @@ class ActionMessageElement extends TextElement {
 
   createElement(panel) {
     const newText = super.createElement(panel);
+    newText.style.setProperty("--spacing", this.spacing + "rem");
+    newText.style.marginLeft = this.spacing + "rem";
+    newText.style.marginRight = this.spacing + "rem";
+    newText.style.fontVariant = this.smallCapitals ? "small-caps" : "normal";
+    newText.classList.add("bE-actionMessageElement");
 
     const shouldOverrideTextColor =
       typeof this.textColor === "string" &&
@@ -776,6 +865,14 @@ class AdvisoryMessageElement extends TextElement {
       ? resolvedOptions.vertPadding
       : 0.3;
 
+    const spacing = Object.prototype.hasOwnProperty.call(options, "spacing")
+      ? options.spacing
+      : 0;
+
+    const smallCapitals = Object.prototype.hasOwnProperty.call(options, "smallCapitals")
+      ? options.smallCapitals
+      : false;
+
     super(resolvedOptions);
 
     this.textColor =
@@ -784,6 +881,8 @@ class AdvisoryMessageElement extends TextElement {
         : ControlTextElement.defaultTextColor;
     this.borderRadius = borderRadius;
     this.useNumeralFormatting = useNumeralFormatting;
+    this.spacing = spacing;
+    this.smallCapitals = smallCapitals;
     this.horizPadding = horizPadding;
     this.vertPadding = vertPadding;
   }
@@ -793,6 +892,10 @@ class AdvisoryMessageElement extends TextElement {
     newText.style.setProperty("--borderRadius", this.borderRadius + "px");
     newText.style.setProperty("--horizPadding", this.horizPadding);
     newText.style.setProperty("--vertPadding", this.vertPadding);
+    newText.style.setProperty("--spacing", this.spacing + "rem");
+    newText.style.marginLeft = this.spacing + "rem";
+    newText.style.marginRight = this.spacing + "rem";
+    newText.style.fontVariant = this.smallCapitals ? "small-caps" : "normal";
     newText.className = "bE-textElement bE-advisoryMessage";
 
     const shouldOverrideTextColor =
@@ -4533,9 +4636,19 @@ class Control {
 
         if (resolvedBackgroundColor) {
           flexRow.dataset.fullBleedBackgroundColor = resolvedBackgroundColor;
+          flexRow.style.setProperty(
+            "--fullBleedInitialBackgroundColor",
+            resolvedBackgroundColor
+          );
+          flexRow.style.setProperty(
+            "--fullBleedResolvedBackgroundColor",
+            resolvedBackgroundColor
+          );
         } else {
           delete flexRow.dataset.fullBleedBorderColor;
           delete flexRow.dataset.fullBleedBackgroundColor;
+          flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
+          flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");
         }
       } else {
         flexRow.classList.remove("fullBleed");
@@ -4548,6 +4661,8 @@ class Control {
         flexRow.style.width = rowWidthStyle;
         delete flexRow.dataset.fullBleedBorderColor;
         delete flexRow.dataset.fullBleedBackgroundColor;
+        flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
+        flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");
       }
 
       if (usesLightBleedBackground) {

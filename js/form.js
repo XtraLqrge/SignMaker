@@ -5300,16 +5300,107 @@ const getPostThicknessFallback = () =>
       });
     };
 
+    const FLOATING_COLOR_PICKER_SELECTOR = ".colorPickerMenu, .colorPickerCustomPanel";
+    const ACTIVE_FLOATING_COLOR_PICKER_SELECTOR = ".colorPickerMenu.open, .colorPickerCustomPanel.open";
+
+    const getClosestColorPickerTarget = (target, selector) =>
+      target && typeof target.closest === "function" ? target.closest(selector) : null;
+
+    const colorPickerFloatingPanelIsLive = (panel) => {
+      if (!panel) {
+        return false;
+      }
+
+      const wrapper = panel._colorPickerWrapper;
+      const sourceSelect = panel._colorPickerSelect;
+
+      if (!wrapper || !sourceSelect) {
+        return false;
+      }
+
+      if (
+        !document.documentElement.contains(wrapper) ||
+        !document.documentElement.contains(sourceSelect)
+      ) {
+        return false;
+      }
+
+      const api = sourceSelect._colorPickerApi;
+      return !!(
+        api &&
+        api.wrapper === wrapper &&
+        (api.menu === panel || api.customPanel === panel)
+      );
+    };
+
+    const cleanupOrphanedColorPickerPanels = () => {
+      document.querySelectorAll(FLOATING_COLOR_PICKER_SELECTOR).forEach((panel) => {
+        if (!colorPickerFloatingPanelIsLive(panel)) {
+          panel.remove();
+        }
+      });
+    };
+
     const closeAllColorPickers = (except = null) => {
+      cleanupOrphanedColorPickerPanels();
+
       document.querySelectorAll(".colorPicker.open, .colorPicker.addingCustomColor").forEach((picker) => {
         if (picker !== except) {
           picker.classList.remove("open", "addingCustomColor");
         }
       });
+
+      document.querySelectorAll(ACTIVE_FLOATING_COLOR_PICKER_SELECTOR).forEach((panel) => {
+        if (panel._colorPickerWrapper !== except) {
+          panel.classList.remove("open");
+        }
+      });
+    };
+
+    let colorPickerDocumentPointerGuardInstalled = false;
+
+    const installColorPickerDocumentPointerGuard = () => {
+      if (colorPickerDocumentPointerGuardInstalled) {
+        return;
+      }
+
+      colorPickerDocumentPointerGuardInstalled = true;
+
+      document.addEventListener(
+        "pointerdown",
+        (event) => {
+          const floatingPanel = getClosestColorPickerTarget(
+            event.target,
+            FLOATING_COLOR_PICKER_SELECTOR
+          );
+
+          if (floatingPanel && !colorPickerFloatingPanelIsLive(floatingPanel)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            floatingPanel.remove();
+            closeAllColorPickers();
+            return;
+          }
+
+          cleanupOrphanedColorPickerPanels();
+
+          const clickedColorPicker = getClosestColorPickerTarget(event.target, ".colorPicker");
+          const clickedActivePanel = getClosestColorPickerTarget(
+            event.target,
+            ACTIVE_FLOATING_COLOR_PICKER_SELECTOR
+          );
+
+          if (!clickedColorPicker && !clickedActivePanel) {
+            closeAllColorPickers();
+          }
+        },
+        true
+      );
     };
 
     const syncAllColorPickers = () => {
       ensureCustomColorOptionsForAllColorSelects(document);
+      cleanupOrphanedColorPickerPanels();
       document.querySelectorAll("select.colorPickerNativeSelect").forEach((selectEl) => {
         if (selectEl._colorPickerApi) {
           selectEl._colorPickerApi.sync();
@@ -5443,6 +5534,12 @@ const getPostThicknessFallback = () =>
       document.body.appendChild(customPanel);
       selectEl.classList.add("colorPickerNativeSelect");
 
+      wrapper._colorPickerSelect = selectEl;
+      menu._colorPickerWrapper = wrapper;
+      menu._colorPickerSelect = selectEl;
+      customPanel._colorPickerWrapper = wrapper;
+      customPanel._colorPickerSelect = selectEl;
+
       const getOptionLabel = (option) =>
         option?.textContent?.trim() || option?.label || option?.value || "Color";
 
@@ -5574,12 +5671,27 @@ const getPostThicknessFallback = () =>
         rgbaInputs[3].value = clampCustomColorAlpha(rgbaInputs[3].value);
       };
 
+      const getLastConcreteSelectedColor = () => {
+        const currentColor = normalizeCustomCssColorValue(
+          getColorOptionIconValue(selectEl.value, selectEl) || ""
+        );
+        if (currentColor) {
+          return currentColor;
+        }
+
+        const storedColor = normalizeCustomCssColorValue(
+          selectEl.dataset.colorPickerLastResolvedColor || ""
+        );
+        return storedColor || "#000000";
+      };
+
       const showCustomPanel = () => {
-        const currentColor = getColorOptionIconValue(selectEl.value, selectEl) || "#000000";
+        const currentColor = getLastConcreteSelectedColor();
         updateCustomPanelInputsFromHex(currentColor);
         rgbaInputs[3].value = "1";
         nameInput.value = "";
         wrapper.classList.add("addingCustomColor");
+        syncFloatingColorPickerPanelClasses();
         positionFloatingColorPickerPanels();
         nameInput.focus();
       };
@@ -5708,11 +5820,18 @@ const getPostThicknessFallback = () =>
         const resolvedValue = getColorOptionIconValue(currentValue, selectEl);
         triggerIcon.style.background = resolvedValue || "";
         triggerIcon.classList.toggle("specialColorSwatch", !resolvedValue);
+        if (resolvedValue) {
+          selectEl.dataset.colorPickerLastResolvedColor =
+            normalizeCustomCssColorValue(resolvedValue) || resolvedValue;
+        }
       };
 
       const syncFloatingColorPickerPanelClasses = () => {
-        const isOpen = wrapper.classList.contains("open");
-        const isAddingCustomColor = wrapper.classList.contains("addingCustomColor");
+        const isLive =
+          document.documentElement.contains(wrapper) &&
+          document.documentElement.contains(selectEl);
+        const isOpen = isLive && wrapper.classList.contains("open");
+        const isAddingCustomColor = isLive && wrapper.classList.contains("addingCustomColor");
         menu.classList.toggle("open", isOpen);
         customPanel.classList.toggle("open", isAddingCustomColor);
       };
@@ -5729,21 +5848,24 @@ const getPostThicknessFallback = () =>
         const appZoom = parseFloat(
           window.getComputedStyle(document.documentElement).getPropertyValue("--sm-app-zoom")
         ) || 1;
+        const rootFontSize = parseFloat(
+          window.getComputedStyle(document.documentElement).fontSize
+        ) || 16;
+        const scaledRem = rootFontSize * appZoom;
         const scaledPx = (value) => value * appZoom;
         const edgePadding = 8;
-        const menuWidth = Math.min(scaledPx(420), Math.max(triggerRect.width, scaledPx(252)));
-        const preferredMenuHeight = Math.min(scaledPx(360), Math.max(scaledPx(160), viewportHeight - edgePadding * 2));
-        const spaceBelow = Math.max(0, viewportHeight - triggerRect.bottom - edgePadding - 3);
-        const spaceAbove = Math.max(0, triggerRect.top - edgePadding - 3);
-        const openUpward = spaceBelow < 160 && spaceAbove > spaceBelow;
-        const availableSpace = Math.max(80, openUpward ? spaceAbove : spaceBelow);
-        const maxPanelHeight = Math.min(preferredMenuHeight, availableSpace);
-        const top = openUpward
-          ? Math.max(edgePadding, triggerRect.top - maxPanelHeight - 3)
-          : Math.min(
-              Math.max(edgePadding, triggerRect.bottom + 3),
-              Math.max(edgePadding, viewportHeight - maxPanelHeight - edgePadding)
-            );
+        const menuWidth = Math.min(
+          Math.max(triggerRect.width, scaledRem * 14),
+          Math.max(scaledRem * 14, viewportWidth - edgePadding * 2)
+        );
+        const preferredTop = Math.max(edgePadding, triggerRect.bottom + 3);
+        const definedMaxPanelHeight = Math.min(rootFontSize * 34, viewportHeight * 0.75);
+        const availableBelow = Math.max(0, viewportHeight - preferredTop - edgePadding);
+        const top = preferredTop;
+        const maxPanelHeight = Math.max(
+          0,
+          Math.min(definedMaxPanelHeight, availableBelow)
+        );
         const left = Math.min(
           Math.max(edgePadding, triggerRect.left),
           Math.max(edgePadding, viewportWidth - menuWidth - edgePadding)
@@ -5807,6 +5929,7 @@ const getPostThicknessFallback = () =>
         if (willOpen) {
           render();
           wrapper.classList.add("open");
+          syncFloatingColorPickerPanelClasses();
           requestAnimationFrame(positionFloatingColorPickerPanels);
         } else {
           wrapper.classList.remove("open", "addingCustomColor");
@@ -5932,7 +6055,9 @@ const getPostThicknessFallback = () =>
     };
 
     const initializeColorPickers = (root = document) => {
+      installColorPickerDocumentPointerGuard();
       ensureCustomColorOptionsForAllColorSelects(root);
+      cleanupOrphanedColorPickerPanels();
       root.querySelectorAll("select").forEach((selectEl) => {
         if (isColorSelectElement(selectEl)) {
           createColorPicker(selectEl);
@@ -10101,9 +10226,11 @@ const getPostThicknessFallback = () =>
     let shield_shieldBase = document.querySelector("#sdShield_shieldBase");
     let iconElem_iconsSelect = document.querySelector("#sdIcon_icon");
     const beaconColorSelect = document.querySelector("#sdBeacon_color");
-    const controlTextColorSelect = document.querySelector(
-      "#sdCtrlText_textColor"
-    );
+    const controlTextColorSelects = [
+      document.querySelector("#sdCtrlText_textColor"),
+      document.querySelector("#sdAdvisory_textColor"),
+      document.querySelector("#sdActionMessage_textColor"),
+    ].filter(Boolean);
     const blockBorderColorSelect = document.querySelector(
       "#sdBlock_borderColor"
     );
@@ -10120,19 +10247,23 @@ const getPostThicknessFallback = () =>
       }
     }
 
-    if (controlTextColorSelect) {
+    if (controlTextColorSelects.length) {
       const textColorOptions = ControlTextElement.getTextColorOptions();
-      for (const optionValue of textColorOptions) {
-        if (optionValue) {
-          lib.appendOption(controlTextColorSelect, optionValue);
-        }
-      }
       const defaultTextColor =
         ControlTextElement.defaultTextColor ||
         (textColorOptions.length ? textColorOptions[0] : "");
-      if (defaultTextColor) {
-        controlTextColorSelect.value = defaultTextColor;
-      }
+
+      controlTextColorSelects.forEach((textColorSelect) => {
+        for (const optionValue of textColorOptions) {
+          if (optionValue) {
+            lib.appendOption(textColorSelect, optionValue);
+          }
+        }
+
+        if (defaultTextColor) {
+          textColorSelect.value = defaultTextColor;
+        }
+      });
     }
 
     if (blockBorderColorSelect) {
@@ -13115,6 +13246,16 @@ const getPostThicknessFallback = () =>
       Control.prototype.blockInternalElements[
       Control.prototype.blockToClassElems.getElem(currentBlockElem)
       ];
+
+    if (blockElemType === "sdActionMessage" || blockElemType === "sdAdvisory") {
+      if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+      if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+      if (currentBlockElem.textColor === undefined) {
+        currentBlockElem.textColor =
+          blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+      }
+    }
+
     for (const propertyName in currentBlockElem) {
       const elementId = `${blockElemType}_${propertyName}`;
       const element = document.getElementById(elementId);
@@ -15846,6 +15987,15 @@ const getPostThicknessFallback = () =>
       Control.prototype.blockInternalElements[
       Control.prototype.blockToClassElems.getElem(currentBlockElem)
       ];
+
+    if (blockElemType === "sdActionMessage" || blockElemType === "sdAdvisory") {
+      if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+      if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+      if (currentBlockElem.textColor === undefined) {
+        currentBlockElem.textColor =
+          blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+      }
+    }
 
     if (blockElemType === "sdIcon") {
       const normalizeIconNumber = (value, fallback = 0) => {

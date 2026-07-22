@@ -8454,6 +8454,33 @@ const app = (function () {
     };
   };
 
+  const fitDownloadPreviewImage = (image, previewArea) => {
+    if (!image || !previewArea) {
+      return;
+    }
+
+    const previewStyle = window.getComputedStyle(previewArea);
+    const horizontalPadding =
+      (parseFloat(previewStyle.paddingLeft) || 0) +
+      (parseFloat(previewStyle.paddingRight) || 0);
+    const verticalPadding =
+      (parseFloat(previewStyle.paddingTop) || 0) +
+      (parseFloat(previewStyle.paddingBottom) || 0);
+    const availableWidth = Math.max(1, previewArea.clientWidth - horizontalPadding);
+    const availableHeight = Math.max(1, previewArea.clientHeight - verticalPadding);
+    const imageWidth = image.naturalWidth || availableWidth;
+    const imageHeight = image.naturalHeight || availableHeight;
+    const fitScale = Math.min(
+      availableWidth / imageWidth,
+      availableHeight / imageHeight
+    );
+
+    image.style.width = Math.max(1, Math.floor(imageWidth * fitScale)) + "px";
+    image.style.height = Math.max(1, Math.floor(imageHeight * fitScale)) + "px";
+    image.style.maxWidth = availableWidth + "px";
+    image.style.maxHeight = availableHeight + "px";
+  };
+
   const readBlobAsDataUrl = (blob) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -9510,13 +9537,17 @@ const app = (function () {
         }
 
         const previewImg = new Image();
+        previewImg.className = "downloadPreviewImage";
+        previewImg.alt = "Export preview";
+        previewImg.decoding = "async";
+        previewImg.draggable = false;
+        previewImg.addEventListener("load", () => {
+          fitDownloadPreviewImage(previewImg, downloadPreview);
+        });
         previewImg.src = dataUrl;
-        previewImg.style.maxWidth = "100%";
-        previewImg.style.height = "auto";
-        previewImg.style.display = "block";
-        previewImg.style.margin = "0 auto";
 
         downloadPreview.appendChild(previewImg);
+        fitDownloadPreviewImage(previewImg, downloadPreview);
       } catch (error) {
         if (requestId !== downloadPreviewRequestId) {
           return;

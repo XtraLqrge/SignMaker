@@ -1371,6 +1371,9 @@ textarea {
   align-items: stretch;
   gap: 1.25rem;
   height: 55%;
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 #downloadContent h3 {
@@ -1382,32 +1385,51 @@ textarea {
   text-align: center;
   width: max-content;
   z-index: 1;
+  pointer-events: none;
 }
 
 #downloadContents {
   width: 33%;
+  flex: 0 0 33%;
+  min-width: 0;
+  max-height: 100%;
   position: static;
   padding-top: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  overflow-y: auto;
 }
 
 #downloadPreview {
   width: 67%;
+  flex: 1 1 0;
   min-width: 0;
-  min-height: 180px;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 3.1rem 0.35rem 0.35rem 0.35rem;
 }
 
 #downloadPreview img,
-#downloadPreview iframe {
+#downloadPreview iframe,
+#downloadPreview .downloadPreviewImage {
+  width: auto;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
   display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
   margin: 0 auto;
+  object-fit: contain;
+  object-position: center center;
 }
 
 .downloadCloseButton {

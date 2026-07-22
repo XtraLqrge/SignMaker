@@ -1431,10 +1431,10 @@ textarea {
 
 #downloadContent .options.downloadActionButtons {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  flex-direction: row;
+  justify-content: stretch;
   align-items: stretch;
-  gap: 0.75rem;
+  gap: 0.5rem;
   margin-top: 0.5rem;
   padding-top: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
@@ -1444,11 +1444,12 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   background: #8f5a69;
   color: #fff;
-  padding: 0.75rem 1rem;
-  width: 100%;
+  padding: 0.75rem 0.5rem;
+  flex: 1 1 0;
+  width: auto;
   min-width: 0;
   font-size: 1.05rem;
 }
@@ -1522,12 +1523,48 @@ textarea {
   margin: 0 0 0.35rem;
 }
 
+.downloadResolutionControl {
+  margin-top: 0.45rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.downloadResolutionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.downloadResolutionHeader label {
+  width: auto;
+  margin: 0;
+  text-align: left;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+}
+
+#downloadResolutionValue {
+  min-width: 2.75rem;
+  text-align: right;
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+#downloadResolution {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
 .downloadPanelButtons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   max-width: 100%;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0;
 }
 
 .downloadPanelSelectButton {
@@ -1552,11 +1589,15 @@ textarea {
 }
 
 .downloadPanelButtonsMessage {
-  min-height: 1rem;
+  min-height: 0;
   font-family: "Inter", sans-serif;
   font-size: 0.72rem;
   line-height: 1.25;
   opacity: 0.75;
+}
+
+.downloadPanelButtonsMessage:empty {
+  display: none;
 }
 
 .downloadPrimaryButton:disabled {
@@ -4793,6 +4834,10 @@ dialog:not([open]) {
   color: rgb(245, 248, 255);
 }
 
+:root[data-theme="dark"] #downloadResolution {
+  accent-color: var(--selectedColor);
+}
+
 :root[data-theme="dark"] #downloadPreview {
   background: transparent;
 }
@@ -5240,7 +5285,7 @@ dialog:not([open]) {
 
 .exitTabMainSettingsGrid {
   display: grid;
-  grid-template-columns: max-content 8rem 6rem 5rem 5rem 8rem;
+  grid-template-columns: max-content 8rem 6rem 5rem 5rem;
   column-gap: 0.55rem;
   row-gap: 0.55rem;
   align-items: center;
@@ -5289,9 +5334,8 @@ dialog:not([open]) {
   width: 5rem;
 }
 
-.exitTabColorSelect {
-  grid-column: 6;
-  grid-row: 1;
+.exitTabColorSelect,
+.exitTabTextColorSelect {
   width: 8rem;
 }
 
@@ -5306,22 +5350,12 @@ dialog:not([open]) {
   width: 8rem;
 }
 
-.exitTabMainSettingsGrid.bilingualMode .exitTabColorSelect {
-  grid-column: 3 / span 2;
-  grid-row: 2;
-  width: 8rem;
-}
-
 .exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextLabel,
 .exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextInput {
   display: none;
 }
 
 #exitTabBilingualLabel {
-  display: inline-block;
-  width: 8rem;
-  margin-left: -0.47rem;
-  text-align: right;
   white-space: nowrap;
 }
 
@@ -5359,7 +5393,7 @@ dialog:not([open]) {
 
 .exitTabSliderGroup {
   display: grid;
-  grid-template-columns: max-content 12rem max-content max-content;
+  grid-template-columns: 9.5rem 12rem 4rem 2.35rem;
   align-items: center;
   column-gap: 0.5rem;
   row-gap: 0;
@@ -5381,8 +5415,8 @@ dialog:not([open]) {
   text-align: left;
   margin: 0;
   font-size: 2rem;
-  width: auto;
-  min-width: 2.5rem;
+  width: 4rem;
+  min-width: 4rem;
   line-height: 1;
 }
 
@@ -5407,6 +5441,72 @@ dialog:not([open]) {
   gap: 0.85rem;
   align-items: flex-start;
   margin-top: 0.5rem;
+}
+
+.exitTabStyleSettingsGrid {
+  display: grid;
+  grid-template-columns: max-content 12rem max-content 4.5rem;
+  column-gap: 0.65rem;
+  row-gap: 0.6rem;
+  align-items: center;
+  width: max-content;
+  margin-top: 0.9rem;
+}
+
+.exitTabStyleSettingsGrid label {
+  width: auto;
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.exitTabStyleSettingsGrid select,
+.exitTabStyleSettingsGrid input {
+  margin: 0;
+  min-width: 0;
+}
+
+#exitTabFontFamily {
+  width: 12rem;
+}
+
+#exitTabCharacterSpacing {
+  width: 4.5rem;
+}
+
+.exitTabSettingsLayout {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 1.2rem;
+  align-items: start;
+  margin-top: 0.85rem;
+}
+
+.exitTabCheckboxPanel {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.55rem;
+  row-gap: 0.7rem;
+  align-items: center;
+  padding-top: 0.35rem;
+  min-width: 12rem;
+}
+
+.exitTabCheckboxPanel legend {
+  grid-column: 1 / -1;
+  margin: 0 0 0.2rem 0;
+}
+
+.exitTabCheckboxPanel label {
+  width: auto;
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.exitTabCheckboxPanel input[type="checkbox"] {
+  margin: 0;
+  justify-self: start;
 }
 
 /* LIGHT MODE SETTINGS MODAL */
@@ -5651,6 +5751,14 @@ dialog:not([open]) {
 }
 
 #sdCtrlText_spacing {
+  width: 8.5rem;
+}
+
+#sdCtrlText_letterSpacing {
+  width: 8.5rem;
+}
+
+#sdCtrlText_letterSpacingVal {
   width: 4rem;
 }
 
@@ -5668,7 +5776,7 @@ dialog:not([open]) {
   width: 4rem;
 }
 
-.sdCtrlTextSmallCapsLabel {
+.sdCtrlTextSmallLettersLabel {
   margin-left: 0.6rem;
 }
 
@@ -5782,7 +5890,15 @@ dialog:not([open]) {
 }
 
 #sdCtrlText_spacing {
-  width: 4.25rem !important;
+  width: 8rem !important;
+}
+
+#sdCtrlText_letterSpacing {
+  width: 8rem !important;
+}
+
+#sdCtrlText_letterSpacingVal {
+  width: 4rem !important;
 }
 
 #sdCtrlText_alignment {
@@ -5805,8 +5921,8 @@ dialog:not([open]) {
   white-space: normal;
 }
 
-/* Keep Small Capitals with the bottom checkbox row */
-#smSPProperties > [data-property="sdCtrlText"] .sdCtrlTextSmallCapsLabel {
+/* Keep Small Letters with the bottom checkbox row */
+#smSPProperties > [data-property="sdCtrlText"] .sdCtrlTextSmallLettersLabel {
   width: 6.75rem !important;
   margin-left: 0.5rem;
 }
@@ -9442,7 +9558,7 @@ label .colorPickerTrigger {
 .colorPickerDeleteCustom {
   width: 0.72rem !important;
   height: 0.72rem !important;
-  font-size: 0.68rem !important;
+  font-size: 0.81rem !important;
 }
 
 .colorPickerAddIcon {
@@ -9506,7 +9622,22 @@ label .colorPickerTrigger {
 
 #sdAdvisory_spacing,
 #sdActionMessage_spacing {
-  width: 4.25rem !important;
+  width: 8rem !important;
+}
+
+#sdAdvisory_letterSpacing,
+#sdActionMessage_letterSpacing {
+  width: 8rem !important;
+}
+
+#sdAdvisory_letterSpacingVal,
+#sdActionMessage_letterSpacingVal {
+  width: 4rem !important;
+}
+
+.sdCtrlTextSpacingSliderRow {
+  margin-top: 0.65rem !important;
+  padding-top: 0.25rem;
 }
 
 #sdAdvisory_borderRadius,
@@ -9516,7 +9647,6 @@ label .colorPickerTrigger {
 }
 
 
-/* Temporary row-properties cleanup requested in Sign Maker Chat #7. */
 .sdBlockStretchControls {
   display: none !important;
 }
@@ -9583,7 +9713,7 @@ label .colorPickerTrigger {
 .colorPickerMenu .colorPickerDeleteCustom {
   width: 0.62rem !important;
   height: 0.62rem !important;
-  font-size: 0.68rem !important;
+  font-size: 0.81rem !important;
 }
 
 .colorPickerMenu:not(.open),
@@ -9593,3 +9723,1567 @@ label .colorPickerTrigger {
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
+/* Restore sidebar modal placement and scrolling after the exit-tab control layout changes. */
+.modals {
+  position: fixed !important;
+  top: 1.5rem !important;
+  left: 1.5rem !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: max-content !important;
+  height: max-content !important;
+  max-width: calc((100vw - 3rem) / var(--sm-app-zoom, 1)) !important;
+  max-height: calc((100vh - 3rem) / var(--sm-app-zoom, 1)) !important;
+  overflow: visible !important;
+  transform: scale(var(--sm-app-zoom)) !important;
+  transform-origin: top left !important;
+}
+
+html[data-config-position="top"] .modals,
+html[data-config-position="bottom"] .modals {
+  top: 1.5rem !important;
+  left: 1.5rem !important;
+  right: auto !important;
+  bottom: auto !important;
+  max-height: calc((100vh - 3rem) / var(--sm-app-zoom, 1)) !important;
+}
+
+.sMModal.subPanelConfig,
+.sMModal.templates,
+.sMModal.guideArrowConfig,
+.sMModal.exitTabConfig {
+  max-height: calc((100vh - 3rem) / var(--sm-app-zoom, 1)) !important;
+  overflow: hidden !important;
+}
+
+.sMModal.subPanelConfig .sMModalContent,
+.sMModal.templates .sMModalContent,
+.sMModal.guideArrowConfig .sMModalContent,
+.sMModal.exitTabConfig .sMModalContent {
+  max-height: calc((100vh - 7rem) / var(--sm-app-zoom, 1)) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.sMModal.subPanelConfig .colorPickerMenu,
+.sMModal.subPanelConfig .colorPickerCustomPanel,
+.sMModal.exitTabConfig .colorPickerMenu,
+.sMModal.exitTabConfig .colorPickerCustomPanel,
+.sMModal.guideArrowConfig .colorPickerMenu,
+.sMModal.guideArrowConfig .colorPickerCustomPanel {
+  position: fixed !important;
+  z-index: 9999999 !important;
+}
+
+
+/* Exit tab profile/default editor controls */
+.exitTabModeBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding-top: 0.55rem;
+  padding-bottom: 0.65rem;
+}
+
+.exitTabModeSwitch {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: min(38rem, 92%);
+}
+
+.exitTabModeButton {
+  flex: 1 1 0;
+  min-width: 12rem;
+  border: 0;
+  background: rgba(var(--baseColor), 0.22);
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.exitTabModeButton:hover {
+  background: var(--hoverColor);
+}
+
+.exitTabModeButton.active {
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  outline: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.exitTabDefaultProfileControls {
+  width: min(46rem, 96%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.exitTabDefaultProfileControls[hidden] {
+  display: none !important;
+}
+
+.exitTabProfileAddButton {
+  border: 0;
+  background: rgba(var(--baseColor), 0.2);
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+.exitTabProfileAddButton:hover {
+  background: var(--hoverColor);
+}
+
+.exitTabProfileList {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.exitTabProfileButtonWrap {
+  display: inline-flex;
+  align-items: stretch;
+  background: rgba(var(--baseColor), 0.18);
+}
+
+.exitTabProfileButton {
+  border: 0;
+  background: transparent;
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.exitTabProfileButton.active {
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+}
+
+.exitTabProfileIconButton {
+  border: 0;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--textColor);
+  width: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.exitTabProfileIconButton:hover {
+  background: var(--hoverColor);
+}
+
+.exitTabProfileIconButton .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.exitTabCurrentProfileRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  width: min(38rem, 92%);
+}
+
+.exitTabCurrentProfileRow[hidden] {
+  display: none !important;
+}
+
+.exitTabCurrentProfileRow label {
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  color: var(--textColor);
+}
+
+.exitTabProfileNativeSelect {
+  display: none !important;
+}
+
+.profilePicker {
+  position: relative;
+  display: inline-block;
+  min-width: 16rem;
+  z-index: 60;
+}
+
+.profilePicker.open {
+  z-index: 1000001;
+}
+
+.profilePickerTrigger {
+  width: 100%;
+  min-width: 16rem;
+  height: 2.2rem;
+  border: 0;
+  padding: 0 0.55rem;
+  background: #050505;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profilePickerTriggerLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.profilePickerTriggerCaret {
+  font-family: "Material Symbols Outlined";
+  font-size: 1.2rem;
+  transition: transform 0.16s ease;
+}
+
+.profilePicker.open .profilePickerTriggerCaret {
+  transform: rotate(180deg);
+}
+
+.profilePickerMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(28rem, 80vw);
+  max-height: min(34rem, 75vh);
+  overflow-y: auto;
+  background: #101010;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transform: translateY(-0.25rem) scaleY(0.96);
+  transform-origin: top center;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 1000002;
+}
+
+.profilePicker.open .profilePickerMenu {
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  pointer-events: auto;
+}
+
+.profilePickerItem {
+  width: 100%;
+  min-width: 16rem;
+  border: 0;
+  background: transparent;
+  color: white;
+  padding: 0.45rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.profilePickerItem:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.profilePickerItem.selected {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme="light"] .profilePickerTrigger {
+  background: #efefef;
+  color: #050505;
+}
+
+:root[data-theme="light"] .profilePickerMenu {
+  background: #f4f4f4;
+  color: #050505;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="light"] .profilePickerItem {
+  color: #050505;
+}
+
+:root[data-theme="light"] .profilePickerItem:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="light"] .profilePickerItem.selected {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.sMModal.exitTabConfig.defaultConfigMode #exitTabPanelControlsBar {
+  display: none !important;
+}
+
+.sMModal.exitTabConfig.defaultConfigMode .qcExitMarkerControls {
+  display: none !important;
+}
+
+#exitTabFontFamily + .fontPicker .fontPickerTrigger {
+  min-width: 18rem;
+}
+
+/* Exit tab editor compact header/layout tuning */
+.sMModal.exitTabConfig .exitTabModeBar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.sMModal.exitTabConfig .exitTabDefaultProfileControls {
+  flex: 0 0 100%;
+  order: 1;
+  margin-bottom: 0.45rem;
+}
+
+.sMModal.exitTabConfig .exitTabModeSwitch {
+  order: 2;
+  width: auto;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.sMModal.exitTabConfig .exitTabModeButton {
+  flex: 0 0 10.25rem;
+  min-width: 10.25rem;
+  max-width: 10.25rem;
+  padding: 0.48rem 0.6rem;
+  line-height: 1.08;
+}
+
+.sMModal.exitTabConfig .exitTabCurrentProfileRow {
+  order: 3;
+  width: auto;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  margin-left: 0.35rem;
+  justify-content: flex-start;
+}
+
+.sMModal.exitTabConfig .exitTabCurrentProfileRow label {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.sMModal.exitTabConfig .profilePicker,
+.sMModal.exitTabConfig .profilePickerTrigger,
+.sMModal.exitTabConfig .profilePickerItem {
+  min-width: 12.5rem;
+}
+
+.sMModal.exitTabConfig .profilePickerTrigger {
+  height: 2rem;
+}
+
+.sMModal.exitTabConfig .exitTabStyleSettingsGrid {
+  grid-template-columns: max-content 9.75rem max-content 4.5rem;
+  column-gap: 0.55rem;
+}
+
+.sMModal.exitTabConfig #exitTabFontFamily {
+  width: 9.75rem;
+}
+
+.sMModal.exitTabConfig #exitTabFontFamily + .fontPicker {
+  width: 9.75rem;
+  max-width: 9.75rem;
+}
+
+.sMModal.exitTabConfig #exitTabFontFamily + .fontPicker .fontPickerTrigger {
+  width: 9.75rem;
+  min-width: 9.75rem;
+  max-width: 9.75rem;
+}
+
+.sMModal.exitTabConfig #exitTabFontFamily + .fontPicker .fontPickerMenu {
+  min-width: 14rem;
+}
+
+/* Exit tab profile/dropdown layout refinement */
+.sMModal.exitTabConfig .exitTabModeBar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+}
+
+.sMModal.exitTabConfig .exitTabModeSwitch {
+  order: 1;
+  width: auto;
+  flex: 0 0 auto;
+  gap: 0.18rem;
+}
+
+.sMModal.exitTabConfig .exitTabModeButton {
+  flex: 0 0 8.25rem;
+  min-width: 8.25rem;
+  max-width: 8.25rem;
+  padding: 0.45rem 0.45rem;
+  line-height: 1.05;
+}
+
+.sMModal.exitTabConfig .exitTabCurrentProfileRow {
+  order: 2;
+  width: auto;
+  flex: 0 0 auto;
+  gap: 0.22rem;
+  margin-left: 0.18rem;
+  justify-content: flex-start;
+}
+
+.sMModal.exitTabConfig .exitTabDefaultProfileControls {
+  order: 2;
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0 0 0 0.18rem;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.sMModal.exitTabConfig .profilePicker,
+.sMModal.exitTabConfig .profilePickerTrigger,
+.sMModal.exitTabConfig .profilePickerItem,
+.profileManagerPicker,
+.profileManagerTrigger,
+.profileManagerItem,
+.profileManagerAddButton,
+.profileManagerNewInput {
+  min-width: 11.25rem;
+}
+
+.sMModal.exitTabConfig .profilePickerTriggerCaret.material-symbols-outlined,
+.profileManagerTriggerCaret.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.2rem;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+}
+
+.profileManagerPicker {
+  position: relative;
+  display: inline-block;
+  z-index: 75;
+}
+
+.profileManagerPicker.open {
+  z-index: 1000002;
+}
+
+.profileManagerTrigger {
+  height: 2rem;
+  border: 0;
+  padding: 0 0.55rem;
+  background: #050505;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profileManagerTriggerLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.profileManagerTriggerCaret {
+  flex: 0 0 auto;
+  transition: transform 0.16s ease;
+}
+
+.profileManagerPicker.open .profileManagerTriggerCaret {
+  transform: rotate(180deg);
+}
+
+.profileManagerMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(30rem, 80vw);
+  max-height: min(34rem, 72vh);
+  overflow-y: auto;
+  padding: 0.35rem;
+  background: #101010;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0.45rem 1rem rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transform: translateY(-0.25rem) scaleY(0.96);
+  transform-origin: top center;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.profileManagerPicker.open .profileManagerMenu {
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  pointer-events: auto;
+}
+
+.profileManagerItem {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) 1.7rem 1.7rem;
+  align-items: center;
+  justify-items: stretch;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.profileManagerItem:hover,
+.profileManagerItem.selected {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.profileManagerNameLabel,
+.profileManagerNameInput,
+.profileManagerNewInput {
+  width: 100%;
+  min-width: 9rem;
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  background: transparent;
+  color: #fff;
+  border: 1px solid transparent;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.profileManagerNameLabel {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.profileManagerNameInput:focus,
+.profileManagerNewInput:focus {
+  border-color: var(--selectedColor);
+  background: #050505;
+  outline: none;
+}
+
+.profileManagerIconButton {
+  width: 1.7rem;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  cursor: pointer;
+}
+
+.profileManagerIconButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.profileManagerIconButton .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.profileManagerAddButton {
+  width: 100%;
+  margin: 0.15rem 0 0;
+  padding: 0.4rem 0.55rem;
+  justify-content: flex-start;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.profileManagerAddButton:hover,
+.profileManagerIconButton:hover {
+  background: var(--hoverColor);
+}
+
+.profileManagerNewInput {
+  display: block;
+  background: #050505;
+}
+
+:root[data-theme="light"] .profileManagerTrigger,
+:root[data-theme="light"] .profileManagerMenu,
+:root[data-theme="light"] .profileManagerNameInput:focus,
+:root[data-theme="light"] .profileManagerNewInput {
+  background: #f4f4f4;
+  color: #050505;
+}
+
+:root[data-theme="light"] .profileManagerItem:hover,
+:root[data-theme="light"] .profileManagerItem.selected {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="light"] .profileManagerNameLabel,
+:root[data-theme="light"] .profileManagerNameInput,
+:root[data-theme="light"] .profileManagerNewInput,
+:root[data-theme="light"] .profileManagerIconButton,
+:root[data-theme="light"] .profileManagerAddButton {
+  color: #050505;
+}
+
+/* Exit tab style grid: keep color pickers inside their columns and give the font picker room. */
+.sMModal.exitTabConfig .exitTabStyleSettingsGrid {
+  grid-template-columns: max-content 14rem max-content 14rem;
+  column-gap: 0.65rem;
+}
+
+.sMModal.exitTabConfig #exitTabFontFamily,
+.sMModal.exitTabConfig #exitTabFontFamily + .fontPicker,
+.sMModal.exitTabConfig #exitTabFontFamily + .fontPicker .fontPickerTrigger,
+.sMModal.exitTabConfig #exitColor + .colorPicker,
+.sMModal.exitTabConfig #exitColor + .colorPicker .colorPickerTrigger,
+.sMModal.exitTabConfig #exitTabTextColor + .colorPicker,
+.sMModal.exitTabConfig #exitTabTextColor + .colorPicker .colorPickerTrigger {
+  width: 14rem;
+  min-width: 14rem;
+  max-width: 14rem;
+  box-sizing: border-box;
+}
+
+.sMModal.exitTabConfig #exitTabCharacterSpacing {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  max-width: 4.5rem;
+}
+
+.sMModal.exitTabConfig #exitTabFontFamily + .fontPicker .fontPickerMenu {
+  min-width: 16rem;
+}
+
+/* Subpanel text element spacing can be negative again. */
+#sdCtrlText_spacing,
+#sdAdvisory_spacing,
+#sdActionMessage_spacing {
+  min-width: 0;
+}
+
+/* Detached font picker menus use their own open class after being moved out of the picker wrapper. */
+.fontPickerMenu {
+  position: fixed !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 10000000 !important;
+  overscroll-behavior: contain;
+}
+
+.fontPickerMenu.open {
+  visibility: visible !important;
+  display: block !important;
+  opacity: 1 !important;
+  transform: translateY(0) scaleY(1) !important;
+  pointer-events: auto !important;
+}
+
+.fontPickerMenu:not(.open) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Exit tabs header cleanup. */
+.sMModal.exitTabConfig #exitTabPanelControlsBar > .sMModalTitle {
+  display: none !important;
+}
+
+.sMModal.exitTabConfig .exitTabModeBar {
+  column-gap: 0.45rem !important;
+}
+
+.sMModal.exitTabConfig .exitTabModeSwitch {
+  gap: 0.28rem !important;
+}
+
+.sMModal.exitTabConfig .exitTabModeButton {
+  flex: 0 0 6.85rem !important;
+  min-width: 6.85rem !important;
+  max-width: 6.85rem !important;
+  padding: 0.34rem 0.38rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  line-height: 1.03 !important;
+}
+
+.sMModal.exitTabConfig .exitTabCurrentProfileRow,
+.sMModal.exitTabConfig .exitTabDefaultProfileControls {
+  margin-left: 0.45rem !important;
+}
+
+.exitTabListRow {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.18rem;
+  width: max-content;
+}
+
+.exitTabNestedListRow {
+  margin-left: 0.5rem;
+}
+
+.exitTabNestedListRow .exitTabNestedButton {
+  margin-left: 0 !important;
+}
+
+.exitTabLabelDeleteButton {
+  width: 1.45rem;
+  min-width: 1.45rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--textColor);
+  cursor: pointer;
+}
+
+.exitTabLabelDeleteButton:hover {
+  background: rgba(255, 0, 0, 0.42);
+}
+
+.exitTabLabelDeleteButton .material-symbols-outlined {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+/* Custom Shield Maker labels and dropdowns. */
+#customShieldMaker,
+#customShieldMaker .customShieldMakerShell {
+  overflow: visible !important;
+}
+
+#customShieldMaker .customShieldMakerBody {
+  overflow: auto;
+}
+
+#customShieldMaker .customShieldMakerField {
+  align-items: stretch !important;
+  text-align: left !important;
+}
+
+#customShieldMaker .customShieldMakerField > span {
+  align-self: flex-start !important;
+  text-align: left !important;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns .customShieldMakerField {
+  min-width: 0;
+}
+
+#customShieldMaker #customShieldMakerRouteColor,
+#customShieldMaker #customShieldMakerRouteFont,
+#customShieldMaker #customShieldMakerRouteAlignment,
+#customShieldMaker #customShieldMakerRouteColor + .colorPicker,
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+#customShieldMaker #customShieldMakerRouteColor + .colorPicker .colorPickerTrigger,
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTrigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerMenu {
+  min-width: 13rem !important;
+}
+
+#customShieldMaker .colorPickerMenu,
+#customShieldMaker .colorPickerCustomPanel,
+#customShieldMaker .fontPickerMenu {
+  z-index: 2147483647 !important;
+}
+
+/* Targeted reset-safe additions for exit-tab asset pickers and Custom Shield Maker font menu. */
+.exitTabAssetPickerRow.hidden,
+#exitIconOptions.hidden {
+  display: none !important;
+}
+
+.exitTabAssetPickerRow {
+  display: flex;
+  align-items: stretch;
+  min-width: 11rem;
+}
+
+.exitTabAssetChooseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 11rem;
+  padding: 0.35rem 0.55rem;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exitTabAssetChooseButton .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.exitTabMainSettingsGrid .hidden,
+.qcHiddenSetting {
+  display: none !important;
+}
+
+.exitTabMainSettingsGrid.exitTabAssetMode {
+  align-items: center;
+}
+
+.exitTabGroup {
+  flex-direction: row !important;
+  align-items: stretch;
+}
+
+.exitTabNestedListRow {
+  margin-left: 0 !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTrigger {
+  height: 1.9rem !important;
+  min-height: 1.9rem !important;
+  padding: 0.25rem 0.4rem !important;
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTriggerLabel {
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+}
+
+.fontPickerMenu.customShieldFontPickerMenu {
+  min-width: 0 !important;
+  max-width: min(14rem, 90vw) !important;
+  z-index: 2147483647 !important;
+}
+
+.fontPickerMenu.customShieldFontPickerMenu .fontPickerFamilyHeader {
+  padding: 0.2rem 0.45rem !important;
+  font-size: 0.72rem !important;
+  line-height: 1 !important;
+}
+
+.fontPickerMenu.customShieldFontPickerMenu .fontPickerItem {
+  min-width: 0 !important;
+  padding: 0.16rem 0.45rem !important;
+  font-size: 0.76rem !important;
+  line-height: 1.05 !important;
+}
+
+.fontPickerMenu.customShieldFontPickerMenu .fontPickerFontItem {
+  padding-left: 0.65rem !important;
+}
+
+.iconExitTab .exitTabIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exitTabIconImage {
+  width: var(--exitIconSize, 3rem);
+  height: var(--exitIconSize, 3rem);
+  object-fit: contain;
+}
+
+.subDivider.hiddenDividerWithAplArrow:not(.hasArrow) {
+  display: none !important;
+}
+
+.subDivider.hiddenDividerWithAplArrow {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.subDivider.hiddenDividerWithAplArrow.hasArrow {
+  overflow: visible;
+}
+
+/* Quebec marker is now controlled through the Exit Tab type, not the older standalone block. */
+.qcExitMarkerControls {
+  display: none !important;
+}
+
+.sMModal.exitTabConfig #exitTabList {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  overflow-x: visible !important;
+  gap: 0.25rem !important;
+  margin-left: 0 !important;
+}
+
+.sMModal.exitTabConfig .exitTabGroup {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.2rem !important;
+}
+
+.sMModal.exitTabConfig .exitTabListRow.exitTabParentListRow {
+  display: inline-flex !important;
+  align-items: flex-start !important;
+  gap: 0.25rem !important;
+  width: max-content !important;
+}
+
+.sMModal.exitTabConfig .exitTabNestedColumn {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.2rem !important;
+}
+
+.sMModal.exitTabConfig .exitTabButton,
+.sMModal.exitTabConfig .exitTabNestedButton {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.5rem !important;
+  min-width: 7rem !important;
+  margin-left: 0 !important;
+  padding: 0.3rem 0.45rem 0.3rem 0.6rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: rgba(var(--baseColor), 0.25) !important;
+  color: var(--textColor) !important;
+  font-family: "Inter", sans-serif !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+.sMModal.exitTabConfig .exitTabButton.active,
+.sMModal.exitTabConfig .exitTabNestedButton.active,
+:root[data-theme="dark"] .sMModal.exitTabConfig .exitTabButton.active,
+:root[data-theme="dark"] .sMModal.exitTabConfig .exitTabNestedButton.active {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+.sMModal.exitTabConfig .exitTabInlineDelete {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  margin-left: 0.25rem !important;
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+  opacity: 0.9 !important;
+  cursor: pointer !important;
+}
+
+.sMModal.exitTabConfig .exitTabInlineDelete:hover {
+  color: #ffb0b0 !important;
+}
+
+.assetHiddenSetting {
+  display: none !important;
+}
+
+/* Global opened font dropdown size only, without touching the closed buttons */
+.fontPickerMenu {
+  max-width: min(14rem, calc(100vw - 1rem)) !important;
+  width: auto !important;
+}
+
+.fontPicker-allFontsGrouped .fontPickerMenu,
+.fontPicker-family .fontPickerMenu,
+.fontPicker-familyFont .fontPickerMenu {
+  min-width: 100% !important;
+}
+
+.fontPickerFamilyHeader {
+  font-size: 0.58rem !important;
+  line-height: 1.05 !important;
+  padding: 0.22rem 0.42rem !important;
+}
+
+.fontPickerItem {
+  min-width: 0 !important;
+  font-size: 0.81rem !important;
+  line-height: 1.05 !important;
+  padding: 0.22rem 0.42rem !important;
+}
+
+.fontPickerFontItem {
+  padding-left: 0.55rem !important;
+}
+
+/* Custom Shield Maker dropdown/input cleanup */
+#customShieldMaker {
+  overflow: visible !important;
+}
+
+#customShieldMaker .customShieldMakerShell,
+#customShieldMaker .customShieldMakerBody,
+#customShieldMaker .customShieldMakerPreviewPanel {
+  overflow: visible !important;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns .customShieldMakerField > span {
+  font-size: 0.78rem !important;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns .colorPicker,
+#customShieldMaker .customShieldMakerPreviewDropdowns .fontPicker {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns .colorPickerTrigger,
+#customShieldMaker .customShieldMakerPreviewDropdowns .fontPickerTrigger,
+#customShieldMaker .customShieldMakerPreviewDropdowns select {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 1.9rem !important;
+  min-height: 1.9rem !important;
+  padding: 0.25rem 0.4rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+}
+
+#customShieldMaker .fontPickerMenu,
+#customShieldMaker .colorPickerMenu,
+#customShieldMaker .colorPickerCustomPanel {
+  z-index: 2147483647 !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTriggerLabel {
+  font-size: 0.92rem !important;
+}
+
+/* Exit tab asset picker compact mode */
+.exitTabAssetPickerRow {
+  min-width: 0 !important;
+  width: 10rem !important;
+  align-items: center !important;
+}
+
+.exitTabAssetChooseButton {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 1.85rem !important;
+  min-height: 1.85rem !important;
+  padding: 0.22rem 0.45rem !important;
+  font-size: 0.85rem !important;
+}
+
+.exitTabAssetChooseButton .material-symbols-outlined {
+  display: none !important;
+}
+
+
+.fontPickerMenu {
+  max-width: min(11rem, calc(100vw - 1rem)) !important;
+}
+.fontPickerFamilyHeader {
+  font-size: 0.48rem !important;
+  line-height: 1 !important;
+  padding: 0.14rem 0.32rem !important;
+}
+.fontPickerItem {
+  font-size: 0.54rem !important;
+  line-height: 1 !important;
+  padding: 0.14rem 0.32rem !important;
+}
+.fontPickerFontItem {
+  padding-left: 0.42rem !important;
+}
+.sMModal.exitTabConfig .exitTabButton:not(.active),
+.sMModal.exitTabConfig .exitTabNestedButton:not(.active) {
+  background: rgba(var(--baseColor), 0.25) !important;
+}
+.sMModal.exitTabConfig .exitTabListRow.exitTabParentListRow {
+  align-items: flex-start !important;
+}
+.sMModal.exitTabConfig .exitTabInlineDelete.material-symbols-outlined {
+  font-size: 0.85rem !important;
+  font-family: 'Material Symbols Outlined' !important;
+}
+#customShieldMaker .customShieldMakerPreviewDropdowns .customShieldMakerField {
+  align-items: stretch !important;
+}
+#customShieldMaker .customShieldMakerPreviewDropdowns .customShieldMakerField > span {
+  font-size: 0.82rem !important;
+  line-height: 1 !important;
+}
+#customShieldMaker .customShieldMakerPreviewDropdowns .fontPickerTriggerLabel,
+#customShieldMaker .customShieldMakerPreviewDropdowns .colorPickerTriggerLabel {
+  font-size: 0.94rem !important;
+}
+
+/* Focused toll/icon exit tab controls patch */
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode .exitTabAssetPickerRow {
+  min-width: 0 !important;
+  width: 7.5rem !important;
+  max-width: 7.5rem !important;
+  height: 1.55rem !important;
+  align-items: center !important;
+}
+
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode .exitTabAssetChooseButton {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 1.55rem !important;
+  min-height: 1.55rem !important;
+  padding: 0.15rem 0.35rem !important;
+  gap: 0 !important;
+  font-size: 0.72rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode .exitTabAssetChooseButton .material-symbols-outlined {
+  display: none !important;
+}
+
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel label[for="showLeft"],
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel #showLeft,
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel label[for="topOffset"],
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel #topOffset,
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel label[for="verticalArrangement"],
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel #verticalArrangement,
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel label[for="caStyle"],
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel #caStyle,
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel #exitTabBilingualLabel,
+.sMModal.exitTabConfig .exitTabMainSettingsGrid.exitTabAssetMode ~ .exitTabSettingsLayout .exitTabCheckboxPanel #exitTabBilingual {
+  display: none !important;
+}
+
+.fontPickerFamilyHeader {
+  font-size: 0.72rem !important;
+  line-height: 1.05 !important;
+  padding-top: 0.21rem !important;
+  padding-bottom: 0.21rem !important;
+}
+
+.fontPickerItem {
+  font-size: 0.81rem !important;
+  line-height: 1.05 !important;
+  padding-top: 0.21rem !important;
+  padding-bottom: 0.21rem !important;
+}
+
+/* Font picker presentation */
+.fontPickerMenu.open {
+  opacity: 1 !important;
+  transform: translateY(0) scaleY(1) !important;
+  pointer-events: auto !important;
+}
+
+.fontPickerMenu:not(.open) {
+  opacity: 0 !important;
+  transform: translateY(-0.25rem) scaleY(0.96) !important;
+  pointer-events: none !important;
+}
+
+.fontPickerMenu {
+  transform-origin: top center !important;
+  transition: opacity 0.16s ease, transform 0.16s ease !important;
+}
+
+.fontPickerFontItem {
+  height: 1.27rem !important;
+  min-height: 1.27rem !important;
+  box-sizing: border-box !important;
+}
+
+.fontPickerFontItem:not(.fontPickerHighwayGothicItem) {
+  font-size: 0.77rem !important;
+}
+
+.fontPickerHighwayGothicItem {
+  font-size: 0.81rem !important;
+}
+
+.fontPickerHighwayGothicHeader {
+  font-family: "Series E", sans-serif !important;
+  font-size: 0.75rem !important;
+}
+
+
+.fontPickerSingleFontFamilyHeader {
+  width: 100% !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: inherit !important;
+  cursor: pointer !important;
+  text-align: left !important;
+}
+
+.fontPickerSingleFontFamilyHeader:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+:root[data-theme="light"] .fontPickerSingleFontFamilyHeader:hover {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
+.fontPickerMenu {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0 !important;
+  transform: translateY(-0.25rem) scaleY(0.96) !important;
+  transform-origin: top center !important;
+  pointer-events: none !important;
+  transition: opacity 0.16s ease, transform 0.16s ease !important;
+}
+
+.fontPickerMenu.open {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: translateY(0) scaleY(1) !important;
+  pointer-events: auto !important;
+}
+
+.fontPickerMenu:not(.open) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0 !important;
+  transform: translateY(-0.25rem) scaleY(0.96) !important;
+  pointer-events: none !important;
+}
+
+.fontPickerMenu.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+
+.fontPickerSingleFontFamilyHeader {
+  font-size: 0.72rem !important;
+  line-height: 1.05 !important;
+  padding-top: 0.21rem !important;
+  padding-bottom: 0.21rem !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Custom Shield Maker dropdown and alignment controls */
+#customShieldMaker .customShieldMakerPreviewDropdowns {
+  align-items: start !important;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns .customShieldMakerField {
+  display: grid !important;
+  grid-template-rows: auto 1.9rem auto;
+  align-content: start !important;
+  align-items: start !important;
+  align-self: start !important;
+  row-gap: 0.12rem !important;
+}
+
+#customShieldMaker .customShieldMakerPreviewDropdowns .customShieldMakerField > span {
+  display: flex !important;
+  align-items: flex-end !important;
+  width: 100% !important;
+  min-height: 0.82rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+}
+
+#customShieldMaker #customShieldMakerRouteColor + .colorPicker,
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker,
+#customShieldMaker .customShieldMakerAlignmentButtons {
+  grid-row: 2;
+  align-self: start !important;
+  margin: 0 !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTrigger {
+  height: 1.9rem !important;
+  min-height: 1.9rem !important;
+  padding: 0.25rem 0.4rem !important;
+  border: 1px solid rgba(var(--baseColor), 0.28) !important;
+  background: #000 !important;
+  color: var(--textColor) !important;
+  box-sizing: border-box !important;
+  justify-content: flex-start !important;
+  gap: 0.45rem !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTriggerLabel {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+#customShieldMaker #customShieldMakerRouteFont + .fontPicker .fontPickerTriggerCaret {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+}
+
+#customShieldMaker .customShieldMakerAlignmentSelect {
+  display: none !important;
+}
+
+#customShieldMaker .customShieldMakerAlignmentButtons {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  height: 1.9rem;
+  min-height: 1.9rem;
+}
+
+#customShieldMaker .customShieldMakerAlignmentButton {
+  width: 1.9rem;
+  min-width: 1.9rem;
+  max-width: 1.9rem;
+  height: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(var(--baseColor), 0.28);
+  border-radius: 0;
+  background: #000;
+  color: var(--textColor);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+#customShieldMaker .customShieldMakerAlignmentButton:hover {
+  background: var(--hoverColor);
+}
+
+#customShieldMaker .customShieldMakerAlignmentButton.selected,
+#customShieldMaker .customShieldMakerAlignmentButton[aria-pressed="true"] {
+  background: var(--selectedColor);
+  border-color: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme="light"] #customShieldMaker .customShieldMakerAlignmentButton.selected,
+:root[data-theme="light"] #customShieldMaker .customShieldMakerAlignmentButton[aria-pressed="true"] {
+  border-color: rgba(0, 0, 0, 0.72);
+}
+
+.modals.panelStylePopoverOpen {
+  width: max-content !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  transform-origin: top left !important;
+}
+
+.sMModal.panelStyleConfig {
+  width: 18rem !important;
+  min-width: 18rem !important;
+  max-width: min(18rem, calc((100vw - 1rem) / var(--sm-app-zoom, 1))) !important;
+  height: max-content !important;
+  max-height: calc((100vh - 1rem) / var(--sm-app-zoom, 1)) !important;
+  overflow: visible !important;
+  box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.24);
+}
+
+.sMModal.panelStyleConfig .sMModalBar,
+:root[data-theme="dark"] .sMModal.panelStyleConfig .sMModalBar {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  box-sizing: border-box;
+}
+
+.sMModal.panelStyleConfig .sMModalTitle {
+  justify-content: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  box-sizing: border-box;
+}
+
+.sMModal.panelStyleConfig .sMModalTab {
+  width: 100%;
+  padding: 0.48rem 0.65rem;
+  box-sizing: border-box;
+  text-decoration: none;
+  background: rgba(var(--baseColor), 0.16);
+  font-family: "Inter", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.sMModal.panelStyleConfig .sMModalTab:hover {
+  background: var(--hoverColor);
+}
+
+.sMModal.panelStyleConfig .sMModalTab.selected {
+  background: var(--selectedColor);
+  text-decoration: none;
+}
+
+.sMModal.panelStyleConfig .sMModalContent {
+  width: 100%;
+  padding: 0.7rem;
+  overflow: visible !important;
+  box-sizing: border-box;
+}
+
+.sMModal.panelStyleConfig .sMModalContent > div {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelAppearance > div,
+.sMModal.panelStyleConfig #sMPanelPadding > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.2rem;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sMModal.panelStyleConfig #sMPanelAppearance br,
+.sMModal.panelStyleConfig #sMPanelPadding br {
+  display: none;
+}
+
+.sMModal.panelStyleConfig label {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.sMModal.panelStyleConfig select,
+.sMModal.panelStyleConfig input[type="number"],
+.sMModal.panelStyleConfig .colorPicker,
+.sMModal.panelStyleConfig .colorPickerTrigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.sMModal.panelStyleConfig input[type="checkbox"] {
+  justify-self: start;
+  margin: 0;
+}
+
+.sMModal.panelStyleConfig #resetPadding {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0.15rem 0 0;
+}
+
+#panelSelect.panelSelectorFloating {
+  position: fixed !important;
+  top: 0;
+  right: auto !important;
+  bottom: auto !important;
+  left: 0;
+  max-height: calc((100vh - 1rem) / var(--sm-app-zoom, 1));
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  transform: scale(var(--sm-app-zoom, 1));
+  transform-origin: top left;
+  z-index: 2100;
+}
+

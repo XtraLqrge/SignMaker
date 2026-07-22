@@ -23,6 +23,7 @@
 .bannerShieldContainer {
   display: flex;
   flex-direction: column;
+  font-weight: 1;
   padding: 0.1rem;
 }
 
@@ -43,7 +44,7 @@
   --fhwaBaselineOffset: 0px;
   border-radius: 0.1rem;
   font-size: var(--fontSize);
-  text-transform: uppercase;
+  text-transform: none;
   font-family: var(--bannerFontFamily, "Series E");
   margin-bottom: auto;
   position: relative;
@@ -89,19 +90,30 @@
   font-size: calc(1rem * var(--shieldScale, 1));
 }
 
+.bE-shieldElement .bannerShieldContainer.hasTo {
+  grid-template-columns: auto auto auto auto;
+  grid-template-areas:
+    ". . top ."
+    "to left center right"
+    ". . bottom .";
+}
+
 .bE-shieldElement .bannerShieldContainer.noBanners {
   padding: 0;
   gap: 0;
 }
 
-.bE-shieldElement .to {
-  margin: 0;
-  order: -1;
+.bE-shieldElement .bannerShieldContainer.hasTo > .to {
+  grid-area: to;
+  margin: 0 calc(0.85rem * var(--shieldScale, 1)) 0 0;
   position: static;
+  top: auto;
   padding: 0;
   align-self: center;
-  margin-right: 0.35rem;
-  flex: 0 0 auto;
+  justify-self: end;
+  font-family: var(--bannerFontFamily, "Series E");
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .bE-shieldElement .bannerShieldContainer .shield {
@@ -118,7 +130,15 @@
 
 .bE-shieldElement .bannerSlot-above {
   grid-area: top;
-  margin-bottom: -0.5rem;
+  margin-bottom: -0.65rem;
+}
+
+/* Move the complete Above-banner shield unit slightly upward without changing
+   the banner-to-shield spacing. */
+.bE-shieldElement:has(> .bannerShieldContainer > .bannerSlot-above) {
+  position: relative;
+  top: calc(-0.06rem * var(--shieldScale, 1));
+  margin-bottom: calc(-0.06rem * var(--shieldScale, 1));
 }
 
 .bE-shieldElement .bannerSlot-below {
@@ -1034,15 +1054,37 @@
 
 .bannerShieldContainer.TX.TOLL .routeNumber {
     color: var(--white);
-    font-family: "Series D";
-    font-size: 2.2em;
-    top: -0.18em;
+    font-family: "Series E";
+    font-size: 2.25em;
+    top: -0.21em;
 }
 .bannerShieldContainer.TX.TOLL.three .routeNumber {
     font-family: "Series C";
 }
 .bannerShieldContainer.TX.TOLL.four .routeNumber {
     font-family: "Series B";
+}
+
+.bannerShieldContainer.TX.tollntta .routeNumber,
+.bannerShieldContainer.TX.tollctrma .routeNumber {
+  color: var(--white);
+  text-align: center;
+  font-family: "Clearview 3W";
+  letter-spacing: 0em;
+  font-size: 2em;
+  top: -0.15em;
+}
+.bannerShieldContainer.TX.tollntta.three .routeNumber,
+.bannerShieldContainer.TX.tollctrma.three .routeNumber {
+  font-family: "Clearview 1W";
+  letter-spacing: 0em;
+}
+.bannerShieldContainer.TX.tollntta.four .routeNumber,
+.bannerShieldContainer.TX.tollctrma.four .routeNumber {
+  font-family: "Clearview 1W";
+  font-size: 1.8em;
+  top: -0.11em;
+  letter-spacing: -0.1em;
 }
 
 /* UTAH */
@@ -1634,7 +1676,7 @@
   padding: 0 !important;
   margin: 0 !important;
   text-align: center;
-  text-transform: uppercase;
+  text-transform: none;
   position: static !important;
   top: auto !important;
 }
@@ -2272,4 +2314,173 @@
   font-size: 2.4em;
   font-family: "Series D";
   top: -0.15em;
+}
+
+
+/* Shared Above banners for consecutive block shields. Shields remain direct
+   flex children of the row, so merging cannot change their normal footprint,
+   alignment, or the gap to neighboring blocks. */
+.bE-hasSharedAboveBanners {
+  position: relative;
+}
+
+.bE-hasSharedAboveBanners > .bE-sharedAboveBannerText {
+  position: absolute !important;
+  left: 0;
+  top: 0 !important;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  white-space: nowrap;
+  text-align: center;
+  text-transform: none !important;
+  pointer-events: none;
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1));
+}
+
+.bE-hasSharedAboveBanners
+  > .bE-sharedAboveBannerText:not(.TOLL, .noIndent, .exportRealFirstLetter)::first-letter {
+  font-size: calc((var(--fontSize) + 0.3rem) * var(--bannerScale, 1));
+  font-weight: 1 !important;
+}
+
+/* Keep the original Above slot's height, but remove its text width so every
+   merged shield keeps a shield-sized footprint regardless of banner length. */
+.bE-sharedAboveBannerSource {
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+.blankBannerPlaceholder {
+  white-space: pre;
+  visibility: hidden !important;
+}
+
+/* Keep the established single-banner correction out of stacked slots. A
+   stacked slot has its own one-time correction in Control.js. Without this
+   exclusion the top banner is shifted twice, which causes clipping and makes
+   the road-name and second-banner spacing look much larger than it is. */
+.bE-shieldElement .bannerContainer.bannerSlot-right:not(.stackedBannerSlot)
+  > .bannerA:not(.TOLL, .truckPlaque, .noIndent):first-child,
+.bE-shieldElement .bannerContainer2.bannerSlot-right:not(.stackedBannerSlot)
+  > .bannerB:not(.TOLL, .truckPlaque, .noIndent):first-child,
+.bE-shieldElement .bannerContainer.bannerSlot-left:not(.stackedBannerSlot)
+  > .bannerA:not(.TOLL, .truckPlaque, .noIndent):first-child,
+.bE-shieldElement .bannerContainer2.bannerSlot-left:not(.stackedBannerSlot)
+  > .bannerB:not(.TOLL, .truckPlaque, .noIndent):first-child {
+  position: relative !important;
+  top: calc(-0.4rem * var(--bannerScale, 1)) !important;
+  margin-bottom: calc(-0.4rem * var(--bannerScale, 1)) !important;
+}
+
+/* Normal multi-banner and banner-plus-road-name side stacks. The shield and
+   stack start on the same grid-row edge. Only the stack itself receives the
+   normal enlarged-letter correction, so its top banner lines up with the
+   shield without being pushed outside the sign. */
+.bE-shieldElement .bannerShieldContainer.plainSideBannerLayout > .shield,
+.bE-shieldElement
+  .bannerShieldContainer
+  > .plainEnlargedSideBannerStack.bannerSlot-left,
+.bE-shieldElement
+  .bannerShieldContainer
+  > .plainEnlargedSideBannerStack.bannerSlot-right {
+  align-self: start !important;
+}
+
+.bE-shieldElement
+  .bannerShieldContainer
+  > .plainEnlargedSideBannerStack.bannerSlot-left,
+.bE-shieldElement
+  .bannerShieldContainer
+  > .plainEnlargedSideBannerStack.bannerSlot-right {
+  margin-top: 0 !important;
+  gap: 0 !important;
+}
+
+/* Tighten normal stacked banner lines only. TOLL, TRUCKS, bilingual, and other
+   plaque stacks never receive plainEnlargedSideBannerStack. */
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack
+  > .bannerA,
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack
+  > .bannerB {
+  position: static !important;
+  top: auto !important;
+  margin: 0 !important;
+  line-height: 0.76 !important;
+}
+
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack
+  > .bannerA + .bannerB,
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack
+  > .bannerB + .bannerA {
+  margin-top: calc(-0.12rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack.roadNameStackedBanner
+  > .bannerRoadName {
+  margin-top: calc(-0.16rem * var(--shieldScale, 1)) !important;
+  line-height: 0.92 !important;
+}
+
+/* Side banner stacks use the top edge of the shield as their fixed anchor.
+   Additional banners and road names continue downward in normal flow. */
+.bE-shieldElement .bannerShieldContainer.sideBannerStackLayout > .shield,
+.bE-shieldElement
+  .bannerShieldContainer
+  > .sideBannerStack.bannerSlot-left,
+.bE-shieldElement
+  .bannerShieldContainer
+  > .sideBannerStack.bannerSlot-right {
+  align-self: start !important;
+}
+
+.bE-shieldElement
+  .bannerShieldContainer
+  > .sideBannerStack.bannerSlot-left,
+.bE-shieldElement
+  .bannerShieldContainer
+  > .sideBannerStack.bannerSlot-right {
+  margin-top: 0 !important;
+  transform: none !important;
+}
+
+/* A single side TOLL plaque starts at the shield's top edge. */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-left,
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-right {
+  align-self: start !important;
+  margin-top: 0 !important;
+}
+
+/* Match non-enlarged Above banners to the normal-letter baseline while
+   retaining the standard banner-to-shield spacing. */
+.bE-shieldElement
+  .bannerSlot-above:has(> .bannerA.noIndent:not(.TOLL, .truckPlaque)),
+.bE-shieldElement
+  .bannerSlot-above:has(> .bannerB.noIndent:not(.TOLL, .truckPlaque)) {
+  margin-bottom: calc(-0.25rem * var(--bannerScale, 1)) !important;
+}
+
+.bE-shieldElement
+  .bannerSlot-above > .bannerA.noIndent:not(.TOLL, .truckPlaque),
+.bE-shieldElement
+  .bannerSlot-above > .bannerB.noIndent:not(.TOLL, .truckPlaque) {
+  transform: translate(
+    calc(0.04rem * var(--bannerScale, 1)),
+    calc(0.20rem * var(--bannerScale, 1))
+  ) !important;
 }

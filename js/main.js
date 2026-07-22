@@ -15,6 +15,7 @@ const app = (function () {
   };
 
   let currentlySelectedAPLArrowIndex = 0;
+  let downloadPreviewRequestId = 0;
   const DEFAULT_POST_POSITION = "Right";
   const DEFAULT_PANEL_SPACING = 4;
   const DEFAULT_STACKED_PANEL_SPACING = 0;
@@ -22,6 +23,10 @@ const app = (function () {
   const APP_STORAGE_KEY = "signMaker.autosave.v1";
   const RESTORE_ON_REFRESH_STORAGE_KEY = "signMaker.restoreOnRefresh";
   const SUBPANEL_BLOCK_CLIPBOARD_STORAGE_KEY = "signMaker.subpanelBlockClipboard.v1";
+  const EXPORT_RESOLUTION_STORAGE_KEY = "signMaker.exportResolutionScale";
+  const DEFAULT_EXPORT_RESOLUTION_SCALE = 4;
+  const MIN_EXPORT_RESOLUTION_SCALE = 1;
+  const MAX_EXPORT_RESOLUTION_SCALE = 12;
 
 
   const ensureExtendedGuideArrowOptions = () => {
@@ -172,6 +177,98 @@ const app = (function () {
   const isEmptyDefaultExitTab = (exitTab = {}) =>
     String(exitTab?.variant || "Default") === "Default" &&
     String(exitTab?.number ?? "").trim() === "";
+
+  const isExitTabHighwayGothicFontFamily = (fontFamily) =>
+    /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(String(fontFamily || ""));
+
+  const getExitTabAvailableFonts = () => {
+    const textElementFonts =
+      typeof TextElement !== "undefined" &&
+      TextElement.prototype &&
+      Array.isArray(TextElement.prototype.fontFamily)
+        ? TextElement.prototype.fontFamily
+        : [];
+    const exitTabFonts =
+      typeof ExitTab !== "undefined" &&
+      ExitTab.prototype &&
+      Array.isArray(ExitTab.prototype.fontFamilies)
+        ? ExitTab.prototype.fontFamilies
+        : [];
+    const normalizedFonts = [...textElementFonts, ...exitTabFonts]
+      .map((font) =>
+        typeof normalizeTextFontFamilyName === "function"
+          ? normalizeTextFontFamilyName(font)
+          : String(font || "").trim()
+      )
+      .filter(Boolean);
+    return normalizedFonts.filter((font, index, fonts) => fonts.indexOf(font) === index);
+  };
+
+  const normalizeExitTabFontFamily = (exitTab = {}) => {
+    const availableFonts = getExitTabAvailableFonts();
+    const requested = typeof normalizeTextFontFamilyName === "function"
+      ? normalizeTextFontFamilyName(exitTab.fontFamily)
+      : String(exitTab.fontFamily || "").trim();
+    const legacyFallback = exitTab.FHWAFont === true
+      ? ExitTab.prototype.defaultFHWAFontFamily
+      : (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR");
+    const fallback = legacyFallback || ExitTab.prototype.defaultFontFamily || "Series EEM";
+
+    if (requested) {
+      if (availableFonts.includes(requested)) {
+        return requested;
+      }
+
+      const caseInsensitiveMatch = availableFonts.find(
+        (font) => String(font).toLowerCase() === requested.toLowerCase()
+      );
+
+      if (caseInsensitiveMatch) {
+        return caseInsensitiveMatch;
+      }
+
+      return requested;
+    }
+
+    return availableFonts.includes(fallback)
+      ? fallback
+      : (availableFonts[0] || fallback || "Series EEM");
+  };
+
+  const normalizeExitTabLegacyFields = (exitTab = {}) => {
+    if (!exitTab || typeof exitTab !== "object") {
+      return exitTab;
+    }
+
+    exitTab.fontFamily = normalizeExitTabFontFamily(exitTab);
+    exitTab.FHWAFont = isExitTabHighwayGothicFontFamily(exitTab.fontFamily);
+
+    const parsedCharacterSpacing = parseFloat(exitTab.characterSpacing);
+    exitTab.characterSpacing = Number.isFinite(parsedCharacterSpacing)
+      ? Math.max(-0.15, Math.min(0.25, parsedCharacterSpacing))
+      : ExitTab.prototype.defaultCharacterSpacing || 0;
+
+    const parsedExitTextVersion = parseInt(exitTab.exitTextSizePercentVersion, 10);
+    const parsedExitTextSizePercent = parseFloat(exitTab.exitTextSizePercent);
+    if (
+      parsedExitTextVersion !== ExitTab.prototype.exitTextSizePercentVersion &&
+      Number.isFinite(parsedExitTextSizePercent) &&
+      (parsedExitTextSizePercent === 100 || parsedExitTextSizePercent === 60)
+    ) {
+      exitTab.exitTextSizePercent = ExitTab.prototype.defaultExitTextSizePercent;
+    } else {
+      exitTab.exitTextSizePercent = Number.isFinite(parsedExitTextSizePercent)
+        ? Math.max(25, Math.min(100, parsedExitTextSizePercent))
+        : ExitTab.prototype.defaultExitTextSizePercent;
+    }
+    exitTab.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+    exitTab.textColor = typeof exitTab.textColor === "string" && exitTab.textColor.trim().length
+      ? exitTab.textColor.trim()
+      : ExitTab.prototype.defaultTextColor;
+    exitTab.transparent = exitTab.transparent === true || exitTab.transparent === "true";
+
+    return exitTab;
+  };
 
   const getStackedPanelBottomIndex = (panelIndex = currentlySelectedPanelIndex) => {
     if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
@@ -722,17 +819,22 @@ const app = (function () {
   };
 
   const applyCustomExitTabColorVars = (exitTabElmt, exitTabHolderElmt, colorValue) => {
-    if (!exitTabElmt || !exitTabHolderElmt || !isCustomCssColorValue(colorValue)) {
+    if (!exitTabElmt || !isCustomCssColorValue(colorValue)) {
       return false;
     }
 
     const resolvedColor = getResolvedCssColorValue(colorValue);
     const textColor = getReadableTextColorForCssColor(resolvedColor);
-    [exitTabElmt, exitTabHolderElmt].forEach((element) => {
-      element.classList.add("customExitTabColor");
-      element.style.setProperty("--exitTabCustomBg", resolvedColor);
-      element.style.setProperty("--exitTabCustomFg", textColor);
-    });
+    exitTabElmt.classList.add("customExitTabColor");
+    exitTabElmt.style.setProperty("--exitTabCustomBg", resolvedColor);
+    exitTabElmt.style.setProperty("--exitTabCustomFg", textColor);
+
+    if (exitTabHolderElmt) {
+      exitTabHolderElmt.classList.remove("customExitTabColor");
+      exitTabHolderElmt.style.removeProperty("--exitTabCustomBg");
+      exitTabHolderElmt.style.removeProperty("--exitTabCustomFg");
+    }
+
     return true;
   };
 
@@ -1040,38 +1142,12 @@ const app = (function () {
 
       normalizeSubpanelDividerSettings(sign);
 
-      const groups = [];
-      let currentGroup = {
-        start: 0,
-        end: 0,
-        indices: [0],
-      };
-
-      for (let subPanelIndex = 0; subPanelIndex < sign.subPanels.length - 1; subPanelIndex++) {
-        if (isSubpanelDividerVisibleForSign(sign, subPanelIndex)) {
-          groups.push(currentGroup);
-          currentGroup = {
-            start: subPanelIndex + 1,
-            end: subPanelIndex + 1,
-            indices: [subPanelIndex + 1],
-          };
-        } else {
-          currentGroup.end = subPanelIndex + 1;
-          currentGroup.indices.push(subPanelIndex + 1);
-        }
-      }
-
-      groups.push(currentGroup);
-
-      return groups.map((group, groupIndex) => ({
-        ...group,
-        groupIndex,
-        label:
-          group.indices.length === 1
-            ? `Subpanel ${group.indices[0] + 1}`
-            : `Subpanels ${formatSubpanelNumberList(
-                group.indices.map((index) => index + 1)
-              )}`,
+      return sign.subPanels.map((subPanel, index) => ({
+        start: index,
+        end: index,
+        indices: [index],
+        groupIndex: index,
+        label: `Subpanel ${index + 1}`,
       }));
     };
 
@@ -1176,26 +1252,30 @@ const app = (function () {
 
       normalizeSubpanelDividerSettings(sign);
 
-      sign.aplArrows = sign.aplArrows.filter((arrow) => {
-        if (arrow?.placement !== "divider") {
-          return true;
-        }
-
-        return isSubpanelDividerVisibleForSign(
-          sign,
-          arrow.dividerAfterSubPanelIndex
-        );
-      });
-
       for (const arrow of sign.aplArrows) {
-        if (!arrow || arrow.placement === "divider") {
+        if (!arrow) {
           continue;
         }
 
-        arrow.subPanelIndex = getAPLGroupStartForSubPanelIndex(
-          sign,
-          typeof arrow.subPanelIndex === "number" ? arrow.subPanelIndex : 0
+        if (arrow.placement === "divider") {
+          arrow.dividerAfterSubPanelIndex = clamp(
+            Number.isFinite(Number(arrow.dividerAfterSubPanelIndex))
+              ? Number(arrow.dividerAfterSubPanelIndex)
+              : 0,
+            0,
+            Math.max(0, sign.subPanels.length - 2)
+          );
+          delete arrow.subPanelIndex;
+          continue;
+        }
+
+        arrow.placement = "subpanel";
+        arrow.subPanelIndex = clamp(
+          typeof arrow.subPanelIndex === "number" ? arrow.subPanelIndex : 0,
+          0,
+          Math.max(0, sign.subPanels.length - 1)
         );
+        delete arrow.dividerAfterSubPanelIndex;
       }
     };
 
@@ -1375,7 +1455,7 @@ const app = (function () {
 
             if (Array.isArray(rowData)) {
               for (const elemData of rowData) {
-                let elemType = elemData?._elementType;
+                let elemType = elemData?._elementType || elemData?.__undoType;
 
                 if (!elemType && Control.prototype.blockToClassElems) {
                   if (elemData.icon !== undefined) {
@@ -1426,6 +1506,7 @@ const app = (function () {
                   const elem = new ElemClass(elemData);
                   Object.assign(elem, elemData);
                   delete elem._elementType;
+                  delete elem.__undoType;
                   row.push(elem);
                 }
               }
@@ -1470,6 +1551,13 @@ const app = (function () {
       }
       if (typeof postData.secondExitOnly === "boolean") {
         newPost.secondExitOnly = postData.secondExitOnly;
+      }
+      if (postData.exitTabProfiles && typeof postData.exitTabProfiles === "object") {
+        try {
+          newPost.exitTabProfiles = JSON.parse(JSON.stringify(postData.exitTabProfiles));
+        } catch (error) {
+          newPost.exitTabProfiles = postData.exitTabProfiles;
+        }
       }
 
       newPost.panels = [];
@@ -1525,26 +1613,29 @@ const app = (function () {
             panelData.borderRadius
           );
 
-          if (Array.isArray(panelData.exitTabs)) {
-            panel.exitTabs = panelData.exitTabs.map((exitTabData) => {
+          const normalizedExitTabs = Array.isArray(panelData.exitTabs)
+            ? panelData.exitTabs.map((exitTabData) => {
               const exitTab = new ExitTab(exitTabData);
               Object.assign(exitTab, exitTabData);
+              normalizeExitTabLegacyFields(exitTab);
 
               if (Array.isArray(exitTabData.nestedExitTabs)) {
                 exitTab.nestedExitTabs = exitTabData.nestedExitTabs.map(
                   (nestedData) => {
                     const nested = new ExitTab(nestedData);
                     Object.assign(nested, nestedData);
+                    normalizeExitTabLegacyFields(nested);
                     return nested;
                   }
                 );
               }
 
               return exitTab;
-            });
-          }
+            })
+            : panel.exitTabs;
 
           Object.assign(panel, panelData);
+          panel.exitTabs = normalizedExitTabs;
           panel.sign = sign;
           newPost.panels.push(panel);
         }
@@ -1891,26 +1982,35 @@ const app = (function () {
 
     const getSignContainer = () => signElmt.closest(".signContainer");
 
+    const clearDynamicDividerPaint = () => {
+      signElmt.querySelectorAll(".subDivider.hasDynamicDividerPaint").forEach(
+        (dividerElmt) => {
+          dividerElmt.classList.remove("hasDynamicDividerPaint");
+          dividerElmt.removeAttribute("data-dynamic-divider-uses-before");
+          dividerElmt.style.removeProperty("--dynamicSubDividerPaint");
+        }
+      );
+    };
+
     const removeDynamicArtifacts = () => {
       const signContainerElmt = getSignContainer();
 
+      clearDynamicDividerPaint();
+
       signElmt
         .querySelectorAll(
-          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch, :scope > .dynamicSignFullBleedLayer"
+          ":scope > .dynamicSignCornerPatch, :scope > .dynamicSignFullBleedLayer"
         )
         .forEach((overlay) => overlay.remove());
 
       signContainerElmt
         ?.querySelectorAll(
-          ":scope > .dynamicSignBorderOverlay, :scope > .dynamicSignCornerPatch, :scope > .dynamicSignFullBleedLayer"
+          ":scope > .dynamicSignCornerPatch, :scope > .dynamicSignFullBleedLayer"
         )
         .forEach((overlay) => overlay.remove());
 
-      signElmt.classList.remove("hasDynamicSignBorderOverlay", "hasDynamicSignFullBleedLayer");
-      signContainerElmt?.classList.remove(
-        "hasDynamicSignBorderOverlay",
-        "hasDynamicSignCornerPatches"
-      );
+      signElmt.classList.remove("hasDynamicSignFullBleedLayer");
+      signContainerElmt?.classList.remove("hasDynamicSignCornerPatches");
 
       ["topLeft", "topRight", "bottomLeft", "bottomRight"].forEach(
         (position) => {
@@ -1931,6 +2031,11 @@ const app = (function () {
       signElmt.style.removeProperty("background-size");
       signElmt.style.removeProperty("background-color");
       signElmt.style.removeProperty("border-color");
+      signElmt.style.removeProperty("border-image-source");
+      signElmt.style.removeProperty("border-image-slice");
+      signElmt.style.removeProperty("border-image-width");
+      signElmt.style.removeProperty("border-image-outset");
+      signElmt.style.removeProperty("border-image-repeat");
       removeDynamicArtifacts();
     };
 
@@ -2025,6 +2130,43 @@ const app = (function () {
         : getNamedColor("White", "white");
     };
 
+
+    const getPaintColorLuminance = (color) => {
+      const resolvedColor = resolveCssColor(color);
+      const match = String(resolvedColor || "").match(
+        /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i
+      );
+
+      if (!match) {
+        return String(color || "").trim().toLowerCase() === "black" ? 0 : 1;
+      }
+
+      const red = Number(match[1]);
+      const green = Number(match[2]);
+      const blue = Number(match[3]);
+
+      if (![red, green, blue].every(Number.isFinite)) {
+        return 1;
+      }
+
+      return (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+    };
+
+    const getDarkestPaintColor = (colors, fallback = defaultBorderColor) => {
+      const candidates = colors.filter((color) => String(color || "").trim());
+
+      if (!candidates.length) {
+        return fallback;
+      }
+
+      return candidates.reduce((darkest, color) =>
+        getPaintColorLuminance(color) < getPaintColorLuminance(darkest)
+          ? color
+          : darkest
+      );
+    };
+
+
     const globalTopElmt = signElmt.querySelector(":scope > .globalTop");
     const globalBottomElmt = signElmt.querySelector(":scope > .globalBottom");
     const hasGlobalTopRows = !!globalTopElmt?.querySelector(".blockElementRow");
@@ -2085,9 +2227,11 @@ const app = (function () {
     };
 
     const edgeSnapTolerance = Math.max(1.5, borderWidth + 0.5);
+    const rowDividerEdges = new WeakMap();
 
     const getLocalizedRowRect = (rowEl) => {
       const rowRect = rowEl.getBoundingClientRect();
+      rowDividerEdges.set(rowEl, []);
 
       if (!rowRect.width || !rowRect.height) {
         return null;
@@ -2120,44 +2264,125 @@ const app = (function () {
         let groupLeft = toSignCssX(subPanelRect.left - signRect.left);
         let groupRight = toSignCssX(subPanelRect.right - signRect.left);
 
-        if (signHolder && Number.isFinite(subPanelIndex)) {
-          const dividerEntries = Array.from(
-            signHolder.querySelectorAll(":scope > .subDivider")
-          )
-            .map((dividerElmt) => {
-              const match = String(dividerElmt.id || "").match(/subDivider(\d+)/);
-              const boundaryIndex = match ? Number(match[1]) : NaN;
-              return Number.isFinite(boundaryIndex)
-                ? { dividerElmt, boundaryIndex }
-                : null;
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.boundaryIndex - b.boundaryIndex);
+        const dividerEdges = [];
 
-          const leftBoundary = [...dividerEntries]
-            .reverse()
-            .find((entry) => entry.boundaryIndex <= subPanelIndex);
-          const rightBoundary = dividerEntries.find(
-            (entry) => entry.boundaryIndex > subPanelIndex
+        if (signHolder) {
+          const subPanelDisplays = Array.from(
+            signHolder.querySelectorAll(
+              ":scope > .subPanelDisplay:not(.aplArrowSubPanelDisplay)"
+            )
           );
+          const subPanelOrderIndex = subPanelDisplays.indexOf(subPanelDisplay);
+          const normalizedSubPanelIndex = Number.isFinite(subPanelIndex)
+            ? subPanelIndex
+            : subPanelOrderIndex;
+          const isFirstSubPanel = subPanelOrderIndex === 0;
+          const isLastSubPanel =
+            subPanelOrderIndex === subPanelDisplays.length - 1;
 
-          if (leftBoundary) {
-            const dividerRect = leftBoundary.dividerElmt.getBoundingClientRect();
-            groupLeft = toSignCssX(dividerRect.right - signRect.left);
-          } else {
+          const getDividerPaintRect = (dividerElmt) => {
+            if (
+              !dividerElmt ||
+              dividerElmt.classList.contains("hiddenDividerWithAplArrow")
+            ) {
+              return null;
+            }
+
+            const dividerStyle = window.getComputedStyle(dividerElmt);
+            const dividerRect = dividerElmt.getBoundingClientRect();
+
+            if (
+              dividerStyle.display === "none" ||
+              dividerStyle.visibility === "hidden" ||
+              dividerRect.width <= 0 ||
+              dividerRect.height <= 0
+            ) {
+              return null;
+            }
+
+            let dividerLeft = toSignCssX(dividerRect.left - signRect.left);
+            let dividerRight = toSignCssX(dividerRect.right - signRect.left);
+            let dividerTop = toSignCssY(dividerRect.top - signRect.top);
+            let dividerBottom = toSignCssY(dividerRect.bottom - signRect.top);
+            const beforeStyle = window.getComputedStyle(dividerElmt, "::before");
+            const hasPaintedBefore =
+              beforeStyle &&
+              beforeStyle.display !== "none" &&
+              beforeStyle.visibility !== "hidden" &&
+              beforeStyle.content !== "none" &&
+              !isTransparentColor(beforeStyle.backgroundColor);
+
+            if (hasPaintedBefore) {
+              const beforeTop = cssLengthToPx(beforeStyle.top, dividerElmt);
+              const beforeBottom = cssLengthToPx(beforeStyle.bottom, dividerElmt);
+              const beforeLeft = cssLengthToPx(beforeStyle.left, dividerElmt);
+              const beforeWidth = cssLengthToPx(beforeStyle.width, dividerElmt);
+
+              dividerTop += beforeTop;
+              dividerBottom -= beforeBottom;
+
+              if (beforeWidth > 0) {
+                if (String(beforeStyle.left || "").trim() !== "auto") {
+                  dividerLeft += beforeLeft;
+                } else {
+                  dividerLeft += Math.max(
+                    0,
+                    (dividerRight - dividerLeft - beforeWidth) / 2
+                  );
+                }
+                dividerRight = dividerLeft + beforeWidth;
+              }
+            }
+
+            if (
+              dividerRight <= dividerLeft ||
+              dividerBottom <= dividerTop
+            ) {
+              return null;
+            }
+
+            return {
+              left: dividerLeft,
+              right: dividerRight,
+              top: dividerTop,
+              bottom: dividerBottom,
+              dividerElmt,
+              usesBefore: hasPaintedBefore,
+            };
+          };
+
+          const leftDivider = Number.isFinite(normalizedSubPanelIndex)
+            ? signHolder.querySelector(
+                `:scope > #subDivider${normalizedSubPanelIndex}`
+              )
+            : null;
+          const rightDivider = Number.isFinite(normalizedSubPanelIndex)
+            ? signHolder.querySelector(
+                `:scope > #subDivider${normalizedSubPanelIndex + 1}`
+              )
+            : null;
+          const leftDividerRect = getDividerPaintRect(leftDivider);
+          const rightDividerRect = getDividerPaintRect(rightDivider);
+
+          if (isFirstSubPanel) {
             groupLeft = 0;
+          } else if (leftDividerRect) {
+            groupLeft = leftDividerRect.right;
+            dividerEdges.push(leftDividerRect);
           }
 
-          if (rightBoundary) {
-            const dividerRect = rightBoundary.dividerElmt.getBoundingClientRect();
-            groupRight = toSignCssX(dividerRect.left - signRect.left);
-          } else {
+          if (isLastSubPanel) {
             groupRight = signWidth;
+          } else if (rightDividerRect) {
+            groupRight = rightDividerRect.left;
+            dividerEdges.push(rightDividerRect);
           }
         }
 
         left = groupLeft;
         right = groupRight;
+
+        rowDividerEdges.set(rowEl, dividerEdges);
       }
 
       const rowComputed = window.getComputedStyle(rowEl);
@@ -2255,6 +2480,7 @@ const app = (function () {
     const contentLayers = [];
     const fillInfos = [];
     const rowInfos = [];
+    const dividerInfos = [];
     const cornerColors = {};
 
     const getCornerRadius = (cssPropertyName) =>
@@ -2355,7 +2581,32 @@ const app = (function () {
       }
 
       if (borderColor) {
+        const dividerEdges = rowDividerEdges.get(rowEl) || [];
         rowInfos.push({ rect, borderColor });
+
+        const rowTop = rect.top;
+        const rowBottom = rect.top + rect.height;
+
+        dividerEdges.forEach((dividerRect) => {
+          const dividerTop = Math.max(rowTop, dividerRect.top);
+          const dividerBottom = Math.min(rowBottom, dividerRect.bottom);
+
+          if (dividerBottom <= dividerTop) {
+            return;
+          }
+
+          dividerInfos.push({
+            left: dividerRect.left,
+            top: dividerTop,
+            width: dividerRect.right - dividerRect.left,
+            height: dividerBottom - dividerTop,
+            borderColor,
+            dividerElmt: dividerRect.dividerElmt,
+            usesBefore: dividerRect.usesBefore === true,
+            paintTop: dividerRect.top,
+            paintBottom: dividerRect.bottom,
+          });
+        });
       }
     });
 
@@ -2382,6 +2633,8 @@ const app = (function () {
         : containerScaleX;
       const signLeft = (signRect.left - signContainerRect.left) * containerScaleX;
       const signTop = (signRect.top - signContainerRect.top) * containerScaleY;
+      const signRight = (signRect.right - signContainerRect.left) * containerScaleX;
+      const signBottom = (signRect.bottom - signContainerRect.top) * containerScaleY;
       const positions = ["topLeft", "topRight", "bottomLeft", "bottomRight"];
       const getPatchRadius = (position) =>
         Math.max(
@@ -2425,11 +2678,15 @@ const app = (function () {
         const isRight = position.toLowerCase().includes("right");
         const isBottom = position.toLowerCase().includes("bottom");
         const patchRadius = getPatchRadius(position);
-        const patchSize = Math.ceil(patchRadius + borderWidth + 1);
-        patchElmt.style.width = `${patchSize}px`;
-        patchElmt.style.height = `${patchSize}px`;
-        patchElmt.style.left = `${snapCssValue(signLeft + (isRight ? signWidth - patchSize : 0))}px`;
-        patchElmt.style.top = `${snapCssValue(signTop + (isBottom ? signHeight - patchSize : 0))}px`;
+        const patchSize = Math.max(0, patchRadius);
+        patchElmt.style.width = `${snapCssValue(patchSize)}px`;
+        patchElmt.style.height = `${snapCssValue(patchSize)}px`;
+        patchElmt.style.left = `${snapCssValue(
+          isRight ? signRight - patchSize : signLeft
+        )}px`;
+        patchElmt.style.top = `${snapCssValue(
+          isBottom ? signBottom - patchSize : signTop
+        )}px`;
         patchElmt.style.backgroundColor = color;
         signContainerElmt.dataset[`dynamic${position[0].toUpperCase()}${position.slice(1)}Corner`] = "true";
         signContainerElmt.style.setProperty(
@@ -2551,120 +2808,154 @@ const app = (function () {
       signElmt.classList.add("hasDynamicSignFullBleedLayer");
     };
 
-    const renderDynamicBorderOverlay = () => {
-      const signContainerElmt = getSignContainer();
+    const resolvedDividerBorderInfos = [];
 
-      if (!signContainerElmt || !rowInfos.length) {
-        return;
-      }
+    const applyDynamicDividerPaint = () => {
+      const groups = new Map();
+      resolvedDividerBorderInfos.length = 0;
 
-      let overlay = signContainerElmt.querySelector(
-        ":scope > .dynamicSignBorderOverlay"
+      dividerInfos.forEach((info) => {
+        const dividerElmt = info.dividerElmt;
+
+        if (!dividerElmt || !dividerElmt.isConnected) {
+          return;
+        }
+
+        let group = groups.get(dividerElmt);
+
+        if (!group) {
+          group = {
+            dividerElmt,
+            usesBefore: info.usesBefore === true,
+            left: info.left,
+            right: info.left + info.width,
+            paintTop: info.paintTop,
+            paintBottom: info.paintBottom,
+            segments: [],
+          };
+          groups.set(dividerElmt, group);
+        }
+
+        group.left = Math.min(group.left, info.left);
+        group.right = Math.max(group.right, info.left + info.width);
+        group.paintTop = Math.min(group.paintTop, info.paintTop);
+        group.paintBottom = Math.max(group.paintBottom, info.paintBottom);
+        group.usesBefore = group.usesBefore || info.usesBefore === true;
+        group.segments.push({
+          top: info.top,
+          bottom: info.top + info.height,
+          color: info.borderColor,
+        });
+      });
+
+      const colorsMatch = (left, right) =>
+        String(resolveCssColor(left) || left || "").replace(/\s+/g, "").toLowerCase() ===
+        String(resolveCssColor(right) || right || "").replace(/\s+/g, "").toLowerCase();
+
+      groups.forEach((group) => {
+        const height = group.paintBottom - group.paintTop;
+
+        if (!(height > 0)) {
+          return;
+        }
+
+        const boundaries = [group.paintTop, group.paintBottom];
+        group.segments.forEach((segment) => {
+          boundaries.push(
+            clampRectValue(segment.top, group.paintTop, group.paintBottom),
+            clampRectValue(segment.bottom, group.paintTop, group.paintBottom)
+          );
+        });
+
+        const sortedBoundaries = boundaries
+          .filter(Number.isFinite)
+          .sort((a, b) => a - b)
+          .filter((value, index, values) =>
+            index === 0 || Math.abs(value - values[index - 1]) > 0.01
+          );
+        const intervals = [];
+
+        for (let index = 0; index < sortedBoundaries.length - 1; index++) {
+          const top = sortedBoundaries[index];
+          const bottom = sortedBoundaries[index + 1];
+
+          if (bottom <= top) {
+            continue;
+          }
+
+          const midpoint = (top + bottom) / 2;
+          const matchingSegments = group.segments.filter(
+            (segment) => midpoint >= segment.top && midpoint <= segment.bottom
+          );
+          const color = getDarkestPaintColor(
+            [defaultBorderColor, ...matchingSegments.map((segment) => segment.color)],
+            defaultBorderColor
+          );
+          const previous = intervals[intervals.length - 1];
+
+          if (previous && colorsMatch(previous.color, color)) {
+            previous.bottom = bottom;
+          } else {
+            intervals.push({ top, bottom, color });
+          }
+        }
+
+        if (!intervals.length) {
+          return;
+        }
+
+        intervals.forEach((interval) => {
+          resolvedDividerBorderInfos.push({
+            rect: {
+              left: group.left,
+              top: interval.top,
+              width: Math.max(0, group.right - group.left),
+              height: Math.max(0, interval.bottom - interval.top),
+            },
+            borderColor: interval.color,
+          });
+        });
+
+        const stops = [];
+        intervals.forEach((interval) => {
+          const startPercent = ((interval.top - group.paintTop) / height) * 100;
+          const endPercent = ((interval.bottom - group.paintTop) / height) * 100;
+          stops.push(
+            `${interval.color} ${snapCssValue(startPercent)}%`,
+            `${interval.color} ${snapCssValue(endPercent)}%`
+          );
+        });
+
+        group.dividerElmt.classList.add("hasDynamicDividerPaint");
+        group.dividerElmt.dataset.dynamicDividerUsesBefore = group.usesBefore
+          ? "true"
+          : "false";
+        group.dividerElmt.style.setProperty(
+          "--dynamicSubDividerPaint",
+          `linear-gradient(to bottom, ${stops.join(", ")})`
+        );
+      });
+    };
+
+    const createDynamicBorderPaintLayer = () => {
+      const borderRows = [...rowInfos, ...resolvedDividerBorderInfos].filter(({ rect }) =>
+        ["top", "right", "bottom", "left"].some((edge) =>
+          touchesSignEdge(rect, edge)
+        )
       );
 
-      if (!overlay) {
-        overlay = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        overlay.classList.add("dynamicSignBorderOverlay");
-        signContainerElmt.appendChild(overlay);
-      }
-
-      while (overlay.firstChild) {
-        overlay.removeChild(overlay.firstChild);
+      if (!borderRows.length) {
+        return null;
       }
 
       const safeWidth = Math.max(1, signWidth);
       const safeHeight = Math.max(1, signHeight);
-      const strokeRadii = {
-        tl: Math.max(0, signOuterCornerRadii.topLeft - borderWidth / 2),
-        tr: Math.max(0, signOuterCornerRadii.topRight - borderWidth / 2),
-        br: Math.max(0, signOuterCornerRadii.bottomRight - borderWidth / 2),
-        bl: Math.max(0, signOuterCornerRadii.bottomLeft - borderWidth / 2),
-      };
-      const leftX = borderWidth / 2;
-      const rightX = safeWidth - borderWidth / 2;
-      const topY = borderWidth / 2;
-      const bottomY = safeHeight - borderWidth / 2;
-      const minSegmentLength = 0.15;
-      const segmentOverlap = Math.max(0.35, borderWidth * 0.35);
-
-      const addSvgElmt = (tagName, attrs = {}) => {
-        const elmt = document.createElementNS("http://www.w3.org/2000/svg", tagName);
-        Object.entries(attrs).forEach(([name, value]) => {
-          elmt.setAttribute(name, String(value));
-        });
-        overlay.appendChild(elmt);
-        return elmt;
-      };
-
-      const commonStrokeAttrs = (color) => ({
-        fill: "none",
-        stroke: color,
-        "stroke-width": borderWidth,
-        "stroke-linecap": "butt",
-        "stroke-linejoin": "round",
-      });
-
-      const addLine = (x1, y1, x2, y2, color) => {
-        if (
-          Math.abs(x2 - x1) < minSegmentLength &&
-          Math.abs(y2 - y1) < minSegmentLength
-        ) {
-          return;
-        }
-        addSvgElmt("line", {
-          x1: snapCssValue(x1),
-          y1: snapCssValue(y1),
-          x2: snapCssValue(x2),
-          y2: snapCssValue(y2),
-          ...commonStrokeAttrs(color),
-        });
-      };
-
-      const addPath = (d, color) => {
-        addSvgElmt("path", {
-          d,
-          ...commonStrokeAttrs(color),
-        });
-      };
-
-      const signContainerRect = signContainerElmt.getBoundingClientRect();
-      const containerScaleX = signContainerRect.width
-        ? (signContainerElmt.offsetWidth || signContainerRect.width) / signContainerRect.width
-        : 1;
-      const containerScaleY = signContainerRect.height
-        ? (signContainerElmt.offsetHeight || signContainerRect.height) / signContainerRect.height
-        : containerScaleX;
-      const overlayLeft = (signRect.left - signContainerRect.left) * containerScaleX;
-      const overlayTop = (signRect.top - signContainerRect.top) * containerScaleY;
-
-      overlay.setAttribute("viewBox", `0 0 ${safeWidth} ${safeHeight}`);
-      overlay.setAttribute("width", safeWidth);
-      overlay.setAttribute("height", safeHeight);
-      overlay.style.left = `${snapCssValue(overlayLeft)}px`;
-      overlay.style.top = `${snapCssValue(overlayTop)}px`;
-      overlay.style.width = `${safeWidth}px`;
-      overlay.style.height = `${safeHeight}px`;
-
-      const addSvgChild = (parent, tagName, attrs = {}) => {
-        const elmt = document.createElementNS("http://www.w3.org/2000/svg", tagName);
-        Object.entries(attrs).forEach(([name, value]) => {
-          elmt.setAttribute(name, String(value));
-        });
-        parent.appendChild(elmt);
-        return elmt;
-      };
-
-      const defs = addSvgElmt("defs");
-      const borderClipBaseId =
-        signElmt.dataset.dynamicBorderClipBaseId ||
-        `dynamicSignBorderClip-${Date.now().toString(36)}-${Math.random()
-          .toString(36)
-          .slice(2)}`;
-      signElmt.dataset.dynamicBorderClipBaseId = borderClipBaseId;
-
+      const innerLeft = borderWidths.left;
+      const innerTop = borderWidths.top;
+      const innerRight = Math.max(innerLeft, safeWidth - borderWidths.right);
+      const innerBottom = Math.max(innerTop, safeHeight - borderWidths.bottom);
       const limitRadius = (value, width, height) =>
         Math.max(0, Math.min(value || 0, width / 2, height / 2));
-
       const makeRoundedRectPath = (x1, y1, x2, y2, radii = {}) => {
         const width = Math.max(0, x2 - x1);
         const height = Math.max(0, y2 - y1);
@@ -2676,61 +2967,196 @@ const app = (function () {
         return [
           `M ${snapCssValue(x1 + tl)} ${snapCssValue(y1)}`,
           `H ${snapCssValue(x2 - tr)}`,
-          tr ? `Q ${snapCssValue(x2)} ${snapCssValue(y1)} ${snapCssValue(x2)} ${snapCssValue(y1 + tr)}` : "",
+          tr
+            ? `A ${snapCssValue(tr)} ${snapCssValue(tr)} 0 0 1 ${snapCssValue(x2)} ${snapCssValue(y1 + tr)}`
+            : "",
           `V ${snapCssValue(y2 - br)}`,
-          br ? `Q ${snapCssValue(x2)} ${snapCssValue(y2)} ${snapCssValue(x2 - br)} ${snapCssValue(y2)}` : "",
+          br
+            ? `A ${snapCssValue(br)} ${snapCssValue(br)} 0 0 1 ${snapCssValue(x2 - br)} ${snapCssValue(y2)}`
+            : "",
           `H ${snapCssValue(x1 + bl)}`,
-          bl ? `Q ${snapCssValue(x1)} ${snapCssValue(y2)} ${snapCssValue(x1)} ${snapCssValue(y2 - bl)}` : "",
+          bl
+            ? `A ${snapCssValue(bl)} ${snapCssValue(bl)} 0 0 1 ${snapCssValue(x1)} ${snapCssValue(y2 - bl)}`
+            : "",
           `V ${snapCssValue(y1 + tl)}`,
-          tl ? `Q ${snapCssValue(x1)} ${snapCssValue(y1)} ${snapCssValue(x1 + tl)} ${snapCssValue(y1)}` : "",
+          tl
+            ? `A ${snapCssValue(tl)} ${snapCssValue(tl)} 0 0 1 ${snapCssValue(x1 + tl)} ${snapCssValue(y1)}`
+            : "",
           "Z",
         ].filter(Boolean).join(" ");
       };
-
-      rowInfos.forEach(({ rect, borderColor }, rowInfoIndex) => {
-        const rowLeft = clampRectValue(rect.left, 0, safeWidth);
-        const rowRight = clampRectValue(rect.left + rect.width, 0, safeWidth);
-        const rowTop = clampRectValue(rect.top, 0, safeHeight);
-        const rowBottom = clampRectValue(rect.top + rect.height, 0, safeHeight);
-        const reachesLeft = rowLeft <= edgeSnapTolerance;
-        const reachesRight = rowRight >= safeWidth - edgeSnapTolerance;
-        const reachesTop = rowTop <= edgeSnapTolerance;
-        const reachesBottom = rowBottom >= safeHeight - edgeSnapTolerance;
-        const clipBleed = Math.max(0.2, borderWidth * 0.15);
-        const clipLeft = reachesLeft ? 0 : clampRectValue(rowLeft - clipBleed, 0, safeWidth);
-        const clipRight = reachesRight ? safeWidth : clampRectValue(rowRight + clipBleed, 0, safeWidth);
-        const clipTop = reachesTop ? 0 : clampRectValue(rowTop - clipBleed, 0, safeHeight);
-        const clipBottom = reachesBottom ? safeHeight : clampRectValue(rowBottom + clipBleed, 0, safeHeight);
-
-        if (clipRight <= clipLeft || clipBottom <= clipTop) {
-          return;
+      const outerBleed = Math.max(0.75, borderWidth * 0.25);
+      const outerPath = makeRoundedRectPath(
+        -outerBleed,
+        -outerBleed,
+        safeWidth + outerBleed,
+        safeHeight + outerBleed,
+        {
+          tl: signOuterCornerRadii.topLeft + outerBleed,
+          tr: signOuterCornerRadii.topRight + outerBleed,
+          br: signOuterCornerRadii.bottomRight + outerBleed,
+          bl: signOuterCornerRadii.bottomLeft + outerBleed,
         }
+      );
+      const innerPath = makeRoundedRectPath(
+        innerLeft,
+        innerTop,
+        innerRight,
+        innerBottom,
+        {
+          tl: Math.max(0, signOuterCornerRadii.topLeft - Math.max(borderWidths.top, borderWidths.left)),
+          tr: Math.max(0, signOuterCornerRadii.topRight - Math.max(borderWidths.top, borderWidths.right)),
+          br: Math.max(0, signOuterCornerRadii.bottomRight - Math.max(borderWidths.bottom, borderWidths.right)),
+          bl: Math.max(0, signOuterCornerRadii.bottomLeft - Math.max(borderWidths.bottom, borderWidths.left)),
+        }
+      );
+      const escapeXml = (value) =>
+        String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      const paintRects = borderRows.map(
+        ({ rect, borderColor }, index) => {
+          const reachesLeft = touchesSignEdge(rect, "left");
+          const reachesTop = touchesSignEdge(rect, "top");
+          const reachesRight = touchesSignEdge(rect, "right");
+          const reachesBottom = touchesSignEdge(rect, "bottom");
+          const left = reachesLeft
+            ? 0
+            : clampRectValue(rect.left, 0, safeWidth);
+          const top = reachesTop
+            ? 0
+            : clampRectValue(rect.top, 0, safeHeight);
+          const right = reachesRight
+            ? safeWidth
+            : clampRectValue(rect.left + rect.width, 0, safeWidth);
+          const bottom = reachesBottom
+            ? safeHeight
+            : clampRectValue(rect.top + rect.height, 0, safeHeight);
 
-        const clipId = `${borderClipBaseId}-${rowInfoIndex}`;
-        const clipPath = addSvgChild(defs, "clipPath", {
-          id: clipId,
-          clipPathUnits: "userSpaceOnUse",
-        });
+          return {
+            index,
+            left,
+            top,
+            width: Math.max(0, right - left),
+            height: Math.max(0, bottom - top),
+            color: borderColor,
+          };
+        }
+      ).filter((entry) => entry.width > 0 && entry.height > 0);
+      const ringMaskId = "dynamicBorderRingMask";
+      const normalizePaintColor = (color) =>
+        String(resolveCssColor(color) || color || "")
+          .replace(/\s+/g, "")
+          .toLowerCase();
+      const xBoundaries = [0, safeWidth];
+      const yBoundaries = [0, safeHeight];
 
-        addSvgChild(clipPath, "rect", {
-          x: snapCssValue(clipLeft),
-          y: snapCssValue(clipTop),
-          width: snapCssValue(clipRight - clipLeft),
-          height: snapCssValue(clipBottom - clipTop),
-        });
-
-        const clippedGroup = addSvgElmt("g", {
-          "clip-path": `url(#${clipId})`,
-        });
-
-        addSvgChild(clippedGroup, "path", {
-          d: makeRoundedRectPath(leftX, topY, rightX, bottomY, strokeRadii),
-          ...commonStrokeAttrs(borderColor),
-        });
+      paintRects.forEach((entry) => {
+        xBoundaries.push(entry.left, entry.left + entry.width);
+        yBoundaries.push(entry.top, entry.top + entry.height);
       });
 
-      signElmt.classList.add("hasDynamicSignBorderOverlay");
-      signContainerElmt.classList.add("hasDynamicSignBorderOverlay");
+      const uniqueSorted = (values) =>
+        values
+          .map((value) => clampRectValue(value, 0, Number.MAX_SAFE_INTEGER))
+          .filter(Number.isFinite)
+          .sort((left, right) => left - right)
+          .filter(
+            (value, index, sortedValues) =>
+              index === 0 || Math.abs(value - sortedValues[index - 1]) > 0.01
+          );
+      const sortedX = uniqueSorted(xBoundaries).map((value) =>
+        clampRectValue(value, 0, safeWidth)
+      );
+      const sortedY = uniqueSorted(yBoundaries).map((value) =>
+        clampRectValue(value, 0, safeHeight)
+      );
+      const borderCells = [];
+
+      for (let yIndex = 0; yIndex < sortedY.length - 1; yIndex++) {
+        const top = sortedY[yIndex];
+        const bottom = sortedY[yIndex + 1];
+
+        if (bottom <= top) {
+          continue;
+        }
+
+        const midpointY = (top + bottom) / 2;
+        const rowCells = [];
+
+        for (let xIndex = 0; xIndex < sortedX.length - 1; xIndex++) {
+          const left = sortedX[xIndex];
+          const right = sortedX[xIndex + 1];
+
+          if (right <= left) {
+            continue;
+          }
+
+          const midpointX = (left + right) / 2;
+          const matchingEntries = paintRects.filter(
+            (entry) =>
+              midpointX >= entry.left &&
+              midpointX <= entry.left + entry.width &&
+              midpointY >= entry.top &&
+              midpointY <= entry.top + entry.height
+          );
+          const color = matchingEntries.length
+            ? getDarkestPaintColor(
+                matchingEntries.map((entry) => entry.color),
+                defaultBorderColor
+              )
+            : defaultBorderColor;
+          const previous = rowCells[rowCells.length - 1];
+
+          if (
+            previous &&
+            normalizePaintColor(previous.color) === normalizePaintColor(color) &&
+            Math.abs(previous.right - left) <= 0.01
+          ) {
+            previous.right = right;
+          } else {
+            rowCells.push({ left, right, top, bottom, color });
+          }
+        }
+
+        borderCells.push(...rowCells);
+      }
+
+      const svgParts = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${snapCssValue(safeWidth)}" height="${snapCssValue(safeHeight)}" viewBox="0 0 ${snapCssValue(safeWidth)} ${snapCssValue(safeHeight)}" preserveAspectRatio="none" shape-rendering="geometricPrecision">`,
+        "<defs>",
+        `<mask id="${ringMaskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${snapCssValue(safeWidth)}" height="${snapCssValue(safeHeight)}">`,
+        `<path d="${escapeXml(`${outerPath} ${innerPath}`)}" fill="white" fill-rule="evenodd"/>`,
+        "</mask>",
+        "</defs>",
+      ];
+
+      borderCells
+        .slice()
+        .sort(
+          (leftCell, rightCell) =>
+            getPaintColorLuminance(rightCell.color) -
+            getPaintColorLuminance(leftCell.color)
+        )
+        .forEach((cell) => {
+          svgParts.push(
+            `<rect x="${snapCssValue(cell.left)}" y="${snapCssValue(cell.top)}" width="${snapCssValue(cell.right - cell.left)}" height="${snapCssValue(cell.bottom - cell.top)}" fill="${escapeXml(cell.color)}" mask="url(#${ringMaskId})" shape-rendering="crispEdges"/>`
+          );
+        });
+
+      svgParts.push("</svg>");
+      const svg = svgParts.join("");
+      return {
+        source: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+        // A one-pixel nine-slice plus the filled center keeps the generated SVG
+        // at a 1:1 scale. This preserves exact row transition positions while
+        // still drawing the complete rounded ring from the same border image.
+        slice: "1 fill",
+        width: "1px",
+      };
     };
 
     const layerImages = [];
@@ -2749,12 +3175,15 @@ const app = (function () {
       layerRepeats.push("no-repeat");
     };
 
+    applyDynamicDividerPaint();
+
+    // Paint the segmented colors through the sign's actual CSS border image.
+    // No second border element or background-ring overlay is placed over it.
+    const dynamicBorderImage = createDynamicBorderPaintLayer();
+
     // Paint full-bleed row fills on the sign background itself, not in an
-    // absolutely positioned child. A child SVG starts inside the sign's border
-    // box, so rows that reach the bottom edge could never fill the rounded
-    // corner area. Background layers are clipped by the sign's own radius,
-    // which makes a white full-bleed bottom row curve like a normal rounded
-    // white panel.
+    // absolutely positioned child. Background layers are clipped by the sign's
+    // own radius, which keeps colored edge rows consistent with normal panels.
     contentLayers.forEach((layer) => addLayer(layer, "border-box"));
 
     addLayer(
@@ -2767,9 +3196,26 @@ const app = (function () {
     );
 
     syncDynamicCornerPatches();
-    renderDynamicBorderOverlay();
 
-    signElmt.style.borderColor = defaultBorderColor;
+    if (dynamicBorderImage) {
+      // The generated border image is the only border paint. Keeping the normal
+      // border underneath it would let the base color show through antialiased
+      // pixels and recreate the white or black specks this path replaces.
+      signElmt.style.borderColor = "transparent";
+      signElmt.style.borderImageSource = dynamicBorderImage.source;
+      signElmt.style.borderImageSlice = dynamicBorderImage.slice;
+      signElmt.style.borderImageWidth = dynamicBorderImage.width;
+      signElmt.style.borderImageOutset = "0";
+      signElmt.style.borderImageRepeat = "stretch";
+    } else {
+      signElmt.style.borderColor = defaultBorderColor;
+      signElmt.style.removeProperty("border-image-source");
+      signElmt.style.removeProperty("border-image-slice");
+      signElmt.style.removeProperty("border-image-width");
+      signElmt.style.removeProperty("border-image-outset");
+      signElmt.style.removeProperty("border-image-repeat");
+    }
+
     signElmt.style.backgroundColor = fillColor;
     signElmt.style.backgroundImage = layerImages.join(", ");
     signElmt.style.backgroundOrigin = layerOrigins.join(", ");
@@ -3186,6 +3632,7 @@ const app = (function () {
       post.panelSpacing = DEFAULT_PANEL_SPACING;
 
       ensureExtendedGuideArrowOptions();
+      bindDownloadResolutionControl();
 
       formHandler.init(exposeToFormHandler);
 
@@ -3218,7 +3665,9 @@ const app = (function () {
 
         window.addEventListener("beforeunload", saveAppState);
         window.addEventListener("keydown", (event) => {
-          if (!event.ctrlKey || !event.shiftKey) {
+          const modifierPressed = event.ctrlKey || event.metaKey;
+
+          if (!modifierPressed || !event.shiftKey) {
             return;
           }
 
@@ -3232,13 +3681,13 @@ const app = (function () {
             return;
           }
 
-            if (event.key === "." && event.shiftKey) {
-              event.preventDefault();
-              selectNextPanel();
-            } else if (event.key === "," && event.shiftKey) {
-              event.preventDefault();
-              selectPreviousPanel();
-            }
+          if (event.key === "." && event.shiftKey) {
+            event.preventDefault();
+            selectNextPanel();
+          } else if (event.key === "," && event.shiftKey) {
+            event.preventDefault();
+            selectPreviousPanel();
+          }
         });
 
       bindPostViewportLayoutWatcher();
@@ -4317,6 +4766,12 @@ const app = (function () {
       "borderThickness",
       "minHeight",
       "fontSize",
+      "fontFamily",
+      "characterSpacing",
+      "horizontalPadding",
+      "exitTextSizePercent",
+      "exitTextSizePercentVersion",
+      "textColor",
       "FHWAFont",
       "showLeft",
       "fullBorder",
@@ -4331,6 +4786,10 @@ const app = (function () {
       "tollLogoOnly",
       "tollLogoSize",
       "tollLogoSquare",
+      "assetHorizontalPadding",
+      "assetVerticalPadding",
+      "transparent",
+      "normalFontSizeBeforeAsset",
       "nestedTabSpacing",
     ];
 
@@ -4347,14 +4806,28 @@ const app = (function () {
     return targetTab;
   };
 
-  const getNestedExitTabLimit = () => 1;
+  const getNestedExitTabLimit = () => null;
+
+  const panelHasActiveQcExitMarker = (panel) =>
+    !!(
+      panel &&
+      Array.isArray(panel.exitTabs) &&
+      panel.exitTabs.some(
+        (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
+      )
+    );
 
   const trimNestedExitTabsToLimit = (exitTab) => {
-    if (!exitTab || !Array.isArray(exitTab.nestedExitTabs)) {
+    const limit = getNestedExitTabLimit();
+    if (
+      limit == null ||
+      !exitTab ||
+      !Array.isArray(exitTab.nestedExitTabs)
+    ) {
       return;
     }
 
-    exitTab.nestedExitTabs.splice(getNestedExitTabLimit());
+    exitTab.nestedExitTabs.splice(limit);
   };
 
   // Create a new exit tab, update the form, and redraw.
@@ -4365,15 +4838,27 @@ const app = (function () {
           return;
         }
 
+        if (panelHasActiveQcExitMarker(panel)) {
+          return;
+        }
+
         const previousExitTab = Array.isArray(panel.exitTabs) && panel.exitTabs.length
           ? panel.exitTabs[panel.exitTabs.length - 1]
           : null;
 
+        if (typeof formHandler.applyExitTabDefaultProfileToPrototype === "function") {
+          formHandler.applyExitTabDefaultProfileToPrototype();
+        }
+
         panel.newExitTab();
 
         const newTab = panel.exitTabs[panel.exitTabs.length - 1];
-        if (newTab && previousExitTab) {
-          copyExitTabFormatting(previousExitTab, newTab);
+        if (newTab) {
+          if (typeof formHandler.applyDefaultExitTabProfileToTab === "function") {
+            formHandler.applyDefaultExitTabProfileToTab(newTab);
+          } else if (previousExitTab) {
+            copyExitTabFormatting(previousExitTab, newTab);
+          }
           newTab.number = "";
           newTab.bilingualTopText = "EXIT";
           newTab.nestedExitTabs = [];
@@ -4382,6 +4867,9 @@ const app = (function () {
         normalizeExitTabAplEdgeAvailabilityForPanel(panel);
         currentlySelectedExitTabIndex = panel.exitTabs.length - 1;
         currentlySelectedNestedExitTabIndex = -1;
+        if (typeof formHandler.resetExitTabCurrentProfileSelection === "function") {
+          formHandler.resetExitTabCurrentProfileSelection();
+        }
         formHandler.updateForm();
         redraw();
       });
@@ -4391,7 +4879,7 @@ const app = (function () {
     const newNestExitTab = function () {
       return runWithUndo(() => {
         const panel = getCurrentPanel();
-        if (!panel || !panel.exitTabs.length) {
+        if (!panel || !panel.exitTabs.length || panelHasActiveQcExitMarker(panel)) {
           return;
         }
 
@@ -4404,16 +4892,24 @@ const app = (function () {
           parentExitTab.nestedExitTabs = [];
         }
 
-        if (parentExitTab.nestedExitTabs.length >= getNestedExitTabLimit()) {
-          currentlySelectedNestedExitTabIndex = 0;
+        const nestedLimit = getNestedExitTabLimit();
+
+        if (
+          nestedLimit != null &&
+          parentExitTab.nestedExitTabs.length >= nestedLimit
+        ) {
+          currentlySelectedNestedExitTabIndex = Math.max(
+            0,
+            parentExitTab.nestedExitTabs.length - 1
+          );
           formHandler.updateForm();
           redraw();
           return;
         }
 
-        if (typeof ExitTab !== "undefined" && ExitTab.prototype) {
+        if (typeof ExitTab !== "undefined" && ExitTab.prototype && nestedLimit != null) {
           ExitTab.prototype.maxNested = Math.max(
-            getNestedExitTabLimit(),
+            nestedLimit,
             Number(ExitTab.prototype.maxNested) || 0
           );
         }
@@ -4463,6 +4959,9 @@ const app = (function () {
           panel.exitTabs.length - 1
         );
         currentlySelectedNestedExitTabIndex = -1;
+        if (typeof formHandler.resetExitTabCurrentProfileSelection === "function") {
+          formHandler.resetExitTabCurrentProfileSelection();
+        }
         formHandler.updateForm();
         redraw();
       });
@@ -4593,6 +5092,9 @@ const app = (function () {
         ? clamp(Number(nestedExitTabNumber), 0, nestedTabs.length - 1)
         : -1;
 
+    if (typeof formHandler.resetExitTabCurrentProfileSelection === "function") {
+      formHandler.resetExitTabCurrentProfileSelection();
+    }
     formHandler.updateForm();
   };
 
@@ -7416,23 +7918,18 @@ const app = (function () {
           arrow.placement = placement === "divider" ? "divider" : "subpanel";
 
           if (arrow.placement === "divider") {
-            const normalizedDividerIndex = getNearestVisibleAPLDividerIndex(
-              sign,
-              dividerAfterSubPanelIndex
+            const normalizedDividerIndex = clamp(
+              Number.isFinite(Number(dividerAfterSubPanelIndex)) ? Number(dividerAfterSubPanelIndex) : 0,
+              0,
+              Math.max(0, sign.subPanels.length - 2)
             );
-
-            if (normalizedDividerIndex === null) {
-              arrow.placement = "subpanel";
-              arrow.subPanelIndex = getAPLGroupStartForSubPanelIndex(sign, 0);
-              delete arrow.dividerAfterSubPanelIndex;
-            } else {
-              arrow.dividerAfterSubPanelIndex = normalizedDividerIndex;
-              delete arrow.subPanelIndex;
-            }
+            arrow.dividerAfterSubPanelIndex = normalizedDividerIndex;
+            delete arrow.subPanelIndex;
           } else {
-            arrow.subPanelIndex = getAPLGroupStartForSubPanelIndex(
-              sign,
-              clamp(subPanelIndex, 0, Math.max(0, sign.subPanels.length - 1))
+            arrow.subPanelIndex = clamp(
+              subPanelIndex,
+              0,
+              Math.max(0, sign.subPanels.length - 1)
             );
             delete arrow.dividerAfterSubPanelIndex;
           }
@@ -7861,19 +8358,88 @@ const app = (function () {
       });
     });
 
-  const getExportPixelRatio = (width, height, isPreview) => {
-    if (isPreview) {
-      return 1;
-    }
-    const maxDimension = Math.max(width, height);
-    if (maxDimension >= 1800) {
-      return 4;
-    }
-    if (maxDimension >= 1000) {
-      return 3;
-    }
-    return 2;
+  const normalizeExportResolutionScale = (value) => {
+    const rawValue = value == null ? "" : String(value).trim();
+    const parsed = rawValue === "" ? NaN : Number(rawValue);
+    const safeValue = Number.isFinite(parsed)
+      ? Math.round(parsed)
+      : DEFAULT_EXPORT_RESOLUTION_SCALE;
+
+    return Math.max(
+      MIN_EXPORT_RESOLUTION_SCALE,
+      Math.min(MAX_EXPORT_RESOLUTION_SCALE, safeValue)
+    );
   };
+
+  const getStoredExportResolutionScale = () => {
+    try {
+      return normalizeExportResolutionScale(
+        window.localStorage.getItem(EXPORT_RESOLUTION_STORAGE_KEY)
+      );
+    } catch (error) {
+      return DEFAULT_EXPORT_RESOLUTION_SCALE;
+    }
+  };
+
+  const getSelectedExportResolutionScale = () => {
+    const slider = document.getElementById("downloadResolution");
+    return normalizeExportResolutionScale(
+      slider ? slider.value : getStoredExportResolutionScale()
+    );
+  };
+
+  const updateDownloadResolutionDisplay = () => {
+    const slider = document.getElementById("downloadResolution");
+    const output = document.getElementById("downloadResolutionValue");
+
+    if (!slider) {
+      return;
+    }
+
+    const scale = normalizeExportResolutionScale(slider.value);
+    slider.value = String(scale);
+
+    if (output) {
+      output.value = `${scale}×`;
+      output.textContent = `${scale}×`;
+    }
+  };
+
+  const bindDownloadResolutionControl = () => {
+    const slider = document.getElementById("downloadResolution");
+
+    if (!slider || slider.dataset.exportResolutionBound === "true") {
+      return;
+    }
+
+    slider.dataset.exportResolutionBound = "true";
+    slider.min = String(MIN_EXPORT_RESOLUTION_SCALE);
+    slider.max = String(MAX_EXPORT_RESOLUTION_SCALE);
+    slider.step = "1";
+    slider.value = String(getStoredExportResolutionScale());
+    updateDownloadResolutionDisplay();
+
+    let previewTimer = null;
+
+    slider.addEventListener("input", () => {
+      updateDownloadResolutionDisplay();
+
+      try {
+        window.localStorage.setItem(
+          EXPORT_RESOLUTION_STORAGE_KEY,
+          String(getSelectedExportResolutionScale())
+        );
+      } catch (error) {
+      }
+
+      window.clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(() => {
+        updatePreview();
+      }, 180);
+    });
+  };
+
+  const getExportPixelRatio = () => getSelectedExportResolutionScale();
 
   const getExportBox = (element) => {
     const rect = element.getBoundingClientRect();
@@ -8496,7 +9062,13 @@ const app = (function () {
         const widthPx = normalizeMeasurement(rect.width) + "px";
         const heightPx = normalizeMeasurement(rect.height) + "px";
 
-        cloneNode.style.boxSizing = computedStyle.boxSizing || "border-box";
+        const shouldFreezeAsBorderBox =
+          sourceNode.classList.contains("sign") &&
+          sourceNode.classList.contains("hasSideGuideArrow");
+
+        cloneNode.style.boxSizing = shouldFreezeAsBorderBox
+          ? "border-box"
+          : computedStyle.boxSizing || "border-box";
         cloneNode.style.width = widthPx;
         cloneNode.style.minWidth = widthPx;
         cloneNode.style.maxWidth = widthPx;
@@ -8742,6 +9314,7 @@ const app = (function () {
         const pngDataUrl = await htmlToImage.toPng(exportElement, {
           ...exportOptions,
           pixelRatio: pngExportScale,
+          skipAutoScale: true,
         });
 
         if (isPreview) {
@@ -8899,6 +9472,7 @@ const app = (function () {
         return;
       }
 
+      const requestId = ++downloadPreviewRequestId;
       const hasSelection = syncDownloadSelection();
 
       while (downloadPreview.firstChild) {
@@ -8925,7 +9499,11 @@ const app = (function () {
           throw new Error("No export target found");
         }
 
-        const dataUrl = await saveSign(file, true, true);
+        const dataUrl = await saveSign(file, true, false);
+
+        if (requestId !== downloadPreviewRequestId) {
+          return;
+        }
 
         while (downloadPreview.firstChild) {
           downloadPreview.removeChild(downloadPreview.lastChild);
@@ -8940,6 +9518,10 @@ const app = (function () {
 
         downloadPreview.appendChild(previewImg);
       } catch (error) {
+        if (requestId !== downloadPreviewRequestId) {
+          return;
+        }
+
         console.error("Preview failed", error);
 
         while (downloadPreview.firstChild) {
@@ -9173,6 +9755,25 @@ const app = (function () {
           
           // Store CA style exit tabs to append inside sign later
           const caStyleExitTabs = [];
+          const qcVariantExitTab = Array.isArray(panel.exitTabs)
+            ? panel.exitTabs.find(
+                (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
+              )
+            : null;
+
+          if (qcVariantExitTab && panel.sign) {
+            panel.sign.quebecExitMarkerEnabled = true;
+            panel.sign.quebecExitMarkerNumber = String(qcVariantExitTab.number || "").trim();
+            panel.sign.quebecExitMarkerPosition = qcVariantExitTab.position || "Right";
+            panel.sign.quebecExitMarkerSizeRem = Math.max(2, Math.min(6, (parseFloat(qcVariantExitTab.fontSize) || 18) / 5));
+          } else if (panel.sign && Array.isArray(panel.exitTabs)) {
+            const hasAnyQcExitTab = panel.exitTabs.some((tab) => tab && tab.variant === "Quebec Exit Marker");
+            if (hasAnyQcExitTab) {
+              panel.sign.quebecExitMarkerEnabled = false;
+            }
+          }
+
+          if (!qcVariantExitTab) {
           
           for (
                let exitTabIndex = panel.exitTabs.length - 1;
@@ -9180,6 +9781,9 @@ const app = (function () {
                exitTabIndex--
                ) {
                    var exitTab = panel.exitTabs[exitTabIndex];
+                   if (exitTab && exitTab.variant === "Quebec Exit Marker") {
+                     continue;
+                   }
                    
                    const exitTabCont = document.createElement("div");
                    exitTabCont.className = `exitTabContainer ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
@@ -9264,8 +9868,81 @@ const app = (function () {
                            continue;
                        }
                        
+                       normalizeExitTabLegacyFields(exitTab);
                        const exitTabElmt = document.createElement("div");
                        exitTabElmt.className = `exitTab ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
+                       const normalizedExitTabFontFamily = normalizeExitTabFontFamily(exitTab);
+                       const renderedExitTabFontFamily = typeof resolveTextFontFamilyForRender === "function"
+                         ? resolveTextFontFamilyForRender(
+                             normalizedExitTabFontFamily,
+                             { backgroundColor: exitTab.color || panel.color || "Green" },
+                             { color: panel.color || "Green" }
+                           )
+                         : normalizedExitTabFontFamily;
+                       const normalizedExitTabCharacterSpacing = (() => {
+                         const parsed = parseFloat(exitTab.characterSpacing);
+                         return Number.isFinite(parsed)
+                           ? Math.max(-0.15, Math.min(0.25, parsed))
+                           : ExitTab.prototype.defaultCharacterSpacing || 0;
+                       })();
+                       const isAssetExitTabVariantForSpacing = exitTab.variant === "Toll Logo" || exitTab.variant === "Icon";
+                       const isTransparentAssetExitTab =
+                         isAssetExitTabVariantForSpacing && exitTab.transparent === true;
+                       const normalizedExitTabHorizontalPadding = (() => {
+                         const parsed = parseFloat(isAssetExitTabVariantForSpacing ? exitTab.assetHorizontalPadding : exitTab.horizontalPadding);
+                         return Number.isFinite(parsed)
+                           ? (isAssetExitTabVariantForSpacing ? Math.max(-3, Math.min(3, parsed)) : Math.max(0, Math.min(3, parsed)))
+                           : (isAssetExitTabVariantForSpacing ? 0 : ExitTab.prototype.defaultHorizontalPadding);
+                       })();
+                       const normalizedAssetVerticalPadding = (() => {
+                         const parsed = parseFloat(exitTab.assetVerticalPadding);
+                         return Number.isFinite(parsed) ? Math.max(-3, Math.min(3, parsed)) : 0;
+                       })();
+                       const normalizedExitTabTextSizePercent = (() => {
+                         const parsed = parseFloat(exitTab.exitTextSizePercent);
+                         const parsedVersion = parseInt(exitTab.exitTextSizePercentVersion, 10);
+                         if (
+                           parsedVersion !== ExitTab.prototype.exitTextSizePercentVersion &&
+                           Number.isFinite(parsed) &&
+                           (parsed === 100 || parsed === 60)
+                         ) {
+                           return ExitTab.prototype.defaultExitTextSizePercent;
+                         }
+                         return Number.isFinite(parsed)
+                           ? Math.max(25, Math.min(100, parsed))
+                           : ExitTab.prototype.defaultExitTextSizePercent;
+                       })();
+                       exitTab.fontFamily = normalizedExitTabFontFamily;
+                       exitTab.FHWAFont = isExitTabHighwayGothicFontFamily(normalizedExitTabFontFamily);
+                       exitTab.characterSpacing = normalizedExitTabCharacterSpacing;
+                       if (isAssetExitTabVariantForSpacing) {
+                         exitTab.assetHorizontalPadding = normalizedExitTabHorizontalPadding;
+                         exitTab.assetVerticalPadding = normalizedAssetVerticalPadding;
+                       } else {
+                         exitTab.horizontalPadding = normalizedExitTabHorizontalPadding;
+                         exitTab.exitTextSizePercent = normalizedExitTabTextSizePercent;
+                       }
+                       exitTab.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+                       exitTabElmt.style.setProperty(
+                         "--exitTabFontFamily",
+                         '"' + String(renderedExitTabFontFamily).replace(/"/g, '\\"') + '"'
+                       );
+                       exitTabElmt.style.setProperty(
+                         "--exitTabCharacterSpacing",
+                         normalizedExitTabCharacterSpacing.toString()
+                       );
+                       exitTabElmt.style.setProperty(
+                         "--exitTabHorizontalPadding",
+                         normalizedExitTabHorizontalPadding.toString() + "rem"
+                       );
+                       exitTabElmt.style.setProperty(
+                         "--exitTabAssetVerticalPadding",
+                         normalizedAssetVerticalPadding.toString() + "rem"
+                       );
+                       exitTabElmt.style.setProperty(
+                         "--exitTabPrefixScale",
+                         (normalizedExitTabTextSizePercent / 100).toString()
+                       );
                        if (isAplEdgeExitTabWidth(exitTab.width)) {
                          exitTabElmt.classList.add("aplEdge");
                        }
@@ -9281,12 +9958,14 @@ const app = (function () {
                        ? numericBorderThickness
                        : ExitTab.prototype.defaultBorderThickness;
                        exitTab.borderThickness = normalizedBorderThickness;
-                       const isBorderlessTab = normalizedBorderThickness <= 0;
+                       const isBorderlessTab =
+                         normalizedBorderThickness <= 0 || isTransparentAssetExitTab;
                        const borderThicknessRem = normalizedBorderThickness.toString() + "rem";
                        if (isBorderlessTab) {
                            exitTabElmt.classList.add("borderless");
                        }
-                       const usesHighwayGothicFont = !!exitTab.FHWAFont || post.fontType === true;
+                       const usesHighwayGothicFont =
+                         isExitTabHighwayGothicFontFamily(renderedExitTabFontFamily);
                        const registerExitTabText = (element) => {
                            if (!element) {
                                return element;
@@ -9328,7 +10007,7 @@ const app = (function () {
                                    const leadingText = txtArr[0] || "";
                                    if (leadingText && leadingText.trim().length > 0) {
                                        const topTextElmt = document.createElement("div");
-                                       topTextElmt.className = "exitTabVerticalText";
+                                       topTextElmt.className = "exitTabVerticalText exitFormat";
                                        registerExitTabText(topTextElmt);
                                        if (usesHighwayGothicFont) {
                                            topTextElmt.style.setProperty(
@@ -9514,7 +10193,7 @@ const app = (function () {
                        ).toLowerCase();
                        const exitTabHolderWidthClass = isAplEdgeExitTabWidth(exitTab.width)
                          ? "aplEdge"
-                         : String(exitTab.width || "Narrow")
+                         : String(exitTab.width || "Edge")
                              .toLowerCase()
                              .replace(/\s+/g, "");
                        exitTabHolderElmt.classList.add(
@@ -9526,6 +10205,12 @@ const app = (function () {
                        exitTabHolderElmt.appendChild(exitTabElmt);
                        
                        exitTabCont.appendChild(exitTabHolderElmt);
+
+                       if (isTransparentAssetExitTab) {
+                         exitTabElmt.classList.add("transparentAsset");
+                         exitTabHolderElmt.classList.add("transparentAsset");
+                         exitTabCont.classList.add("transparentAsset");
+                       }
                        
                        const resolvedExitTabColor =
                          exitTab.color != "Panel Color" && exitTab.color != undefined
@@ -9535,7 +10220,32 @@ const app = (function () {
                        if (!applyCustomExitTabColorVars(exitTabElmt, exitTabHolderElmt, resolvedExitTabColor)) {
                            const exitTabColorClass = getColorClassToken(resolvedExitTabColor, panel.color || "green");
                            exitTabElmt.classList.add(...exitTabColorClass.split(/\s+/).filter(Boolean));
-                           exitTabHolderElmt.classList.add(...exitTabColorClass.split(/\s+/).filter(Boolean));
+                           exitTabHolderElmt.classList.remove(
+                             "green",
+                             "blue",
+                             "brown",
+                             "yellow",
+                             "white",
+                             "black",
+                             "red",
+                             "purple",
+                             "orange",
+                             "fluorescent",
+                             "pink",
+                             "yellow-green"
+                           );
+                       }
+
+                       if (
+                         exitTab.textColor &&
+                         exitTab.textColor !== ExitTab.prototype.defaultTextColor &&
+                         exitTab.textColor !== "Panel Color"
+                       ) {
+                         const resolvedExitTabTextColor = getResolvedCssColorValue(exitTab.textColor);
+                         if (resolvedExitTabTextColor) {
+                           exitTabElmt.style.setProperty("--exitTabTextColor", resolvedExitTabTextColor);
+                           exitTabElmt.classList.add("customExitTabTextColor");
+                         }
                        }
                        
                        if (exitTab.verticalArrangement && exitTab.variant == "Default") {
@@ -9544,7 +10254,7 @@ const app = (function () {
                        }
                        
                        if (usesHighwayGothicFont) {
-                           applyHighwayGothicStyling(exitTabElmt);
+                           applyHighwayGothicStyling(exitTabElmt, renderedExitTabFontFamily);
                            exitTabElmt.style.setProperty(
                              "--fhwaBaselineOffset",
                              "calc(var(--fhwaBaselineShift) + 1px)"
@@ -9637,7 +10347,7 @@ const app = (function () {
                                    const tollLogoKey =
                                    tollLogos && exitTab.icon && tollLogos[exitTab.icon]
                                    ? exitTab.icon
-                                   : TollLogoElement.prototype.defaultLogo;
+                                   : (tollLogos && tollLogos.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo);
                                    const tollLogoDef = tollLogos && tollLogos[tollLogoKey];
                                    if (tollLogoDef) {
                                        const tollLogoImgElmt = document.createElement("img");
@@ -9667,6 +10377,32 @@ const app = (function () {
                                        exitTabElmt.appendChild(tollLogoNumberWrapperElmt);
                                    }
                                } else if (exitTab.variant == "Icon") {
+                                   exitTabCont.classList.add("iconExitTabContainer");
+                                   exitTabHolderElmt.classList.add("iconExitTabHolder");
+                                   exitTabElmt.classList.add("iconExitTab");
+
+                                   const iconOptions = typeof IconElement !== "undefined" && IconElement.prototype
+                                     ? IconElement.prototype.icons || {}
+                                     : {};
+                                   const iconKey = iconOptions[exitTab.icon]
+                                     ? exitTab.icon
+                                     : (iconOptions.AIRPORT ? "AIRPORT" : (IconElement?.prototype?.defaultIcon || ""));
+                                   const iconDef = iconOptions[iconKey];
+                                   const iconSize = Number.isFinite(parseFloat(exitTab.tollLogoSize))
+                                     ? Math.max(1, Math.min(6, parseFloat(exitTab.tollLogoSize)))
+                                     : 3;
+                                   exitTabElmt.style.setProperty("--exitIconSize", `${iconSize}rem`);
+
+                                   if (iconDef) {
+                                       const iconWrapperElmt = document.createElement("div");
+                                       iconWrapperElmt.className = "exitTabIconWrapper";
+                                       const iconImgElmt = document.createElement("img");
+                                       iconImgElmt.className = "exitTabIconImage";
+                                       iconImgElmt.src = iconDef.src || iconDef.asset || iconDef.url || "";
+                                       iconImgElmt.alt = iconDef.label || iconDef.name || iconKey;
+                                       iconWrapperElmt.appendChild(iconImgElmt);
+                                       exitTabElmt.appendChild(iconWrapperElmt);
+                                   }
                                } else if (exitTab.variant == "Full Left") {
                                    exitTabElmt.classList.add("fullLeft");
                                    const bannerElmt = document.createElement("div");
@@ -9679,7 +10415,7 @@ const app = (function () {
                                    numberWrapperElmt.className = "fullLeftNumber";
                                    exitTabElmt.appendChild(numberWrapperElmt);
                                    appendStandardExitNumber(numberWrapperElmt);
-                               } else if (exitTab.variant == "HOV 1") {
+                               } else if (false && exitTab.variant == "HOV 1") {
                                    exitTabCont.classList.add("hovExitTabContainer");
                                    exitTabHolderElmt.classList.add("hovExitTabHolder");
                                    exitTabElmt.classList.add("hovExitTab");
@@ -9715,7 +10451,7 @@ const app = (function () {
                                    
                                    exitTabElmt.appendChild(hovIconColumnElmt);
                                    exitTabElmt.appendChild(hovContentColumnElmt);
-                               } else if (exitTab.variant == "HOV 2") {
+                               } else if (false && exitTab.variant == "HOV 2") {
                                }
                                let firstExitTab = null;
                                let hasRightEdgeExitTab = false;
@@ -9780,7 +10516,7 @@ const app = (function () {
                                }
                                
                                applyExitTabCornerShape(exitTabElmt, exitTab.fullBorder, isBorderlessTab);
-                               if (exitTab.fullBorder !== true) {
+                               if (exitTab.fullBorder !== true && !isTransparentAssetExitTab) {
                                    const overlapRem = Math.max(normalizedBorderThickness + 0.42, 0.54);
                                    const computedTabStyle = window.getComputedStyle(exitTabElmt);
                                    
@@ -9829,7 +10565,7 @@ const app = (function () {
                                } else {
                                    exitTabElmt.style.minHeight = exitTab.minHeight.toString() + "rem";
                                }
-                               if (exitTab.variant == "Toll Logo" && exitTab.tollLogoOnly) {
+                               if (isTransparentAssetExitTab) {
                                    exitTabElmt.style.minHeight = "0";
                                }
                            }
@@ -10214,6 +10950,8 @@ const app = (function () {
               } else {
                   p.style.display = "none";
               }
+          }
+          
           }
           
           function monitorControlText(i, p) {
@@ -10665,7 +11403,22 @@ const app = (function () {
           const sideLeftArrowElmt = document.createElement("img");
           sideLeftArrowElmt.className = "sideLeftArrow";
           sideLeftArrowElmt.src = "img/arrows/A-4.svg";
-          signHolderElmt.appendChild(sideLeftArrowElmt);
+          sideLeftArrowElmt.dataset.panelIndex = String(index);
+          sideLeftArrowElmt.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);
+
+              selectRenderedPanelArea({
+                  panelIndex: Number.isNaN(clickedPanelIndex) ? index : clickedPanelIndex,
+                  subPanelIndex: 0,
+                  menu: "guideArrows",
+                  guideMode: "standard",
+                  flashTarget: event.currentTarget.closest(".sign") || event.currentTarget,
+              });
+          });
+          signElmt.appendChild(sideLeftArrowElmt);
           
           // subpanels
           
@@ -10690,8 +11443,7 @@ const app = (function () {
               aplArrows.forEach((arrow, index) => {
                 if (
                   arrow.placement === "divider" &&
-                  arrow.dividerAfterSubPanelIndex === group.end &&
-                  isSubpanelDividerVisibleForSign(panel.sign, group.end)
+                  arrow.dividerAfterSubPanelIndex === group.end
                 ) {
                   aplVisualArrowOrder.push(index);
                 }
@@ -10941,9 +11693,10 @@ const app = (function () {
               continue;
             }
 
-            const targetSubPanelIndex = getAPLGroupStartForSubPanelIndex(
-              panel.sign,
-              typeof arrow.subPanelIndex === "number" ? arrow.subPanelIndex : 0
+            const targetSubPanelIndex = clamp(
+              typeof arrow.subPanelIndex === "number" ? arrow.subPanelIndex : 0,
+              0,
+              Math.max(0, panel.sign.subPanels.length - 1)
             );
 
             if (targetSubPanelIndex >= 0 && targetSubPanelIndex < arrowGroups.length) {
@@ -10952,15 +11705,10 @@ const app = (function () {
           }
 
           const getAPLArrowGroup = (subPanelIndex) => {
-            const groupStart = getAPLGroupStartForSubPanelIndex(
-              panel.sign,
-              subPanelIndex
-            );
-
             return arrowGroups.length > 0 &&
-              groupStart >= 0 &&
-              groupStart < arrowGroups.length
-              ? arrowGroups[groupStart]
+              subPanelIndex >= 0 &&
+              subPanelIndex < arrowGroups.length
+              ? arrowGroups[subPanelIndex]
               : [];
           };
 
@@ -11110,13 +11858,11 @@ const app = (function () {
                    const subPanel = panel.sign.subPanels[subPanelIndex];
                    let locked = false;
                    
-                   if (
-                       subPanelIndex > 0 &&
-                       isSubpanelDividerVisibleForSign(panel.sign, subPanelIndex - 1)
-                    ) {
+                   if (subPanelIndex > 0) {
+                       const dividerIsVisible = isSubpanelDividerVisibleForSign(panel.sign, subPanelIndex - 1);
                        const subPanel = panel.sign.subPanels[subPanelIndex];
                        const subDivider = document.createElement("div");
-                       subDivider.className = "subDivider";
+                       subDivider.className = "subDivider" + (dividerIsVisible ? "" : " hiddenDividerWithAplArrow");
                        subDivider.id = "subDivider" + subPanelIndex.toString();
                        
                        const dividerArrow =
@@ -11781,7 +12527,22 @@ const app = (function () {
         const sideRightArrowElmt = document.createElement("img");
         sideRightArrowElmt.className = "sideRightArrow";
         sideRightArrowElmt.src = "img/arrows/A-1.svg";
-        signHolderElmt.appendChild(sideRightArrowElmt);
+        sideRightArrowElmt.dataset.panelIndex = String(index);
+        sideRightArrowElmt.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);
+
+            selectRenderedPanelArea({
+                panelIndex: Number.isNaN(clickedPanelIndex) ? index : clickedPanelIndex,
+                subPanelIndex: 0,
+                menu: "guideArrows",
+                guideMode: "standard",
+                flashTarget: event.currentTarget.closest(".sign") || event.currentTarget,
+            });
+        });
+        signElmt.appendChild(sideRightArrowElmt);
 
         const syncStandardGuideArrowSubpanelWidth = () => {
           const isStandardGuideArrow =
@@ -12871,7 +13632,7 @@ const app = (function () {
         changeEditingExitTab,
         newExitTab: (...args) => runWithUndo(() => newExitTab(...args)),
         duplicateExitTab: (...args) => runWithUndo(() => duplicateExitTab(...args)),
-        removeExitTab: removeSubPanel,
+        removeExitTab,
         moveExitTab: (...args) => runWithUndo(() => moveExitTab(...args)),
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),

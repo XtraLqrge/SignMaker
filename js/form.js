@@ -18,6 +18,97 @@ const formHandler = (function () {
       }
     };
 
+
+    const normalizeUiFontValue = (value) => {
+      const normalized = typeof normalizeTextFontFamilyName === "function"
+        ? normalizeTextFontFamilyName(value)
+        : String(value || "").trim();
+      return normalized === "Series 5R" ? "Series 5WR" : normalized;
+    };
+
+    const getUiFontDisplayName = (value) => {
+      const normalized = normalizeUiFontValue(value);
+      if (normalized === "ITC Stone Sans Semibold") {
+        return "ITC Stone Sans Bold";
+      }
+      return String(normalized || "").replace(/Helvetica Neue/g, "Helvetica");
+    };
+
+    const isHighwayGothicUiFont = (fontFamily) =>
+      /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(String(fontFamily || ""));
+
+    const isClearviewUiFont = (fontFamily) => {
+      const normalized = normalizeUiFontValue(fontFamily);
+      return /^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(normalized) || /^Clearview\s/i.test(String(fontFamily || ""));
+    };
+
+
+    const getBannerDropdownValue = (value) =>
+      String(value ?? "").toUpperCase();
+
+    const findBannerDropdownPresetValue = (value) => {
+      const normalized = String(value ?? "").trim().toLowerCase();
+
+      if (!normalized) {
+        return null;
+      }
+
+      const options =
+        typeof Shield !== "undefined" &&
+        Shield.prototype &&
+        Array.isArray(Shield.prototype.bannerTypes)
+          ? Shield.prototype.bannerTypes
+          : [];
+
+      const match = options.find(
+        (option) => String(option).trim().toLowerCase() === normalized
+      );
+
+      return match === undefined ? null : getBannerDropdownValue(match);
+    };
+
+    const applyToBannerEntryDefaults = ({
+      input,
+      positionSelect,
+      indentCheckbox,
+    } = {}) => {
+      if (
+        !input ||
+        String(input.value || "").trim().toUpperCase() !== "TO"
+      ) {
+        return false;
+      }
+
+      if (positionSelect) {
+        positionSelect.value = "Left";
+      }
+
+      if (indentCheckbox) {
+        indentCheckbox.checked = false;
+      }
+
+      return true;
+    };
+
+    const bindToBannerEntryDefaults = (
+      input,
+      positionSelect,
+      indentCheckbox
+    ) => {
+      if (!input || input.dataset.toBannerDefaultsBound === "true") {
+        return;
+      }
+
+      input.dataset.toBannerDefaultsBound = "true";
+      input.addEventListener("change", () => {
+        applyToBannerEntryDefaults({
+          input,
+          positionSelect,
+          indentCheckbox,
+        });
+      });
+    };
+
     const runShieldUndoableCommit = (callback) => {
       const canUseUndo =
         exposed && typeof exposed.beginUndoableChange === "function" &&
@@ -105,7 +196,1488 @@ const formHandler = (function () {
       return shouldAllowAplEdge;
     };
 
-    const getNestedExitTabLimit = () => 1;
+    const isExitTabHighwayGothicFontFamily = (fontFamily) =>
+      isHighwayGothicUiFont(fontFamily);
+
+    const getExitTabAvailableFonts = () => {
+      const textElementFonts =
+        typeof TextElement !== "undefined" &&
+        TextElement.prototype &&
+        Array.isArray(TextElement.prototype.fontFamily)
+          ? TextElement.prototype.fontFamily
+          : [];
+      const exitTabFonts =
+        typeof ExitTab !== "undefined" &&
+        ExitTab.prototype &&
+        Array.isArray(ExitTab.prototype.fontFamilies)
+          ? ExitTab.prototype.fontFamilies
+          : [];
+      const normalizedFonts = [...textElementFonts, ...exitTabFonts]
+        .map((font) =>
+          typeof normalizeTextFontFamilyName === "function"
+            ? normalizeTextFontFamilyName(font)
+            : String(font || "").trim()
+        )
+        .filter(Boolean);
+      return normalizedFonts.filter((font, index, fonts) => fonts.indexOf(font) === index);
+    };
+
+    const normalizeExitTabFontFamily = (value, fallback = null) => {
+      const availableFonts = getExitTabAvailableFonts();
+      const requested = normalizeUiFontValue(value);
+      const fallbackFont =
+        fallback ||
+        ExitTab.prototype.defaultFontFamily ||
+        ExitTab.prototype.defaultFHWAFontFamily ||
+        (availableFonts.length ? availableFonts[0] : "Series EEM");
+
+      if (requested) {
+        if (availableFonts.includes(requested)) {
+          return requested;
+        }
+
+        const caseInsensitiveMatch = availableFonts.find(
+          (font) => String(font).toLowerCase() === requested.toLowerCase()
+        );
+
+        if (caseInsensitiveMatch) {
+          return caseInsensitiveMatch;
+        }
+
+        return requested;
+      }
+
+      return availableFonts.includes(fallbackFont)
+        ? fallbackFont
+        : (availableFonts[0] || fallbackFont || "Series EEM");
+    };
+
+    const normalizeExitTabCharacterSpacing = (value) => {
+      const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+      return Number.isFinite(parsed)
+        ? Math.max(-0.15, Math.min(0.25, parsed))
+        : ExitTab.prototype.defaultCharacterSpacing || 0;
+    };
+
+    const isExitTabAssetVariantValue = (variant) =>
+      variant === "Toll Logo" || variant === "Icon";
+
+    const normalizeExitTabAssetSizeValue = (value, fallback = 3) => {
+      const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+      const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+      const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 3;
+      return Number.isFinite(parsed)
+        ? Math.max(1, Math.min(6, parsed))
+        : Math.max(1, Math.min(6, resolvedFallback));
+    };
+
+    const normalizeExitTabNormalFontSizeValue = (value, fallback = null) => {
+      const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+      if (Number.isFinite(parsed) && parsed >= 10) {
+        return Math.max(10, Math.min(40, parsed));
+      }
+
+      const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+      if (Number.isFinite(fallbackParsed) && fallbackParsed >= 10) {
+        return Math.max(10, Math.min(40, fallbackParsed));
+      }
+
+      const prototypeParsed = parseFloat(ExitTab.prototype.defaultFontSize);
+      return Number.isFinite(prototypeParsed) && prototypeParsed >= 10
+        ? Math.max(10, Math.min(40, prototypeParsed))
+        : 18;
+    };
+
+    const getCurrentExitTabDefaultFontSize = (variant = null) => {
+      try {
+        const settings = getExitTabProfileContextSettings(variant);
+        return normalizeExitTabNormalFontSizeValue(
+          settings?.fontSize,
+          ExitTab.prototype.defaultFontSize
+        );
+      } catch (error) {
+        return normalizeExitTabNormalFontSizeValue(
+          ExitTab.prototype.defaultFontSize,
+          18
+        );
+      }
+    };
+
+    const getCurrentExitTabDefaultMinHeight = (variant = null) => {
+      try {
+        const settings = getExitTabProfileContextSettings(variant);
+        const configuredMinHeight = parseFloat(settings?.minHeight);
+        if (Number.isFinite(configuredMinHeight) && configuredMinHeight >= 0) {
+          return configuredMinHeight;
+        }
+      } catch (error) {
+        // Fall through to the synchronized prototype value.
+      }
+
+      const prototypeMinHeight = parseFloat(ExitTab.prototype.defaultMinHeight);
+      return Number.isFinite(prototypeMinHeight) && prototypeMinHeight >= 0
+        ? prototypeMinHeight
+        : 2;
+    };
+
+    const rememberExitTabNormalFontSize = (exitTab = {}) => {
+      if (!exitTab || typeof exitTab !== "object") {
+        return getCurrentExitTabDefaultFontSize();
+      }
+
+      const remembered = normalizeExitTabNormalFontSizeValue(
+        exitTab.normalFontSizeBeforeAsset,
+        null
+      );
+      const currentNormal = normalizeExitTabNormalFontSizeValue(
+        exitTab.fontSize,
+        null
+      );
+      const fallback = getCurrentExitTabDefaultFontSize();
+      const resolved = currentNormal || remembered || fallback;
+      exitTab.normalFontSizeBeforeAsset = resolved;
+      return resolved;
+    };
+
+    const normalizeExitTabAssetPaddingValue = (value, fallback = 0) => {
+      const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+      const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+      const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 0;
+      return Number.isFinite(parsed)
+        ? Math.max(-3, Math.min(3, parsed))
+        : Math.max(-3, Math.min(3, resolvedFallback));
+    };
+
+    const formatExitTabDecimalValue = (value) => {
+      const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+      return Number.isFinite(parsed) ? parsed.toFixed(1) : "0.0";
+    };
+
+    const EXIT_TAB_DECIMAL_VALUE_IDS = new Set([
+      "borderValue",
+      "minValue",
+      "nestedSpacingValue",
+      "exitTabHorizontalPaddingValue",
+    ]);
+
+    const formatExitTabSliderDisplayValue = (valueId, value) =>
+      EXIT_TAB_DECIMAL_VALUE_IDS.has(valueId)
+        ? formatExitTabDecimalValue(value)
+        : String(value);
+
+
+    const setExitTabRangeControlValue = (input, value) => {
+      if (!input) {
+        return value;
+      }
+      const isActivelyEditing =
+        document.activeElement === input ||
+        input.dataset.exitTabSliderDragging === "true";
+      if (
+        isActivelyEditing &&
+        input.dataset.exitTabPendingValue !== undefined
+      ) {
+        return input.dataset.exitTabPendingValue;
+      }
+      input.value = String(value);
+      return value;
+    };
+
+    const bindExitTabSliderDragProtection = () => {
+      [
+        "borderThickness",
+        "minHeight",
+        "fontSize",
+        "nestedTabSpacing",
+        "exitTabHorizontalPadding",
+        "exitTabTextSizePercent",
+      ].forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input || input.dataset.exitTabDragProtected === "true") {
+          return;
+        }
+        input.dataset.exitTabDragProtected = "true";
+        input.addEventListener("pointerdown", () => {
+          input.dataset.exitTabSliderDragging = "true";
+          input.dataset.exitTabPendingValue = input.value;
+        });
+        input.addEventListener("input", () => {
+          input.dataset.exitTabPendingValue = input.value;
+        });
+        const finish = () => {
+          window.setTimeout(() => {
+            delete input.dataset.exitTabSliderDragging;
+            delete input.dataset.exitTabPendingValue;
+          }, 0);
+        };
+        input.addEventListener("pointerup", finish);
+        input.addEventListener("pointercancel", finish);
+        input.addEventListener("change", finish);
+        input.addEventListener("blur", finish);
+      });
+    };
+
+    let exitTabEditorMode = "current";
+    let selectedExitTabProfileId = "default";
+    let currentPanelExitTabProfileId = "default";
+    let selectedExitTabProfileVariant = "Default";
+
+    const EXIT_TAB_DEFAULT_PROFILE_ID = "default";
+    const EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION = 1;
+
+    const normalizeExitTabProfileVariant = (value) => {
+      const requested = String(value || "Default").trim();
+      const normalized = requested === "Standard" ? "Default" : requested;
+      const variants =
+        typeof ExitTab !== "undefined" &&
+        ExitTab.prototype &&
+        Array.isArray(ExitTab.prototype.variants)
+          ? ExitTab.prototype.variants
+          : ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+      return variants.includes(normalized) ? normalized : "Default";
+    };
+
+    const getExitTabVariantDisplayName = (value) =>
+      normalizeExitTabProfileVariant(value) === "Default"
+        ? "Standard"
+        : normalizeExitTabProfileVariant(value);
+
+    const getExitTabProfileVariantValues = () => {
+      const variants =
+        typeof ExitTab !== "undefined" &&
+        ExitTab.prototype &&
+        Array.isArray(ExitTab.prototype.variants)
+          ? ExitTab.prototype.variants
+          : ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+      return variants
+        .map(normalizeExitTabProfileVariant)
+        .filter((variant, index, list) => list.indexOf(variant) === index);
+    };
+
+    const getExitTabProfileFormattingKeys = () =>
+      typeof ExitTab !== "undefined" &&
+      ExitTab.prototype &&
+      Array.isArray(ExitTab.prototype.profileFormattingKeys)
+        ? ExitTab.prototype.profileFormattingKeys
+        : [
+            "variant",
+            "position",
+            "width",
+            "color",
+            "borderThickness",
+            "minHeight",
+            "fontSize",
+            "fontFamily",
+            "characterSpacing",
+            "horizontalPadding",
+            "exitTextSizePercent",
+            "exitTextSizePercentVersion",
+            "textColor",
+            "FHWAFont",
+            "showLeft",
+            "fullBorder",
+            "squareCorners",
+            "topOffset",
+            "verticalArrangement",
+            "caStyle",
+            "bilingual",
+            "bilingualBottomText",
+            "icon",
+            "useTextBasedIcon",
+            "tollLogoOnly",
+            "tollLogoSize",
+            "tollLogoSquare",
+            "assetHorizontalPadding",
+            "assetVerticalPadding",
+            "transparent",
+            "nestedTabSpacing",
+          ];
+
+    const cloneExitTabValue = (value) => {
+      try {
+        return JSON.parse(JSON.stringify(value));
+      } catch (error) {
+        return value;
+      }
+    };
+
+    const getExitTabPrototypeDefaultSettings = (variant = "Default") => {
+      const resolvedVariant = normalizeExitTabProfileVariant(variant);
+      if (
+        typeof ExitTab !== "undefined" &&
+        ExitTab.prototype &&
+        typeof ExitTab.prototype.getDefaultProfileSettings === "function"
+      ) {
+        return ExitTab.prototype.getDefaultProfileSettings(resolvedVariant);
+      }
+
+      const isTollLogo = resolvedVariant === "Toll Logo";
+      const isIcon = resolvedVariant === "Icon";
+      return {
+        number: "",
+        variant: resolvedVariant,
+        position: "Right",
+        width: "Edge",
+        color: "Panel Color",
+        borderThickness: 0.2,
+        minHeight: 2,
+        fontSize: 18,
+        fontFamily: "Series EEM",
+        characterSpacing: 0,
+        horizontalPadding: 0,
+        exitTextSizePercent: 70,
+        exitTextSizePercentVersion: ExitTab.prototype.exitTextSizePercentVersion,
+        textColor: "Panel Color",
+        FHWAFont: true,
+        showLeft: false,
+        fullBorder: true,
+        squareCorners: true,
+        topOffset: false,
+        verticalArrangement: false,
+        caStyle: false,
+        bilingual: false,
+        bilingualBottomText: "SORTIE",
+        icon: isTollLogo ? "TxTag" : isIcon ? "AIRPORT" : null,
+        useTextBasedIcon: false,
+        tollLogoOnly: isTollLogo,
+        tollLogoSize: 3,
+        tollLogoSquare: false,
+        assetHorizontalPadding: 0,
+        assetVerticalPadding: 0,
+        transparent: false,
+        nestedTabSpacing: 0,
+      };
+    };
+
+    const getFiniteExitTabNumber = (value, fallback) => {
+      const parsed = typeof value === "number" ? value : parseFloat(value);
+      const fallbackParsed = typeof fallback === "number" ? fallback : parseFloat(fallback);
+      return Number.isFinite(parsed)
+        ? parsed
+        : Number.isFinite(fallbackParsed)
+          ? fallbackParsed
+          : 0;
+    };
+
+    const normalizeExitTabProfileSettings = (settings = {}, variant = null) => {
+      const resolvedVariant = normalizeExitTabProfileVariant(
+        variant || settings?.variant || "Default"
+      );
+      const fallback = getExitTabPrototypeDefaultSettings(resolvedVariant);
+      const normalized = {
+        ...fallback,
+        ...(settings && typeof settings === "object" ? settings : {}),
+        variant: resolvedVariant,
+      };
+
+      normalized.fontFamily = normalizeExitTabFontFamily(
+        normalized.fontFamily,
+        fallback.fontFamily || "Series EEM"
+      );
+      normalized.FHWAFont = isExitTabHighwayGothicFontFamily(normalized.fontFamily);
+      normalized.characterSpacing = normalizeExitTabCharacterSpacing(
+        normalized.characterSpacing
+      );
+      normalized.borderThickness = Math.max(
+        0,
+        getFiniteExitTabNumber(normalized.borderThickness, fallback.borderThickness)
+      );
+      normalized.minHeight = Math.max(
+        0,
+        getFiniteExitTabNumber(normalized.minHeight, fallback.minHeight)
+      );
+      normalized.fontSize = Math.max(
+        1,
+        getFiniteExitTabNumber(normalized.fontSize, fallback.fontSize)
+      );
+      normalized.tollLogoSize = normalizeExitTabAssetSizeValue(
+        normalized.tollLogoSize,
+        fallback.tollLogoSize || 3
+      );
+      normalized.horizontalPadding = Math.max(
+        0,
+        Math.min(
+          3,
+          getFiniteExitTabNumber(normalized.horizontalPadding, fallback.horizontalPadding)
+        )
+      );
+      normalized.exitTextSizePercent = Math.max(
+        25,
+        Math.min(
+          100,
+          getFiniteExitTabNumber(
+            normalized.exitTextSizePercent,
+            fallback.exitTextSizePercent
+          )
+        )
+      );
+      normalized.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+      normalized.nestedTabSpacing = Math.max(
+        0,
+        getFiniteExitTabNumber(normalized.nestedTabSpacing, fallback.nestedTabSpacing)
+      );
+      normalized.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(
+        normalized.assetHorizontalPadding,
+        fallback.assetHorizontalPadding || 0
+      );
+      normalized.assetVerticalPadding = normalizeExitTabAssetPaddingValue(
+        normalized.assetVerticalPadding,
+        fallback.assetVerticalPadding || 0
+      );
+      normalized.textColor =
+        normalized.textColor || ExitTab.prototype.defaultTextColor || "Panel Color";
+      normalized.color =
+        normalized.color || ExitTab.prototype.defaultColor || "Panel Color";
+      normalized.position = normalized.position || "Right";
+      normalized.width = normalized.width || "Edge";
+      normalized.number = String(normalized.number ?? "");
+      normalized.bilingualBottomText = normalized.bilingualBottomText || "SORTIE";
+      normalized.showLeft = normalized.showLeft === true;
+      normalized.fullBorder = normalized.fullBorder === true;
+      normalized.squareCorners = normalized.squareCorners === true;
+      normalized.topOffset = normalized.topOffset === true;
+      normalized.verticalArrangement = normalized.verticalArrangement === true;
+      normalized.caStyle = normalized.caStyle === true;
+      normalized.bilingual = normalized.bilingual === true;
+      normalized.useTextBasedIcon = normalized.useTextBasedIcon === true;
+      normalized.tollLogoOnly = normalized.tollLogoOnly === true;
+      normalized.tollLogoSquare = normalized.tollLogoSquare === true;
+      normalized.transparent =
+        normalized.transparent === true || normalized.transparent === "true";
+
+      if (resolvedVariant === "Toll Logo" && !normalized.icon) {
+        normalized.icon = "TxTag";
+      } else if (resolvedVariant === "Icon" && !normalized.icon) {
+        normalized.icon = "AIRPORT";
+      }
+
+      return normalized;
+    };
+
+    const createExitTabSettingsByVariant = (sourceProfile = null) => {
+      const sourceMap =
+        sourceProfile?.settingsByVariant &&
+        typeof sourceProfile.settingsByVariant === "object"
+          ? sourceProfile.settingsByVariant
+          : {};
+      const legacySettings =
+        sourceProfile?.settings && typeof sourceProfile.settings === "object"
+          ? sourceProfile.settings
+          : null;
+      const legacyVariant = normalizeExitTabProfileVariant(
+        legacySettings?.variant || "Default"
+      );
+      const settingsByVariant = {};
+
+      getExitTabProfileVariantValues().forEach((variant) => {
+        const source =
+          sourceMap[variant] ||
+          sourceMap[getExitTabVariantDisplayName(variant)] ||
+          (legacySettings && legacyVariant === variant ? legacySettings : null);
+        settingsByVariant[variant] = normalizeExitTabProfileSettings(source || {}, variant);
+      });
+
+      if (
+        sourceProfile?.id === EXIT_TAB_DEFAULT_PROFILE_ID &&
+        sourceProfile?.typeSettingsVersion !== EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION &&
+        getFiniteExitTabNumber(settingsByVariant.Default?.minHeight, 2) === 2.7
+      ) {
+        settingsByVariant.Default.minHeight = 2;
+      }
+
+      return settingsByVariant;
+    };
+
+    const getNextExitTabProfileName = (profiles = []) => {
+      const used = new Set(profiles.map((profile) => String(profile.name || "")));
+      let index = Math.max(
+        1,
+        profiles.filter(
+          (profile) => profile && profile.id !== EXIT_TAB_DEFAULT_PROFILE_ID
+        ).length + 1
+      );
+      while (used.has(`Profile ${index}`)) {
+        index += 1;
+      }
+      return `Profile ${index}`;
+    };
+
+    const normalizeExitTabProfiles = () => {
+      syncPostReference();
+      if (!post || typeof post !== "object") {
+        return {
+          profiles: [],
+          selectedId: EXIT_TAB_DEFAULT_PROFILE_ID,
+          selectedVariant: "Default",
+        };
+      }
+
+      if (!post.exitTabProfiles || typeof post.exitTabProfiles !== "object") {
+        post.exitTabProfiles = {
+          selectedId: EXIT_TAB_DEFAULT_PROFILE_ID,
+          selectedVariant: "Default",
+          profiles: [
+            {
+              id: EXIT_TAB_DEFAULT_PROFILE_ID,
+              name: "Default Profile",
+              locked: true,
+              typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+              settingsByVariant: createExitTabSettingsByVariant(),
+            },
+          ],
+        };
+      }
+
+      if (!Array.isArray(post.exitTabProfiles.profiles)) {
+        post.exitTabProfiles.profiles = [];
+      }
+
+      if (
+        !post.exitTabProfiles.profiles.some(
+          (profile) => profile && profile.id === EXIT_TAB_DEFAULT_PROFILE_ID
+        )
+      ) {
+        post.exitTabProfiles.profiles.unshift({
+          id: EXIT_TAB_DEFAULT_PROFILE_ID,
+          name: "Default Profile",
+          locked: true,
+          typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+          settingsByVariant: createExitTabSettingsByVariant(),
+        });
+      }
+
+      const seenNames = new Set();
+      post.exitTabProfiles.profiles = post.exitTabProfiles.profiles
+        .filter((profile) => profile && typeof profile === "object")
+        .map((profile, index) => {
+          const normalizedProfile = {
+            id:
+              typeof profile.id === "string" && profile.id.trim().length
+                ? profile.id
+                : `profile_${Date.now().toString(36)}_${index}`,
+            name:
+              typeof profile.name === "string" && profile.name.trim().length
+                ? profile.name.trim()
+                : getNextExitTabProfileName(post.exitTabProfiles.profiles),
+            locked:
+              profile.id === EXIT_TAB_DEFAULT_PROFILE_ID || profile.locked === true,
+            typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+            settingsByVariant: createExitTabSettingsByVariant(profile),
+          };
+
+          normalizedProfile.settings = normalizedProfile.settingsByVariant.Default;
+
+          if (normalizedProfile.id === EXIT_TAB_DEFAULT_PROFILE_ID) {
+            normalizedProfile.name = "Default Profile";
+            normalizedProfile.locked = true;
+          }
+
+          let uniqueName = normalizedProfile.name;
+          if (normalizedProfile.id !== EXIT_TAB_DEFAULT_PROFILE_ID) {
+            let suffix = 2;
+            while (seenNames.has(uniqueName)) {
+              uniqueName = `${normalizedProfile.name} ${suffix}`;
+              suffix += 1;
+            }
+          }
+          normalizedProfile.name = uniqueName;
+          seenNames.add(uniqueName);
+          return normalizedProfile;
+        });
+
+      if (
+        !post.exitTabProfiles.profiles.some(
+          (profile) => profile.id === post.exitTabProfiles.selectedId
+        )
+      ) {
+        post.exitTabProfiles.selectedId = EXIT_TAB_DEFAULT_PROFILE_ID;
+      }
+
+      post.exitTabProfiles.selectedVariant = normalizeExitTabProfileVariant(
+        post.exitTabProfiles.selectedVariant || selectedExitTabProfileVariant
+      );
+      selectedExitTabProfileId =
+        post.exitTabProfiles.selectedId || EXIT_TAB_DEFAULT_PROFILE_ID;
+      selectedExitTabProfileVariant = post.exitTabProfiles.selectedVariant;
+      return post.exitTabProfiles;
+    };
+
+    const getExitTabProfileById = (profileId = selectedExitTabProfileId) => {
+      const store = normalizeExitTabProfiles();
+      return (
+        store.profiles.find((profile) => profile.id === profileId) ||
+        store.profiles.find(
+          (profile) => profile.id === EXIT_TAB_DEFAULT_PROFILE_ID
+        ) ||
+        store.profiles[0]
+      );
+    };
+
+    const getExitTabProfileSettings = (
+      profileOrId = selectedExitTabProfileId,
+      variant = selectedExitTabProfileVariant
+    ) => {
+      const profile =
+        typeof profileOrId === "string"
+          ? getExitTabProfileById(profileOrId)
+          : profileOrId;
+      if (!profile) {
+        return normalizeExitTabProfileSettings({}, variant);
+      }
+      const resolvedVariant = normalizeExitTabProfileVariant(variant);
+      if (!profile.settingsByVariant || typeof profile.settingsByVariant !== "object") {
+        profile.settingsByVariant = createExitTabSettingsByVariant(profile);
+      }
+      profile.settingsByVariant[resolvedVariant] = normalizeExitTabProfileSettings(
+        profile.settingsByVariant[resolvedVariant] || {},
+        resolvedVariant
+      );
+      profile.settings = profile.settingsByVariant.Default;
+      return profile.settingsByVariant[resolvedVariant];
+    };
+
+    const getExitTabProfileContextSettings = (variant = null) => {
+      const currentTab = getCurrentExitTabForProfileApply();
+      const resolvedVariant = normalizeExitTabProfileVariant(
+        variant ||
+          (exitTabEditorMode === "default"
+            ? selectedExitTabProfileVariant
+            : currentTab?.variant || "Default")
+      );
+      const profileId =
+        exitTabEditorMode === "default"
+          ? selectedExitTabProfileId
+          : currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID;
+      return getExitTabProfileSettings(profileId, resolvedVariant);
+    };
+
+    const applyExitTabSettingsToPrototype = (settings = {}) => {
+      if (typeof ExitTab === "undefined" || !ExitTab.prototype) {
+        return;
+      }
+
+      const normalized = normalizeExitTabProfileSettings(settings, "Default");
+      ExitTab.prototype.defaultText = String(normalized.number || "");
+      ExitTab.prototype.defaultVariant = "Default";
+      ExitTab.prototype.defaultPosition = normalized.position;
+      ExitTab.prototype.defaultWidth = normalized.width;
+      ExitTab.prototype.defaultColor = normalized.color;
+      ExitTab.prototype.defaultBorderThickness = normalized.borderThickness;
+      ExitTab.prototype.defaultMinHeight = normalized.minHeight;
+      ExitTab.prototype.defaultFontSize = normalized.fontSize;
+      ExitTab.prototype.defaultFontFamily = normalized.fontFamily || "Series EEM";
+      ExitTab.prototype.defaultFHWAFont = isExitTabHighwayGothicFontFamily(
+        normalized.fontFamily
+      );
+      if (ExitTab.prototype.defaultFHWAFont) {
+        ExitTab.prototype.defaultFHWAFontFamily = ExitTab.prototype.defaultFontFamily;
+      } else if (isClearviewUiFont(ExitTab.prototype.defaultFontFamily || "")) {
+        ExitTab.prototype.defaultClearviewFontFamily = ExitTab.prototype.defaultFontFamily;
+      }
+      ExitTab.prototype.defaultCharacterSpacing = normalized.characterSpacing;
+      ExitTab.prototype.defaultHorizontalPadding = normalized.horizontalPadding;
+      ExitTab.prototype.defaultExitTextSizePercent = normalized.exitTextSizePercent;
+      ExitTab.prototype.defaultTextColor = normalized.textColor;
+      ExitTab.prototype.defaultShowLeft = normalized.showLeft === true;
+      ExitTab.prototype.defaultFullBorder = normalized.fullBorder === true;
+      ExitTab.prototype.defaultSquareCorners = normalized.squareCorners === true;
+      ExitTab.prototype.defaultTopOffset = normalized.topOffset === true;
+      ExitTab.prototype.defaultVerticalArrangement =
+        normalized.verticalArrangement === true;
+      ExitTab.prototype.defaultCAStyle = normalized.caStyle === true;
+      ExitTab.prototype.defaultNestedTabSpacing = normalized.nestedTabSpacing;
+      ExitTab.prototype.defaultTransparent = false;
+    };
+
+    const applyExitTabDefaultProfileToPrototype = () => {
+      const defaultSettings = getExitTabProfileSettings(
+        EXIT_TAB_DEFAULT_PROFILE_ID,
+        "Default"
+      );
+      applyExitTabSettingsToPrototype(defaultSettings);
+    };
+
+    const copyExitTabProfileSettingsToTarget = (
+      sourceSettings = {},
+      target = {},
+      { preserveText = true } = {}
+    ) => {
+      if (!target) {
+        return target;
+      }
+
+      const normalized = normalizeExitTabProfileSettings(
+        sourceSettings,
+        sourceSettings?.variant || target.variant || "Default"
+      );
+      const preserved = {
+        number: target.number,
+        bilingualTopText: target.bilingualTopText,
+        bilingualBottomText: target.bilingualBottomText,
+        bilingual: target.bilingual,
+      };
+
+      getExitTabProfileFormattingKeys().forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(normalized, key)) {
+          target[key] = cloneExitTabValue(normalized[key]);
+        }
+      });
+
+      if (!preserveText) {
+        target.number = normalized.number || "";
+        target.bilingual = normalized.bilingual === true;
+        target.bilingualBottomText = normalized.bilingualBottomText || "SORTIE";
+      } else {
+        target.number = preserved.number;
+        target.bilingualTopText = preserved.bilingualTopText || "EXIT";
+        target.bilingualBottomText = preserved.bilingualBottomText || "SORTIE";
+        target.bilingual = preserved.bilingual === true;
+      }
+
+      target.fontFamily = normalizeExitTabFontFamily(
+        target.fontFamily,
+        normalized.fontFamily
+      );
+      target.FHWAFont = isExitTabHighwayGothicFontFamily(target.fontFamily);
+      target.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+      target.transparent = target.transparent === true;
+      return target;
+    };
+
+    const getExitTabEditorTarget = (currentExitTab) => {
+      if (exitTabEditorMode === "default") {
+        return getExitTabProfileSettings(
+          selectedExitTabProfileId,
+          selectedExitTabProfileVariant
+        );
+      }
+      return currentExitTab;
+    };
+
+    const setExitTabEditorMode = (mode = "current") => {
+      exitTabEditorMode = mode === "default" ? "default" : "current";
+      const store = normalizeExitTabProfiles();
+
+      if (exitTabEditorMode === "default") {
+        const currentProfileStillExists = store.profiles.some(
+          (profile) => profile.id === currentPanelExitTabProfileId
+        );
+        selectedExitTabProfileId = currentProfileStillExists
+          ? currentPanelExitTabProfileId
+          : store.selectedId || EXIT_TAB_DEFAULT_PROFILE_ID;
+        selectedExitTabProfileVariant = normalizeExitTabProfileVariant(
+          store.selectedVariant || selectedExitTabProfileVariant
+        );
+        store.selectedId = selectedExitTabProfileId;
+        store.selectedVariant = selectedExitTabProfileVariant;
+      } else if (
+        !store.profiles.some(
+          (profile) => profile.id === currentPanelExitTabProfileId
+        )
+      ) {
+        currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+      }
+
+      updateForm();
+    };
+
+    const setExitTabProfileSelected = (profileId) => {
+      const profile = getExitTabProfileById(profileId);
+      if (!profile) {
+        return;
+      }
+      selectedExitTabProfileId = profile.id;
+      const store = normalizeExitTabProfiles();
+      store.selectedId = profile.id;
+      store.selectedVariant = selectedExitTabProfileVariant;
+      updateForm();
+    };
+
+    const resetExitTabCurrentProfileSelection = () => {
+      currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+      updateExitTabProfilePickerUi();
+    };
+
+    const getCurrentExitTabForProfileApply = () => {
+      const panel = exposed?.getCurrentPanel?.();
+      if (!panel || !Array.isArray(panel.exitTabs)) {
+        return null;
+      }
+      const selectedIndex = exposed?.vars?.currentlySelectedExitTabIndex || 0;
+      const selectedNestedIndex =
+        exposed?.vars?.currentlySelectedNestedExitTabIndex ?? -1;
+      const parent = panel.exitTabs[selectedIndex];
+      return selectedNestedIndex > -1
+        ? parent?.nestedExitTabs?.[selectedNestedIndex] || null
+        : parent || null;
+    };
+
+    const applyExitTabProfileToCurrentTab = (profileId) => {
+      const profile = getExitTabProfileById(profileId);
+      const exitTab = getCurrentExitTabForProfileApply();
+      if (!profile || !exitTab) {
+        return;
+      }
+
+      if (exposed && typeof exposed.beginUndoableChange === "function") {
+        exposed.beginUndoableChange();
+      }
+
+      try {
+        const variant = normalizeExitTabProfileVariant(exitTab.variant);
+        copyExitTabProfileSettingsToTarget(
+          getExitTabProfileSettings(profile, variant),
+          exitTab,
+          { preserveText: true }
+        );
+        exitTab.variant = variant;
+        currentPanelExitTabProfileId = profile.id;
+        selectedExitTabProfileId = profile.id;
+        const store = normalizeExitTabProfiles();
+        store.selectedId = profile.id;
+        if (typeof exposed?.redraw === "function") {
+          exposed.redraw();
+        }
+        updateForm();
+      } finally {
+        if (exposed && typeof exposed.endUndoableChange === "function") {
+          exposed.endUndoableChange();
+        }
+      }
+    };
+
+    const applyDefaultExitTabProfileToTab = (exitTab) => {
+      if (!exitTab) {
+        return false;
+      }
+      const variant = normalizeExitTabProfileVariant(exitTab.variant);
+      copyExitTabProfileSettingsToTarget(
+        getExitTabProfileSettings(EXIT_TAB_DEFAULT_PROFILE_ID, variant),
+        exitTab,
+        { preserveText: false }
+      );
+      exitTab.variant = variant;
+      return true;
+    };
+
+    const makeUniqueExitTabProfileName = (requestedName, excludeId = "") => {
+      const store = normalizeExitTabProfiles();
+      const base =
+        String(requestedName || "").trim() ||
+        getNextExitTabProfileName(store.profiles);
+      let candidate = base;
+      let index = 2;
+      const nameTaken = (name) =>
+        store.profiles.some(
+          (profile) =>
+            profile.id !== excludeId &&
+            String(profile.name || "").toLowerCase() === name.toLowerCase()
+        );
+      while (nameTaken(candidate)) {
+        candidate = `${base} ${index}`;
+        index += 1;
+      }
+      return candidate;
+    };
+
+    const addExitTabProfile = (requestedName = "") => {
+      const store = normalizeExitTabProfiles();
+      const nextName = makeUniqueExitTabProfileName(
+        String(requestedName || "").trim() ||
+          getNextExitTabProfileName(store.profiles)
+      );
+
+      if (exposed && typeof exposed.beginUndoableChange === "function") {
+        exposed.beginUndoableChange();
+      }
+      try {
+        const defaultProfile = getExitTabProfileById(
+          EXIT_TAB_DEFAULT_PROFILE_ID
+        );
+        const profile = {
+          id: `profile_${Date.now().toString(36)}_${Math.random()
+            .toString(36)
+            .slice(2, 7)}`,
+          name: nextName,
+          locked: false,
+          typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+          settingsByVariant: cloneExitTabValue(
+            defaultProfile?.settingsByVariant || createExitTabSettingsByVariant()
+          ),
+        };
+        profile.settings = profile.settingsByVariant.Default;
+        store.profiles.push(profile);
+        store.selectedId = profile.id;
+        selectedExitTabProfileId = profile.id;
+        updateForm();
+      } finally {
+        if (exposed && typeof exposed.endUndoableChange === "function") {
+          exposed.endUndoableChange();
+        }
+      }
+    };
+
+    const renameExitTabProfile = (profileId, requestedName = null) => {
+      const store = normalizeExitTabProfiles();
+      const profile = store.profiles.find((item) => item.id === profileId);
+      if (!profile) {
+        return false;
+      }
+
+      const rawName =
+        requestedName === null
+          ? profile.name
+          : String(requestedName || "").trim();
+
+      if (!rawName) {
+        return false;
+      }
+
+      const nextName = makeUniqueExitTabProfileName(rawName, profile.id);
+      if (nextName === profile.name) {
+        return true;
+      }
+      if (exposed && typeof exposed.beginUndoableChange === "function") {
+        exposed.beginUndoableChange();
+      }
+      try {
+        profile.name = nextName;
+        updateForm();
+        return true;
+      } finally {
+        if (exposed && typeof exposed.endUndoableChange === "function") {
+          exposed.endUndoableChange();
+        }
+      }
+    };
+
+    const deleteExitTabProfile = (profileId) => {
+      const store = normalizeExitTabProfiles();
+      if (
+        store.profiles.length <= 1 ||
+        profileId === EXIT_TAB_DEFAULT_PROFILE_ID
+      ) {
+        return;
+      }
+      const index = store.profiles.findIndex(
+        (profile) => profile.id === profileId
+      );
+      if (index < 0) {
+        return;
+      }
+      if (exposed && typeof exposed.beginUndoableChange === "function") {
+        exposed.beginUndoableChange();
+      }
+      try {
+        store.profiles.splice(index, 1);
+        if (
+          !store.profiles.some(
+            (profile) => profile.id === selectedExitTabProfileId
+          )
+        ) {
+          selectedExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+          store.selectedId = selectedExitTabProfileId;
+        }
+        if (currentPanelExitTabProfileId === profileId) {
+          currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+        }
+        updateForm();
+      } finally {
+        if (exposed && typeof exposed.endUndoableChange === "function") {
+          exposed.endUndoableChange();
+        }
+      }
+    };
+
+    const readExitTabProfileSettingsFromForm = (settings, variant) => {
+      const form = document.forms[0];
+      const resolvedVariant = normalizeExitTabProfileVariant(variant);
+      const isAssetVariant = isExitTabAssetVariantValue(resolvedVariant);
+      const updated = normalizeExitTabProfileSettings(settings, resolvedVariant);
+
+      if (!isAssetVariant) {
+        updated.number = form["exitNumber"]?.value || "";
+      }
+      updated.variant = resolvedVariant;
+      updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
+      updated.width = form["exitTabWidth"]?.value || updated.width || "Edge";
+      updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
+      updated.textColor =
+        form["exitTabTextColor"]?.value || updated.textColor || "Panel Color";
+      updated.borderThickness = Math.max(
+        0,
+        getFiniteExitTabNumber(
+          form["borderThickness"]?.value,
+          updated.borderThickness
+        )
+      );
+      updated.minHeight = Math.max(
+        0,
+        getFiniteExitTabNumber(form["minHeight"]?.value, updated.minHeight)
+      );
+      updated.nestedTabSpacing = Math.max(
+        0,
+        getFiniteExitTabNumber(
+          form["nestedTabSpacing"]?.value,
+          updated.nestedTabSpacing
+        )
+      );
+      updated.fullBorder = form["fullBorder"]?.checked === true;
+      updated.squareCorners = form["squareCorners"]?.checked === true;
+      updated.showLeft = form["showLeft"]?.checked === true;
+      updated.topOffset = form["topOffset"]?.checked === true;
+      updated.verticalArrangement =
+        form["verticalArrangement"]?.checked === true;
+      updated.caStyle = form["caStyle"]?.checked === true;
+      updated.bilingual = form["exitTabBilingual"]?.checked === true;
+      updated.bilingualBottomText =
+        form["exitTabBilingualBottomText"]?.value || "SORTIE";
+      updated.transparent = isAssetVariant
+        ? form["exitTabTransparent"]?.checked === true
+        : false;
+
+      if (isAssetVariant) {
+        updated.tollLogoSize = normalizeExitTabAssetSizeValue(
+          form["fontSize"]?.value,
+          updated.tollLogoSize || 3
+        );
+        updated.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(
+          form["exitTabHorizontalPadding"]?.value,
+          updated.assetHorizontalPadding || 0
+        );
+        updated.assetVerticalPadding = normalizeExitTabAssetPaddingValue(
+          form["exitTabTextSizePercent"]?.value,
+          updated.assetVerticalPadding || 0
+        );
+        updated.useTextBasedIcon = false;
+        updated.tollLogoOnly = resolvedVariant === "Toll Logo";
+        updated.tollLogoSquare = false;
+        if (resolvedVariant === "Toll Logo") {
+          updated.icon =
+            document.getElementById("exitTollLogoPickerValue")?.value ||
+            updated.icon ||
+            "TxTag";
+        } else {
+          updated.icon =
+            document.getElementById("exitIconPickerValue")?.value ||
+            updated.icon ||
+            "AIRPORT";
+        }
+      } else {
+        updated.fontFamily = normalizeExitTabFontFamily(
+          form["exitTabFontFamily"]?.value || updated.fontFamily,
+          updated.fontFamily || "Series EEM"
+        );
+        updated.FHWAFont = isExitTabHighwayGothicFontFamily(updated.fontFamily);
+        updated.characterSpacing = normalizeExitTabCharacterSpacing(
+          form["exitTabCharacterSpacing"]?.value
+        );
+        updated.fontSize = Math.max(
+          1,
+          getFiniteExitTabNumber(form["fontSize"]?.value, updated.fontSize)
+        );
+        updated.horizontalPadding = Math.max(
+          0,
+          Math.min(
+            3,
+            getFiniteExitTabNumber(
+              form["exitTabHorizontalPadding"]?.value,
+              updated.horizontalPadding
+            )
+          )
+        );
+        updated.exitTextSizePercent = Math.max(
+          25,
+          Math.min(
+            100,
+            getFiniteExitTabNumber(
+              form["exitTabTextSizePercent"]?.value,
+              updated.exitTextSizePercent
+            )
+          )
+        );
+        updated.exitTextSizePercentVersion =
+          ExitTab.prototype.exitTextSizePercentVersion;
+      }
+
+      return normalizeExitTabProfileSettings(updated, resolvedVariant);
+    };
+
+    const readExitTabProfileForm = () => {
+      const profile = getExitTabProfileById(selectedExitTabProfileId);
+      if (!profile) {
+        return false;
+      }
+      const store = normalizeExitTabProfiles();
+      const activeVariant = normalizeExitTabProfileVariant(
+        selectedExitTabProfileVariant
+      );
+      const requestedVariant = normalizeExitTabProfileVariant(
+        document.forms[0]["exitVariant"]?.value || activeVariant
+      );
+
+      profile.settingsByVariant[activeVariant] =
+        readExitTabProfileSettingsFromForm(
+          getExitTabProfileSettings(profile, activeVariant),
+          activeVariant
+        );
+      profile.settings = profile.settingsByVariant.Default;
+
+      if (
+        profile.id === EXIT_TAB_DEFAULT_PROFILE_ID &&
+        activeVariant === "Default"
+      ) {
+        applyExitTabSettingsToPrototype(profile.settingsByVariant.Default);
+      }
+
+      if (requestedVariant !== activeVariant) {
+        selectedExitTabProfileVariant = requestedVariant;
+        store.selectedVariant = requestedVariant;
+        return true;
+      }
+
+      store.selectedVariant = activeVariant;
+      return false;
+    };
+
+    const closeAllProfilePickers = (except = null) => {
+      document.querySelectorAll(".profilePicker.open").forEach((picker) => {
+        if (picker !== except) {
+          picker.classList.remove("open");
+        }
+      });
+    };
+
+    const createExitTabProfilePicker = (selectEl) => {
+      if (!selectEl) {
+        return null;
+      }
+      if (selectEl._profilePickerApi) {
+        selectEl._profilePickerApi.sync();
+        return selectEl._profilePickerApi;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "profilePicker";
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "profilePickerTrigger";
+      const label = document.createElement("span");
+      label.className = "profilePickerTriggerLabel";
+      const caret = document.createElement("span");
+      caret.className = "profilePickerTriggerCaret material-symbols-outlined";
+      caret.textContent = "arrow_drop_down";
+      const menu = document.createElement("div");
+      menu.className = "profilePickerMenu";
+
+      trigger.appendChild(label);
+      trigger.appendChild(caret);
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(menu);
+      selectEl.classList.add("exitTabProfileNativeSelect");
+      selectEl.insertAdjacentElement("afterend", wrapper);
+
+      const render = () => {
+        menu.innerHTML = "";
+        const selectedOption = Array.from(selectEl.options).find((option) => option.value === selectEl.value);
+        label.textContent = selectedOption?.textContent || "Default Profile";
+        Array.from(selectEl.options).forEach((option) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "profilePickerItem";
+          button.textContent = option.textContent;
+          button.dataset.profileId = option.value;
+          if (option.value === selectEl.value) {
+            button.classList.add("selected");
+          }
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            selectEl.value = option.value;
+            selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+            wrapper.classList.remove("open");
+          });
+          menu.appendChild(button);
+        });
+      };
+
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const open = !wrapper.classList.contains("open");
+        closeAllProfilePickers(wrapper);
+        render();
+        wrapper.classList.toggle("open", open);
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target)) {
+          wrapper.classList.remove("open");
+        }
+      });
+
+      selectEl.addEventListener("change", render);
+      const api = { sync: render, wrapper };
+      selectEl._profilePickerApi = api;
+      render();
+      return api;
+    };
+
+    const updateExitTabProfilePickerUi = () => {
+      const select = document.getElementById("exitTabProfileSelect");
+      if (!select) {
+        return;
+      }
+      const store = normalizeExitTabProfiles();
+      select.innerHTML = "";
+      store.profiles.forEach((profile) => {
+        const option = document.createElement("option");
+        option.value = profile.id;
+        option.textContent = profile.name;
+        select.appendChild(option);
+      });
+      select.value = currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID;
+      createExitTabProfilePicker(select)?.sync();
+    };
+
+    const commitExitTabProfileInputName = (input, profile) => {
+      const previousName = profile?.name || "Default Profile";
+      const nextName = String(input?.value || "").trim();
+      if (!nextName) {
+        input.value = previousName;
+        return false;
+      }
+      const renamed = renameExitTabProfile(profile.id, nextName);
+      if (!renamed) {
+        input.value = previousName;
+      }
+      return renamed;
+    };
+
+    const showExitTabProfileNewInput = (container) => {
+      if (!container || container.querySelector(".profileManagerNewInput")) {
+        return;
+      }
+
+      const button = container.querySelector(".profileManagerAddButton");
+      if (button) {
+        button.hidden = true;
+      }
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "profileManagerNewInput";
+      input.placeholder = getNextExitTabProfileName(normalizeExitTabProfiles().profiles);
+
+      const cancel = () => {
+        input.remove();
+        if (button) {
+          button.hidden = false;
+        }
+      };
+
+      let committed = false;
+
+      const commit = () => {
+        if (committed) {
+          return;
+        }
+
+        const nextName = String(input.value || "").trim();
+        if (!nextName) {
+          committed = true;
+          cancel();
+          return;
+        }
+
+        committed = true;
+        addExitTabProfile(nextName);
+      };
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commit();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          cancel();
+        }
+      });
+      input.addEventListener("blur", commit);
+      container.insertBefore(input, button || null);
+      input.focus();
+      input.select();
+    };
+
+    const renderExitTabProfileManager = () => {
+      const list = document.getElementById("exitTabProfileList");
+      const triggerLabel = document.getElementById("exitTabProfileManagerTriggerLabel");
+      if (!list) {
+        return;
+      }
+      const store = normalizeExitTabProfiles();
+      const selectedProfile = getExitTabProfileById(selectedExitTabProfileId);
+      if (triggerLabel) {
+        triggerLabel.textContent = selectedProfile?.name || "Default Profile";
+      }
+      list.innerHTML = "";
+      store.profiles.forEach((profile) => {
+        const row = document.createElement("div");
+        row.className = "profileManagerItem" + (profile.id === selectedExitTabProfileId ? " selected" : "");
+        row.dataset.profileId = profile.id;
+        row.addEventListener("click", (event) => {
+          if (event.target.closest("input, button")) {
+            return;
+          }
+          setExitTabProfileSelected(profile.id);
+          closeExitTabProfileManager();
+        });
+
+        const nameLabel = document.createElement("span");
+        nameLabel.className = "profileManagerNameLabel";
+        nameLabel.textContent = profile.name;
+        row.appendChild(nameLabel);
+
+        const startRenamingProfile = () => {
+          if (profile.locked === true) {
+            return;
+          }
+
+          const nameInput = document.createElement("input");
+          nameInput.type = "text";
+          nameInput.className = "profileManagerNameInput";
+          nameInput.value = profile.name;
+          nameInput.dataset.originalName = profile.name;
+
+          const finishRename = () => {
+            if (nameInput.dataset.committing === "true") {
+              return;
+            }
+
+            nameInput.dataset.committing = "true";
+            commitExitTabProfileInputName(nameInput, profile);
+            renderExitTabProfileManager();
+          };
+
+          nameInput.addEventListener("click", (event) => event.stopPropagation());
+          nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              finishRename();
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              nameInput.value = nameInput.dataset.originalName || profile.name;
+              nameInput.blur();
+            }
+          });
+          nameInput.addEventListener("blur", finishRename);
+
+          nameLabel.replaceWith(nameInput);
+          nameInput.focus();
+          nameInput.select();
+        };
+
+        const renameButton = document.createElement("button");
+        renameButton.type = "button";
+        renameButton.className = "profileManagerIconButton";
+        renameButton.title = "Rename profile";
+        renameButton.disabled = profile.locked === true;
+        renameButton.innerHTML = '<span class="material-symbols-outlined">edit</span>';
+        renameButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          startRenamingProfile();
+        });
+        row.appendChild(renameButton);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "profileManagerIconButton";
+        deleteButton.title = "Delete profile";
+        deleteButton.disabled = profile.id === EXIT_TAB_DEFAULT_PROFILE_ID || store.profiles.length <= 1;
+        deleteButton.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+        deleteButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          deleteExitTabProfile(profile.id);
+        });
+        row.appendChild(deleteButton);
+
+        list.appendChild(row);
+      });
+
+      const addButton = document.createElement("button");
+      addButton.type = "button";
+      addButton.className = "profileManagerAddButton";
+      addButton.textContent = "Add New Profile";
+      addButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        showExitTabProfileNewInput(list);
+      });
+      list.appendChild(addButton);
+    };
+
+    const updateExitTabModeUi = () => {
+      const modal = document.querySelector(".sMModal.exitTabConfig");
+      const currentButton = document.getElementById("exitTabCurrentModeButton");
+      const defaultButton = document.getElementById("exitTabDefaultsModeButton");
+      const profileControls = document.getElementById("exitTabDefaultProfileControls");
+      const profileRow = document.getElementById("exitTabCurrentProfileRow");
+
+      modal?.classList.toggle("defaultConfigMode", exitTabEditorMode === "default");
+      currentButton?.classList.toggle("active", exitTabEditorMode === "current");
+      defaultButton?.classList.toggle("active", exitTabEditorMode === "default");
+      if (profileControls) profileControls.hidden = exitTabEditorMode !== "default";
+      if (profileRow) {
+        const tab = getCurrentExitTabForProfileApply();
+        profileRow.hidden = exitTabEditorMode !== "current" || !tab;
+      }
+      renderExitTabProfileManager();
+      updateExitTabProfilePickerUi();
+    };
+
+    const closeExitTabProfileManager = () => {
+      const picker = document.getElementById("exitTabProfileManagerPicker");
+      const trigger = document.getElementById("exitTabProfileManagerTrigger");
+      if (picker) {
+        const activeRenameInput = picker.querySelector(".profileManagerNameInput");
+        if (activeRenameInput) {
+          activeRenameInput.blur();
+        }
+        picker.classList.remove("open");
+      }
+      if (trigger) {
+        trigger.setAttribute("aria-expanded", "false");
+      }
+    };
+
+    const setupExitTabProfileControls = () => {
+      const trigger = document.getElementById("exitTabProfileManagerTrigger");
+      const picker = document.getElementById("exitTabProfileManagerPicker");
+
+      if (trigger && picker && trigger.dataset.exitTabProfileBound !== "true") {
+        trigger.dataset.exitTabProfileBound = "true";
+        trigger.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          renderExitTabProfileManager();
+          const willOpen = !picker.classList.contains("open");
+          picker.classList.toggle("open", willOpen);
+          trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        });
+
+        document.addEventListener("click", (event) => {
+          if (!picker.contains(event.target)) {
+            closeExitTabProfileManager();
+          }
+        });
+      }
+
+      updateExitTabModeUi();
+    };
+
+    const getNestedExitTabLimit = () => null;
 const getPostThicknessFallback = () =>
     typeof Post.prototype.defaultThickness === "number"
       ? Post.prototype.defaultThickness
@@ -1382,6 +2954,243 @@ const getPostThicknessFallback = () =>
     }
   };
     
+    let panelStylePopoverFrame = 0;
+    let panelStylePopoverResizeObserver = null;
+
+    const panelStylePopoverIsOpen = () => {
+      const configBar = document.getElementById("sMConfigBar");
+      return configBar?.dataset.currentMenu === "panelStyleConfig";
+    };
+
+    const clearPanelStylePopoverPosition = () => {
+      const modalHolder = document.querySelector(".modals");
+
+      if (!modalHolder) {
+        return;
+      }
+
+      modalHolder.classList.remove("panelStylePopoverOpen");
+      ["top", "right", "bottom", "left"].forEach((property) => {
+        modalHolder.style.removeProperty(property);
+      });
+    };
+
+    const positionPanelStylePopover = () => {
+      const modalHolder = document.querySelector(".modals");
+      const panelStyleModal = document.querySelector(".sMModal.panelStyleConfig");
+      const configBar = document.getElementById("sMConfigBar");
+      const trigger = document.getElementById("panelStyleConfig");
+
+      if (
+        !modalHolder ||
+        !panelStyleModal ||
+        !configBar ||
+        !panelStylePopoverIsOpen()
+      ) {
+        clearPanelStylePopoverPosition();
+        return;
+      }
+
+      modalHolder.classList.add("panelStylePopoverOpen");
+
+      const barRect = configBar.getBoundingClientRect();
+      const triggerRect = trigger?.getBoundingClientRect() || barRect;
+      const modalRect = panelStyleModal.getBoundingClientRect();
+      const position = String(
+        configBar.dataset.position ||
+        document.documentElement.dataset.configPosition ||
+        "right"
+      ).toLowerCase();
+      const gap = 8;
+      const edge = 8;
+
+      let left = triggerRect.left;
+      let top = triggerRect.top;
+
+      if (position === "bottom") {
+        top = barRect.top - gap - modalRect.height;
+      } else if (position === "top") {
+        top = barRect.bottom + gap;
+      } else {
+        left = barRect.left - gap - modalRect.width;
+      }
+
+      const maxLeft = Math.max(edge, window.innerWidth - modalRect.width - edge);
+      const maxTop = Math.max(edge, window.innerHeight - modalRect.height - edge);
+
+      left = Math.max(edge, Math.min(maxLeft, left));
+      top = Math.max(edge, Math.min(maxTop, top));
+
+      modalHolder.style.setProperty("left", `${left}px`, "important");
+      modalHolder.style.setProperty("top", `${top}px`, "important");
+      modalHolder.style.setProperty("right", "auto", "important");
+      modalHolder.style.setProperty("bottom", "auto", "important");
+    };
+
+    const schedulePanelStylePopoverPosition = () => {
+      window.cancelAnimationFrame(panelStylePopoverFrame);
+      panelStylePopoverFrame = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(positionPanelStylePopover);
+      });
+    };
+
+    const bindPanelStylePopoverPositioning = () => {
+      const configBar = document.getElementById("sMConfigBar");
+      const panelStyleModal = document.querySelector(".sMModal.panelStyleConfig");
+
+      if (!configBar || !panelStyleModal) {
+        return;
+      }
+
+      if (configBar.dataset.panelStylePopoverBound !== "true") {
+        configBar.dataset.panelStylePopoverBound = "true";
+        window.addEventListener("resize", schedulePanelStylePopoverPosition);
+      }
+
+      if (
+        typeof ResizeObserver === "function" &&
+        !panelStylePopoverResizeObserver
+      ) {
+        panelStylePopoverResizeObserver = new ResizeObserver(() => {
+          if (panelStylePopoverIsOpen()) {
+            schedulePanelStylePopoverPosition();
+          }
+        });
+        panelStylePopoverResizeObserver.observe(configBar);
+        panelStylePopoverResizeObserver.observe(panelStyleModal);
+      }
+    };
+
+    let panelSelectorPopoverFrame = 0;
+    let panelSelectorPopoverResizeObserver = null;
+
+    const panelSelectorPopoverIsOpen = () => {
+      const configBar = document.getElementById("sMConfigBar");
+      return configBar?.dataset.currentMenu === "panelSelector";
+    };
+
+    const ensurePanelSelectorPopoverPortal = () => {
+      const panelSelect = document.getElementById("panelSelect");
+
+      if (!panelSelect) {
+        return null;
+      }
+
+      panelSelect.classList.add("panelSelectorFloating");
+
+      if (panelSelect.parentElement !== document.body) {
+        document.body.appendChild(panelSelect);
+      }
+
+      return panelSelect;
+    };
+
+    const clearPanelSelectorPopoverPosition = () => {
+      const panelSelect = document.getElementById("panelSelect");
+
+      if (!panelSelect) {
+        return;
+      }
+
+      ["top", "right", "bottom", "left"].forEach((property) => {
+        panelSelect.style.removeProperty(property);
+      });
+    };
+
+    const positionPanelSelectorPopover = () => {
+      const panelSelect = ensurePanelSelectorPopoverPortal();
+      const configBar = document.getElementById("sMConfigBar");
+      const trigger = document
+        .getElementById("panelSelector")
+        ?.closest(".sMConfigOption");
+
+      if (
+        !panelSelect ||
+        !configBar ||
+        !trigger ||
+        !panelSelectorPopoverIsOpen()
+      ) {
+        clearPanelSelectorPopoverPosition();
+        return;
+      }
+
+      const barRect = configBar.getBoundingClientRect();
+      const triggerRect = trigger.getBoundingClientRect();
+      const popoverRect = panelSelect.getBoundingClientRect();
+      const position = String(
+        configBar.dataset.position ||
+        document.documentElement.dataset.configPosition ||
+        "right"
+      ).toLowerCase();
+      const gap = 8;
+      const edge = 8;
+
+      let left = triggerRect.left;
+      let top = triggerRect.top;
+
+      if (position === "bottom") {
+        top = barRect.top - gap - popoverRect.height;
+      } else if (position === "top") {
+        top = barRect.bottom + gap;
+      } else {
+        left = barRect.left - gap - popoverRect.width;
+      }
+
+      const maxLeft = Math.max(
+        edge,
+        window.innerWidth - popoverRect.width - edge
+      );
+      const maxTop = Math.max(
+        edge,
+        window.innerHeight - popoverRect.height - edge
+      );
+
+      left = Math.max(edge, Math.min(maxLeft, left));
+      top = Math.max(edge, Math.min(maxTop, top));
+
+      panelSelect.style.setProperty("left", `${left}px`, "important");
+      panelSelect.style.setProperty("top", `${top}px`, "important");
+      panelSelect.style.setProperty("right", "auto", "important");
+      panelSelect.style.setProperty("bottom", "auto", "important");
+    };
+
+    const schedulePanelSelectorPopoverPosition = () => {
+      window.cancelAnimationFrame(panelSelectorPopoverFrame);
+      panelSelectorPopoverFrame = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(positionPanelSelectorPopover);
+      });
+    };
+
+    const bindPanelSelectorPopoverPositioning = () => {
+      const panelSelect = ensurePanelSelectorPopoverPortal();
+      const configBar = document.getElementById("sMConfigBar");
+
+      if (!panelSelect || !configBar) {
+        return;
+      }
+
+      if (panelSelect.dataset.floatingPanelSelectorBound !== "true") {
+        panelSelect.dataset.floatingPanelSelectorBound = "true";
+        window.addEventListener(
+          "resize",
+          schedulePanelSelectorPopoverPosition
+        );
+      }
+
+      if (
+        typeof ResizeObserver === "function" &&
+        !panelSelectorPopoverResizeObserver
+      ) {
+        panelSelectorPopoverResizeObserver = new ResizeObserver(() => {
+          if (panelSelectorPopoverIsOpen()) {
+            schedulePanelSelectorPopoverPosition();
+          }
+        });
+        panelSelectorPopoverResizeObserver.observe(configBar);
+        panelSelectorPopoverResizeObserver.observe(panelSelect);
+      }
+    };
+
     const normalizeConfigBarPosition = (value) => {
       if (value === "bottom" || value === "top") {
         return value;
@@ -1411,6 +3220,8 @@ const getPostThicknessFallback = () =>
 
       document.documentElement.dataset.configPosition = normalized;
       updateConfigPositionButtons(normalized);
+      schedulePanelStylePopoverPosition();
+      schedulePanelSelectorPopoverPosition();
 
       if (persist) {
         setStoredItem(STORAGE_KEYS.configBarPosition, normalized);
@@ -1488,6 +3299,8 @@ const getPostThicknessFallback = () =>
 
     document.documentElement.style.setProperty("--sm-app-zoom", String(cssScale));
     updateInterfaceUIScaleDisplay(normalized);
+    schedulePanelStylePopoverPosition();
+    schedulePanelSelectorPopoverPosition();
 
     if (persist) {
       setStoredItem(STORAGE_KEYS.interfaceUiScale, String(normalized));
@@ -1793,25 +3606,14 @@ const getPostThicknessFallback = () =>
       ShieldElement.prototype.defaultBannerFontFamily = storedBannerFont;
     }
 
-    const storedExitFHWA = getStoredItem(STORAGE_KEYS.exitTabFHWAFont);
-    if (storedExitFHWA !== null) {
-      ExitTab.prototype.defaultFHWAFont = storedExitFHWA === "true";
-    }
+    // Exit tabs now use a font dropdown. Until the defaults page supports that
+    // directly, new exit tabs should always start with the Series EEM preset.
+    ExitTab.prototype.defaultFHWAFont = true;
 
-    const storedExitFullBorder = getStoredItem(STORAGE_KEYS.exitTabFullBorder);
-    if (storedExitFullBorder !== null) {
-      ExitTab.prototype.defaultFullBorder = storedExitFullBorder === "true";
-    }
-
-    const storedExitSquareCorners = getStoredItem(STORAGE_KEYS.exitTabSquareCorners);
-    if (storedExitSquareCorners !== null) {
-      ExitTab.prototype.defaultSquareCorners = storedExitSquareCorners === "true";
-    }
-
-    const storedExitTopOffset = getStoredItem(STORAGE_KEYS.exitTabTopOffset);
-    if (storedExitTopOffset !== null) {
-      ExitTab.prototype.defaultTopOffset = storedExitTopOffset === "true";
-    }
+    // Keep vanilla exit tab defaults stable. Saved/default profiles now control these values.
+    ExitTab.prototype.defaultFullBorder = true;
+    ExitTab.prototype.defaultSquareCorners = true;
+    ExitTab.prototype.defaultTopOffset = false;
   };
 
   const toggleBlockWiggle = (isActive) => {
@@ -1850,10 +3652,256 @@ const getPostThicknessFallback = () =>
     }
   };
 
-  const toggleExitTabVariantOptionsVisibility = (variantValue) => {
+  const syncExitTabAssetSliderControls = (variantValue, exitTab = null) => {
+    const normalizedVariant = String(variantValue || "Default");
+    const usesAssetControls = isExitTabAssetVariantValue(normalizedVariant);
+    const workingExitTab = exitTab || getCurrentExitTabForProfileApply?.() || null;
+
+    const fontSizeInput = document.getElementById("fontSize");
+    const fontSizeLabel = document.getElementById("fontSizeLabel") || document.querySelector('label[for="fontSize"]');
+    const fontSizeValue = document.getElementById("fontValue");
+    const horizontalPaddingInput = document.getElementById("exitTabHorizontalPadding");
+    const horizontalPaddingValue = document.getElementById("exitTabHorizontalPaddingValue");
+    const verticalPaddingInput = document.getElementById("exitTabTextSizePercent");
+    const verticalPaddingLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
+    const verticalPaddingValue = document.getElementById("exitTabTextSizePercentValue");
+
+    if (usesAssetControls) {
+      const resolvedAssetSize = normalizeExitTabAssetSizeValue(
+        workingExitTab?.tollLogoSize,
+        3
+      );
+      if (workingExitTab) {
+        workingExitTab.tollLogoSize = resolvedAssetSize;
+      }
+      if (fontSizeInput) {
+        fontSizeInput.min = "1";
+        fontSizeInput.max = "6";
+        fontSizeInput.step = "0.1";
+        setExitTabRangeControlValue(fontSizeInput, resolvedAssetSize);
+      }
+      if (fontSizeLabel) {
+        fontSizeLabel.textContent = normalizedVariant === "Icon"
+          ? "Icon Size (rem):"
+          : "Logo Size (rem):";
+      }
+      if (fontSizeValue) {
+        fontSizeValue.innerHTML = formatExitTabDecimalValue(resolvedAssetSize);
+      }
+
+      const resolvedHorizontalPadding = normalizeExitTabAssetPaddingValue(
+        workingExitTab?.assetHorizontalPadding,
+        0
+      );
+      if (workingExitTab) {
+        workingExitTab.assetHorizontalPadding = resolvedHorizontalPadding;
+      }
+      if (horizontalPaddingInput) {
+        horizontalPaddingInput.min = "-3";
+        horizontalPaddingInput.max = "3";
+        horizontalPaddingInput.step = "0.1";
+        setExitTabRangeControlValue(horizontalPaddingInput, resolvedHorizontalPadding);
+      }
+      if (horizontalPaddingValue) {
+        horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
+      }
+
+      const resolvedVerticalPadding = normalizeExitTabAssetPaddingValue(
+        workingExitTab?.assetVerticalPadding,
+        0
+      );
+      if (workingExitTab) {
+        workingExitTab.assetVerticalPadding = resolvedVerticalPadding;
+      }
+      if (verticalPaddingInput) {
+        verticalPaddingInput.min = "-3";
+        verticalPaddingInput.max = "3";
+        verticalPaddingInput.step = "0.1";
+        setExitTabRangeControlValue(verticalPaddingInput, resolvedVerticalPadding);
+      }
+      if (verticalPaddingLabel) {
+        verticalPaddingLabel.textContent = "Vertical padding:";
+      }
+      if (verticalPaddingValue) {
+        verticalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedVerticalPadding);
+      }
+      return;
+    }
+
+    const resolvedNormalTextSize = normalizeExitTabNormalFontSizeValue(
+      workingExitTab?.fontSize,
+      workingExitTab?.normalFontSizeBeforeAsset || getCurrentExitTabDefaultFontSize()
+    );
+    if (fontSizeInput) {
+      fontSizeInput.min = "10";
+      fontSizeInput.max = "40";
+      fontSizeInput.step = "1";
+      setExitTabRangeControlValue(fontSizeInput, resolvedNormalTextSize);
+    }
+    if (fontSizeLabel) {
+      fontSizeLabel.textContent = "Text Size (px):";
+    }
+    if (fontSizeValue) {
+      fontSizeValue.innerHTML = String(resolvedNormalTextSize);
+    }
+
+    const resolvedHorizontalPadding = (() => {
+      const parsed = parseFloat(workingExitTab?.horizontalPadding);
+      return Number.isFinite(parsed)
+        ? Math.max(0, Math.min(3, parsed))
+        : ExitTab.prototype.defaultHorizontalPadding;
+    })();
+    if (horizontalPaddingInput) {
+      horizontalPaddingInput.min = "0";
+      horizontalPaddingInput.max = "3";
+      horizontalPaddingInput.step = "0.1";
+      setExitTabRangeControlValue(horizontalPaddingInput, resolvedHorizontalPadding);
+    }
+    if (horizontalPaddingValue) {
+      horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
+    }
+
+    const resolvedExitTextSize = (() => {
+      const parsed = parseFloat(workingExitTab?.exitTextSizePercent);
+      return Number.isFinite(parsed)
+        ? Math.max(25, Math.min(100, parsed))
+        : ExitTab.prototype.defaultExitTextSizePercent;
+    })();
+    if (verticalPaddingInput) {
+      verticalPaddingInput.min = "25";
+      verticalPaddingInput.max = "100";
+      verticalPaddingInput.step = "1";
+      setExitTabRangeControlValue(verticalPaddingInput, resolvedExitTextSize);
+    }
+    if (verticalPaddingLabel) {
+      verticalPaddingLabel.textContent = '"EXIT" text size %:';
+    }
+    if (verticalPaddingValue) {
+      verticalPaddingValue.innerHTML = String(resolvedExitTextSize);
+    }
+  };
+
+  const toggleExitTabVariantOptionsVisibility = (variantValue, options = {}) => {
+    const normalizedVariant = String(variantValue || "Default");
+    const isTollLogo = normalizedVariant === "Toll Logo";
+    const isIcon = normalizedVariant === "Icon";
+    const qcMode = normalizedVariant === "Quebec Exit Marker";
+
     const tollOptionsElmt = document.getElementById("exitTollLogoOptions");
     if (tollOptionsElmt) {
-      tollOptionsElmt.classList.toggle("hidden", variantValue !== "Toll Logo");
+      tollOptionsElmt.classList.add("hidden");
+    }
+
+    const iconOptionsElmt = document.getElementById("exitIconOptions");
+    if (iconOptionsElmt) {
+      iconOptionsElmt.classList.add("hidden");
+    }
+
+    const tollPickerRow = document.getElementById("exitTollLogoPickerRow");
+    if (tollPickerRow) {
+      tollPickerRow.classList.toggle("hidden", !isTollLogo);
+    }
+
+    const iconPickerRow = document.getElementById("exitIconPickerRow");
+    if (iconPickerRow) {
+      iconPickerRow.classList.toggle("hidden", !isIcon);
+    }
+
+    const exitNumber = document.getElementById("exitNumber");
+    if (exitNumber) {
+      exitNumber.classList.toggle("hidden", isTollLogo || isIcon);
+    }
+
+    const exitNumberLabel = document.getElementById("exitNumberLabel");
+    if (exitNumberLabel) {
+      exitNumberLabel.textContent = qcMode
+        ? "Number:"
+        : isTollLogo
+          ? "Logo:"
+          : isIcon
+            ? "Icon:"
+            : "Text:";
+    }
+
+    const isAssetVariant = isTollLogo || isIcon;
+    const mainGrid = document.getElementById("exitTabMainSettingsGrid");
+    if (mainGrid) {
+      mainGrid.classList.toggle("qcExitMarkerMode", qcMode);
+      mainGrid.classList.toggle("exitTabAssetMode", isAssetVariant);
+    }
+
+    const assetHiddenStyleControls = [
+      document.getElementById("exitTabFontFamilyLabel"),
+      document.getElementById("exitTabFontFamily"),
+      document.getElementById("exitTabCharacterSpacingLabel"),
+      document.getElementById("exitTabCharacterSpacing"),
+    ];
+    const fontSelect = document.getElementById("exitTabFontFamily");
+    const fontPickerApi = fontSelect?._fontPickerApi;
+    const fontPickerWrapper =
+      fontPickerApi?.wrapper ||
+      (fontSelect?.nextElementSibling?.classList.contains("fontPicker")
+        ? fontSelect.nextElementSibling
+        : null);
+    if (fontPickerWrapper) {
+      assetHiddenStyleControls.push(fontPickerWrapper);
+    }
+    const hideTextControls = isAssetVariant || qcMode;
+    assetHiddenStyleControls.forEach((element) => {
+      element?.classList.toggle("assetHiddenSetting", hideTextControls);
+    });
+    if (fontPickerApi?.menu) {
+      fontPickerApi.menu.classList.toggle("assetHiddenSetting", hideTextControls);
+    }
+    if (hideTextControls && fontPickerWrapper) {
+      fontPickerWrapper.classList.remove("open");
+      fontPickerApi?.menu?.classList.remove("open");
+    }
+    fontPickerApi?.syncFloatingMenu?.();
+
+    const transparentLabel = document.getElementById("exitTabTransparentLabel");
+    const transparentInput = document.getElementById("exitTabTransparent");
+    transparentLabel?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
+    transparentInput?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
+
+    ["exitTabWidth", "exitTabPosition", "exitTabBilingualBottomTextLabel", "exitTabBilingualBottomText"].forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.classList.toggle("qcHiddenSetting", qcMode);
+      }
+    });
+
+    document
+      .querySelectorAll('[data-exit-slider="borderThickness"], [data-exit-slider="minHeight"], .exitTabCheckboxPanel')
+      .forEach((element) => element.classList.toggle("qcHiddenSetting", qcMode));
+
+    const assetHiddenIds = [
+      "showLeft",
+      "showLeftLabel",
+      "topOffset",
+      "verticalArrangement",
+      "caStyle",
+      "exitTabBilingual",
+      "exitTabBilingualLabel",
+      "exitTabBilingualBottomTextLabel",
+      "exitTabBilingualBottomText",
+    ];
+    assetHiddenIds.forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.classList.toggle("assetHiddenSetting", isTollLogo || isIcon || qcMode);
+      }
+    });
+
+    if (options.syncAssetSliders !== false) {
+      const sliderTarget =
+        exitTabEditorMode === "default"
+          ? getExitTabProfileSettings(
+              selectedExitTabProfileId,
+              normalizeExitTabProfileVariant(normalizedVariant)
+            )
+          : getCurrentExitTabForProfileApply();
+      syncExitTabAssetSliderControls(normalizedVariant, sliderTarget);
     }
   };
 
@@ -2757,6 +4805,26 @@ const getPostThicknessFallback = () =>
     const topOffsetInput = document.getElementById("customShieldMakerRouteTopOffset");
     const horizontalOffsetInput = document.getElementById("customShieldMakerRouteHorizontalOffset");
     const alignmentSelect = document.getElementById("customShieldMakerRouteAlignment");
+    const alignmentButtons = Array.from(
+      document.querySelectorAll("#customShieldMakerRouteAlignmentButtons .customShieldMakerAlignmentButton")
+    );
+    const normalizeCustomShieldMakerAlignment = (value) => {
+      const normalized = String(value || "center").toLowerCase();
+      return normalized === "left" || normalized === "right" ? normalized : "center";
+    };
+    const syncCustomShieldMakerAlignmentButtons = () => {
+      const selectedAlignment = normalizeCustomShieldMakerAlignment(
+        alignmentSelect?.value
+      );
+
+      for (const button of alignmentButtons) {
+        const isSelected =
+          normalizeCustomShieldMakerAlignment(button.dataset.alignment) ===
+          selectedAlignment;
+        button.classList.toggle("selected", isSelected);
+        button.setAttribute("aria-pressed", String(isSelected));
+      }
+    };
     const fontSizeValueInput = document.getElementById("customShieldMakerRouteFontSizeVal");
     const letterSpacingValueInput = document.getElementById("customShieldMakerRouteLetterSpacingVal");
     const topOffsetValueInput = document.getElementById("customShieldMakerRouteTopOffsetVal");
@@ -2775,23 +4843,27 @@ const getPostThicknessFallback = () =>
         valueInput.value = slider.value;
       };
 
-      const syncSliderFromValue = () => {
+      const commitSliderFromValue = () => {
         const parsed = parseFloat(valueInput.value);
         if (!Number.isFinite(parsed)) {
+          valueInput.value = slider.value;
           return;
         }
         const min = parseFloat(slider.min);
         const max = parseFloat(slider.max);
-        slider.value = Math.max(
+        const resolved = Math.max(
           Number.isFinite(min) ? min : parsed,
           Math.min(Number.isFinite(max) ? max : parsed, parsed)
         );
+        slider.value = resolved;
+        valueInput.value = resolved;
         slider.dispatchEvent(new Event("input", { bubbles: true }));
       };
 
       slider.addEventListener("input", syncValueFromSlider);
-      valueInput.addEventListener("input", syncSliderFromValue);
-      valueInput.addEventListener("change", syncSliderFromValue);
+      valueInput.addEventListener("input", () => {});
+      valueInput.addEventListener("change", commitSliderFromValue);
+      valueInput.addEventListener("blur", commitSliderFromValue);
       syncValueFromSlider();
     };
 
@@ -3103,6 +5175,9 @@ const getPostThicknessFallback = () =>
       const style = normalizeCustomShieldMakerRouteStyle(fallbackStyle);
       setCustomShieldMakerRouteColorControlValue(style.color || "Black");
       setSelectValueSafely(fontSelect, style.fontFamily || "Series D", "Series D");
+      if (fontSelect?._fontPickerApi) {
+        fontSelect._fontPickerApi.sync();
+      }
       setInputValueIfPresent(fontSizeInput, style.fontSize);
       setInputValueIfPresent(fontWeightInput, style.fontWeight);
       setInputValueIfPresent(letterSpacingInput, style.letterSpacing);
@@ -3110,7 +5185,10 @@ const getPostThicknessFallback = () =>
       setInputValueIfPresent(horizontalOffsetInput, style.horizontalOffset);
 
       if (alignmentSelect) {
-        alignmentSelect.value = style.alignment || "center";
+        alignmentSelect.value = normalizeCustomShieldMakerAlignment(
+          style.alignment
+        );
+        syncCustomShieldMakerAlignmentButtons();
       }
 
       setCustomShieldMakerAnchor(normalizeCustomShieldMakerAnchor(fallbackAnchor, style));
@@ -3472,11 +5550,10 @@ const getPostThicknessFallback = () =>
       }
 
       if (alignmentSelect) {
-        const nextAlignment = String(sampleShield.alignment || "Center").toLowerCase();
-        alignmentSelect.value =
-          nextAlignment === "left" || nextAlignment === "right"
-            ? nextAlignment
-            : "center";
+        alignmentSelect.value = normalizeCustomShieldMakerAlignment(
+          sampleShield.alignment
+        );
+        syncCustomShieldMakerAlignmentButtons();
       }
 
       if (sampleRoute) {
@@ -3669,7 +5746,10 @@ const getPostThicknessFallback = () =>
       routeNumber.hidden = routeText.length === 0;
       routeNumber.dataset.alignment = selectedAlignment;
       routeNumber.style.color = String(cssColor).toLowerCase();
-      routeNumber.style.fontFamily = `"${selectedFont}", sans-serif`;
+      const renderedSelectedFont = typeof resolveTextFontFamilyForRender === "function"
+        ? resolveTextFontFamilyForRender(selectedFont, { backgroundColor: "Blue" }, { color: "Blue" })
+        : selectedFont;
+      routeNumber.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
       routeNumber.style.fontSize = previewEmFromDisplayValue(
         fontSizeInput?.value,
         220
@@ -3765,7 +5845,12 @@ const getPostThicknessFallback = () =>
         if (letterSpacingInput) letterSpacingInput.value = snapshot.letterSpacing || "";
         if (topOffsetInput) topOffsetInput.value = snapshot.topOffset || "";
         if (horizontalOffsetInput) horizontalOffsetInput.value = snapshot.horizontalOffset || "";
-        if (alignmentSelect) alignmentSelect.value = snapshot.alignment || "center";
+        if (alignmentSelect) {
+          alignmentSelect.value = normalizeCustomShieldMakerAlignment(
+            snapshot.alignment
+          );
+          syncCustomShieldMakerAlignmentButtons();
+        }
 
         if (colorSelect) {
           setSelectValueSafely(colorSelect, snapshot.color || "Black", "Black");
@@ -3922,13 +6007,7 @@ const getPostThicknessFallback = () =>
           return;
         }
 
-        const isPlainTypingKey =
-          isCustomShieldMakerTypingTarget(event.target) &&
-          !event.ctrlKey &&
-          !event.metaKey &&
-          !event.altKey;
-
-        if (isPlainTypingKey) {
+        if (isCustomShieldMakerTypingTarget(event.target)) {
           return;
         }
 
@@ -4308,6 +6387,43 @@ const getPostThicknessFallback = () =>
       recordCustomShieldMakerHistoryCheckpoint();
     });
 
+    const applyCustomShieldMakerAlignment = (
+      value,
+      { recordHistory = true } = {}
+    ) => {
+      if (!alignmentSelect) {
+        return false;
+      }
+
+      alignmentSelect.value = normalizeCustomShieldMakerAlignment(value);
+      syncCustomShieldMakerAlignmentButtons();
+      updateCustomShieldMakerPreview();
+      persistCurrentCustomShieldMakerVariantState();
+
+      if (recordHistory) {
+        recordCustomShieldMakerHistoryCheckpoint();
+      }
+
+      return true;
+    };
+
+    for (const button of alignmentButtons) {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        applyCustomShieldMakerAlignment(button.dataset.alignment);
+      });
+    }
+
+    alignmentSelect?.addEventListener(
+      "input",
+      syncCustomShieldMakerAlignmentButtons
+    );
+    alignmentSelect?.addEventListener(
+      "change",
+      syncCustomShieldMakerAlignmentButtons
+    );
+    syncCustomShieldMakerAlignmentButtons();
+
     [
       nameInput,
       colorSelect,
@@ -4368,6 +6484,12 @@ const getPostThicknessFallback = () =>
     }
 
     populateCustomShieldMakerSelects();
+    syncCustomShieldMakerAlignmentButtons();
+    createFontPicker({
+      selectEl: fontSelect,
+      mode: "allFontsGrouped",
+    });
+    syncAllFontPickers();
     ensureCustomShieldMakerVariantState();
     updateCustomShieldMakerVariantButtons();
     updateCustomShieldMakerPreview();
@@ -4437,6 +6559,23 @@ const getPostThicknessFallback = () =>
       }
     };
     
+    const resolveFontPickerPreviewFont = (fontFamily) => {
+      if (typeof resolveTextFontFamilyForRender !== "function") {
+        return fontFamily || "Inter";
+      }
+
+      const pickerBackground =
+        document.documentElement.dataset.theme === "light"
+          ? "White"
+          : "Black";
+
+      return resolveTextFontFamilyForRender(
+        fontFamily || "Inter",
+        { backgroundColor: pickerBackground },
+        { color: pickerBackground }
+      );
+    };
+
     const syncSettingsDefaultsFamilyPreviewSelect = (selectEl) => {
       if (!selectEl) {
         return;
@@ -4460,7 +6599,7 @@ const getPostThicknessFallback = () =>
       } else if (selectEl.value === "Rawlinson") {
         selectEl.style.fontFamily = '"Rawlinson Regular", serif';
         selectEl.style.fontSize = "1rem";
-      } else if (selectEl.value === "Helvetica Neue") {
+      } else if (selectEl.value === "Helvetica") {
         selectEl.style.fontFamily = '"Helvetica Neue Roman", sans-serif';
         selectEl.style.fontSize = "1rem";
       } else {
@@ -4503,9 +6642,19 @@ const getPostThicknessFallback = () =>
       }
 
         const selectedFont = selectEl.value || "Inter";
-        selectEl.style.fontFamily = `"${selectedFont}", sans-serif`;
+        const renderedSelectedFont = resolveFontPickerPreviewFont(selectedFont);
+        selectEl.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
     };
     
+    const syncFontSelectOptionLabels = (selectEl) => {
+      if (!selectEl || !selectEl.options) {
+        return;
+      }
+      Array.from(selectEl.options).forEach((option) => {
+        option.textContent = getUiFontDisplayName(option.value || option.textContent);
+      });
+    };
+
     const bindAllFontPreviewSelects = (root = document) => {
       const fontSelects = Array.from(root.querySelectorAll("select")).filter(
         (selectEl) =>
@@ -4515,6 +6664,7 @@ const getPostThicknessFallback = () =>
       );
 
       for (const selectEl of fontSelects) {
+        syncFontSelectOptionLabels(selectEl);
         syncFontPreviewSelect(selectEl);
 
         if (selectEl.dataset.fontPreviewBound === "true") {
@@ -4538,13 +6688,15 @@ const getPostThicknessFallback = () =>
       const familyDefs = [
         {
           family: "Clearview",
-          previewFont: "Clearview 5WR",
-          fonts: allFonts.filter((font) => /^Clearview/i.test(font)),
+          previewFont: "Series 5WR",
+          fonts: allFonts.filter((font) =>
+            /^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(String(font || ""))
+          ),
         },
         {
           family: "Highway Gothic",
-          previewFont: "Series EM",
-          fonts: allFonts.filter((font) => /^Series/i.test(font)),
+          previewFont: "Series E",
+          fonts: allFonts.filter((font) => isHighwayGothicUiFont(font)),
         },
         {
           family: "Arial",
@@ -4574,9 +6726,9 @@ const getPostThicknessFallback = () =>
           fonts: allFonts.filter((font) => /^Rawlinson/i.test(font)),
         },
         {
-          family: "Helvetica Neue",
-          previewFont: "Helvetica Neue Roman",
-          fonts: allFonts.filter((font) => /^Helvetica Neue/i.test(font)),
+          family: "Helvetica",
+          previewFont: "Helvetica Roman",
+          fonts: allFonts.filter((font) => /^Helvetica(?: Neue)?/i.test(font)),
         },
       ];
 
@@ -4606,7 +6758,7 @@ const getPostThicknessFallback = () =>
     };
 
     const isHighwayGothicFontValue = (value) =>
-      /^Series/i.test(String(value || "")) || value === "Highway Gothic";
+      isHighwayGothicUiFont(value) || value === "Highway Gothic";
 
     const getFontPickerDisplaySize = (value) =>
       isHighwayGothicFontValue(value) ? "120%" : "100%";
@@ -4615,6 +6767,12 @@ const getPostThicknessFallback = () =>
       document.querySelectorAll(".fontPicker.open").forEach((picker) => {
         if (picker !== except) {
           picker.classList.remove("open");
+        }
+      });
+
+      document.querySelectorAll("select.fontPickerNativeSelect").forEach((selectEl) => {
+        if (selectEl._fontPickerApi?.syncFloatingMenu) {
+          selectEl._fontPickerApi.syncFloatingMenu();
         }
       });
     };
@@ -4630,6 +6788,7 @@ const getPostThicknessFallback = () =>
 
       if (!hasOption) {
         lib.appendOption(selectEl, value);
+        syncFontSelectOptionLabels(selectEl);
       }
 
       selectEl.value = value;
@@ -4643,6 +6802,8 @@ const getPostThicknessFallback = () =>
       if (!selectEl) {
         return null;
       }
+
+      syncFontSelectOptionLabels(selectEl);
 
       if (selectEl._fontPickerApi) {
         selectEl._fontPickerApi.mode = mode;
@@ -4667,14 +6828,78 @@ const getPostThicknessFallback = () =>
 
       const menu = document.createElement("div");
       menu.className = "fontPickerMenu";
+      const isCustomShieldFontPicker = selectEl.id === "customShieldMakerRouteFont";
+      wrapper.classList.toggle("customShieldFontPicker", isCustomShieldFontPicker);
+      menu.classList.toggle("customShieldFontPickerMenu", isCustomShieldFontPicker);
 
       trigger.appendChild(triggerLabel);
       trigger.appendChild(triggerCaret);
       wrapper.appendChild(trigger);
-      wrapper.appendChild(menu);
 
       selectEl.classList.add("fontPickerNativeSelect");
       selectEl.insertAdjacentElement("afterend", wrapper);
+
+      const fontPickerFloatingRoot =
+        selectEl.closest("dialog") || document.body;
+      fontPickerFloatingRoot.appendChild(menu);
+      menu._fontPickerWrapper = wrapper;
+      menu._fontPickerSelect = selectEl;
+
+      const syncFloatingFontPickerMenuClasses = () => {
+        const isLive =
+          document.documentElement.contains(wrapper) &&
+          document.documentElement.contains(selectEl) &&
+          document.documentElement.contains(menu);
+        const isOpen = isLive && wrapper.classList.contains("open");
+
+        menu.classList.toggle("open", isOpen);
+        menu.classList.toggle("hidden", !isLive || wrapper.classList.contains("hidden"));
+      };
+
+      const positionFloatingFontPickerMenu = () => {
+        syncFloatingFontPickerMenuClasses();
+
+        if (!wrapper.classList.contains("open")) {
+          return;
+        }
+
+        const triggerRect = trigger.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        const rootFontSize = parseFloat(
+          window.getComputedStyle(document.documentElement).fontSize
+        ) || 16;
+        const edgePadding = 8;
+        const preferredTop = isCustomShieldFontPicker
+          ? Math.max(edgePadding, triggerRect.top - rootFontSize * 12)
+          : Math.max(edgePadding, triggerRect.bottom + 3);
+        const availableBelow = Math.max(0, viewportHeight - preferredTop - edgePadding);
+        const minimumMenuWidth = triggerRect.width;
+        const menuWidth = Math.min(
+          Math.max(triggerRect.width, minimumMenuWidth),
+          Math.max(minimumMenuWidth, viewportWidth - edgePadding * 2)
+        );
+        const left = Math.min(
+          Math.max(edgePadding, triggerRect.left),
+          Math.max(edgePadding, viewportWidth - menuWidth - edgePadding)
+        );
+
+        const rootDialog = menu.parentElement && menu.parentElement.tagName === "DIALOG"
+          ? menu.parentElement
+          : null;
+        const rootRect = rootDialog ? rootDialog.getBoundingClientRect() : { left: 0, top: 0 };
+
+        menu.style.setProperty("position", rootDialog ? "absolute" : "fixed", "important");
+        menu.style.setProperty("left", left - rootRect.left + "px", "important");
+        menu.style.setProperty("top", preferredTop - rootRect.top + "px", "important");
+        menu.style.setProperty("right", "auto", "important");
+        menu.style.setProperty("bottom", "auto", "important");
+        menu.style.setProperty("width", menuWidth + "px", "important");
+        menu.style.setProperty("min-width", Math.max(triggerRect.width, 1) + "px", "important");
+        menu.style.setProperty("max-height", Math.max(0, availableBelow) + "px", "important");
+        menu.style.setProperty("overflow-y", "auto", "important");
+        menu.style.setProperty("overscroll-behavior", "contain");
+      };
 
       const updateTrigger = () => {
         const value = selectEl.value || "";
@@ -4683,14 +6908,17 @@ const getPostThicknessFallback = () =>
             ? value
             : value || linkedFamilySelect?.value || "";
 
-        triggerLabel.textContent = display || "Font";
+        triggerLabel.textContent = getUiFontDisplayName(display) || "Font";
 
         const previewFont =
           mode === "family"
             ? getFontPickerPreviewFontForFamily(value)
             : value;
 
-        trigger.style.fontFamily = `"${previewFont || "Inter"}", sans-serif`;
+        const triggerPreviewFont = resolveFontPickerPreviewFont(
+          previewFont || "Inter"
+        );
+        trigger.style.fontFamily = `"${triggerPreviewFont}", sans-serif`;
         trigger.style.fontSize = getFontPickerDisplaySize(previewFont);
       };
 
@@ -4698,9 +6926,14 @@ const getPostThicknessFallback = () =>
         const button = document.createElement("button");
         button.type = "button";
         button.className = "fontPickerItem fontPickerFontItem";
+        button.classList.toggle(
+          "fontPickerHighwayGothicItem",
+          isHighwayGothicUiFont(fontValue)
+        );
         button.dataset.fontValue = fontValue;
-        button.textContent = fontValue;
-        button.style.fontFamily = `"${fontValue}", sans-serif`;
+        button.textContent = getUiFontDisplayName(fontValue);
+        const renderedFontValue = resolveFontPickerPreviewFont(fontValue);
+        button.style.fontFamily = `"${renderedFontValue}", sans-serif`;
         button.style.fontSize = getFontPickerDisplaySize(fontValue);
 
         if (selectEl.value === fontValue) {
@@ -4725,8 +6958,9 @@ const getPostThicknessFallback = () =>
         button.type = "button";
         button.className = "fontPickerItem fontPickerFamilyItem";
         button.dataset.familyValue = family;
-        button.textContent = family;
-        button.style.fontFamily = `"${previewFont}", sans-serif`;
+        button.textContent = getUiFontDisplayName(family);
+        const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
+        button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
         button.style.fontSize = getFontPickerDisplaySize(previewFont);
 
         if (selectEl.value === family) {
@@ -4737,6 +6971,33 @@ const getPostThicknessFallback = () =>
           event.preventDefault();
           event.stopPropagation();
           setNativeFontSelectValue(selectEl, family);
+          wrapper.classList.remove("open");
+          syncAllFontPickers();
+        });
+
+        return button;
+      };
+
+      const makeSingleFontFamilyHeaderButton = (familyDef) => {
+        const fontValue = familyDef.fonts[0];
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "fontPickerItem fontPickerFamilyHeader fontPickerSingleFontFamilyHeader fontPickerFontItem";
+        button.dataset.fontValue = fontValue;
+        button.textContent = getUiFontDisplayName(familyDef.family);
+        const previewFont = familyDef.previewFont || fontValue;
+        const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
+        button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
+        button.style.fontSize = getFontPickerDisplaySize(previewFont);
+
+        if (selectEl.value === fontValue) {
+          button.classList.add("selected");
+        }
+
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setNativeFontSelectValue(selectEl, fontValue);
           wrapper.classList.remove("open");
           syncAllFontPickers();
         });
@@ -4756,10 +7017,16 @@ const getPostThicknessFallback = () =>
 
             const familyHeader = document.createElement("div");
             familyHeader.className = "fontPickerFamilyHeader";
-            familyHeader.textContent = familyDef.family;
-            familyHeader.style.fontFamily = `"${getFontPickerPreviewFontForFamily(
-              familyDef.family
-            )}", sans-serif`;
+            familyHeader.classList.toggle(
+              "fontPickerHighwayGothicHeader",
+              familyDef.family === "Highway Gothic"
+            );
+            familyHeader.textContent = getUiFontDisplayName(familyDef.family);
+            const familyHeaderPreviewFont = getFontPickerPreviewFontForFamily(familyDef.family);
+            const familyHeaderRenderedFont = resolveFontPickerPreviewFont(
+              familyHeaderPreviewFont
+            );
+            familyHeader.style.fontFamily = `"${familyHeaderRenderedFont}", sans-serif`;
             familyHeader.style.fontSize = getFontPickerDisplaySize(
               familyDef.previewFont
             );
@@ -4767,12 +7034,16 @@ const getPostThicknessFallback = () =>
             const children = document.createElement("div");
             children.className = "fontPickerFamilyChildren";
 
-            for (const font of familyDef.fonts) {
-              children.appendChild(makeFontButton(font));
-            }
+            if (FONT_PICKER_SINGLE_FONT_FAMILIES.has(familyDef.family)) {
+              familyBlock.appendChild(makeSingleFontFamilyHeaderButton(familyDef));
+            } else {
+              for (const font of familyDef.fonts) {
+                children.appendChild(makeFontButton(font));
+              }
 
-            familyBlock.appendChild(familyHeader);
-            familyBlock.appendChild(children);
+              familyBlock.appendChild(familyHeader);
+              familyBlock.appendChild(children);
+            }
             menu.appendChild(familyBlock);
           }
         } else if (mode === "family") {
@@ -4804,6 +7075,10 @@ const getPostThicknessFallback = () =>
         }
 
         render();
+        syncFloatingFontPickerMenuClasses();
+        if (wrapper.classList.contains("open")) {
+          positionFloatingFontPickerMenu();
+        }
       };
 
       trigger.addEventListener("click", (event) => {
@@ -4816,15 +7091,49 @@ const getPostThicknessFallback = () =>
         if (willOpen) {
           render();
           wrapper.classList.add("open");
+          syncFloatingFontPickerMenuClasses();
+          requestAnimationFrame(positionFloatingFontPickerMenu);
         } else {
           wrapper.classList.remove("open");
+          syncFloatingFontPickerMenuClasses();
         }
+      });
+
+
+      menu.addEventListener("pointerdown", (event) => {
+        const fontItem = event.target.closest?.(".fontPickerFontItem[data-font-value]");
+        const familyItem = event.target.closest?.(".fontPickerFamilyItem[data-family-value]");
+        if (!fontItem && !familyItem) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        setNativeFontSelectValue(selectEl, fontItem ? fontItem.dataset.fontValue : familyItem.dataset.familyValue);
+        wrapper.classList.remove("open");
+        syncAllFontPickers();
+      });
+
+      menu.addEventListener("click", (event) => {
+        event.stopPropagation();
       });
       
       document.addEventListener("click", (event) => {
-        if (!wrapper.contains(event.target)) {
+        if (!wrapper.contains(event.target) && !menu.contains(event.target)) {
           wrapper.classList.remove("open");
+          syncFloatingFontPickerMenuClasses();
         }
+      });
+
+      window.addEventListener("resize", positionFloatingFontPickerMenu);
+      window.addEventListener("scroll", positionFloatingFontPickerMenu, true);
+
+      const fontPickerClassObserver = new MutationObserver(() => {
+        syncFloatingFontPickerMenuClasses();
+        positionFloatingFontPickerMenu();
+      });
+      fontPickerClassObserver.observe(wrapper, {
+        attributes: true,
+        attributeFilter: ["class"],
       });
 
       selectEl.addEventListener("change", () => {
@@ -4835,7 +7144,10 @@ const getPostThicknessFallback = () =>
         mode,
         linkedFamilySelect,
         wrapper,
+        menu,
         sync,
+        position: positionFloatingFontPickerMenu,
+        syncFloatingMenu: syncFloatingFontPickerMenuClasses,
       };
 
       selectEl._fontPickerApi = api;
@@ -4857,6 +7169,7 @@ const getPostThicknessFallback = () =>
         "sdCtrlText_fontFamily",
         "sdAdvisory_fontFamily",
         "sdActionMessage_fontFamily",
+        "exitTabFontFamily",
       ].forEach((id) => {
         createFontPicker({
           selectEl: document.getElementById(id),
@@ -5530,8 +7843,10 @@ const getPostThicknessFallback = () =>
       wrapper.appendChild(trigger);
 
       selectEl.insertAdjacentElement("afterend", wrapper);
-      document.body.appendChild(menu);
-      document.body.appendChild(customPanel);
+      const colorPickerFloatingRoot =
+        selectEl.closest("dialog") || document.body;
+      colorPickerFloatingRoot.appendChild(menu);
+      colorPickerFloatingRoot.appendChild(customPanel);
       selectEl.classList.add("colorPickerNativeSelect");
 
       wrapper._colorPickerSelect = selectEl;
@@ -5605,10 +7920,15 @@ const getPostThicknessFallback = () =>
           (option) => option.value === selectEl.value
         );
         const currentLabelForWidth = getOptionLabel(currentOptionForWidth) || selectEl.value || "Color";
-        const labelBasedMinimumWidth = Math.min(
-          rootFontSize * 14,
-          Math.max(rootFontSize * 9.25, currentLabelForWidth.length * rootFontSize * 0.62 + rootFontSize * 4.25)
-        );
+        const isCustomShieldMakerColorSelect =
+          selectEl.id === "customShieldMakerRouteColor" ||
+          !!selectEl.closest("#customShieldMaker");
+        const labelBasedMinimumWidth = isCustomShieldMakerColorSelect
+          ? 0
+          : Math.min(
+              rootFontSize * 14,
+              Math.max(rootFontSize * 9.25, currentLabelForWidth.length * rootFontSize * 0.62 + rootFontSize * 4.25)
+            );
         const minimumColorPickerWidth = labelBasedMinimumWidth;
         const minimumColorPickerHeight = rootFontSize * 1.45;
         const computedWidth = parseFloat(computed.width);
@@ -5627,8 +7947,10 @@ const getPostThicknessFallback = () =>
         );
 
         wrapper.style.width = targetWidth + "px";
-        wrapper.style.minWidth = minimumColorPickerWidth + "px";
-        wrapper.style.maxWidth = "none";
+        wrapper.style.minWidth = isCustomShieldMakerColorSelect
+          ? "0px"
+          : minimumColorPickerWidth + "px";
+        wrapper.style.maxWidth = isCustomShieldMakerColorSelect ? "100%" : "none";
         trigger.style.width = "100%";
         trigger.style.minWidth = "100%";
         trigger.style.height = targetHeight + "px";
@@ -5854,11 +8176,21 @@ const getPostThicknessFallback = () =>
         const scaledRem = rootFontSize * appZoom;
         const scaledPx = (value) => value * appZoom;
         const edgePadding = 8;
-        const menuWidth = Math.min(
-          Math.max(triggerRect.width, scaledRem * 14),
-          Math.max(scaledRem * 14, viewportWidth - edgePadding * 2)
-        );
-        const preferredTop = Math.max(edgePadding, triggerRect.bottom + 3);
+        const isCustomShieldMakerColorPicker =
+          selectEl.id === "customShieldMakerRouteColor" ||
+          !!selectEl.closest("#customShieldMaker");
+        const menuWidth = isCustomShieldMakerColorPicker
+          ? Math.min(
+              Math.max(triggerRect.width, 1),
+              Math.max(1, viewportWidth - edgePadding * 2)
+            )
+          : Math.min(
+              Math.max(triggerRect.width, scaledRem * 14),
+              Math.max(scaledRem * 14, viewportWidth - edgePadding * 2)
+            );
+        const preferredTop = isCustomShieldMakerColorPicker
+          ? Math.max(edgePadding, triggerRect.top - rootFontSize * 9)
+          : Math.max(edgePadding, triggerRect.bottom + 3);
         const definedMaxPanelHeight = Math.min(rootFontSize * 34, viewportHeight * 0.75);
         const availableBelow = Math.max(0, viewportHeight - preferredTop - edgePadding);
         const top = preferredTop;
@@ -5871,9 +8203,14 @@ const getPostThicknessFallback = () =>
           Math.max(edgePadding, viewportWidth - menuWidth - edgePadding)
         );
 
-        menu.style.setProperty("position", "fixed", "important");
-        menu.style.setProperty("left", left + "px", "important");
-        menu.style.setProperty("top", top + "px", "important");
+        const rootDialog = menu.parentElement && menu.parentElement.tagName === "DIALOG"
+          ? menu.parentElement
+          : null;
+        const rootRect = rootDialog ? rootDialog.getBoundingClientRect() : { left: 0, top: 0 };
+
+        menu.style.setProperty("position", rootDialog ? "absolute" : "fixed", "important");
+        menu.style.setProperty("left", left - rootRect.left + "px", "important");
+        menu.style.setProperty("top", top - rootRect.top + "px", "important");
         menu.style.setProperty("right", "auto", "important");
         menu.style.setProperty("bottom", "auto", "important");
         menu.style.setProperty("width", menuWidth + "px", "important");
@@ -5888,9 +8225,9 @@ const getPostThicknessFallback = () =>
           ? panelLeftCandidate
           : Math.max(edgePadding, left - panelWidth - scaledPx(7));
 
-        customPanel.style.setProperty("position", "fixed", "important");
-        customPanel.style.setProperty("left", panelLeft + "px", "important");
-        customPanel.style.setProperty("top", top + "px", "important");
+        customPanel.style.setProperty("position", rootDialog ? "absolute" : "fixed", "important");
+        customPanel.style.setProperty("left", panelLeft - rootRect.left + "px", "important");
+        customPanel.style.setProperty("top", top - rootRect.top + "px", "important");
         customPanel.style.setProperty("right", "auto", "important");
         customPanel.style.setProperty("bottom", "auto", "important");
         customPanel.style.setProperty("width", panelWidth + "px", "important");
@@ -5950,6 +8287,18 @@ const getPostThicknessFallback = () =>
           return;
         }
         toggleColorPickerOpen(event);
+      });
+
+      menu.addEventListener("pointerdown", (event) => {
+        const item = event.target.closest?.(".colorPickerItem[data-color-value]");
+        if (!item || event.target.closest?.(".colorPickerDeleteCustom")) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        setSelectValue(item.dataset.colorValue);
+        wrapper.classList.remove("open", "addingCustomColor");
+        syncAllColorPickers();
       });
 
       menu.addEventListener("click", (event) => {
@@ -8165,6 +10514,9 @@ const getPostThicknessFallback = () =>
         ? window.matchMedia("(prefers-color-scheme: dark)")
         : null;
 
+    bindPanelStylePopoverPositioning();
+    bindPanelSelectorPopoverPositioning();
+
     const normalizeInterfaceThemeMode = (value) => {
       const normalized = String(value || "").toLowerCase();
 
@@ -8193,6 +10545,13 @@ const getPostThicknessFallback = () =>
       }
 
       htmlElement.dataset.theme = theme;
+
+      if (typeof syncAllFontPickers === "function") {
+        syncAllFontPickers();
+      }
+      if (typeof bindAllFontPreviewSelects === "function") {
+        bindAllFontPreviewSelects(document);
+      }
     };
 
     const updateInterfaceThemeControl = (themeMode) => {
@@ -8662,7 +11021,7 @@ const getPostThicknessFallback = () =>
           input.value = String(resetValue);
 
           if (valueLabel) {
-            valueLabel.innerHTML = String(resetValue);
+            valueLabel.innerHTML = formatExitTabSliderDisplayValue(valueId, resetValue);
           }
 
           formHandler.readForm();
@@ -8673,29 +11032,60 @@ const getPostThicknessFallback = () =>
         "borderReset",
         "borderThickness",
         "borderValue",
-        () => ExitTab.prototype.defaultBorderThickness
+        () => getExitTabProfileContextSettings()?.borderThickness ?? 0.2
       );
 
       bindExitTabSliderReset(
         "minimumReset",
         "minHeight",
         "minValue",
-        () => ExitTab.prototype.defaultMinHeight
+        () => getCurrentExitTabDefaultMinHeight()
       );
 
       bindExitTabSliderReset(
         "sizeReset",
         "fontSize",
         "fontValue",
-        () => ExitTab.prototype.defaultFontSize
+        () => {
+          const settings = getExitTabProfileContextSettings();
+          return isExitTabAssetVariantValue(settings?.variant)
+            ? settings.tollLogoSize
+            : settings.fontSize;
+        }
       );
 
       bindExitTabSliderReset(
         "nestedSpacingReset",
         "nestedTabSpacing",
         "nestedSpacingValue",
-        () => ExitTab.prototype.defaultNestedTabSpacing
+        () => getExitTabProfileContextSettings()?.nestedTabSpacing ?? 0
       );
+
+      bindExitTabSliderReset(
+        "exitTabHorizontalPaddingReset",
+        "exitTabHorizontalPadding",
+        "exitTabHorizontalPaddingValue",
+        () => {
+          const settings = getExitTabProfileContextSettings();
+          return isExitTabAssetVariantValue(settings?.variant)
+            ? settings.assetHorizontalPadding
+            : settings.horizontalPadding;
+        }
+      );
+
+      bindExitTabSliderReset(
+        "exitTabTextSizePercentReset",
+        "exitTabTextSizePercent",
+        "exitTabTextSizePercentValue",
+        () => {
+          const settings = getExitTabProfileContextSettings();
+          return isExitTabAssetVariantValue(settings?.variant)
+            ? settings.assetVerticalPadding
+            : settings.exitTextSizePercent;
+        }
+      );
+
+      bindExitTabSliderDragProtection();
       
       const bindShortcutResetButtons = (root = document) => {
           const shortcutInputs = root.querySelectorAll(
@@ -8834,12 +11224,20 @@ const getPostThicknessFallback = () =>
       }
 
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
-        document.querySelector("#panelSelect").style.display = "flex";
+        const panelSelect = ensurePanelSelectorPopoverPortal();
+        if (panelSelect) {
+          panelSelect.style.display = "flex";
+          schedulePanelSelectorPopoverPosition();
+        }
         document.querySelectorAll(
           ".sMConfigOption:has(#panelSelector)"
         )[0].className = "sMConfigOption selected";
       } else {
-        document.querySelector("#panelSelect").style.display = "";
+        const panelSelect = document.querySelector("#panelSelect");
+        if (panelSelect) {
+          panelSelect.style.display = "";
+        }
+        clearPanelSelectorPopoverPosition();
         document.querySelectorAll(
           ".sMConfigOption:has(#panelSelector)"
         )[0].className = "sMConfigOption";
@@ -8855,6 +11253,13 @@ const getPostThicknessFallback = () =>
         } else {
           button.className = "sMConfigOption";
         }
+      }
+
+      if (panelStylePopoverIsOpen()) {
+        document.querySelector(".modals")?.classList.add("panelStylePopoverOpen");
+        schedulePanelStylePopoverPosition();
+      } else {
+        clearPanelStylePopoverPosition();
       }
     }
 
@@ -9208,7 +11613,7 @@ const getPostThicknessFallback = () =>
         const targetTab =
           resolvedMode === "apl"
             ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
-            : '.guideArrowConfig .sMModalTab[data-tab="sMGuideArrowSetting"]';
+            : '.guideArrowConfig .sMModalTab[data-tab="sMStandardArrows"]';
 
         const tabButton = document.querySelector(targetTab);
 
@@ -9660,7 +12065,7 @@ const getPostThicknessFallback = () =>
               }
           }
           
-          if (button.dataset.tab === "sMGuideArrowSetting") {
+          if (button.dataset.tab === "sMStandardArrows") {
             if (
               exposed &&
               typeof exposed.setCurrentPanelArrowMode === "function"
@@ -9758,16 +12163,7 @@ const getPostThicknessFallback = () =>
       e.preventDefault();
         applyEditorInputBehavior(document);
     };
-    
-    document.addEventListener(
-      "change",
-      (event) => {
-        if (event.target && event.target.id === "exitFont") {
-          exitTabFontCheckboxChangedByUser = true;
-        }
-      },
-      true
-    );
+
 
     const registerPanelButton = (selector, actionName) => {
       const button = document.querySelector(selector);
@@ -10094,21 +12490,46 @@ const getPostThicknessFallback = () =>
     }
     syncExitTabWidthOptions();
 
+    // Populate the exit tab font options
+    const exitTabFontSelectElement = document.getElementById("exitTabFontFamily");
+    if (exitTabFontSelectElement) {
+      exitTabFontSelectElement.innerHTML = "";
+      const exitFonts = getExitTabAvailableFonts();
+      for (const fontName of exitFonts) {
+        lib.appendOption(exitTabFontSelectElement, fontName, {
+          selected: fontName === ExitTab.prototype.defaultFontFamily,
+        });
+      }
+    }
+
     // Populate the exit color options
     const exitColorSelectElement = document.getElementById("exitColor");
     for (const exitColor of ExitTab.prototype.colors) {
       lib.appendOption(exitColorSelectElement, exitColor);
     }
 
+    const exitTextColorSelectElement = document.getElementById("exitTabTextColor");
+    if (exitTextColorSelectElement) {
+      const exitTextColors = Array.isArray(ExitTab.prototype.textColors)
+        ? ExitTab.prototype.textColors
+        : ExitTab.prototype.colors;
+      for (const exitTextColor of exitTextColors) {
+        lib.appendOption(exitTextColorSelectElement, exitTextColor);
+      }
+    }
+
     // Populate the exit variants
     const exitVariantSelectElmt = document.getElementById("exitVariant");
-    for (const exitVariant of ExitTab.prototype.variants) {
-      lib.appendOption(exitVariantSelectElmt, exitVariant);
-    }
     if (exitVariantSelectElmt) {
-      exitVariantSelectElmt.addEventListener("change", (event) => {
-        toggleExitTabVariantOptionsVisibility(event.target.value);
-      });
+      const hiddenExitVariants = new Set(["HOV 1", "HOV 2", "Quebec Exit Marker"]);
+      for (const exitVariant of ExitTab.prototype.variants) {
+        if (!hiddenExitVariants.has(exitVariant)) {
+          lib.appendOption(exitVariantSelectElmt, exitVariant, {
+            text: getExitTabVariantDisplayName(exitVariant),
+          });
+        }
+      }
+      lib.appendOption(exitVariantSelectElmt, "Quebec Exit Marker");
       toggleExitTabVariantOptionsVisibility(exitVariantSelectElmt.value);
     }
 
@@ -10344,11 +12765,11 @@ const getPostThicknessFallback = () =>
       };
 
       const clearviewFonts = TextElement.prototype.fontFamily.filter((font) =>
-        /^Clearview/i.test(font)
+        /^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(String(font || ""))
       );
 
       const highwayGothicFonts = TextElement.prototype.fontFamily.filter((font) =>
-        /^Series/i.test(font)
+        isHighwayGothicUiFont(font)
       );
 
       const arialFonts = TextElement.prototype.fontFamily.filter(
@@ -10372,7 +12793,7 @@ const getPostThicknessFallback = () =>
       );
 
       const helveticaNeueFonts = TextElement.prototype.fontFamily.filter((font) =>
-        /^Helvetica Neue/i.test(font)
+        /^Helvetica(?: Neue)?/i.test(font)
       );
 
       const settingsDefaultsFontFamilies = {
@@ -10383,12 +12804,12 @@ const getPostThicknessFallback = () =>
         "DIN 1451": din1451Fonts,
         Rawlinson: rawlinsonFonts,
         "ITC Stone Sans": itcStoneSansFonts,
-        "Helvetica Neue": helveticaNeueFonts,
+        "Helvetica": helveticaNeueFonts,
       };
 
       const settingsDefaultsFontDefaults = {
-        Clearview: clearviewFonts.includes("Clearview 5WR")
-          ? "Clearview 5WR"
+        Clearview: clearviewFonts.includes("Series 5WR")
+          ? "Series 5WR"
           : (clearviewFonts[0] || ""),
         "Highway Gothic": highwayGothicFonts.includes("Series EM")
           ? "Series EM"
@@ -10404,24 +12825,20 @@ const getPostThicknessFallback = () =>
           "ITC Stone Sans": itcStoneSansFonts.includes("ITC Stone Sans Regular")
             ? "ITC Stone Sans Regular"
             : (itcStoneSansFonts[0] || ""),
-          "Helvetica Neue": helveticaNeueFonts.includes("Helvetica Neue Roman")
-            ? "Helvetica Neue Roman"
-            : (helveticaNeueFonts[0] || ""),
+          "Helvetica": helveticaNeueFonts.includes("Helvetica Roman")
+            ? "Helvetica Roman"
+            : (helveticaNeueFonts.includes("Helvetica Neue Roman")
+              ? "Helvetica Neue Roman"
+              : (helveticaNeueFonts[0] || "")),
       };
     const settingsDefaultsClearviewFontOrder = [
-      "1B",
-      "1W",
-      "2B",
-      "2W",
-      "3B",
-      "3W",
-      "4B",
-      "4W",
-      "5B",
-      "5W",
+      "1",
+      "2",
+      "3",
+      "4",
       "5WR",
-      "6B",
-      "6W",
+      "5",
+      "6",
     ];
 
     const settingsDefaultsHighwayGothicFontOrder = [
@@ -10446,7 +12863,7 @@ const getPostThicknessFallback = () =>
 
     const getSettingsDefaultsFontSuffix = (font, family) => {
       if (family === "Clearview") {
-        return String(font || "").replace(/^Clearview\s*/i, "").trim();
+        return String(font || "").replace(/^Series\s*/i, "").trim();
       }
 
       if (family === "Highway Gothic") {
@@ -10572,7 +12989,7 @@ const getPostThicknessFallback = () =>
       const settingsDefaultsFieldDefaults = {
         settingsDefaultsControlTextText: "Control",
         settingsDefaultsControlTextFontFamily: "Clearview",
-        settingsDefaultsControlTextFont: "Clearview 5WR",
+        settingsDefaultsControlTextFont: "Series 5WR",
         settingsDefaultsControlTextSize: "100",
         settingsDefaultsControlTextColor: ControlTextElement.defaultTextColor,
         settingsDefaultsControlTextBg: "Inherit",
@@ -10592,24 +13009,24 @@ const getPostThicknessFallback = () =>
 
         settingsDefaultsActionText: "Action",
         settingsDefaultsActionFontFamily: "Clearview",
-        settingsDefaultsActionFont: "Clearview 5WR",
+        settingsDefaultsActionFont: "Series 5WR",
         settingsDefaultsActionSize: "70",
         settingsDefaultsActionColor: ControlTextElement.defaultTextColor,
         settingsDefaultsActionBg: "Inherit",
         
         settingsDefaultsExitTabText: "",
-        settingsDefaultsExitTabType: "Standard",
+        settingsDefaultsExitTabType: "Default",
         settingsDefaultsExitTabAlignment: "Right",
         settingsDefaultsExitTabPosition: "Edge",
         settingsDefaultsExitTabPanelColor: "Panel Color",
         settingsDefaultsExitTabBorderThickness: 0.2,
         settingsDefaultsExitTabMinHeight: 2,
-        settingsDefaultsExitTabTextSize: 20,
+        settingsDefaultsExitTabTextSize: 18,
         settingsDefaultsExitTabNestedSpacing: 0,
-        settingsDefaultsExitTabFHWAStyle: false,
+        settingsDefaultsExitTabFHWAStyle: true,
         settingsDefaultsExitTabLeft: false,
-        settingsDefaultsExitTabFullBorder: false,
-        settingsDefaultsExitTabSquareCorners: false,
+        settingsDefaultsExitTabFullBorder: true,
+        settingsDefaultsExitTabSquareCorners: true,
         settingsDefaultsExitTabTopOffset: false,
         settingsDefaultsExitTabVerticalArrangement: false,
         settingsDefaultsExitTabCAStyle: false,
@@ -10702,6 +13119,7 @@ const getPostThicknessFallback = () =>
       };
 
       const applyExitTabSettingsDefaults = () => {
+        return;
         const defaults = getMergedSettingsDefaults();
 
         const parseNumberOrFallback = (value, fallback) => {
@@ -10725,7 +13143,7 @@ const getPostThicknessFallback = () =>
         ExitTab.prototype.defaultWidth =
           ExitTab.prototype.widths.includes(defaults.settingsDefaultsExitTabPosition)
             ? defaults.settingsDefaultsExitTabPosition
-            : "Narrow";
+            : "Edge";
 
         ExitTab.prototype.defaultColor =
           ExitTab.prototype.colors.includes(defaults.settingsDefaultsExitTabPanelColor)
@@ -10752,7 +13170,9 @@ const getPostThicknessFallback = () =>
           parseNumberOrFallback(defaults.settingsDefaultsExitTabNestedSpacing, 0)
         );
 
-        ExitTab.prototype.defaultFHWAFont = !!defaults.settingsDefaultsExitTabFHWAStyle;
+        // Exit tabs now use a font dropdown. Keep new tabs on Series EEM until
+        // the settings-defaults page is updated to store an actual font family.
+        ExitTab.prototype.defaultFHWAFont = true;
         ExitTab.prototype.defaultShowLeft = !!defaults.settingsDefaultsExitTabLeft;
         ExitTab.prototype.defaultFullBorder = !!defaults.settingsDefaultsExitTabFullBorder;
         ExitTab.prototype.defaultSquareCorners = !!defaults.settingsDefaultsExitTabSquareCorners;
@@ -10762,7 +13182,9 @@ const getPostThicknessFallback = () =>
         ExitTab.prototype.defaultCAStyle = !!defaults.settingsDefaultsExitTabCAStyle;
       };
 
+      /* old settings Exit Tab defaults page removed; defaults now come from Exit Tab profiles */
       applyExitTabSettingsDefaults();
+      applyExitTabDefaultProfileToPrototype();
       
       const bindExitTabSettingsDefaultsPersistence = (id, { checkbox = false } = {}) => {
         const el = document.getElementById(id);
@@ -11122,6 +13544,7 @@ const getPostThicknessFallback = () =>
       updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
 
       initializeFontPickers();
+      setupExitTabProfileControls();
 
       [
         "settingsDefaultsControlTextFontFamily",
@@ -11147,7 +13570,7 @@ const getPostThicknessFallback = () =>
         } else if (selectEl.value === "Rawlinson") {
           selectEl.style.fontFamily = '"Rawlinson Regular", serif';
           selectEl.style.fontSize = "1rem";
-        } else if (selectEl.value === "Helvetica Neue") {
+        } else if (selectEl.value === "Helvetica") {
           selectEl.style.fontFamily = '"Helvetica Neue Roman", sans-serif';
           selectEl.style.fontSize = "1rem";
         } else {
@@ -11948,13 +14371,31 @@ const getPostThicknessFallback = () =>
         select.innerHTML = "";
 
         for (const bannerType of bannerTypeOptions) {
-          lib.appendOption(select, bannerType);
+          const optionValue = getBannerDropdownValue(bannerType);
+          lib.appendOption(select, optionValue, {
+            text: optionValue,
+          });
         }
 
-        if (!bannerTypeOptions.includes("None")) {
-          lib.appendOption(select, "None");
+        if (
+          !bannerTypeOptions.some(
+            (bannerType) => getBannerDropdownValue(bannerType) === "NONE"
+          )
+        ) {
+          lib.appendOption(select, "NONE", { text: "NONE" });
         }
       }
+
+      bindToBannerEntryDefaults(
+        document.getElementById("sdShield_bannerCustomText"),
+        document.getElementById("sdShield_bannerPosition"),
+        document.getElementById("sdShield_indentFirstLetter")
+      );
+      bindToBannerEntryDefaults(
+        document.getElementById("sdShield_bannerCustomText2"),
+        document.getElementById("sdShield_bannerPosition2"),
+        document.getElementById("sdShield_indentFirstLetter2")
+      );
 
       /* Clicking blank space in the Banner Font row should blur the number input */
       const shieldFontRow = document.querySelector(
@@ -12140,7 +14581,7 @@ const getPostThicknessFallback = () =>
           if (control) {
             if (controlId === "sdBlock_topPadding" || controlId === "sdBlock_bottomPadding") {
               const parsed = parseFloat(valEl.value);
-              const normalized = Number.isFinite(parsed) ? Math.max(-1, Math.min(10, parsed)) : 0;
+              const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
               valEl.value = normalized;
               control.value = Math.max(0, Math.min(3, normalized));
             } else if (
@@ -12360,8 +14801,8 @@ const getPostThicknessFallback = () =>
       `${block}_bannerFormattingSize`,
       `${block}_bannerFirstLetterSize`,
     ]);
-    // small capitals -> _firstLetterSize
-    toggleTargets(`${block}_smallCapitals`, [`${block}_firstLetterSize`]);
+    // small letters -> _smallLettersSize
+    toggleTargets(`${block}_smallCapitals`, [`${block}_smallLettersSize`]);
     // icon border -> border color / radius (sdIcon_border)
     toggleTargets(`${block}_border`, [
       `${block}_borderColor`,
@@ -12374,6 +14815,105 @@ const getPostThicknessFallback = () =>
       `${block}_verticalPadding`,
       `${block}_hasOnlyBlock`,
     ]);
+  };
+
+  const normalizeTextEditorWholeNumber = (value, min, max, fallback) => {
+    const rawValue = String(value ?? "").trim();
+    const parsed = rawValue === "" ? NaN : Number(rawValue);
+    const fallbackNumber = Number(fallback);
+    const safeFallback = Number.isFinite(fallbackNumber)
+      ? Math.round(fallbackNumber)
+      : min;
+    const resolved = Number.isFinite(parsed) ? Math.round(parsed) : safeFallback;
+    return Math.max(min, Math.min(max, resolved));
+  };
+
+  const normalizeTextBlockEditorValues = (blockElemType, blockElem) => {
+    if (!blockElem || !["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+      return;
+    }
+
+    const fontSizeMax = blockElemType === "sdCtrlText" ? 250 : 150;
+    blockElem.fontSize = normalizeTextEditorWholeNumber(
+      blockElem.fontSize,
+      50,
+      fontSizeMax,
+      blockElemType === "sdCtrlText" ? 100 : 70
+    );
+    blockElem.smallLettersSize = normalizeTextEditorWholeNumber(
+      blockElem.smallLettersSize,
+      25,
+      100,
+      75
+    );
+
+    if (blockElem.smallLettersSize === 100) {
+      blockElem.smallCapitals = false;
+    }
+  };
+
+  const bindTextFormattingControls = (block) => {
+    const smallLettersCheckbox = document.getElementById(`${block}_smallCapitals`);
+    const smallLettersSize = document.getElementById(`${block}_smallLettersSize`);
+    const enlargeBannersCheckbox = document.getElementById(`${block}_useBannerFormatting`);
+
+    if (
+      !smallLettersCheckbox ||
+      !smallLettersSize ||
+      !enlargeBannersCheckbox ||
+      smallLettersCheckbox.dataset.smallLettersBehaviorBound === "true"
+    ) {
+      return;
+    }
+
+    smallLettersCheckbox.dataset.smallLettersBehaviorBound = "true";
+
+    smallLettersCheckbox.addEventListener(
+      "change",
+      () => {
+        if (smallLettersCheckbox.checked) {
+          enlargeBannersCheckbox.checked = false;
+          const normalizedSize = normalizeTextEditorWholeNumber(
+            smallLettersSize.value,
+            25,
+            100,
+            75
+          );
+          smallLettersSize.value = normalizedSize === 100 ? "75" : String(normalizedSize);
+        }
+        setDependentVisibility(block);
+      },
+      true
+    );
+
+    enlargeBannersCheckbox.addEventListener(
+      "change",
+      () => {
+        if (enlargeBannersCheckbox.checked) {
+          smallLettersCheckbox.checked = false;
+        }
+        setDependentVisibility(block);
+      },
+      true
+    );
+
+    smallLettersSize.addEventListener(
+      "change",
+      () => {
+        const normalizedSize = normalizeTextEditorWholeNumber(
+          smallLettersSize.value,
+          25,
+          100,
+          75
+        );
+        smallLettersSize.value = String(normalizedSize);
+        if (normalizedSize === 100) {
+          smallLettersCheckbox.checked = false;
+        }
+        setDependentVisibility(block);
+      },
+      true
+    );
   };
 
     
@@ -12456,7 +14996,9 @@ const getPostThicknessFallback = () =>
       setVisible(exitOnlyBorderModeSelect, shouldShowBorderMode);
     };
     const getDefaultBannerType = () =>
-      ShieldElement.prototype.defaultBannerType || "None";
+      getBannerDropdownValue(
+        ShieldElement.prototype.defaultBannerType || "None"
+      );
 
     const normalizeManualBannerText = (value) =>
       String(value || "").trim();
@@ -12468,13 +15010,7 @@ const getPostThicknessFallback = () =>
         return getDefaultBannerType();
       }
 
-      const options = Shield.prototype.bannerTypes || [];
-
-      return (
-        options.find(
-          (option) => String(option).toLowerCase() === normalized
-        ) || null
-      );
+      return findBannerDropdownPresetValue(normalized);
     };
 
     const syncManualBannerInputMode = ({ convert = false } = {}) => {
@@ -12816,11 +15352,22 @@ const getPostThicknessFallback = () =>
     if (!subPanel) {
       return;
     }
-    const exitTab =
-      exposed.vars.currentlySelectedNestedExitTabIndex != -1
-        ? currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex]
-          .nestedExitTabs[exposed.vars.currentlySelectedNestedExitTabIndex]
-        : currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex];
+    const exitTab = getCurrentExitTabForProfileApply();
+
+    if (!exitTab && exitTabEditorMode !== "default") {
+      updateForm();
+      return;
+    }
+
+    if (exitTabEditorMode === "default") {
+      readExitTabProfileForm();
+      applyExitTabDefaultProfileToPrototype();
+      updateForm();
+      if (typeof exposed?.redraw === "function") {
+        exposed.redraw();
+      }
+      return;
+    }
 
     // Post
     post.polePosition = form["postPosition"].value;
@@ -12845,7 +15392,39 @@ const getPostThicknessFallback = () =>
     post.disableFlash = form["disableFlash"].checked;
 
     // Exit Tab
-    exitTab.number = form["exitNumber"].value;
+    const previousExitVariant = normalizeExitTabProfileVariant(
+      exitTab.variant || "Default"
+    );
+    const requestedExitVariant = normalizeExitTabProfileVariant(
+      form["exitVariant"]?.value || previousExitVariant || "Default"
+    );
+    const isAssetExitTabVariant = isExitTabAssetVariantValue(requestedExitVariant);
+
+    if (requestedExitVariant !== previousExitVariant) {
+      const profile = getExitTabProfileById(
+        currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID
+      );
+      copyExitTabProfileSettingsToTarget(
+        getExitTabProfileSettings(profile, requestedExitVariant),
+        exitTab,
+        { preserveText: true }
+      );
+      exitTab.variant = requestedExitVariant;
+      toggleExitTabVariantOptionsVisibility(exitTab.variant);
+      updateForm();
+      if (typeof exposed?.redraw === "function") {
+        exposed.redraw();
+      }
+      return;
+    }
+
+    if (!isAssetExitTabVariant) {
+      rememberExitTabNormalFontSize(exitTab);
+    }
+
+    exitTab.number = isAssetExitTabVariant
+      ? (exitTab.number || "")
+      : (form["exitNumber"]?.value || "");
       const exitTabBilingualField = form["exitTabBilingual"];
       const exitTabBilingualBottomTextField = form["exitTabBilingualBottomText"];
 
@@ -12865,11 +15444,12 @@ const getPostThicknessFallback = () =>
 
       updateExitTabBilingualControls(exitTab);
     const aplEdgeAllowed = syncExitTabWidthOptions(exitTab);
+    const previousExitTabWidth = exitTab.width || "Edge";
     const requestedExitTabWidth = form["exitTabWidth"]
       ? form["exitTabWidth"].value
       : exitTab.width || "Full";
 
-    exitTab.width = exitTab.number.trim() === ""
+    exitTab.width = !isAssetExitTabVariant && exitTab.number.trim() === ""
         ? "Edge"
         : isAplEdgeExitTabWidth(requestedExitTabWidth) && !aplEdgeAllowed
           ? "Edge"
@@ -12928,9 +15508,25 @@ const getPostThicknessFallback = () =>
         }
         
     exitTab.color = form["exitColor"].value;
-    exitTab.variant = form["exitVariant"].value;
+    exitTab.textColor = form["exitTabTextColor"]?.value || ExitTab.prototype.defaultTextColor;
+    exitTab.variant = requestedExitVariant;
+    exitTab.transparent = isAssetExitTabVariant
+      ? form["exitTabTransparent"]?.checked === true
+      : false;
 
-    toggleExitTabVariantOptionsVisibility(exitTab.variant);
+    toggleExitTabVariantOptionsVisibility(exitTab.variant, { syncAssetSliders: false });
+
+    const exitTabAssetSizeInput = form["fontSize"];
+    const exitTabAssetSizeControlIsActive =
+      exitTabAssetSizeInput && parseFloat(exitTabAssetSizeInput.max) <= 6;
+    if (isExitTabAssetVariantValue(exitTab.variant)) {
+      const parsedAssetSize = exitTabAssetSizeControlIsActive
+        ? parseFloat(exitTabAssetSizeInput?.value)
+        : NaN;
+      exitTab.tollLogoSize = exitTabAssetSizeControlIsActive
+        ? normalizeExitTabAssetSizeValue(parsedAssetSize, exitTab.tollLogoSize || 3)
+        : normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3);
+    }
         
         const currentSign = currentPanel?.sign;
 
@@ -12972,45 +15568,12 @@ const getPostThicknessFallback = () =>
         }
     }
 
-    const resolveDefaultTollLogoSize = () =>
-      typeof ExitTab.prototype.defaultTollLogoSize === "number"
-        ? ExitTab.prototype.defaultTollLogoSize
-        : 3;
-    const tollLogoSizeField = form["exitTollLogoSize"];
-    const parsedTollLogoSize =
-      tollLogoSizeField && tollLogoSizeField.value !== ""
-        ? parseFloat(tollLogoSizeField.value)
-        : NaN;
-    const normalizedTollLogoSize =
-      Number.isFinite(parsedTollLogoSize) && parsedTollLogoSize > 0
-        ? parsedTollLogoSize
-        : Number.isFinite(exitTab.tollLogoSize) && exitTab.tollLogoSize > 0
-          ? exitTab.tollLogoSize
-          : resolveDefaultTollLogoSize();
-    exitTab.tollLogoSize = normalizedTollLogoSize;
-    if (tollLogoSizeField) {
-      tollLogoSizeField.value = normalizedTollLogoSize;
-    }
-    const tollLogoSizeValueElmt = document.getElementById(
-      "exitTollLogoSizeValue"
-    );
-    if (tollLogoSizeValueElmt) {
-      tollLogoSizeValueElmt.textContent = normalizedTollLogoSize.toString();
-    }
-
     if (exitTab.variant == "Toll Logo") {
-      const tollLogoSelectField = form["exitTollLogoSelect"];
-      const tollLogoOptions = TollLogoElement.prototype.logos;
-      let selectedLogo =
-        tollLogoSelectField && tollLogoSelectField.value
-          ? tollLogoSelectField.value
-          : null;
-      if (!tollLogoOptions || !tollLogoOptions[selectedLogo]) {
-        selectedLogo =
-          tollLogoOptions && TollLogoElement.prototype.defaultLogo
-            ? TollLogoElement.prototype.defaultLogo
-            : null;
-      }
+      const tollLogoOptions = TollLogoElement.prototype.logos || {};
+      const pickerValue = document.getElementById("exitTollLogoPickerValue")?.value;
+      let selectedLogo = tollLogoOptions[pickerValue]
+        ? pickerValue
+        : (tollLogoOptions.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo);
       exitTab.icon = selectedLogo;
       exitTab.useTextBasedIcon = false;
       const tollLogoOnlyField = form["exitTollLogoOnly"];
@@ -13024,9 +15587,14 @@ const getPostThicknessFallback = () =>
           ? tollLogoSquareField.checked
           : false;
     } else if (exitTab.variant == "Icon") {
-      const iconSelectField = form["iconSelect"];
-      exitTab.icon = iconSelectField ? iconSelectField.value : null;
+      const iconOptions = IconElement.prototype.icons || {};
+      const pickerValue = document.getElementById("exitIconPickerValue")?.value;
+      exitTab.icon = iconOptions[pickerValue]
+        ? pickerValue
+        : (iconOptions.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon);
       exitTab.useTextBasedIcon = false;
+      exitTab.tollLogoOnly = false;
+      exitTab.tollLogoSquare = false;
     } else {
       exitTab.icon = null;
       exitTab.useTextBasedIcon = false;
@@ -13035,65 +15603,119 @@ const getPostThicknessFallback = () =>
       exitTab.tollLogoSquare = !!exitTab.tollLogoSquare;
     }
 
-        const exitFontCheckbox = form["exitFont"];
+    if (exitTab.variant === "Quebec Exit Marker" && currentSign) {
+      const qcNumber = String(exitTab.number || "").trim();
+      currentSign.quebecExitMarkerEnabled = qcNumber.length > 0;
+      currentSign.quebecExitMarkerNumber = qcNumber;
+      currentSign.quebecExitMarkerPosition = exitTab.position || "Right";
+      currentSign.quebecExitMarkerSizeRem = Math.max(2, Math.min(6, (parseFloat(exitTab.fontSize) || 18) / 5));
+    } else if (currentSign && currentSign.quebecExitMarkerEnabled) {
+      const hasActiveQcExitTab = Array.isArray(currentPanel.exitTabs) && currentPanel.exitTabs.some(
+        (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
+      );
+      if (!hasActiveQcExitTab) {
+        currentSign.quebecExitMarkerEnabled = false;
+      }
+    }
+
+        const exitTabFontSelect = form["exitTabFontFamily"];
+        const exitTabCharacterSpacingInput = form["exitTabCharacterSpacing"];
         const fontSizeInput = form["fontSize"];
         const minHeightInput = form["minHeight"];
 
-        const previousFHWAState =
-          exitFontCheckbox?.dataset.lastFhwaState !== undefined
-            ? exitFontCheckbox.dataset.lastFhwaState === "true"
-            : !!exitTab.FHWAFont;
+        const previousFontFamily = normalizeExitTabFontFamily(
+          exitTab.fontFamily,
+          exitTab.FHWAFont === true
+            ? ExitTab.prototype.defaultFHWAFontFamily
+            : (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
+        );
+        const nextFontFamily = normalizeExitTabFontFamily(
+          exitTabFontSelect?.value || previousFontFamily,
+          previousFontFamily
+        );
+        const previousUsesHighwayGothic = isExitTabHighwayGothicFontFamily(previousFontFamily);
+        const nextUsesHighwayGothic = isExitTabHighwayGothicFontFamily(nextFontFamily);
+        const changedExitTabFontDropdown =
+          exitTabFontSelect && document.activeElement === exitTabFontSelect;
 
-        const nextFHWAState = !!exitFontCheckbox?.checked;
+        if (!isAssetExitTabVariant) {
+          exitTab.fontFamily = nextFontFamily;
+          exitTab.FHWAFont = nextUsesHighwayGothic;
+          exitTab.characterSpacing = normalizeExitTabCharacterSpacing(
+            exitTabCharacterSpacingInput?.value
+          );
+
+          if (exitTabFontSelect) {
+            exitTabFontSelect.value = nextFontFamily;
+          }
+
+          if (exitTabCharacterSpacingInput) {
+            exitTabCharacterSpacingInput.value = String(exitTab.characterSpacing);
+          }
+        }
 
         const setExitTabSliderValue = (input, valueId, value) => {
           if (input) {
-            input.value = String(value);
+            setExitTabRangeControlValue(input, value);
           }
 
           const valueEl = document.getElementById(valueId);
           if (valueEl) {
-            valueEl.innerHTML = String(value);
+            valueEl.innerHTML = formatExitTabSliderDisplayValue(valueId, value);
           }
         };
 
-        /*
-          Only auto-adjust when the FHWA checkbox itself was changed.
-          Editing subpanels, text, shields, or other fields should not touch these sliders.
-        */
-        if (
-          exitFontCheckbox &&
-          exitTabFontCheckboxChangedByUser &&
-          previousFHWAState !== nextFHWAState
-        ) {
-          if (nextFHWAState === true) {
-            setExitTabSliderValue(fontSizeInput, "fontValue", 18);
-            setExitTabSliderValue(minHeightInput, "minValue", 2);
-          } else {
-            setExitTabSliderValue(fontSizeInput, "fontValue", 20);
-            setExitTabSliderValue(minHeightInput, "minValue", 2.5);
+        const isFullExitTabWidth = (value) =>
+          String(value || "").trim().toLowerCase() === "full";
+        const normalizeExitTabNumber = (value, fallback = 0) => {
+          const parsed = parseFloat(value);
+          return Number.isFinite(parsed) ? parsed : fallback;
+        };
+        const getFullExitTabDefaults = (usesHighwayGothic) =>
+          usesHighwayGothic
+            ? { minHeight: 2, fontSize: 18, fullBorder: false, squareCorners: false }
+            : { minHeight: 2.8, fontSize: 22, fullBorder: false, squareCorners: false };
+        const setExitTabFullFormatControls = (config) => {
+          if (!config || typeof config !== "object") {
+            return;
           }
-        }
 
-        if (exitFontCheckbox) {
-          exitFontCheckbox.dataset.lastFhwaState = String(nextFHWAState);
+          setExitTabSliderValue(minHeightInput, "minValue", config.minHeight);
+          setExitTabSliderValue(fontSizeInput, "fontValue", config.fontSize);
+
+          if (form["fullBorder"]) {
+            form["fullBorder"].checked = config.fullBorder === true;
+          }
+
+          if (form["squareCorners"]) {
+            form["squareCorners"].checked = config.squareCorners === true;
+          }
+        };
+
+        if (!isAssetExitTabVariant && isFullExitTabWidth(exitTab.width) && !isFullExitTabWidth(previousExitTabWidth)) {
+          exitTab.fullWidthRestoreConfig = {
+            width: previousExitTabWidth,
+            minHeight: normalizeExitTabNumber(exitTab.minHeight, getCurrentExitTabDefaultMinHeight()),
+            fontSize: normalizeExitTabNumber(exitTab.fontSize, ExitTab.prototype.defaultFontSize),
+            fullBorder: exitTab.fullBorder === true,
+            squareCorners: exitTab.squareCorners === true,
+          };
+          setExitTabFullFormatControls(getFullExitTabDefaults(nextUsesHighwayGothic));
+        } else if (!isAssetExitTabVariant && !isFullExitTabWidth(exitTab.width) && isFullExitTabWidth(previousExitTabWidth)) {
+          if (exitTab.fullWidthRestoreConfig) {
+            setExitTabFullFormatControls(exitTab.fullWidthRestoreConfig);
+          }
+          exitTab.fullWidthRestoreConfig = null;
+        } else if (
+          !isAssetExitTabVariant &&
+          isFullExitTabWidth(exitTab.width) &&
+          changedExitTabFontDropdown &&
+          previousUsesHighwayGothic !== nextUsesHighwayGothic
+        ) {
+          setExitTabFullFormatControls(getFullExitTabDefaults(nextUsesHighwayGothic));
         }
 
         exitTabFontCheckboxChangedByUser = false;
-        exitTab.FHWAFont = nextFHWAState;
-
-        const hasExitNumberForLeft =
-          String(exitTab.number || "").trim() !== "";
-
-        const showLeftBeforeNumberCleanup = exitTab.showLeft === true;
-
-        if (!hasExitNumberForLeft) {
-          exitTab.showLeft = false;
-        }
-
-        if (showLeftBeforeNumberCleanup !== (exitTab.showLeft === true) && form["topOffset"]) {
-          form["topOffset"].checked = exitTab.showLeft === true;
-        }
 
         const previousCaStyleState = exitTab.caStyle === true;
         const nextCaStyleState = form["caStyle"].checked === true;
@@ -13119,7 +15741,41 @@ const getPostThicknessFallback = () =>
           : ExitTab.prototype.defaultBorderThickness;
 
         exitTab.minHeight = form["minHeight"].value;
-        exitTab.fontSize = form["fontSize"].value;
+        const isAssetExitTabForPadding = isExitTabAssetVariantValue(exitTab.variant);
+        if (isAssetExitTabForPadding) {
+          const assetSizeInput = form["fontSize"];
+          const assetSizeControlIsActive = assetSizeInput && parseFloat(assetSizeInput.max) <= 6;
+          const parsedAssetSize = assetSizeControlIsActive ? parseFloat(assetSizeInput?.value) : NaN;
+          exitTab.tollLogoSize = assetSizeControlIsActive
+            ? normalizeExitTabAssetSizeValue(parsedAssetSize, exitTab.tollLogoSize || 3)
+            : normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3);
+        } else {
+          const textSizeInput = form["fontSize"];
+          const textSizeControlIsActive = textSizeInput && parseFloat(textSizeInput.max) > 6;
+          exitTab.fontSize = textSizeControlIsActive
+            ? normalizeExitTabNormalFontSizeValue(textSizeInput?.value, getCurrentExitTabDefaultFontSize())
+            : normalizeExitTabNormalFontSizeValue(exitTab.fontSize, getCurrentExitTabDefaultFontSize());
+          exitTab.normalFontSizeBeforeAsset = exitTab.fontSize;
+        }
+
+        const horizontalPaddingInput = parseFloat(form["exitTabHorizontalPadding"]?.value);
+        if (isAssetExitTabForPadding) {
+          exitTab.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(horizontalPaddingInput, exitTab.assetHorizontalPadding);
+        } else {
+          exitTab.horizontalPadding = Number.isFinite(horizontalPaddingInput)
+            ? Math.max(0, Math.min(3, horizontalPaddingInput))
+            : ExitTab.prototype.defaultHorizontalPadding;
+        }
+
+        const exitTextSizePercentInput = parseFloat(form["exitTabTextSizePercent"]?.value);
+        if (isAssetExitTabForPadding) {
+          exitTab.assetVerticalPadding = normalizeExitTabAssetPaddingValue(exitTextSizePercentInput, exitTab.assetVerticalPadding);
+        } else {
+          exitTab.exitTextSizePercent = Number.isFinite(exitTextSizePercentInput)
+            ? Math.max(25, Math.min(100, exitTextSizePercentInput))
+            : ExitTab.prototype.defaultExitTextSizePercent;
+          exitTab.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+        }
 
         const parentExitTab = currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex];
         const nestedTabSpacingInput = parseFloat(form["nestedTabSpacing"]?.value);
@@ -13165,10 +15821,11 @@ const getPostThicknessFallback = () =>
         `shield${shieldIndex}_bannerCustomText`
       );
       const customBannerText =
-        customBannerInput && customBannerInput.value
-          ? customBannerInput.value.trim()
+        customBannerInput && typeof customBannerInput.value === "string"
+          ? customBannerInput.value
           : "";
-      shield.bannerType = customBannerText || shield.bannerType;
+      shield.bannerType =
+        customBannerText.length > 0 ? customBannerText : shield.bannerType;
       shield.bannerPosition = document.getElementById(
         `shield${shieldIndex}_bannerPosition`
       ).value;
@@ -13179,10 +15836,11 @@ const getPostThicknessFallback = () =>
         `shield${shieldIndex}_bannerCustomText2`
       );
       const customBannerText2 =
-        customBannerInput2 && customBannerInput2.value
-          ? customBannerInput2.value.trim()
+        customBannerInput2 && typeof customBannerInput2.value === "string"
+          ? customBannerInput2.value
           : "";
-      shield.bannerType2 = customBannerText2 || shield.bannerType2;
+      shield.bannerType2 =
+        customBannerText2.length > 0 ? customBannerText2 : shield.bannerType2;
       shield.specialBannerType =
         document.getElementById(`shield${shieldIndex}_specialBannerType`)
           .value || "None";
@@ -13247,12 +15905,35 @@ const getPostThicknessFallback = () =>
       Control.prototype.blockToClassElems.getElem(currentBlockElem)
       ];
 
-    if (blockElemType === "sdActionMessage" || blockElemType === "sdAdvisory") {
+    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
       if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+      if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
       if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+      if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
+      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+        currentBlockElem.smallCapitals = false;
+      }
       if (currentBlockElem.textColor === undefined) {
         currentBlockElem.textColor =
           blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+      }
+    }
+
+    if (blockElemType === "sdCtrlText") {
+      const fontFamilyInput = document.getElementById("sdCtrlText_fontFamily");
+      const lineHeightInput = document.getElementById("sdCtrlText_lineHeight");
+      const lineHeightValueInput = document.getElementById("sdCtrlText_lineHeightVal");
+      const wasClearview = /^Clearview\s/i.test(String(currentBlockElem.fontFamily || ""));
+      const willBeClearview = /^Clearview\s/i.test(String(fontFamilyInput?.value || ""));
+
+      if (fontFamilyInput && lineHeightInput && wasClearview !== willBeClearview) {
+        const nextLineHeight = willBeClearview ? 120 : 100;
+        lineHeightInput.value = String(nextLineHeight);
+
+        if (lineHeightValueInput) {
+          lineHeightValueInput.value = String(nextLineHeight);
+        }
       }
     }
 
@@ -13295,11 +15976,13 @@ const getPostThicknessFallback = () =>
             if (manualBanners) {
               const customValue =
                 customInput && typeof customInput.value === "string"
-                  ? customInput.value.trim()
+                  ? customInput.value
                   : "";
 
               currentBlockElem[propertyName] =
-                customValue || ShieldElement.prototype.defaultBannerType || "None";
+                customValue.length > 0
+                  ? customValue
+                  : ShieldElement.prototype.defaultBannerType || "None";
             } else {
               const selectedValue = element.tagName === "SELECT"
                 ? element.value
@@ -13324,6 +16007,34 @@ const getPostThicknessFallback = () =>
         }
       }
     }
+
+    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+      const parsedSpacing = parseFloat(currentBlockElem.spacing);
+      currentBlockElem.spacing = Number.isFinite(parsedSpacing)
+        ? Math.max(-10, Math.min(10, parsedSpacing))
+        : 0;
+
+      const parsedLetterSpacing = parseFloat(currentBlockElem.letterSpacing);
+      currentBlockElem.letterSpacing = Number.isFinite(parsedLetterSpacing)
+        ? Math.max(-0.15, Math.min(0.5, parsedLetterSpacing))
+        : 0;
+
+      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+
+      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+        const activeControlId = String(document.activeElement?.id || "");
+        const smallLettersWasChanged =
+          activeControlId === `${blockElemType}_smallCapitals` ||
+          activeControlId === `${blockElemType}_smallLettersSize`;
+
+        if (smallLettersWasChanged) {
+          currentBlockElem.useBannerFormatting = false;
+        } else {
+          currentBlockElem.smallCapitals = false;
+        }
+      }
+    }
+
     if (blockElemType === "sdShield") {
       ensureSdShieldBasePicker();
 
@@ -13401,7 +16112,7 @@ const getPostThicknessFallback = () =>
       if (!Number.isFinite(parsed)) {
         return fallback;
       }
-      return Math.max(-1, Math.min(10, parsed));
+      return Math.max(-5, Math.min(10, parsed));
     };
     const topMarginManualEl = document.querySelector("#sdBlock_topPaddingVal");
     const bottomMarginManualEl = document.querySelector("#sdBlock_bottomPaddingVal");
@@ -13623,6 +16334,7 @@ const getPostThicknessFallback = () =>
    */
   const updateForm = function () {
     syncPostReference();
+    normalizeExitTabProfiles();
     ensureCustomColorOptionsForAllColorSelects(document);
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {
@@ -13901,9 +16613,16 @@ const getPostThicknessFallback = () =>
                 item.appendChild(deleteButton);
               }
 
-              item.addEventListener("click", () => {
+              item.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 applyAssetSelection(key);
-                modal.close();
+
+                if (typeof modal.close === "function") {
+                  modal.close();
+                } else {
+                  modal.removeAttribute("open");
+                }
               });
 
               grid.appendChild(item);
@@ -14054,6 +16773,36 @@ const getPostThicknessFallback = () =>
       });
 
       setupAssetSelectorModal({
+        buttonId: "exitIconChooseButton",
+        modalId: "iconSelectorModal",
+        closeId: "closeIconSelector",
+        searchId: "iconSearch",
+        gridId: "iconGrid",
+        inputId: "exitIconPickerValue",
+        labelId: "exitIconCurrent",
+        sourceObject: IconElement.prototype.icons,
+        defaultKey: IconElement.prototype.icons?.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon,
+        itemClassName: "iconGridCard",
+        previewClassName: "iconPickerPreviewImage",
+        currentLabelPrefix: "",
+      });
+
+      setupAssetSelectorModal({
+        buttonId: "exitTollLogoChooseButton",
+        modalId: "tollLogoSelectorModal",
+        closeId: "closeTollLogoSelector",
+        searchId: "tollLogoSearch",
+        gridId: "tollLogoGrid",
+        inputId: "exitTollLogoPickerValue",
+        labelId: "exitTollLogoCurrent",
+        sourceObject: TollLogoElement.prototype.logos,
+        defaultKey: TollLogoElement.prototype.logos?.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo,
+        itemClassName: "tollLogoGridCard",
+        previewClassName: "tollLogoPickerPreviewImage",
+        currentLabelPrefix: "",
+      });
+
+      setupAssetSelectorModal({
         buttonId: "sdArrow_chooseBtn",
         modalId: "arrowSelectorModal",
         closeId: "closeArrowSelector",
@@ -14128,7 +16877,11 @@ const getPostThicknessFallback = () =>
 
     const maxNested = getNestedExitTabLimit();
 
-    if (currentExitTab && currentExitTab.nestedExitTabs.length > maxNested) {
+    if (
+      maxNested != null &&
+      currentExitTab &&
+      currentExitTab.nestedExitTabs.length > maxNested
+    ) {
       currentExitTab.nestedExitTabs.splice(maxNested);
     }
 
@@ -14145,10 +16898,26 @@ const getPostThicknessFallback = () =>
       return;
     }
 
-    const exitTab =
+    let exitTab =
       currentExitTab && selectedNestedExitTabIndex > -1
         ? currentExitTab.nestedExitTabs[selectedNestedExitTabIndex]
         : currentExitTab;
+
+    exitTab = getExitTabEditorTarget(exitTab);
+    if (!exitTab) {
+      if (panel && typeof panel.newExitTab === "function") {
+        panel.newExitTab();
+        if (typeof exposed.changeEditingExitTab === "function") {
+          exposed.changeEditingExitTab(Math.max(0, panel.exitTabs.length - 1), -1);
+          return;
+        }
+        exitTab = panel.exitTabs[Math.max(0, panel.exitTabs.length - 1)];
+      }
+      if (!exitTab) {
+        return;
+      }
+    }
+    updateExitTabModeUi();
 
     const panelList = document.getElementById("panelList");
     const subPanelList = document.getElementById("subPanelList");
@@ -14779,18 +17548,46 @@ const getPostThicknessFallback = () =>
     renderStackedPanelControls();
 
     for (
-      let exitTabIndex = 0, exitTabLength = panel.exitTabs.length;
-      exitTabIndex < exitTabLength;
-      exitTabIndex++
+      let exitTabIndex = panel.exitTabs.length - 1;
+      exitTabIndex >= 0;
+      exitTabIndex--
     ) {
       const exitTabGroup = document.createElement("div");
       exitTabGroup.className = "exitTabGroup";
+
+      const exitTabRow = document.createElement("div");
+      exitTabRow.className = "exitTabListRow exitTabParentListRow";
 
       const exitTabButton = document.createElement("button");
       exitTabButton.type = "button";
       exitTabButton.id = "tab_edit" + (exitTabIndex + 1);
       exitTabButton.className = "exitTabButton";
-      exitTabButton.textContent = "Exit Tab " + (exitTabIndex + 1);
+      exitTabButton.dataset.exitTabIndex = exitTabIndex.toString();
+      exitTabButton.draggable = panel.exitTabs.length > 1;
+
+      const exitTabButtonLabel = document.createElement("span");
+      exitTabButtonLabel.className = "exitTabButtonLabel";
+      exitTabButtonLabel.textContent = "Exit Tab " + (exitTabIndex + 1);
+      exitTabButton.appendChild(exitTabButtonLabel);
+
+      const exitTabDeleteButton = document.createElement("span");
+      exitTabDeleteButton.className = "exitTabInlineDelete material-symbols-outlined";
+      exitTabDeleteButton.title = "Delete exit tab";
+      exitTabDeleteButton.setAttribute("role", "button");
+      exitTabDeleteButton.setAttribute("aria-label", "Delete exit tab " + (exitTabIndex + 1));
+      exitTabDeleteButton.textContent = "delete";
+      exitTabDeleteButton.addEventListener("pointerdown", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      exitTabDeleteButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof exposed.removeExitTab === "function") {
+          exposed.removeExitTab(exitTabIndex);
+        }
+      });
+      exitTabButton.appendChild(exitTabDeleteButton);
 
       if (
         exposed.vars.currentlySelectedExitTabIndex === exitTabIndex &&
@@ -14804,32 +17601,52 @@ const getPostThicknessFallback = () =>
         event.stopPropagation();
         exposed.changeEditingExitTab(exitTabIndex, -1);
       });
-
-      exitTabButton.dataset.exitTabIndex = exitTabIndex.toString();
-      exitTabButton.draggable = panel.exitTabs.length > 1;
       exitTabButton.addEventListener("dragstart", handleExitTabDragStart);
       exitTabButton.addEventListener("dragend", handleExitTabDragEnd);
+      exitTabRow.appendChild(exitTabButton);
 
-      exitTabGroup.appendChild(exitTabButton);
+      const nestedColumn = document.createElement("div");
+      nestedColumn.className = "exitTabNestedColumn";
 
-      const nestedExitTabs =
-        panel.exitTabs[exitTabIndex].nestedExitTabs || [];
-      const allowedNestedLength = Math.min(
-        nestedExitTabs.length,
-        maxNested != null ? maxNested : nestedExitTabs.length
-      );
+      const nestedExitTabs = panel.exitTabs[exitTabIndex].nestedExitTabs || [];
+      const allowedNestedLength =
+        maxNested != null
+          ? Math.min(nestedExitTabs.length, maxNested)
+          : nestedExitTabs.length;
 
-      for (
-        let nestIndex = 0;
-        nestIndex < allowedNestedLength;
-        nestIndex++
-      ) {
+      for (let nestIndex = 0; nestIndex < allowedNestedLength; nestIndex++) {
         const nestedButton = document.createElement("button");
         nestedButton.type = "button";
         nestedButton.id =
           "tab_edit" + (exitTabIndex + 1) + "_nest" + (nestIndex + 1);
         nestedButton.className = "exitTabNestedButton";
-        nestedButton.textContent = "Nested Exit Tab " + (nestIndex + 1);
+
+        const nestedLabel = document.createElement("span");
+        nestedLabel.className = "exitTabButtonLabel";
+        nestedLabel.textContent = "Nested Exit Tab " + (nestIndex + 1);
+        nestedButton.appendChild(nestedLabel);
+
+        const nestedDeleteButton = document.createElement("span");
+        nestedDeleteButton.className = "exitTabInlineDelete material-symbols-outlined";
+        nestedDeleteButton.title = "Delete nested exit tab";
+        nestedDeleteButton.setAttribute("role", "button");
+        nestedDeleteButton.setAttribute("aria-label", "Delete nested exit tab " + (nestIndex + 1));
+        nestedDeleteButton.textContent = "delete";
+        nestedDeleteButton.addEventListener("pointerdown", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+        nestedDeleteButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof exposed.changeEditingExitTab === "function") {
+            exposed.changeEditingExitTab(exitTabIndex, nestIndex);
+          }
+          if (typeof exposed.deleteNestExitTab === "function") {
+            exposed.deleteNestExitTab(nestIndex);
+          }
+        });
+        nestedButton.appendChild(nestedDeleteButton);
 
         if (
           exposed.vars.currentlySelectedExitTabIndex === exitTabIndex &&
@@ -14844,9 +17661,14 @@ const getPostThicknessFallback = () =>
           exposed.changeEditingExitTab(exitTabIndex, nestIndex);
         });
 
-        exitTabGroup.appendChild(nestedButton);
+        nestedColumn.appendChild(nestedButton);
       }
 
+      if (allowedNestedLength > 0) {
+        exitTabRow.appendChild(nestedColumn);
+      }
+
+      exitTabGroup.appendChild(exitTabRow);
       exitTabList.appendChild(exitTabGroup);
     }
 
@@ -14857,9 +17679,9 @@ const getPostThicknessFallback = () =>
         selectedExitTab && selectedExitTab.nestedExitTabs
           ? selectedExitTab.nestedExitTabs.length
           : 0;
-      const limit = maxNested != null ? maxNested : 1;
+      const limit = maxNested != null ? maxNested : null;
       addNestedButton.disabled =
-        !selectedExitTab || nestedCount >= limit;
+        !selectedExitTab || (limit != null && nestedCount >= limit);
     }
 
       // APL Arrow List Update
@@ -15545,7 +18367,7 @@ const getPostThicknessFallback = () =>
       const hasExitNumberText = updateExitTabLeftControlVisibility(exitTab.number);
 
       if (showLeft) {
-        showLeft.checked = hasExitNumberText && exitTab.showLeft === true;
+        showLeft.checked = exitTab.showLeft === true;
       }
 
     const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
@@ -15570,6 +18392,19 @@ const getPostThicknessFallback = () =>
       if (option.value == exitTab.color) {
         option.selected = true;
         break;
+      }
+    }
+
+    const exitTabTextColorElmt = document.querySelector("#exitTabTextColor");
+    if (exitTabTextColorElmt) {
+      exitTab.textColor = exitTab.textColor || ExitTab.prototype.defaultTextColor;
+      ensureCustomColorOptionsForSelect(exitTabTextColorElmt);
+      ensureNativeColorSelectOption(exitTabTextColorElmt, exitTab.textColor);
+      for (const option of exitTabTextColorElmt.options) {
+        if (option.value == exitTab.textColor) {
+          option.selected = true;
+          break;
+        }
       }
     }
 
@@ -15679,8 +18514,54 @@ const getPostThicknessFallback = () =>
       }
     }
 
-    const exitFont = document.getElementById("exitFont");
-    exitFont.checked = exitTab.FHWAFont;
+
+    const exitTollLogoPickerValue = document.getElementById("exitTollLogoPickerValue");
+    const exitTollLogoCurrent = document.getElementById("exitTollLogoCurrent");
+    const exitIconPickerValue = document.getElementById("exitIconPickerValue");
+    const exitIconCurrent = document.getElementById("exitIconCurrent");
+
+    if (exitTollLogoPickerValue) {
+      exitTollLogoPickerValue.value = exitTab.variant === "Toll Logo"
+        ? (exitTab.icon || (TollLogoElement.prototype.logos?.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo))
+        : (exitTollLogoPickerValue.value || (TollLogoElement.prototype.logos?.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo));
+    }
+    if (exitTollLogoCurrent) {
+      const def = TollLogoElement?.prototype?.logos?.[exitTollLogoPickerValue?.value] || TollLogoElement?.prototype?.logos?.TxTag;
+      exitTollLogoCurrent.textContent = def?.label || "TxTag";
+    }
+    if (exitIconPickerValue) {
+      exitIconPickerValue.value = exitTab.variant === "Icon"
+        ? (exitTab.icon || (IconElement.prototype.icons?.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon))
+        : (exitIconPickerValue.value || (IconElement.prototype.icons?.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon));
+    }
+    if (exitIconCurrent) {
+      const def = IconElement?.prototype?.icons?.[exitIconPickerValue?.value] || IconElement?.prototype?.icons?.AIRPORT;
+      exitIconCurrent.textContent = def?.label || "Airport";
+    }
+
+    const exitTabFontFamily = document.getElementById("exitTabFontFamily");
+    if (exitTabFontFamily) {
+      exitTab.fontFamily = normalizeExitTabFontFamily(
+        exitTab.fontFamily,
+        exitTab.FHWAFont === true
+          ? ExitTab.prototype.defaultFHWAFontFamily
+          : (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
+      );
+      exitTab.FHWAFont = isExitTabHighwayGothicFontFamily(exitTab.fontFamily);
+      if (!Array.from(exitTabFontFamily.options).some((option) => option.value === exitTab.fontFamily)) {
+        lib.appendOption(exitTabFontFamily, exitTab.fontFamily);
+      }
+      exitTabFontFamily.value = exitTab.fontFamily;
+      if (exitTabFontFamily._fontPickerApi) {
+        exitTabFontFamily._fontPickerApi.sync();
+      }
+    }
+
+    const exitTabCharacterSpacing = document.getElementById("exitTabCharacterSpacing");
+    if (exitTabCharacterSpacing) {
+      exitTab.characterSpacing = normalizeExitTabCharacterSpacing(exitTab.characterSpacing);
+      exitTabCharacterSpacing.value = String(exitTab.characterSpacing);
+    }
 
     const fullBorder = document.getElementById("fullBorder");
     fullBorder.checked = exitTab.fullBorder;
@@ -15697,6 +18578,11 @@ const getPostThicknessFallback = () =>
     const caStyle = document.getElementById("caStyle");
     caStyle.checked = exitTab.caStyle;
 
+    const exitTabTransparent = document.getElementById("exitTabTransparent");
+    if (exitTabTransparent) {
+      exitTabTransparent.checked = exitTab.transparent === true;
+    }
+
     const borderThickness = document.getElementById("borderThickness");
     const resolvedBorderThickness = (() => {
       const parsedValue = parseFloat(exitTab.borderThickness);
@@ -15706,56 +18592,150 @@ const getPostThicknessFallback = () =>
       return ExitTab.prototype.defaultBorderThickness;
     })();
     exitTab.borderThickness = resolvedBorderThickness;
-    borderThickness.value = resolvedBorderThickness;
+    setExitTabRangeControlValue(borderThickness, resolvedBorderThickness);
     document.getElementById("borderValue").innerHTML =
-      resolvedBorderThickness.toString();
+      formatExitTabDecimalValue(resolvedBorderThickness);
 
     const minHeight = document.getElementById("minHeight");
     const resolvedMinHeight = (() => {
       const parsedValue = parseFloat(exitTab.minHeight);
 
-      if (Number.isFinite(parsedValue) && parsedValue > 0) {
+      if (Number.isFinite(parsedValue) && parsedValue >= 0) {
         return parsedValue;
       }
 
-      return ExitTab.prototype.defaultMinHeight;
+      return getCurrentExitTabDefaultMinHeight(exitTab.variant);
     })();
 
     exitTab.minHeight = resolvedMinHeight;
-    minHeight.value = resolvedMinHeight;
-    document.getElementById("minValue").innerHTML = resolvedMinHeight.toString();
+    setExitTabRangeControlValue(minHeight, resolvedMinHeight);
+    document.getElementById("minValue").innerHTML = formatExitTabDecimalValue(resolvedMinHeight);
 
     const fontSize = document.getElementById("fontSize");
-    const resolvedFontSize = (() => {
-      const parsedValue = parseFloat(exitTab.fontSize);
+    const fontSizeLabel = document.getElementById("fontSizeLabel") || document.querySelector('label[for="fontSize"]');
+    const fontValueElmt = document.getElementById("fontValue");
+    const usesAssetSizeSlider = isExitTabAssetVariantValue(exitTab.variant);
+    const resolvedFontSize = usesAssetSizeSlider
+      ? normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3)
+      : normalizeExitTabNormalFontSizeValue(exitTab.fontSize, getCurrentExitTabDefaultFontSize());
 
-      if (Number.isFinite(parsedValue) && parsedValue > 0) {
-        return parsedValue;
+    if (fontSize) {
+      if (usesAssetSizeSlider) {
+        fontSize.min = "1";
+        fontSize.max = "6";
+        fontSize.step = "0.1";
+      } else {
+        fontSize.min = "10";
+        fontSize.max = "40";
+        fontSize.step = "1";
       }
+      setExitTabRangeControlValue(fontSize, resolvedFontSize);
+    }
 
-      return ExitTab.prototype.defaultFontSize;
+    if (fontSizeLabel) {
+      fontSizeLabel.textContent = usesAssetSizeSlider
+        ? (exitTab.variant === "Icon" ? "Icon Size (rem):" : "Logo Size (rem):")
+        : "Text Size (px):";
+    }
+
+    if (usesAssetSizeSlider) {
+      exitTab.tollLogoSize = resolvedFontSize;
+    } else {
+      exitTab.fontSize = resolvedFontSize;
+      exitTab.normalFontSizeBeforeAsset = resolvedFontSize;
+    }
+
+    if (fontValueElmt) {
+      fontValueElmt.innerHTML = usesAssetSizeSlider
+        ? formatExitTabDecimalValue(resolvedFontSize)
+        : resolvedFontSize.toString();
+    }
+
+    const horizontalPadding = document.getElementById("exitTabHorizontalPadding");
+    const isAssetExitTabForPaddingControls = isExitTabAssetVariantValue(exitTab.variant);
+    const resolvedHorizontalPadding = (() => {
+      if (isAssetExitTabForPaddingControls) {
+        return normalizeExitTabAssetPaddingValue(exitTab.assetHorizontalPadding, 0);
+      }
+      const parsedValue = parseFloat(exitTab.horizontalPadding);
+      if (Number.isFinite(parsedValue)) {
+        return Math.max(0, Math.min(3, parsedValue));
+      }
+      return ExitTab.prototype.defaultHorizontalPadding;
     })();
+    if (isAssetExitTabForPaddingControls) {
+      exitTab.assetHorizontalPadding = resolvedHorizontalPadding;
+    } else {
+      exitTab.horizontalPadding = resolvedHorizontalPadding;
+    }
+    if (horizontalPadding) {
+      horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "0";
+      horizontalPadding.max = "3";
+      horizontalPadding.step = "0.1";
+      setExitTabRangeControlValue(horizontalPadding, resolvedHorizontalPadding);
+    }
+    const horizontalPaddingValue = document.getElementById("exitTabHorizontalPaddingValue");
+    if (horizontalPaddingValue) {
+      horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
+    }
 
-    exitTab.fontSize = resolvedFontSize;
-    fontSize.value = resolvedFontSize;
-    document.getElementById("fontValue").innerHTML = resolvedFontSize.toString();
+    const exitTextSizePercent = document.getElementById("exitTabTextSizePercent");
+    const exitTextSizePercentLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
+    const resolvedExitTextSizePercent = (() => {
+      if (isAssetExitTabForPaddingControls) {
+        return normalizeExitTabAssetPaddingValue(exitTab.assetVerticalPadding, 0);
+      }
+      const parsedValue = parseFloat(exitTab.exitTextSizePercent);
+      const parsedVersion = parseInt(exitTab.exitTextSizePercentVersion, 10);
+      if (
+        parsedVersion !== ExitTab.prototype.exitTextSizePercentVersion &&
+        Number.isFinite(parsedValue) &&
+        (parsedValue === 100 || parsedValue === 60)
+      ) {
+        return ExitTab.prototype.defaultExitTextSizePercent;
+      }
+      if (Number.isFinite(parsedValue)) {
+        return Math.max(25, Math.min(100, parsedValue));
+      }
+      return ExitTab.prototype.defaultExitTextSizePercent;
+    })();
+    if (isAssetExitTabForPaddingControls) {
+      exitTab.assetVerticalPadding = resolvedExitTextSizePercent;
+    } else {
+      exitTab.exitTextSizePercent = resolvedExitTextSizePercent;
+      exitTab.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+    }
+    if (exitTextSizePercent) {
+      exitTextSizePercent.min = isAssetExitTabForPaddingControls ? "-3" : "25";
+      exitTextSizePercent.max = isAssetExitTabForPaddingControls ? "3" : "100";
+      exitTextSizePercent.step = isAssetExitTabForPaddingControls ? "0.1" : "1";
+      setExitTabRangeControlValue(exitTextSizePercent, resolvedExitTextSizePercent);
+    }
+    if (exitTextSizePercentLabel) {
+      exitTextSizePercentLabel.textContent = isAssetExitTabForPaddingControls
+        ? "Vertical padding:"
+        : '"EXIT" text size %:';
+    }
+    const exitTextSizePercentValue = document.getElementById("exitTabTextSizePercentValue");
+    if (exitTextSizePercentValue) {
+      exitTextSizePercentValue.innerHTML = isAssetExitTabForPaddingControls
+        ? formatExitTabDecimalValue(resolvedExitTextSizePercent)
+        : resolvedExitTextSizePercent.toString();
+    }
 
     // Nested Tab Spacing (from parent exit tab)
     const nestedTabSpacingInput = document.getElementById("nestedTabSpacing");
     if (nestedTabSpacingInput) {
       const parentExitTab = panel.exitTabs[selectedExitTabIndex];
-      const resolvedSpacing = parentExitTab?.nestedTabSpacing ?? 0;
-      nestedTabSpacingInput.value = resolvedSpacing;
+      const spacingSource =
+        exitTabEditorMode === "default" ? exitTab : parentExitTab;
+      const resolvedSpacing = spacingSource?.nestedTabSpacing ?? 0;
+      setExitTabRangeControlValue(nestedTabSpacingInput, resolvedSpacing);
     }
       
       const nestedSpacingValue = document.getElementById("nestedSpacingValue");
       if (nestedSpacingValue) {
-        nestedSpacingValue.innerHTML = nestedTabSpacingInput.value.toString();
-      }
-
-      const exitFontCheckbox = document.getElementById("exitFont");
-      if (exitFontCheckbox) {
-        exitFontCheckbox.dataset.lastFhwaState = String(!!exitTab.FHWAFont);
+        nestedSpacingValue.innerHTML = formatExitTabDecimalValue(nestedTabSpacingInput.value);
       }
 
     // Shields
@@ -15988,9 +18968,15 @@ const getPostThicknessFallback = () =>
       Control.prototype.blockToClassElems.getElem(currentBlockElem)
       ];
 
-    if (blockElemType === "sdActionMessage" || blockElemType === "sdAdvisory") {
+    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
       if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+      if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
       if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+      if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
+      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+        currentBlockElem.smallCapitals = false;
+      }
       if (currentBlockElem.textColor === undefined) {
         currentBlockElem.textColor =
           blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
@@ -16133,14 +19119,10 @@ const getPostThicknessFallback = () =>
               : "sdShield_bannerCustomText2";
 
           const customInput = document.getElementById(customInputId);
-          const bannerOptions = Shield.prototype.bannerTypes || [];
           const currentBanner =
             currentBlockElem[propertyName] || getDefaultBannerType();
 
-          const matchedPreset = bannerOptions.find(
-            (option) =>
-              String(option).toLowerCase() === String(currentBanner).toLowerCase()
-          );
+          const matchedPreset = findBannerDropdownPresetValue(currentBanner);
 
           const manualBanners = !manualCheckbox || manualCheckbox.checked;
 
@@ -16172,7 +19154,15 @@ const getPostThicknessFallback = () =>
           }
           element.addEventListener("change", readForm, { once: true });
         } else if (element.tagName === "SELECT") {
-          element.value = currentBlockElem[propertyName];
+          const currentSelectValue =
+            propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
+              ? normalizeUiFontValue(currentBlockElem[propertyName])
+              : currentBlockElem[propertyName];
+          currentBlockElem[propertyName] = currentSelectValue;
+          if (!Array.from(element.options).some((option) => option.value === currentSelectValue)) {
+            lib.appendOption(element, currentSelectValue);
+          }
+          element.value = currentSelectValue;
 
           element.addEventListener("change", readForm, { once: true });
           element.addEventListener("blur", readForm, { once: true });
@@ -16555,7 +19545,10 @@ const getPostThicknessFallback = () =>
       "sdActionMessage",
       "sdIcon",
       "sdTollLogo",
-    ].forEach((block) => setDependentVisibility(block));
+    ].forEach((block) => {
+      bindTextFormattingControls(block);
+      setDependentVisibility(block);
+    });
       applyEditorInputBehavior(document);
       bindAllFontPreviewSelects(document);
       syncAllFontPickers();
@@ -16761,8 +19754,12 @@ const getPostThicknessFallback = () =>
       // Populate banner type options
       const bannerTypeSelectElmt = document.createElement("select");
       for (const bannerType of Shield.prototype.bannerTypes) {
-        lib.appendOption(bannerTypeSelectElmt, bannerType, {
-          selected: shields[shieldIndex].bannerType == bannerType,
+        const optionValue = getBannerDropdownValue(bannerType);
+        lib.appendOption(bannerTypeSelectElmt, optionValue, {
+          selected:
+            getBannerDropdownValue(shields[shieldIndex].bannerType) ===
+            optionValue,
+          text: optionValue,
         });
       }
       bannerTypeSelectElmt.id = `shield${shieldIndex}_bannerType`;
@@ -16773,7 +19770,7 @@ const getPostThicknessFallback = () =>
       bannerCustomInputElmt.placeholder = "Custom text";
       bannerCustomInputElmt.id = `shield${shieldIndex}_bannerCustomText`;
       const isCustomBanner =
-        !Shield.prototype.bannerTypes.includes(shields[shieldIndex].bannerType);
+        !findBannerDropdownPresetValue(shields[shieldIndex].bannerType);
       bannerCustomInputElmt.value = isCustomBanner
         ? shields[shieldIndex].bannerType
         : "";
@@ -16791,12 +19788,22 @@ const getPostThicknessFallback = () =>
       bannerPositionSelectElmt.addEventListener("change", readForm);
       rowContainerElmt.appendChild(bannerPositionSelectElmt);
 
+      bindToBannerEntryDefaults(
+        bannerCustomInputElmt,
+        bannerPositionSelectElmt,
+        indentElmt
+      );
+
       rowContainerElmt.appendChild(document.createElement("br"));
 
       const bannerType2SelectElmt = document.createElement("select");
       for (const bannerType2 of Shield.prototype.bannerTypes) {
-        lib.appendOption(bannerType2SelectElmt, bannerType2, {
-          selected: shields[shieldIndex].bannerType2 == bannerType2,
+        const optionValue = getBannerDropdownValue(bannerType2);
+        lib.appendOption(bannerType2SelectElmt, optionValue, {
+          selected:
+            getBannerDropdownValue(shields[shieldIndex].bannerType2) ===
+            optionValue,
+          text: optionValue,
         });
       }
       bannerType2SelectElmt.id = `shield${shieldIndex}_bannerType2`;
@@ -16807,7 +19814,7 @@ const getPostThicknessFallback = () =>
       bannerCustomInputElmt2.placeholder = "Custom text";
       bannerCustomInputElmt2.id = `shield${shieldIndex}_bannerCustomText2`;
       const isCustomBanner2 =
-        !Shield.prototype.bannerTypes.includes(shields[shieldIndex].bannerType2);
+        !findBannerDropdownPresetValue(shields[shieldIndex].bannerType2);
       bannerCustomInputElmt2.value = isCustomBanner2
         ? shields[shieldIndex].bannerType2
         : "";
@@ -17157,5 +20164,11 @@ const getPostThicknessFallback = () =>
       ensureSubpanelMenuOpen: () => ensureSubpanelMenuOpenPublic(),
       ensureExitTabMenuOpen: () => ensureExitTabMenuOpenPublic(),
       ensureGuideArrowMenuOpen: (mode) => ensureGuideArrowMenuOpenPublic(mode),
+      setExitTabEditorMode,
+      setExitTabProfileSelected,
+      applyExitTabProfileToCurrentTab,
+      applyDefaultExitTabProfileToTab,
+      applyExitTabDefaultProfileToPrototype,
+      resetExitTabCurrentProfileSelection,
     };
 })();

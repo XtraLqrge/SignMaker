@@ -21,14 +21,168 @@ const fractionMap = {
 const fractionRegex = new RegExp(Object.keys(fractionMap).join("|"), "g");
 const inputFractionRegex = /^(\d+)\/(\d+)/;
 
-const isClearviewTextFontFamily = (fontFamily) =>
-  /^Clearview\s/i.test(String(fontFamily || ""));
+const CLEARVIEW_FONT_ALIASES = {
+  "Series 1": { light: "Clearview 1B", dark: "Clearview 1W" },
+  "Series 2": { light: "Clearview 2B", dark: "Clearview 2W" },
+  "Series 3": { light: "Clearview 3B", dark: "Clearview 3W" },
+  "Series 4": { light: "Clearview 4B", dark: "Clearview 4W" },
+  "Series 5WR": { light: "Clearview 5WR", dark: "Clearview 5WR" },
+  "Series 5": { light: "Clearview 5B", dark: "Clearview 5W" },
+  "Series 6": { light: "Clearview 6B", dark: "Clearview 6W" },
+};
+
+const LEGACY_CLEARVIEW_TO_ALIAS = {
+  "Clearview 1W": "Series 1",
+  "Clearview 1B": "Series 1",
+  "Clearview 2W": "Series 2",
+  "Clearview 2B": "Series 2",
+  "Clearview 3W": "Series 3",
+  "Clearview 3B": "Series 3",
+  "Clearview 4W": "Series 4",
+  "Clearview 4B": "Series 4",
+  "Clearview 5WR": "Series 5WR",
+  "Clearview 5W": "Series 5",
+  "Clearview 5B": "Series 5",
+  "Clearview 6W": "Series 6",
+  "Clearview 6B": "Series 6",
+};
+
+const DISPLAY_FONT_TO_RENDER_FONT = {
+  "ITC Stone Sans Bold": "ITC Stone Sans Semibold",
+  "Helvetica Thin": "Helvetica Neue Thin",
+  "Helvetica Light": "Helvetica Neue Light",
+  "Helvetica Roman": "Helvetica Neue Roman",
+  "Helvetica Medium": "Helvetica Neue Medium",
+  "Helvetica Bold": "Helvetica Neue Bold",
+};
+
+const LEGACY_FONT_TO_DISPLAY_ALIAS = {
+  "ITC Stone Sans Semibold": "ITC Stone Sans Bold",
+  "Helvetica Neue Thin": "Helvetica Thin",
+  "Helvetica Neue Light": "Helvetica Light",
+  "Helvetica Neue Roman": "Helvetica Roman",
+  "Helvetica Neue Medium": "Helvetica Medium",
+  "Helvetica Neue Bold": "Helvetica Bold",
+};
+
+const normalizeTextFontFamilyName = (fontFamily) => {
+  const raw = String(fontFamily || "").trim();
+  if (!raw) return raw;
+  if (raw === "Series 5R") return "Series 5WR";
+  return LEGACY_CLEARVIEW_TO_ALIAS[raw] || LEGACY_FONT_TO_DISPLAY_ALIAS[raw] || raw;
+};
+
+const isClearviewAliasFontFamily = (fontFamily) =>
+  Object.prototype.hasOwnProperty.call(CLEARVIEW_FONT_ALIASES, String(fontFamily || "").trim());
+
+const isClearviewTextFontFamily = (fontFamily) => {
+  const normalized = normalizeTextFontFamilyName(fontFamily);
+  return isClearviewAliasFontFamily(normalized) || /^Clearview\s/i.test(String(fontFamily || ""));
+};
+
+const getColorBrightness = (colorValue) => {
+  const raw = String(colorValue || "").trim();
+  if (!raw) return null;
+
+  const lower = raw.toLowerCase();
+  const darkNames = new Set(["green", "blue", "brown", "black", "red", "purple"]);
+  const lightNames = new Set(["white", "yellow", "orange", "fluorescent yellow-green", "fluorescent pink", "pink", "yellow-green"]);
+
+  if (darkNames.has(lower)) return "dark";
+  if (lightNames.has(lower)) return "light";
+
+  const namedColor = typeof lib !== "undefined" && lib.colors ? lib.colors[raw] || lib.colors[raw.charAt(0).toUpperCase() + raw.slice(1)] : null;
+  const resolved = String(namedColor || raw).trim();
+  const rgbMatch = resolved.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  const hexMatch = resolved.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+
+  let r, g, b;
+  if (rgbMatch) {
+    r = Number(rgbMatch[1]);
+    g = Number(rgbMatch[2]);
+    b = Number(rgbMatch[3]);
+  } else if (hexMatch) {
+    let hex = hexMatch[1];
+    if (hex.length === 3) {
+      hex = hex.split("").map((part) => part + part).join("");
+    }
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  }
+
+  if (![r, g, b].every(Number.isFinite)) {
+    return null;
+  }
+
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance < 0.52 ? "dark" : "light";
+};
+
+const getTextElementBackgroundBrightness = (fontOwner = {}, panel = null) => {
+  const bg = String(fontOwner.backgroundColor || "").trim();
+  if (bg && bg !== "Inherit" && bg !== "Match BG" && bg !== "Panel Color") {
+    const brightness = getColorBrightness(bg);
+    if (brightness) return brightness;
+  }
+
+  const panelColor =
+    panel?.color ||
+    panel?.sign?.color ||
+    panel?.backgroundColor ||
+    panel?.panelColor ||
+    "Green";
+
+  return getColorBrightness(panelColor) || "dark";
+};
+
+const resolveTextFontFamilyForRender = (fontFamily, fontOwner = {}, panel = null) => {
+  const normalized = normalizeTextFontFamilyName(fontFamily);
+  const alias = CLEARVIEW_FONT_ALIASES[normalized];
+
+  if (!alias) {
+    return DISPLAY_FONT_TO_RENDER_FONT[normalized] || normalized;
+  }
+
+  const brightness = getTextElementBackgroundBrightness(fontOwner, panel);
+  return brightness === "dark" ? alias.dark : alias.light;
+};
+
+const normalizeTextLetterSpacing = (value, fallback = 0) => {
+  const parsed = parseFloat(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(-0.15, Math.min(0.5, parsed));
+};
+
+const normalizeSmallLettersSize = (value, fallback = 75) => {
+  const rawValue = String(value ?? "").trim();
+  const parsed = rawValue === "" ? NaN : Number(rawValue);
+  const fallbackValue = Number(fallback);
+  const safeFallback = Number.isFinite(fallbackValue)
+    ? Math.round(fallbackValue)
+    : 75;
+  const resolved = Number.isFinite(parsed) ? Math.round(parsed) : safeFallback;
+  return Math.max(25, Math.min(100, resolved));
+};
+
+const normalizeTextFontSizePercent = (value, min = 50, max = 150, fallback = 100) => {
+  const rawValue = String(value ?? "").trim();
+  const parsed = rawValue === "" ? NaN : Number(rawValue);
+  const fallbackValue = Number(fallback);
+  const safeFallback = Number.isFinite(fallbackValue)
+    ? Math.round(fallbackValue)
+    : min;
+  const resolved = Number.isFinite(parsed) ? Math.round(parsed) : safeFallback;
+  return Math.max(min, Math.min(max, resolved));
+};
 
 class TextElement {
   constructor({
     textContent = "New Sign",
     backgroundColor = "Inherit",
-    fontFamily = "Clearview 5WR",
+    fontFamily = "Series 5WR",
     fontSize = 100,
     useBannerFormatting = false,
     bannerFormattingSize = 100,
@@ -36,10 +190,12 @@ class TextElement {
     useNumeralFormatting = false,
     numeralFormattingSize = 150,
     alignment = "Center",
-    lineHeight = 100,
+    lineHeight = null,
+    letterSpacing = 0,
+    smallLettersSize = 75,
   } = {}) {
     this.textContent = textContent;
-    this.fontFamily = fontFamily;
+    this.fontFamily = normalizeTextFontFamilyName(fontFamily);
     this.backgroundColor = backgroundColor;
     this.fontSize = fontSize;
     this.useBannerFormatting = useBannerFormatting;
@@ -48,7 +204,14 @@ class TextElement {
     this.numeralFormattingSize = numeralFormattingSize;
     this.bannerFirstLetterSize = bannerFirstLetterSize;
     this.alignment = alignment;
-    this.lineHeight = lineHeight;
+    const parsedLineHeight = parseFloat(lineHeight);
+    this.lineHeight = Number.isFinite(parsedLineHeight)
+      ? parsedLineHeight
+      : isClearviewTextFontFamily(fontFamily)
+        ? 120
+        : 100;
+    this.letterSpacing = normalizeTextLetterSpacing(letterSpacing);
+    this.smallLettersSize = normalizeSmallLettersSize(smallLettersSize);
   }
 
   splitString() {
@@ -234,16 +397,15 @@ class TextElement {
   createElement(panel) {
     const newText = document.createElement("div");
     newText.className = "bE-textElement";
-    const usesHighwayGothic =
-      typeof this.fontFamily === "string" &&
-      this.fontFamily.toLowerCase().includes("series");
+    const renderedFontFamily = resolveTextFontFamilyForRender(this.fontFamily, this, panel);
+    const usesHighwayGothic = isHighwayGothicFontFamily(renderedFontFamily);
 
     // Set custom CSS properties here based off the this. properties
-      newText.style.setProperty("--fontFamily", '"' + this.fontFamily + '"');
+      newText.style.setProperty("--fontFamily", '"' + renderedFontFamily + '"');
 
       const renderedFontSize = getRenderedTextFontSize(
         this.fontSize,
-        this.fontFamily
+        renderedFontFamily
       );
 
       newText.style.setProperty(
@@ -272,6 +434,12 @@ class TextElement {
       "--bannerFirstLetterSize",
       this.bannerFirstLetterSize
     );
+    newText.style.setProperty(
+      "--smallLettersSize",
+      normalizeSmallLettersSize(this.smallLettersSize)
+    );
+    newText.classList.toggle("bE-smallLettersEnabled", this.smallCapitals === true);
+    newText.style.fontVariant = "normal";
     const normalizedLineHeight = (() => {
       const parsedLineHeight = parseFloat(this.lineHeight);
       return Number.isFinite(parsedLineHeight) ? Math.max(0, parsedLineHeight) : 100;
@@ -279,6 +447,7 @@ class TextElement {
 
     newText.style.setProperty("--lineHeight", normalizedLineHeight);
     newText.style.lineHeight = normalizedLineHeight / 100;
+    newText.style.letterSpacing = normalizeTextLetterSpacing(this.letterSpacing) + "em";
     if (usesHighwayGothic) {
       newText.style.setProperty(
         "--fhwaBaselineOffset",
@@ -368,6 +537,49 @@ class TextElement {
       fragment.appendChild(denominator);
     };
 
+    const appendTextWithSmallLetters = (fragment, value) => {
+      const textValue = String(value ?? "");
+      let hasFirstLetterInWord = false;
+      let smallLetterBuffer = "";
+
+      const flushSmallLetters = () => {
+        if (!smallLetterBuffer) {
+          return;
+        }
+
+        const smallLetters = document.createElement("span");
+        smallLetters.className = "bE-smallLetters";
+        smallLetters.textContent = smallLetterBuffer;
+        fragment.appendChild(smallLetters);
+        smallLetterBuffer = "";
+      };
+
+      const isLetter = (character) =>
+        /^[A-Za-z\u00C0-\u024F]$/.test(character);
+
+      for (const character of textValue) {
+        if (isLetter(character)) {
+          if (!hasFirstLetterInWord) {
+            flushSmallLetters();
+            fragment.appendChild(document.createTextNode(character));
+            hasFirstLetterInWord = true;
+          } else {
+            smallLetterBuffer += character;
+          }
+          continue;
+        }
+
+        flushSmallLetters();
+        fragment.appendChild(document.createTextNode(character));
+
+        if (character !== "'" && character !== "’") {
+          hasFirstLetterInWord = false;
+        }
+      }
+
+      flushSmallLetters();
+    };
+
     const createTextFragment = (text) => {
       const newTextFragment = document.createElement("span");
       newTextFragment.className = "bE-" + text.type;
@@ -386,6 +598,8 @@ class TextElement {
           newTextFragment.classList.add("bE-tightClearviewFractionSpace");
         }
         newTextFragment.textContent = text.value || " ";
+      } else if (this.smallCapitals === true) {
+        appendTextWithSmallLetters(newTextFragment, text.value);
       } else {
         newTextFragment.textContent = text.value;
       }
@@ -440,19 +654,13 @@ class TextElement {
 }
 
 TextElement.prototype.fontFamily = [
-  "Clearview 1B",
-  "Clearview 1W",
-  "Clearview 2B",
-  "Clearview 2W",
-  "Clearview 3B",
-  "Clearview 3W",
-  "Clearview 4B",
-  "Clearview 4W",
-  "Clearview 5B",
-  "Clearview 5W",
-  "Clearview 5WR",
-  "Clearview 6B",
-  "Clearview 6W",
+  "Series 1",
+  "Series 2",
+  "Series 3",
+  "Series 4",
+  "Series 5WR",
+  "Series 5",
+  "Series 6",
   "Series B",
   "Series C",
   "Series D",
@@ -464,12 +672,12 @@ TextElement.prototype.fontFamily = [
   "Rawlinson Regular",
   "Rawlinson Bold",
   "ITC Stone Sans Regular",
-  "ITC Stone Sans Semibold",
-  "Helvetica Neue Thin",
-  "Helvetica Neue Light",
-  "Helvetica Neue Roman",
-  "Helvetica Neue Medium",
-  "Helvetica Neue Bold",
+  "ITC Stone Sans Bold",
+  "Helvetica Thin",
+  "Helvetica Light",
+  "Helvetica Roman",
+  "Helvetica Medium",
+  "Helvetica Bold",
   "Arial",
   "Arial Bold",
   "Transport",
@@ -540,7 +748,7 @@ const normalizeStoredDefaultsAlignment = (value) => {
 const HIGHWAY_GOTHIC_TEXT_RENDER_SCALE = 1.2;
 
 const isHighwayGothicFontFamily = (fontFamily) =>
-  /^Series\s/i.test(String(fontFamily || "")) ||
+  /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(String(fontFamily || "")) ||
   String(fontFamily || "") === "Highway Gothic" ||
   String(fontFamily || "") === "Highway Gothic Wide";
 
@@ -587,13 +795,20 @@ class ControlTextElement extends TextElement {
 
       resolvedOptions.fontFamily = resolvedFont;
 
-      resolvedOptions.fontSize = parseFloat(
+      if (!Object.prototype.hasOwnProperty.call(resolvedOptions, "lineHeight")) {
+        resolvedOptions.lineHeight = isClearviewTextFontFamily(resolvedFont) ? 120 : 100;
+      }
+
+      resolvedOptions.fontSize = normalizeTextFontSizePercent(
         getStoredDefaultsOption(
           resolvedOptions,
           "fontSize",
           "settingsDefaultsControlTextSize",
           100
-        )
+        ),
+        50,
+        250,
+        100
       );
 
       resolvedOptions.backgroundColor = getStoredDefaultsOption(
@@ -631,7 +846,6 @@ class ControlTextElement extends TextElement {
   createElement(panel) {
     const newText = super.createElement(panel);
     newText.style.setProperty("--spacing", this.spacing + "rem");
-    newText.style.fontVariant = this.smallCapitals ? "small-caps" : "normal";
     newText.classList.add("bE-controlTextElement");
 
     const shouldOverrideTextColor =
@@ -653,9 +867,9 @@ class ControlTextElement extends TextElement {
 }
 
 ControlTextElement.defaultFont = TextElement.prototype.fontFamily.includes(
-  "Clearview 5WR"
+  "Series 5WR"
 )
-  ? "Clearview 5WR"
+  ? "Series 5WR"
   : TextElement.prototype.fontFamily[0];
 
 ControlTextElement.getDefaultFont = function () {
@@ -700,13 +914,13 @@ class ActionMessageElement extends TextElement {
       resolvedOptions,
       "fontFamily",
       "settingsDefaultsActionFont",
-      "Clearview 5WR"
+      "Series 5WR"
     );
 
     const resolvedFont =
       Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
         ? storedOrFallbackFont
-        : "Clearview 5WR";
+        : "Series 5WR";
 
     resolvedOptions.textContent = getStoredDefaultsOption(
       resolvedOptions,
@@ -717,13 +931,16 @@ class ActionMessageElement extends TextElement {
 
     resolvedOptions.fontFamily = resolvedFont;
 
-    resolvedOptions.fontSize = parseFloat(
+    resolvedOptions.fontSize = normalizeTextFontSizePercent(
       getStoredDefaultsOption(
         resolvedOptions,
         "fontSize",
         "settingsDefaultsActionSize",
         70
-      )
+      ),
+      50,
+      150,
+      70
     );
 
     resolvedOptions.backgroundColor = getStoredDefaultsOption(
@@ -771,7 +988,6 @@ class ActionMessageElement extends TextElement {
     newText.style.setProperty("--spacing", this.spacing + "rem");
     newText.style.marginLeft = this.spacing + "rem";
     newText.style.marginRight = this.spacing + "rem";
-    newText.style.fontVariant = this.smallCapitals ? "small-caps" : "normal";
     newText.classList.add("bE-actionMessageElement");
 
     const shouldOverrideTextColor =
@@ -823,13 +1039,16 @@ class AdvisoryMessageElement extends TextElement {
 
     resolvedOptions.fontFamily = resolvedFont;
 
-    resolvedOptions.fontSize = parseFloat(
+    resolvedOptions.fontSize = normalizeTextFontSizePercent(
       getStoredDefaultsOption(
         resolvedOptions,
         "fontSize",
         "settingsDefaultsAdvisorySize",
         70
-      )
+      ),
+      50,
+      150,
+      70
     );
 
     resolvedOptions.backgroundColor = getStoredDefaultsOption(
@@ -895,7 +1114,6 @@ class AdvisoryMessageElement extends TextElement {
     newText.style.setProperty("--spacing", this.spacing + "rem");
     newText.style.marginLeft = this.spacing + "rem";
     newText.style.marginRight = this.spacing + "rem";
-    newText.style.fontVariant = this.smallCapitals ? "small-caps" : "normal";
     newText.className = "bE-textElement bE-advisoryMessage";
 
     const shouldOverrideTextColor =
@@ -1030,7 +1248,10 @@ const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
   const cssWeight = Math.min(1000, Math.max(1, requestedWeight));
 
   routeEl.style.color = getCustomShieldMakerCssColor(style.color);
-  routeEl.style.fontFamily = `"${style.fontFamily || "Series D"}", sans-serif`;
+  const customShieldRenderedFont = typeof resolveTextFontFamilyForRender === "function"
+    ? resolveTextFontFamilyForRender(style.fontFamily || "Series D", { backgroundColor: "Blue" }, { color: "Blue" })
+    : (style.fontFamily || "Series D");
+  routeEl.style.fontFamily = `"${customShieldRenderedFont}", sans-serif`;
   routeEl.style.fontSize = getCustomShieldMakerDisplayEm(style.fontSize, 220);
   routeEl.style.fontWeight = String(cssWeight);
   routeEl.style.fontVariationSettings = `"wght" ${requestedWeight}`;
@@ -1166,16 +1387,16 @@ class ShieldElement extends Shield {
     this.specialBannerType = "None";
   }
 
-  createElement() {
+  createElement(panel) {
     const wrapper = document.createElement("div");
     wrapper.className = "bE-shieldElement";
 
+    let toEl = null;
     if (this.to) {
-      const toEl = document.createElement("p");
+      toEl = document.createElement("p");
       toEl.className = "to";
       toEl.textContent = "TO";
       toEl.style.display = "inline";
-      wrapper.appendChild(toEl);
     }
 
     const config = ShieldElement.prototype.getBlockShieldConfig(
@@ -1202,16 +1423,37 @@ class ShieldElement extends Shield {
     const fontSizeCss = ShieldElement.prototype.getFontSizeCss(this.fontSize);
     const bannerFontFamily =
       ShieldElement.prototype.normalizeBannerFontFamily(this.bannerFontFamily);
+    const renderedBannerFontFamily =
+      ShieldElement.prototype.resolveBannerFontFamilyForRender(
+        bannerFontFamily,
+        panel
+      );
     wrapper.style.setProperty("--shieldScale", shieldScale.toString());
     wrapper.style.setProperty(
       "--shieldSize",
       normalizedShieldSize + "rem"
     );
     wrapper.style.setProperty("--bannerScale", bannerScale.toString());
+    if (renderedBannerFontFamily) {
+      wrapper.style.setProperty(
+        "--bannerFontFamily",
+        `"${renderedBannerFontFamily}"`
+      );
+    }
+    wrapper._mergeableAboveBanner =
+      ShieldElement.prototype.getMergeableAboveBanner(
+        this,
+        bannerScale,
+        panel
+      );
 
     const shieldContainer = document.createElement("div");
     const containerClass = config.className || config.value;
     shieldContainer.className = `bannerShieldContainer ${containerClass}`;
+    if (toEl) {
+      shieldContainer.classList.add("hasTo");
+      shieldContainer.appendChild(toEl);
+    }
     if (config?.customShieldMaker) {
       shieldContainer.classList.add("customShieldMakerRenderedContainer");
     }
@@ -1332,7 +1574,8 @@ class ShieldElement extends Shield {
               fontSizeCss,
               this.indentFirstLetter,
               bannerFontFamily,
-              this.smallCaps
+              this.smallCaps,
+              panel
             );
 
           if (itemsForPosition.some((item) => item.isRoadName)) {
@@ -1341,6 +1584,10 @@ class ShieldElement extends Shield {
 
           if (itemsForPosition.some((item) => item.isMultilineRoadName)) {
             stackedBannerSlot.classList.add("roadNameMultilineStack");
+          }
+
+          if (stackedBannerSlot.classList.contains("sideBannerStack")) {
+            shieldContainer.classList.add("sideBannerStackLayout");
           }
 
           shieldContainer.appendChild(stackedBannerSlot);
@@ -1358,7 +1605,8 @@ class ShieldElement extends Shield {
           bannerFontFamily,
           false,
           position,
-          item.smallCaps
+          item.smallCaps,
+          panel
         );
 
         shieldContainer.appendChild(bannerContainerElmt);
@@ -1385,22 +1633,37 @@ class ShieldElement extends Shield {
       routeEl.innerHTML = String(routeText || "")
         .split("")
         .map((char) => {
-          const safeChar = char
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
+          const isSpace = char === " ";
+          const safeChar = isSpace
+            ? "&nbsp;"
+            : char
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
 
           const charClass = /^[0-9A-Za-z]$/.test(char)
             ? ` routeChar-${char.toUpperCase()}`
-            : "";
+            : isSpace
+              ? " routeChar-space"
+              : "";
 
           return `<span class="routeChar${charClass}">${safeChar}</span>`;
         })
         .join("");
 
       if (config?.customShieldMaker) {
-        applyCustomShieldMakerRouteStyle(routeEl, config);
+        const customVariantKey = String(variantKey || "").match(/^(\d+)/)?.[1] || "";
+        const customVariantConfig = {
+          ...config,
+          customRouteStyle:
+            (customVariantKey && config.customRouteStyleByVariant?.[customVariantKey]) ||
+            config.customRouteStyle,
+          customAnchor:
+            (customVariantKey && config.customAnchorByVariant?.[customVariantKey]) ||
+            config.customAnchor,
+        };
+        applyCustomShieldMakerRouteStyle(routeEl, customVariantConfig);
       }
 
       if (ShieldElement.prototype.isCountyShield(config)) {
@@ -1451,7 +1714,9 @@ ShieldElement.prototype.defaultBannerFontSize =
 ShieldElement.prototype.defaultBannerFontFamily = "Series E";
 
 ShieldElement.prototype.isHighwayGothicBannerFont = function (fontFamily) {
-  return /^Series\b/i.test(String(fontFamily || ""));
+  return /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(
+    String(fontFamily || "")
+  );
 };
 
 ShieldElement.prototype.getDefaultBannerFontSizeForFont = function (fontFamily) {
@@ -1682,7 +1947,12 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       });
     };
 
-    const ensureExactShield = (value, label, path) => {
+    const ensureExactShield = (
+      value,
+      label,
+      path,
+      suppressRouteNumber = true
+    ) => {
       ensureShield({
         value,
         label,
@@ -1690,7 +1960,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
         assetFolder: path.split("/").slice(0, -1).join("/"),
         assetName: value,
         assetPath: path,
-        suppressRouteNumber: true,
+        suppressRouteNumber,
         categories: ["United States"],
       });
     };
@@ -2135,8 +2405,8 @@ ShieldElement.prototype.buildBlockShieldList = function () {
 
     ensureExactShield("HTR", "Hardy Toll Road", "img/shields/United States/TX/HTR.png");
     ensureExactShield("SHT", "Sam Houston Tollway", "img/shields/United States/TX/SHT.png");
-    ensureExactShield("TXTOLLCTRMA", "Texas Toll CTRMA", "img/shields/United States/TX/TXTollCTRMA.svg");
-    ensureExactShield("TXTOLLNTTA", "Texas Toll NTTA", "img/shields/United States/TX/TXTollNTTA.svg");
+    ensureExactShield("TXTOLLCTRMA", "Texas Toll CTRMA", "img/shields/United States/TX/TXTollCTRMA.svg", false);
+    ensureExactShield("TXTOLLNTTA", "Texas Toll NTTA", "img/shields/United States/TX/TXTollNTTA.svg", false);
     ensureExactShield("TXTOLLFBTR", "Fort Bend Toll Road", "img/shields/United States/TX/TXTollFBTR.png");
     ensureExactShield("WPT", "Westpark Tollway", "img/shields/United States/TX/WPT.png");
     
@@ -2604,7 +2874,15 @@ ShieldElement.prototype.getBannerFontOptions = function () {
 
 ShieldElement.prototype.normalizeBannerType = function (value) {
   const options = Shield.prototype.bannerTypes || [];
-  const trimmed = typeof value === "string" ? value.trim() : "";
+  const rawValue = typeof value === "string" ? value : "";
+
+  // A whitespace-only manual banner is intentional. It creates a blank
+  // above-banner slot so adjacent shields can stay vertically aligned.
+  if (rawValue.length > 0 && rawValue.trim() === "") {
+    return rawValue;
+  }
+
+  const trimmed = rawValue.trim();
   if (!trimmed) {
     return ShieldElement.prototype.defaultBannerType;
   }
@@ -2624,13 +2902,52 @@ ShieldElement.prototype.normalizeBannerPosition = function (value) {
 
 ShieldElement.prototype.normalizeBannerFontFamily = function (value) {
   const options = ShieldElement.prototype.getBannerFontOptions();
-  if (typeof value === "string" && options.includes(value)) {
-    return value;
+  const normalizedValue =
+    typeof normalizeTextFontFamilyName === "function"
+      ? normalizeTextFontFamilyName(value)
+      : String(value || "").trim();
+
+  if (normalizedValue && options.includes(normalizedValue)) {
+    return normalizedValue;
   }
+
+  if (normalizedValue) {
+    const caseInsensitiveMatch = options.find(
+      (option) =>
+        String(option).toLowerCase() === String(normalizedValue).toLowerCase()
+    );
+
+    if (caseInsensitiveMatch) {
+      return caseInsensitiveMatch;
+    }
+  }
+
   return (
     ShieldElement.prototype.defaultBannerFontFamily ||
     (options.length ? options[0] : "")
   );
+};
+
+ShieldElement.prototype.resolveBannerFontFamilyForRender = function (
+  value,
+  panel = null
+) {
+  const normalizedFont =
+    ShieldElement.prototype.normalizeBannerFontFamily(value);
+
+  if (typeof resolveTextFontFamilyForRender === "function") {
+    return resolveTextFontFamilyForRender(normalizedFont, {}, panel);
+  }
+
+  if (
+    typeof DISPLAY_FONT_TO_RENDER_FONT === "object" &&
+    DISPLAY_FONT_TO_RENDER_FONT !== null &&
+    DISPLAY_FONT_TO_RENDER_FONT[normalizedFont]
+  ) {
+    return DISPLAY_FONT_TO_RENDER_FONT[normalizedFont];
+  }
+
+  return normalizedFont;
 };
 
 ShieldElement.prototype.normalizeFontSize = function (
@@ -2686,11 +3003,14 @@ ShieldElement.prototype.normalizeScaleBannersWithShield = function (value) {
 };
 
 ShieldElement.prototype.getBannerDisplayInfo = function (value) {
-  const rawValue = String(value ?? "").trim();
-  let displayValue = rawValue;
+  const originalValue = String(value ?? "");
+  const isBlankPlaceholder =
+    originalValue.length > 0 && originalValue.trim() === "";
+  const rawValue = isBlankPlaceholder ? originalValue : originalValue.trim();
+  let displayValue = isBlankPlaceholder ? "\u00a0" : rawValue;
   let quoted = false;
 
-  if (rawValue.length >= 2) {
+  if (!isBlankPlaceholder && rawValue.length >= 2) {
     const firstChar = rawValue.charAt(0);
     const lastChar = rawValue.charAt(rawValue.length - 1);
     const matchingQuotes =
@@ -2705,13 +3025,16 @@ ShieldElement.prototype.getBannerDisplayInfo = function (value) {
     }
   }
 
-  const normalizedValue = displayValue.toUpperCase().replace(/\s+/g, " ").trim();
+  const normalizedValue = isBlankPlaceholder
+    ? ""
+    : displayValue.toUpperCase().replace(/\s+/g, " ").trim();
 
   return {
     rawValue,
     displayValue,
     normalizedValue,
     quoted,
+    isBlankPlaceholder,
     isTollPlaque: normalizedValue === "TOLL",
     isTruckPlaque: normalizedValue === "TRUCKS" || normalizedValue === "NO TRUCKS",
   };
@@ -2720,9 +3043,101 @@ ShieldElement.prototype.getBannerDisplayInfo = function (value) {
 ShieldElement.prototype.hasBannerValue = function (value) {
   const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(value);
   return (
-    bannerInfo.displayValue !== "" &&
-    bannerInfo.normalizedValue !== "NONE"
+    bannerInfo.isBlankPlaceholder ||
+    (bannerInfo.displayValue !== "" && bannerInfo.normalizedValue !== "NONE")
   );
+};
+
+ShieldElement.prototype.getMergeableAboveBanner = function (
+  shield,
+  bannerScale = 1,
+  panel = null
+) {
+  if (!shield) {
+    return null;
+  }
+
+  const bannerCandidates = [
+    {
+      value: shield.bannerType,
+      position: shield.bannerPosition,
+      bannerClass: "bannerA",
+      indentFirstLetter: shield.indentFirstLetter,
+      smallCaps: shield.smallCaps,
+    },
+    {
+      value: shield.bannerType2,
+      position: shield.bannerPosition2,
+      bannerClass: "bannerB",
+      indentFirstLetter:
+        shield.indentFirstLetter2 !== undefined
+          ? shield.indentFirstLetter2
+          : shield.indentFirstLetter,
+      smallCaps:
+        shield.smallCaps2 !== undefined ? shield.smallCaps2 : shield.smallCaps,
+    },
+  ].filter(
+    (candidate) =>
+      ShieldElement.prototype.normalizeBannerPosition(candidate.position) ===
+        "Above" &&
+      ShieldElement.prototype.hasBannerValue(candidate.value)
+  );
+
+  const rawRoadName = String(shield.roadName || "");
+  const hasRoadName = rawRoadName.trim().length > 0;
+  const hasBannerA = ShieldElement.prototype.hasBannerValue(shield.bannerType);
+  const hasBannerB = ShieldElement.prototype.hasBannerValue(shield.bannerType2);
+  const roadNamePosition = hasBannerA
+    ? ShieldElement.prototype.normalizeBannerPosition(shield.bannerPosition)
+    : hasBannerB
+      ? ShieldElement.prototype.normalizeBannerPosition(shield.bannerPosition2)
+      : ShieldElement.prototype.normalizeBannerPosition(shield.bannerPosition);
+
+  // Do not merge stacked content. A shared banner is only used when one plain
+  // banner is the sole item occupying the Above slot on each shield.
+  if (
+    bannerCandidates.length !== 1 ||
+    (hasRoadName && roadNamePosition === "Above")
+  ) {
+    return null;
+  }
+
+  const candidate = bannerCandidates[0];
+  const info = ShieldElement.prototype.getBannerDisplayInfo(candidate.value);
+
+  // Quotation marks are an explicit opt-out. Blank placeholders reserve space
+  // but do not form a visible shared banner.
+  if (
+    info.quoted ||
+    info.isBlankPlaceholder ||
+    !info.displayValue ||
+    info.normalizedValue === "NONE"
+  ) {
+    return null;
+  }
+
+  return {
+    text: info.displayValue,
+    bannerClass: candidate.bannerClass,
+    indentFirstLetter: candidate.indentFirstLetter !== false,
+    smallCaps: candidate.smallCaps !== false,
+    fontSizeCss: ShieldElement.prototype.getFontSizeCss(shield.fontSize),
+    bannerFontFamily: ShieldElement.prototype.normalizeBannerFontFamily(
+      shield.bannerFontFamily
+    ),
+    bannerScale: Number.isFinite(Number(bannerScale)) ? Number(bannerScale) : 1,
+    panelColor:
+      panel?.color ||
+      panel?.sign?.color ||
+      panel?.backgroundColor ||
+      panel?.panelColor ||
+      "Green",
+    plaqueKind: info.isTollPlaque
+      ? "toll"
+      : info.isTruckPlaque
+        ? "truck"
+        : "plain",
+  };
 };
 
 ShieldElement.prototype.createBannerElement = function (
@@ -2731,7 +3146,8 @@ ShieldElement.prototype.createBannerElement = function (
   fontSizeCss,
   indentFirstLetter,
   bannerFontFamily,
-  smallCaps = true
+  smallCaps = true,
+  panel = null
 ) {
   const bannerEl = document.createElement("p");
   const shouldIndent = indentFirstLetter !== false;
@@ -2741,14 +3157,24 @@ ShieldElement.prototype.createBannerElement = function (
 
   const normalizedFont =
     ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+  const renderedFont =
+    ShieldElement.prototype.resolveBannerFontFamilyForRender(
+      normalizedFont,
+      panel
+    );
 
-  if (normalizedFont) {
-    bannerEl.style.setProperty("--bannerFontFamily", `"${normalizedFont}"`);
-    bannerEl.style.fontFamily = `"${normalizedFont}"`;
+  if (renderedFont) {
+    bannerEl.style.setProperty("--bannerFontFamily", `"${renderedFont}"`);
+    bannerEl.style.fontFamily = `"${renderedFont}"`;
   }
 
   const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
   const normalizedBannerValue = bannerInfo.displayValue;
+
+  if (bannerInfo.isBlankPlaceholder) {
+    bannerEl.classList.add("blankBannerPlaceholder");
+  }
+
   const isRoadNameBanner = String(bannerClass || "")
     .split(/\s+/)
     .includes("bannerRoadName");
@@ -2769,8 +3195,9 @@ ShieldElement.prototype.createBannerElement = function (
     ? normalizedBannerValue.replace(/\\n/g, "\n")
     : normalizedBannerValue;
 
-  bannerEl.textContent =
-    normalizedBannerValue && bannerInfo.normalizedValue !== "NONE"
+  bannerEl.textContent = bannerInfo.isBlankPlaceholder
+    ? "W"
+    : normalizedBannerValue && bannerInfo.normalizedValue !== "NONE"
       ? displayBannerValue
       : " ";
 
@@ -2797,7 +3224,8 @@ ShieldElement.prototype.createStackedBannerSlot = function (
   fontSizeCss,
   indentFirstLetter,
   bannerFontFamily,
-  smallCaps = true
+  smallCaps = true,
+  panel = null
 ) {
   const normalizedPosition = ShieldElement.prototype.normalizeBannerPosition(
     position
@@ -2837,6 +3265,49 @@ ShieldElement.prototype.createStackedBannerSlot = function (
     container.classList.add("truckStackedBanner");
   }
 
+  const isSidePosition =
+    normalizedPosition === "Left" || normalizedPosition === "Right";
+  const isBilingualDirectionBanner = container.classList.contains(
+    "bilingualDirectionBanner"
+  );
+
+  if (isSidePosition) {
+    container.classList.add("sideBannerStack");
+  }
+  const hasPlainEnlargedBanner = banners.some((banner) => {
+    const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(
+      banner.bannerValue
+    );
+    const bannerIndent =
+      typeof banner.indentFirstLetter === "boolean"
+        ? banner.indentFirstLetter
+        : indentFirstLetter;
+    const isRoadName =
+      banner.isRoadName === true ||
+      String(banner.bannerClass || "")
+        .split(/\s+/)
+        .includes("bannerRoadName");
+
+    return (
+      !isRoadName &&
+      bannerIndent !== false &&
+      !bannerInfo.isTollPlaque &&
+      !bannerInfo.isTruckPlaque
+    );
+  });
+
+  // Normal enlarged-letter side stacks share the shield's grid-row start.
+  // Their lower lines remain in normal flow and do not alter the top line.
+  if (
+    isSidePosition &&
+    !isBilingualDirectionBanner &&
+    !hasTollBanner &&
+    !hasTruckBanner &&
+    hasPlainEnlargedBanner
+  ) {
+    container.classList.add("plainEnlargedSideBannerStack");
+  }
+
   banners.forEach(
     ({
       bannerClass,
@@ -2866,7 +3337,8 @@ ShieldElement.prototype.createStackedBannerSlot = function (
         fontSizeCss,
         bannerIndent,
         bannerFontFamily,
-        bannerSmallCaps
+        bannerSmallCaps,
+        panel
       );
 
       if (isMultilineRoadName) {
@@ -2889,7 +3361,8 @@ ShieldElement.prototype.createBannerContainer = function (
   bannerFontFamily,
   isSecond,
   position,
-  smallCaps = true
+  smallCaps = true,
+  panel = null
 ) {
   const container = document.createElement("div");
   container.className = containerClass;
@@ -2916,7 +3389,8 @@ ShieldElement.prototype.createBannerContainer = function (
     fontSizeCss,
     indentFirstLetter,
     bannerFontFamily,
-    smallCaps
+    smallCaps,
+    panel
   );
 
   container.appendChild(bannerEl);
@@ -4427,6 +4901,219 @@ class Block {
 }
 Block.defaultBorderColor = "Match BG";
 
+ShieldElement.prototype.areMergeableAboveBannersEquivalent = function (
+  firstDescriptor,
+  secondDescriptor
+) {
+  if (!firstDescriptor || !secondDescriptor) {
+    return false;
+  }
+
+  return (
+    firstDescriptor.text === secondDescriptor.text &&
+    firstDescriptor.indentFirstLetter === secondDescriptor.indentFirstLetter &&
+    firstDescriptor.smallCaps === secondDescriptor.smallCaps &&
+    firstDescriptor.fontSizeCss === secondDescriptor.fontSizeCss &&
+    firstDescriptor.bannerFontFamily === secondDescriptor.bannerFontFamily &&
+    firstDescriptor.bannerScale === secondDescriptor.bannerScale &&
+    firstDescriptor.panelColor === secondDescriptor.panelColor &&
+    firstDescriptor.plaqueKind === secondDescriptor.plaqueKind
+  );
+};
+
+ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
+  if (!container) {
+    return;
+  }
+
+  const children = Array.from(container.children);
+  const mergeRuns = [];
+  let index = 0;
+
+  while (index < children.length) {
+    const first = children[index];
+    const descriptor = first?._mergeableAboveBanner;
+
+    if (!descriptor) {
+      index += 1;
+      continue;
+    }
+
+    const run = [first];
+    let nextIndex = index + 1;
+
+    while (nextIndex < children.length) {
+      const next = children[nextIndex];
+      const nextDescriptor = next?._mergeableAboveBanner;
+
+      if (
+        !ShieldElement.prototype.areMergeableAboveBannersEquivalent(
+          descriptor,
+          nextDescriptor
+        )
+      ) {
+        break;
+      }
+
+      run.push(next);
+      nextIndex += 1;
+    }
+
+    if (run.length > 1) {
+      mergeRuns.push({ run, descriptor });
+    }
+
+    index = nextIndex;
+  }
+
+  if (!mergeRuns.length) {
+    return;
+  }
+
+  container.classList.add("bE-hasSharedAboveBanners");
+
+  mergeRuns.forEach(({ run, descriptor }) => {
+    const sharedBanner = ShieldElement.prototype.createBannerElement(
+      descriptor.bannerClass,
+      descriptor.text,
+      descriptor.fontSizeCss,
+      descriptor.indentFirstLetter,
+      descriptor.bannerFontFamily,
+      descriptor.smallCaps,
+      { color: descriptor.panelColor }
+    );
+
+    sharedBanner.classList.add("bE-sharedAboveBannerText");
+    sharedBanner.style.setProperty(
+      "--bannerScale",
+      String(descriptor.bannerScale || 1)
+    );
+    sharedBanner.style.visibility = "hidden";
+    sharedBanner.setAttribute("aria-hidden", "true");
+    container.appendChild(sharedBanner);
+
+    const runEntries = run.map((shieldElement) => {
+      const shieldDescriptor = shieldElement._mergeableAboveBanner;
+      const sourceBanner = shieldElement.querySelector(
+        `.bannerSlot-above .${shieldDescriptor.bannerClass}`
+      );
+
+      if (sourceBanner) {
+        sourceBanner.classList.add("bE-sharedAboveBannerSource");
+      }
+
+      return {
+        shieldElement,
+        sourceBanner,
+      };
+    });
+
+    let positionFrame = null;
+
+    const positionSharedBanner = () => {
+      positionFrame = null;
+
+      if (!container.isConnected || !sharedBanner.isConnected) {
+        return;
+      }
+
+      const firstShield =
+        runEntries[0].shieldElement.querySelector(".shield") ||
+        runEntries[0].shieldElement;
+      const lastShield =
+        runEntries[runEntries.length - 1].shieldElement.querySelector(".shield") ||
+        runEntries[runEntries.length - 1].shieldElement;
+      const sourceBanner = runEntries[0].sourceBanner;
+
+      const firstRect = firstShield.getBoundingClientRect();
+      const lastRect = lastShield.getBoundingClientRect();
+      const bannerRect = sharedBanner.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const sourceRect = sourceBanner?.getBoundingClientRect();
+
+      if (
+        !firstRect.width ||
+        !lastRect.width ||
+        !bannerRect.width ||
+        !containerRect.width ||
+        !sourceRect?.height
+      ) {
+        return;
+      }
+
+      const naturalSpan = Math.max(0, lastRect.right - firstRect.left);
+      const extraWidth = Math.max(0, bannerRect.width - naturalSpan);
+      const extraPerGap =
+        extraWidth > 0 && runEntries.length > 1
+          ? extraWidth / (runEntries.length - 1)
+          : 0;
+
+      const baseMargins = runEntries.map((entry) => {
+        const computedMarginRight = parseFloat(
+          window.getComputedStyle(entry.shieldElement).marginRight
+        );
+        return Number.isFinite(computedMarginRight) ? computedMarginRight : 0;
+      });
+
+      const containerScaleX =
+        container.offsetWidth > 0
+          ? containerRect.width / container.offsetWidth
+          : 1;
+      const containerScaleY =
+        container.offsetHeight > 0
+          ? containerRect.height / container.offsetHeight
+          : containerScaleX;
+      const safeScaleX =
+        Number.isFinite(containerScaleX) && containerScaleX > 0
+          ? containerScaleX
+          : 1;
+      const safeScaleY =
+        Number.isFinite(containerScaleY) && containerScaleY > 0
+          ? containerScaleY
+          : safeScaleX;
+
+      const runCenter =
+        ((firstRect.left + lastRect.right + extraWidth) / 2 -
+          containerRect.left) /
+        safeScaleX;
+      const bannerTop =
+        (sourceRect.top - containerRect.top) / safeScaleY;
+
+      if (extraPerGap > 0) {
+        runEntries.slice(0, -1).forEach((entry, entryIndex) => {
+          entry.shieldElement.style.setProperty(
+            "margin-right",
+            baseMargins[entryIndex] + extraPerGap + "px",
+            "important"
+          );
+        });
+      }
+
+      sharedBanner.style.setProperty("left", runCenter + "px", "important");
+      sharedBanner.style.setProperty("top", bannerTop + "px", "important");
+      sharedBanner.style.removeProperty("visibility");
+    };
+
+    const schedulePosition = () => {
+      if (positionFrame !== null) {
+        return;
+      }
+
+      positionFrame = requestAnimationFrame(positionSharedBanner);
+    };
+
+    if (
+      document.fonts &&
+      document.fonts.status === "loading" &&
+      document.fonts.ready
+    ) {
+      document.fonts.ready.then(schedulePosition).catch(schedulePosition);
+    } else {
+      schedulePosition();
+    }
+  });
+};
+
 class Control {
   constructor({ rows = [], blockProperties = [] } = {}) {
     this.rows = rows;
@@ -4570,6 +5257,10 @@ class Control {
       const bottomPadding = parseFloat(properties.bottomPadding) || 0;
       const topSpacing = topPadding + "rem";
       const bottomSpacing = bottomPadding + "rem";
+      const topPositiveSpacing = Math.max(0, topPadding) + "rem";
+      const bottomPositiveSpacing = Math.max(0, bottomPadding) + "rem";
+      const topNegativeSpacing = Math.min(0, topPadding) + "rem";
+      const bottomNegativeSpacing = Math.min(0, bottomPadding) + "rem";
       const bleedTop = i === 0 ? signPadding.top : "0rem";
       const bleedBottom = i === totalRows - 1 ? signPadding.bottom : "0rem";
 
@@ -4612,10 +5303,10 @@ class Control {
         flexRow.style.setProperty("--blockBleedTop", bleedTop);
         flexRow.style.setProperty("--blockBleedBottom", bleedBottom);
         flexRow.style.width = rowWidthStyle;
-        flexRow.style.setProperty("--marginTop", "0rem");
-        flexRow.style.setProperty("--marginBottom", "0rem");
-        flexRow.style.setProperty("--blockPaddingTopExtra", topSpacing);
-        flexRow.style.setProperty("--blockPaddingBottomExtra", bottomSpacing);
+        flexRow.style.setProperty("--marginTop", topNegativeSpacing);
+        flexRow.style.setProperty("--marginBottom", bottomNegativeSpacing);
+        flexRow.style.setProperty("--blockPaddingTopExtra", topPositiveSpacing);
+        flexRow.style.setProperty("--blockPaddingBottomExtra", bottomPositiveSpacing);
         const chosenBorderColor =
           typeof properties.borderColor === "string" &&
             properties.borderColor.trim().length
@@ -4779,6 +5470,7 @@ class Control {
         : "false";
 
       for (const alignmentGroup of alignmentGroups) {
+        ShieldElement.prototype.mergeConsecutiveAboveBanners(alignmentGroup);
         applyAlignmentGroupStretch(alignmentGroup);
         flexRow.appendChild(alignmentGroup);
       }

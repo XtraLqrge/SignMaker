@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-  <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer, XtraLqrge" />
-  <meta name="description" content="The BEST Highway Sign Maker" />
-  <title>Highway Sign Maker (v2.19)</title>
+  <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer, DuskDarf1, XtraLqrge" />
+  <meta name="description" content="Version 2.19 (BETA)" />
+  <title>Highway Sign Maker</title>
   <script>
     (function () {
       const THEME_MODE_STORAGE_KEY = "signMaker.interfaceThemeMode";
@@ -116,15 +116,33 @@
           <div id="downloadPanelButtonsMessage" class="downloadPanelButtonsMessage"></div>
         </div>
 
+        <div class="downloadResolutionControl">
+          <div class="downloadResolutionHeader">
+            <label for="downloadResolution">Image Resolution</label>
+            <output id="downloadResolutionValue" for="downloadResolution">4×</output>
+          </div>
+          <input
+            id="downloadResolution"
+            type="range"
+            min="1"
+            max="12"
+            step="1"
+            value="4"
+            aria-label="PNG export resolution scale"
+          />
+        </div>
+
         <div class="options downloadActionButtons">
-          <button id="downloadPNG" class="downloadPrimaryButton" type="button" onclick="app.downloadPNGSign()">
+          <button id="downloadPNG" class="downloadPrimaryButton" type="button"
+            aria-label="Download PNG" onclick="app.downloadPNGSign()">
             <span class="material-symbols-outlined">download</span>
-            <span>Download PNG</span>
+            <span>PNG</span>
           </button>
 
-          <button id="downloadSVG" class="downloadPrimaryButton" type="button" onclick="app.downloadSVGSign()">
+          <button id="downloadSVG" class="downloadPrimaryButton" type="button"
+            aria-label="Download SVG" onclick="app.downloadSVGSign()">
             <span class="material-symbols-outlined">download</span>
-            <span>Download SVG</span>
+            <span>SVG</span>
           </button>
         </div>
       </div>
@@ -290,14 +308,19 @@
                 </select>
               </label>
 
-              <label class="customShieldMakerField" for="customShieldMakerRouteAlignment">
+              <div class="customShieldMakerField customShieldMakerAlignmentField">
                 <span>Alignment</span>
-                <select id="customShieldMakerRouteAlignment">
+                <select id="customShieldMakerRouteAlignment" class="customShieldMakerAlignmentSelect" aria-hidden="true" tabindex="-1">
                   <option value="left">Left</option>
                   <option value="center" selected>Center</option>
                   <option value="right">Right</option>
                 </select>
-              </label>
+                <div id="customShieldMakerRouteAlignmentButtons" class="customShieldMakerAlignmentButtons" role="group" aria-label="Route number alignment">
+                  <button type="button" class="customShieldMakerAlignmentButton" data-alignment="left" aria-pressed="false" title="Left align">L</button>
+                  <button type="button" class="customShieldMakerAlignmentButton selected" data-alignment="center" aria-pressed="true" title="Center align">C</button>
+                  <button type="button" class="customShieldMakerAlignmentButton" data-alignment="right" aria-pressed="false" title="Right align">R</button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -390,10 +413,7 @@
         </div>
       </div>
       <div class="sMModal exitTabConfig" data-current-menu="sMExitTabSetting" style="">
-        <nav class="sMModalBar">
-          <div class="sMModalTitle">
-            <span class="material-symbols-outlined">folder</span> Exit Tabs
-          </div>
+        <nav class="sMModalBar" id="exitTabPanelControlsBar">
           <nav class="listNav">
             <div class="scrollMenu" id="exitTabList">
               <div class="exitTabGroup">
@@ -407,22 +427,36 @@
               <button id="addNestedExitTab" onclick="app.newNestExitTab();">
                 Nest Exit Tab
               </button>
-              <button onclick="app.deleteNestExitTab();">Remove Nest Exit Tab</button>
               <button onclick="app.newExitTab();">+</button>
-              <button onclick="app.removeExitTab();">-</button>
               <button onclick="app.duplicateExitTab();">
                 <span class="material-symbols-outlined">content_copy</span>
               </button>
-              <label for="exitTabNumber">No:</label>
-              <input type="text" id="exitTabNumber" name="exitTabNumber" placeholder="1" step="1"
-                onchange="app.changeEditingExitTab(Math.floor(document.getElementById(parseInt(this.value.toString().split(`:`)[0]),parseInt(this.value.toString().split(`:`)[1]))));"
-                min="1" />
             </div>
           </nav>
         </nav>
-        <nav class="sMModalBar sMModalSubBar">
-          <div data-tab="sMExitTabSetting" class="sMModalTab selected">
-            Settings
+        <nav class="sMModalBar sMModalSubBar exitTabModeBar">
+          <div id="exitTabDefaultProfileControls" class="exitTabDefaultProfileControls" hidden>
+            <div id="exitTabProfileManagerPicker" class="profileManagerPicker">
+              <button type="button" id="exitTabProfileManagerTrigger" class="profileManagerTrigger" aria-expanded="false">
+                <span id="exitTabProfileManagerTriggerLabel" class="profileManagerTriggerLabel">Default Profile</span>
+                <span class="material-symbols-outlined profileManagerTriggerCaret">arrow_drop_down</span>
+              </button>
+              <div id="exitTabProfileList" class="profileManagerMenu"></div>
+            </div>
+          </div>
+
+          <div class="exitTabModeSwitch" role="tablist" aria-label="Exit tab editor mode">
+            <button type="button" id="exitTabCurrentModeButton" class="exitTabModeButton active" onclick="formHandler.setExitTabEditorMode('current');">
+              Current Panel
+            </button>
+            <button type="button" id="exitTabDefaultsModeButton" class="exitTabModeButton" onclick="formHandler.setExitTabEditorMode('default');">
+              Default Configuration
+            </button>
+          </div>
+
+          <div id="exitTabCurrentProfileRow" class="exitTabCurrentProfileRow">
+            <label for="exitTabProfileSelect">Profile:</label>
+            <select id="exitTabProfileSelect" class="exitTabProfileSelect" onchange="formHandler.applyExitTabProfileToCurrentTab(this.value);"></select>
           </div>
         </nav>
         <div class="sMModalContent">
@@ -437,6 +471,22 @@
                 class="exitTabMainTextInput"
                 onchange="formHandler.readForm();"
               />
+
+              <div id="exitTollLogoPickerRow" class="exitTabAssetPickerRow hidden">
+                <input type="hidden" id="exitTollLogoPickerValue" value="TxTag" />
+                <button type="button" id="exitTollLogoChooseButton" class="exitTabAssetChooseButton">
+                  <span class="material-symbols-outlined">image</span>
+                  <span id="exitTollLogoCurrent">TxTag</span>
+                </button>
+              </div>
+
+              <div id="exitIconPickerRow" class="exitTabAssetPickerRow hidden">
+                <input type="hidden" id="exitIconPickerValue" value="AIRPORT" />
+                <button type="button" id="exitIconChooseButton" class="exitTabAssetChooseButton">
+                  <span class="material-symbols-outlined">image</span>
+                  <span id="exitIconCurrent">Airport</span>
+                </button>
+              </div>
 
               <select
                 id="exitVariant"
@@ -472,46 +522,48 @@
                 hidden
               />
 
+            </div>
+
+            <div class="exitTabStyleSettingsGrid">
+              <label for="exitTabFontFamily" id="exitTabFontFamilyLabel">Font:</label>
+              <select
+                id="exitTabFontFamily"
+                name="exitTabFontFamily"
+                onchange="formHandler.readForm();"
+              ></select>
+
+              <label for="exitTabCharacterSpacing" id="exitTabCharacterSpacingLabel">Spacing:</label>
+              <input
+                type="number"
+                id="exitTabCharacterSpacing"
+                name="exitTabCharacterSpacing"
+                min="-0.15"
+                max="0.25"
+                step="0.01"
+                value="0"
+                onchange="formHandler.readForm();"
+              />
+
+              <label for="exitColor">BG color:</label>
               <select
                 id="exitColor"
+                name="exitColor"
                 class="exitTabColorSelect"
                 onchange="formHandler.readForm();"
               ></select>
-            </div>
-            <div>
-              <legend>Extra Settings</legend>
-              <label for="exitFont" id="exitFontLabel">FHWA Style:</label>
-              <input type="checkbox" name="exitFont" id="exitFont" value="exitFont"
-                onchange="formHandler.readForm();" />
-              <label for="showLeft" id="showLeftLabel">Left:</label>
-              <input type="checkbox" id="showLeft" value="showLeft" name="showLeft"
-                onchange="formHandler.readForm();" />
-              <label for="fullBorder">Full Border: </label>
-              <input type="checkbox" id="fullBorder" value="fullBorder" name="fullBorder"
-                onchange="formHandler.readForm();" />
-              <label for="squareCorners">Sharp Corners:</label>
-              <input type="checkbox" id="squareCorners" value="squareCorners" name="squareCorners"
-                onchange="formHandler.readForm();" />
-              <br />
-              <label for="topOffset">Top Offset:</label>
-              <input type="checkbox" id="topOffset" value="topOffset" name="topOffset"
-                onchange="formHandler.readForm();" checked="" />
-              <label for="verticalArrangement">Vertical:</label>
-              <input type="checkbox" id="verticalArrangement" value="verticalArrangement" name="verticalArrangement"
-                onchange="formHandler.readForm();" />
-              <label for="caStyle">CA Style:</label>
-              <input type="checkbox" id="caStyle" value="caStyle" name="caStyle"
-                onchange="formHandler.readForm();" />
-              <label for="exitTabBilingual" id="exitTabBilingualLabel">Bilingual:</label>
-              <input
-                type="checkbox"
-                id="exitTabBilingual"
-                name="exitTabBilingual"
+
+              <label for="exitTabTextColor">Text color:</label>
+              <select
+                id="exitTabTextColor"
+                name="exitTabTextColor"
+                class="exitTabTextColorSelect"
                 onchange="formHandler.readForm();"
-              />
-              <br />
+              ></select>
+            </div>
+
+            <div class="exitTabSettingsLayout">
               <div class="exitTabSliderStack">
-                <div class="exitTabSliderGroup">
+                <div class="exitTabSliderGroup" data-exit-slider="borderThickness">
                   <label for="borderThickness">Border Thickness (rem):</label>
                   <input
                     type="range"
@@ -520,7 +572,7 @@
                     max="0.2"
                     step="0.01"
                     value="0.2"
-                    oninput="document.getElementById('borderValue').innerHTML = this.value;"
+                    oninput="document.getElementById('borderValue').innerHTML = Number(this.value).toFixed(1);"
                     onchange="formHandler.readForm();"
                   />
                   <label for="borderThickness" id="borderValue" class="exitTabSliderValue">0.2</label>
@@ -529,37 +581,37 @@
                   </button>
                 </div>
 
-                <div class="exitTabSliderGroup">
+                <div class="exitTabSliderGroup" data-exit-slider="minHeight">
                   <label for="minHeight">Minimum Height (rem):</label>
                   <input
                     type="range"
                     id="minHeight"
                     min="0"
                     max="5"
-                    value="2.25"
+                    value="2.0"
                     step="0.05"
-                    oninput="document.getElementById('minValue').innerHTML = this.value"
+                    oninput="document.getElementById('minValue').innerHTML = Number(this.value).toFixed(1);"
                     onchange="formHandler.readForm();"
                   />
-                  <label for="minHeight" id="minValue" class="exitTabSliderValue">2.25</label>
+                  <label for="minHeight" id="minValue" class="exitTabSliderValue">2.0</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="minimumReset" aria-label="Reset minimum height">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
                 </div>
 
-                <div class="exitTabSliderGroup">
-                  <label for="fontSize">Text Size (px):</label>
+                <div class="exitTabSliderGroup" data-exit-slider="fontSize">
+                  <label for="fontSize" id="fontSizeLabel">Text Size (px):</label>
                   <input
                     type="range"
                     id="fontSize"
                     min="10"
                     max="40"
-                    value="20"
+                    value="18"
                     step="1"
-                    oninput="document.getElementById('fontValue').innerHTML = this.value"
+                    oninput="document.getElementById('fontValue').innerHTML = this.step == '0.1' ? Number(this.value).toFixed(1) : this.value"
                     onchange="formHandler.readForm();"
                   />
-                  <label for="fontSize" id="fontValue" class="exitTabSliderValue">20</label>
+                  <label for="fontSize" id="fontValue" class="exitTabSliderValue">18</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="sizeReset" aria-label="Reset text size">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
@@ -573,16 +625,81 @@
                     name="nestedTabSpacing"
                     min="0"
                     max="10"
-                    step="0.5"
+                    step="0.1"
                     value="0"
-                    oninput="document.getElementById('nestedSpacingValue').innerHTML = this.value"
+                    oninput="document.getElementById('nestedSpacingValue').innerHTML = Number(this.value).toFixed(1);"
                     onchange="formHandler.readForm();"
                   />
-                  <label for="nestedTabSpacing" id="nestedSpacingValue" class="exitTabSliderValue">0</label>
+                  <label for="nestedTabSpacing" id="nestedSpacingValue" class="exitTabSliderValue">0.0</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="nestedSpacingReset" aria-label="Reset nested tab spacing">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
                 </div>
+
+                <div class="exitTabSliderGroup">
+                  <label for="exitTabHorizontalPadding">Horizontal padding:</label>
+                  <input
+                    type="range"
+                    id="exitTabHorizontalPadding"
+                    name="exitTabHorizontalPadding"
+                    min="0"
+                    max="3"
+                    step="0.1"
+                    value="0"
+                    oninput="document.getElementById('exitTabHorizontalPaddingValue').innerHTML = Number(this.value).toFixed(1);"
+                    onchange="formHandler.readForm();"
+                  />
+                  <label for="exitTabHorizontalPadding" id="exitTabHorizontalPaddingValue" class="exitTabSliderValue">0.0</label>
+                  <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabHorizontalPaddingReset" aria-label="Reset horizontal padding">
+                    <span class="material-symbols-outlined">refresh</span>
+                  </button>
+                </div>
+
+                <div class="exitTabSliderGroup" data-exit-slider="exitTextSizePercent">
+                  <label for="exitTabTextSizePercent">"EXIT" text size %:</label>
+                  <input
+                    type="range"
+                    id="exitTabTextSizePercent"
+                    name="exitTabTextSizePercent"
+                    min="25"
+                    max="100"
+                    step="1"
+                    value="70"
+                    oninput="document.getElementById('exitTabTextSizePercentValue').innerHTML = this.step == '0.1' ? Number(this.value).toFixed(1) : this.value"
+                    onchange="formHandler.readForm();"
+                  />
+                  <label for="exitTabTextSizePercent" id="exitTabTextSizePercentValue" class="exitTabSliderValue">70</label>
+                  <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabTextSizePercentReset" aria-label="Reset exit text size">
+                    <span class="material-symbols-outlined">refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="exitTabCheckboxPanel">
+                <legend>Extra Settings</legend>
+                <label for="showLeft" id="showLeftLabel">Left:</label>
+                <input type="checkbox" id="showLeft" value="showLeft" name="showLeft" onchange="formHandler.readForm();" />
+                <label for="topOffset">Top Offset:</label>
+                <input type="checkbox" id="topOffset" value="topOffset" name="topOffset" onchange="formHandler.readForm();" />
+                <label for="verticalArrangement">Vertical:</label>
+                <input type="checkbox" id="verticalArrangement" value="verticalArrangement" name="verticalArrangement" onchange="formHandler.readForm();" />
+                <label for="fullBorder">Full Border:</label>
+                <input type="checkbox" id="fullBorder" value="fullBorder" name="fullBorder" onchange="formHandler.readForm();" checked="" />
+                <label for="squareCorners">Sharp Corners:</label>
+                <input type="checkbox" id="squareCorners" value="squareCorners" name="squareCorners" onchange="formHandler.readForm();" checked="" />
+                <label for="exitTabTransparent" id="exitTabTransparentLabel" class="assetHiddenSetting">Transparent:</label>
+                <input type="checkbox" id="exitTabTransparent" name="exitTabTransparent" class="assetHiddenSetting" onchange="formHandler.readForm();" />
+                <label for="caStyle">CA Style:</label>
+                <input type="checkbox" id="caStyle" value="caStyle" name="caStyle" onchange="formHandler.readForm();" />
+                <label for="exitTabBilingual" id="exitTabBilingualLabel">Bilingual:</label>
+                <input
+                  type="checkbox"
+                  id="exitTabBilingual"
+                  name="exitTabBilingual"
+                  onchange="formHandler.readForm();"
+                />
+              </div>
+            </div>
                 <div class="qcExitMarkerControls">
                   <legend>Quebec Exit Marker</legend>
 
@@ -633,7 +750,7 @@
                     />
                     <label for="qcExitMarkerSize" id="qcExitMarkerSizeValue">3.3</label>
                   </div>
-                </div>              </div> </div>
+                </div>
             <div id="exitTollLogoOptions" class="hidden">
               <legend>Toll Logo Options</legend>
               <label for="exitTollLogoSelect">Toll Logo:</label>
@@ -660,6 +777,9 @@
                     font-size: 1.25rem;
                     width: auto;
                   ">3</label>
+            </div>
+            <div id="exitIconOptions" class="hidden">
+              <legend>Icon Options</legend>
             </div>
           </div>
         </div>
@@ -912,11 +1032,11 @@
                     <div class="sdCtrlTextSettingsRow">
                       <label for="sdCtrlText_spacing"
                         data-toolTip="Spacing of the Control Text element on the left-right axis">Spacing:</label>
-                      <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="0" step=".25" value="0" />
+                      <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="-10" step=".25" value="0" />
 
                       <label for="sdCtrlText_fontSize">Font Size (%):</label>
-                      <input type="range" id="sdCtrlText_fontSize" min="50" max="150" step="5" value="100" />
-                      <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="5" value="100" />
+                      <input type="range" id="sdCtrlText_fontSize" min="50" max="250" step="1" value="100" />
+                      <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="50" max="250" step="1" value="100" />
                     </div>
 
                     <div class="sdCtrlTextSettingsRow">
@@ -937,13 +1057,22 @@
                         <label for="sdCtrlText_useBannerFormatting">Enlarge Banners:</label>
                         <input type="checkbox" id="sdCtrlText_useBannerFormatting" />
 
-                        <label for="sdCtrlText_smallCapitals" class="sdCtrlTextSmallCapsLabel">Small Capitals:</label>
+                        <label for="sdCtrlText_smallCapitals" class="sdCtrlTextSmallLettersLabel">Small Letters:</label>
                         <input type="checkbox" id="sdCtrlText_smallCapitals" />
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_smallLettersSize"
+                          data-toolTip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75" />
 
                         <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_bannerFormattingSize"
                           data-toolTip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100" />
                         <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_bannerFirstLetterSize"
                           data-toolTip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120" />
+                    </div>
+
+                    <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
+                      <label for="sdCtrlText_letterSpacing"
+                        data-toolTip="Spacing between letters in the Control Text element">Letter Spacing (em):</label>
+                      <input type="range" id="sdCtrlText_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0" />
+                      <input id="sdCtrlText_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0" />
                     </div>
                 </div>
 
@@ -1069,11 +1198,11 @@
 
                   <div class="sdCtrlTextSettingsRow">
                     <label for="sdAdvisory_spacing" data-toolTip="Spacing of the Advisory Message element on the left-right axis">Spacing:</label>
-                    <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="0" step=".25" value="0" />
+                    <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="-10" step=".25" value="0" />
 
                     <label for="sdAdvisory_fontSize">Font Size (%):</label>
-                    <input type="range" id="sdAdvisory_fontSize" min="50" max="150" step="5" value="100" />
-                    <input id="sdAdvisory_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="5" value="100" />
+                    <input type="range" id="sdAdvisory_fontSize" min="50" max="150" step="1" value="100" />
+                    <input id="sdAdvisory_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="1" value="100" />
                   </div>
 
                   <div class="sdCtrlTextSettingsRow">
@@ -1094,8 +1223,10 @@
                     <label for="sdAdvisory_useBannerFormatting">Enlarge Banners:</label>
                     <input type="checkbox" id="sdAdvisory_useBannerFormatting" />
 
-                    <label for="sdAdvisory_smallCapitals" class="sdCtrlTextSmallCapsLabel">Small Capitals:</label>
+                    <label for="sdAdvisory_smallCapitals" class="sdCtrlTextSmallLettersLabel">Small Letters:</label>
                     <input type="checkbox" id="sdAdvisory_smallCapitals" />
+                    <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_smallLettersSize"
+                      data-toolTip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75" />
 
                     <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_bannerFormattingSize"
                       data-toolTip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100" />
@@ -1116,6 +1247,12 @@
                     <label for="sdAdvisory_vertPadding">Vertical Padding (rem):</label>
                     <input type="range" min="0" max="3" value=".3" step=".1" id="sdAdvisory_vertPadding" />
                     <input id="sdAdvisory_vertPaddingVal" class="smallVal" type="number" value=".3" step="0.1" />
+                  </div>
+
+                  <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
+                    <label for="sdAdvisory_letterSpacing" data-toolTip="Spacing between letters in the Advisory Message element">Letter Spacing (em):</label>
+                    <input type="range" id="sdAdvisory_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0" />
+                    <input id="sdAdvisory_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0" />
                   </div>
                 </div>
 
@@ -1319,11 +1456,11 @@
 
                   <div class="sdCtrlTextSettingsRow">
                     <label for="sdActionMessage_spacing" data-toolTip="Spacing of the Action Message element on the left-right axis">Spacing:</label>
-                    <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="0" step=".25" value="0" />
+                    <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="-10" step=".25" value="0" />
 
                     <label for="sdActionMessage_fontSize">Font Size (%):</label>
-                    <input type="range" id="sdActionMessage_fontSize" min="50" max="150" step="5" value="100" />
-                    <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="5" value="70" />
+                    <input type="range" id="sdActionMessage_fontSize" min="50" max="150" step="1" value="100" />
+                    <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="1" value="70" />
                   </div>
 
                   <div class="sdCtrlTextSettingsRow">
@@ -1344,13 +1481,21 @@
                     <label for="sdActionMessage_useBannerFormatting">Enlarge Banners:</label>
                     <input type="checkbox" id="sdActionMessage_useBannerFormatting" />
 
-                    <label for="sdActionMessage_smallCapitals" class="sdCtrlTextSmallCapsLabel">Small Capitals:</label>
+                    <label for="sdActionMessage_smallCapitals" class="sdCtrlTextSmallLettersLabel">Small Letters:</label>
                     <input type="checkbox" id="sdActionMessage_smallCapitals" />
+                    <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_smallLettersSize"
+                      data-toolTip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75" />
 
                     <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_bannerFormattingSize"
-                      data-toolTip="Relative Size (%)" placeholder="100" max="150" min="50" step="5" value="100" />
+                      data-toolTip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100" />
                     <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_bannerFirstLetterSize"
                       data-toolTip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120" />
+                  </div>
+
+                  <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
+                    <label for="sdActionMessage_letterSpacing" data-toolTip="Spacing between letters in the Action Message element">Letter Spacing (em):</label>
+                    <input type="range" id="sdActionMessage_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0" />
+                    <input id="sdActionMessage_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0" />
                   </div>
                 </div>
 
@@ -1392,11 +1537,11 @@
                 <h4>Row Properties</h4>
                 <label for="sdBlock_topPadding">Top Margin (rem): </label>
                 <input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" />
-                <input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-1" max="10" step="0.1" />
+                <input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1" />
                 <label for="sdBlock_bottomPadding">Bottom Margin (rem):
                 </label>
                 <input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" />
-                <input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-1" max="10" step="0.1" />
+                <input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1" />
                 <br />
                 <label for="sdBlock_backgroundColor">BG:</label>
                 <select id="sdBlock_backgroundColor"></select>
@@ -1691,10 +1836,6 @@
                 <button type="button" class="settingsSideTab" data-settings-page="settingsInterface">
                   Interface
                 </button>
-                <button type="button" class="settingsSideTab" data-settings-page="settingsDefaultExitTab">
-                  Exit Tab
-                </button>
-
                 <div class="settingsSideHeading">Subpanel Defaults</div>
 
                 <button type="button" class="settingsSideTab settingsSideTabSmall" data-settings-page="settingsDefaultControlText">
@@ -1988,7 +2129,7 @@
 
                   <label for="settingsDefaultsControlTextSize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsControlTextSize" type="range" min="50" max="150" step="5" value="100" />
+                    <input id="settingsDefaultsControlTextSize" type="range" min="50" max="250" step="1" value="100" />
                     <span id="settingsDefaultsControlTextSizeValue">100%</span>
                   </div>
 
@@ -2048,7 +2189,7 @@
 
                   <label for="settingsDefaultsActionSize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsActionSize" type="range" min="50" max="150" step="5" value="70" />
+                    <input id="settingsDefaultsActionSize" type="range" min="50" max="150" step="1" value="70" />
                     <span id="settingsDefaultsActionSizeValue">70%</span>
                   </div>
 
@@ -2080,7 +2221,7 @@
 
                   <label for="settingsDefaultsAdvisorySize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsAdvisorySize" type="range" min="50" max="150" step="5" value="100" />
+                    <input id="settingsDefaultsAdvisorySize" type="range" min="50" max="150" step="1" value="100" />
                     <span id="settingsDefaultsAdvisorySizeValue">100%</span>
                   </div>
 
@@ -2089,133 +2230,6 @@
 
                   <label for="settingsDefaultsAdvisoryBg">Background color:</label>
                   <select id="settingsDefaultsAdvisoryBg"></select>
-                </div>
-              </section>
-
-              <section id="settingsDefaultExitTab" class="settingsPage settingsDefaultsSinglePage settingsDefaultsExitTabPage">
-                <h2 class="settingsDefaultsSectionHeading">Exit Tab</h2>
-
-                <div class="settingsDefaultsExitTabGrid">
-                  <div class="settingsDefaultsColumn">
-                    <label for="settingsDefaultsExitTabText">Exit text:</label>
-                    <input id="settingsDefaultsExitTabText" type="text" value="" />
-
-                    <label for="settingsDefaultsExitTabType">Type:</label>
-                    <select id="settingsDefaultsExitTabType">
-                      <option selected>Standard</option>
-                      <option>Full Left</option>
-                      <option>Toll Pass</option>
-                    </select>
-
-                    <label for="settingsDefaultsExitTabAlignment">Alignment:</label>
-                    <select id="settingsDefaultsExitTabAlignment">
-                      <option>Left</option>
-                      <option>Center</option>
-                      <option selected>Right</option>
-                    </select>
-
-                    <label for="settingsDefaultsExitTabPosition">Position:</label>
-                    <select id="settingsDefaultsExitTabPosition">
-                      <option selected>Narrow</option>
-                      <option>Wide</option>
-                      <option>Full</option>
-                      <option>Edge</option>
-                      <option>Out</option>
-                      <option>Side</option>
-                    </select>
-
-                    <label for="settingsDefaultsExitTabPanelColor">Panel color:</label>
-                    <select id="settingsDefaultsExitTabPanelColor"></select>
-
-                    <label for="settingsDefaultsExitTabBorderThickness">Border thickness (rem):</label>
-                    <div class="settingsDefaultsSliderRow">
-                      <input
-                        id="settingsDefaultsExitTabBorderThickness"
-                        type="range"
-                        min="0"
-                        max="0.2"
-                        step="0.01"
-                        value="0.2"
-                      />
-                      <span id="settingsDefaultsExitTabBorderThicknessValue">0.2</span>
-                    </div>
-
-                    <label for="settingsDefaultsExitTabMinHeight">Minimum height (rem):</label>
-                    <div class="settingsDefaultsSliderRow">
-                      <input
-                        id="settingsDefaultsExitTabMinHeight"
-                        type="range"
-                        min="0"
-                        max="5"
-                        step="0.05"
-                        value="2"
-                      />
-                      <span id="settingsDefaultsExitTabMinHeightValue">2</span>
-                    </div>
-
-                    <label for="settingsDefaultsExitTabTextSize">Text size (px):</label>
-                    <div class="settingsDefaultsSliderRow">
-                      <input
-                        id="settingsDefaultsExitTabTextSize"
-                        type="range"
-                        min="10"
-                        max="40"
-                        step="1"
-                        value="20"
-                      />
-                      <span id="settingsDefaultsExitTabTextSizeValue">20</span>
-                    </div>
-
-                    <label for="settingsDefaultsExitTabNestedSpacing">Nested tab spacing (rem):</label>
-                    <div class="settingsDefaultsSliderRow">
-                      <input
-                        id="settingsDefaultsExitTabNestedSpacing"
-                        type="range"
-                        min="0"
-                        max="10"
-                        step="0.5"
-                        value="0"
-                      />
-                      <span id="settingsDefaultsExitTabNestedSpacingValue">0</span>
-                    </div>
-                  </div>
-
-                  <div class="settingsDefaultsCheckboxColumn">
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabFHWAStyle">FHWA Style:</label>
-                      <input id="settingsDefaultsExitTabFHWAStyle" type="checkbox" />
-                    </div>
-
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabLeft">Left:</label>
-                      <input id="settingsDefaultsExitTabLeft" type="checkbox" />
-                    </div>
-
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabFullBorder">Full border:</label>
-                      <input id="settingsDefaultsExitTabFullBorder" type="checkbox" />
-                    </div>
-
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabSquareCorners">Square corners:</label>
-                      <input id="settingsDefaultsExitTabSquareCorners" type="checkbox" />
-                    </div>
-
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabTopOffset">Top offset:</label>
-                      <input id="settingsDefaultsExitTabTopOffset" type="checkbox" />
-                    </div>
-
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabVerticalArrangement">Vertical arrangement:</label>
-                      <input id="settingsDefaultsExitTabVerticalArrangement" type="checkbox" />
-                    </div>
-
-                    <div class="settingsDefaultsCheckboxRow">
-                      <label for="settingsDefaultsExitTabCAStyle">CA style:</label>
-                      <input id="settingsDefaultsExitTabCAStyle" type="checkbox" />
-                    </div>
-                  </div>
                 </div>
               </section>
 

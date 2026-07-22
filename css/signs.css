@@ -416,12 +416,19 @@
   /* hides exitTab by default when loading page */
   float: none;
   min-height: 2.25rem;
-  padding: 0 0.5rem;
+  --exitTabBaseHorizontalPadding: 0.5rem;
+  --exitTabHorizontalPadding: 0rem;
+  --exitTabPrefixScale: 0.7;
+  --exitTabCharacterSpacing: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
+  padding-right: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
 }
 
 .exitTab.squareCorners {
   border-radius: 0.25rem 0.25rem 0 0;
-  padding: 0 1.3rem;
+  --exitTabBaseHorizontalPadding: 1.3rem;
 }
 
 .exitTab.squareCorners.out {
@@ -951,13 +958,14 @@
   --fhwaBaselineOffset: 0px;
   display: flex;
   align-items: center;
-  font-family: "Clearview 5W";
+  font-family: var(--exitTabFontFamily, "Series EEM");
   font-size: 18px;
 }
 
 .exitTab .exitTabText {
   position: relative;
   top: calc(var(--exitTabTextBaseOffset, 0px) + var(--fhwaBaselineOffset) + var(--exitTabAdditionalOffset, 0px));
+  letter-spacing: calc(var(--exitTabCharacterSpacing, 0) * 1em);
 }
 
 .exitTab .numeral {
@@ -1104,15 +1112,10 @@
 }
 
 .exitTabContainer.tollLogoExitTabContainer.logoOnly {
-  background: transparent !important;
-  border-color: transparent !important;
-  border-style: none;
+  width: max-content;
 }
 
 .exitTabHolder.tollLogoExitHolder.logoOnly {
-  background: transparent !important;
-  border-color: transparent !important;
-  border-style: none;
   flex-grow: 0;
   width: auto;
   padding: 0;
@@ -1131,29 +1134,56 @@
 }
 
 .exitTab.tollLogoExitTab.logoOnly {
-  padding: 0;
-  border: none;
-  border-width: 0 !important;
-  border-style: none !important;
-  min-height: unset;
-  background: transparent !important;
-  gap: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.exitTabContainer.transparentAsset,
+.exitTabHolder.transparentAsset,
+.exitTab.transparentAsset {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.exitTabContainer.transparentAsset {
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.exitTabHolder.transparentAsset {
+  flex-grow: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exitTab.transparentAsset {
+  padding: 0 !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  min-height: 0 !important;
+  gap: 0 !important;
   overflow: visible;
-  border-radius: 0;
-  width: auto;
+  border-radius: 0 !important;
+  width: auto !important;
 }
 
-.exitTab.tollLogoExitTab.logoOnly .tollLogoLogoWrapper {
-  width: auto;
+.exitTab.tollLogoExitTab.transparentAsset .tollLogoLogoWrapper {
+  width: auto !important;
 }
 
-.exitTab.tollLogoExitTab.logoOnly .tollLogoImageHolder {
-  margin: 0;
-  width: auto;
-  max-width: none;
+.exitTab.tollLogoExitTab.transparentAsset .tollLogoImageHolder {
+  margin: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  min-height: 0 !important;
   max-height: var(--tollLogoSize, 3rem);
 }
 
@@ -1354,8 +1384,14 @@
 }
 
 .exitFormat {
-  display: inline;
+  display: inline-block;
   --exitTabTextBaseOffset: -0.1rem;
+  font-size: calc(1.5em * var(--exitTabNumeralScale, 1) * var(--exitTabPrefixScale, 0.7));
+}
+
+.exitTab .exitTabVerticalText,
+.exitTabBilingualLabelText {
+  font-size: calc(1.5em * var(--exitTabNumeralScale, 1) * var(--exitTabPrefixScale, 0.7));
 }
 
 .exitOnlyArrow {
@@ -1414,7 +1450,8 @@
 
 .arrowContainer.hideExitOnlyArrows .exitOnlyArrow,
 .arrowContainer.hideExitOnlyArrows .halfarrow {
-  opacity: 0;
+  display: none !important;
+  opacity: 0 !important;
 }
 
 .exitOnlyText {
@@ -2246,7 +2283,7 @@ img.exitOnlyArrow:last-child {
 /* keep true side arrows full size */
 .sideLeftArrow,
 .sideRightArrow {
-  height: 2.5rem;
+  height: 2.2rem;
 }
 
 .guideArrows .arrow.right\/uparrow,
@@ -2786,8 +2823,8 @@ img.exitOnlyArrow:last-child {
 
 /* Side Left / Side Right guide arrows reserve space inside the sign border */
 .sign.hasSideGuideArrow {
-  --sideGuideArrowReserve: 2.90rem;
-  --sideGuideArrowInset: 0.48rem;
+  --sideGuideArrowReserve: 2.65rem;
+  --sideGuideArrowInset: 0.42rem;
 
   position: relative !important;
   overflow: hidden !important;
@@ -2821,7 +2858,7 @@ img.exitOnlyArrow:last-child {
   top: 50% !important;
   display: none !important;
 
-  height: 2.35rem !important;
+  height: 2.15rem !important;
   width: auto !important;
   max-width: none !important;
 
@@ -2831,9 +2868,10 @@ img.exitOnlyArrow:last-child {
   flex: 0 0 auto !important;
   object-fit: contain !important;
   transform: translateY(-50%) !important;
-  z-index: 5;
+  z-index: 50;
   box-sizing: content-box;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .sign.hasSideLeftGuideArrow .sideLeftArrow {
@@ -2881,17 +2919,14 @@ img.exitOnlyArrow:last-child {
 }
 
 
-/* Dynamic full-bleed row border/corner paint.
-   The full-width row background is painted on .sign; these absolute layers only
-   repaint the real outer border segments and the rounded-corner fill areas that
-   belong to a full-bleed row. */
-.signContainer.hasDynamicSignBorderOverlay,
+/* Dynamic full-bleed corner fill. The segmented colors are applied through
+   the sign's border-image, while these patches only replace the panel color
+   visible outside a rounded corner. */
 .signContainer.hasDynamicSignCornerPatches {
   position: relative !important;
 }
 
-.signContainer.hasDynamicSignCornerPatches > :not(.dynamicSignCornerPatch),
-.signContainer.hasDynamicSignBorderOverlay > :not(.dynamicSignBorderOverlay) {
+.signContainer.hasDynamicSignCornerPatches > :not(.dynamicSignCornerPatch) {
   position: relative;
   z-index: 2;
 }
@@ -2902,23 +2937,11 @@ img.exitOnlyArrow:last-child {
   pointer-events: none !important;
   z-index: 1 !important;
   box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
-.signContainer > .dynamicSignBorderOverlay {
-  position: absolute !important;
-  display: block !important;
-  pointer-events: none !important;
-  overflow: visible !important;
-  z-index: 40 !important;
-}
-
-.sign > .dynamicSignCornerPatch,
-.sign > .dynamicSignBorderOverlay {
+.sign > .dynamicSignCornerPatch {
   display: none !important;
-}
-
-.sign.hasDynamicSignBorderOverlay {
-  position: relative !important;
 }
 
 /* Rendered sign selection and icon spacing fixes */
@@ -2998,6 +3021,10 @@ img.exitOnlyArrow:last-child {
 .exportStaticCaptureWrapper,
 .exportStaticCaptureClone {
   box-sizing: border-box;
+}
+
+.exportStaticCaptureWrapper .sign.hasSideGuideArrow {
+  box-sizing: border-box !important;
 }
 
 
@@ -3383,6 +3410,21 @@ img.exitOnlyArrow:last-child {
   color: var(--exitTabCustomFg);
 }
 
+.exitTab.customExitTabTextColor {
+  color: var(--exitTabTextColor);
+}
+
+
+/* Row margin values can be typed below the slider minimum.
+   Sliders still stop at 0, but typed negative margins down to -5 need to affect layout.
+   Keep positive full-bleed spacing as padding and negative full-bleed spacing as real margins. */
+.sign .blockElementRow {
+  margin-top: var(--marginTop, 0rem) !important;
+  margin-bottom: var(--marginBottom, 0rem) !important;
+  padding-top: var(--blockPaddingTopExtra, 0rem) !important;
+  padding-bottom: var(--blockPaddingBottomExtra, 0rem) !important;
+}
+
 /* Full-bleed block rows.
    The row content stays real DOM. main.js paints the row background and matching
    border band on .sign using background layers. Keep the row's own background
@@ -3594,7 +3636,7 @@ img.exitOnlyArrow:last-child {
   z-index: 0 !important;
 }
 
-.sign.hasDynamicSignFullBleedLayer > :not(.dynamicSignFullBleedLayer):not(.dynamicSignBorderOverlay):not(.dynamicSignCornerPatch) {
+.sign.hasDynamicSignFullBleedLayer > :not(.dynamicSignFullBleedLayer):not(.dynamicSignCornerPatch) {
   position: relative;
   z-index: 1;
 }
@@ -3669,4 +3711,140 @@ img.exitOnlyArrow:last-child {
 /* Do not let an unused default exit-tab placeholder contribute to editor/export bounds. */
 .panel > .exitTabContainer.emptyExitTab {
   display: none !important;
+}
+
+
+/* Exit tab color belongs only to the tab itself. The holder should not paint
+   a rectangular background outside the tab border, and it should not mask
+   horizontal-padding changes when the tab BG differs from the panel BG. */
+.exitTabHolder.green,
+.exitTabHolder.blue,
+.exitTabHolder.brown,
+.exitTabHolder.yellow,
+.exitTabHolder.white,
+.exitTabHolder.black,
+.exitTabHolder.red,
+.exitTabHolder.purple,
+.exitTabHolder.orange,
+.exitTabHolder.fluorescent.pink,
+.exitTabHolder.fluorescent.yellow-green,
+.exitTabHolder.customExitTabColor {
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+
+.exitTab {
+  box-sizing: border-box;
+}
+
+
+.exitOnlyLabelHidden {
+  color: transparent !important;
+  text-shadow: none !important;
+}
+
+.iconExitTab .exitTabIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exitTabIconImage {
+  width: var(--exitIconSize, 3rem);
+  height: var(--exitIconSize, 3rem);
+  object-fit: contain;
+}
+
+/* Exit-only compatibility: when arrows are hidden, keep a single visible label instead of leaving split text gaps. */
+.exitOnlyArrowHiddenText {
+  display: inline-flex !important;
+  min-width: max-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.arrowContainer.hideExitOnlyArrows .exitOnlyArrow,
+.arrowContainer.hideExitOnlyArrows .halfarrow {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.arrowContainer.hideExitOnlyArrows .exitOnlySpace {
+  display: none !important;
+}
+
+
+/* Exit tab asset type padding values are separate from normal text-tab padding. */
+.exitTab.tollLogoExitTab,
+.exitTab.iconExitTab {
+  padding-top: calc(0.35rem + var(--exitTabAssetVerticalPadding, 0rem));
+  padding-bottom: calc(0.35rem + var(--exitTabAssetVerticalPadding, 0rem));
+  padding-left: calc(0.6rem + var(--exitTabHorizontalPadding, 0rem));
+  padding-right: calc(0.6rem + var(--exitTabHorizontalPadding, 0rem));
+}
+
+/* Match the normal Half Exit Only diagonal arrow to the EXIT ONLY arrow. */
+.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow[src$="A-1.svg"],
+.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow[src$="A-4.svg"] {
+  height: 1.65rem !important;
+  transform: scale(1.14) !important;
+  transform-origin: center center !important;
+}
+
+
+/* Use block-level flex formatting for Half Exit Only inside static exports. */
+.exportStaticCaptureWrapper .signContainer:has(> .guideArrows.half_exit.only.default) {
+  display: flex !important;
+}
+
+
+/* Dynamic subpanel divider colors are applied to the divider itself. */
+.subDivider.hasDynamicDividerPaint:not([data-dynamic-divider-uses-before="true"]) {
+  background-color: transparent !important;
+  background-image: var(--dynamicSubDividerPaint) !important;
+}
+
+.subDivider.hasDynamicDividerPaint[data-dynamic-divider-uses-before="true"] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.subDivider.hasDynamicDividerPaint[data-dynamic-divider-uses-before="true"]::before {
+  background-color: transparent !important;
+  background-image: var(--dynamicSubDividerPaint) !important;
+}
+
+/* Small Letters keeps the first letter of each word at full size and scales only the remaining letters. */
+.bE-textElement.bE-smallLettersEnabled .bE-smallLetters {
+  font-size: calc(var(--smallLettersSize, 75) * 1%);
+  line-height: 1;
+  vertical-align: baseline;
+  font-variant: normal;
+  text-transform: none;
+}
+
+/* Second EXIT ONLY design: preserve the standard white panel border and inset the yellow band. */
+.signContainer:has(> .guideArrows.exit_only.new)::before,
+.signContainer:has(> .guideArrows.exit_only.new)::after {
+  content: none !important;
+}
+
+.guideArrows.exit_only.new {
+  background-color: var(--green) !important;
+  border-color: var(--white) !important;
+  color: var(--black) !important;
+  padding: 0 0.16rem 0.16rem !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.guideArrows.exit_only.new > .arrowContainer.new {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  background-color: var(--yellow) !important;
+  border: 0 !important;
+  border-bottom-left-radius: calc(var(--signBorderRadius, 0.75rem) - 0.2rem) !important;
+  border-bottom-right-radius: calc(var(--signBorderRadius, 0.75rem) - 0.2rem) !important;
 }

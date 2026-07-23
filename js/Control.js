@@ -250,7 +250,7 @@ class TextElement {
 
     const fractionChars = Object.values(fractionMap).map(escapeRegExp).join("");
     const fractionTokenRegex = new RegExp(`^[${fractionChars}]`);
-    const routeNumeralRegex = /^\d+(?:[A-Za-z]{1,2}(?![A-Za-z]))?(?:(?:-[A-Za-z]{1,2}(?![A-Za-z]))+|\s+[A-Za-z]{1,2}(?![A-Za-z])(?:-[A-Za-z]{1,2}(?![A-Za-z]))*)?/;
+    const routeNumeralRegex = /^\d+(?:[A-Za-z](?![A-Za-z]))?(?:(?:\s*-\s*[A-Za-z](?![A-Za-z]))+|\s+[A-Za-z](?![A-Za-z])(?:\s*-\s*[A-Za-z](?![A-Za-z]))*)?/;
 
     const tokens = [];
     let index = 0;

@@ -422,11 +422,11 @@
 .bannerShieldContainer.CA .routeNumber {
   color: var(--white);
   font-family: "Series D";
-  top: 0.3em;
+  top: 0.2em;
   font-size: 2em;
 }
 .bannerShieldContainer.CA.three .routeNumber {
-    font-family: "Series D"
+  font-family: "Series C";
 }
 
 /* COLORADO */
@@ -1574,7 +1574,6 @@
 .bannerShieldContainer.NYST .routeNumber,
 .bannerShieldContainer.O .routeNumber,
 .bannerShieldContainer.Pe .routeNumber,
-.bannerShieldContainer.RM .routeNumber,
 .bannerShieldContainer.SA .routeNumber,
 .bannerShieldContainer.SBP .routeNumber,
 .bannerShieldContainer.SM .routeNumber,
@@ -2484,3 +2483,18 @@
     calc(0.20rem * var(--bannerScale, 1))
   ) !important;
 }
+
+/* Add breathing room between Clearview side banners and their road-name line.
+   Highway Gothic/Series side-banner stacks keep the tighter spacing. */
+.bE-shieldElement
+  .stackedBannerSlot.clearviewBannerFont.roadNameStackedBanner
+  > .bannerRoadName {
+  margin-top: calc(0.06rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement
+  .stackedBannerSlot.clearviewBannerFont.roadNameStackedBanner.roadNameMultilineStack
+  > .bannerRoadName.multilineRoadName {
+  margin-top: calc(0.02rem * var(--shieldScale, 1)) !important;
+}
+

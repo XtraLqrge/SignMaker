@@ -27,7 +27,73 @@ const app = (function () {
   const DEFAULT_EXPORT_RESOLUTION_SCALE = 4;
   const MIN_EXPORT_RESOLUTION_SCALE = 1;
   const MAX_EXPORT_RESOLUTION_SCALE = 12;
+  const PERSISTENCE_DB_NAME = "signMaker.persistence.v1";
+  const PERSISTENCE_DB_STORE = "keyValue";
+  let persistenceDbPromise = null;
+  let subpanelClipboardMemoryPayload = null;
 
+  const openPersistenceDB = () => {
+    if (persistenceDbPromise) {
+      return persistenceDbPromise;
+    }
+
+    persistenceDbPromise = new Promise((resolve, reject) => {
+      if (typeof window === "undefined" || !window.indexedDB) {
+        reject(new Error("IndexedDB is not available."));
+        return;
+      }
+
+      const request = window.indexedDB.open(PERSISTENCE_DB_NAME, 1);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(PERSISTENCE_DB_STORE)) {
+          db.createObjectStore(PERSISTENCE_DB_STORE, { keyPath: "key" });
+        }
+      };
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Unable to open persistence database."));
+      request.onblocked = () => reject(new Error("Persistence database open was blocked."));
+    });
+
+    persistenceDbPromise.catch(() => {
+      persistenceDbPromise = null;
+    });
+
+    return persistenceDbPromise;
+  };
+
+  const setPersistentValue = async (key, value) => {
+    const db = await openPersistenceDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(PERSISTENCE_DB_STORE, "readwrite");
+      const store = transaction.objectStore(PERSISTENCE_DB_STORE);
+      store.put({
+        key,
+        value,
+        dateModified: new Date().toISOString(),
+      });
+
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error || new Error("Unable to save persistent value."));
+      transaction.onabort = () => reject(transaction.error || new Error("Persistent value save was aborted."));
+    });
+  };
+
+  const getPersistentValue = async (key) => {
+    const db = await openPersistenceDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(PERSISTENCE_DB_STORE, "readonly");
+      const store = transaction.objectStore(PERSISTENCE_DB_STORE);
+      const request = store.get(key);
+
+      request.onsuccess = () => resolve(request.result ? request.result.value : null);
+      request.onerror = () => reject(request.error || new Error("Unable to read persistent value."));
+    });
+  };
 
   const ensureExtendedGuideArrowOptions = () => {
     if (
@@ -818,7 +884,7 @@ const app = (function () {
     return true;
   };
 
-  const applyCustomExitTabColorVars = (exitTabElmt, exitTabHolderElmt, colorValue) => {
+  const applyCustomExitTabColorVars = (exitTabElmt, exitTabHolderElmt, exitTabContainerElmt, colorValue) => {
     if (!exitTabElmt || !isCustomCssColorValue(colorValue)) {
       return false;
     }
@@ -830,9 +896,15 @@ const app = (function () {
     exitTabElmt.style.setProperty("--exitTabCustomFg", textColor);
 
     if (exitTabHolderElmt) {
-      exitTabHolderElmt.classList.remove("customExitTabColor");
-      exitTabHolderElmt.style.removeProperty("--exitTabCustomBg");
-      exitTabHolderElmt.style.removeProperty("--exitTabCustomFg");
+      exitTabHolderElmt.classList.add("customExitTabColor");
+      exitTabHolderElmt.style.setProperty("--exitTabCustomBg", resolvedColor);
+      exitTabHolderElmt.style.setProperty("--exitTabCustomFg", textColor);
+    }
+
+    if (exitTabContainerElmt) {
+      exitTabContainerElmt.classList.add("customExitTabColor");
+      exitTabContainerElmt.style.setProperty("--exitTabCustomBg", resolvedColor);
+      exitTabContainerElmt.style.setProperty("--exitTabCustomFg", textColor);
     }
 
     return true;
@@ -1382,9 +1454,26 @@ const app = (function () {
     const saveAppState = () => {
       try {
         const snapshot = serializeAppState();
-        if (snapshot) {
-          window.localStorage.setItem(APP_STORAGE_KEY, snapshot);
+        if (!snapshot) {
+          return;
         }
+
+        try {
+          window.localStorage.setItem(APP_STORAGE_KEY, snapshot);
+          window.localStorage.setItem(`${APP_STORAGE_KEY}.backend`, "localStorage");
+        } catch (localStorageError) {
+          console.warn("App state was too large for localStorage; saving it in IndexedDB instead.", localStorageError);
+          try {
+            window.localStorage.removeItem(APP_STORAGE_KEY);
+            window.localStorage.setItem(`${APP_STORAGE_KEY}.backend`, "indexedDB");
+          } catch (markerError) {
+            // If localStorage is completely full or unavailable, IndexedDB still stores the actual state.
+          }
+        }
+
+        setPersistentValue(APP_STORAGE_KEY, snapshot).catch((idbError) => {
+          console.error("Failed to save app state in IndexedDB", idbError);
+        });
       } catch (error) {
         console.error("Failed to save app state", error);
       }
@@ -1409,9 +1498,24 @@ const app = (function () {
       }
     };
 
-    const loadSavedAppState = () => {
+    const loadSavedAppState = async () => {
       try {
-        const snapshot = window.localStorage.getItem(APP_STORAGE_KEY);
+        let snapshot = null;
+
+        try {
+          snapshot = window.localStorage.getItem(APP_STORAGE_KEY);
+        } catch (localStorageError) {
+          console.warn("Unable to read saved app state from localStorage", localStorageError);
+        }
+
+        if (!snapshot) {
+          try {
+            snapshot = await getPersistentValue(APP_STORAGE_KEY);
+          } catch (idbError) {
+            console.warn("Unable to read saved app state from IndexedDB", idbError);
+          }
+        }
+
         if (!snapshot) {
           return false;
         }
@@ -3149,13 +3253,11 @@ const app = (function () {
 
       svgParts.push("</svg>");
       const svg = svgParts.join("");
+
       return {
-        source: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
-        // A one-pixel nine-slice plus the filled center keeps the generated SVG
-        // at a 1:1 scale. This preserves exact row transition positions while
-        // still drawing the complete rounded ring from the same border image.
-        slice: "1 fill",
-        width: "1px",
+        image: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+        position: "0 0",
+        size: "100% 100%",
       };
     };
 
@@ -3181,6 +3283,13 @@ const app = (function () {
     // No second border element or background-ring overlay is placed over it.
     const dynamicBorderImage = createDynamicBorderPaintLayer();
 
+    if (dynamicBorderImage) {
+      // Paint the segmented border as a sign background layer, clipped to the
+      // real border box. This avoids border-image nine-slice scaling while
+      // still keeping the paint inside the actual sign border area.
+      addLayer(dynamicBorderImage, "border-box");
+    }
+
     // Paint full-bleed row fills on the sign background itself, not in an
     // absolutely positioned child. Background layers are clipped by the sign's
     // own radius, which keeps colored edge rows consistent with normal panels.
@@ -3198,23 +3307,19 @@ const app = (function () {
     syncDynamicCornerPatches();
 
     if (dynamicBorderImage) {
-      // The generated border image is the only border paint. Keeping the normal
-      // border underneath it would let the base color show through antialiased
-      // pixels and recreate the white or black specks this path replaces.
+      // The generated border paint is part of the sign background stack. Keep
+      // the physical CSS border transparent so its size remains unchanged while
+      // the background layer supplies the segmented colors.
       signElmt.style.borderColor = "transparent";
-      signElmt.style.borderImageSource = dynamicBorderImage.source;
-      signElmt.style.borderImageSlice = dynamicBorderImage.slice;
-      signElmt.style.borderImageWidth = dynamicBorderImage.width;
-      signElmt.style.borderImageOutset = "0";
-      signElmt.style.borderImageRepeat = "stretch";
     } else {
       signElmt.style.borderColor = defaultBorderColor;
-      signElmt.style.removeProperty("border-image-source");
-      signElmt.style.removeProperty("border-image-slice");
-      signElmt.style.removeProperty("border-image-width");
-      signElmt.style.removeProperty("border-image-outset");
-      signElmt.style.removeProperty("border-image-repeat");
     }
+
+    signElmt.style.removeProperty("border-image-source");
+    signElmt.style.removeProperty("border-image-slice");
+    signElmt.style.removeProperty("border-image-width");
+    signElmt.style.removeProperty("border-image-outset");
+    signElmt.style.removeProperty("border-image-repeat");
 
     signElmt.style.backgroundColor = fillColor;
     signElmt.style.backgroundImage = layerImages.join(", ");
@@ -3640,7 +3745,7 @@ const app = (function () {
       window.customShields = new CustomShields();
       await window.customShields.initialized;
 
-        const restored = loadSavedAppState();
+        const restored = await loadSavedAppState();
 
         if (!restored) {
           post.newPanel();
@@ -3695,6 +3800,31 @@ const app = (function () {
     };
 
   // Create a new panel, set the current editing panel to that panel, update the form, and redraw.
+    const getNewPanelInsertionIndex = () => {
+      if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
+        return 0;
+      }
+
+      if (
+        !Number.isInteger(currentlySelectedPanelIndex) ||
+        currentlySelectedPanelIndex < 0 ||
+        currentlySelectedPanelIndex >= post.panels.length
+      ) {
+        return post.panels.length;
+      }
+
+      const selectedGroup = getStackedPanelGroupIndices(currentlySelectedPanelIndex);
+
+      if (!selectedGroup.length) {
+        return Math.min(post.panels.length, currentlySelectedPanelIndex + 1);
+      }
+
+      return Math.min(
+        post.panels.length,
+        selectedGroup[selectedGroup.length - 1] + 1
+      );
+    };
+
     const newPanel = function () {
       return runWithUndo(() => {
         const newPanel = createFreshPanelFromDefaults({ clearGlobals: true });
@@ -3703,8 +3833,9 @@ const app = (function () {
           return;
         }
 
-        post.panels.push(newPanel);
-        currentlySelectedPanelIndex = post.panels.length - 1;
+        const insertIndex = getNewPanelInsertionIndex();
+        post.panels.splice(insertIndex, 0, newPanel);
+        currentlySelectedPanelIndex = insertIndex;
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
@@ -3972,10 +4103,16 @@ const app = (function () {
   let renderedPanelDragState = null;
 
   const toggleRenderedPanelWiggle = (isActive) => {
-    const panels = document.querySelectorAll("#panelContainer > .panel");
+    const panels = document.querySelectorAll("#panelContainer .panel");
     for (const panel of panels) {
-      panel.classList.toggle("panelWiggle", isActive);
-      if (isActive) {
+      const shouldWiggle =
+        isActive &&
+        !panel.classList.contains("panelHiddenFromPost") &&
+        isRenderedPanelDragTargetVisible(panel);
+
+      panel.classList.toggle("panelWiggle", shouldWiggle);
+
+      if (shouldWiggle) {
         panel.style.setProperty("--wiggle-delay", `${Math.random() * 0.12}s`);
       } else {
         panel.style.removeProperty("--wiggle-delay");
@@ -4001,43 +4138,87 @@ const app = (function () {
     renderedPanelDragState = null;
   };
 
-  const getRenderedPanelDropPosition = (container, clientX) => {
-    const panels = Array.from(container.querySelectorAll(".panel"));
-    if (!panels.length) {
-      return { dropIndex: 0, targetPanel: null, placement: null };
+  const getRenderedPanelIndexFromElement = (panelElement) => {
+    const panelIndex = Number(panelElement?.dataset?.panelIndex);
+    return Number.isInteger(panelIndex) ? panelIndex : null;
+  };
+
+  const getRenderedPanelGroupStartIndex = (panelIndex) => {
+    if (!Number.isInteger(panelIndex)) {
+      return null;
     }
 
-    let dropIndex = panels.length;
-    let targetPanel = null;
-    let placement = "after";
-    let foundPosition = false;
+    const group = getStackedPanelGroupIndices(panelIndex);
+    return group.length ? group[0] : panelIndex;
+  };
 
-    for (let i = 0; i < panels.length; i++) {
-      const panel = panels[i];
+  const getRenderedPanelGroupEndIndex = (panelIndex) => {
+    if (!Number.isInteger(panelIndex)) {
+      return null;
+    }
+
+    const group = getStackedPanelGroupIndices(panelIndex);
+    return group.length ? group[group.length - 1] : panelIndex;
+  };
+
+  const isRenderedPanelDragTargetVisible = (panelElement) => {
+    const panelIndex = getRenderedPanelIndexFromElement(panelElement);
+
+    if (panelIndex === null || panelElement.classList.contains("panelHiddenFromPost")) {
+      return false;
+    }
+
+    if (renderedPanelDragState) {
+      const draggedGroupStart = getRenderedPanelGroupStartIndex(
+        renderedPanelDragState.fromIndex
+      );
+      const targetGroupStart = getRenderedPanelGroupStartIndex(panelIndex);
+
+      if (draggedGroupStart !== null && draggedGroupStart === targetGroupStart) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const getRenderedPanelDropPosition = (container, clientX) => {
+    const panels = Array.from(container.querySelectorAll(".panel"))
+      .filter(isRenderedPanelDragTargetVisible);
+
+    if (!panels.length) {
+      return {
+        dropIndex: renderedPanelDragState?.fromIndex ?? 0,
+        targetPanel: null,
+        placement: null,
+      };
+    }
+
+    for (const panel of panels) {
       const rect = panel.getBoundingClientRect();
       const midpoint = rect.left + rect.width / 2;
+
       if (clientX < midpoint) {
-        dropIndex = i;
-        placement = "before";
-        foundPosition = true;
-        targetPanel = panel.dataset.dragging === "true" ? null : panel;
-        break;
+        const panelIndex = getRenderedPanelIndexFromElement(panel);
+        const groupStart = getRenderedPanelGroupStartIndex(panelIndex);
+
+        return {
+          dropIndex: groupStart ?? panelIndex ?? 0,
+          targetPanel: panel,
+          placement: "before",
+        };
       }
     }
 
-    if (!foundPosition) {
-      const lastPanel = panels[panels.length - 1];
-      if (lastPanel.dataset.dragging !== "true") {
-        targetPanel = lastPanel;
-        placement = "after";
-      } else {
-        placement = null;
-      }
-    } else if (!targetPanel) {
-      placement = null;
-    }
+    const lastPanel = panels[panels.length - 1];
+    const lastPanelIndex = getRenderedPanelIndexFromElement(lastPanel);
+    const lastGroupEnd = getRenderedPanelGroupEndIndex(lastPanelIndex);
 
-    return { dropIndex, targetPanel, placement };
+    return {
+      dropIndex: (lastGroupEnd ?? lastPanelIndex ?? post.panels.length - 1) + 1,
+      targetPanel: lastPanel,
+      placement: "after",
+    };
   };
 
   const handleRenderedPanelDragStart = (event) => {
@@ -6161,42 +6342,55 @@ const app = (function () {
       return subPanel.blockElements;
     };
 
+    const normalizeSubpanelClipboardPayload = (payload) => {
+      if (!payload || payload.type !== "subpanel-block-elements") {
+        return null;
+      }
+
+      if (!Array.isArray(payload.rows) || payload.rows.length === 0) {
+        return null;
+      }
+
+      return payload;
+    };
+
     const getSubpanelClipboardPayload = () => {
       try {
         const raw = window.localStorage.getItem(SUBPANEL_BLOCK_CLIPBOARD_STORAGE_KEY);
-        if (!raw) {
-          return null;
+        if (raw) {
+          const parsed = normalizeSubpanelClipboardPayload(JSON.parse(raw));
+          if (parsed) {
+            subpanelClipboardMemoryPayload = parsed;
+            return parsed;
+          }
         }
-
-        const parsed = JSON.parse(raw);
-        if (!parsed || parsed.type !== "subpanel-block-elements") {
-          return null;
-        }
-
-        if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) {
-          return null;
-        }
-
-        return parsed;
       } catch (error) {
-        console.warn("Unable to read copied subpanel elements", error);
-        return null;
+        console.warn("Unable to read copied subpanel elements from localStorage", error);
       }
+
+      return normalizeSubpanelClipboardPayload(subpanelClipboardMemoryPayload);
     };
 
     const hasSubpanelClipboard = () => !!getSubpanelClipboardPayload();
 
     const saveSubpanelClipboardPayload = (payload) => {
+      const normalizedPayload = normalizeSubpanelClipboardPayload(payload);
+      if (!normalizedPayload) {
+        return false;
+      }
+
+      subpanelClipboardMemoryPayload = normalizedPayload;
+
       try {
         window.localStorage.setItem(
           SUBPANEL_BLOCK_CLIPBOARD_STORAGE_KEY,
-          JSON.stringify(payload)
+          JSON.stringify(normalizedPayload)
         );
-        return true;
       } catch (error) {
-        console.error("Unable to save copied subpanel elements", error);
-        return false;
+        console.warn("Copied subpanel elements were too large for localStorage; using in-memory clipboard instead.", error);
       }
+
+      return true;
     };
 
     const normalizeSubpanelSelectionPayload = (selection, rows) => {
@@ -9722,7 +9916,10 @@ const app = (function () {
               });
           });
           const isAdditionalStackedPanel = isStackedPanelBottom(index);
-          panelElmt.draggable = !isAdditionalStackedPanel && post.panels.length > 1;
+          panelElmt.draggable =
+            !isAdditionalStackedPanel &&
+            post.panels.length > 1 &&
+            !isPanelConfiguredHidden(index);
           if (panelElmt.draggable) {
             panelElmt.addEventListener("dragstart", handleRenderedPanelDragStart);
             panelElmt.addEventListener("dragend", handleRenderedPanelDragEnd);
@@ -10248,10 +10445,10 @@ const app = (function () {
                            ? exitTab.color
                            : panel.color;
 
-                       if (!applyCustomExitTabColorVars(exitTabElmt, exitTabHolderElmt, resolvedExitTabColor)) {
+                       if (!applyCustomExitTabColorVars(exitTabElmt, exitTabHolderElmt, exitTabCont, resolvedExitTabColor)) {
                            const exitTabColorClass = getColorClassToken(resolvedExitTabColor, panel.color || "green");
-                           exitTabElmt.classList.add(...exitTabColorClass.split(/\s+/).filter(Boolean));
-                           exitTabHolderElmt.classList.remove(
+                           const exitTabColorClasses = exitTabColorClass.split(/\s+/).filter(Boolean);
+                           const exitTabKnownColorClasses = [
                              "green",
                              "blue",
                              "brown",
@@ -10264,7 +10461,12 @@ const app = (function () {
                              "fluorescent",
                              "pink",
                              "yellow-green"
-                           );
+                           ];
+                           exitTabElmt.classList.add(...exitTabColorClasses);
+                           exitTabHolderElmt.classList.remove(...exitTabKnownColorClasses);
+                           exitTabHolderElmt.classList.add(...exitTabColorClasses);
+                           exitTabCont.classList.remove(...exitTabKnownColorClasses);
+                           exitTabCont.classList.add(...exitTabColorClasses);
                        }
 
                        if (
@@ -10275,6 +10477,7 @@ const app = (function () {
                          const resolvedExitTabTextColor = getResolvedCssColorValue(exitTab.textColor);
                          if (resolvedExitTabTextColor) {
                            exitTabElmt.style.setProperty("--exitTabTextColor", resolvedExitTabTextColor);
+                           exitTabElmt.style.color = resolvedExitTabTextColor;
                            exitTabElmt.classList.add("customExitTabTextColor");
                          }
                        }
@@ -11011,20 +11214,86 @@ const app = (function () {
               LineEditor(controlTextArray[controlTextArray.length - 1]);
           }
           
+          const visibleExitTabsForSignShape = Array.isArray(panel.exitTabs)
+            ? panel.exitTabs.filter(
+                (exitTab) =>
+                  exitTab &&
+                  exitTab.variant !== "Quebec Exit Marker" &&
+                  !isEmptyDefaultExitTab(exitTab)
+              )
+            : [];
+          const signShapeExitTab = visibleExitTabsForSignShape[0] || panel.exitTabs?.[0] || {};
+          const getExitTabWidthClassForSignShape = (exitTab = {}) => {
+              if (isAplEdgeExitTabWidth(exitTab.width)) {
+                  return "edge aplEdge";
+              }
+              return String(exitTab.width || "Edge")
+                .toLowerCase()
+                .replace(/\s+/g, "");
+          };
+          const signShapeWidthClass = getExitTabWidthClassForSignShape(signShapeExitTab);
+          const signShapePositionClass = String(signShapeExitTab.position || "")
+            .toLowerCase()
+            .trim();
+          const exitTabCornerCuts = visibleExitTabsForSignShape.reduce(
+            (cuts, exitTab) => {
+                const hasFullBorder =
+                  exitTab.fullBorder === true ||
+                  String(exitTab.fullBorder || "").toLowerCase() === "true";
+
+                if (hasFullBorder) {
+                    return cuts;
+                }
+
+                const width = isAplEdgeExitTabWidth(exitTab.width)
+                  ? "edge"
+                  : String(exitTab.width || "").toLowerCase().trim();
+                const position = String(exitTab.position || "").toLowerCase().trim();
+
+                if (width === "full") {
+                    cuts.left = true;
+                    cuts.right = true;
+                } else if (width === "edge") {
+                    if (position === "left") {
+                        cuts.left = true;
+                    } else if (position === "right") {
+                        cuts.right = true;
+                    }
+                }
+
+                return cuts;
+            },
+            { left: false, right: false }
+          );
+          
           const signCont = document.createElement("div");
-          signCont.className = `signContainer ${panel.exitTabs[0].width.toLowerCase()}`;
+          signCont.className = `signContainer ${signShapeWidthClass}`;
           panelElmt.appendChild(signCont);
           
           const signElmt = document.createElement("div");
-          signElmt.className = `sign ${panel.exitTabs[0].width.toLowerCase()}`;
+          signElmt.className = `sign ${signShapeWidthClass}`;
+          if (signShapePositionClass) {
+              signElmt.classList.add(signShapePositionClass);
+          }
           signElmt.style.position = "relative";
           signElmt.style.zIndex = "2";
           
-          if (
-              panel.exitTabs.length > 0 &&
-              panel.exitTabs.some((exitTab) => !isEmptyDefaultExitTab(exitTab))
-          ) {
-              signElmt.className += " tabVisible";
+          if (visibleExitTabsForSignShape.length > 0) {
+              signElmt.classList.add("tabVisible");
+          }
+          if (exitTabCornerCuts.left) {
+              signCont.classList.add("exitTabCutsTopLeft");
+              signElmt.classList.add("exitTabCutsTopLeft");
+              signElmt.style.borderTopLeftRadius = "0";
+          }
+          if (exitTabCornerCuts.right) {
+              signCont.classList.add("exitTabCutsTopRight");
+              signElmt.classList.add("exitTabCutsTopRight");
+              signElmt.style.borderTopRightRadius = "0";
+          }
+          if (exitTabCornerCuts.left && exitTabCornerCuts.right) {
+              signElmt.style.borderTopLeftRadius = "0";
+              signElmt.style.borderTopRightRadius = "0";
           }
           
           signCont.appendChild(signElmt);

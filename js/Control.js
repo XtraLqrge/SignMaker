@@ -167,7 +167,7 @@ const normalizeSmallLettersSize = (value, fallback = 75) => {
   return Math.max(25, Math.min(100, resolved));
 };
 
-const normalizeTextFontSizePercent = (value, min = 50, max = 150, fallback = 100) => {
+const normalizeTextFontSizePercent = (value, min = 25, max = 150, fallback = 100) => {
   const rawValue = String(value ?? "").trim();
   const parsed = rawValue === "" ? NaN : Number(rawValue);
   const fallbackValue = Number(fallback);
@@ -806,7 +806,7 @@ class ControlTextElement extends TextElement {
           "settingsDefaultsControlTextSize",
           100
         ),
-        50,
+        25,
         250,
         100
       );
@@ -867,9 +867,9 @@ class ControlTextElement extends TextElement {
 }
 
 ControlTextElement.defaultFont = TextElement.prototype.fontFamily.includes(
-  "Series 5WR"
+  "Series EM"
 )
-  ? "Series 5WR"
+  ? "Series EM"
   : TextElement.prototype.fontFamily[0];
 
 ControlTextElement.getDefaultFont = function () {
@@ -914,13 +914,13 @@ class ActionMessageElement extends TextElement {
       resolvedOptions,
       "fontFamily",
       "settingsDefaultsActionFont",
-      "Series 5WR"
+      "Series EEM"
     );
 
     const resolvedFont =
       Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
         ? storedOrFallbackFont
-        : "Series 5WR";
+        : "Series EEM";
 
     resolvedOptions.textContent = getStoredDefaultsOption(
       resolvedOptions,
@@ -938,7 +938,7 @@ class ActionMessageElement extends TextElement {
         "settingsDefaultsActionSize",
         70
       ),
-      50,
+      25,
       150,
       70
     );
@@ -1022,13 +1022,13 @@ class AdvisoryMessageElement extends TextElement {
       resolvedOptions,
       "fontFamily",
       "settingsDefaultsAdvisoryFont",
-      "Series E"
+      "Series EEM"
     );
 
     const resolvedFont =
       Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
         ? storedOrFallbackFont
-        : "Series E";
+        : "Series EEM";
 
     resolvedOptions.textContent = getStoredDefaultsOption(
       resolvedOptions,
@@ -1046,7 +1046,7 @@ class AdvisoryMessageElement extends TextElement {
         "settingsDefaultsAdvisorySize",
         70
       ),
-      50,
+      25,
       150,
       70
     );
@@ -1141,13 +1141,14 @@ class AdvisoryMessageElement extends TextElement {
 
 class ElectronicSignElement extends TextElement {
   constructor({
-    fontFamily = "Electronic Highway Sign",
+    textContent = "VARIABLE",
+    fontFamily = "Modern VMS",
     textColor = "Orange",
     padding = 0.5,
     glow = true,
     setWidth = 0,
   } = {}) {
-    super();
+    super({ textContent, fontFamily });
     this.fontFamily = fontFamily;
     this.textColor = textColor;
     this.backgroundColor = "Black";
@@ -1186,8 +1187,8 @@ class ElectronicSignElement extends TextElement {
 }
 ElectronicSignElement.prototype.fontFamily =
   TextElement.prototype.fontFamily.concat([
-    "Electronic Highway Sign",
     "Modern VMS",
+    "Electronic Highway Sign",
   ]);
 ElectronicSignElement.prototype.textColors = [
   "Orange",
@@ -2328,10 +2329,12 @@ ShieldElement.prototype.buildBlockShieldList = function () {
     ensureShield({
       value: "TXFM",
       label: "Texas FM",
-      variants: ["4 Digit"],
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
       assetFolder: "img/shields/United States/TX",
       assetName: "TXFM",
       assetPathByVariant: {
+        "2Digit": "img/shields/United States/TX/TXFM-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXFM-3Digit.svg",
         "4Digit": "img/shields/United States/TX/TXFM-4Digit.svg",
       },
       categories: ["United States", "Texas"],
@@ -2367,11 +2370,13 @@ ShieldElement.prototype.buildBlockShieldList = function () {
     ensureShield({
       value: "TXRM",
       label: "Texas RM",
-      variants: ["2 Digit"],
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
       assetFolder: "img/shields/United States/TX",
       assetName: "TXRM",
       assetPathByVariant: {
         "2Digit": "img/shields/United States/TX/TXRM-2Digit.svg",
+        "3Digit": "img/shields/United States/TX/TXRM-3Digit.svg",
+        "4Digit": "img/shields/United States/TX/TXRM-4Digit.svg",
       },
       categories: ["United States", "Texas"],
     });
@@ -3235,6 +3240,25 @@ ShieldElement.prototype.createStackedBannerSlot = function (
   container.className = "stackedBannerSlot bannerSlot";
   container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
 
+  const normalizedBannerFont =
+    ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+  const renderedBannerFont =
+    ShieldElement.prototype.resolveBannerFontFamilyForRender(
+      normalizedBannerFont,
+      panel
+    );
+  const usesClearviewBannerFont =
+    typeof isClearviewTextFontFamily === "function"
+      ? isClearviewTextFontFamily(normalizedBannerFont) ||
+        isClearviewTextFontFamily(renderedBannerFont)
+      : /^Clearview\s|^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(
+          String(normalizedBannerFont || renderedBannerFont || "")
+        );
+
+  if (usesClearviewBannerFont) {
+    container.classList.add("clearviewBannerFont");
+  }
+
   const firstBannerValue = banners?.[0]?.bannerValue;
   const secondBannerValue = banners?.[1]?.bannerValue;
 
@@ -3372,6 +3396,25 @@ ShieldElement.prototype.createBannerContainer = function (
     position
   );
   container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
+
+  const normalizedBannerFont =
+    ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+  const renderedBannerFont =
+    ShieldElement.prototype.resolveBannerFontFamilyForRender(
+      normalizedBannerFont,
+      panel
+    );
+  const usesClearviewBannerFont =
+    typeof isClearviewTextFontFamily === "function"
+      ? isClearviewTextFontFamily(normalizedBannerFont) ||
+        isClearviewTextFontFamily(renderedBannerFont)
+      : /^Clearview\s|^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(
+          String(normalizedBannerFont || renderedBannerFont || "")
+        );
+
+  if (usesClearviewBannerFont) {
+    container.classList.add("clearviewBannerFont");
+  }
 
   const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
 
@@ -5528,7 +5571,7 @@ Control.prototype.blockElements = {
   IconElement: "Icon",
   BeaconElement: "Flashing Beacon",
   TollLogoElement: "Toll Logo",
-  ElectronicSignElement: "Electronic Sign",
+  ElectronicSignElement: "Variable Message",
 };
 
 Control.prototype.blockInternalElements = {

@@ -3,6 +3,7 @@ const formHandler = (function () {
     let post;
     let blockDragState = null;
     let panelDragState = null;
+    let showHiddenPanelsInPanelList = true;
     let exitTabDragState = null;
     let rowDragState = null;
     let subPanelTabDragState = null;
@@ -1046,6 +1047,43 @@ const formHandler = (function () {
       }
     };
 
+    const shouldSaveCurrentExitTabEditsToProfile = () =>
+      exitTabEditorMode === "current" &&
+      currentPanelExitTabProfileId &&
+      currentPanelExitTabProfileId !== EXIT_TAB_DEFAULT_PROFILE_ID;
+
+    const saveCurrentExitTabEditsToSelectedProfile = (exitTab = null) => {
+      if (!exitTab || !shouldSaveCurrentExitTabEditsToProfile()) {
+        return false;
+      }
+
+      const profile = getExitTabProfileById(currentPanelExitTabProfileId);
+      if (!profile) {
+        return false;
+      }
+
+      const variant = normalizeExitTabProfileVariant(exitTab.variant || "Default");
+      const settings = getExitTabProfileSettings(profile, variant);
+
+      getExitTabProfileFormattingKeys().forEach((key) => {
+        if (key === "number") {
+          return;
+        }
+        if (Object.prototype.hasOwnProperty.call(exitTab, key)) {
+          settings[key] = cloneExitTabValue(exitTab[key]);
+        }
+      });
+
+      settings.variant = variant;
+      profile.settingsByVariant[variant] = normalizeExitTabProfileSettings(
+        settings,
+        variant
+      );
+      profile.settings = profile.settingsByVariant.Default;
+      return true;
+    };
+
+
     const applyDefaultExitTabProfileToTab = (exitTab) => {
       if (!exitTab) {
         return false;
@@ -1718,17 +1756,93 @@ const getPostThicknessFallback = () =>
 
   const setStoredItem = (key, value) => {
     if (!hasLocalStorage()) {
-      return;
+      return false;
     }
     try {
       window.localStorage.setItem(key, value);
+      return true;
     } catch (error) {
       logStorageWarning("Unable to write to localStorage", error);
       localStorageAvailable = false;
+      return false;
     }
   };
 
+  const FORM_PERSISTENCE_DB_NAME = "signMaker.formPersistence.v1";
+  const FORM_PERSISTENCE_DB_STORE = "keyValue";
+  let formPersistenceDbPromise = null;
 
+  const openFormPersistenceDB = () => {
+    if (formPersistenceDbPromise) {
+      return formPersistenceDbPromise;
+    }
+
+    formPersistenceDbPromise = new Promise((resolve, reject) => {
+      if (typeof window === "undefined" || !window.indexedDB) {
+        reject(new Error("IndexedDB is not available."));
+        return;
+      }
+
+      const request = window.indexedDB.open(FORM_PERSISTENCE_DB_NAME, 1);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(FORM_PERSISTENCE_DB_STORE)) {
+          db.createObjectStore(FORM_PERSISTENCE_DB_STORE, { keyPath: "key" });
+        }
+      };
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Unable to open form persistence database."));
+      request.onblocked = () => reject(new Error("Form persistence database open was blocked."));
+    });
+
+    formPersistenceDbPromise.catch(() => {
+      formPersistenceDbPromise = null;
+    });
+
+    return formPersistenceDbPromise;
+  };
+
+  const setPersistentFormValue = async (key, value) => {
+    const db = await openFormPersistenceDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(FORM_PERSISTENCE_DB_STORE, "readwrite");
+      const store = transaction.objectStore(FORM_PERSISTENCE_DB_STORE);
+      store.put({ key, value, dateModified: new Date().toISOString() });
+
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error || new Error("Unable to save persistent form value."));
+      transaction.onabort = () => reject(transaction.error || new Error("Persistent form value save was aborted."));
+    });
+  };
+
+  const getPersistentFormValue = async (key) => {
+    const db = await openFormPersistenceDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(FORM_PERSISTENCE_DB_STORE, "readonly");
+      const store = transaction.objectStore(FORM_PERSISTENCE_DB_STORE);
+      const request = store.get(key);
+
+      request.onsuccess = () => resolve(request.result ? request.result.value : null);
+      request.onerror = () => reject(request.error || new Error("Unable to read persistent form value."));
+    });
+  };
+
+  const parseStoredRecordArray = (raw) => {
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn("Unable to parse stored record array", error);
+      return [];
+    }
+  };
 
   const subpanelClipboardSelection = {
     contextKey: "",
@@ -2381,27 +2495,44 @@ const getPostThicknessFallback = () =>
     });
   };
 
-  const loadCustomIconRecords = () => {
+  const loadCustomIconRecords = async () => {
+    let records = [];
+
     try {
-      const raw = getStoredItem(STORAGE_KEYS.customIconPickerIcons);
-      const parsed = raw ? JSON.parse(raw) : [];
-      customIconRecords = Array.isArray(parsed)
-        ? parsed.map(normalizeCustomIconRecord).filter((record) => record.src)
-        : [];
+      records = parseStoredRecordArray(getStoredItem(STORAGE_KEYS.customIconPickerIcons));
     } catch (error) {
-      console.warn("Unable to load custom icon records", error);
-      customIconRecords = [];
+      console.warn("Unable to load custom icon records from localStorage", error);
     }
 
+    try {
+      const indexedValue = await getPersistentFormValue(STORAGE_KEYS.customIconPickerIcons);
+      const indexedRecords = parseStoredRecordArray(indexedValue);
+      if (indexedRecords.length || !records.length) {
+        records = indexedRecords;
+      }
+    } catch (error) {
+      if (!records.length) {
+        console.warn("Unable to load custom icon records from IndexedDB", error);
+      }
+    }
+
+    customIconRecords = records.map(normalizeCustomIconRecord).filter((record) => record.src);
     syncCustomIconRegistry();
     return customIconRecords;
   };
 
   const saveCustomIconRecords = () => {
-    setStoredItem(
+    const serializedRecords = JSON.stringify(customIconRecords);
+    const savedToLocalStorage = setStoredItem(
       STORAGE_KEYS.customIconPickerIcons,
-      JSON.stringify(customIconRecords)
+      serializedRecords
     );
+
+    setPersistentFormValue(STORAGE_KEYS.customIconPickerIcons, serializedRecords).catch((error) => {
+      console.warn("Unable to save custom icon records to IndexedDB", error);
+    });
+
+    return savedToLocalStorage;
   };
 
   const upsertCustomIconRecord = (record) => {
@@ -2708,26 +2839,45 @@ const getPostThicknessFallback = () =>
     };
   };
 
-  const loadCustomShieldMakerRecords = () => {
+  const loadCustomShieldMakerRecords = async () => {
+    let records = [];
+
     try {
-      const raw = getStoredItem(STORAGE_KEYS.customShieldMakerShields);
-      const parsed = raw ? JSON.parse(raw) : [];
-      customShieldMakerRecords = Array.isArray(parsed)
-        ? parsed.map(normalizeCustomShieldMakerRecord).filter((record) => record.imageData)
-        : [];
+      records = parseStoredRecordArray(getStoredItem(STORAGE_KEYS.customShieldMakerShields));
     } catch (error) {
-      console.warn("Unable to load custom shield maker records", error);
-      customShieldMakerRecords = [];
+      console.warn("Unable to load custom shield maker records from localStorage", error);
     }
 
+    customShieldMakerRecords = records.map(normalizeCustomShieldMakerRecord).filter((record) => record.imageData);
+
+    try {
+      const indexedValue = await getPersistentFormValue(STORAGE_KEYS.customShieldMakerShields);
+      const indexedRecords = parseStoredRecordArray(indexedValue);
+      if (indexedRecords.length || !records.length) {
+        records = indexedRecords;
+      }
+    } catch (error) {
+      if (!records.length) {
+        console.warn("Unable to load custom shield maker records from IndexedDB", error);
+      }
+    }
+
+    customShieldMakerRecords = records.map(normalizeCustomShieldMakerRecord).filter((record) => record.imageData);
     return customShieldMakerRecords;
   };
 
   const saveCustomShieldMakerRecords = () => {
-    setStoredItem(
+    const serializedRecords = JSON.stringify(customShieldMakerRecords);
+    const savedToLocalStorage = setStoredItem(
       STORAGE_KEYS.customShieldMakerShields,
-      JSON.stringify(customShieldMakerRecords)
+      serializedRecords
     );
+
+    setPersistentFormValue(STORAGE_KEYS.customShieldMakerShields, serializedRecords).catch((error) => {
+      console.warn("Unable to save custom shield maker records to IndexedDB", error);
+    });
+
+    return savedToLocalStorage;
   };
 
   const getCustomShieldMakerRecordById = (id) =>
@@ -3643,8 +3793,12 @@ const getPostThicknessFallback = () =>
   const togglePanelListWiggle = (isActive) => {
     const buttons = document.querySelectorAll(".panelListButton");
     for (const button of buttons) {
-      button.classList.toggle("panelWiggle", isActive);
-      if (isActive) {
+      const shouldWiggle =
+        isActive && !button.closest(".panelListRow.hiddenFromPost");
+
+      button.classList.toggle("panelWiggle", shouldWiggle);
+
+      if (shouldWiggle) {
         button.style.setProperty("--wiggle-delay", `${Math.random() * 0.12}s`);
       } else {
         button.style.removeProperty("--wiggle-delay");
@@ -4059,45 +4213,104 @@ const getPostThicknessFallback = () =>
     togglePanelListWiggle(false);
   };
 
-  const getPanelDropPosition = (container, clientY) => {
-    const buttons = Array.from(container.querySelectorAll(".panelListButton"));
-    if (!buttons.length) {
-      return { dropIndex: 0, targetButton: null, placement: null };
+  const getPanelListButtonPanelIndex = (button) => {
+    const panelIndex = Number(button?.dataset?.panelIndex);
+    return Number.isInteger(panelIndex) ? panelIndex : null;
+  };
+
+  const getPanelListGroupStartIndex = (panelIndex) => {
+    if (!post || !Array.isArray(post.panels) || !Number.isInteger(panelIndex)) {
+      return null;
     }
 
-    let dropIndex = Number(
-      buttons[buttons.length - 1].dataset.panelIndex || buttons.length - 1
-    );
-    dropIndex += 1;
-    let targetButton = null;
-    let placement = "after";
-    let foundPosition = false;
+    let groupStart = Math.max(0, Math.min(panelIndex, post.panels.length - 1));
+
+    while (groupStart > 0 && post.panels[groupStart]?.stackedWithPrevious === true) {
+      groupStart--;
+    }
+
+    return groupStart;
+  };
+
+  const getPanelListGroupEndIndex = (panelIndex) => {
+    if (!post || !Array.isArray(post.panels) || !Number.isInteger(panelIndex)) {
+      return null;
+    }
+
+    const groupStart = getPanelListGroupStartIndex(panelIndex);
+
+    if (groupStart === null) {
+      return null;
+    }
+
+    let groupEnd = groupStart;
+
+    while (
+      groupEnd + 1 < post.panels.length &&
+      post.panels[groupEnd + 1]?.stackedWithPrevious === true
+    ) {
+      groupEnd++;
+    }
+
+    return groupEnd;
+  };
+
+  const isPanelListDragTargetVisible = (button) => {
+    const panelIndex = getPanelListButtonPanelIndex(button);
+
+    if (panelIndex === null || button.closest(".panelListRow.hiddenFromPost")) {
+      return false;
+    }
+
+    if (panelDragState) {
+      const draggedGroupStart = getPanelListGroupStartIndex(panelDragState.fromIndex);
+      const targetGroupStart = getPanelListGroupStartIndex(panelIndex);
+
+      if (draggedGroupStart !== null && draggedGroupStart === targetGroupStart) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const getPanelDropPosition = (container, clientY) => {
+    const buttons = Array.from(container.querySelectorAll(".panelListButton"))
+      .filter(isPanelListDragTargetVisible);
+
+    if (!buttons.length) {
+      return {
+        dropIndex: panelDragState?.fromIndex ?? 0,
+        targetButton: null,
+        placement: null,
+      };
+    }
 
     for (const button of buttons) {
       const rect = button.getBoundingClientRect();
       const midpoint = rect.top + rect.height / 2;
+
       if (clientY < midpoint) {
-        dropIndex = Number(button.dataset.panelIndex || 0);
-        placement = "before";
-        foundPosition = true;
-        targetButton = button.dataset.dragging === "true" ? null : button;
-        break;
+        const panelIndex = getPanelListButtonPanelIndex(button);
+        const groupStart = getPanelListGroupStartIndex(panelIndex);
+
+        return {
+          dropIndex: groupStart ?? panelIndex ?? 0,
+          targetButton: button,
+          placement: "before",
+        };
       }
     }
 
-    if (!foundPosition) {
-      const lastButton = buttons[buttons.length - 1];
-      if (lastButton.dataset.dragging !== "true") {
-        targetButton = lastButton;
-        placement = "after";
-      } else {
-        placement = null;
-      }
-    } else if (!targetButton) {
-      placement = null;
-    }
+    const lastButton = buttons[buttons.length - 1];
+    const lastPanelIndex = getPanelListButtonPanelIndex(lastButton);
+    const lastGroupEnd = getPanelListGroupEndIndex(lastPanelIndex);
 
-    return { dropIndex, targetButton, placement };
+    return {
+      dropIndex: (lastGroupEnd ?? lastPanelIndex ?? post.panels.length - 1) + 1,
+      targetButton: lastButton,
+      placement: "after",
+    };
   };
 
   const handlePanelDragStart = (event) => {
@@ -6499,7 +6712,7 @@ const getPostThicknessFallback = () =>
     exposed = appExposed;
     post = exposed.getPost();
     applyStoredPreferences();
-    loadCustomIconRecords();
+    await loadCustomIconRecords();
     await initUI();
     initCustomShieldMaker();
     initializeColorPickers();
@@ -9335,8 +9548,15 @@ const getPostThicknessFallback = () =>
     patchShieldPickerTreeForUploadedStateFolders();
 
     SHIELD_PICKER_TREE.forEach(applyManualShieldPickerOrder);
-    loadCustomShieldMakerRecords();
+    const customShieldMakerLoadPromise = loadCustomShieldMakerRecords();
     refreshCustomShieldMakerRegistry();
+    customShieldMakerLoadPromise
+      .catch((error) => {
+        console.warn("Unable to restore custom shield maker records before building the picker", error);
+      })
+      .finally(() => {
+        refreshCustomShieldMakerRegistry();
+      });
 
     const flattenShieldPickerTree = (nodes, result = []) => {
       nodes.forEach((node) => {
@@ -14836,7 +15056,7 @@ const getPostThicknessFallback = () =>
     const fontSizeMax = blockElemType === "sdCtrlText" ? 250 : 150;
     blockElem.fontSize = normalizeTextEditorWholeNumber(
       blockElem.fontSize,
-      50,
+      25,
       fontSizeMax,
       blockElemType === "sdCtrlText" ? 100 : 70
     );
@@ -15449,7 +15669,12 @@ const getPostThicknessFallback = () =>
       ? form["exitTabWidth"].value
       : exitTab.width || "Full";
 
-    exitTab.width = !isAssetExitTabVariant && exitTab.number.trim() === ""
+    const shouldForceEmptyCurrentExitTabToEdge =
+      !isAssetExitTabVariant &&
+      exitTab.number.trim() === "" &&
+      !shouldSaveCurrentExitTabEditsToProfile();
+
+    exitTab.width = shouldForceEmptyCurrentExitTabToEdge
         ? "Edge"
         : isAplEdgeExitTabWidth(requestedExitTabWidth) && !aplEdgeAllowed
           ? "Edge"
@@ -15784,6 +16009,8 @@ const getPostThicknessFallback = () =>
             ? Math.max(0, nestedTabSpacingInput)
             : 0;
         }
+
+        saveCurrentExitTabEditsToSelectedProfile(exitTab);
     // Misc Shields
     currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
 
@@ -15920,19 +16147,32 @@ const getPostThicknessFallback = () =>
       }
     }
 
-    if (blockElemType === "sdCtrlText") {
-      const fontFamilyInput = document.getElementById("sdCtrlText_fontFamily");
-      const lineHeightInput = document.getElementById("sdCtrlText_lineHeight");
-      const lineHeightValueInput = document.getElementById("sdCtrlText_lineHeightVal");
-      const wasClearview = /^Clearview\s/i.test(String(currentBlockElem.fontFamily || ""));
-      const willBeClearview = /^Clearview\s/i.test(String(fontFamilyInput?.value || ""));
+    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+      const fontFamilyInput = document.getElementById(`${blockElemType}_fontFamily`);
+      const lineHeightInput = document.getElementById(`${blockElemType}_lineHeight`);
+      const lineHeightValueInput = document.getElementById(`${blockElemType}_lineHeightVal`);
 
-      if (fontFamilyInput && lineHeightInput && wasClearview !== willBeClearview) {
-        const nextLineHeight = willBeClearview ? 120 : 100;
-        lineHeightInput.value = String(nextLineHeight);
+      if (fontFamilyInput && lineHeightInput) {
+        const wasClearview = isClearviewUiFont(currentBlockElem.fontFamily);
+        const willBeClearview = isClearviewUiFont(fontFamilyInput.value);
+        const currentLineHeight = parseFloat(
+          lineHeightInput.value || currentBlockElem.lineHeight
+        );
 
-        if (lineHeightValueInput) {
-          lineHeightValueInput.value = String(nextLineHeight);
+        let nextLineHeight = null;
+
+        if (!wasClearview && willBeClearview && currentLineHeight === 100) {
+          nextLineHeight = 120;
+        } else if (wasClearview && !willBeClearview && currentLineHeight === 120) {
+          nextLineHeight = 100;
+        }
+
+        if (nextLineHeight !== null) {
+          lineHeightInput.value = String(nextLineHeight);
+
+          if (lineHeightValueInput) {
+            lineHeightValueInput.value = String(nextLineHeight);
+          }
         }
       }
     }
@@ -16920,8 +17160,21 @@ const getPostThicknessFallback = () =>
     updateExitTabModeUi();
 
     const panelList = document.getElementById("panelList");
+    const panelListShowHiddenPanels = document.getElementById("panelListShowHiddenPanels");
     const subPanelList = document.getElementById("subPanelList");
     const exitTabList = document.getElementById("exitTabList");
+
+    if (panelListShowHiddenPanels) {
+      panelListShowHiddenPanels.checked = showHiddenPanelsInPanelList;
+
+      if (panelListShowHiddenPanels.dataset.showHiddenPanelsBound !== "true") {
+        panelListShowHiddenPanels.dataset.showHiddenPanelsBound = "true";
+        panelListShowHiddenPanels.addEventListener("change", () => {
+          showHiddenPanelsInPanelList = panelListShowHiddenPanels.checked;
+          updateForm();
+        });
+      }
+    }
     toggleExitTabWiggle(false);
     clearExitTabDropIndicators();
     exitTabDragState = null;
@@ -17011,12 +17264,15 @@ const getPostThicknessFallback = () =>
           continue;
         }
 
+        const panelHiddenFromPost = post.panels[panelIndex]?.hiddenFromPost === true;
+        if (panelHiddenFromPost && !showHiddenPanelsInPanelList) {
+          continue;
+        }
+
         const panelRow = document.createElement("div");
         panelRow.className =
           "panelListRow" +
-          (post.panels[panelIndex]?.hiddenFromPost === true
-            ? " hiddenFromPost"
-            : "");
+          (panelHiddenFromPost ? " hiddenFromPost" : "");
 
         const panelButton = document.createElement("button");
         panelButton.id = "edit" + (panelIndex + 1);
@@ -17027,7 +17283,8 @@ const getPostThicknessFallback = () =>
             ? " active"
             : "");
         panelButton.dataset.panelIndex = panelIndex.toString();
-        panelButton.draggable = post.panels.length > 1;
+        panelButton.draggable =
+          post.panels.length > 1 && !panelHiddenFromPost;
 
         const label = document.createElement("span");
         label.className = "panelListLabel";
@@ -17036,7 +17293,7 @@ const getPostThicknessFallback = () =>
         panelButton.appendChild(label);
 
         panelButton.addEventListener("click", function () {
-          if (post.panels[panelIndex]?.hiddenFromPost === true) {
+          if (panelHiddenFromPost) {
             app.togglePanelHidden(panelIndex);
           }
           exposed.changeEditingPanel(panelIndex);
@@ -17048,22 +17305,20 @@ const getPostThicknessFallback = () =>
         hideButton.type = "button";
         hideButton.className =
           "panelVisibilityButton" +
-          (post.panels[panelIndex]?.hiddenFromPost === true ? " isHidden" : "");
+          (panelHiddenFromPost ? " isHidden" : "");
         hideButton.title =
-          (post.panels[panelIndex]?.hiddenFromPost === true ? "Show " : "Hide ") +
+          (panelHiddenFromPost ? "Show " : "Hide ") +
           panelLabelText;
         hideButton.setAttribute(
           "aria-label",
-          (post.panels[panelIndex]?.hiddenFromPost === true ? "Show " : "Hide ") +
+          (panelHiddenFromPost ? "Show " : "Hide ") +
             panelLabelText
         );
 
         const hideIcon = document.createElement("span");
         hideIcon.className = "material-symbols-outlined";
         hideIcon.textContent =
-          post.panels[panelIndex]?.hiddenFromPost === true
-            ? "visibility_off"
-            : "visibility";
+          panelHiddenFromPost ? "visibility_off" : "visibility";
         hideButton.appendChild(hideIcon);
 
         hideButton.addEventListener("mousedown", function (event) {

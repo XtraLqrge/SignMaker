@@ -363,19 +363,16 @@
   </div>
   <form name="signMaker">
     <div class="modals">
-      <div class="sMModal panelStyleConfig" data-current-menu="sMPanelAppearance">
+      <div class="sMModal panelStyleConfig" data-current-menu="sMPanelStyleCombined">
         <nav class="sMModalBar">
           <div class="sMModalTitle">
             <span class="material-symbols-outlined">tune</span> Panel Style
           </div>
-          <div data-tab="sMPanelAppearance" class="sMModalTab selected">
-            Appearance
-          </div>
-          <div data-tab="sMPanelPadding" class="sMModalTab">Padding</div>
         </nav>
         <div class="sMModalContent">
-          <div id="sMPanelAppearance">
+          <div id="sMPanelAppearance" class="panelStyleSection">
             <div>
+              <h4 class="panelStyleSectionHeader">Appearance</h4>
               <label for="panelColor">Panel Color: </label>
               <select id="panelColor" onchange="formHandler.readForm();"></select>
               <br />
@@ -390,8 +387,9 @@
               <input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm();" />
             </div>
           </div>
-          <div id="sMPanelPadding" class="tabHidden">
+          <div id="sMPanelPadding" class="panelStyleSection">
             <div>
+              <h4 class="panelStyleSectionHeader">Padding</h4>
               <label for="paddingTop">Padding Top: </label>
               <input type="number" id="paddingTop" value=".3" placeholder=".3" step=".01" min="0" max="20"
                 onblur="formHandler.readForm();" />
@@ -1035,8 +1033,8 @@
                       <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="-10" step=".25" value="0" />
 
                       <label for="sdCtrlText_fontSize">Font Size (%):</label>
-                      <input type="range" id="sdCtrlText_fontSize" min="50" max="250" step="1" value="100" />
-                      <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="50" max="250" step="1" value="100" />
+                      <input type="range" id="sdCtrlText_fontSize" min="25" max="250" step="1" value="100" />
+                      <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="25" max="250" step="1" value="100" />
                     </div>
 
                     <div class="sdCtrlTextSettingsRow">
@@ -1201,8 +1199,8 @@
                     <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="-10" step=".25" value="0" />
 
                     <label for="sdAdvisory_fontSize">Font Size (%):</label>
-                    <input type="range" id="sdAdvisory_fontSize" min="50" max="150" step="1" value="100" />
-                    <input id="sdAdvisory_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="1" value="100" />
+                    <input type="range" id="sdAdvisory_fontSize" min="25" max="150" step="1" value="100" />
+                    <input id="sdAdvisory_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="100" />
                   </div>
 
                   <div class="sdCtrlTextSettingsRow">
@@ -1459,8 +1457,8 @@
                     <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="-10" step=".25" value="0" />
 
                     <label for="sdActionMessage_fontSize">Font Size (%):</label>
-                    <input type="range" id="sdActionMessage_fontSize" min="50" max="150" step="1" value="100" />
-                    <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="50" max="150" step="1" value="70" />
+                    <input type="range" id="sdActionMessage_fontSize" min="25" max="150" step="1" value="100" />
+                    <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="70" />
                   </div>
 
                   <div class="sdCtrlTextSettingsRow">
@@ -1501,8 +1499,8 @@
 
                 <div data-property="sdElectronicSign" class="hidden">
                   <label for="sdElectronicSign_textContent">Content:</label>
-                  <input type="text" id="sdElectronicSign_textContent" class="sdTextEditorWide" placeholder="New Sign"
-                    value="New Sign" />
+                  <input type="text" id="sdElectronicSign_textContent" class="sdTextEditorWide" placeholder="VARIABLE"
+                    value="VARIABLE" />
                   <br />
                   <label for="sdElectronicSign_fontFamily">Font:</label>
                   <select id="sdElectronicSign_fontFamily"></select>
@@ -2129,7 +2127,7 @@
 
                   <label for="settingsDefaultsControlTextSize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsControlTextSize" type="range" min="50" max="250" step="1" value="100" />
+                    <input id="settingsDefaultsControlTextSize" type="range" min="25" max="250" step="1" value="100" />
                     <span id="settingsDefaultsControlTextSizeValue">100%</span>
                   </div>
 
@@ -2189,7 +2187,7 @@
 
                   <label for="settingsDefaultsActionSize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsActionSize" type="range" min="50" max="150" step="1" value="70" />
+                    <input id="settingsDefaultsActionSize" type="range" min="25" max="150" step="1" value="70" />
                     <span id="settingsDefaultsActionSizeValue">70%</span>
                   </div>
 
@@ -2221,7 +2219,7 @@
 
                   <label for="settingsDefaultsAdvisorySize">Text size:</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsAdvisorySize" type="range" min="50" max="150" step="1" value="100" />
+                    <input id="settingsDefaultsAdvisorySize" type="range" min="25" max="150" step="1" value="100" />
                     <span id="settingsDefaultsAdvisorySizeValue">100%</span>
                   </div>
 
@@ -2610,6 +2608,10 @@
             <button id="duplicatePanel" class="dup">Duplicate</button>
           </div>
           <div id="panelList" class="panelList"></div>
+          <div class="panelHiddenFilterRow">
+            <label for="panelListShowHiddenPanels">Show hidden panels</label>
+            <input type="checkbox" id="panelListShowHiddenPanels" checked />
+          </div>
           <div class="panelSpacingControl">
             <label for="panelSpacing">Spacing</label>
             <div class="panelSpacingInputs">

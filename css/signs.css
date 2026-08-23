@@ -398,6 +398,50 @@
   padding: 1px;
 }
 
+.exitTabContainer.green {
+  background-color: var(--green) !important;
+}
+
+.exitTabContainer.blue {
+  background-color: var(--blue) !important;
+}
+
+.exitTabContainer.brown {
+  background-color: var(--brown) !important;
+}
+
+.exitTabContainer.yellow {
+  background-color: var(--yellow) !important;
+}
+
+.exitTabContainer.white {
+  background-color: var(--white) !important;
+}
+
+.exitTabContainer.black {
+  background-color: var(--black) !important;
+}
+
+.exitTabContainer.red {
+  background-color: var(--red) !important;
+}
+
+.exitTabContainer.purple {
+  background-color: var(--purple) !important;
+}
+
+.exitTabContainer.orange {
+  background-color: var(--orange) !important;
+}
+
+.exitTabContainer.fluorescent.pink {
+  background-color: var(--fluorescent-pink) !important;
+}
+
+.exitTabContainer.fluorescent.yellow-green {
+  background-color: var(--fluorescent-yellow-green) !important;
+}
+
 .exitTabHolder {
   flex-grow: 1;
 }
@@ -557,16 +601,25 @@
   justify-content: flex-start;
 }
 
-.sign.full.tabVisible {
-  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
-}
-
-.sign.edge.right.tabVisible {
-  border-radius: var(--signBorderRadius, 0.75rem) 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
-}
-
+.sign.full.tabVisible,
+.sign.edge.right.tabVisible,
 .sign.edge.left.tabVisible {
-  border-radius: 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
+  border-radius: var(--signBorderRadius, 0.75rem);
+}
+
+.sign.tabVisible.exitTabCutsTopLeft,
+.signContainer.exitTabCutsTopLeft > .sign {
+  border-top-left-radius: 0 !important;
+}
+
+.sign.tabVisible.exitTabCutsTopRight,
+.signContainer.exitTabCutsTopRight > .sign {
+  border-top-right-radius: 0 !important;
+}
+
+.sign.tabVisible.exitTabCutsTopLeft.exitTabCutsTopRight,
+.signContainer.exitTabCutsTopLeft.exitTabCutsTopRight > .sign {
+  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) !important;
 }
 
 .panel.round .exitTabContainer,
@@ -2769,17 +2822,7 @@ img.exitOnlyArrow:last-child {
 .panel.white .sign,
 .panel.orange .sign,
 .panel.fluorescent.yellow-green .sign,
-.panel.fluorescent.pink .sign,
-.panel.yellow .exitTab,
-.panel.white .exitTab,
-.panel.orange .exitTab,
-.panel.fluorescent.yellow-green .exitTab,
-.panel.fluorescent.pink .exitTab,
-.panel.yellow .exitTabHolder,
-.panel.white .exitTabHolder,
-.panel.orange .exitTabHolder,
-.panel.fluorescent.yellow-green .exitTabHolder,
-.panel.fluorescent.pink .exitTabHolder {
+.panel.fluorescent.pink .sign {
   border-color: var(--black) !important;
   color: var(--black);
 }
@@ -3122,10 +3165,16 @@ img.exitOnlyArrow:last-child {
   box-sizing: border-box;
 }
 
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.full,
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.wide,
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.edge {
+.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.full {
   width: 100%;
+  box-sizing: border-box;
+}
+
+.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.wide,
+.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.edge,
+.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.narrow,
+.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.out {
+  width: max-content;
   box-sizing: border-box;
 }
 
@@ -3404,14 +3453,16 @@ img.exitOnlyArrow:last-child {
 }
 
 .exitTab.customExitTabColor,
-.exitTabHolder.customExitTabColor {
-  background-color: var(--exitTabCustomBg);
+.exitTabHolder.customExitTabColor,
+.exitTabContainer.customExitTabColor {
+  background-color: var(--exitTabCustomBg) !important;
   border-color: var(--exitTabCustomFg);
   color: var(--exitTabCustomFg);
 }
 
+.panel .exitTab.customExitTabTextColor,
 .exitTab.customExitTabTextColor {
-  color: var(--exitTabTextColor);
+  color: var(--exitTabTextColor) !important;
 }
 
 
@@ -3714,9 +3765,8 @@ img.exitOnlyArrow:last-child {
 }
 
 
-/* Exit tab color belongs only to the tab itself. The holder should not paint
-   a rectangular background outside the tab border, and it should not mask
-   horizontal-padding changes when the tab BG differs from the panel BG. */
+/* Keep the holder tight, but let it use the exit-tab background color so
+   rounded tab corners never show the parent panel color behind them. */
 .exitTabHolder.green,
 .exitTabHolder.blue,
 .exitTabHolder.brown,
@@ -3729,7 +3779,6 @@ img.exitOnlyArrow:last-child {
 .exitTabHolder.fluorescent.pink,
 .exitTabHolder.fluorescent.yellow-green,
 .exitTabHolder.customExitTabColor {
-  background-color: transparent !important;
   padding: 0 !important;
 }
 

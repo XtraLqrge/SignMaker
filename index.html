@@ -91,13 +91,13 @@
   </main>
   <div id="modalHolder">
     <dialog id="downloadContent">
+      <button id="cancelDownload" class="downloadCloseButton" type="button" aria-label="Close download menu">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <h3>Export Sign</h3>
+
       <div id="downloadContents">
-        <button id="cancelDownload" class="downloadCloseButton" type="button" aria-label="Close download menu">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-
-        <h3>Export Sign</h3>
-
         <div class="downloadEntirePostRow">
           <label for="entirePost" id="entirePostLabel">Entire Post</label>
           <input
@@ -136,13 +136,25 @@
           <button id="downloadPNG" class="downloadPrimaryButton" type="button"
             aria-label="Download PNG" onclick="app.downloadPNGSign()">
             <span class="material-symbols-outlined">download</span>
-            <span>PNG</span>
+            <span class="downloadActionLabel">PNG</span>
           </button>
 
           <button id="downloadSVG" class="downloadPrimaryButton" type="button"
             aria-label="Download SVG" onclick="app.downloadSVGSign()">
             <span class="material-symbols-outlined">download</span>
-            <span>SVG</span>
+            <span class="downloadActionLabel">SVG</span>
+          </button>
+
+          <button id="copyPNG" class="downloadPrimaryButton" type="button"
+            aria-label="Copy PNG" onclick="app.copyPNGSign()">
+            <span class="material-symbols-outlined">content_copy</span>
+            <span class="downloadActionLabel">PNG</span>
+          </button>
+
+          <button id="copySVG" class="downloadPrimaryButton" type="button"
+            aria-label="Copy SVG" onclick="app.copySVGSign()">
+            <span class="material-symbols-outlined">content_copy</span>
+            <span class="downloadActionLabel">SVG</span>
           </button>
         </div>
       </div>
@@ -448,7 +460,7 @@
               Current Panel
             </button>
             <button type="button" id="exitTabDefaultsModeButton" class="exitTabModeButton" onclick="formHandler.setExitTabEditorMode('default');">
-              Default Configuration
+              Profiles
             </button>
           </div>
 
@@ -640,7 +652,7 @@
                     type="range"
                     id="exitTabHorizontalPadding"
                     name="exitTabHorizontalPadding"
-                    min="0"
+                    min="-1"
                     max="3"
                     step="0.1"
                     value="0"

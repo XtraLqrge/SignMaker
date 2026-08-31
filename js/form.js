@@ -5,6 +5,8 @@ const formHandler = (function () {
     let panelDragState = null;
     let showHiddenPanelsInPanelList = true;
     let exitTabDragState = null;
+    let exitTabRowDragState = null;
+    let nestedExitTabDragState = null;
     let rowDragState = null;
     let subPanelTabDragState = null;
     let newRowDropTargetButton = null;
@@ -596,7 +598,7 @@ const formHandler = (function () {
         fallback.tollLogoSize || 3
       );
       normalized.horizontalPadding = Math.max(
-        0,
+        -1,
         Math.min(
           3,
           getFiniteExitTabNumber(normalized.horizontalPadding, fallback.horizontalPadding)
@@ -651,6 +653,8 @@ const formHandler = (function () {
       } else if (resolvedVariant === "Icon" && !normalized.icon) {
         normalized.icon = "AIRPORT";
       }
+
+      delete normalized.number;
 
       return normalized;
     };
@@ -751,39 +755,40 @@ const formHandler = (function () {
       post.exitTabProfiles.profiles = post.exitTabProfiles.profiles
         .filter((profile) => profile && typeof profile === "object")
         .map((profile, index) => {
-          const normalizedProfile = {
-            id:
-              typeof profile.id === "string" && profile.id.trim().length
-                ? profile.id
-                : `profile_${Date.now().toString(36)}_${index}`,
-            name:
-              typeof profile.name === "string" && profile.name.trim().length
-                ? profile.name.trim()
-                : getNextExitTabProfileName(post.exitTabProfiles.profiles),
-            locked:
-              profile.id === EXIT_TAB_DEFAULT_PROFILE_ID || profile.locked === true,
-            typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
-            settingsByVariant: createExitTabSettingsByVariant(profile),
-          };
+          const normalizedId =
+            typeof profile.id === "string" && profile.id.trim().length
+              ? profile.id
+              : `profile_${Date.now().toString(36)}_${index}`;
+          const originalName =
+            typeof profile.name === "string" && profile.name.trim().length
+              ? profile.name.trim()
+              : getNextExitTabProfileName(post.exitTabProfiles.profiles);
+          const normalizedSettingsByVariant = createExitTabSettingsByVariant(profile);
 
-          normalizedProfile.settings = normalizedProfile.settingsByVariant.Default;
+          profile.id = normalizedId;
+          profile.name = originalName;
+          profile.locked =
+            normalizedId === EXIT_TAB_DEFAULT_PROFILE_ID || profile.locked === true;
+          profile.typeSettingsVersion = EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION;
+          profile.settingsByVariant = normalizedSettingsByVariant;
+          profile.settings = profile.settingsByVariant.Default;
 
-          if (normalizedProfile.id === EXIT_TAB_DEFAULT_PROFILE_ID) {
-            normalizedProfile.name = "Default Profile";
-            normalizedProfile.locked = true;
+          if (profile.id === EXIT_TAB_DEFAULT_PROFILE_ID) {
+            profile.name = "Default Profile";
+            profile.locked = true;
           }
 
-          let uniqueName = normalizedProfile.name;
-          if (normalizedProfile.id !== EXIT_TAB_DEFAULT_PROFILE_ID) {
+          let uniqueName = profile.name;
+          if (profile.id !== EXIT_TAB_DEFAULT_PROFILE_ID) {
             let suffix = 2;
             while (seenNames.has(uniqueName)) {
-              uniqueName = `${normalizedProfile.name} ${suffix}`;
+              uniqueName = `${profile.name} ${suffix}`;
               suffix += 1;
             }
           }
-          normalizedProfile.name = uniqueName;
+          profile.name = uniqueName;
           seenNames.add(uniqueName);
-          return normalizedProfile;
+          return profile;
         });
 
       if (
@@ -837,6 +842,149 @@ const formHandler = (function () {
       return profile.settingsByVariant[resolvedVariant];
     };
 
+    const forEachExitTabInPost = (callback) => {
+      syncPostReference();
+      if (!post || !Array.isArray(post.panels) || typeof callback !== "function") {
+        return;
+      }
+
+      post.panels.forEach((panel, panelIndex) => {
+        if (!panel || !Array.isArray(panel.exitTabs)) {
+          return;
+        }
+
+        panel.exitTabs.forEach((exitTab, exitTabIndex) => {
+          if (!exitTab || typeof exitTab !== "object") {
+            return;
+          }
+
+          callback(exitTab, {
+            panel,
+            panelIndex,
+            exitTabIndex,
+            nestedExitTabIndex: -1,
+            parentExitTab: null,
+          });
+
+          if (Array.isArray(exitTab.nestedExitTabs)) {
+            exitTab.nestedExitTabs.forEach((nestedExitTab, nestedExitTabIndex) => {
+              if (!nestedExitTab || typeof nestedExitTab !== "object") {
+                return;
+              }
+
+              callback(nestedExitTab, {
+                panel,
+                panelIndex,
+                exitTabIndex,
+                nestedExitTabIndex,
+                parentExitTab: exitTab,
+              });
+            });
+          }
+        });
+      });
+    };
+
+    const resolveExitTabProfileId = (profileId) => {
+      const requested =
+        typeof profileId === "string" && profileId.trim().length
+          ? profileId.trim()
+          : EXIT_TAB_DEFAULT_PROFILE_ID;
+      const store = normalizeExitTabProfiles();
+      return store.profiles.some((profile) => profile.id === requested)
+        ? requested
+        : EXIT_TAB_DEFAULT_PROFILE_ID;
+    };
+
+    const getExitTabProfileIdFromTab = (exitTab) =>
+      resolveExitTabProfileId(exitTab?.profileId || EXIT_TAB_DEFAULT_PROFILE_ID);
+
+    const setExitTabProfileIdOnTab = (exitTab, profileId) => {
+      if (!exitTab || typeof exitTab !== "object") {
+        return EXIT_TAB_DEFAULT_PROFILE_ID;
+      }
+
+      const resolvedProfileId = resolveExitTabProfileId(profileId);
+      exitTab.profileId = resolvedProfileId;
+      return resolvedProfileId;
+    };
+
+    const syncCurrentExitTabProfileSelectionFromTab = (exitTab = null) => {
+      if (exitTabEditorMode === "default") {
+        return currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID;
+      }
+
+      const currentTab = exitTab || getCurrentExitTabForProfileApply();
+      const resolvedProfileId = getExitTabProfileIdFromTab(currentTab);
+      const store = normalizeExitTabProfiles();
+      store.selectedId = resolvedProfileId;
+      currentPanelExitTabProfileId = resolvedProfileId;
+      selectedExitTabProfileId = resolvedProfileId;
+      return resolvedProfileId;
+    };
+
+    const applyExitTabProfileToLinkedTabs = (profileId, options = {}) => {
+      const resolvedProfileId = resolveExitTabProfileId(profileId);
+      const profile = getExitTabProfileById(resolvedProfileId);
+      if (!profile) {
+        return false;
+      }
+
+      const limitVariant = options.variant
+        ? normalizeExitTabProfileVariant(options.variant)
+        : null;
+      let changed = false;
+
+      forEachExitTabInPost((exitTab) => {
+        const tabProfileId = getExitTabProfileIdFromTab(exitTab);
+        if (tabProfileId !== resolvedProfileId) {
+          return;
+        }
+
+        const tabVariant = normalizeExitTabProfileVariant(exitTab.variant || "Default");
+        if (limitVariant && tabVariant !== limitVariant) {
+          return;
+        }
+
+        copyExitTabProfileSettingsToTarget(
+          getExitTabProfileSettings(profile, tabVariant),
+          exitTab,
+          { preserveText: true }
+        );
+        exitTab.variant = tabVariant;
+        exitTab.profileId = resolvedProfileId;
+        changed = true;
+      });
+
+      return changed;
+    };
+
+    const resetLinkedExitTabsToDefaultProfile = (profileId) => {
+      const resolvedProfileId = resolveExitTabProfileId(profileId);
+      if (resolvedProfileId === EXIT_TAB_DEFAULT_PROFILE_ID) {
+        return false;
+      }
+
+      let changed = false;
+      forEachExitTabInPost((exitTab) => {
+        if (getExitTabProfileIdFromTab(exitTab) !== resolvedProfileId) {
+          return;
+        }
+
+        const tabVariant = normalizeExitTabProfileVariant(exitTab.variant || "Default");
+        copyExitTabProfileSettingsToTarget(
+          getExitTabProfileSettings(EXIT_TAB_DEFAULT_PROFILE_ID, tabVariant),
+          exitTab,
+          { preserveText: true }
+        );
+        exitTab.variant = tabVariant;
+        exitTab.profileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+        changed = true;
+      });
+
+      return changed;
+    };
+
     const getExitTabProfileContextSettings = (variant = null) => {
       const currentTab = getCurrentExitTabForProfileApply();
       const resolvedVariant = normalizeExitTabProfileVariant(
@@ -858,7 +1006,6 @@ const formHandler = (function () {
       }
 
       const normalized = normalizeExitTabProfileSettings(settings, "Default");
-      ExitTab.prototype.defaultText = String(normalized.number || "");
       ExitTab.prototype.defaultVariant = "Default";
       ExitTab.prototype.defaultPosition = normalized.position;
       ExitTab.prototype.defaultWidth = normalized.width;
@@ -925,7 +1072,7 @@ const formHandler = (function () {
       });
 
       if (!preserveText) {
-        target.number = normalized.number || "";
+        target.number = String(target.number || "");
         target.bilingual = normalized.bilingual === true;
         target.bilingualBottomText = normalized.bilingualBottomText || "SORTIE";
       } else {
@@ -995,7 +1142,12 @@ const formHandler = (function () {
     };
 
     const resetExitTabCurrentProfileSelection = () => {
+      const exitTab = getCurrentExitTabForProfileApply();
+      if (exitTab) {
+        setExitTabProfileIdOnTab(exitTab, EXIT_TAB_DEFAULT_PROFILE_ID);
+      }
       currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+      selectedExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
       updateExitTabProfilePickerUi();
     };
 
@@ -1032,6 +1184,7 @@ const formHandler = (function () {
           { preserveText: true }
         );
         exitTab.variant = variant;
+        setExitTabProfileIdOnTab(exitTab, profile.id);
         currentPanelExitTabProfileId = profile.id;
         selectedExitTabProfileId = profile.id;
         const store = normalizeExitTabProfiles();
@@ -1080,6 +1233,8 @@ const formHandler = (function () {
         variant
       );
       profile.settings = profile.settingsByVariant.Default;
+      setExitTabProfileIdOnTab(exitTab, profile.id);
+      applyExitTabProfileToLinkedTabs(profile.id, { variant });
       return true;
     };
 
@@ -1095,18 +1250,25 @@ const formHandler = (function () {
         { preserveText: false }
       );
       exitTab.variant = variant;
+      setExitTabProfileIdOnTab(exitTab, EXIT_TAB_DEFAULT_PROFILE_ID);
       return true;
     };
 
-    const makeUniqueExitTabProfileName = (requestedName, excludeId = "") => {
-      const store = normalizeExitTabProfiles();
+    const makeUniqueExitTabProfileName = (
+      requestedName,
+      excludeId = "",
+      existingProfiles = null
+    ) => {
+      const profiles = Array.isArray(existingProfiles)
+        ? existingProfiles
+        : normalizeExitTabProfiles().profiles;
       const base =
         String(requestedName || "").trim() ||
-        getNextExitTabProfileName(store.profiles);
+        getNextExitTabProfileName(profiles);
       let candidate = base;
       let index = 2;
       const nameTaken = (name) =>
-        store.profiles.some(
+        profiles.some(
           (profile) =>
             profile.id !== excludeId &&
             String(profile.name || "").toLowerCase() === name.toLowerCase()
@@ -1122,7 +1284,9 @@ const formHandler = (function () {
       const store = normalizeExitTabProfiles();
       const nextName = makeUniqueExitTabProfileName(
         String(requestedName || "").trim() ||
-          getNextExitTabProfileName(store.profiles)
+          getNextExitTabProfileName(store.profiles),
+        "",
+        store.profiles
       );
 
       if (exposed && typeof exposed.beginUndoableChange === "function") {
@@ -1171,7 +1335,7 @@ const formHandler = (function () {
         return false;
       }
 
-      const nextName = makeUniqueExitTabProfileName(rawName, profile.id);
+      const nextName = makeUniqueExitTabProfileName(rawName, profile.id, store.profiles);
       if (nextName === profile.name) {
         return true;
       }
@@ -1207,6 +1371,7 @@ const formHandler = (function () {
         exposed.beginUndoableChange();
       }
       try {
+        resetLinkedExitTabsToDefaultProfile(profileId);
         store.profiles.splice(index, 1);
         if (
           !store.profiles.some(
@@ -1233,9 +1398,7 @@ const formHandler = (function () {
       const isAssetVariant = isExitTabAssetVariantValue(resolvedVariant);
       const updated = normalizeExitTabProfileSettings(settings, resolvedVariant);
 
-      if (!isAssetVariant) {
-        updated.number = form["exitNumber"]?.value || "";
-      }
+      delete updated.number;
       updated.variant = resolvedVariant;
       updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
       updated.width = form["exitTabWidth"]?.value || updated.width || "Edge";
@@ -1315,7 +1478,7 @@ const formHandler = (function () {
           getFiniteExitTabNumber(form["fontSize"]?.value, updated.fontSize)
         );
         updated.horizontalPadding = Math.max(
-          0,
+          -1,
           Math.min(
             3,
             getFiniteExitTabNumber(
@@ -1342,11 +1505,15 @@ const formHandler = (function () {
     };
 
     const readExitTabProfileForm = () => {
-      const profile = getExitTabProfileById(selectedExitTabProfileId);
+      const store = normalizeExitTabProfiles();
+      const profile =
+        store.profiles.find((item) => item.id === selectedExitTabProfileId) ||
+        store.profiles.find((item) => item.id === EXIT_TAB_DEFAULT_PROFILE_ID) ||
+        store.profiles[0];
       if (!profile) {
         return false;
       }
-      const store = normalizeExitTabProfiles();
+      selectedExitTabProfileId = profile.id;
       const activeVariant = normalizeExitTabProfileVariant(
         selectedExitTabProfileVariant
       );
@@ -1360,6 +1527,8 @@ const formHandler = (function () {
           activeVariant
         );
       profile.settings = profile.settingsByVariant.Default;
+      store.selectedId = profile.id;
+      applyExitTabProfileToLinkedTabs(profile.id, { variant: activeVariant });
 
       if (
         profile.id === EXIT_TAB_DEFAULT_PROFILE_ID &&
@@ -1465,6 +1634,9 @@ const formHandler = (function () {
       const select = document.getElementById("exitTabProfileSelect");
       if (!select) {
         return;
+      }
+      if (exitTabEditorMode !== "default") {
+        syncCurrentExitTabProfileSelectionFromTab();
       }
       const store = normalizeExitTabProfiles();
       select.innerHTML = "";
@@ -1690,9 +1862,61 @@ const formHandler = (function () {
       }
     };
 
+    const commitExitTabProfileEditorControlChange = (event) => {
+      if (exitTabEditorMode !== "default") {
+        return;
+      }
+
+      const target = event?.target;
+      if (!target || target.id === "exitNumber") {
+        return;
+      }
+
+      if (target.closest && !target.closest(".sMModal.exitTabConfig")) {
+        return;
+      }
+
+      if (target.closest && target.closest("#exitTabProfileManagerPicker")) {
+        return;
+      }
+
+      readForm();
+    };
+
+    const bindExitTabProfileEditorLiveControls = () => {
+      const modal = document.querySelector(".sMModal.exitTabConfig");
+      if (!modal || modal.dataset.exitTabProfileLiveBound === "true") {
+        return;
+      }
+
+      modal.dataset.exitTabProfileLiveBound = "true";
+
+      modal.addEventListener("input", (event) => {
+        const target = event.target;
+        if (
+          target instanceof HTMLInputElement &&
+          (target.type === "range" || target.type === "number" || target.type === "text")
+        ) {
+          commitExitTabProfileEditorControlChange(event);
+        }
+      });
+
+      modal.addEventListener("change", (event) => {
+        const target = event.target;
+        if (
+          target instanceof HTMLSelectElement ||
+          target instanceof HTMLInputElement
+        ) {
+          commitExitTabProfileEditorControlChange(event);
+        }
+      });
+    };
+
     const setupExitTabProfileControls = () => {
       const trigger = document.getElementById("exitTabProfileManagerTrigger");
       const picker = document.getElementById("exitTabProfileManagerPicker");
+
+      bindExitTabProfileEditorLiveControls();
 
       if (trigger && picker && trigger.dataset.exitTabProfileBound !== "true") {
         trigger.dataset.exitTabProfileBound = "true";
@@ -3779,7 +4003,7 @@ const getPostThicknessFallback = () =>
   };
 
   const toggleExitTabWiggle = (isActive) => {
-    const buttons = document.querySelectorAll(".exitTabButton");
+    const buttons = document.querySelectorAll(".exitTabButton, .exitTabNestedButton");
     for (const button of buttons) {
       button.classList.toggle("blockWiggle", isActive);
       if (isActive) {
@@ -3902,11 +4126,11 @@ const getPostThicknessFallback = () =>
     const resolvedHorizontalPadding = (() => {
       const parsed = parseFloat(workingExitTab?.horizontalPadding);
       return Number.isFinite(parsed)
-        ? Math.max(0, Math.min(3, parsed))
+        ? Math.max(-1, Math.min(3, parsed))
         : ExitTab.prototype.defaultHorizontalPadding;
     })();
     if (horizontalPaddingInput) {
-      horizontalPaddingInput.min = "0";
+      horizontalPaddingInput.min = "-1";
       horizontalPaddingInput.max = "3";
       horizontalPaddingInput.step = "0.1";
       setExitTabRangeControlValue(horizontalPaddingInput, resolvedHorizontalPadding);
@@ -3961,13 +4185,23 @@ const getPostThicknessFallback = () =>
       iconPickerRow.classList.toggle("hidden", !isIcon);
     }
 
+    const profileEditorMode = exitTabEditorMode === "default";
+
     const exitNumber = document.getElementById("exitNumber");
     if (exitNumber) {
-      exitNumber.classList.toggle("hidden", isTollLogo || isIcon);
+      const hideExitNumber = profileEditorMode || isTollLogo || isIcon;
+      exitNumber.classList.toggle("hidden", hideExitNumber);
+      exitNumber.hidden = hideExitNumber;
+      exitNumber.disabled = hideExitNumber;
+      if (profileEditorMode) {
+        exitNumber.value = "";
+      }
     }
 
     const exitNumberLabel = document.getElementById("exitNumberLabel");
     if (exitNumberLabel) {
+      exitNumberLabel.classList.toggle("hidden", profileEditorMode);
+      exitNumberLabel.hidden = profileEditorMode;
       exitNumberLabel.textContent = qcMode
         ? "Number:"
         : isTollLogo
@@ -4059,10 +4293,46 @@ const getPostThicknessFallback = () =>
     }
   };
 
+  const getExitTabAlphaSuffix = (index) => {
+    let n = Number(index);
+    if (!Number.isFinite(n) || n < 0) {
+      return "";
+    }
+    n = Math.floor(n) + 1;
+    let label = "";
+    while (n > 0) {
+      n--;
+      label = String.fromCharCode(65 + (n % 26)) + label;
+      n = Math.floor(n / 26);
+    }
+    return label;
+  };
+
+  const getExitTabListLabel = (exitTabIndex, nestedIndex = -1, nestedCount = 0) => {
+    const baseLabel = `Tab ${exitTabIndex + 1}`;
+    if (nestedIndex == null || nestedIndex < 0) {
+      return nestedCount > 0 ? `${baseLabel}A` : baseLabel;
+    }
+    return `${baseLabel}${getExitTabAlphaSuffix(nestedIndex + 1)}`;
+  };
+
   const clearExitTabDropIndicators = () => {
     document
-      .querySelectorAll(".exitTabButton.dropBefore, .exitTabButton.dropAfter")
+      .querySelectorAll(
+        ".exitTabButton.dropBefore, .exitTabButton.dropAfter, .exitTabNestedButton.dropBefore, .exitTabNestedButton.dropAfter"
+      )
       .forEach((button) => button.classList.remove("dropBefore", "dropAfter"));
+  };
+
+  const endNestedExitTabDrag = () => {
+    clearExitTabDropIndicators();
+    nestedExitTabDragState = null;
+    document
+      .querySelectorAll(".exitTabNestedButton.dragging")
+      .forEach((button) => {
+        button.classList.remove("dragging");
+        delete button.dataset.dragging;
+      });
   };
 
   const endExitTabDrag = () => {
@@ -4190,6 +4460,271 @@ const getPostThicknessFallback = () =>
   const handleExitTabDragEnd = () => {
     if (exitTabDragState) {
       endExitTabDrag();
+    }
+  };
+
+  const endExitTabRowDrag = () => {
+    clearExitTabDropIndicators();
+    exitTabRowDragState = null;
+    document
+      .querySelectorAll(".exitTabButton.dragging, .exitTabNestedButton.dragging")
+      .forEach((button) => {
+        button.classList.remove("dragging");
+        delete button.dataset.dragging;
+      });
+    toggleExitTabWiggle(false);
+  };
+
+  const getExitTabRowDropPosition = (container, clientX) => {
+    const buttons = Array.from(
+      container.querySelectorAll(".exitTabButton, .exitTabNestedButton")
+    ).filter((button) => button.dataset.exitTabRowParentIndex === container.dataset.exitTabIndex);
+
+    if (!buttons.length) {
+      return { dropIndex: 0, targetButton: null, placement: null };
+    }
+
+    let dropIndex = Number(buttons[buttons.length - 1].dataset.exitTabFlatIndex || 0) + 1;
+    let targetButton = null;
+    let placement = "after";
+    let foundPosition = false;
+
+    for (const button of buttons) {
+      const rect = button.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+
+      if (clientX < midpoint) {
+        dropIndex = Number(button.dataset.exitTabFlatIndex || 0);
+        placement = "before";
+        foundPosition = true;
+        targetButton = button.dataset.dragging === "true" ? null : button;
+        break;
+      }
+    }
+
+    if (!foundPosition) {
+      const lastButton = buttons[buttons.length - 1];
+      if (lastButton.dataset.dragging !== "true") {
+        targetButton = lastButton;
+        placement = "after";
+      } else {
+        placement = null;
+      }
+    } else if (!targetButton) {
+      placement = null;
+    }
+
+    return { dropIndex, targetButton, placement };
+  };
+
+  const handleExitTabRowDragStart = (event) => {
+    const button = event.currentTarget;
+    const parentIndex = Number(button.dataset.exitTabRowParentIndex);
+    const fromFlatIndex = Number(button.dataset.exitTabFlatIndex);
+
+    if (!Number.isInteger(parentIndex) || !Number.isInteger(fromFlatIndex)) {
+      return;
+    }
+
+    exitTabRowDragState = { parentIndex, fromFlatIndex, dropIndex: fromFlatIndex };
+    button.dataset.dragging = "true";
+    button.classList.add("dragging");
+    toggleExitTabWiggle(true);
+    clearExitTabDropIndicators();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.setData("text/plain", "");
+    }
+
+    event.stopPropagation();
+  };
+
+  const handleExitTabRowDragOver = (event) => {
+    if (!exitTabRowDragState) {
+      return;
+    }
+
+    const container = event.currentTarget;
+    const parentIndex = Number(container.dataset.exitTabIndex);
+    if (parentIndex !== exitTabRowDragState.parentIndex) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+
+    const { dropIndex, targetButton, placement } = getExitTabRowDropPosition(
+      container,
+      event.clientX
+    );
+    exitTabRowDragState.dropIndex = dropIndex;
+
+    clearExitTabDropIndicators();
+    if (targetButton && placement) {
+      targetButton.classList.add(
+        placement === "before" ? "dropBefore" : "dropAfter"
+      );
+    }
+  };
+
+  const handleExitTabRowDrop = (event) => {
+    if (!exitTabRowDragState) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const { parentIndex, fromFlatIndex } = exitTabRowDragState;
+    const dropIndex =
+      typeof exitTabRowDragState.dropIndex === "number"
+        ? exitTabRowDragState.dropIndex
+        : fromFlatIndex;
+
+    if (typeof exposed.moveExitTabWithinRow === "function") {
+      exposed.moveExitTabWithinRow(parentIndex, fromFlatIndex, dropIndex);
+    }
+
+    endExitTabRowDrag();
+  };
+
+  const handleExitTabRowDragLeave = (event) => {
+    if (!exitTabRowDragState) {
+      return;
+    }
+
+    const container = event.currentTarget;
+    const related = event.relatedTarget;
+    if (related && container.contains(related)) {
+      return;
+    }
+
+    clearExitTabDropIndicators();
+  };
+
+  const handleExitTabRowDragEnd = () => {
+    if (exitTabRowDragState) {
+      endExitTabRowDrag();
+    }
+  };
+
+  const getNestedExitTabDropPosition = (container, clientX) => {
+    const buttons = Array.from(container.querySelectorAll(".exitTabNestedButton"));
+    if (!buttons.length) {
+      return { dropIndex: 0, targetButton: null, placement: null };
+    }
+
+    let dropIndex = buttons.length;
+    let targetButton = null;
+    let placement = "after";
+
+    for (const button of buttons) {
+      const rect = button.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+      if (clientX < midpoint) {
+        dropIndex = Number(button.dataset.nestedExitTabIndex || 0);
+        placement = "before";
+        targetButton = button.dataset.dragging === "true" ? null : button;
+        return { dropIndex, targetButton, placement };
+      }
+    }
+
+    const lastButton = buttons[buttons.length - 1];
+    dropIndex = Number(lastButton.dataset.nestedExitTabIndex || buttons.length - 1) + 1;
+    targetButton = lastButton.dataset.dragging === "true" ? null : lastButton;
+    placement = targetButton ? "after" : null;
+    return { dropIndex, targetButton, placement };
+  };
+
+  const handleNestedExitTabDragStart = (event) => {
+    const button = event.currentTarget;
+    const parentIndex = Number(button.dataset.exitTabIndex);
+    const fromIndex = Number(button.dataset.nestedExitTabIndex);
+    if (Number.isNaN(parentIndex) || Number.isNaN(fromIndex)) {
+      return;
+    }
+    nestedExitTabDragState = { parentIndex, fromIndex, dropIndex: fromIndex };
+    button.dataset.dragging = "true";
+    button.classList.add("dragging");
+    clearExitTabDropIndicators();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.setData("text/plain", "");
+    }
+
+    event.stopPropagation();
+  };
+
+  const handleNestedExitTabDragOver = (event) => {
+    if (!nestedExitTabDragState) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+
+    const container = event.currentTarget;
+    const parentIndex = Number(container.dataset.exitTabIndex);
+    if (Number.isNaN(parentIndex) || parentIndex !== nestedExitTabDragState.parentIndex) {
+      return;
+    }
+
+    const { dropIndex, targetButton, placement } = getNestedExitTabDropPosition(
+      container,
+      event.clientX
+    );
+    nestedExitTabDragState.dropIndex = dropIndex;
+
+    clearExitTabDropIndicators();
+    if (targetButton && placement) {
+      targetButton.classList.add(
+        placement === "before" ? "dropBefore" : "dropAfter"
+      );
+    }
+  };
+
+  const handleNestedExitTabDrop = (event) => {
+    if (!nestedExitTabDragState) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const { parentIndex, fromIndex } = nestedExitTabDragState;
+    const dropIndex =
+      nestedExitTabDragState.dropIndex !== undefined
+        ? nestedExitTabDragState.dropIndex
+        : fromIndex;
+    if (typeof exposed.moveNestedExitTab === "function") {
+      exposed.moveNestedExitTab(parentIndex, fromIndex, dropIndex);
+    }
+    endNestedExitTabDrag();
+  };
+
+  const handleNestedExitTabDragLeave = (event) => {
+    if (!nestedExitTabDragState) {
+      return;
+    }
+    const container = event.currentTarget;
+    const related = event.relatedTarget;
+    if (related && container.contains(related)) {
+      return;
+    }
+    clearExitTabDropIndicators();
+  };
+
+  const handleNestedExitTabDragEnd = () => {
+    if (nestedExitTabDragState) {
+      endNestedExitTabDrag();
     }
   };
 
@@ -10374,6 +10909,9 @@ const getPostThicknessFallback = () =>
     
     const getArrowDisplayLabel = (value) => String(value || "").split(":")[0].trim();
 
+    const isAltLeftUpArrowLabel = (label) =>
+      /^alt\.\s*left\/up\s+arrow$/i.test(String(label || "").trim());
+
     const getGuideArrowEntryByLabel = (label) =>
       Sign.prototype.guideArrows.find(
         (entry) => getArrowDisplayLabel(entry) === label
@@ -10497,7 +11035,12 @@ const getPostThicknessFallback = () =>
         return wrap;
       }
 
-        const path = getArrowIconPathFromValue(value, options);
+        let path = getArrowIconPathFromValue(value, options);
+        const shouldFlipAltLeftUpArrow = isAltLeftUpArrowLabel(label);
+
+        if (shouldFlipAltLeftUpArrow) {
+          path = "img/arrows/B-1.svg";
+        }
 
         if (!path) {
           return null;
@@ -10509,6 +11052,11 @@ const getPostThicknessFallback = () =>
       img.src = path;
       img.loading = "lazy";
       img.decoding = "async";
+      if (shouldFlipAltLeftUpArrow) {
+        img.classList.add("altLeftUpArrowFlipped");
+        img.style.transform = "scaleX(-1)";
+        img.style.transformOrigin = "center center";
+      }
       img.onerror = () => {
         img.style.display = "none";
       };
@@ -10896,7 +11444,7 @@ const getPostThicknessFallback = () =>
         if (exportButton) {
           const exportLabel = exportButton.querySelector(".buttonLabel");
           if (exportLabel) {
-            exportLabel.textContent = "Download";
+            exportLabel.textContent = "Export";
           }
         }
 
@@ -15208,7 +15756,7 @@ const getPostThicknessFallback = () =>
 
       const shouldShowBorderMode =
         isExitOnlyMode &&
-        !post.secondExitOnly &&
+        !currentPanel.sign.secondExitOnly &&
         (currentPanel.sign.guideArrow === "Half Exit Only" ||
           currentPanel.sign.guideArrow === "Exit Only");
 
@@ -15562,7 +16110,32 @@ const getPostThicknessFallback = () =>
       }
     try {
     const form = document.forms[0];
+
+    if (exitTabEditorMode === "default") {
+      const profileVariantChanged = readExitTabProfileForm();
+      applyExitTabDefaultProfileToPrototype();
+
+      if (profileVariantChanged) {
+        updateForm();
+      } else {
+        updateExitTabModeUi();
+        toggleExitTabVariantOptionsVisibility(selectedExitTabProfileVariant, {
+          syncAssetSliders: false,
+        });
+      }
+
+      if (typeof exposed?.redraw === "function") {
+        exposed.redraw();
+      }
+      return;
+    }
+
     const currentPanel = exposed.getCurrentPanel();
+    if (!currentPanel || !currentPanel.sign) {
+      updateForm();
+      return;
+    }
+
     const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
     const subPanel =
       selectedSubPanelIndex >= 0
@@ -15570,22 +16143,17 @@ const getPostThicknessFallback = () =>
         : exposed.getCurrentSubPanel();
 
     if (!subPanel) {
+      updateForm();
       return;
     }
     const exitTab = getCurrentExitTabForProfileApply();
 
-    if (!exitTab && exitTabEditorMode !== "default") {
-      updateForm();
-      return;
+    if (exitTab) {
+      syncCurrentExitTabProfileSelectionFromTab(exitTab);
     }
 
-    if (exitTabEditorMode === "default") {
-      readExitTabProfileForm();
-      applyExitTabDefaultProfileToPrototype();
+    if (!exitTab) {
       updateForm();
-      if (typeof exposed?.redraw === "function") {
-        exposed.redraw();
-      }
       return;
     }
 
@@ -15596,7 +16164,8 @@ const getPostThicknessFallback = () =>
       post.color = requestedPostColor;
     }
     post.showPost = form["showPost"].checked;
-    post.secondExitOnly = form["secondExitOnly"].checked;
+    delete post.secondExitOnly;
+    currentPanel.sign.secondExitOnly = form["secondExitOnly"]?.checked === true;
     setStoredItem(STORAGE_KEYS.postPosition, post.polePosition);
     setStoredItem(STORAGE_KEYS.showPost, String(!!post.showPost));
     setStoredItem(STORAGE_KEYS.postColor, post.color);
@@ -15630,6 +16199,7 @@ const getPostThicknessFallback = () =>
         { preserveText: true }
       );
       exitTab.variant = requestedExitVariant;
+      setExitTabProfileIdOnTab(exitTab, currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID);
       toggleExitTabVariantOptionsVisibility(exitTab.variant);
       updateForm();
       if (typeof exposed?.redraw === "function") {
@@ -15669,10 +16239,7 @@ const getPostThicknessFallback = () =>
       ? form["exitTabWidth"].value
       : exitTab.width || "Full";
 
-    const shouldForceEmptyCurrentExitTabToEdge =
-      !isAssetExitTabVariant &&
-      exitTab.number.trim() === "" &&
-      !shouldSaveCurrentExitTabEditsToProfile();
+    const shouldForceEmptyCurrentExitTabToEdge = false;
 
     exitTab.width = shouldForceEmptyCurrentExitTabToEdge
         ? "Edge"
@@ -15988,7 +16555,7 @@ const getPostThicknessFallback = () =>
           exitTab.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(horizontalPaddingInput, exitTab.assetHorizontalPadding);
         } else {
           exitTab.horizontalPadding = Number.isFinite(horizontalPaddingInput)
-            ? Math.max(0, Math.min(3, horizontalPaddingInput))
+            ? Math.max(-1, Math.min(3, horizontalPaddingInput))
             : ExitTab.prototype.defaultHorizontalPadding;
         }
 
@@ -17143,6 +17710,10 @@ const getPostThicknessFallback = () =>
         ? currentExitTab.nestedExitTabs[selectedNestedExitTabIndex]
         : currentExitTab;
 
+    if (exitTabEditorMode !== "default") {
+      syncCurrentExitTabProfileSelectionFromTab(exitTab);
+    }
+
     exitTab = getExitTabEditorTarget(exitTab);
     if (!exitTab) {
       if (panel && typeof panel.newExitTab === "function") {
@@ -17178,6 +17749,7 @@ const getPostThicknessFallback = () =>
     toggleExitTabWiggle(false);
     clearExitTabDropIndicators();
     exitTabDragState = null;
+    exitTabRowDragState = null;
     endPanelDrag();
     endSubPanelTabDrag();
     togglePanelListWiggle(false);
@@ -17222,7 +17794,7 @@ const getPostThicknessFallback = () =>
 
     const secondExitOnlyCheckbox = document.getElementById("secondExitOnly");
     if (secondExitOnlyCheckbox) {
-      secondExitOnlyCheckbox.checked = !!post.secondExitOnly;
+      secondExitOnlyCheckbox.checked = currentPanel?.sign?.secondExitOnly === true;
     }
 
     while (panelList.firstChild) {
@@ -17812,24 +18384,67 @@ const getPostThicknessFallback = () =>
 
       const exitTabRow = document.createElement("div");
       exitTabRow.className = "exitTabListRow exitTabParentListRow";
+      exitTabRow.dataset.exitTabIndex = String(exitTabIndex);
+
+      if (panel.exitTabs.length > 1) {
+        const rowMoveControl = document.createElement("div");
+        rowMoveControl.className = "exitTabRowMoveControl";
+        rowMoveControl.setAttribute("aria-label", "Move tab row");
+
+        const canMoveUp = exitTabIndex < panel.exitTabs.length - 1;
+        const canMoveDown = exitTabIndex > 0;
+        const addRowMoveButton = (direction) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `exitTabRowMoveButton ${direction}`;
+          button.title = direction === "up" ? "Move tab row up" : "Move tab row down";
+          button.setAttribute("aria-label", button.title);
+          const icon = document.createElement("span");
+          icon.className = "material-symbols-outlined";
+          icon.textContent = direction === "up" ? "keyboard_arrow_up" : "keyboard_arrow_down";
+          button.appendChild(icon);
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof exposed.moveExitTab === "function") {
+              exposed.moveExitTab(
+                exitTabIndex,
+                direction === "up" ? exitTabIndex + 2 : exitTabIndex - 1
+              );
+            }
+          });
+          rowMoveControl.appendChild(button);
+        };
+
+        if (canMoveUp) {
+          addRowMoveButton("up");
+        }
+        if (canMoveDown) {
+          addRowMoveButton("down");
+        }
+        rowMoveControl.classList.toggle("singleButton", canMoveUp !== canMoveDown);
+        exitTabRow.appendChild(rowMoveControl);
+      }
 
       const exitTabButton = document.createElement("button");
       exitTabButton.type = "button";
       exitTabButton.id = "tab_edit" + (exitTabIndex + 1);
       exitTabButton.className = "exitTabButton";
       exitTabButton.dataset.exitTabIndex = exitTabIndex.toString();
-      exitTabButton.draggable = panel.exitTabs.length > 1;
+      exitTabButton.dataset.exitTabRowParentIndex = String(exitTabIndex);
+      exitTabButton.dataset.exitTabFlatIndex = "0";
+      exitTabButton.draggable = false;
 
       const exitTabButtonLabel = document.createElement("span");
       exitTabButtonLabel.className = "exitTabButtonLabel";
-      exitTabButtonLabel.textContent = "Exit Tab " + (exitTabIndex + 1);
+      exitTabButtonLabel.textContent = getExitTabListLabel(exitTabIndex);
       exitTabButton.appendChild(exitTabButtonLabel);
 
       const exitTabDeleteButton = document.createElement("span");
       exitTabDeleteButton.className = "exitTabInlineDelete material-symbols-outlined";
-      exitTabDeleteButton.title = "Delete exit tab";
+      exitTabDeleteButton.title = "Delete tab";
       exitTabDeleteButton.setAttribute("role", "button");
-      exitTabDeleteButton.setAttribute("aria-label", "Delete exit tab " + (exitTabIndex + 1));
+      exitTabDeleteButton.setAttribute("aria-label", "Delete tab " + (exitTabIndex + 1));
       exitTabDeleteButton.textContent = "delete";
       exitTabDeleteButton.addEventListener("pointerdown", function (event) {
         event.preventDefault();
@@ -17856,12 +18471,11 @@ const getPostThicknessFallback = () =>
         event.stopPropagation();
         exposed.changeEditingExitTab(exitTabIndex, -1);
       });
-      exitTabButton.addEventListener("dragstart", handleExitTabDragStart);
-      exitTabButton.addEventListener("dragend", handleExitTabDragEnd);
       exitTabRow.appendChild(exitTabButton);
 
       const nestedColumn = document.createElement("div");
       nestedColumn.className = "exitTabNestedColumn";
+      nestedColumn.dataset.exitTabIndex = String(exitTabIndex);
 
       const nestedExitTabs = panel.exitTabs[exitTabIndex].nestedExitTabs || [];
       const allowedNestedLength =
@@ -17869,23 +18483,53 @@ const getPostThicknessFallback = () =>
           ? Math.min(nestedExitTabs.length, maxNested)
           : nestedExitTabs.length;
 
+      if (allowedNestedLength > 0) {
+        exitTabRow.addEventListener("dragover", handleExitTabRowDragOver);
+        exitTabRow.addEventListener("drop", handleExitTabRowDrop);
+        exitTabRow.addEventListener("dragleave", handleExitTabRowDragLeave);
+        exitTabButton.draggable = true;
+        exitTabButton.addEventListener("dragstart", handleExitTabRowDragStart);
+        exitTabButton.addEventListener("dragend", handleExitTabRowDragEnd);
+      } else {
+        exitTabButton.draggable = panel.exitTabs.length > 1;
+        exitTabButton.addEventListener("dragstart", handleExitTabDragStart);
+        exitTabButton.addEventListener("dragend", handleExitTabDragEnd);
+      }
+
+      exitTabButtonLabel.textContent = getExitTabListLabel(
+        exitTabIndex,
+        -1,
+        allowedNestedLength
+      );
+
+      if (allowedNestedLength > 1) {
+        nestedColumn.addEventListener("dragover", handleNestedExitTabDragOver);
+        nestedColumn.addEventListener("drop", handleNestedExitTabDrop);
+        nestedColumn.addEventListener("dragleave", handleNestedExitTabDragLeave);
+      }
+
       for (let nestIndex = 0; nestIndex < allowedNestedLength; nestIndex++) {
         const nestedButton = document.createElement("button");
         nestedButton.type = "button";
         nestedButton.id =
           "tab_edit" + (exitTabIndex + 1) + "_nest" + (nestIndex + 1);
         nestedButton.className = "exitTabNestedButton";
+        nestedButton.dataset.exitTabIndex = String(exitTabIndex);
+        nestedButton.dataset.nestedExitTabIndex = String(nestIndex);
+        nestedButton.dataset.exitTabRowParentIndex = String(exitTabIndex);
+        nestedButton.dataset.exitTabFlatIndex = String(nestIndex + 1);
+        nestedButton.draggable = allowedNestedLength > 0;
 
         const nestedLabel = document.createElement("span");
         nestedLabel.className = "exitTabButtonLabel";
-        nestedLabel.textContent = "Nested Exit Tab " + (nestIndex + 1);
+        nestedLabel.textContent = getExitTabListLabel(exitTabIndex, nestIndex, allowedNestedLength);
         nestedButton.appendChild(nestedLabel);
 
         const nestedDeleteButton = document.createElement("span");
         nestedDeleteButton.className = "exitTabInlineDelete material-symbols-outlined";
-        nestedDeleteButton.title = "Delete nested exit tab";
+        nestedDeleteButton.title = "Delete nested tab";
         nestedDeleteButton.setAttribute("role", "button");
-        nestedDeleteButton.setAttribute("aria-label", "Delete nested exit tab " + (nestIndex + 1));
+        nestedDeleteButton.setAttribute("aria-label", "Delete nested tab " + getExitTabListLabel(exitTabIndex, nestIndex, allowedNestedLength));
         nestedDeleteButton.textContent = "delete";
         nestedDeleteButton.addEventListener("pointerdown", function (event) {
           event.preventDefault();
@@ -17915,6 +18559,8 @@ const getPostThicknessFallback = () =>
           event.stopPropagation();
           exposed.changeEditingExitTab(exitTabIndex, nestIndex);
         });
+        nestedButton.addEventListener("dragstart", handleExitTabRowDragStart);
+        nestedButton.addEventListener("dragend", handleExitTabRowDragEnd);
 
         nestedColumn.appendChild(nestedButton);
       }
@@ -18607,7 +19253,13 @@ const getPostThicknessFallback = () =>
     }
 
     updateExitTabBilingualControls(exitTab);
-    exitNumberElmt.value = exitTab.number;
+    if (exitNumberElmt) {
+      const profileEditorMode = exitTabEditorMode === "default";
+      const hideExitNumber = profileEditorMode || exitNumberElmt.classList.contains("hidden");
+      exitNumberElmt.value = profileEditorMode ? "" : String(exitTab.number || "");
+      exitNumberElmt.hidden = hideExitNumber;
+      exitNumberElmt.disabled = hideExitNumber;
+    }
 
     const exitTabPositionSelectElmt =
       document.getElementById("exitTabPosition");
@@ -18914,7 +19566,7 @@ const getPostThicknessFallback = () =>
       }
       const parsedValue = parseFloat(exitTab.horizontalPadding);
       if (Number.isFinite(parsedValue)) {
-        return Math.max(0, Math.min(3, parsedValue));
+        return Math.max(-1, Math.min(3, parsedValue));
       }
       return ExitTab.prototype.defaultHorizontalPadding;
     })();
@@ -18924,7 +19576,7 @@ const getPostThicknessFallback = () =>
       exitTab.horizontalPadding = resolvedHorizontalPadding;
     }
     if (horizontalPadding) {
-      horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "0";
+      horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "-1";
       horizontalPadding.max = "3";
       horizontalPadding.step = "0.1";
       setExitTabRangeControlValue(horizontalPadding, resolvedHorizontalPadding);
@@ -19704,7 +20356,7 @@ const getPostThicknessFallback = () =>
       panel.sign.guideArrow === "None" ? "invisible" : "";
     if (exitOnlyBorderModeLabel && exitOnlyBorderModeSelect) {
       const shouldShowBorderMode =
-        !post.secondExitOnly &&
+        panel.sign.secondExitOnly !== true &&
         (panel.sign.guideArrow == "Half Exit Only" ||
           panel.sign.guideArrow == "Exit Only");
       exitOnlyBorderModeLabel.className = shouldShowBorderMode

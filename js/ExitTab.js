@@ -49,8 +49,13 @@ class ExitTab {
       caStyle = ExitTab.prototype.defaultCAStyle,
       bilingual = false,
       bilingualTopText = "EXIT",
-      bilingualBottomText = "SORTIE"
+      bilingualBottomText = "SORTIE",
+      profileId = ExitTab.prototype.defaultProfileId
     } = options;
+    this.profileId =
+      typeof profileId === "string" && profileId.trim().length
+        ? profileId.trim()
+        : ExitTab.prototype.defaultProfileId;
     this.number = number;
     if (this.positions.includes(position)) {
       this.position = position;
@@ -139,7 +144,7 @@ class ExitTab {
         ? horizontalPadding
         : parseFloat(horizontalPadding);
     this.horizontalPadding = Number.isFinite(parsedHorizontalPadding)
-      ? Math.max(0, Math.min(3, parsedHorizontalPadding))
+      ? Math.max(-1, Math.min(3, parsedHorizontalPadding))
       : ExitTab.prototype.defaultHorizontalPadding;
     const parsedExitTextSizePercent =
       typeof exitTextSizePercent === "number"
@@ -258,7 +263,8 @@ class ExitTab {
       assetVerticalPadding: exisitingTab.assetVerticalPadding,
       transparent: exisitingTab.transparent,
       verticalArrangement: exisitingTab.verticalArrangement,
-      caStyle: exisitingTab.caStyle
+      caStyle: exisitingTab.caStyle,
+      profileId: exisitingTab.profileId
     });
 
     this.nestedExitTabs.push(exitTab);
@@ -285,6 +291,7 @@ ExitTab.prototype.exitTextSizePercentVersion = 3;
 ExitTab.prototype.defaultVerticalArrangement = false;
 ExitTab.prototype.defaultCAStyle = false;
 ExitTab.prototype.defaultText = "";
+ExitTab.prototype.defaultProfileId = "default";
 ExitTab.prototype.defaultVariant = "Default";
 ExitTab.prototype.defaultPosition = "Right";
 ExitTab.prototype.defaultWidth = "Edge";
@@ -388,7 +395,6 @@ ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.protot
   const isIcon = resolvedVariant === "Icon";
 
   return {
-    number: ExitTab.prototype.defaultText,
     variant: resolvedVariant,
     position: ExitTab.prototype.defaultPosition,
     width: ExitTab.prototype.defaultWidth,

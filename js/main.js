@@ -4648,6 +4648,7 @@ const app = (function () {
       rowIndex = 0,
       blockIndex = 0,
       exitTabIndex = null,
+      nestedExitTabIndex = -1,
       menu = "subpanel",
       guideMode = null,
       flashTarget = null,
@@ -4698,7 +4699,18 @@ const app = (function () {
           0,
           selectedPanel.exitTabs.length - 1
         );
-        currentlySelectedNestedExitTabIndex = -1;
+
+        const selectedExitTab = selectedPanel.exitTabs[currentlySelectedExitTabIndex];
+        const nestedTabs = Array.isArray(selectedExitTab?.nestedExitTabs)
+          ? selectedExitTab.nestedExitTabs
+          : [];
+        const requestedNestedExitTabIndex = Number(nestedExitTabIndex);
+        currentlySelectedNestedExitTabIndex =
+          Number.isFinite(requestedNestedExitTabIndex) &&
+          requestedNestedExitTabIndex >= 0 &&
+          nestedTabs.length > 0
+            ? clamp(requestedNestedExitTabIndex, 0, nestedTabs.length - 1)
+            : -1;
       }
 
       formHandler.updateForm();
@@ -4743,6 +4755,8 @@ const app = (function () {
 
           if (flashTargetKind === "exitTab") {
             return panelElmt.querySelector(
+              `[data-exit-tab-index="${currentlySelectedExitTabIndex}"][data-nested-exit-tab-index="${currentlySelectedNestedExitTabIndex}"]`
+            ) || panelElmt.querySelector(
               `[data-exit-tab-index="${currentlySelectedExitTabIndex}"]`
             ) || panelElmt.querySelector(".exitTabContainer.tabVisible");
           }
@@ -5244,6 +5258,167 @@ const app = (function () {
         formHandler.updateForm();
         redraw();
       });
+    };
+
+    const moveNestedExitTab = function (parentIndex, fromIndex, toIndex) {
+      const panel = getCurrentPanel();
+      if (!panel || !Array.isArray(panel.exitTabs)) {
+        return;
+      }
+
+      const rawParentIndex = Number(parentIndex);
+      if (!Number.isFinite(rawParentIndex)) {
+        return;
+      }
+
+      const normalizedParentIndex = clamp(
+        rawParentIndex,
+        0,
+        panel.exitTabs.length - 1
+      );
+      const parentExitTab = panel.exitTabs[normalizedParentIndex];
+      const nestedExitTabs = Array.isArray(parentExitTab?.nestedExitTabs)
+        ? parentExitTab.nestedExitTabs
+        : [];
+
+      if (nestedExitTabs.length < 2) {
+        return;
+      }
+
+      const rawFromIndex = Number(fromIndex);
+      const rawToIndex = Number(toIndex);
+      if (!Number.isFinite(rawFromIndex) || !Number.isFinite(rawToIndex)) {
+        return;
+      }
+
+      const maxIndex = nestedExitTabs.length - 1;
+      const normalizedFrom = clamp(rawFromIndex, 0, maxIndex);
+      let normalizedTo = clamp(rawToIndex, 0, nestedExitTabs.length);
+
+      if (
+        normalizedTo === normalizedFrom ||
+        normalizedTo === normalizedFrom + 1
+      ) {
+        return;
+      }
+
+      const selectedNestedTab =
+        currentlySelectedExitTabIndex === normalizedParentIndex &&
+        currentlySelectedNestedExitTabIndex >= 0
+          ? nestedExitTabs[currentlySelectedNestedExitTabIndex]
+          : null;
+
+      const [movedNestedTab] = nestedExitTabs.splice(normalizedFrom, 1);
+      if (!movedNestedTab) {
+        return;
+      }
+
+      if (normalizedTo > normalizedFrom) {
+        normalizedTo--;
+      }
+
+      normalizedTo = clamp(normalizedTo, 0, nestedExitTabs.length);
+      nestedExitTabs.splice(normalizedTo, 0, movedNestedTab);
+
+      currentlySelectedExitTabIndex = normalizedParentIndex;
+      if (selectedNestedTab) {
+        const selectedIndex = nestedExitTabs.indexOf(selectedNestedTab);
+        currentlySelectedNestedExitTabIndex = selectedIndex >= 0 ? selectedIndex : normalizedTo;
+      } else {
+        currentlySelectedNestedExitTabIndex = normalizedTo;
+      }
+
+      formHandler.updateForm();
+      redraw();
+    };
+
+    const moveExitTabWithinRow = function (parentIndex, fromFlatIndex, toIndex) {
+      const panel = getCurrentPanel();
+      if (!panel || !Array.isArray(panel.exitTabs)) {
+        return;
+      }
+
+      const rawParentIndex = Number(parentIndex);
+      const rawFromIndex = Number(fromFlatIndex);
+      const rawToIndex = Number(toIndex);
+
+      if (
+        !Number.isFinite(rawParentIndex) ||
+        !Number.isFinite(rawFromIndex) ||
+        !Number.isFinite(rawToIndex)
+      ) {
+        return;
+      }
+
+      const normalizedParentIndex = clamp(
+        rawParentIndex,
+        0,
+        panel.exitTabs.length - 1
+      );
+      const parentExitTab = panel.exitTabs[normalizedParentIndex];
+      if (!parentExitTab) {
+        return;
+      }
+
+      const nestedExitTabs = Array.isArray(parentExitTab.nestedExitTabs)
+        ? parentExitTab.nestedExitTabs
+        : [];
+      const rowTabs = [parentExitTab, ...nestedExitTabs];
+
+      if (rowTabs.length < 2) {
+        return;
+      }
+
+      const normalizedFrom = clamp(rawFromIndex, 0, rowTabs.length - 1);
+      let normalizedTo = clamp(rawToIndex, 0, rowTabs.length);
+
+      if (
+        normalizedTo === normalizedFrom ||
+        normalizedTo === normalizedFrom + 1
+      ) {
+        return;
+      }
+
+      const selectedTab =
+        currentlySelectedExitTabIndex === normalizedParentIndex
+          ? currentlySelectedNestedExitTabIndex >= 0
+            ? nestedExitTabs[currentlySelectedNestedExitTabIndex]
+            : parentExitTab
+          : null;
+
+      const [movedTab] = rowTabs.splice(normalizedFrom, 1);
+      if (!movedTab) {
+        return;
+      }
+
+      if (normalizedTo > normalizedFrom) {
+        normalizedTo--;
+      }
+
+      normalizedTo = clamp(normalizedTo, 0, rowTabs.length);
+      rowTabs.splice(normalizedTo, 0, movedTab);
+
+      rowTabs.forEach((tab) => {
+        if (tab && typeof tab === "object") {
+          tab.nestedExitTabs = [];
+        }
+      });
+
+      const nextParentTab = rowTabs[0];
+      const nextNestedTabs = rowTabs.slice(1);
+      nextParentTab.nestedExitTabs = nextNestedTabs;
+      panel.exitTabs[normalizedParentIndex] = nextParentTab;
+
+      if (selectedTab) {
+        currentlySelectedExitTabIndex = normalizedParentIndex;
+        const selectedFlatIndex = rowTabs.indexOf(selectedTab);
+        currentlySelectedNestedExitTabIndex = selectedFlatIndex > 0
+          ? selectedFlatIndex - 1
+          : -1;
+      }
+
+      formHandler.updateForm();
+      redraw();
     };
 
   // Set the current editing exit tab based off paramter number, its child, within the correct range (0 < # of exit Tabs - 1 // Secondary: 0 < # of child exit Tabs)
@@ -8507,6 +8682,125 @@ const app = (function () {
     a.click();
     a.remove();
   };
+
+  const dataUrlToBlob = async (dataURL, fallbackMimeType = "application/octet-stream") => {
+    const response = await fetch(dataURL);
+    const blob = await response.blob();
+
+    if (blob.type || !fallbackMimeType) {
+      return blob;
+    }
+
+    return new Blob([await blob.arrayBuffer()], { type: fallbackMimeType });
+  };
+
+  const dataUrlToText = (dataURL) => {
+    const raw = String(dataURL || "");
+    const commaIndex = raw.indexOf(",");
+
+    if (commaIndex < 0) {
+      return raw;
+    }
+
+    const header = raw.slice(0, commaIndex);
+    const body = raw.slice(commaIndex + 1);
+
+    if (/;base64/i.test(header)) {
+      const binary = window.atob(body);
+      const bytes = new Uint8Array(binary.length);
+
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+
+      if (typeof TextDecoder !== "undefined") {
+        return new TextDecoder("utf-8").decode(bytes);
+      }
+
+      return Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+    }
+
+    return decodeURIComponent(body);
+  };
+
+  const copyBlobToClipboard = async (blob, mimeType, fileName = "copiedSign") => {
+    if (
+      !navigator.clipboard ||
+      typeof navigator.clipboard.write !== "function" ||
+      typeof ClipboardItem === "undefined"
+    ) {
+      throw new Error("This browser does not support copying images directly.");
+    }
+
+    if (
+      typeof ClipboardItem.supports === "function" &&
+      !ClipboardItem.supports(mimeType)
+    ) {
+      throw new Error(`This browser does not support copying ${mimeType} to the clipboard.`);
+    }
+
+    const clipboardBlob =
+      typeof File !== "undefined" && fileName
+        ? new File([blob], fileName, { type: mimeType })
+        : blob;
+
+    let clipboardItem;
+
+    try {
+      clipboardItem = new ClipboardItem({ [mimeType]: Promise.resolve(clipboardBlob) });
+    } catch (error) {
+      clipboardItem = new ClipboardItem({ [mimeType]: clipboardBlob });
+    }
+
+    await navigator.clipboard.write([clipboardItem]);
+  };
+
+  const copyTextToClipboard = async (text) => {
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+      throw new Error("This browser does not support copying text directly.");
+    }
+
+    await navigator.clipboard.writeText(text);
+  };
+
+  const flashDownloadActionButton = (buttonId, labelText, iconText = "check") => {
+    const button = document.getElementById(buttonId);
+
+    if (!button) {
+      return;
+    }
+
+    const icon = button.querySelector(".material-symbols-outlined");
+    const label = button.querySelector(".downloadActionLabel");
+    const originalIcon = icon ? icon.textContent : "";
+    const originalLabel = label ? label.textContent : "";
+
+    if (button._downloadActionRestoreTimer) {
+      window.clearTimeout(button._downloadActionRestoreTimer);
+    }
+
+    button.classList.add("activated");
+
+    if (icon) {
+      icon.textContent = iconText;
+    }
+
+    if (label) {
+      label.textContent = labelText;
+    }
+
+    button._downloadActionRestoreTimer = window.setTimeout(() => {
+      button.classList.remove("activated");
+
+      if (icon) {
+        icon.textContent = originalIcon;
+      }
+
+      if (label) {
+        label.textContent = originalLabel;
+      }
+    }, 1400);
+  };
     
     const waitForImagesInElement = async (root, timeoutMs = 2500) => {
       if (!root) {
@@ -9552,7 +9846,7 @@ const app = (function () {
   };
 
     const setDownloadButtonsDisabled = (disabled) => {
-      ["downloadPNG", "downloadSVG"].forEach((buttonId) => {
+      ["downloadPNG", "downloadSVG", "copyPNG", "copySVG"].forEach((buttonId) => {
         const button = document.getElementById(buttonId);
         if (button) {
           button.disabled = !!disabled;
@@ -9684,6 +9978,68 @@ const app = (function () {
       }
 
       await saveSign(file, false, true);
+    };
+
+    const copyPNGSign = async function () {
+      if (!syncDownloadSelection()) {
+        return;
+      }
+
+      const file = getFile();
+
+      if (!file) {
+        return;
+      }
+
+      setDownloadButtonsDisabled(true);
+
+      try {
+        const pngDataUrl = await saveSign(file, true, false);
+        const pngBlob = await dataUrlToBlob(pngDataUrl, "image/png");
+        await copyBlobToClipboard(pngBlob, "image/png", "copiedSign.png");
+        flashDownloadActionButton("copyPNG", "Copied");
+      } catch (error) {
+        console.error("Unable to copy PNG", error);
+        flashDownloadActionButton("copyPNG", "Failed", "error");
+        alert("Unable to copy PNG: " + (error?.message || error));
+      } finally {
+        syncDownloadSelection();
+      }
+    };
+
+    const copySVGSign = async function () {
+      if (!syncDownloadSelection()) {
+        return;
+      }
+
+      const file = getFile();
+
+      if (!file) {
+        return;
+      }
+
+      setDownloadButtonsDisabled(true);
+
+      try {
+        const svgDataUrl = await saveSign(file, true, true);
+        const svgText = dataUrlToText(svgDataUrl);
+        const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+
+        try {
+          await copyBlobToClipboard(svgBlob, "image/svg+xml", "copiedSign.svg");
+          flashDownloadActionButton("copySVG", "Copied");
+        } catch (imageClipboardError) {
+          await copyTextToClipboard(svgText);
+          flashDownloadActionButton("copySVG", "Copied Text");
+          console.warn("SVG image clipboard write was not available, so SVG markup was copied instead.", imageClipboardError);
+        }
+      } catch (error) {
+        console.error("Unable to copy SVG", error);
+        flashDownloadActionButton("copySVG", "Failed", "error");
+        alert("Unable to copy SVG: " + (error?.message || error));
+      } finally {
+        syncDownloadSelection();
+      }
     };
 
     const updatePreview = async function () {
@@ -10119,7 +10475,7 @@ const app = (function () {
                        const normalizedExitTabHorizontalPadding = (() => {
                          const parsed = parseFloat(isAssetExitTabVariantForSpacing ? exitTab.assetHorizontalPadding : exitTab.horizontalPadding);
                          return Number.isFinite(parsed)
-                           ? (isAssetExitTabVariantForSpacing ? Math.max(-3, Math.min(3, parsed)) : Math.max(0, Math.min(3, parsed)))
+                           ? (isAssetExitTabVariantForSpacing ? Math.max(-3, Math.min(3, parsed)) : Math.max(-1, Math.min(3, parsed)))
                            : (isAssetExitTabVariantForSpacing ? 0 : ExitTab.prototype.defaultHorizontalPadding);
                        })();
                        const normalizedAssetVerticalPadding = (() => {
@@ -10430,6 +10786,28 @@ const app = (function () {
                        );
                        exitTabHolderElmt.style.position = "relative";
                        exitTabHolderElmt.style.zIndex = "1";
+                       exitTabHolderElmt.dataset.panelIndex = String(index);
+                       exitTabHolderElmt.dataset.exitTabIndex = String(exitTabIndex);
+                       exitTabHolderElmt.dataset.nestedExitTabIndex = String(nestIndex);
+                       exitTabElmt.dataset.panelIndex = String(index);
+                       exitTabElmt.dataset.exitTabIndex = String(exitTabIndex);
+                       exitTabElmt.dataset.nestedExitTabIndex = String(nestIndex);
+                       exitTabHolderElmt.addEventListener("click", (event) => {
+                         event.stopPropagation();
+
+                         const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);
+                         const clickedExitTabIndex = Number(event.currentTarget.dataset.exitTabIndex);
+                         const clickedNestedExitTabIndex = Number(event.currentTarget.dataset.nestedExitTabIndex);
+
+                         selectRenderedPanelArea({
+                           panelIndex: clickedPanelIndex,
+                           subPanelIndex: 0,
+                           exitTabIndex: Number.isNaN(clickedExitTabIndex) ? 0 : clickedExitTabIndex,
+                           nestedExitTabIndex: Number.isNaN(clickedNestedExitTabIndex) ? -1 : clickedNestedExitTabIndex,
+                           menu: "exitTabs",
+                           flashTarget: event.currentTarget,
+                         });
+                       });
                        exitTabHolderElmt.appendChild(exitTabElmt);
                        
                        exitTabCont.appendChild(exitTabHolderElmt);
@@ -13009,6 +13387,11 @@ const app = (function () {
               }
 
               key = String(key || "").trim();
+              const shouldFlipAltLeftUpArrow = /^(?:E?B)-4$/i.test(key);
+
+              if (shouldFlipAltLeftUpArrow) {
+                  key = key.replace(/-4$/i, "-1");
+              }
 
               const specialGuideArrowBlocks = {
                   DOWN_CA: {
@@ -13072,6 +13455,12 @@ const app = (function () {
                           downArrowElmt.classList.add("canadianDownArrow");
                       } else {
                           downArrowElmt.src = "img/arrows/" + key + ".svg";
+                      }
+
+                      if (shouldFlipAltLeftUpArrow) {
+                          downArrowElmt.classList.add("altLeftUpArrowFlipped");
+                          downArrowElmt.style.transform = "scaleX(-1)";
+                          downArrowElmt.style.transformOrigin = "center center";
                       }
 
                       return downArrowElmt;
@@ -13163,7 +13552,7 @@ const app = (function () {
               const hideExitOnlyArrows = panel.sign.hideExitArrow === true;
               arrowContElmt.classList.toggle("hideExitOnlyArrows", hideExitOnlyArrows);
               if (
-                  !post.secondExitOnly &&
+                  !panel.sign.secondExitOnly &&
                   panel.sign.guideArrow != "Split Exit Only" &&
                   panel.sign.guideArrow != "Half Exit Only"
                   ) {
@@ -13174,7 +13563,7 @@ const app = (function () {
               
               if (
                   panel.sign.guideArrow == "Exit Only" &&
-                  !post.secondExitOnly
+                  !panel.sign.secondExitOnly
                   ) {
                       guideArrowsElmt.style.borderTopWidth =
                       resolvedExitOnlyBorderMode === "edge" ? borderWidthValue : "0";
@@ -13200,12 +13589,12 @@ const app = (function () {
                     .toLowerCase()} ${halfExitRenderPositionLower}`;
                   applyGuideArrowVerticalSpacing(secondaryContainer);
                   
-                  guideArrowsElmt.className += post.secondExitOnly
+                  guideArrowsElmt.className += panel.sign.secondExitOnly
                   ? " new2"
                   : " default";
                   guideArrowsElmt.classList.remove("halfExitNoBorder");
                   
-                  if (!post.secondExitOnly) {
+                  if (!panel.sign.secondExitOnly) {
                       const borderMode = resolvedExitOnlyBorderMode;
                       halfExitRenderPositionLower;
                       const overlap = `-${borderWidthValue}`;
@@ -13357,7 +13746,7 @@ const app = (function () {
                   "Half Exit Only" == panel.sign.guideArrow
                   ) {
                       if (
-                          post.secondExitOnly == true ||
+                          panel.sign.secondExitOnly == true ||
                           panel.sign.guideArrow == "Half Exit Only"
                           ) {
                               if (panel.sign.guideArrow == "Exit Only") {
@@ -13381,8 +13770,7 @@ const app = (function () {
                               guideArrowsElmt.style.display = "flex";
                           }
                       
-                      if (post.secondExitOnly && panel.sign.guideArrow == "Exit Only") {
-                          console.log("hi");
+                      if (panel.sign.secondExitOnly && panel.sign.guideArrow == "Exit Only") {
                           applyGuideArrowVerticalSpacing(path);
                       }
                       
@@ -13934,6 +14322,8 @@ const app = (function () {
         duplicateExitTab: (...args) => runWithUndo(() => duplicateExitTab(...args)),
         removeExitTab,
         moveExitTab: (...args) => runWithUndo(() => moveExitTab(...args)),
+        moveNestedExitTab: (...args) => runWithUndo(() => moveNestedExitTab(...args)),
+        moveExitTabWithinRow: (...args) => runWithUndo(() => moveExitTabWithinRow(...args)),
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),
         setPanelSpacing: setPanelSpacing,
@@ -14466,6 +14856,8 @@ const app = (function () {
         moveSubPanel,
         downloadPNGSign: downloadPNGSign,
         downloadSVGSign: downloadSVGSign,
+        copyPNGSign: copyPNGSign,
+        copySVGSign: copySVGSign,
         updatePreview: updatePreview,
         resetPadding: (...args) => runWithUndo(() => resetPadding(...args)),
         duplicateControlElem: (...args) => runWithUndo(() => duplicateControlElem(...args)),
@@ -14474,6 +14866,8 @@ const app = (function () {
         duplicateExitTab: (...args) => runWithUndo(() => duplicateExitTab(...args)),
         removeExitTab: (...args) => runWithUndo(() => removeExitTab(...args)),
         moveExitTab: (...args) => runWithUndo(() => moveExitTab(...args)),
+        moveNestedExitTab: (...args) => runWithUndo(() => moveNestedExitTab(...args)),
+        moveExitTabWithinRow: (...args) => runWithUndo(() => moveExitTabWithinRow(...args)),
         changeEditingExitTab: changeEditingExitTab,
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),

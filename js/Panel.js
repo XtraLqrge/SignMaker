@@ -84,6 +84,7 @@ class Panel {
       nestedExitTabs: newNest,
       verticalArrangement: exisitingTab.verticalArrangement,
       caStyle: exisitingTab.caStyle,
+      profileId: exisitingTab.profileId,
     });
 
     this.exitTabs.push(exitTab);

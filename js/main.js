@@ -8723,6 +8723,38 @@ const app = (function () {
     return decodeURIComponent(body);
   };
 
+  const escapeSvgAttribute = (value) =>
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const createImageBackedSvgDataUrl = async (
+    exportElement,
+    exportOptions,
+    width,
+    height,
+    isPreview = false
+  ) => {
+    const pixelRatio = getExportPixelRatio(width, height, isPreview);
+    const svgWidth = Math.max(1, Math.ceil(width * pixelRatio));
+    const svgHeight = Math.max(1, Math.ceil(height * pixelRatio));
+    const pngDataUrl = await htmlToImage.toPng(exportElement, {
+      ...exportOptions,
+      pixelRatio,
+      skipAutoScale: true,
+    });
+
+    const svgText = [
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">`,
+      `<image href="${escapeSvgAttribute(pngDataUrl)}" xlink:href="${escapeSvgAttribute(pngDataUrl)}" x="0" y="0" width="${svgWidth}" height="${svgHeight}" preserveAspectRatio="xMinYMin meet"/>`,
+      `</svg>`,
+    ].join("");
+
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+  };
+
   const copyBlobToClipboard = async (blob, mimeType, fileName = "copiedSign") => {
     if (
       !navigator.clipboard ||
@@ -9814,7 +9846,13 @@ const app = (function () {
         };
 
         if (isSVG) {
-          const svgDataUrl = await htmlToImage.toSvg(exportElement, exportOptions);
+          const svgDataUrl = await createImageBackedSvgDataUrl(
+            exportElement,
+            exportOptions,
+            width,
+            height,
+            isPreview
+          );
 
           if (isPreview) {
             return svgDataUrl;

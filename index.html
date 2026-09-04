@@ -813,7 +813,7 @@
             <div class="listNavOptions">
               <button onclick="app.newSubPanel();">+</button>
               <button onclick="app.removeSubPanel();">-</button>
-              <button onclick="app.duplicateSubPanel();">
+              <button onclick="formHandler.readForm(); app.duplicateSubPanel();">
                 <span class="material-symbols-outlined">content_copy</span>
               </button>
               <input type="number" id="subPanelNumber" name="subPanelNumber" placeholder="1" step="1"
@@ -1995,6 +1995,26 @@
                           max="8"
                           step="0.1"
                           value="4"
+                        />
+                      </div>
+
+                      <label for="settingsDefaultPanelSpacing">Default Panel Spacing:</label>
+                      <div class="settingsPanelSpacingControl">
+                        <input
+                          type="range"
+                          id="settingsDefaultPanelSpacing"
+                          min="0"
+                          max="8"
+                          step="0.1"
+                          value="1"
+                        />
+                        <input
+                          type="number"
+                          id="settingsDefaultPanelSpacingValue"
+                          min="0"
+                          max="8"
+                          step="0.1"
+                          value="1"
                         />
                       </div>
 

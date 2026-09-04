@@ -3121,6 +3121,26 @@ img.exitOnlyArrow:last-child {
   line-height: inherit;
 }
 
+
+/* Series D digit-3 spacing correction for control/action text. */
+.bE-textElement.seriesDSpacingFix .bE-seriesDCharFix {
+  display: inline-block;
+}
+
+.bE-textElement.seriesDSpacingFix .bE-seriesDCharFix-3 {
+  display: inline-block;
+  width: 0.501em;
+  min-width: 0.501em;
+  max-width: 0.501em;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: left;
+  text-indent: -0.046em;
+  position: static;
+  transform: none;
+}
+
 /* Tight spaces used by enlarged action-message/control-text numerals. */
 .bE-tightSpace,
 .bE-tightNumeralSpace {

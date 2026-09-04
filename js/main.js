@@ -17,7 +17,8 @@ const app = (function () {
   let currentlySelectedAPLArrowIndex = 0;
   let downloadPreviewRequestId = 0;
   const DEFAULT_POST_POSITION = "Right";
-  const DEFAULT_PANEL_SPACING = 4;
+  const DEFAULT_PANEL_SPACING = 1;
+  const DEFAULT_PANEL_SPACING_STORAGE_KEY = "signMaker.defaultPanelSpacing";
   const DEFAULT_STACKED_PANEL_SPACING = 0;
   const DEFAULT_STACKED_PANEL_MATCH_WIDTH = false;
   const APP_STORAGE_KEY = "signMaker.autosave.v1";
@@ -31,6 +32,27 @@ const app = (function () {
   const PERSISTENCE_DB_STORE = "keyValue";
   let persistenceDbPromise = null;
   let subpanelClipboardMemoryPayload = null;
+
+  const normalizeDefaultPanelSpacingValue = (value, fallback = DEFAULT_PANEL_SPACING) => {
+    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+    const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+    const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : DEFAULT_PANEL_SPACING;
+
+    return Number.isFinite(parsed) && parsed >= 0
+      ? Math.min(parsed, 8)
+      : Math.max(0, Math.min(resolvedFallback, 8));
+  };
+
+  const getDefaultPanelSpacing = () => {
+    try {
+      return normalizeDefaultPanelSpacingValue(
+        window.localStorage.getItem(DEFAULT_PANEL_SPACING_STORAGE_KEY),
+        DEFAULT_PANEL_SPACING
+      );
+    } catch (error) {
+      return DEFAULT_PANEL_SPACING;
+    }
+  };
 
   const openPersistenceDB = () => {
     if (persistenceDbPromise) {
@@ -1988,13 +2010,35 @@ const app = (function () {
     };
     
     const clearAll = () => {
+      const previousExitTabProfiles = (() => {
+        if (!post || !post.exitTabProfiles || typeof post.exitTabProfiles !== "object") {
+          return null;
+        }
+
+        try {
+          return JSON.parse(JSON.stringify(post.exitTabProfiles));
+        } catch (error) {
+          return post.exitTabProfiles;
+        }
+      })();
+
       return runWithUndo(() => {
           const previousShowPost =
             typeof post?.showPost === "boolean" ? post.showPost : true;
 
           post = new Post(DEFAULT_POST_POSITION);
-          post.panelSpacing = DEFAULT_PANEL_SPACING;
+          post.panelSpacing = getDefaultPanelSpacing();
           post.showPost = previousShowPost;
+
+          if (previousExitTabProfiles) {
+            post.exitTabProfiles = previousExitTabProfiles;
+            if (
+              typeof formHandler !== "undefined" &&
+              typeof formHandler.applyExitTabDefaultProfileToPrototype === "function"
+            ) {
+              formHandler.applyExitTabDefaultProfileToPrototype();
+            }
+          }
 
           try {
             window.localStorage.setItem("signMaker.postPosition", DEFAULT_POST_POSITION);
@@ -2019,6 +2063,15 @@ const app = (function () {
 
         post.newPanel();
         currentlySelectedPanelIndex = post.panels.length - 1;
+
+        const freshExitTab = post.panels[currentlySelectedPanelIndex]?.exitTabs?.[0];
+        if (
+          freshExitTab &&
+          typeof formHandler !== "undefined" &&
+          typeof formHandler.applyDefaultExitTabProfileToTab === "function"
+        ) {
+          formHandler.applyDefaultExitTabProfileToTab(freshExitTab);
+        }
 
         redoStack.length = 0;
 
@@ -3734,7 +3787,7 @@ const app = (function () {
 
     const init = async function () {
       post = new Post(DEFAULT_POST_POSITION);
-      post.panelSpacing = DEFAULT_PANEL_SPACING;
+      post.panelSpacing = getDefaultPanelSpacing();
 
       ensureExtendedGuideArrowOptions();
       bindDownloadResolutionControl();
@@ -10045,6 +10098,65 @@ const app = (function () {
       }
     };
 
+
+    const copyPanelPNG = async function (panelIndex) {
+      const requestedIndex = Number(panelIndex);
+      if (!Number.isInteger(requestedIndex)) {
+        return false;
+      }
+
+      const group = getExportablePanelGroups().find((candidate) => {
+        return candidate.topIndex === requestedIndex ||
+          (Array.isArray(candidate.indices) && candidate.indices.includes(requestedIndex));
+      });
+
+      if (!group) {
+        alert("Unable to copy panel: that panel is hidden or cannot be exported.");
+        return false;
+      }
+
+      const previousFileInfo = {
+        fileType: fileInfo.fileType,
+        panel: fileInfo.panel,
+        selectedPanelIndices: Array.isArray(fileInfo.selectedPanelIndices)
+          ? fileInfo.selectedPanelIndices.slice()
+          : [],
+      };
+
+      try {
+        fileInfo.fileType = "png";
+        fileInfo.panel = group.topIndex;
+        fileInfo.selectedPanelIndices = [group.topIndex];
+
+        const file = getFile();
+        if (!file) {
+          alert("Unable to copy panel: no export target was found.");
+          return false;
+        }
+
+        const pngDataUrl = await saveSign(file, true, false);
+        const pngBlob = await dataUrlToBlob(pngDataUrl, "image/png");
+        await copyBlobToClipboard(
+          pngBlob,
+          "image/png",
+          `copiedSign-panel-${group.label || requestedIndex + 1}.png`
+        );
+        return true;
+      } catch (error) {
+        console.error("Unable to copy panel PNG", error);
+        alert("Unable to copy panel PNG: " + (error?.message || error));
+        return false;
+      } finally {
+        fileInfo.fileType = previousFileInfo.fileType;
+        fileInfo.panel = previousFileInfo.panel;
+        fileInfo.selectedPanelIndices = previousFileInfo.selectedPanelIndices;
+
+        if (document.getElementById("downloadContent")?.open) {
+          syncDownloadSelection();
+        }
+      }
+    };
+
     const copySVGSign = async function () {
       if (!syncDownloadSelection()) {
         return;
@@ -14425,7 +14537,7 @@ const app = (function () {
       return;
     }
     if (typeof post.panelSpacing !== "number" || post.panelSpacing < 0) {
-      post.panelSpacing = 0;
+      post.panelSpacing = getDefaultPanelSpacing();
     }
     post.thickness = post.normalizeThickness(post.thickness);
     currentlySelectedPanelIndex = 0;
@@ -14896,6 +15008,7 @@ const app = (function () {
         downloadSVGSign: downloadSVGSign,
         copyPNGSign: copyPNGSign,
         copySVGSign: copySVGSign,
+        copyPanelPNG: copyPanelPNG,
         updatePreview: updatePreview,
         resetPadding: (...args) => runWithUndo(() => resetPadding(...args)),
         duplicateControlElem: (...args) => runWithUndo(() => duplicateControlElem(...args)),

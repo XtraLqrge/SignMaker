@@ -398,7 +398,12 @@ class TextElement {
     const newText = document.createElement("div");
     newText.className = "bE-textElement";
     const renderedFontFamily = resolveTextFontFamilyForRender(this.fontFamily, this, panel);
+    const normalizedRenderedFontFamily = String(renderedFontFamily || "")
+      .replace(/["']/g, "")
+      .trim();
     const usesHighwayGothic = isHighwayGothicFontFamily(renderedFontFamily);
+    const usesSeriesDSpacingFix = normalizedRenderedFontFamily === "Series D";
+    newText.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
 
     // Set custom CSS properties here based off the this. properties
       newText.style.setProperty("--fontFamily", '"' + renderedFontFamily + '"');
@@ -466,6 +471,52 @@ class TextElement {
       newText.style.color = "white";
     }
 
+    const appendTextWithSeriesDSpacingFix = (fragment, value) => {
+      const characters = Array.from(String(value ?? ""));
+      let pendingText = "";
+      const isDigit = (character) => /^[0-9]$/.test(character || "");
+
+      const flushPendingText = () => {
+        if (!pendingText) {
+          return;
+        }
+
+        fragment.appendChild(document.createTextNode(pendingText));
+        pendingText = "";
+      };
+
+      characters.forEach((character, index) => {
+        if (usesSeriesDSpacingFix && character === "3") {
+          const previousCharacter = characters[index - 1] || "";
+          const nextCharacter = characters[index + 1] || "";
+          const classNames = ["bE-seriesDCharFix", "bE-seriesDCharFix-3"];
+
+          if (isDigit(previousCharacter)) {
+            classNames.push("bE-seriesDCharFix-hasPreviousDigit");
+          }
+          if (isDigit(nextCharacter)) {
+            classNames.push("bE-seriesDCharFix-hasNextDigit");
+          }
+          if (previousCharacter === "3") {
+            classNames.push("bE-seriesDCharFix-previous3");
+          }
+          if (nextCharacter === "3") {
+            classNames.push("bE-seriesDCharFix-next3");
+          }
+
+          flushPendingText();
+          const fixedThree = document.createElement("span");
+          fixedThree.className = classNames.join(" ");
+          fixedThree.textContent = character;
+          fragment.appendChild(fixedThree);
+        } else {
+          pendingText += character;
+        }
+      });
+
+      flushPendingText();
+    };
+
     const appendTextWithRealFirstLetter = (fragment, value) => {
       const textValue = String(value ?? "");
       const firstVisibleMatch = textValue.match(/\S/);
@@ -510,6 +561,8 @@ class TextElement {
           tightSpace.className = "bE-tightNumeralSpace bE-tightInternalNumeralSpace";
           tightSpace.textContent = part;
           fragment.appendChild(tightSpace);
+        } else if (usesSeriesDSpacingFix) {
+          appendTextWithSeriesDSpacingFix(fragment, part);
         } else {
           fragment.appendChild(document.createTextNode(part));
         }
@@ -570,7 +623,11 @@ class TextElement {
         }
 
         flushSmallLetters();
-        fragment.appendChild(document.createTextNode(character));
+        if (usesSeriesDSpacingFix && character === "3") {
+          appendTextWithSeriesDSpacingFix(fragment, character);
+        } else {
+          fragment.appendChild(document.createTextNode(character));
+        }
 
         if (character !== "'" && character !== "’") {
           hasFirstLetterInWord = false;
@@ -600,6 +657,8 @@ class TextElement {
         newTextFragment.textContent = text.value || " ";
       } else if (this.smallCapitals === true) {
         appendTextWithSmallLetters(newTextFragment, text.value);
+      } else if (usesSeriesDSpacingFix) {
+        appendTextWithSeriesDSpacingFix(newTextFragment, text.value);
       } else {
         newTextFragment.textContent = text.value;
       }
@@ -1631,10 +1690,15 @@ class ShieldElement extends Shield {
 
       const routeEl = document.createElement("p");
       routeEl.className = "routeNumber";
-      routeEl.innerHTML = String(routeText || "")
-        .split("")
-        .map((char) => {
+      const routeCharacters = Array.from(String(routeText || ""));
+      routeEl.innerHTML = routeCharacters
+        .map((char, index) => {
           const isSpace = char === " ";
+          const isDigit = /^[0-9]$/.test(char);
+          const previousCharacter = routeCharacters[index - 1] || "";
+          const nextCharacter = routeCharacters[index + 1] || "";
+          const previousIsDigit = /^[0-9]$/.test(previousCharacter);
+          const nextIsDigit = /^[0-9]$/.test(nextCharacter);
           const safeChar = isSpace
             ? "&nbsp;"
             : char
@@ -1643,13 +1707,28 @@ class ShieldElement extends Shield {
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;");
 
-          const charClass = /^[0-9A-Za-z]$/.test(char)
-            ? ` routeChar-${char.toUpperCase()}`
-            : isSpace
-              ? " routeChar-space"
-              : "";
+          const classNames = ["routeChar"];
 
-          return `<span class="routeChar${charClass}">${safeChar}</span>`;
+          if (/^[0-9A-Za-z]$/.test(char)) {
+            classNames.push(`routeChar-${char.toUpperCase()}`);
+          } else if (isSpace) {
+            classNames.push("routeChar-space");
+          }
+
+          if (isDigit && previousIsDigit) {
+            classNames.push("routeChar-hasPreviousDigit");
+          }
+          if (isDigit && nextIsDigit) {
+            classNames.push("routeChar-hasNextDigit");
+          }
+          if (char === "3" && previousCharacter === "3") {
+            classNames.push("routeChar-previous3");
+          }
+          if (char === "3" && nextCharacter === "3") {
+            classNames.push("routeChar-next3");
+          }
+
+          return `<span class="${classNames.join(" ")}">${safeChar}</span>`;
         })
         .join("");
 
@@ -1682,12 +1761,17 @@ class ShieldElement extends Shield {
 
       shieldContainer.appendChild(shieldEl);
 
-      requestAnimationFrame(() => {
+      const updateSeriesDRouteSpacingFix = () => {
         const fontFamily = window.getComputedStyle(routeEl).fontFamily || "";
         const usesSeriesD = fontFamily.toLowerCase().includes("series d");
 
         shieldContainer.classList.toggle("seriesDSpacingFix", usesSeriesD);
-      });
+      };
+
+      requestAnimationFrame(updateSeriesDRouteSpacingFix);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(updateSeriesDRouteSpacingFix).catch(() => {});
+      }
 
       if (!hasBannerA && !hasBannerB && !hasRoadName) {
         shieldContainer.classList.add("noBanners");

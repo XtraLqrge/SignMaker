@@ -143,6 +143,7 @@ const formHandler = (function () {
         postColor: "signMaker.postColor",
         showPost: "signMaker.showPost",
         postThickness: "signMaker.postThickness",
+        defaultPanelSpacing: "signMaker.defaultPanelSpacing",
         controlTextFont: "signMaker.controlTextFont",
         bannerFontFamily: "signMaker.bannerFontFamily",
         exitTabFHWAFont: "signMaker.exitTabFHWAFont",
@@ -1990,6 +1991,25 @@ const getPostThicknessFallback = () =>
       localStorageAvailable = false;
       return false;
     }
+  };
+
+  const normalizePanelSpacingPreference = (value, fallback = 1) => {
+    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+    const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+    const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1;
+
+    return Number.isFinite(parsed) && parsed >= 0
+      ? Math.min(parsed, 8)
+      : Math.max(0, Math.min(resolvedFallback, 8));
+  };
+
+  const getDefaultPanelSpacingPreference = () =>
+    normalizePanelSpacingPreference(getStoredItem(STORAGE_KEYS.defaultPanelSpacing), 1);
+
+  const setDefaultPanelSpacingPreference = (value) => {
+    const normalized = normalizePanelSpacingPreference(value, 1);
+    setStoredItem(STORAGE_KEYS.defaultPanelSpacing, String(normalized));
+    return normalized;
   };
 
   const FORM_PERSISTENCE_DB_NAME = "signMaker.formPersistence.v1";
@@ -3958,6 +3978,10 @@ const getPostThicknessFallback = () =>
           ? post.normalizeThickness(storedPostThickness)
           : normalizeStoredPostThickness(storedPostThickness);
       post.thickness = normalizedThickness;
+    }
+
+    if (post) {
+      post.panelSpacing = getDefaultPanelSpacingPreference();
     }
 
     const storedControlFont = getStoredItem(STORAGE_KEYS.controlTextFont);
@@ -8047,6 +8071,43 @@ const getPostThicknessFallback = () =>
       normalizeCustomCssColorValue(a).toLowerCase() ===
       normalizeCustomCssColorValue(b).toLowerCase();
 
+    const getDefaultColorNameForCustomPickerValue = (value = "") => {
+      const normalizedValue = normalizeCustomCssColorValue(value).toLowerCase();
+      if (!normalizedValue || typeof lib === "undefined" || !lib.colors) {
+        return "";
+      }
+
+      for (const [colorName, colorValue] of Object.entries(lib.colors)) {
+        if (String(colorName).toLowerCase() === normalizedValue) {
+          return colorName;
+        }
+
+        const normalizedDefaultColor = normalizeCustomCssColorValue(colorValue).toLowerCase();
+        if (normalizedDefaultColor && normalizedDefaultColor === normalizedValue) {
+          return colorName;
+        }
+      }
+
+      return "";
+    };
+
+    const isDefaultColorValueForCustomPicker = (value = "") =>
+      !!getDefaultColorNameForCustomPickerValue(value);
+
+    const getCustomColorComparableValue = (value = "") => {
+      const normalizedValue = normalizeCustomCssColorValue(value);
+      if (!normalizedValue) {
+        return "";
+      }
+
+      const defaultColorName = getDefaultColorNameForCustomPickerValue(normalizedValue);
+      if (defaultColorName) {
+        return normalizeCustomCssColorValue(lib.colors[defaultColorName]).toLowerCase();
+      }
+
+      return normalizedValue.toLowerCase();
+    };
+
     const getCustomColorDisplayName = (record = {}) => {
       const value = normalizeCustomCssColorValue(record.value);
       const name = String(record.name || "").trim();
@@ -8081,15 +8142,26 @@ const getPostThicknessFallback = () =>
           ? parsed.map(normalizeCustomColorRecord).filter(Boolean)
           : [];
         const seenValues = new Set();
+        let removedDefaultColorRecords = false;
 
         customColorRecords = normalizedRecords.filter((record) => {
-          const key = normalizeCustomCssColorValue(record.value).toLowerCase();
+          const key = getCustomColorComparableValue(record.value);
           if (!key || seenValues.has(key)) {
             return false;
           }
+
+          if (isDefaultColorValueForCustomPicker(record.value)) {
+            removedDefaultColorRecords = true;
+            return false;
+          }
+
           seenValues.add(key);
           return true;
         });
+
+        if (removedDefaultColorRecords) {
+          setStoredItem(STORAGE_KEYS.customColors, JSON.stringify(customColorRecords));
+        }
       } catch (error) {
         customColorRecords = [];
       }
@@ -8118,10 +8190,21 @@ const getPostThicknessFallback = () =>
         return null;
       }
 
+      const defaultColorName = getDefaultColorNameForCustomPickerValue(normalizedValue);
+      if (defaultColorName) {
+        return {
+          id: `default_${defaultColorName}`,
+          value: defaultColorName,
+          name: defaultColorName,
+          defaultColor: true,
+        };
+      }
+
       loadCustomColorRecords();
 
       const existingRecord = customColorRecords.find((record) =>
-        customColorValuesMatch(record.value, normalizedValue)
+        getCustomColorComparableValue(record.value) ===
+        getCustomColorComparableValue(normalizedValue)
       );
 
       if (existingRecord) {
@@ -8320,18 +8403,30 @@ const getPostThicknessFallback = () =>
       }
 
       const normalizedValue = normalizeCustomCssColorValue(value);
-      let existingOption = Array.from(selectEl.options || []).find(
-        (option) => option.value === normalizedValue || option.value === value
-      );
+      const defaultColorName = getDefaultColorNameForCustomPickerValue(normalizedValue);
+      const optionValue = defaultColorName || normalizedValue;
+      const comparableValue = getCustomColorComparableValue(optionValue);
+      let existingOption = Array.from(selectEl.options || []).find((option) => {
+        if (option.value === optionValue || option.value === normalizedValue || option.value === value) {
+          return true;
+        }
+
+        return (
+          comparableValue &&
+          getCustomColorComparableValue(option.value) === comparableValue
+        );
+      });
 
       if (existingOption) {
         return existingOption;
       }
 
       existingOption = document.createElement("option");
-      existingOption.value = normalizedValue;
-      existingOption.textContent = label || normalizedValue;
-      existingOption.dataset.customColor = "true";
+      existingOption.value = optionValue;
+      existingOption.textContent = label || optionValue;
+      if (!defaultColorName) {
+        existingOption.dataset.customColor = "true";
+      }
       selectEl.appendChild(existingOption);
       return existingOption;
     };
@@ -8350,9 +8445,11 @@ const getPostThicknessFallback = () =>
         });
       }
 
-      loadCustomColorRecords().forEach((record) => {
-        ensureNativeColorSelectOption(selectEl, record.value, getCustomColorDisplayName(record));
-      });
+      loadCustomColorRecords()
+        .filter((record) => !isDefaultColorValueForCustomPicker(record.value))
+        .forEach((record) => {
+          ensureNativeColorSelectOption(selectEl, record.value, getCustomColorDisplayName(record));
+        });
     };
 
     const ensureCustomColorOptionsForAllColorSelects = (root = document) => {
@@ -8851,9 +8948,16 @@ const getPostThicknessFallback = () =>
         });
         menu.appendChild(customColorButton);
 
+        const renderedStandardColorValues = new Set();
         Array.from(selectEl.options || [])
           .filter((option) => option.value && option.dataset.customColor !== "true")
           .forEach((option) => {
+            const comparableValue = getCustomColorComparableValue(option.value) || String(option.value).toLowerCase();
+            if (renderedStandardColorValues.has(comparableValue)) {
+              return;
+            }
+
+            renderedStandardColorValues.add(comparableValue);
             menu.appendChild(
               makeColorButton({
                 value: option.value,
@@ -8862,7 +8966,15 @@ const getPostThicknessFallback = () =>
             );
           });
 
-        const records = loadCustomColorRecords();
+        const records = loadCustomColorRecords().filter((record) => {
+          if (isDefaultColorValueForCustomPicker(record.value)) {
+            return false;
+          }
+
+          const comparableValue = getCustomColorComparableValue(record.value);
+          return comparableValue && !renderedStandardColorValues.has(comparableValue);
+        });
+
         if (records.length) {
           const divider = document.createElement("div");
           divider.className = "colorPickerMenuDivider";
@@ -11983,6 +12095,15 @@ const getPostThicknessFallback = () =>
       }
 
     function reDisplay() {
+      const openingPanelStylePopover = panelStylePopoverIsOpen();
+      const modalHolder = document.querySelector(".modals");
+      const previousModalVisibility = modalHolder?.style.visibility || "";
+
+      if (openingPanelStylePopover && modalHolder) {
+        modalHolder.style.visibility = "hidden";
+        modalHolder.classList.add("panelStylePopoverOpen");
+      }
+
       for (const holder of document.querySelectorAll(".sMModal")) {
         if (holder.classList.contains(sMConfigBar.dataset.currentMenu)) {
           holder.style.display = "block";
@@ -11994,7 +12115,11 @@ const getPostThicknessFallback = () =>
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
         const panelSelect = ensurePanelSelectorPopoverPortal();
         if (panelSelect) {
+          const previousPanelSelectVisibility = panelSelect.style.visibility || "";
+          panelSelect.style.visibility = "hidden";
           panelSelect.style.display = "flex";
+          positionPanelSelectorPopover();
+          panelSelect.style.visibility = previousPanelSelectVisibility;
           schedulePanelSelectorPopoverPosition();
         }
         document.querySelectorAll(
@@ -12004,6 +12129,7 @@ const getPostThicknessFallback = () =>
         const panelSelect = document.querySelector("#panelSelect");
         if (panelSelect) {
           panelSelect.style.display = "";
+          panelSelect.style.removeProperty("visibility");
         }
         clearPanelSelectorPopoverPosition();
         document.querySelectorAll(
@@ -12023,8 +12149,12 @@ const getPostThicknessFallback = () =>
         }
       }
 
-      if (panelStylePopoverIsOpen()) {
-        document.querySelector(".modals")?.classList.add("panelStylePopoverOpen");
+      if (openingPanelStylePopover) {
+        if (modalHolder) {
+          modalHolder.classList.add("panelStylePopoverOpen");
+          positionPanelStylePopover();
+          modalHolder.style.visibility = previousModalVisibility;
+        }
         schedulePanelStylePopoverPosition();
       } else {
         clearPanelStylePopoverPosition();
@@ -12959,6 +13089,12 @@ const getPostThicknessFallback = () =>
     const panelSpacingValueInputs = Array.from(
       document.querySelectorAll("#panelSpacingValue, #settingsPanelSpacingValue")
     );
+    const defaultPanelSpacingSliders = Array.from(
+      document.querySelectorAll("#settingsDefaultPanelSpacing")
+    );
+    const defaultPanelSpacingValueInputs = Array.from(
+      document.querySelectorAll("#settingsDefaultPanelSpacingValue")
+    );
 
     const syncPanelSpacingInputs = (value) => {
       const normalizedValue = String(value);
@@ -12968,6 +13104,18 @@ const getPostThicknessFallback = () =>
       });
 
       panelSpacingValueInputs.forEach((input) => {
+        input.value = normalizedValue;
+      });
+    };
+
+    const syncDefaultPanelSpacingInputs = (value) => {
+      const normalizedValue = String(value);
+
+      defaultPanelSpacingSliders.forEach((slider) => {
+        slider.value = normalizedValue;
+      });
+
+      defaultPanelSpacingValueInputs.forEach((input) => {
         input.value = normalizedValue;
       });
     };
@@ -12989,6 +13137,11 @@ const getPostThicknessFallback = () =>
           exposed.redraw();
         }
       }
+    };
+
+    const commitDefaultPanelSpacingChange = (value) => {
+      const normalized = setDefaultPanelSpacingPreference(value);
+      syncDefaultPanelSpacingInputs(normalized);
     };
 
     panelSpacingSliders.forEach((slider) => {
@@ -13020,6 +13173,38 @@ const getPostThicknessFallback = () =>
 
       input.addEventListener("change", () => {
         commitPanelSpacingChange(input.value);
+      });
+    });
+
+    defaultPanelSpacingSliders.forEach((slider) => {
+      if (slider.dataset.defaultPanelSpacingBound === "true") {
+        return;
+      }
+
+      slider.dataset.defaultPanelSpacingBound = "true";
+
+      slider.addEventListener("input", () => {
+        syncDefaultPanelSpacingInputs(slider.value);
+      });
+
+      slider.addEventListener("change", () => {
+        commitDefaultPanelSpacingChange(slider.value);
+      });
+    });
+
+    defaultPanelSpacingValueInputs.forEach((input) => {
+      if (input.dataset.defaultPanelSpacingBound === "true") {
+        return;
+      }
+
+      input.dataset.defaultPanelSpacingBound = "true";
+
+      input.addEventListener("input", () => {
+        syncDefaultPanelSpacingInputs(input.value);
+      });
+
+      input.addEventListener("change", () => {
+        commitDefaultPanelSpacingChange(input.value);
       });
     });
 
@@ -16152,11 +16337,6 @@ const getPostThicknessFallback = () =>
       syncCurrentExitTabProfileSelectionFromTab(exitTab);
     }
 
-    if (!exitTab) {
-      updateForm();
-      return;
-    }
-
     // Post
     post.polePosition = form["postPosition"].value;
     const requestedPostColor = form["postColor"] ? form["postColor"].value : null;
@@ -16181,6 +16361,7 @@ const getPostThicknessFallback = () =>
     post.disableFlash = form["disableFlash"].checked;
 
     // Exit Tab
+    if (exitTab) {
     const previousExitVariant = normalizeExitTabProfileVariant(
       exitTab.variant || "Default"
     );
@@ -16578,6 +16759,7 @@ const getPostThicknessFallback = () =>
         }
 
         saveCurrentExitTabEditsToSelectedProfile(exitTab);
+    }
     // Misc Shields
     currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
 
@@ -17873,6 +18055,51 @@ const getPostThicknessFallback = () =>
         panelButton.addEventListener("dragstart", handlePanelDragStart);
         panelButton.addEventListener("dragend", handlePanelDragEnd);
 
+        const copyButton = document.createElement("button");
+        copyButton.type = "button";
+        copyButton.className = "panelCopyButton";
+        copyButton.title = "Copy " + panelLabelText + " as PNG";
+        copyButton.setAttribute("aria-label", "Copy " + panelLabelText + " as PNG");
+        copyButton.disabled = panelHiddenFromPost;
+
+        const copyIcon = document.createElement("span");
+        copyIcon.className = "material-symbols-outlined";
+        copyIcon.textContent = "content_copy";
+        copyButton.appendChild(copyIcon);
+
+        copyButton.addEventListener("mousedown", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        copyButton.addEventListener("click", async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (!app || typeof app.copyPanelPNG !== "function") {
+            return;
+          }
+
+          const originalIcon = copyIcon.textContent;
+          copyButton.disabled = true;
+
+          try {
+            const copied = await app.copyPanelPNG(panelIndex);
+            if (copied) {
+              copyIcon.textContent = "check";
+              window.setTimeout(() => {
+                copyIcon.textContent = originalIcon;
+                copyButton.disabled = panelHiddenFromPost;
+              }, 900);
+              return;
+            }
+          } finally {
+            if (copyIcon.textContent !== "check") {
+              copyButton.disabled = panelHiddenFromPost;
+            }
+          }
+        });
+
         const hideButton = document.createElement("button");
         hideButton.type = "button";
         hideButton.className =
@@ -17928,6 +18155,7 @@ const getPostThicknessFallback = () =>
             app.deletePanelAt(panelIndex);
           });
         panelRow.appendChild(panelButton);
+        panelRow.appendChild(copyButton);
         panelRow.appendChild(hideButton);
         panelRow.appendChild(deleteButton);
         panelList.appendChild(panelRow);
@@ -17943,6 +18171,7 @@ const getPostThicknessFallback = () =>
       typeof post.panelSpacing === "number" && post.panelSpacing >= 0
         ? Math.min(post.panelSpacing, 8)
         : 4;
+    const resolvedDefaultPanelSpacing = getDefaultPanelSpacingPreference();
 
     panelSpacingSliders.forEach((slider) => {
       slider.value = resolvedPanelSpacing;
@@ -17950,6 +18179,14 @@ const getPostThicknessFallback = () =>
 
     panelSpacingValueInputs.forEach((input) => {
       input.value = resolvedPanelSpacing;
+    });
+
+    Array.from(document.querySelectorAll("#settingsDefaultPanelSpacing")).forEach((slider) => {
+      slider.value = resolvedDefaultPanelSpacing;
+    });
+
+    Array.from(document.querySelectorAll("#settingsDefaultPanelSpacingValue")).forEach((input) => {
+      input.value = resolvedDefaultPanelSpacing;
     });
 
     const postThicknessValueInput =
@@ -21077,5 +21314,6 @@ const getPostThicknessFallback = () =>
       applyDefaultExitTabProfileToTab,
       applyExitTabDefaultProfileToPrototype,
       resetExitTabCurrentProfileSelection,
+      getDefaultPanelSpacingPreference,
     };
 })();

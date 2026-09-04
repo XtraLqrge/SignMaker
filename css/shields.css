@@ -277,15 +277,18 @@
 }
 
 .bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar-3 {
-  margin-left: 0;
-  margin-right: 0;
+  display: inline-block;
+  width: 0.501em;
+  min-width: 0.501em;
+  max-width: 0.501em;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: left;
+  text-indent: -0.046em;
+  position: static;
+  transform: none;
 }
-
-.bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar-3:not(:first-child) {
-  margin-left: -0.09em;
-  margin-right: 0em;
-}
-
 
 /* Keep wrapped route-number characters centered as one group */
 .bannerShieldContainer .routeNumber {

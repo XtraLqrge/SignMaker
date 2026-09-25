@@ -1909,6 +1909,10 @@
   height: 3.5rem;
 }
 
+.aplDividerArrow[data-type="APL_TURN_CFX"] {
+  height: 3.25rem;
+}
+
 .aplDividerArrow[data-type="APL_DUAL_TURN"] {
   height: 4.5rem;
 }
@@ -2030,6 +2034,10 @@ img.exitOnlyArrow:last-child {
 
 .aplArrow[data-type="APL_TURN"] {
   height: 3.5rem;
+}
+
+.aplArrow[data-type="APL_TURN_CFX"] {
+  height: 3.25rem;
 }
 
 .aplArrow[data-type="APL_DUAL_TURN"] {
@@ -2530,17 +2538,23 @@ img.exitOnlyArrow:last-child {
 }
 
 .aplExitOnlyContainer[data-arrow-type="APL_TURN"],
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"] {
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"],
+.aplExitOnlyContainer[data-arrow-type="APL_TURN_CFX"],
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN_CFX"] {
   --aplExitOnlyGap: 0.72rem;
 }
 
 .aplExitOnlyContainer[data-arrow-type="APL_TURN"]:not([data-flipped="true"]),
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"]:not([data-flipped="true"]) {
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"]:not([data-flipped="true"]),
+.aplExitOnlyContainer[data-arrow-type="APL_TURN_CFX"]:not([data-flipped="true"]),
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN_CFX"]:not([data-flipped="true"]) {
   --aplExitOnlyStemOffset: -1.1rem;
 }
 
 .aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"],
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"][data-flipped="true"] {
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"][data-flipped="true"],
+.aplExitOnlyContainer[data-arrow-type="APL_TURN_CFX"][data-flipped="true"],
+.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN_CFX"][data-flipped="true"] {
   --aplExitOnlyStemOffset: 1.1rem;
 }
 
@@ -3119,6 +3133,24 @@ img.exitOnlyArrow:last-child {
   text-align: var(--alignmentCss, center);
   white-space: pre;
   line-height: inherit;
+}
+
+
+.bE-textElement.bE-betweenLetterSpacing {
+  letter-spacing: var(--betweenLetterSpacing, 0em) !important;
+  margin-right: calc(var(--betweenLetterSpacing, 0em) * -1) !important;
+}
+
+.bE-textElement.bE-betweenLetterSpacing.bE-multilineTextElement {
+  margin-right: 0 !important;
+}
+
+.bE-textElement.bE-betweenLetterSpacing.bE-multilineTextElement > .bE-textLine {
+  margin-right: calc(var(--betweenLetterSpacing, 0em) * -1) !important;
+}
+
+.exitTab .exitTabText {
+  margin-right: calc(var(--exitTabCharacterSpacing, 0) * -1em);
 }
 
 

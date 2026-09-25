@@ -994,10 +994,18 @@ const app = (function () {
     };
     
     const HISTORY_LIMIT = 100;
+    const HISTORY_PERSIST_DELAY_MS = 120;
     let undoStack = [];
     let redoStack = [];
     let isApplyingHistory = false;
     let pendingBeforeSnapshot = null;
+    let currentHistorySnapshot = null;
+    let pendingHistoryRestoreSnapshot = null;
+    let historyRestoreFrame = null;
+    let historyRedrawFrame = null;
+    let historyFormFrame = null;
+    let pendingPersistSnapshot = null;
+    let historyPersistTimer = null;
 
     const getSelectionSnapshot = () => ({
       currentlySelectedPanelIndex,
@@ -1473,32 +1481,109 @@ const app = (function () {
       }
     };
     
-    const saveAppState = () => {
+    const persistAppStateSnapshot = (snapshot) => {
+      if (typeof snapshot !== "string" || !snapshot) {
+        return;
+      }
+
       try {
-        const snapshot = serializeAppState();
-        if (!snapshot) {
-          return;
-        }
-
+        window.localStorage.setItem(APP_STORAGE_KEY, snapshot);
+        window.localStorage.setItem(`${APP_STORAGE_KEY}.backend`, "localStorage");
+      } catch (localStorageError) {
+        console.warn(
+          "App state was too large for localStorage; saving it in IndexedDB instead.",
+          localStorageError
+        );
         try {
-          window.localStorage.setItem(APP_STORAGE_KEY, snapshot);
-          window.localStorage.setItem(`${APP_STORAGE_KEY}.backend`, "localStorage");
-        } catch (localStorageError) {
-          console.warn("App state was too large for localStorage; saving it in IndexedDB instead.", localStorageError);
-          try {
-            window.localStorage.removeItem(APP_STORAGE_KEY);
-            window.localStorage.setItem(`${APP_STORAGE_KEY}.backend`, "indexedDB");
-          } catch (markerError) {
-            // If localStorage is completely full or unavailable, IndexedDB still stores the actual state.
-          }
+          window.localStorage.removeItem(APP_STORAGE_KEY);
+          window.localStorage.setItem(`${APP_STORAGE_KEY}.backend`, "indexedDB");
+        } catch (markerError) {
+          // IndexedDB still stores the actual state if localStorage is unavailable.
+        }
+      }
+
+      setPersistentValue(APP_STORAGE_KEY, snapshot).catch((idbError) => {
+        console.error("Failed to save app state in IndexedDB", idbError);
+      });
+    };
+
+    const cancelScheduledAppStateSave = () => {
+      if (historyPersistTimer !== null) {
+        clearTimeout(historyPersistTimer);
+        historyPersistTimer = null;
+      }
+      pendingPersistSnapshot = null;
+    };
+
+    const saveAppState = (snapshotOverride = null) => {
+      try {
+        const snapshot =
+          typeof snapshotOverride === "string"
+            ? snapshotOverride
+            : pendingHistoryRestoreSnapshot || serializeAppState();
+
+        if (!snapshot) {
+          return null;
         }
 
-        setPersistentValue(APP_STORAGE_KEY, snapshot).catch((idbError) => {
-          console.error("Failed to save app state in IndexedDB", idbError);
-        });
+        currentHistorySnapshot = snapshot;
+        cancelScheduledAppStateSave();
+        persistAppStateSnapshot(snapshot);
+        return snapshot;
       } catch (error) {
         console.error("Failed to save app state", error);
+        return null;
       }
+    };
+
+    const scheduleAppStateSave = (snapshotOverride = null) => {
+      const snapshot =
+        typeof snapshotOverride === "string"
+          ? snapshotOverride
+          : pendingHistoryRestoreSnapshot || serializeAppState();
+
+      if (!snapshot) {
+        return null;
+      }
+
+      currentHistorySnapshot = snapshot;
+      pendingPersistSnapshot = snapshot;
+
+      if (historyPersistTimer !== null) {
+        clearTimeout(historyPersistTimer);
+      }
+
+      historyPersistTimer = setTimeout(() => {
+        historyPersistTimer = null;
+        const snapshotToPersist = pendingPersistSnapshot;
+        pendingPersistSnapshot = null;
+        persistAppStateSnapshot(snapshotToPersist);
+      }, HISTORY_PERSIST_DELAY_MS);
+
+      return snapshot;
+    };
+
+    const flushScheduledAppStateSave = (snapshotOverride = null) => {
+      const snapshot =
+        typeof snapshotOverride === "string"
+          ? snapshotOverride
+          : pendingPersistSnapshot ||
+            pendingHistoryRestoreSnapshot ||
+            currentHistorySnapshot ||
+            serializeAppState();
+
+      if (historyPersistTimer !== null) {
+        clearTimeout(historyPersistTimer);
+        historyPersistTimer = null;
+      }
+      pendingPersistSnapshot = null;
+
+      if (!snapshot) {
+        return;
+      }
+
+      currentHistorySnapshot = snapshot;
+      persistAppStateSnapshot(snapshot);
     };
     
     const normalizeRestoreOnRefreshMode = (value) => {
@@ -1772,7 +1857,39 @@ const app = (function () {
     
     
     
-    const restoreAppState = (snapshot) => {
+    const cancelScheduledHistoryUiRefresh = () => {
+      if (historyRedrawFrame !== null) {
+        cancelAnimationFrame(historyRedrawFrame);
+        historyRedrawFrame = null;
+      }
+      if (historyFormFrame !== null) {
+        cancelAnimationFrame(historyFormFrame);
+        historyFormFrame = null;
+      }
+    };
+
+    const scheduleHistoryUiRefresh = () => {
+      if (historyFormFrame !== null) {
+        cancelAnimationFrame(historyFormFrame);
+        historyFormFrame = null;
+      }
+
+      if (historyRedrawFrame !== null) {
+        return;
+      }
+
+      historyRedrawFrame = requestAnimationFrame(() => {
+        historyRedrawFrame = null;
+        redraw();
+
+        historyFormFrame = requestAnimationFrame(() => {
+          historyFormFrame = null;
+          formHandler.updateForm();
+        });
+      });
+    };
+
+    const restoreAppState = (snapshot, { deferUi = false } = {}) => {
       if (!snapshot) {
         return;
       }
@@ -1879,48 +1996,91 @@ const app = (function () {
           };
         }
 
-        formHandler.updateForm();
-        redraw();
+        currentHistorySnapshot = snapshot;
+
+        if (deferUi) {
+          scheduleHistoryUiRefresh();
+        } else {
+          cancelScheduledHistoryUiRefresh();
+          formHandler.updateForm();
+          redraw();
+        }
       } catch (error) {
         console.error("Failed to restore undo state", error);
       } finally {
         isApplyingHistory = false;
       }
     };
-    const updateUndoButtons = () => {
-        const undoSelectors = [
-          "#undo",
-          "#undoButton",
-          "#undoBtn",
-          "[data-action='undo']",
-          "[aria-label='Undo']",
-          "[title='Undo (CTRL+Z)']",
-        ];
 
-        for (const selector of undoSelectors) {
-          const button = document.querySelector(selector);
-          if (button) {
-            button.disabled = undoStack.length === 0;
-          }
-        }
+    const applyPendingHistoryRestore = () => {
+      historyRestoreFrame = null;
+      const snapshot = pendingHistoryRestoreSnapshot;
+      pendingHistoryRestoreSnapshot = null;
 
-        const redoSelectors = [
-          "#redoButton",
-          "#redoBtn",
-          "[data-action='redo']",
-          "[aria-label='Redo (CTRL+Y)']",
-          "[title='Redo (CTRL+Y)']",
-        ];
+      if (!snapshot) {
+        return;
+      }
 
-        for (const selector of redoSelectors) {
-          const button = document.querySelector(selector);
-          if (button) {
-            button.disabled = redoStack.length === 0;
-          }
-        }
+      restoreAppState(snapshot, { deferUi: true });
+      scheduleAppStateSave(snapshot);
     };
 
-    const pushUndoSnapshot = (snapshot) => {
+    const scheduleHistoryRestore = (snapshot) => {
+      if (!snapshot) {
+        return;
+      }
+
+      pendingHistoryRestoreSnapshot = snapshot;
+      currentHistorySnapshot = snapshot;
+      cancelScheduledHistoryUiRefresh();
+
+      if (historyRestoreFrame !== null) {
+        return;
+      }
+
+      historyRestoreFrame = requestAnimationFrame(applyPendingHistoryRestore);
+    };
+
+    const flushPendingHistoryRestore = () => {
+      if (!pendingHistoryRestoreSnapshot) {
+        return false;
+      }
+
+      if (historyRestoreFrame !== null) {
+        cancelAnimationFrame(historyRestoreFrame);
+        historyRestoreFrame = null;
+      }
+
+      const snapshot = pendingHistoryRestoreSnapshot;
+      pendingHistoryRestoreSnapshot = null;
+      restoreAppState(snapshot);
+      scheduleAppStateSave(snapshot);
+      return true;
+    };
+    const updateUndoButtons = () => {
+      const undoButtons = document.querySelectorAll(
+        "#undo, #undoButton, #undoBtn, [data-action='undo'], [aria-label='Undo'], [title='Undo (CTRL+Z)']"
+      );
+      const redoButtons = document.querySelectorAll(
+        "#redoButton, #redoBtn, [data-action='redo'], [aria-label='Redo (CTRL+Y)'], [title='Redo (CTRL+Y)']"
+      );
+
+      const undoDisabled = undoStack.length === 0;
+      const redoDisabled = redoStack.length === 0;
+
+      undoButtons.forEach((button) => {
+        if (button.disabled !== undoDisabled) {
+          button.disabled = undoDisabled;
+        }
+      });
+      redoButtons.forEach((button) => {
+        if (button.disabled !== redoDisabled) {
+          button.disabled = redoDisabled;
+        }
+      });
+    };
+
+    const pushUndoSnapshot = (snapshot, updateButtons = true) => {
       if (!snapshot) {
         return;
       }
@@ -1931,7 +2091,9 @@ const app = (function () {
       if (undoStack.length > HISTORY_LIMIT) {
         undoStack.shift();
       }
-      updateUndoButtons();
+      if (updateButtons) {
+        updateUndoButtons();
+      }
     };
 
     const beginUndoableChange = () => {
@@ -1941,7 +2103,12 @@ const app = (function () {
       if (pendingBeforeSnapshot !== null) {
         return;
       }
+
+      flushPendingHistoryRestore();
       pendingBeforeSnapshot = serializeAppState();
+      if (pendingBeforeSnapshot) {
+        currentHistorySnapshot = pendingBeforeSnapshot;
+      }
     };
 
     const endUndoableChange = () => {
@@ -1954,15 +2121,23 @@ const app = (function () {
         return;
       }
 
-        const afterSnapshot = serializeAppState();
-          if (afterSnapshot && afterSnapshot !== pendingBeforeSnapshot) {
-            pushUndoSnapshot(pendingBeforeSnapshot);
-            redoStack.length = 0;
-        }
+      const beforeSnapshot = pendingBeforeSnapshot;
+      const afterSnapshot = serializeAppState();
+      pendingBeforeSnapshot = null;
 
-        pendingBeforeSnapshot = null;
+      if (!afterSnapshot) {
+        return;
+      }
+
+      currentHistorySnapshot = afterSnapshot;
+
+      if (afterSnapshot !== beforeSnapshot) {
+        pushUndoSnapshot(beforeSnapshot, false);
+        redoStack.length = 0;
         updateUndoButtons();
-        saveAppState();
+      }
+
+      scheduleAppStateSave(afterSnapshot);
     };
 
     const runWithUndo = (callback) => {
@@ -1977,7 +2152,8 @@ const app = (function () {
         return;
       }
 
-      const currentSnapshot = serializeAppState();
+      const currentSnapshot =
+        pendingHistoryRestoreSnapshot || serializeAppState();
       const previousSnapshot = undoStack.pop();
 
       if (currentSnapshot) {
@@ -1987,9 +2163,8 @@ const app = (function () {
         }
       }
 
-      restoreAppState(previousSnapshot);
+      scheduleHistoryRestore(previousSnapshot);
       updateUndoButtons();
-        saveAppState();
     };
 
     const redo = () => {
@@ -1997,16 +2172,16 @@ const app = (function () {
         return;
       }
 
-      const currentSnapshot = serializeAppState();
+      const currentSnapshot =
+        pendingHistoryRestoreSnapshot || serializeAppState();
       const nextSnapshot = redoStack.pop();
 
       if (currentSnapshot) {
-        pushUndoSnapshot(currentSnapshot);
+        pushUndoSnapshot(currentSnapshot, false);
       }
 
-      restoreAppState(nextSnapshot);
+      scheduleHistoryRestore(nextSnapshot);
       updateUndoButtons();
-        saveAppState();
     };
     
     const clearAll = () => {
@@ -3785,6 +3960,57 @@ const app = (function () {
 
   // Initialize the application, and populates dropdowns and the default post.
 
+
+    const LEGACY_NONE_BANNER_MIGRATION_KEY =
+      "signMaker.migrations.shieldBannerNoneToBlank.v1";
+
+    const migrateLegacyNoneShieldBannersOnce = () => {
+      try {
+        if (
+          window.localStorage.getItem(LEGACY_NONE_BANNER_MIGRATION_KEY) === "1"
+        ) {
+          return false;
+        }
+      } catch (error) {}
+
+      let changed = false;
+      const visited = new WeakSet();
+
+      const walk = (value) => {
+        if (!value || typeof value !== "object" || visited.has(value)) {
+          return;
+        }
+
+        visited.add(value);
+
+        for (const key of Object.keys(value)) {
+          const child = value[key];
+
+          if (
+            (key === "bannerType" || key === "bannerType2") &&
+            typeof child === "string" &&
+            child.trim().toLowerCase() === "none"
+          ) {
+            value[key] = "";
+            changed = true;
+            continue;
+          }
+
+          if (child && typeof child === "object") {
+            walk(child);
+          }
+        }
+      };
+
+      walk(post);
+
+      try {
+        window.localStorage.setItem(LEGACY_NONE_BANNER_MIGRATION_KEY, "1");
+      } catch (error) {}
+
+      return changed;
+    };
+
     const init = async function () {
       post = new Post(DEFAULT_POST_POSITION);
       post.panelSpacing = getDefaultPanelSpacing();
@@ -3805,6 +4031,9 @@ const app = (function () {
           currentlySelectedPanelIndex = post.panels.length - 1;
         }
 
+        const migratedLegacyNoneBanners =
+          migrateLegacyNoneShieldBannersOnce();
+
         formHandler.updateForm();
         redraw();
 
@@ -3817,11 +4046,15 @@ const app = (function () {
           }
         });
 
-        if (!restored) {
+        if (!restored || migratedLegacyNoneBanners) {
           saveAppState();
         }
 
-        window.addEventListener("beforeunload", saveAppState);
+        window.addEventListener("beforeunload", () => {
+          flushScheduledAppStateSave(
+            pendingHistoryRestoreSnapshot || serializeAppState() || currentHistorySnapshot || null
+          );
+        });
         window.addEventListener("keydown", (event) => {
           const modifierPressed = event.ctrlKey || event.metaKey;
 
@@ -7595,11 +7828,40 @@ const app = (function () {
           type: "APL_TURN",
           flip: false,
         },
+        UP_CFX: {
+          label: "CFX Up",
+          type: "APL_UP_CFX",
+          flip: false,
+        },
+        UP_LEFT_CFX: {
+          label: "CFX Up Left Turn",
+          type: "APL_UP_TURN_CFX",
+          flip: true,
+        },
+        UP_RIGHT_CFX: {
+          label: "CFX Up Right Turn",
+          type: "APL_UP_TURN_CFX",
+          flip: false,
+        },
+        LEFT_TURN_CFX: {
+          label: "CFX Left Turn",
+          type: "APL_TURN_CFX",
+          flip: true,
+        },
+        RIGHT_TURN_CFX: {
+          label: "CFX Right Turn",
+          type: "APL_TURN_CFX",
+          flip: false,
+        },
       };
 
         const getDefaultAPLArrowSizeRem = (arrowType) => {
           if (arrowType === "APL_TURN") {
             return 3.5;
+          }
+
+          if (arrowType === "APL_TURN_CFX") {
+            return 3.25;
           }
 
           if (arrowType === "APL_DUAL_TURN") {
@@ -7675,6 +7937,18 @@ const app = (function () {
 
         if (arrow.type === "APL_TURN") {
           return arrow.flip ? "LEFT_TURN" : "RIGHT_TURN";
+        }
+
+        if (arrow.type === "APL_UP_CFX") {
+          return "UP_CFX";
+        }
+
+        if (arrow.type === "APL_UP_TURN_CFX") {
+          return arrow.flip ? "UP_LEFT_CFX" : "UP_RIGHT_CFX";
+        }
+
+        if (arrow.type === "APL_TURN_CFX") {
+          return arrow.flip ? "LEFT_TURN_CFX" : "RIGHT_TURN_CFX";
         }
 
         return "UP";
@@ -8220,6 +8494,14 @@ const app = (function () {
               applyAPLArrowKind(arrow, "RIGHT_TURN");
             } else if (arrow.kind === "RIGHT_TURN") {
               applyAPLArrowKind(arrow, "LEFT_TURN");
+            } else if (arrow.kind === "UP_LEFT_CFX") {
+              applyAPLArrowKind(arrow, "UP_RIGHT_CFX");
+            } else if (arrow.kind === "UP_RIGHT_CFX") {
+              applyAPLArrowKind(arrow, "UP_LEFT_CFX");
+            } else if (arrow.kind === "LEFT_TURN_CFX") {
+              applyAPLArrowKind(arrow, "RIGHT_TURN_CFX");
+            } else if (arrow.kind === "RIGHT_TURN_CFX") {
+              applyAPLArrowKind(arrow, "LEFT_TURN_CFX");
             } else {
               arrow.flip = !arrow.flip;
             }
@@ -11346,12 +11628,15 @@ const app = (function () {
                p: parent (object)
                */
             
+              const hasLegacyShieldBannerValue = (value) =>
+                  String(value ?? "").length > 0;
+
               var position;
         
               for (const shield of i) {
                   if (
                       shield.bannerPosition != "Above" &&
-                      (shield.bannerType != "None" || shield.bannerType2 != "None")
+                      (hasLegacyShieldBannerValue(shield.bannerType) || hasLegacyShieldBannerValue(shield.bannerType2))
                       ) {
                           position = shield.bannerPosition;
                           break;
@@ -11359,9 +11644,102 @@ const app = (function () {
               }
               
               for (const shield of i) {
+                  /*
+                   * The current Florida collection comes from v2.2 and uses its
+                   * official-dimension ShieldElement renderer. The legacy shield
+                   * renderer below still forces Florida through its old 2-digit
+                   * image/class path, so route-number placement never reaches the
+                   * v2.2 formatting. Route Florida shields through the newer
+                   * renderer here instead.
+                   */
+                  const normalizedFloridaShieldCode =
+                    typeof ShieldElement !== "undefined" &&
+                    ShieldElement.prototype &&
+                    typeof ShieldElement.prototype.normalizeShieldCode === "function"
+                      ? ShieldElement.prototype.normalizeShieldCode(shield?.type || "")
+                      : String(shield?.type || "").replace(/\s+/g, "");
+                  const normalizedFloridaShieldType =
+                    normalizedFloridaShieldCode.toLowerCase();
+
+                  const usesOfficialFloridaShieldRenderer = [
+                    "fl",
+                    "fltoll",
+                    "flcfx",
+                    "fltp",
+                  ].includes(normalizedFloridaShieldType);
+
                   if (
-                      (shield.bannerPosition != "Above" && shield.bannerType != "None") ||
-                      (shield.bannerType2 != "None" && !locked)
+                    usesOfficialFloridaShieldRenderer &&
+                    typeof ShieldElement !== "undefined" &&
+                    ShieldElement.prototype &&
+                    typeof ShieldElement.prototype.getBlockShieldConfig === "function"
+                  ) {
+                    const rawLegacyVariant = String(
+                      shield?.shieldType ??
+                      shield?.variant ??
+                      shield?.specialBannerType ??
+                      ""
+                    ).trim();
+
+                    const requestedVariant =
+                      rawLegacyVariant &&
+                      rawLegacyVariant.toLowerCase() !== "none"
+                        ? rawLegacyVariant
+                        : "Auto";
+
+                    const parsedShieldSize = parseFloat(
+                      shield?.shieldSize ?? shield?.size
+                    );
+
+                    const floridaShieldElement = new ShieldElement({
+                      shieldBase: normalizedFloridaShieldCode || shield.type,
+                      shieldType: requestedVariant,
+                      routeNumber: String(shield?.routeNumber ?? ""),
+                      to: !!shield?.to,
+                      alignment: shield?.alignment || "Center",
+                      bannerType: shield?.bannerType ?? "",
+                      bannerType2: shield?.bannerType2 ?? "",
+                      bannerPosition: shield?.bannerPosition || "Above",
+                      bannerPosition2:
+                        shield?.bannerPosition2 ||
+                        shield?.bannerPosition ||
+                        "Above",
+                      indentFirstLetter: shield?.indentFirstLetter !== false,
+                      indentFirstLetter2:
+                        shield?.indentFirstLetter2 !== undefined
+                          ? shield.indentFirstLetter2 !== false
+                          : shield?.indentFirstLetter !== false,
+                      smallCaps: shield?.smallCaps !== false,
+                      smallCaps2:
+                        shield?.smallCaps2 !== undefined
+                          ? shield.smallCaps2 !== false
+                          : shield?.smallCaps !== false,
+                      fontSize: shield?.fontSize,
+                      bannerFontFamily: shield?.bannerFontFamily,
+                      shieldSize:
+                        Number.isFinite(parsedShieldSize) && parsedShieldSize > 0
+                          ? parsedShieldSize
+                          : 3,
+                      useOfficialDimensions: true,
+                      scaleBannersWithShield:
+                        shield?.scaleBannersWithShield !== false,
+                      manualBanners: true,
+                    });
+
+                    const renderedFloridaShield =
+                      floridaShieldElement.createElement(panel);
+
+                    renderedFloridaShield.classList.add(
+                      "legacyFloridaOfficialRenderer"
+                    );
+
+                    p.appendChild(renderedFloridaShield);
+                    continue;
+                  }
+
+                  if (
+                      (shield.bannerPosition != "Above" && hasLegacyShieldBannerValue(shield.bannerType)) ||
+                      (hasLegacyShieldBannerValue(shield.bannerType2) && !locked)
                       ) {
                           position = shield.bannerPosition;
                           locked = true;
@@ -11475,7 +11853,6 @@ const app = (function () {
                       "DC",
                       "HI",
                       "ID",
-                      "LA",
                       "MI",
                       "MN",
                       "MT",
@@ -11551,7 +11928,7 @@ const app = (function () {
                       
                       shieldElmt.style.right = shieldDistance.toString() + "rem";
                       
-                      if (shield.bannerType2 != "None") {
+                      if (hasLegacyShieldBannerValue(shield.bannerType2)) {
                           bannerContainerElmt2.style.right =
                           (shieldDistance * 2).toString() + "rem";
                           bannerContainerElmt2.style.position = "relative";
@@ -11574,7 +11951,7 @@ const app = (function () {
                       
                       shieldElmt.style.left = shieldDistance.toString() + "rem";
                       
-                      if (shield.bannerType2 != "None") {
+                      if (hasLegacyShieldBannerValue(shield.bannerType2)) {
                           bannerContainerElmt2.style.left =
                           (shieldDistance * 2).toString() + "rem";
                           bannerContainerElmt2.style.position = "relative";
@@ -12313,7 +12690,12 @@ const app = (function () {
 
           const isAPLTurnArrowWithOffset = (arrow) => {
             const type = String(arrow?.type || "");
-            return type === "APL_TURN" || type === "APL_UP_TURN";
+            return (
+              type === "APL_TURN" ||
+              type === "APL_UP_TURN" ||
+              type === "APL_TURN_CFX" ||
+              type === "APL_UP_TURN_CFX"
+            );
           };
 
           const getAPLExitOnlyGapRem = (arrow) =>
@@ -12442,11 +12824,20 @@ const app = (function () {
               case "APL_UP":
                 return Math.max(0.65, size * 0.16);
 
+              case "APL_UP_CFX":
+                return Math.max(0.8, size * 0.207);
+
               case "APL_TURN":
                 return Math.max(1.1, size * 0.31);
 
+              case "APL_TURN_CFX":
+                return Math.max(1.1, size * 0.5);
+
               case "APL_UP_TURN":
                 return Math.max(1.25, size * 0.34);
+
+              case "APL_UP_TURN_CFX":
+                return Math.max(1.25, size * 0.425);
 
               case "APL_DUAL_TURN":
                 return Math.max(1.45, size * 0.38);

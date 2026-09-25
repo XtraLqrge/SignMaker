@@ -385,37 +385,38 @@
           <div id="sMPanelAppearance" class="panelStyleSection">
             <div>
               <h4 class="panelStyleSectionHeader">Appearance</h4>
-              <label for="panelColor">Panel Color: </label>
+              <label for="panelColor">Panel Color:</label>
               <select id="panelColor" onchange="formHandler.readForm();"></select>
-              <br />
-              <label for="panelCorner">Panel Corners: </label>
+              <label for="panelCorner">Panel Corners:</label>
               <select id="panelCorner" onchange="formHandler.readForm();"></select>
-              <br />
-              <label for="panelBorderRadius">Sign Border Radius (rem): </label>
+              <label for="panelBorderRadius">Border Radius:</label>
               <input type="number" id="panelBorderRadius" name="panelBorderRadius" value=".75" min="0" max="5"
                 step=".05" onblur="formHandler.readForm();" />
-              <br />
-              <label for="disableFlash">Disable Selection Flash: </label>
-              <input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm();" />
+              <label for="disableFlash">Selection Flash:</label>
+              <input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm();" checked />
             </div>
           </div>
           <div id="sMPanelPadding" class="panelStyleSection">
             <div>
               <h4 class="panelStyleSectionHeader">Padding</h4>
-              <label for="paddingTop">Padding Top: </label>
-              <input type="number" id="paddingTop" value=".3" placeholder=".3" step=".01" min="0" max="20"
-                onblur="formHandler.readForm();" />
-              <label for="paddingRight">Padding Right: </label>
-              <input type="number" id="paddingRight" value=".75" placeholder=".75" step=".01" min="0" max="20"
-                onblur="formHandler.readForm();" />
-              <br />
-              <label for="paddingBottom">Padding Bottom: </label>
-              <input type="number" id="paddingBottom" value=".3" placeholder=".3" step=".01" min="0" max="20"
-                onblur="formHandler.readForm();" />
-              <label for="paddingLeft">Padding Left: </label>
-              <input type="number" id="paddingLeft" value=".75" placeholder=".75" step=".01" min="0" max="20"
-                onblur="formHandler.readForm();" />
-              <button id="resetPadding" class="resetClass" onclick="app.resetPadding();">
+
+              <label for="paddingTop">Top:</label>
+              <input class="panelPaddingSlider" type="range" id="paddingTopSlider" min="-0.5" max="1.5" step="0.05" value="0.30" />
+              <input class="panelPaddingValue" type="number" id="paddingTop" value="0.30" placeholder="0.30" step="0.05" />
+
+              <label for="paddingRight">Right:</label>
+              <input class="panelPaddingSlider" type="range" id="paddingRightSlider" min="-0.5" max="1.5" step="0.05" value="0.75" />
+              <input class="panelPaddingValue" type="number" id="paddingRight" value="0.75" placeholder="0.75" step="0.05" />
+
+              <label for="paddingBottom">Bottom:</label>
+              <input class="panelPaddingSlider" type="range" id="paddingBottomSlider" min="-0.5" max="1.5" step="0.05" value="0.30" />
+              <input class="panelPaddingValue" type="number" id="paddingBottom" value="0.30" placeholder="0.30" step="0.05" />
+
+              <label for="paddingLeft">Left:</label>
+              <input class="panelPaddingSlider" type="range" id="paddingLeftSlider" min="-0.5" max="1.5" step="0.05" value="0.75" />
+              <input class="panelPaddingValue" type="number" id="paddingLeft" value="0.75" placeholder="0.75" step="0.05" />
+
+              <button id="resetPadding" class="resetClass" type="button" onclick="app.resetPadding();">
                 Reset to Default
               </button>
             </div>
@@ -449,7 +450,7 @@
             <div id="exitTabProfileManagerPicker" class="profileManagerPicker">
               <button type="button" id="exitTabProfileManagerTrigger" class="profileManagerTrigger" aria-expanded="false">
                 <span id="exitTabProfileManagerTriggerLabel" class="profileManagerTriggerLabel">Default Profile</span>
-                <span class="material-symbols-outlined profileManagerTriggerCaret">arrow_drop_down</span>
+                <span class="material-symbols-outlined profileManagerTriggerCaret">keyboard_arrow_down</span>
               </button>
               <div id="exitTabProfileList" class="profileManagerMenu"></div>
             </div>
@@ -1109,64 +1110,92 @@
                   <input type="checkbox" id="sdBlocker_visible" />
                 </div>
 
-                <div data-property="sdShield" class="hidden">
-                    <div class="sdShieldTopRow">
-                      <label for="sdShield_shieldBase">Shield: </label>
+                <div data-property="sdShield" class="hidden sdShieldEditorLayout">
+                    <div class="sdShieldTopRow sdShieldEditorRow">
                       <select id="sdShield_shieldBase" data-toolTip="Shield Type"></select>
+
+                      <input type="text" id="sdShield_routeNumber" class="sdShieldRouteNumberInput"
+                        data-toolTip="Route Number" maxlength="4" />
 
                       <label for="sdShield_shieldType">Variant:</label>
                       <select id="sdShield_shieldType" data-toolTip="Shield Variant"></select>
 
-                      <label for="sdShield_shieldSize">Shield Size (rem):</label>
-                      <input type="number" id="sdShield_shieldSize" class="sdTextEditorSmall"
-                        data-toolTip="Scales the shield and its number(s)" placeholder="3" min="0.1" max="6" step="0.1"
+                      <label for="sdShield_shieldSize">Size (rem):</label>
+                      <input type="range" id="sdShield_shieldSizeSlider" min="1" max="5" step="0.1" value="3"
+                        data-toolTip="Quick shield size control" />
+                      <input type="number" id="sdShield_shieldSize" class="sdTextEditorSmall sdShieldSizeValue"
+                        data-toolTip="Scales the shield and its number(s)" placeholder="3" min="0.1" max="99" step="0.1"
                         value="3" />
                     </div>
 
-                    <div class="sdShieldSecondRow">
-                      <label for="sdShield_routeNumber">Route Number:</label>
-                      <input type="text" id="sdShield_routeNumber" class="sdShieldRouteNumberInput"
-                        data-toolTip="Route Number" />
-
+                    <div class="sdShieldCountyRow">
                       <label for="sdShield_countyText" id="sdShield_countyTextLabel">County Text:</label>
                       <input type="text" id="sdShield_countyText" class="sdShieldCountyTextInput"
                         data-toolTip="County label (for County shields)" />
                     </div>
 
-                    <div class="sdShieldThirdRow">
+                    <div class="sdShieldSecondRow sdShieldEditorRow">
+                      <label for="sdShield_alignment" class="sdShieldAlignmentLabel">Alignment:</label>
+                      <select id="sdShield_alignment" data-toolTip="Shield row alignment" hidden></select>
+                      <div class="sdShieldChoiceGroup sdShieldAlignmentButtons" role="group" aria-label="Shield row alignment">
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_alignment" data-shield-select-value="Left" aria-label="Left alignment">L</button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_alignment" data-shield-select-value="Center" aria-label="Center alignment">C</button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_alignment" data-shield-select-value="Right" aria-label="Right alignment">R</button>
+                      </div>
+
                       <label for="sdShield_to">Show TO:</label>
                       <input type="checkbox" id="sdShield_to" />
-                      <label for="sdShield_alignment" class="sdShieldAlignmentLabel">Alignment:</label>
-                      <select id="sdShield_alignment" data-toolTip="Shield row alignment"></select>
+
                       <label for="sdShield_scaleBannersWithShield" class="sdShieldScaleLabel">Scale banners:</label>
                       <input type="checkbox" id="sdShield_scaleBannersWithShield"
                         data-toolTip="When resizing the shield, scale the banners too" checked />
 
-                      <label for="sdShield_manualBanners" class="sdShieldManualBannerLabel">Manually enter banners:</label>
-                      <input type="checkbox" id="sdShield_manualBanners"
-                        data-toolTip="When checked, type banner text manually instead of choosing from the dropdown" checked />
+                      <label for="sdShield_shieldBacks" class="sdShieldBacksLabel">Shield backs:</label>
+                      <input type="checkbox" id="sdShield_shieldBacks" aria-label="Shield backs" />
                     </div>
 
-                    <div class="sdShieldBannerGroup">
-                      <label for="sdShield_bannerType">1st Banner:</label>
-                      <select id="sdShield_bannerType"></select>
+                    <div class="sdShieldBannerGroup sdShieldBannerRow">
+                      <label for="sdShield_bannerCustomText">Banner 1:</label>
+                      <select id="sdShield_bannerType" hidden></select>
                       <input type="text" id="sdShield_bannerCustomText" class="sdShieldBannerCustomInput" placeholder="Custom text"
                         data-toolTip="Type custom banner text" />
-                      <label for="sdShield_bannerPosition" class="sdShieldPositionLabel">Position:</label>
-                      <select id="sdShield_bannerPosition"></select>
-                      <label for="sdShield_indentFirstLetter" class="sdShieldCapLabel">Capitalize First Letter:</label>
-                      <input type="checkbox" id="sdShield_indentFirstLetter" checked />
+                      <select id="sdShield_bannerPosition" class="sdShieldHiddenControl" hidden></select>
+                      <div class="sdShieldChoiceGroup sdShieldPositionButtons" role="group" aria-label="First banner position">
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition" data-shield-select-value="Left" aria-label="First banner left"><span class="material-symbols-outlined">chevron_left</span></button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition" data-shield-select-value="Above" aria-label="First banner above"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition" data-shield-select-value="Below" aria-label="First banner below"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition" data-shield-select-value="Right" aria-label="First banner right"><span class="material-symbols-outlined">chevron_right</span></button>
+                      </div>
+                      <input type="checkbox" id="sdShield_indentFirstLetter" checked hidden />
+                      <div class="sdShieldChoiceGroup sdShieldCapButtons" role="group" aria-label="First banner first-letter size">
+                        <button type="button" class="sdShieldSquareButton sdShieldCapButton" data-shield-checkbox-target="sdShield_indentFirstLetter" data-shield-checkbox-toggle="true" aria-label="Toggle enlarged first letter" data-toolTip="Enlarge&#10;first&#10;letter"><span class="sdShieldBigA">A</span><span>A</span></button>
+                      </div>
+                      <select id="sdShield_bannerFontFamily1" class="sdShieldBannerFontSelect" aria-label="First banner font"></select>
+                      <label for="sdShield_bannerFontSize1Display" class="sdShieldBannerInlineSizeLabel">Size:</label>
+                      <input type="number" id="sdShield_bannerFontSize1Display" class="sdShieldBannerInlineSizeInput" min="5" max="30" step="1" value="16" />
+                      <select id="sdShield_bannerBackgroundColor1" class="sdShieldBannerBackgroundColorSelect" aria-label="First banner background color" data-toolTip="Background color"></select>
                     </div>
 
-                    <div class="sdShieldBannerGroup">
-                      <label for="sdShield_bannerType2">2nd Banner:</label>
-                      <select id="sdShield_bannerType2"></select>
+                    <div class="sdShieldBannerGroup sdShieldBannerRow">
+                      <label for="sdShield_bannerCustomText2">Banner 2:</label>
+                      <select id="sdShield_bannerType2" hidden></select>
                       <input type="text" id="sdShield_bannerCustomText2" class="sdShieldBannerCustomInput" placeholder="Custom text"
                         data-toolTip="Type custom banner text" />
-                      <label for="sdShield_bannerPosition2" class="sdShieldPositionLabel">Position:</label>
-                      <select id="sdShield_bannerPosition2"></select>
-                      <label for="sdShield_indentFirstLetter2" class="sdShieldCapLabel">Capitalize First Letter:</label>
-                      <input type="checkbox" id="sdShield_indentFirstLetter2" checked />
+                      <select id="sdShield_bannerPosition2" class="sdShieldHiddenControl" hidden></select>
+                      <div class="sdShieldChoiceGroup sdShieldPositionButtons" role="group" aria-label="Second banner position">
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition2" data-shield-select-value="Left" aria-label="Second banner left"><span class="material-symbols-outlined">chevron_left</span></button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition2" data-shield-select-value="Above" aria-label="Second banner above"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition2" data-shield-select-value="Below" aria-label="Second banner below"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+                        <button type="button" class="sdShieldSquareButton" data-shield-select-target="sdShield_bannerPosition2" data-shield-select-value="Right" aria-label="Second banner right"><span class="material-symbols-outlined">chevron_right</span></button>
+                      </div>
+                      <input type="checkbox" id="sdShield_indentFirstLetter2" checked hidden />
+                      <div class="sdShieldChoiceGroup sdShieldCapButtons" role="group" aria-label="Second banner first-letter size">
+                        <button type="button" class="sdShieldSquareButton sdShieldCapButton" data-shield-checkbox-target="sdShield_indentFirstLetter2" data-shield-checkbox-toggle="true" aria-label="Toggle enlarged first letter" data-toolTip="Enlarge&#10;first&#10;letter"><span class="sdShieldBigA">A</span><span>A</span></button>
+                      </div>
+                      <select id="sdShield_bannerFontFamily2" class="sdShieldBannerFontSelect" aria-label="Second banner font"></select>
+                      <label for="sdShield_bannerFontSize2Display" class="sdShieldBannerInlineSizeLabel">Size:</label>
+                      <input type="number" id="sdShield_bannerFontSize2Display" class="sdShieldBannerInlineSizeInput" min="5" max="30" step="1" value="16" />
+                      <select id="sdShield_bannerBackgroundColor2" class="sdShieldBannerBackgroundColorSelect" aria-label="Second banner background color" data-toolTip="Background color"></select>
                     </div>
                     
                     <div class="sdShieldRoadNameRow">
@@ -1178,16 +1207,17 @@
                         placeholder="SignMaker Fwy"
                         data-toolTip="Optional road name text shown under the direction banner"
                       />
+
+                      <select id="sdShield_roadNameFontFamily" class="sdShieldRoadNameFontSelect" aria-label="Road name font"></select>
+                      <label for="sdShield_roadNameFontSizeDisplay" class="sdShieldRoadNameInlineSizeLabel">Size:</label>
+                      <input type="number" id="sdShield_roadNameFontSizeDisplay" class="sdShieldRoadNameInlineSizeInput" min="5" max="30" step="1" value="16" />
+
+                      <label for="sdShield_bannerLetterSpacing" class="sdShieldBannerLetterSpacingLabel"
+                        data-toolTip="Spacing between letters in banners and road name text">Letter Spacing:</label>
+                      <input type="range" id="sdShield_bannerLetterSpacing" min="-0.15" max="0.5" step="0.01" value="0" />
+                      <input id="sdShield_bannerLetterSpacingVal" class="smallVal sdShieldBannerLetterSpacingValue" type="number" min="-0.15" max="0.5" step="0.01" value="0" />
                     </div>
 
-                    <div class="sdShieldFontRow">
-                      <label for="sdShield_bannerFontFamily">Banner Font:</label>
-                      <select id="sdShield_bannerFontFamily"></select>
-
-                      <label for="sdShield_fontSize" class="sdShieldBannerFontSizeLabel">Banner Font Size (rem):</label>
-                      <input type="number" id="sdShield_fontSize" class="sdShieldNumericInput" placeholder="1.4" min="0.5" max="3" step="0.1"
-                        value="1.4" />
-                    </div>
                     </div>
 
                 <div data-property="sdAdvisory" class="hidden sdCtrlTextLayout">
@@ -1709,19 +1739,19 @@
           </div>
         </div>
       </div>
-      <div class="sMModal templates" data-current-menu="sMTemplatesPreset">
+      <div class="sMModal templates" data-current-menu="sMTemplatesSaved">
         <nav class="sMModalBar">
           <div class="sMModalTitle">
             <img src="img/other-symbols/ui/template.svg" alt="" class="configIcon templateIcon" />
             Templates
           </div>
-          <div data-tab="sMTemplatesPreset" class="sMModalTab selected">
+          <div data-tab="sMTemplatesSaved" class="sMModalTab selected" id="sMTemplatesSavedTab">Saved</div>
+          <div data-tab="sMTemplatesPreset" class="sMModalTab">
             Presets
           </div>
-          <div data-tab="sMTemplatesSaved" class="sMModalTab" id="sMTemplatesSavedTab">Saved</div>
         </nav>
         <div class="sMModalContent">
-          <div id="sMTemplatesPreset">
+          <div id="sMTemplatesPreset" class="tabHidden">
             <p>Select a template to apply to the current subpanel.</p>
             <button id="templateSimpleExit" onclick="app.applyTemplate('simple-exit');">
               Simple Exit
@@ -1737,7 +1767,7 @@
               Control Cities Advance Junction
             </button>
           </div>
-          <div id="sMTemplatesSaved" class="tabHidden">
+          <div id="sMTemplatesSaved">
             <div class="templateSaveSection">
               <h4>Save New Template</h4>
               <div class="templateSaveInput">
@@ -2192,6 +2222,9 @@
 
                   <label for="settingsDefaultsShieldBanner2">2nd banner position:</label>
                   <select id="settingsDefaultsShieldBanner2"></select>
+
+                  <label for="settingsDefaultsShieldManualBanners">Manually enter banners:</label>
+                  <input id="settingsDefaultsShieldManualBanners" type="checkbox" checked />
 
                   <button type="button" id="settingsDefaultsFavoriteShields">
                     Edit favorite shields (Coming Soon)

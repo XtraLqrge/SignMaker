@@ -156,6 +156,28 @@ const normalizeTextLetterSpacing = (value, fallback = 0) => {
   return Math.max(-0.15, Math.min(0.5, parsed));
 };
 
+const applyBetweenCharacterLetterSpacing = (element, value, fallback = 0) => {
+  if (!element) {
+    return 0;
+  }
+
+  const normalizedSpacing = normalizeTextLetterSpacing(value, fallback);
+  element.style.setProperty(
+    "--betweenLetterSpacing",
+    normalizedSpacing + "em"
+  );
+  element.classList.toggle(
+    "bE-betweenLetterSpacing",
+    Math.abs(normalizedSpacing) > 0.0001
+  );
+
+  if (Math.abs(normalizedSpacing) <= 0.0001) {
+    element.style.removeProperty("letter-spacing");
+  }
+
+  return normalizedSpacing;
+};
+
 const normalizeSmallLettersSize = (value, fallback = 75) => {
   const rawValue = String(value ?? "").trim();
   const parsed = rawValue === "" ? NaN : Number(rawValue);
@@ -452,7 +474,13 @@ class TextElement {
 
     newText.style.setProperty("--lineHeight", normalizedLineHeight);
     newText.style.lineHeight = normalizedLineHeight / 100;
-    newText.style.letterSpacing = normalizeTextLetterSpacing(this.letterSpacing) + "em";
+    const normalizedLetterSpacing = applyBetweenCharacterLetterSpacing(
+      newText,
+      this.letterSpacing
+    );
+    if (Math.abs(normalizedLetterSpacing) > 0.0001) {
+      newText.style.letterSpacing = "var(--betweenLetterSpacing)";
+    }
     if (usesHighwayGothic) {
       newText.style.setProperty(
         "--fhwaBaselineOffset",
@@ -1317,8 +1345,11 @@ const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
   routeEl.style.fontVariationSettings = `"wght" ${requestedWeight}`;
   routeEl.style.letterSpacing = "0";
   routeEl.style.gap = "0";
-  const characterSpacing = getCustomShieldMakerDisplayEm(style.letterSpacing, 0);
-  Array.from(routeEl.children || []).forEach((characterSpan, index) => {
+  const characterSpacingDisplay =
+    getCustomShieldMakerDisplayNumber(style.letterSpacing, 0);
+  const characterSpacing = characterSpacingDisplay / 100 + "em";
+  const routeCharacters = Array.from(routeEl.children || []);
+  routeCharacters.forEach((characterSpan, index) => {
     characterSpan.style.marginLeft = index === 0 ? "0" : characterSpacing;
   });
   routeEl.style.position = "absolute";
@@ -1330,7 +1361,9 @@ const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
   routeEl.style.top = `calc(${getCustomShieldMakerDisplayNumber(anchor.y, 50)}% + ${
     (topDisplay - seedTop) / 100
   }em)`;
-  routeEl.style.left = `calc(${anchorX}% + ${(horizontalDisplay - seedHorizontal) / 100}em)`;
+  routeEl.style.left = `calc(${anchorX}% + ${
+    (horizontalDisplay - seedHorizontal) / 100
+  }em)`;
   routeEl.style.right = "auto";
   routeEl.style.transform = `translate(${translateX}, -50%)`;
   routeEl.style.margin = "0";
@@ -1361,9 +1394,21 @@ class ShieldElement extends Shield {
     smallCaps2 = undefined,
     fontSize,
     bannerFontFamily = ShieldElement.prototype.defaultBannerFontFamily,
+    bannerFontFamily1,
+    bannerFontFamily2,
+    bannerFontSize1,
+    bannerFontSize2,
+    roadNameFontFamily,
+    roadNameFontSize,
+    bannerBackgroundColor1 = ShieldElement.prototype.defaultBannerBackgroundColor,
+    bannerBackgroundColor2 = ShieldElement.prototype.defaultBannerBackgroundColor,
+    bannerLetterSpacing = ShieldElement.prototype.defaultBannerLetterSpacing,
     countyText = "",
     shieldSize,
+    useOfficialDimensions = true,
     scaleBannersWithShield = ShieldElement.prototype.defaultScaleBannersWithShield,
+    shieldBacks = false,
+    manualBanners,
     size,
   } = {}) {
     super();
@@ -1429,6 +1474,36 @@ class ShieldElement extends Shield {
         fontSize,
         ShieldElement.prototype.getDefaultBannerFontSizeForFont(this.bannerFontFamily)
       );
+      this.bannerFontFamily1 = ShieldElement.prototype.normalizeBannerFontFamily(
+        bannerFontFamily1 || this.bannerFontFamily
+      );
+      this.bannerFontFamily2 = ShieldElement.prototype.normalizeBannerFontFamily(
+        bannerFontFamily2 || this.bannerFontFamily
+      );
+      this.bannerFontSize1 = ShieldElement.prototype.normalizeFontSize(
+        bannerFontSize1,
+        this.fontSize
+      );
+      this.bannerFontSize2 = ShieldElement.prototype.normalizeFontSize(
+        bannerFontSize2,
+        this.fontSize
+      );
+      this.roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+        roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily
+      );
+      this.roadNameFontSize = ShieldElement.prototype.normalizeFontSize(
+        roadNameFontSize,
+        ShieldElement.prototype.getDefaultRoadNameFontSizeForFont(this.roadNameFontFamily)
+      );
+      this.bannerBackgroundColor1 = ShieldElement.prototype.normalizeBannerBackgroundColor(
+        bannerBackgroundColor1
+      );
+      this.bannerBackgroundColor2 = ShieldElement.prototype.normalizeBannerBackgroundColor(
+        bannerBackgroundColor2
+      );
+      this.bannerLetterSpacing = ShieldElement.prototype.normalizeBannerLetterSpacing(
+        bannerLetterSpacing
+      );
       this.countyText = typeof countyText === "string" ? countyText : "";
 
       const storedShieldSize = getStoredDefaultsOption(
@@ -1439,8 +1514,22 @@ class ShieldElement extends Shield {
       );
 
       this.shieldSize = ShieldElement.prototype.normalizeShieldSize(storedShieldSize);
+      this.useOfficialDimensions = useOfficialDimensions !== false;
       this.scaleBannersWithShield = scaleBannersWithShield !== false;
-    this.scaleBannersWithShield = scaleBannersWithShield !== false;
+      this.shieldBacks =
+        shieldBacks === true ||
+        shieldBacks === "true" ||
+        shieldBacks === 1 ||
+        shieldBacks === "1" ||
+        shieldBacks === "on";
+      this.manualBanners = normalizeStoredDefaultsBoolean(
+        getStoredDefaultsOption(
+          { manualBanners },
+          "manualBanners",
+          "settingsDefaultsShieldManualBanners",
+          ShieldElement.prototype.defaultManualBanners
+        )
+      );
 
     // Legacy properties used by older save data and helpers
     this.type = resolvedBase;
@@ -1463,24 +1552,119 @@ class ShieldElement extends Shield {
       this.shieldBase
     );
     const normalizedRoute = `${this.routeNumber ?? ""}`.trim();
-    const routeText = normalizedRoute;
+    const routeText = ShieldElement.prototype.limitRouteCharacters(
+      normalizedRoute,
+      config
+    );
+    if (routeText !== normalizedRoute) {
+      this.routeNumber = routeText;
+    }
+
+    const migratedShieldType =
+      ShieldElement.prototype.migrateLegacyBlockVariant(
+        this.shieldType,
+        routeText,
+        config
+      );
+    if (migratedShieldType !== this.shieldType) {
+      this.shieldType = migratedShieldType;
+    }
+
     const variant = ShieldElement.prototype.resolveBlockVariant(
-      this.shieldType,
+      migratedShieldType,
       routeText,
       config
     );
     const variantKey = ShieldElement.prototype.formatVariantKey(variant);
-    const shieldPath = ShieldElement.prototype.getShieldAssetPath(
-      config,
-      variantKey
-    );
+    const normalizedShieldCode =
+      ShieldElement.prototype.normalizeShieldCode(
+        this.shieldBase || config?.value || ""
+      ).toUpperCase();
+    const supportsShieldBacks =
+      ShieldElement.prototype.supportsShieldBacks(config);
+    const shieldBacksEnabled =
+      supportsShieldBacks && this.shieldBacks === true;
+
+    const shieldPath =
+      ShieldElement.prototype.getRenderedShieldAssetPath(
+        config,
+        variantKey,
+        {
+          shieldBase: this.shieldBase,
+          shieldBacks: shieldBacksEnabled,
+        }
+      );
+    const officialPhysicalDimensions = config?.officialDimensions
+      ? ShieldElement.prototype.getVariantMetadata(
+          config,
+          "physicalDimensionsByVariant",
+          variantKey
+        )
+      : null;
+    const routeNumberStyle =
+      ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)
+        ? null
+        : ShieldElement.prototype.getVariantMetadata(
+            config,
+            "routeNumberByVariant",
+            variantKey
+          );
+    const renderedRouteText = routeNumberStyle
+      ? routeText.toUpperCase()
+      : routeText;
+    const variablePanelWidth = routeNumberStyle?.variablePanelWidth || null;
+    const physicalDimensions = this.useOfficialDimensions
+      ? officialPhysicalDimensions
+      : null;
     const normalizedShieldSize = ShieldElement.prototype.normalizeShieldSize(
       this.shieldSize
     );
-    const shieldScale =
+    const requestedShieldScale =
       ShieldElement.prototype.getShieldScale(normalizedShieldSize);
-    const bannerScale = this.scaleBannersWithShield ? shieldScale : 1;
+
+    const basePhysicalWidthRem = physicalDimensions?.widthIn
+      ? ShieldElement.prototype.inchesToRem(physicalDimensions.widthIn)
+      : null;
+    const basePhysicalHeightRem = physicalDimensions?.heightIn
+      ? ShieldElement.prototype.inchesToRem(physicalDimensions.heightIn)
+      : null;
+
+    const physicalWidthRem = basePhysicalWidthRem
+      ? basePhysicalWidthRem * requestedShieldScale
+      : null;
+    const physicalHeightRem = basePhysicalHeightRem
+      ? basePhysicalHeightRem * requestedShieldScale
+      : null;
+
+    const isFloridaOfficialShield =
+      ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config);
+    const isOntarioPrimaryShield = normalizedShieldCode === "ON";
+
+    const configuredInternalScale = Number(config?.internalScale);
+    const internalScale =
+      isOntarioPrimaryShield
+        ? 1.2
+        : Number.isFinite(configuredInternalScale) && configuredInternalScale > 0
+          ? configuredInternalScale
+          : 1;
+
+    const renderedShieldHeight =
+      physicalHeightRem || normalizedShieldSize * internalScale;
+    const shieldScale =
+      ShieldElement.prototype.getShieldScale(renderedShieldHeight);
+
+    /*
+     * Banner sizing must follow the user's Shield Size field, not any hidden
+     * physical/internal artwork enlargement.  Florida official shields get an
+     * explicit requested-size variable below so their banners cannot inherit
+     * the artwork scale through any container/layout rule.
+     */
+    const bannerScale =
+      this.scaleBannersWithShield ? requestedShieldScale : 1;
     const fontSizeCss = ShieldElement.prototype.getFontSizeCss(this.fontSize);
+    const bannerLetterSpacing = ShieldElement.prototype.normalizeBannerLetterSpacing(
+      this.bannerLetterSpacing
+    );
     const bannerFontFamily =
       ShieldElement.prototype.normalizeBannerFontFamily(this.bannerFontFamily);
     const renderedBannerFontFamily =
@@ -1488,11 +1672,42 @@ class ShieldElement extends Shield {
         bannerFontFamily,
         panel
       );
+    const roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+      this.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily
+    );
+    const roadNameFontSizeCss = ShieldElement.prototype.getFontSizeCss(
+      this.roadNameFontSize ||
+        ShieldElement.prototype.getDefaultRoadNameFontSizeForFont(roadNameFontFamily)
+    );
     wrapper.style.setProperty("--shieldScale", shieldScale.toString());
     wrapper.style.setProperty(
-      "--shieldSize",
+      "--requestedShieldScale",
+      requestedShieldScale.toString()
+    );
+    wrapper.style.setProperty(
+      "--requestedShieldSize",
       normalizedShieldSize + "rem"
     );
+    wrapper.style.setProperty(
+      "--shieldSize",
+      renderedShieldHeight + "rem"
+    );
+    wrapper.classList.toggle(
+      "floridaOfficialShieldUserBannerScale",
+      isFloridaOfficialShield
+    );
+    wrapper.classList.toggle(
+      "ontarioPrimaryInternalScale",
+      isOntarioPrimaryShield
+    );
+    if (physicalWidthRem && physicalHeightRem) {
+      wrapper.style.setProperty("--shieldWidth", physicalWidthRem + "rem");
+      wrapper.style.setProperty("--shieldHeight", physicalHeightRem + "rem");
+    }
+    if (officialPhysicalDimensions) {
+      wrapper.dataset.widthIn = String(officialPhysicalDimensions.widthIn);
+      wrapper.dataset.heightIn = String(officialPhysicalDimensions.heightIn);
+    }
     wrapper.style.setProperty("--bannerScale", bannerScale.toString());
     if (renderedBannerFontFamily) {
       wrapper.style.setProperty(
@@ -1501,15 +1716,39 @@ class ShieldElement extends Shield {
       );
     }
     wrapper._mergeableAboveBanner =
-      ShieldElement.prototype.getMergeableAboveBanner(
-        this,
-        bannerScale,
-        panel
-      );
+      isFloridaOfficialShield || internalScale !== 1
+        ? null
+        : ShieldElement.prototype.getMergeableAboveBanner(
+            this,
+            bannerScale,
+            panel
+          );
 
     const shieldContainer = document.createElement("div");
     const containerClass = config.className || config.value;
     shieldContainer.className = `bannerShieldContainer ${containerClass}`;
+    shieldContainer.classList.toggle(
+      "shieldBacks",
+      shieldBacksEnabled
+    );
+    const usesOfficialShieldRendering = Boolean(officialPhysicalDimensions);
+    shieldContainer.classList.toggle(
+      "officialFdotShield",
+      usesOfficialShieldRendering && config?.standard === "FDOT"
+    );
+    shieldContainer.classList.toggle(
+      "officialCfxShield",
+      usesOfficialShieldRendering && config?.standard === "CFX"
+    );
+    shieldContainer.classList.toggle(
+      "variableGuideWidth",
+      Boolean(variablePanelWidth)
+    );
+    if (variantKey) {
+      shieldContainer.classList.add(
+        "variant-" + variantKey.toLowerCase().replace(/[^a-z0-9_-]/g, "-")
+      );
+    }
     if (toEl) {
       shieldContainer.classList.add("hasTo");
       shieldContainer.appendChild(toEl);
@@ -1555,6 +1794,20 @@ class ShieldElement extends Shield {
         getsSeriesDWhenThreeCharsWithOne
       );
 
+      const isLouisianaFourCharRoute =
+        shieldContainer.classList.contains("LA") &&
+        routeCharCountForFontCheck === 4;
+
+      shieldContainer.classList.toggle(
+        "fourNoOne",
+        isLouisianaFourCharRoute && !routeHasOneForFontCheck
+      );
+
+      shieldContainer.classList.toggle(
+        "fourWithOne",
+        isLouisianaFourCharRoute && routeHasOneForFontCheck
+      );
+
 
       const hasBannerA = ShieldElement.prototype.hasBannerValue(this.bannerType);
       const hasBannerB = ShieldElement.prototype.hasBannerValue(this.bannerType2);
@@ -1583,6 +1836,10 @@ class ShieldElement extends Shield {
           containerClass: "bannerContainer",
           indentFirstLetter: this.indentFirstLetter,
           smallCaps: this.smallCaps,
+          bannerLetterSpacing,
+          bannerFontFamily: this.bannerFontFamily1,
+          fontSizeCss: ShieldElement.prototype.getFontSizeCss(this.bannerFontSize1),
+          backgroundColor: this.bannerBackgroundColor1,
         });
       }
 
@@ -1594,6 +1851,10 @@ class ShieldElement extends Shield {
           containerClass: "bannerContainer2",
           indentFirstLetter: this.indentFirstLetter2,
           smallCaps: this.smallCaps2,
+          bannerLetterSpacing,
+          bannerFontFamily: this.bannerFontFamily2,
+          fontSizeCss: ShieldElement.prototype.getFontSizeCss(this.bannerFontSize2),
+          backgroundColor: this.bannerBackgroundColor2,
         });
       }
 
@@ -1605,6 +1866,10 @@ class ShieldElement extends Shield {
           containerClass: "roadNameBannerContainer",
           indentFirstLetter: false,
           smallCaps: false,
+          bannerLetterSpacing,
+          bannerFontFamily: roadNameFontFamily,
+          fontSizeCss: roadNameFontSizeCss,
+          backgroundColor: "Inherit",
           isRoadName: true,
           isMultilineRoadName: roadNameIsMultiline,
         });
@@ -1635,7 +1900,8 @@ class ShieldElement extends Shield {
               this.indentFirstLetter,
               bannerFontFamily,
               this.smallCaps,
-              panel
+              panel,
+              bannerLetterSpacing
             );
 
           if (itemsForPosition.some((item) => item.isRoadName)) {
@@ -1660,13 +1926,15 @@ class ShieldElement extends Shield {
           item.containerClass,
           item.bannerClass,
           item.bannerValue,
-          fontSizeCss,
+          item.fontSizeCss || fontSizeCss,
           item.indentFirstLetter,
-          bannerFontFamily,
+          item.bannerFontFamily || bannerFontFamily,
           false,
           position,
           item.smallCaps,
-          panel
+          panel,
+          item.bannerLetterSpacing,
+          item.backgroundColor
         );
 
         shieldContainer.appendChild(bannerContainerElmt);
@@ -1674,6 +1942,17 @@ class ShieldElement extends Shield {
 
     const shieldEl = document.createElement("div");
     shieldEl.className = "shield";
+    if (physicalWidthRem && physicalHeightRem) {
+      shieldEl.style.width = physicalWidthRem + "rem";
+      shieldEl.style.height = physicalHeightRem + "rem";
+    } else if (internalScale !== 1) {
+      shieldEl.style.height = renderedShieldHeight + "rem";
+    } else if (variablePanelWidth && officialPhysicalDimensions) {
+      shieldEl.style.width = `calc(var(--shieldSize) * ${
+        officialPhysicalDimensions.widthIn / officialPhysicalDimensions.heightIn
+      })`;
+      shieldEl.style.height = "var(--shieldSize)";
+    }
 
     const img = document.createElement("img");
     img.className = "shieldImg";
@@ -1682,15 +1961,145 @@ class ShieldElement extends Shield {
       img.classList.add(imageSizeClass);
     }
     img.src = shieldPath;
+    if (typeof window.applySignMakerAssetFallback === "function") {
+      window.applySignMakerAssetFallback(img, shieldPath);
+    }
     img.alt = `${config.label} shield`;
-    img.loading = "lazy";
-    img.decoding = "async";
+
+    const preloadedAspectRatio =
+      window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS?.get?.(shieldPath);
+
+    if (
+      Number.isFinite(preloadedAspectRatio) &&
+      preloadedAspectRatio > 0
+    ) {
+      img.style.aspectRatio = String(preloadedAspectRatio);
+    }
+
+    img.loading = isFloridaOfficialShield ? "eager" : "lazy";
+    img.decoding = isFloridaOfficialShield ? "sync" : "async";
+    if (isFloridaOfficialShield) {
+      img.fetchPriority = "high";
+    }
     img.draggable = false;
+    if (physicalWidthRem && physicalHeightRem) {
+      img.style.width = physicalWidthRem + "rem";
+      img.style.height = physicalHeightRem + "rem";
+    } else if (internalScale !== 1) {
+      img.style.width = "auto";
+      img.style.height = renderedShieldHeight + "rem";
+    } else if (variablePanelWidth && officialPhysicalDimensions) {
+      const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
+      img.style.width = `calc(var(--shieldSize) * ${
+        assetWidthIn / officialPhysicalDimensions.heightIn
+      })`;
+      img.style.height = "var(--shieldSize)";
+    }
+    if (variablePanelWidth && officialPhysicalDimensions) {
+      const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
+      const assetWidthCss = this.useOfficialDimensions
+        ? `${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem`
+        : `calc(var(--shieldSize) * ${
+            assetWidthIn / officialPhysicalDimensions.heightIn
+          })`;
+      shieldEl.style.setProperty("--variableGuideAssetWidth", assetWidthCss);
+      shieldEl.style.setProperty(
+        "--variableGuideRadius",
+        `calc(var(--shieldSize) * ${
+          1.25 / officialPhysicalDimensions.heightIn
+        })`
+      );
+      shieldEl.style.setProperty(
+        "--variableGuideSeamCover",
+        `calc(var(--shieldSize) * ${
+          1.5 / officialPhysicalDimensions.heightIn
+        })`
+      );
+      shieldEl.style.setProperty(
+        "--variableGuideArtworkClip",
+        `calc(var(--shieldSize) * ${
+          0.25 / officialPhysicalDimensions.heightIn
+        })`
+      );
+    }
     shieldEl.appendChild(img);
+
+    let variableGuideContour = null;
+    let variableGuideContourRect = null;
+    if (
+      variablePanelWidth &&
+      officialPhysicalDimensions &&
+      shieldContainer.classList.contains("FDOTSTATE")
+    ) {
+      const svgNamespace = "http://www.w3.org/2000/svg";
+      const initialWidthIn = Number(officialPhysicalDimensions.widthIn);
+      const heightIn = Number(officialPhysicalDimensions.heightIn);
+      variableGuideContour = document.createElementNS(svgNamespace, "svg");
+      variableGuideContour.classList.add("variableGuideContour");
+      variableGuideContour.setAttribute(
+        "viewBox",
+        `0 0 ${initialWidthIn} ${heightIn}`
+      );
+      variableGuideContour.setAttribute("preserveAspectRatio", "none");
+      variableGuideContour.setAttribute("aria-hidden", "true");
+      variableGuideContour.setAttribute("focusable", "false");
+
+      variableGuideContourRect = document.createElementNS(
+        svgNamespace,
+        "rect"
+      );
+      variableGuideContourRect.setAttribute("x", "0.0625");
+      variableGuideContourRect.setAttribute("y", "0.0625");
+      variableGuideContourRect.setAttribute(
+        "width",
+        String(initialWidthIn - 0.125)
+      );
+      variableGuideContourRect.setAttribute("height", String(heightIn - 0.125));
+      variableGuideContourRect.setAttribute("rx", "1.1875");
+      variableGuideContourRect.setAttribute("fill", "none");
+      variableGuideContourRect.setAttribute("stroke", "#000000");
+      variableGuideContourRect.setAttribute("stroke-width", "0.125");
+      variableGuideContour.appendChild(variableGuideContourRect);
+      shieldEl.appendChild(variableGuideContour);
+    }
 
       const routeEl = document.createElement("p");
       routeEl.className = "routeNumber";
-      const routeCharacters = Array.from(String(routeText || ""));
+      if (routeNumberStyle) {
+        routeEl.classList.add("officialRouteNumber");
+        if (Number.isFinite(routeNumberStyle.topIn)) {
+          routeEl.style.setProperty(
+            "--officialRouteCapTop",
+            `${ShieldElement.prototype.inchesToRem(routeNumberStyle.topIn)}rem`
+          );
+        }
+        const routeCharacterCount =
+          ShieldElement.prototype.getRouteCharacterCount(routeText);
+        const capHeightIn =
+          routeNumberStyle.capHeightInByCharacterCount?.[routeCharacterCount] ||
+          routeNumberStyle.capHeightIn;
+        const routeFontFamily =
+          routeNumberStyle.fontFamilyByCharacterCount?.[routeCharacterCount] ||
+          routeNumberStyle.fontFamily;
+        if (capHeightIn) {
+          routeEl.style.fontSize =
+            ShieldElement.prototype.cssRemFromCapHeight(capHeightIn);
+        }
+        if (routeFontFamily) {
+          routeEl.style.fontFamily = `"${routeFontFamily}"`;
+        }
+        if (routeNumberStyle.color) {
+          routeEl.style.color = routeNumberStyle.color;
+        }
+      }
+
+      const usesV22NumberStyle =
+        ShieldElement.prototype.usesV22NumberStyle(config);
+
+      if (usesV22NumberStyle) {
+        routeEl.textContent = renderedRouteText;
+      } else {
+      const routeCharacters = Array.from(String(renderedRouteText || ""));
       routeEl.innerHTML = routeCharacters
         .map((char, index) => {
           const isSpace = char === " ";
@@ -1731,6 +2140,7 @@ class ShieldElement extends Shield {
           return `<span class="${classNames.join(" ")}">${safeChar}</span>`;
         })
         .join("");
+      }
 
       if (config?.customShieldMaker) {
         const customVariantKey = String(variantKey || "").match(/^(\d+)/)?.[1] || "";
@@ -1755,22 +2165,72 @@ class ShieldElement extends Shield {
         }
       }
 
-      if (!config?.suppressRouteNumber) {
+      if (
+        !config?.suppressRouteNumber &&
+        !ShieldElement.prototype.isFixedRouteVariant(config, variantKey)
+      ) {
         shieldEl.appendChild(routeEl);
       }
 
       shieldContainer.appendChild(shieldEl);
 
       const updateSeriesDRouteSpacingFix = () => {
+        if (usesV22NumberStyle) {
+          shieldContainer.classList.remove("seriesDSpacingFix");
+          return;
+        }
+
         const fontFamily = window.getComputedStyle(routeEl).fontFamily || "";
         const usesSeriesD = fontFamily.toLowerCase().includes("series d");
 
         shieldContainer.classList.toggle("seriesDSpacingFix", usesSeriesD);
       };
 
-      requestAnimationFrame(updateSeriesDRouteSpacingFix);
+      const normalizeRouteCharacterSpacing = () => {
+        if (
+          usesV22NumberStyle ||
+          routeEl.classList.contains("officialRouteNumber") ||
+          config?.customShieldMaker
+        ) {
+          return;
+        }
+
+        const routeCharacters = Array.from(routeEl.children || []).filter(
+          (child) => child.classList?.contains("routeChar")
+        );
+
+        if (!routeCharacters.length) {
+          return;
+        }
+
+        const computedStyle = window.getComputedStyle(routeEl);
+        const spacingPixels = parseFloat(computedStyle.letterSpacing);
+
+        if (!Number.isFinite(spacingPixels) || Math.abs(spacingPixels) < 0.001) {
+          return;
+        }
+
+        const fontSizePixels = parseFloat(computedStyle.fontSize);
+        const spacingCss =
+          Number.isFinite(fontSizePixels) && fontSizePixels > 0
+            ? `${spacingPixels / fontSizePixels}em`
+            : `${spacingPixels}px`;
+
+        routeEl.style.letterSpacing = "0px";
+        routeCharacters.forEach((characterSpan, index) => {
+          characterSpan.style.letterSpacing = "0px";
+          characterSpan.style.marginLeft = index === 0 ? "0px" : spacingCss;
+        });
+      };
+
+      const updateRouteNumberTypography = () => {
+        updateSeriesDRouteSpacingFix();
+        normalizeRouteCharacterSpacing();
+      };
+
+      requestAnimationFrame(updateRouteNumberTypography);
       if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(updateSeriesDRouteSpacingFix).catch(() => {});
+        document.fonts.ready.then(updateRouteNumberTypography).catch(() => {});
       }
 
       if (!hasBannerA && !hasBannerB && !hasRoadName) {
@@ -1779,17 +2239,38 @@ class ShieldElement extends Shield {
 
     wrapper.appendChild(shieldContainer);
 
+    if (
+      routeEl.parentElement &&
+      routeNumberStyle &&
+      officialPhysicalDimensions
+    ) {
+      ShieldElement.prototype.scheduleOfficialRouteNumberLayout({
+        wrapper,
+        routeEl,
+        shieldEl,
+        img,
+        routeText: renderedRouteText,
+        routeNumberStyle,
+        routeCharacterCount:
+          ShieldElement.prototype.getRouteCharacterCount(routeText),
+        officialPhysicalDimensions,
+        useOfficialDimensions: this.useOfficialDimensions,
+        variableGuideContour,
+        variableGuideContourRect,
+      });
+    }
+
     return wrapper;
   }
 }
 
-const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "SC", "WI", "WY"];
-const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "SC", "WI", "WY"];
+const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "PR", "PR2", "PR3", "SC", "WI", "WY"];
+const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "PR", "PR2", "PR3", "SC", "WI", "WY"];
 
 ShieldElement.prototype.defaultShieldBase = "I";
 ShieldElement.prototype.defaultVariant = "Auto";
 ShieldElement.prototype.defaultRouteNumber = "1";
-ShieldElement.prototype.defaultBannerType = "None";
+ShieldElement.prototype.defaultBannerType = "";
 ShieldElement.prototype.defaultBannerPosition = "Right";
 ShieldElement.prototype.defaultBannerPosition2 = "Above";
 ShieldElement.prototype.defaultHighwayGothicBannerFontSize = 1.6;
@@ -1797,6 +2278,14 @@ ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize = 1.4;
 ShieldElement.prototype.defaultBannerFontSize =
   ShieldElement.prototype.defaultHighwayGothicBannerFontSize;
 ShieldElement.prototype.defaultBannerFontFamily = "Series E";
+ShieldElement.prototype.defaultHighwayGothicRoadNameFontSize = 1.6;
+ShieldElement.prototype.defaultNonHighwayGothicRoadNameFontSize = 1.1;
+ShieldElement.prototype.defaultRoadNameFontSize =
+  ShieldElement.prototype.defaultHighwayGothicRoadNameFontSize;
+ShieldElement.prototype.defaultRoadNameFontFamily = "Series E";
+ShieldElement.prototype.defaultBannerBackgroundColor = "Inherit";
+ShieldElement.prototype.defaultBannerLetterSpacing = 0;
+ShieldElement.prototype.defaultManualBanners = true;
 
 ShieldElement.prototype.isHighwayGothicBannerFont = function (fontFamily) {
   return /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(
@@ -1809,15 +2298,385 @@ ShieldElement.prototype.getDefaultBannerFontSizeForFont = function (fontFamily) 
     ? ShieldElement.prototype.defaultHighwayGothicBannerFontSize
     : ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize;
 };
+
+ShieldElement.prototype.getDefaultRoadNameFontSizeForFont = function (fontFamily) {
+  return ShieldElement.prototype.isHighwayGothicBannerFont(fontFamily)
+    ? ShieldElement.prototype.defaultHighwayGothicRoadNameFontSize
+    : ShieldElement.prototype.defaultNonHighwayGothicRoadNameFontSize;
+};
+
+ShieldElement.prototype.normalizeBannerLetterSpacing = function (value) {
+  return normalizeTextLetterSpacing(
+    value,
+    ShieldElement.prototype.defaultBannerLetterSpacing || 0
+  );
+};
+
+ShieldElement.prototype.normalizeBannerBackgroundColor = function (value) {
+  const raw = String(value ?? "").trim();
+  if (!raw || /^none$/i.test(raw) || /^inherit$/i.test(raw)) {
+    return ShieldElement.prototype.defaultBannerBackgroundColor || "Inherit";
+  }
+
+  if (typeof lib !== "undefined" && lib.colors && lib.colors[raw]) {
+    return raw;
+  }
+
+  if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw) || /^rgba?\(/i.test(raw)) {
+    return raw;
+  }
+
+  if (/^panel color$/i.test(raw) || /^match bg$/i.test(raw)) {
+    return raw;
+  }
+
+  return raw;
+};
+
+ShieldElement.prototype.resolveBannerBackgroundColor = function (value, panel = null) {
+  const raw = ShieldElement.prototype.normalizeBannerBackgroundColor(value);
+  if (!raw || /^inherit$/i.test(raw) || /^none$/i.test(raw)) {
+    return "";
+  }
+
+  if (/^panel color$/i.test(raw) || /^match bg$/i.test(raw)) {
+    const panelColor = panel?.color || panel?.sign?.color || panel?.backgroundColor || panel?.panelColor || "Green";
+    return (typeof lib !== "undefined" && lib.colors && lib.colors[panelColor]) || panelColor;
+  }
+
+  if (typeof lib !== "undefined" && lib.colors && lib.colors[raw]) {
+    return lib.colors[raw];
+  }
+
+  return raw;
+};
+
+ShieldElement.prototype.applyBannerBackgroundColor = function (bannerEl, value, panel = null) {
+  if (!bannerEl) {
+    return;
+  }
+
+  const resolvedColor = ShieldElement.prototype.resolveBannerBackgroundColor(value, panel);
+  if (!resolvedColor) {
+    return;
+  }
+
+  bannerEl.classList.add("customBannerBackground");
+  bannerEl.style.setProperty("background-color", resolvedColor, "important");
+
+  const brightness = typeof getColorBrightness === "function"
+    ? getColorBrightness(resolvedColor)
+    : null;
+
+  if (brightness) {
+    bannerEl.classList.toggle("lightBannerBackground", brightness === "light");
+    bannerEl.classList.toggle("darkBannerBackground", brightness === "dark");
+    bannerEl.style.setProperty(
+      "color",
+      brightness === "light" ? "var(--black)" : "var(--white)",
+      "important"
+    );
+  }
+};
+
 ShieldElement.prototype.defaultCountyText = "";
 ShieldElement.prototype.defaultShieldSize = 3;
 ShieldElement.prototype.defaultScaleBannersWithShield = true;
+
+const OFFICIAL_ROADGEEK_METRICS = {
+  "Series D": {
+    "0": [0.909, 0.1, 0.809],
+    "1": [0.473, 0.1, 0.353],
+    "2": [0.881, 0.1, 0.781],
+    "3": [0.956, 0.18, 0.856],
+    "4": [0.888, 0.02, 0.768],
+    "5": [0.881, 0.1, 0.781],
+    "6": [0.881, 0.1, 0.781],
+    "7": [0.817, 0.07, 0.747],
+    "8": [0.881, 0.1, 0.781],
+    "9": [0.881, 0.1, 0.781],
+    A: [0.906, 0.03, 0.876],
+    B: [0.85, 0.12, 0.8],
+    C: [0.881, 0.099987, 0.781],
+    D: [0.9, 0.12, 0.8],
+    E: [0.79, 0.12, 0.74],
+    F: [0.77, 0.12, 0.74],
+    G: [0.881, 0.099985, 0.781],
+    H: [0.92, 0.12, 0.8],
+    I: [0.401, 0.12, 0.281],
+    J: [0.789, 0.03, 0.669],
+    K: [0.867, 0.12, 0.817],
+    L: [0.77, 0.12, 0.74],
+    M: [1.018, 0.12, 0.898],
+    N: [0.92, 0.12, 0.8],
+    O: [0.909, 0.1, 0.809],
+    P: [0.83, 0.12, 0.8],
+    Q: [0.909, 0.1, 0.809],
+    R: [0.85, 0.12, 0.8],
+    S: [0.78, 0.05, 0.73],
+    T: [0.678, 0.03, 0.648],
+    U: [0.92, 0.119978, 0.8],
+    V: [0.819, 0.03, 0.789],
+    W: [0.949, 0.03, 0.919],
+    X: [0.78, 0.05, 0.73],
+    Y: [0.914, 0.03, 0.884],
+    Z: [0.78, 0.05, 0.73],
+    " ": [0.599, 0, 0],
+    "-": [0.411, 0.03, 0.381],
+  },
+};
+
+ShieldElement.prototype.inchesPerRem = 12;
+ShieldElement.prototype.roadgeekCapHeightRatio = 4 / 7;
+
+ShieldElement.prototype.inchesToRem = function (inches) {
+  const value = Number(inches);
+  return Number.isFinite(value)
+    ? value / ShieldElement.prototype.inchesPerRem
+    : 0;
+};
+
+ShieldElement.prototype.cssRemFromCapHeight = function (inches) {
+  const capHeightRem = ShieldElement.prototype.inchesToRem(inches);
+  const fontSizeRem =
+    capHeightRem / ShieldElement.prototype.roadgeekCapHeightRatio;
+  return `${fontSizeRem.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")}rem`;
+};
+
+ShieldElement.prototype.measureOfficialRouteInk = function ({
+  routeText,
+  routeFontFamily,
+  capHeightPixels,
+  letterSpacingPixels = 0,
+  context,
+}) {
+  const characters = Array.from(routeText);
+  const familyMetrics = OFFICIAL_ROADGEEK_METRICS[routeFontFamily];
+  let cursor = 0;
+  let inkLeft = Number.POSITIVE_INFINITY;
+  let inkRight = Number.NEGATIVE_INFINITY;
+
+  characters.forEach((rawCharacter, index) => {
+    const character = rawCharacter.toUpperCase();
+    const glyphMetrics = familyMetrics?.[character];
+    if (glyphMetrics) {
+      const [advance, left, right] = glyphMetrics;
+      if (right > left) {
+        inkLeft = Math.min(inkLeft, cursor + left * capHeightPixels);
+        inkRight = Math.max(inkRight, cursor + right * capHeightPixels);
+      }
+      cursor += advance * capHeightPixels;
+    } else {
+      const metrics = context.measureText(rawCharacter);
+      const left = cursor - Number(metrics.actualBoundingBoxLeft || 0);
+      const right =
+        cursor + Number(metrics.actualBoundingBoxRight || metrics.width);
+      inkLeft = Math.min(inkLeft, left);
+      inkRight = Math.max(inkRight, right);
+      cursor += metrics.width;
+    }
+
+    if (index < characters.length - 1) {
+      cursor += letterSpacingPixels;
+    }
+  });
+
+  if (!Number.isFinite(inkLeft) || !Number.isFinite(inkRight)) {
+    inkLeft = 0;
+    inkRight = 0;
+  }
+
+  return { inkLeft, inkRight, inkWidth: inkRight - inkLeft };
+};
+
+ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
+  wrapper,
+  routeEl,
+  shieldEl,
+  img,
+  routeText,
+  routeNumberStyle,
+  routeCharacterCount,
+  officialPhysicalDimensions,
+  useOfficialDimensions,
+  variableGuideContour,
+  variableGuideContourRect,
+}) {
+  const layout = () => {
+    if (!routeEl.isConnected || !shieldEl.isConnected) {
+      return;
+    }
+
+    const shieldBounds = shieldEl.getBoundingClientRect();
+    const officialHeight = Number(officialPhysicalDimensions.heightIn);
+    if (!(shieldBounds.height > 0) || !(officialHeight > 0)) {
+      return;
+    }
+
+    const pixelsPerInch = shieldBounds.height / officialHeight;
+    const capHeightIn = Number(
+      routeNumberStyle.capHeightInByCharacterCount?.[routeCharacterCount] ||
+        routeNumberStyle.capHeightIn
+    );
+    const routeFontFamily =
+      routeNumberStyle.fontFamilyByCharacterCount?.[routeCharacterCount] ||
+      routeNumberStyle.fontFamily;
+    const fontSizePixels =
+      (capHeightIn * pixelsPerInch) /
+      ShieldElement.prototype.roadgeekCapHeightRatio;
+
+    routeEl.style.fontSize = `${fontSizePixels}px`;
+    routeEl.style.fontFamily = `"${routeFontFamily}"`;
+    routeEl.style.top = `${
+      Number(routeNumberStyle.topIn) * pixelsPerInch - fontSizePixels / 7
+    }px`;
+    routeEl.style.letterSpacing = "0px";
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    context.fontKerning = "none";
+    context.font = `${fontSizePixels}px "${routeFontFamily}"`;
+    const capHeightPixels = capHeightIn * pixelsPerInch;
+    let measuredInk = ShieldElement.prototype.measureOfficialRouteInk({
+      routeText,
+      routeFontFamily,
+      capHeightPixels,
+      context,
+    });
+
+    if (
+      routeNumberStyle.allowOpticalSpacing &&
+      routeCharacterCount > 1 &&
+      Number(routeNumberStyle.maxWidthIn) > 0
+    ) {
+      const maximumWidth = routeNumberStyle.maxWidthIn * pixelsPerInch;
+      if (measuredInk.inkWidth > maximumWidth) {
+        const spacingAdjustment =
+          (maximumWidth - measuredInk.inkWidth) /
+          (routeCharacterCount - 1);
+        routeEl.style.letterSpacing = `${spacingAdjustment}px`;
+        measuredInk = ShieldElement.prototype.measureOfficialRouteInk({
+          routeText,
+          routeFontFamily,
+          capHeightPixels,
+          letterSpacingPixels: spacingAdjustment,
+          context,
+        });
+      }
+    }
+
+    const { inkLeft, inkRight } = measuredInk;
+    const variablePanelWidth = routeNumberStyle.variablePanelWidth;
+
+    if (variablePanelWidth) {
+      const minWidthIn = Number(variablePanelWidth.minWidthIn);
+      const maxWidthIn = Number(variablePanelWidth.maxWidthIn);
+      const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
+      const leftClearanceIn = Number(routeNumberStyle.leftIn);
+      const rightClearanceIn = Number(variablePanelWidth.rightClearanceIn);
+      const requiredWidthIn =
+        leftClearanceIn +
+        (inkRight - inkLeft) / pixelsPerInch +
+        rightClearanceIn;
+      const renderedWidthIn = Math.min(
+        maxWidthIn,
+        Math.max(minWidthIn, requiredWidthIn)
+      );
+      const renderedWidthCss = useOfficialDimensions
+        ? `calc(${ShieldElement.prototype.inchesToRem(renderedWidthIn)}rem * var(--requestedShieldScale, 1))`
+        : `calc(var(--shieldSize) * ${renderedWidthIn / officialHeight})`;
+      const assetWidthCss = useOfficialDimensions
+        ? `calc(${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem * var(--requestedShieldScale, 1))`
+        : `calc(var(--shieldSize) * ${assetWidthIn / officialHeight})`;
+
+      shieldEl.style.width = renderedWidthCss;
+      img.style.width = assetWidthCss;
+      shieldEl.style.setProperty("--variableGuideAssetWidth", assetWidthCss);
+      wrapper.style.setProperty("--shieldWidth", renderedWidthCss);
+      wrapper.dataset.widthIn = String(renderedWidthIn);
+
+      if (variableGuideContour && variableGuideContourRect) {
+        variableGuideContour.setAttribute(
+          "viewBox",
+          `0 0 ${renderedWidthIn} ${officialHeight}`
+        );
+        variableGuideContourRect.setAttribute(
+          "width",
+          String(renderedWidthIn - 0.125)
+        );
+      }
+    }
+
+    let targetPosition;
+    let sourcePosition;
+    if (Number.isFinite(routeNumberStyle.leftIn)) {
+      targetPosition = routeNumberStyle.leftIn * pixelsPerInch;
+      sourcePosition = inkLeft;
+    } else if (Number.isFinite(routeNumberStyle.rightIn)) {
+      targetPosition = routeNumberStyle.rightIn * pixelsPerInch;
+      sourcePosition = inkRight;
+    } else {
+      const centerXIn = Number.isFinite(routeNumberStyle.centerXIn)
+        ? routeNumberStyle.centerXIn
+        : officialPhysicalDimensions.widthIn / 2;
+      targetPosition = centerXIn * pixelsPerInch;
+      sourcePosition = (inkLeft + inkRight) / 2;
+    }
+
+    routeEl.style.transform =
+      `translateX(${targetPosition - sourcePosition}px)`;
+  };
+
+  queueMicrotask(layout);
+  requestAnimationFrame(layout);
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => {
+      layout();
+      requestAnimationFrame(layout);
+    });
+  }
+};
 
 ShieldElement.prototype.normalizeShieldCode = function (code) {
   if (typeof code !== "string") {
     return "";
   }
-  return code.replace(/\s+/g, "").replace(/2nd$/i, "2");
+
+  const normalized = code.replace(/\s+/g, "").replace(/2nd$/i, "2");
+  if (/^(?:FLTURNPIKE|FL-TURNPIKE|FLTP)$/i.test(normalized)) {
+    return "FLTP";
+  }
+  if (/^(?:FLCFXTOLL|FLCFX)$/i.test(normalized)) {
+    return "FLCFX";
+  }
+
+  return normalized;
+};
+
+ShieldElement.prototype.supportsShieldBacks = function (configOrValue) {
+  const config =
+    typeof configOrValue === "object" && configOrValue
+      ? configOrValue
+      : null;
+  const rawValue = config
+    ? config.value || config.assetName || ""
+    : configOrValue;
+
+  const normalized = ShieldElement.prototype.normalizeShieldCode(
+    rawValue || ""
+  ).toUpperCase();
+
+  return (
+    normalized === "US" ||
+    normalized === "NJ" ||
+    normalized === "C" ||
+    normalized === "NVCC" ||
+    config?.preserveShieldBacks === true
+  );
 };
 
 ShieldElement.prototype.formatVariantKey = function (variant) {
@@ -1915,7 +2774,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
         continue;
       }
       if (value.type === "category") {
-        traverse(value, pathParts.concat(key));
+        traverse(value, pathParts.concat(value.folder || key));
       } else if (value.type === "shield") {
         const normalizedCode = ShieldElement.prototype.normalizeShieldCode(key);
         const variants = Array.isArray(value.variants) ? value.variants.slice() : [];
@@ -1947,6 +2806,10 @@ ShieldElement.prototype.buildBlockShieldList = function () {
 
             MN: "img/shields/United States/MN",
             MNBUS: "img/shields/United States/MN",
+            MNCo: "img/shields/United States/MN",
+
+            NV: "img/shields/United States/NV",
+            NVCC: "img/shields/United States/NV",
 
             NE: "img/shields/United States/NE",
             NELINK: "img/shields/United States/NE",
@@ -1970,10 +2833,35 @@ ShieldElement.prototype.buildBlockShieldList = function () {
             value: normalizedCode,
             label: value.name || normalizedCode,
             variants,
+            fixedRouteVariants: Array.isArray(value.fixedRouteVariants)
+              ? value.fixedRouteVariants.slice()
+              : [],
             assetFolder: resolvedAssetFolder,
-            className: ShieldElement.prototype.getShieldClassNames(normalizedCode),
-            assetName: normalizedCode,
-            assetPathByVariant: explicitShieldAssetOverrides[normalizedCode] || null,
+            className:
+              value.className ||
+              ShieldElement.prototype.getShieldClassNames(normalizedCode),
+            assetName: value.assetName || normalizedCode,
+            assetPath: value.assetPath || null,
+            assetPathByVariant:
+              value.assetPathByVariant ||
+              explicitShieldAssetOverrides[normalizedCode] ||
+              null,
+            suppressRouteNumber: value.suppressRouteNumber === true,
+            county: value.county === true,
+            standard: value.standard || null,
+            officialDimensions: value.officialDimensions === true,
+            internalScale:
+              Number.isFinite(Number(value.internalScale)) &&
+              Number(value.internalScale) > 0
+                ? Number(value.internalScale)
+                : 1,
+            maxRouteCharacters: value.maxRouteCharacters || null,
+            physicalDimensionsByVariant:
+              value.physicalDimensionsByVariant || null,
+            routeNumberByVariant: value.routeNumberByVariant || null,
+            autoVariantByCharacterCount:
+              value.autoVariantByCharacterCount || null,
+            legacyVariantAliases: value.legacyVariantAliases || null,
             categories: pathParts.slice(),
           });
       }
@@ -1992,6 +2880,16 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetPath,
       assetPathByVariant,
       suppressRouteNumber = false,
+      fixedRouteVariants = [],
+      county = false,
+      standard = null,
+      officialDimensions = false,
+      internalScale = 1,
+      maxRouteCharacters = null,
+      physicalDimensionsByVariant = null,
+      routeNumberByVariant = null,
+      autoVariantByCharacterCount = null,
+      legacyVariantAliases = null,
     }) => {
       const normalizedValue = ShieldElement.prototype.normalizeShieldCode(value);
 
@@ -2011,6 +2909,21 @@ ShieldElement.prototype.buildBlockShieldList = function () {
           assetPath: assetPath || null,
           assetPathByVariant: assetPathByVariant || null,
           suppressRouteNumber: !!suppressRouteNumber,
+          fixedRouteVariants: Array.isArray(fixedRouteVariants)
+            ? fixedRouteVariants.slice()
+            : [],
+          county: !!county,
+          standard,
+          officialDimensions: officialDimensions === true,
+          internalScale:
+            Number.isFinite(Number(internalScale)) && Number(internalScale) > 0
+              ? Number(internalScale)
+              : 1,
+          maxRouteCharacters,
+          physicalDimensionsByVariant,
+          routeNumberByVariant,
+          autoVariantByCharacterCount,
+          legacyVariantAliases,
           categories,
         };
 
@@ -2168,12 +3081,17 @@ ShieldElement.prototype.buildBlockShieldList = function () {
     ensureShield({
       value: "C",
       label: "County",
-      variants: ["2 Digit", "3 Digit"],
+      variants: ["Standard", "Green"],
       assetFolder: "img/shields/United States",
       assetName: "C",
       assetPathByVariant: {
-        "2Digit": "img/shields/United States/C-2Digit.svg",
-        "3Digit": "img/shields/United States/C-3Digit.svg",
+        Standard: "img/shields/United States/C-2Digit.svg",
+        Green: "img/shields/United States/C2-2Digit.svg",
+      },
+      legacyVariantAliases: {
+        Auto: "Standard",
+        "2Digit": "Standard",
+        "3Digit": "Standard",
       },
       categories: ["United States"],
       county: true,
@@ -2189,31 +3107,6 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "AZLOOP",
       categories: ["United States"],
     });
-    /* FL */
-    ensureDigitShield("FL", "Florida", "img/shields/United States/FL");
-
-    ensureShield({
-      value: "FLToll",
-      label: "Florida Toll",
-      variants: ["Image"],
-      assetFolder: "img/shields/United States/FL",
-      assetName: "FLToll",
-      assetPath: "img/shields/United States/FL/FLToll-Current.svg",
-      suppressRouteNumber: false,
-      categories: ["United States"],
-    });
-
-    ensureShield({
-      value: "FLTP",
-      label: "Florida’s Turnpike",
-      variants: ["Image"],
-      assetFolder: "img/shields/United States/FL",
-      assetName: "FLTP",
-      assetPath: "img/shields/United States/FL/FLTP.svg",
-      suppressRouteNumber: true,
-      categories: ["United States"],
-    });
-
     /* GA */
     ensureDigitShield("GA", "Georgia", "img/shields/United States/GA");
     ensureDigitShield("GAALT", "GA Alternate", "img/shields/United States/GA");
@@ -2268,6 +3161,18 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "MNBUS",
       categories: ["United States"],
     });
+    ensureShield({
+      value: "MNCo",
+      label: "Minnesota County",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/MN",
+      assetName: "MNCo",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/MN/MNCo-2Digit.svg",
+        "3Digit": "img/shields/United States/MN/MNCo-3Digit.svg",
+      },
+      categories: ["United States", "Minnesota"],
+    });
 
     /* NE */
     ensureDigitShield("NE", "Nebraska", "img/shields/United States/NE");
@@ -2288,6 +3193,33 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       categories: ["United States"],
     });
     
+    /* NV */
+    ensureShield({
+      value: "NV",
+      label: "Nevada",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/NV",
+      assetName: "NV",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/NV/NV-2Digit.svg",
+      },
+      legacyVariantAliases: {
+        "3Digit": "2 Digit",
+      },
+      categories: ["United States", "Nevada"],
+    });
+    ensureShield({
+      value: "NVCC",
+      label: "Clark County",
+      variants: ["2 Digit"],
+      assetFolder: "img/shields/United States/NV",
+      assetName: "NVCC",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/NV/NVCC-2Digit.svg",
+      },
+      categories: ["United States", "Nevada"],
+    });
+
     /* NJ */
     ensureDigitShield("NJ", "New Jersey", "img/shields/United States/NJ");
     ensureExactShield("GSP", "Garden State Parkway", "img/shields/United States/NJ/GSP.png");
@@ -2380,6 +3312,61 @@ ShieldElement.prototype.buildBlockShieldList = function () {
         "3Digit": "img/shields/United States/PA/PATP-3Digit.svg",
       },
       categories: ["United States", "Pennsylvania"],
+    });
+
+    /* PR */
+    ensureShield({
+      value: "PR",
+      label: "PR Primary",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/PR",
+      assetName: "PR",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/PR/PR-2Digit.svg",
+        "3Digit": "img/shields/United States/PR/PR-3Digit.svg",
+      },
+      categories: ["United States", "Puerto Rico"],
+    });
+
+    ensureShield({
+      value: "PR2",
+      label: "PR Urban Primary",
+      variants: ["2 Digit", "3 Digit"],
+      assetFolder: "img/shields/United States/PR",
+      assetName: "PR2",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/PR/PR2-2Digit.svg",
+        "3Digit": "img/shields/United States/PR/PR2-3Digit.svg",
+      },
+      categories: ["United States", "Puerto Rico"],
+    });
+
+    ensureShield({
+      value: "PR3",
+      label: "PR Secondary",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+      assetFolder: "img/shields/United States/PR",
+      assetName: "PR3",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/PR/PR3-2Digit.svg",
+        "3Digit": "img/shields/United States/PR/PR3-3Digit.svg",
+        "4Digit": "img/shields/United States/PR/PR3-3Digit.svg",
+      },
+      categories: ["United States", "Puerto Rico"],
+    });
+
+    ensureShield({
+      value: "PR4",
+      label: "PR Tertiary",
+      variants: ["2 Digit", "3 Digit", "4 Digit"],
+      assetFolder: "img/shields/United States/PR",
+      assetName: "PR4",
+      assetPathByVariant: {
+        "2Digit": "img/shields/United States/PR/PR4-2Digit.svg",
+        "3Digit": "img/shields/United States/PR/PR4-3Digit.svg",
+        "4Digit": "img/shields/United States/PR/PR4-3Digit.svg",
+      },
+      categories: ["United States", "Puerto Rico"],
     });
     
     /* TX */
@@ -2509,7 +3496,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "TCH",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/TCH-2Digit.svg",
-        "3Digit": "img/shields/Canada/TCH-3Digit.svg",
+        "3Digit": "img/shields/Canada/TCH-2Digit.svg",
       },
       categories: ["Canada"],
     });
@@ -2535,7 +3522,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "AB",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/AB/AB-2Digit.svg",
-        "3Digit": "img/shields/Canada/AB/AB-3Digit.svg",
+        "3Digit": "img/shields/Canada/AB/AB-2Digit.svg",
       },
       categories: ["Canada", "Alberta"],
     });
@@ -2548,7 +3535,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "AB2",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/AB/AB2-2Digit.svg",
-        "3Digit": "img/shields/Canada/AB/AB2-3Digit.svg",
+        "3Digit": "img/shields/Canada/AB/AB2-2Digit.svg",
       },
       categories: ["Canada", "Alberta"],
     });
@@ -2561,7 +3548,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "ABTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/AB/ABTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/AB/ABTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/AB/ABTC-2Digit.svg",
       },
       categories: ["Canada", "Alberta"],
     });
@@ -2575,7 +3562,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "BC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/BC/BC-2Digit.svg",
-        "3Digit": "img/shields/Canada/BC/BC-3Digit.svg",
+        "3Digit": "img/shields/Canada/BC/BC-2Digit.svg",
       },
       categories: ["Canada", "British Columbia"],
     });
@@ -2588,7 +3575,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "BCYH",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/BC/BCYH-2Digit.svg",
-        "3Digit": "img/shields/Canada/BC/BCYH-3Digit.svg",
+        "3Digit": "img/shields/Canada/BC/BCYH-2Digit.svg",
       },
       categories: ["Canada", "British Columbia"],
     });
@@ -2601,7 +3588,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "BCTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/BC/BCTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/BC/BCTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/BC/BCTC-2Digit.svg",
       },
       categories: ["Canada", "British Columbia"],
     });
@@ -2615,7 +3602,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "MB",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/MB/MB-2Digit.svg",
-        "3Digit": "img/shields/Canada/MB/MB-3Digit.svg",
+        "3Digit": "img/shields/Canada/MB/MB-2Digit.svg",
       },
       categories: ["Canada", "Manitoba"],
     });
@@ -2628,7 +3615,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "MB2",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/MB/MB2-2Digit.svg",
-        "3Digit": "img/shields/Canada/MB/MB2-3Digit.svg",
+        "3Digit": "img/shields/Canada/MB/MB2-2Digit.svg",
       },
       categories: ["Canada", "Manitoba"],
     });
@@ -2641,7 +3628,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "MBTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/MB/MBTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/MB/MBTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/MB/MBTC-2Digit.svg",
       },
       categories: ["Canada", "Manitoba"],
     });
@@ -2655,7 +3642,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NB",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NB/NB-2Digit.svg",
-        "3Digit": "img/shields/Canada/NB/NB-3Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NB-2Digit.svg",
       },
       categories: ["Canada", "New Brunswick"],
     });
@@ -2668,7 +3655,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NBCONN",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NB/NBCONN-2Digit.svg",
-        "3Digit": "img/shields/Canada/NB/NBCONN-3Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NBCONN-2Digit.svg",
       },
       categories: ["Canada", "New Brunswick"],
     });
@@ -2681,7 +3668,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NBLOCAL",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NB/NBLOCAL-2Digit.svg",
-        "3Digit": "img/shields/Canada/NB/NBLOCAL-3Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NBLOCAL-2Digit.svg",
       },
       categories: ["Canada", "New Brunswick"],
     });
@@ -2694,7 +3681,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NBTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NB/NBTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/NB/NBTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/NB/NBTC-2Digit.svg",
       },
       categories: ["Canada", "New Brunswick"],
     });
@@ -2721,7 +3708,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NLTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NL/NLTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/NL/NLTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/NL/NLTC-2Digit.svg",
       },
       categories: ["Canada", "Newfoundland and Labrador"],
     });
@@ -2748,7 +3735,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NSCONN",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NS/NSCONN-2Digit.svg",
-        "3Digit": "img/shields/Canada/NS/NSCONN-3Digit.svg",
+        "3Digit": "img/shields/Canada/NS/NSCONN-2Digit.svg",
       },
       categories: ["Canada", "Nova Scotia"],
     });
@@ -2761,7 +3748,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "NSTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/NS/NSTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/NS/NSTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/NS/NSTC-2Digit.svg",
       },
       categories: ["Canada", "Nova Scotia"],
     });
@@ -2777,6 +3764,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
         "2Digit": "img/shields/Canada/ON/ON-2Digit.svg",
         "3Digit": "img/shields/Canada/ON/ON-3Digit.svg",
       },
+      internalScale: 1.2,
       categories: ["Canada", "Ontario"],
     });
 
@@ -2788,7 +3776,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "ON2",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/ON/ON2-2Digit.svg",
-        "3Digit": "img/shields/Canada/ON/ON2-3Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ON2-2Digit.svg",
       },
       categories: ["Canada", "Ontario"],
     });
@@ -2802,7 +3790,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       className: "ON3",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/ON/ON3-2Digit.svg",
-        "3Digit": "img/shields/Canada/ON/ON3-3Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ON3-2Digit.svg",
       },
       categories: ["Canada", "Ontario"],
       county: false,
@@ -2819,7 +3807,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "ONTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/ON/ONTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/ON/ONTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/ON/ONTC-2Digit.svg",
       },
       categories: ["Canada", "Ontario"],
     });
@@ -2865,7 +3853,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "QC2",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/QC/QC2-2Digit.svg",
-        "3Digit": "img/shields/Canada/QC/QC2-3Digit.svg",
+        "3Digit": "img/shields/Canada/QC/QC2-2Digit.svg",
       },
       categories: ["Canada", "Quebec"],
     });
@@ -2878,7 +3866,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "QCTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/QC/QCTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/QC/QCTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/QC/QCTC-2Digit.svg",
       },
       categories: ["Canada", "Quebec"],
     });
@@ -2892,7 +3880,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "SK",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/SK/SK-2Digit.svg",
-        "3Digit": "img/shields/Canada/SK/SK-3Digit.svg",
+        "3Digit": "img/shields/Canada/SK/SK-2Digit.svg",
       },
       categories: ["Canada", "Saskatchewan"],
     });
@@ -2905,7 +3893,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "SK2",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/SK/SK2-2Digit.svg",
-        "3Digit": "img/shields/Canada/SK/SK2-3Digit.svg",
+        "3Digit": "img/shields/Canada/SK/SK2-2Digit.svg",
       },
       categories: ["Canada", "Saskatchewan"],
     });
@@ -2918,7 +3906,7 @@ ShieldElement.prototype.buildBlockShieldList = function () {
       assetName: "SKTC",
       assetPathByVariant: {
         "2Digit": "img/shields/Canada/SK/SKTC-2Digit.svg",
-        "3Digit": "img/shields/Canada/SK/SKTC-3Digit.svg",
+        "3Digit": "img/shields/Canada/SK/SKTC-2Digit.svg",
       },
       categories: ["Canada", "Saskatchewan"],
     });
@@ -3118,14 +4106,51 @@ ShieldElement.prototype.getBannerDisplayInfo = function (value) {
     ? ""
     : displayValue.toUpperCase().replace(/\s+/g, " ").trim();
 
+  const yellowPlaqueValues = new Set([
+    "TOLL",
+    "TOLLWAY",
+    "TURNPIKE",
+    "TOLL ROAD",
+  ]);
+  const whitePlaqueValues = new Set([
+    "TRUCKS",
+    "NO TRUCKS",
+    "HAZMATS",
+    "NO HAZMATS",
+  ]);
+  const orangePlaqueValues = new Set(["DETOUR"]);
+
+  const isTollPlaque = yellowPlaqueValues.has(normalizedValue);
+  const isTruckPlaque = whitePlaqueValues.has(normalizedValue);
+  const isDetourPlaque = orangePlaqueValues.has(normalizedValue);
+  const isSpecialPlaque = isTollPlaque || isTruckPlaque || isDetourPlaque;
+  const specialPlaqueKind = isTollPlaque
+    ? "yellow"
+    : isTruckPlaque
+      ? "white"
+      : isDetourPlaque
+        ? "orange"
+        : "";
+  const automaticBackgroundColor = isTollPlaque
+    ? "Yellow"
+    : isTruckPlaque
+      ? "White"
+      : isDetourPlaque
+        ? "Orange"
+        : "";
+
   return {
     rawValue,
     displayValue,
     normalizedValue,
     quoted,
     isBlankPlaceholder,
-    isTollPlaque: normalizedValue === "TOLL",
-    isTruckPlaque: normalizedValue === "TRUCKS" || normalizedValue === "NO TRUCKS",
+    isTollPlaque,
+    isTruckPlaque,
+    isDetourPlaque,
+    isSpecialPlaque,
+    specialPlaqueKind,
+    automaticBackgroundColor,
   };
 };
 
@@ -3133,7 +4158,7 @@ ShieldElement.prototype.hasBannerValue = function (value) {
   const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(value);
   return (
     bannerInfo.isBlankPlaceholder ||
-    (bannerInfo.displayValue !== "" && bannerInfo.normalizedValue !== "NONE")
+    bannerInfo.displayValue !== ""
   );
 };
 
@@ -3153,6 +4178,9 @@ ShieldElement.prototype.getMergeableAboveBanner = function (
       bannerClass: "bannerA",
       indentFirstLetter: shield.indentFirstLetter,
       smallCaps: shield.smallCaps,
+      fontSize: shield.bannerFontSize1,
+      bannerFontFamily: shield.bannerFontFamily1,
+      backgroundColor: shield.bannerBackgroundColor1,
     },
     {
       value: shield.bannerType2,
@@ -3164,6 +4192,9 @@ ShieldElement.prototype.getMergeableAboveBanner = function (
           : shield.indentFirstLetter,
       smallCaps:
         shield.smallCaps2 !== undefined ? shield.smallCaps2 : shield.smallCaps,
+      fontSize: shield.bannerFontSize2,
+      bannerFontFamily: shield.bannerFontFamily2,
+      backgroundColor: shield.bannerBackgroundColor2,
     },
   ].filter(
     (candidate) =>
@@ -3199,8 +4230,7 @@ ShieldElement.prototype.getMergeableAboveBanner = function (
   if (
     info.quoted ||
     info.isBlankPlaceholder ||
-    !info.displayValue ||
-    info.normalizedValue === "NONE"
+    !info.displayValue
   ) {
     return null;
   }
@@ -3208,11 +4238,22 @@ ShieldElement.prototype.getMergeableAboveBanner = function (
   return {
     text: info.displayValue,
     bannerClass: candidate.bannerClass,
-    indentFirstLetter: candidate.indentFirstLetter !== false,
+    indentFirstLetter:
+      info.isSpecialPlaque
+        ? false
+        : candidate.indentFirstLetter !== false,
     smallCaps: candidate.smallCaps !== false,
-    fontSizeCss: ShieldElement.prototype.getFontSizeCss(shield.fontSize),
+    fontSizeCss: ShieldElement.prototype.getFontSizeCss(
+      ShieldElement.prototype.normalizeFontSize(candidate.fontSize, shield.fontSize)
+    ),
     bannerFontFamily: ShieldElement.prototype.normalizeBannerFontFamily(
-      shield.bannerFontFamily
+      candidate.bannerFontFamily || shield.bannerFontFamily
+    ),
+    backgroundColor: ShieldElement.prototype.normalizeBannerBackgroundColor(
+      candidate.backgroundColor
+    ),
+    bannerLetterSpacing: ShieldElement.prototype.normalizeBannerLetterSpacing(
+      shield.bannerLetterSpacing
     ),
     bannerScale: Number.isFinite(Number(bannerScale)) ? Number(bannerScale) : 1,
     panelColor:
@@ -3221,11 +4262,7 @@ ShieldElement.prototype.getMergeableAboveBanner = function (
       panel?.backgroundColor ||
       panel?.panelColor ||
       "Green",
-    plaqueKind: info.isTollPlaque
-      ? "toll"
-      : info.isTruckPlaque
-        ? "truck"
-        : "plain",
+    plaqueKind: info.isSpecialPlaque ? info.specialPlaqueKind : "plain",
   };
 };
 
@@ -3236,7 +4273,9 @@ ShieldElement.prototype.createBannerElement = function (
   indentFirstLetter,
   bannerFontFamily,
   smallCaps = true,
-  panel = null
+  panel = null,
+  bannerLetterSpacing = 0,
+  bannerBackgroundColor = "Inherit"
 ) {
   const bannerEl = document.createElement("p");
   const shouldIndent = indentFirstLetter !== false;
@@ -3257,6 +4296,14 @@ ShieldElement.prototype.createBannerElement = function (
     bannerEl.style.fontFamily = `"${renderedFont}"`;
   }
 
+  const normalizedBannerLetterSpacing = applyBetweenCharacterLetterSpacing(
+    bannerEl,
+    bannerLetterSpacing
+  );
+  if (Math.abs(normalizedBannerLetterSpacing) > 0.0001) {
+    bannerEl.style.letterSpacing = "var(--betweenLetterSpacing)";
+  }
+
   const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
   const normalizedBannerValue = bannerInfo.displayValue;
 
@@ -3268,13 +4315,32 @@ ShieldElement.prototype.createBannerElement = function (
     .split(/\s+/)
     .includes("bannerRoadName");
 
-  if (!bannerInfo.quoted && bannerInfo.isTollPlaque) {
-    bannerEl.classList.add("TOLL", "yellowElmt", "noIndent");
+  const isSpecialPlaqueBanner =
+    !isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isSpecialPlaque;
+
+  if (isSpecialPlaqueBanner) {
+    bannerEl.classList.add("specialShieldPlaque", "noIndent");
   }
 
-  if (!bannerInfo.quoted && bannerInfo.isTruckPlaque) {
-    bannerEl.classList.add("truckPlaque", "whiteElmt", "noIndent");
+  if (isSpecialPlaqueBanner && bannerInfo.isTollPlaque) {
+    // Keep the historical TOLL class for all automatic yellow plaques so they
+    // inherit the exact same sizing and positioning rules as the original TOLL build.
+    bannerEl.classList.add("TOLL", "yellowElmt");
   }
+
+  if (isSpecialPlaqueBanner && bannerInfo.isTruckPlaque) {
+    bannerEl.classList.add("truckPlaque", "whiteElmt");
+  }
+
+  if (isSpecialPlaqueBanner && bannerInfo.isDetourPlaque) {
+    bannerEl.classList.add("detourPlaque", "orangeElmt");
+  }
+
+  ShieldElement.prototype.applyBannerBackgroundColor(
+    bannerEl,
+    bannerBackgroundColor,
+    panel
+  );
 
   if (isRoadNameBanner && /\\n|\n/.test(normalizedBannerValue)) {
     bannerEl.classList.add("multilineRoadName");
@@ -3286,7 +4352,7 @@ ShieldElement.prototype.createBannerElement = function (
 
   bannerEl.textContent = bannerInfo.isBlankPlaceholder
     ? "W"
-    : normalizedBannerValue && bannerInfo.normalizedValue !== "NONE"
+    : normalizedBannerValue
       ? displayBannerValue
       : " ";
 
@@ -3314,7 +4380,8 @@ ShieldElement.prototype.createStackedBannerSlot = function (
   indentFirstLetter,
   bannerFontFamily,
   smallCaps = true,
-  panel = null
+  panel = null,
+  bannerLetterSpacing = 0
 ) {
   const normalizedPosition = ShieldElement.prototype.normalizeBannerPosition(
     position
@@ -3356,13 +4423,27 @@ ShieldElement.prototype.createStackedBannerSlot = function (
   }
 
   const hasTollBanner = banners.some((banner) => {
+    if (banner?.isRoadName === true || String(banner?.bannerClass || "").split(/\s+/).includes("bannerRoadName")) {
+      return false;
+    }
     const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
     return !bannerInfo.quoted && bannerInfo.isTollPlaque;
   });
 
   const hasTruckBanner = banners.some((banner) => {
+    if (banner?.isRoadName === true || String(banner?.bannerClass || "").split(/\s+/).includes("bannerRoadName")) {
+      return false;
+    }
     const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
     return !bannerInfo.quoted && bannerInfo.isTruckPlaque;
+  });
+
+  const hasDetourBanner = banners.some((banner) => {
+    if (banner?.isRoadName === true || String(banner?.bannerClass || "").split(/\s+/).includes("bannerRoadName")) {
+      return false;
+    }
+    const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
+    return !bannerInfo.quoted && bannerInfo.isDetourPlaque;
   });
 
   if (hasTollBanner) {
@@ -3371,6 +4452,10 @@ ShieldElement.prototype.createStackedBannerSlot = function (
 
   if (hasTruckBanner) {
     container.classList.add("truckStackedBanner");
+  }
+
+  if (hasDetourBanner) {
+    container.classList.add("detourStackedBanner");
   }
 
   const isSidePosition =
@@ -3399,8 +4484,7 @@ ShieldElement.prototype.createStackedBannerSlot = function (
     return (
       !isRoadName &&
       bannerIndent !== false &&
-      !bannerInfo.isTollPlaque &&
-      !bannerInfo.isTruckPlaque
+      !bannerInfo.isSpecialPlaque
     );
   });
 
@@ -3411,6 +4495,7 @@ ShieldElement.prototype.createStackedBannerSlot = function (
     !isBilingualDirectionBanner &&
     !hasTollBanner &&
     !hasTruckBanner &&
+    !hasDetourBanner &&
     hasPlainEnlargedBanner
   ) {
     container.classList.add("plainEnlargedSideBannerStack");
@@ -3423,6 +4508,10 @@ ShieldElement.prototype.createStackedBannerSlot = function (
       containerClass,
       indentFirstLetter: bannerSpecificIndent,
       smallCaps: bannerSpecificSmallCaps,
+      bannerLetterSpacing: bannerSpecificLetterSpacing,
+      bannerFontFamily: bannerSpecificFontFamily,
+      fontSizeCss: bannerSpecificFontSizeCss,
+      backgroundColor: bannerSpecificBackgroundColor,
       isMultilineRoadName,
     }) => {
       if (containerClass) {
@@ -3442,11 +4531,15 @@ ShieldElement.prototype.createStackedBannerSlot = function (
       const bannerEl = ShieldElement.prototype.createBannerElement(
         bannerClass,
         bannerValue,
-        fontSizeCss,
+        bannerSpecificFontSizeCss || fontSizeCss,
         bannerIndent,
-        bannerFontFamily,
+        bannerSpecificFontFamily || bannerFontFamily,
         bannerSmallCaps,
-        panel
+        panel,
+        typeof bannerSpecificLetterSpacing === "number"
+          ? bannerSpecificLetterSpacing
+          : bannerLetterSpacing,
+        bannerSpecificBackgroundColor
       );
 
       if (isMultilineRoadName) {
@@ -3470,7 +4563,9 @@ ShieldElement.prototype.createBannerContainer = function (
   isSecond,
   position,
   smallCaps = true,
-  panel = null
+  panel = null,
+  bannerLetterSpacing = 0,
+  bannerBackgroundColor = "Inherit"
 ) {
   const container = document.createElement("div");
   container.className = containerClass;
@@ -3501,13 +4596,20 @@ ShieldElement.prototype.createBannerContainer = function (
   }
 
   const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
+  const isRoadNameBanner = String(bannerClass || "")
+    .split(/\s+/)
+    .includes("bannerRoadName");
 
-  if (!bannerInfo.quoted && bannerInfo.isTollPlaque) {
+  if (!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isTollPlaque) {
     container.classList.add("tollBannerSlot");
   }
 
-  if (!bannerInfo.quoted && bannerInfo.isTruckPlaque) {
+  if (!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isTruckPlaque) {
     container.classList.add("truckBannerSlot");
+  }
+
+  if (!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isDetourPlaque) {
+    container.classList.add("detourBannerSlot");
   }
 
   const bannerEl = ShieldElement.prototype.createBannerElement(
@@ -3517,7 +4619,9 @@ ShieldElement.prototype.createBannerContainer = function (
     indentFirstLetter,
     bannerFontFamily,
     smallCaps,
-    panel
+    panel,
+    bannerLetterSpacing,
+    bannerBackgroundColor
   );
 
   container.appendChild(bannerEl);
@@ -3549,11 +4653,69 @@ ShieldElement.prototype.resolveBlockVariant = function (
     if (allowed.includes(normalized)) {
       return normalized;
     }
+
+    const legacyVariantKey =
+      ShieldElement.prototype.formatVariantKey(normalized);
+    const migratedVariant =
+      ShieldElement.prototype.resolveLegacyVariantAlias(
+        config?.legacyVariantAliases?.[legacyVariantKey],
+        routeNumber
+      );
+    if (migratedVariant && allowed.includes(migratedVariant)) {
+      return migratedVariant;
+    }
+
     return allowed[0] || normalized;
   }
   const fallback = allowed[0] || ShieldElement.prototype.defaultVariant;
   const inferred = ShieldElement.prototype.getVariantFromRoute(routeNumber, config);
   return allowed.includes(inferred) ? inferred : fallback;
+};
+
+ShieldElement.prototype.migrateLegacyBlockVariant = function (
+  desiredVariant,
+  routeNumber,
+  config
+) {
+  if (typeof desiredVariant !== "string") {
+    return desiredVariant;
+  }
+
+  const requested = desiredVariant.trim();
+  const allowed = config?.variants || [];
+  if (
+    !requested ||
+    requested.toLowerCase() === "auto" ||
+    allowed.includes(requested)
+  ) {
+    return desiredVariant;
+  }
+
+  const legacyKey = ShieldElement.prototype.formatVariantKey(requested);
+  const migrated = ShieldElement.prototype.resolveLegacyVariantAlias(
+    config?.legacyVariantAliases?.[legacyKey],
+    routeNumber
+  );
+
+  return migrated && allowed.includes(migrated)
+    ? migrated
+    : desiredVariant;
+};
+
+ShieldElement.prototype.resolveLegacyVariantAlias = function (
+  alias,
+  routeNumber
+) {
+  if (typeof alias === "string") {
+    return alias;
+  }
+  if (!alias || typeof alias !== "object") {
+    return null;
+  }
+
+  return ShieldElement.prototype.getRouteCharacterCount(routeNumber) >= 3
+    ? alias.threeOrMore
+    : alias.oneToTwo;
 };
 
 ShieldElement.prototype.getRouteCharacterCount = function (routeNumber) {
@@ -3568,6 +4730,19 @@ ShieldElement.prototype.getRouteCharacterCount = function (routeNumber) {
   } catch (error) {
     return (raw.match(/[A-Za-z0-9]/g) || []).length;
   }
+};
+
+ShieldElement.prototype.limitRouteCharacters = function (
+  routeNumber,
+  config
+) {
+  const normalizedRoute = String(routeNumber ?? "").trim();
+  const maximumCharacters = Math.trunc(Number(config?.maxRouteCharacters));
+  if (!(maximumCharacters > 0)) {
+    return normalizedRoute;
+  }
+
+  return Array.from(normalizedRoute).slice(0, maximumCharacters).join("");
 };
 
 ShieldElement.prototype.getRouteSizeClassFromCount = function (count) {
@@ -3593,7 +4768,15 @@ ShieldElement.prototype.getRouteSizeClassFromCount = function (count) {
 };
 
 ShieldElement.prototype.getVariantFromRoute = function (routeNumber, config) {
-  const characterCount = ShieldElement.prototype.getRouteCharacterCount(routeNumber);
+  const characterCount =
+    ShieldElement.prototype.getRouteCharacterCount(routeNumber);
+  const officialAutoVariants = config?.autoVariantByCharacterCount;
+  if (officialAutoVariants) {
+    return characterCount >= 3
+      ? officialAutoVariants.threeOrMore
+      : officialAutoVariants.oneToTwo;
+  }
+
   const supportsFourDigit =
     Array.isArray(config?.variants) && config.variants.includes("4 Digit");
 
@@ -3616,19 +4799,141 @@ ShieldElement.prototype.getImageSizeClass = function (routeNumber) {
   );
 };
 
+ShieldElement.prototype.getShieldArtworkVariantKey = function (
+  config,
+  variantKey
+) {
+  const normalizedCode =
+    ShieldElement.prototype.normalizeShieldCode(
+      config?.value || config?.assetName || ""
+    ).toUpperCase();
+
+  const sharedTwoDigitArtwork = new Set([
+    "C", "AK", "AZLOOP", "CO", "CT", "DC", "HI", "MN", "MNBUS", "MT2", "NC", "NELINK", "NESPUR", "NH", "NM", "NV", "TN", "VA2", "WA", "AB", "AB2", "ABTC", "BC", "BCYH", "BCTC", "MB", "MB2", "MBTC", "NB", "NBCONN", "NBLOCAL", "NBTC", "NLTC", "NSCONN", "NSTC", "ON2", "ON3", "ONTC", "QC2", "QCTC", "SK", "SK2", "SKTC", "TCH", "TCHLEAF"
+  ]);
+
+  if (
+    variantKey === "3Digit" &&
+    sharedTwoDigitArtwork.has(normalizedCode)
+  ) {
+    return "2Digit";
+  }
+
+  return variantKey;
+};
+
+ShieldElement.prototype.getRenderedShieldAssetPath = function (
+  config,
+  variantKey,
+  {
+    shieldBase = "",
+    shieldBacks = false,
+  } = {}
+) {
+  const normalizedShieldCode =
+    ShieldElement.prototype.normalizeShieldCode(
+      shieldBase || config?.value || config?.assetName || ""
+    ).toUpperCase();
+  const supportsShieldBacks =
+    ShieldElement.prototype.supportsShieldBacks(config);
+  const shieldBacksEnabled =
+    supportsShieldBacks && shieldBacks === true;
+
+  const artworkVariantKey =
+    ShieldElement.prototype.getShieldArtworkVariantKey(
+      config,
+      variantKey
+    );
+
+  if (
+    normalizedShieldCode === "US" &&
+    (artworkVariantKey === "2Digit" || artworkVariantKey === "3Digit")
+  ) {
+    const usFolder = "img/shields/United States/US Route";
+    return shieldBacksEnabled
+      ? `${usFolder}/US-back-${artworkVariantKey}.svg`
+      : `${usFolder}/US-${artworkVariantKey}.svg`;
+  }
+
+  if (
+    normalizedShieldCode === "NJ" &&
+    (artworkVariantKey === "2Digit" || artworkVariantKey === "3Digit")
+  ) {
+    return shieldBacksEnabled
+      ? `img/shields/United States/NJ/NJ-${artworkVariantKey}.svg`
+      : `img/shields/United States/DE-${artworkVariantKey}.svg`;
+  }
+
+  return ShieldElement.prototype.getShieldAssetPath(
+    config,
+    artworkVariantKey
+  );
+};
+
 ShieldElement.prototype.getShieldAssetPath = function (config, variantKey) {
-  if (config?.assetPathByVariant && config.assetPathByVariant[variantKey]) {
-    return config.assetPathByVariant[variantKey];
+  const artworkVariantKey =
+    ShieldElement.prototype.getShieldArtworkVariantKey
+      ? ShieldElement.prototype.getShieldArtworkVariantKey(config, variantKey)
+      : variantKey;
+  let path = "";
+
+  if (
+    config?.assetPathByVariant &&
+    config.assetPathByVariant[artworkVariantKey]
+  ) {
+    path = config.assetPathByVariant[artworkVariantKey];
+  } else if (config?.assetPath) {
+    path = config.assetPath;
+  } else {
+    const assetFolder = config?.assetFolder || "img/shields";
+    const assetName = config?.assetName || config?.value || "I";
+    const suffix = artworkVariantKey ? `-${artworkVariantKey}` : "";
+    path = `${assetFolder}/${assetName}${suffix}.svg`;
   }
 
-  if (config?.assetPath) {
-    return config.assetPath;
+  return typeof window.resolveSignMakerAsset === "function"
+    ? window.resolveSignMakerAsset(path)
+    : path;
+};
+
+ShieldElement.prototype.getVariantMetadata = function (
+  config,
+  propertyName,
+  variantKey
+) {
+  const values = config?.[propertyName];
+  if (!values || typeof values !== "object") {
+    return null;
   }
 
-  const assetFolder = config?.assetFolder || "img/shields";
-  const assetName = config?.assetName || config?.value || "I";
-  const suffix = variantKey ? `-${variantKey}` : "";
-  return `${assetFolder}/${assetName}${suffix}.svg`;
+  return values[variantKey] || values.Default || null;
+};
+
+ShieldElement.prototype.usesPresetFloridaRouteNumberCss = function (config) {
+  const normalizedCode = ShieldElement.prototype.normalizeShieldCode(
+    config?.value || config?.assetName || ""
+  ).toUpperCase();
+
+  return ["FL", "FLTOLL", "FLCFX", "FLTP"].includes(
+    normalizedCode
+  );
+};
+
+ShieldElement.prototype.usesV22NumberStyle = function (config) {
+  if (ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)) {
+    return false;
+  }
+
+  return config?.standard === "FDOT" || config?.standard === "CFX";
+};
+
+ShieldElement.prototype.isFixedRouteVariant = function (config, variantKey) {
+  return (
+    Array.isArray(config?.fixedRouteVariants) &&
+    config.fixedRouteVariants
+      .map((variant) => ShieldElement.prototype.formatVariantKey(variant))
+      .includes(variantKey)
+  );
 };
 
 ShieldElement.prototype.isCountyShield = function (config) {
@@ -3636,7 +4941,7 @@ ShieldElement.prototype.isCountyShield = function (config) {
     config?.value || config?.assetName || ""
   );
 
-  return config?.county === true || normalized === "C";
+  return normalized === "C" || config?.preserveCountyText === true;
 };
 
 ShieldElement.prototype.getEffectiveSizeClass = function (routeNumber, variant) {
@@ -4785,6 +6090,15 @@ ArrowElement.prototype.arrows = {
   APL_UP_TURN: { label: "APL Up Turn", src: "img/arrowBlocks/APL_UP_TURN.svg" },
   APL_TURN: { label: "APL Turn", src: "img/arrowBlocks/APL_TURN.svg" },
   APL_DUAL_TURN: { label: "APL Dual Turn", src: "img/arrowBlocks/APL_DUAL_TURN.svg" },
+  APL_UP_CFX: { label: "APL Up CFX", src: (typeof window.resolveSignMakerAsset === "function" ? window.resolveSignMakerAsset("img/arrowBlocks/APL_UP_CFX.svg") : "img/arrowBlocks/APL_UP_CFX.svg") },
+  APL_UP_TURN_CFX: {
+    label: "APL Up Turn CFX",
+    src: (typeof window.resolveSignMakerAsset === "function" ? window.resolveSignMakerAsset("img/arrowBlocks/APL_UP_TURN_CFX.svg") : "img/arrowBlocks/APL_UP_TURN_CFX.svg"),
+  },
+  APL_TURN_CFX: {
+    label: "APL Turn CFX",
+    src: (typeof window.resolveSignMakerAsset === "function" ? window.resolveSignMakerAsset("img/arrowBlocks/APL_TURN_CFX.svg") : "img/arrowBlocks/APL_TURN_CFX.svg"),
+  },
 };
 ArrowElement.prototype.defaultArrow = "TYPE_A";
 ArrowElement.prototype.defaultSize = 1.75;
@@ -5036,12 +6350,32 @@ ShieldElement.prototype.areMergeableAboveBannersEquivalent = function (
     return false;
   }
 
+  const firstIsSpecialPlaque =
+    firstDescriptor.plaqueKind && firstDescriptor.plaqueKind !== "plain";
+  const secondIsSpecialPlaque =
+    secondDescriptor.plaqueKind && secondDescriptor.plaqueKind !== "plain";
+
+  // Automatic special plaques have a dedicated rendered build. If two
+  // adjacent shields use the same one, merge the visible plaque even when
+  // stale editor-only banner settings differ between the shields.
+  if (firstIsSpecialPlaque || secondIsSpecialPlaque) {
+    return (
+      firstIsSpecialPlaque &&
+      secondIsSpecialPlaque &&
+      firstDescriptor.plaqueKind === secondDescriptor.plaqueKind &&
+      firstDescriptor.text === secondDescriptor.text &&
+      firstDescriptor.bannerScale === secondDescriptor.bannerScale
+    );
+  }
+
   return (
     firstDescriptor.text === secondDescriptor.text &&
     firstDescriptor.indentFirstLetter === secondDescriptor.indentFirstLetter &&
     firstDescriptor.smallCaps === secondDescriptor.smallCaps &&
     firstDescriptor.fontSizeCss === secondDescriptor.fontSizeCss &&
     firstDescriptor.bannerFontFamily === secondDescriptor.bannerFontFamily &&
+    firstDescriptor.backgroundColor === secondDescriptor.backgroundColor &&
+    firstDescriptor.bannerLetterSpacing === secondDescriptor.bannerLetterSpacing &&
     firstDescriptor.bannerScale === secondDescriptor.bannerScale &&
     firstDescriptor.panelColor === secondDescriptor.panelColor &&
     firstDescriptor.plaqueKind === secondDescriptor.plaqueKind
@@ -5100,6 +6434,27 @@ ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
   container.classList.add("bE-hasSharedAboveBanners");
 
   mergeRuns.forEach(({ run, descriptor }) => {
+    const runEntries = run.map((shieldElement) => {
+      const shieldDescriptor = shieldElement._mergeableAboveBanner;
+      const sourceBanner = shieldElement.querySelector(
+        `.bannerSlot-above .${shieldDescriptor.bannerClass}`
+      );
+
+      return {
+        shieldElement,
+        sourceBanner,
+      };
+    });
+
+    // Collapse the source banners before this detached row is inserted into the
+    // document. This prevents the individual copies from flashing for one frame
+    // before the shared banner is measured and positioned.
+    runEntries.forEach((entry) => {
+      if (entry.sourceBanner) {
+        entry.sourceBanner.classList.add("bE-sharedAboveBannerSource");
+      }
+    });
+
     const sharedBanner = ShieldElement.prototype.createBannerElement(
       descriptor.bannerClass,
       descriptor.text,
@@ -5107,7 +6462,9 @@ ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
       descriptor.indentFirstLetter,
       descriptor.bannerFontFamily,
       descriptor.smallCaps,
-      { color: descriptor.panelColor }
+      { color: descriptor.panelColor },
+      descriptor.bannerLetterSpacing,
+      descriptor.backgroundColor
     );
 
     sharedBanner.classList.add("bE-sharedAboveBannerText");
@@ -5119,29 +6476,13 @@ ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
     sharedBanner.setAttribute("aria-hidden", "true");
     container.appendChild(sharedBanner);
 
-    const runEntries = run.map((shieldElement) => {
-      const shieldDescriptor = shieldElement._mergeableAboveBanner;
-      const sourceBanner = shieldElement.querySelector(
-        `.bannerSlot-above .${shieldDescriptor.bannerClass}`
-      );
-
-      if (sourceBanner) {
-        sourceBanner.classList.add("bE-sharedAboveBannerSource");
-      }
-
-      return {
-        shieldElement,
-        sourceBanner,
-      };
-    });
-
     let positionFrame = null;
 
     const positionSharedBanner = () => {
       positionFrame = null;
 
       if (!container.isConnected || !sharedBanner.isConnected) {
-        return;
+        return false;
       }
 
       const firstShield =
@@ -5165,7 +6506,7 @@ ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
         !containerRect.width ||
         !sourceRect?.height
       ) {
-        return;
+        return false;
       }
 
       const naturalSpan = Math.max(0, lastRect.right - firstRect.left);
@@ -5218,7 +6559,9 @@ ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
 
       sharedBanner.style.setProperty("left", runCenter + "px", "important");
       sharedBanner.style.setProperty("top", bannerTop + "px", "important");
+
       sharedBanner.style.removeProperty("visibility");
+      return true;
     };
 
     const schedulePosition = () => {
@@ -5229,13 +6572,15 @@ ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
       positionFrame = requestAnimationFrame(positionSharedBanner);
     };
 
+    const positionedImmediately = positionSharedBanner();
+
     if (
       document.fonts &&
       document.fonts.status === "loading" &&
       document.fonts.ready
     ) {
       document.fonts.ready.then(schedulePosition).catch(schedulePosition);
-    } else {
+    } else if (!positionedImmediately) {
       schedulePosition();
     }
   });

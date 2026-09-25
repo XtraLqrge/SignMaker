@@ -113,6 +113,37 @@ const formHandler = (function () {
     };
 
     const runShieldUndoableCommit = (callback) => {
+      /*
+       * A scheduled shield readForm or a still-open banner-text history
+       * transaction can otherwise absorb a picker change. Flush that older
+       * transaction first so the shield/variant change becomes the next undo
+       * entry immediately.
+       */
+      if (sdShieldReadFormFrame) {
+        if (typeof cancelAnimationFrame === "function") {
+          cancelAnimationFrame(sdShieldReadFormFrame);
+        }
+        clearTimeout(sdShieldReadFormFrame);
+        sdShieldReadFormFrame = 0;
+
+        sdShieldReadFormFastPass = true;
+        try {
+          if (typeof readForm === "function") {
+            readForm();
+          }
+        } finally {
+          sdShieldReadFormFastPass = false;
+          sdShieldLiveBannerUndoActive = false;
+        }
+      } else if (
+        sdShieldLiveBannerUndoActive &&
+        exposed &&
+        typeof exposed.endUndoableChange === "function"
+      ) {
+        exposed.endUndoableChange();
+        sdShieldLiveBannerUndoActive = false;
+      }
+
       const canUseUndo =
         exposed && typeof exposed.beginUndoableChange === "function" &&
         typeof exposed.endUndoableChange === "function";
@@ -131,12 +162,806 @@ const formHandler = (function () {
         }
       }
     };
+
+    /* Shield-editor changes can trigger several overlapping change/blur listeners.
+       Coalesce them into one normal readForm pass per frame instead of bypassing
+       the existing form logic. */
+    let sdShieldReadFormFrame = 0;
+    let sdShieldReadFormFastPass = false;
+    let sdShieldLiveBannerUndoActive = false;
+
+    const beginSdShieldLiveBannerUndo = () => {
+      if (
+        sdShieldLiveBannerUndoActive ||
+        !exposed ||
+        typeof exposed.beginUndoableChange !== "function"
+      ) {
+        return;
+      }
+
+      exposed.beginUndoableChange();
+      sdShieldLiveBannerUndoActive = true;
+    };
+
+    const scheduleSdShieldReadForm = () => {
+      if (sdShieldReadFormFrame) {
+        return;
+      }
+
+      const commit = () => {
+        sdShieldReadFormFrame = 0;
+        sdShieldReadFormFastPass = true;
+        try {
+          if (typeof readForm === "function") {
+            readForm();
+          }
+        } finally {
+          sdShieldReadFormFastPass = false;
+          sdShieldLiveBannerUndoActive = false;
+        }
+      };
+
+      if (typeof requestAnimationFrame === "function") {
+        sdShieldReadFormFrame = requestAnimationFrame(commit);
+      } else {
+        sdShieldReadFormFrame = window.setTimeout(commit, 0);
+      }
+    };
     const syncGlobalBlockControls = () => {
       const globalBlockControls = document.getElementById("globalBlockControls");
 
       if (globalBlockControls) {
         globalBlockControls.hidden = true;
       }
+    };
+
+
+    const parseStoredSettingsDefaultsForForm = () => {
+      try {
+        const raw = getStoredItem("signMaker.settingsDefaults");
+        if (!raw) {
+          return {};
+        }
+
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (error) {
+        return {};
+      }
+    };
+
+    const getDefaultManualBannersSetting = () => {
+      const storedDefaults = parseStoredSettingsDefaultsForForm();
+      if (Object.prototype.hasOwnProperty.call(storedDefaults, "settingsDefaultsShieldManualBanners")) {
+        return storedDefaults.settingsDefaultsShieldManualBanners !== false;
+      }
+      return true;
+    };
+
+    const syncSdShieldChoiceButtons = (root = document) => {
+      if (!root || typeof root.querySelectorAll !== "function") {
+        return;
+      }
+
+      root.querySelectorAll("[data-shield-select-target]").forEach((button) => {
+        const target = document.getElementById(button.dataset.shieldSelectTarget || "");
+        const buttonValue = button.dataset.shieldSelectValue || "";
+        const isActive = !!target && String(target.value || "") === buttonValue;
+        button.classList.toggle("activated", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+
+      root.querySelectorAll("[data-shield-checkbox-target]").forEach((button) => {
+        const target = document.getElementById(button.dataset.shieldCheckboxTarget || "");
+        const isToggleButton = button.dataset.shieldCheckboxToggle === "true";
+        const requestedValue = button.dataset.shieldCheckboxValue === "true";
+        const isActive = !!target && (isToggleButton ? !!target.checked : !!target.checked === requestedValue);
+        button.classList.toggle("activated", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+    };
+
+    const getSdShieldControlPropertyName = (target) => {
+      const id = String(target?.id || "");
+      return id.startsWith("sdShield_") ? id.slice("sdShield_".length) : "";
+    };
+
+    const commitSdShieldChoiceButtonValue = (button, root = document) => {
+      const selectTargetId = button.dataset.shieldSelectTarget || "";
+      const checkboxTargetId = button.dataset.shieldCheckboxTarget || "";
+      const target = document.getElementById(selectTargetId || checkboxTargetId);
+
+      if (!target) {
+        return;
+      }
+
+      if (selectTargetId) {
+        target.value = button.dataset.shieldSelectValue || "";
+      } else if (button.dataset.shieldCheckboxToggle === "true") {
+        target.checked = !target.checked;
+      } else {
+        target.checked = button.dataset.shieldCheckboxValue === "true";
+      }
+
+      syncSdShieldChoiceButtons(root);
+
+      const commitDirectly = () => {
+        const currentBlockElem =
+          exposed && typeof exposed.getCurrentBlockElem === "function"
+            ? exposed.getCurrentBlockElem()
+            : null;
+        const propertyName = getSdShieldControlPropertyName(target);
+
+        if (currentBlockElem && propertyName) {
+          currentBlockElem[propertyName] =
+            target.type === "checkbox" ? !!target.checked : target.value;
+
+          if (exposed && typeof exposed.redraw === "function") {
+            exposed.redraw();
+            return;
+          }
+        }
+
+        if (typeof readForm === "function") {
+          readForm();
+        }
+      };
+
+      runShieldUndoableCommit(commitDirectly);
+    };
+
+    const bindSdShieldChoiceButtons = (root = document) => {
+      if (!root || typeof root.querySelectorAll !== "function") {
+        return;
+      }
+
+      const bindButton = (button) => {
+        if (button.dataset.sdShieldChoiceBound === "true") {
+          return;
+        }
+
+        button.dataset.sdShieldChoiceBound = "true";
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          button.dataset.sdShieldPointerCommittedAt = String(performance.now());
+          commitSdShieldChoiceButtonValue(button, root);
+        });
+
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const lastPointerCommit = Number(button.dataset.sdShieldPointerCommittedAt || 0);
+          if (Number.isFinite(lastPointerCommit) && performance.now() - lastPointerCommit < 650) {
+            return;
+          }
+
+          commitSdShieldChoiceButtonValue(button, root);
+        });
+      };
+
+      root.querySelectorAll("[data-shield-select-target]").forEach(bindButton);
+      root.querySelectorAll("[data-shield-checkbox-target]").forEach(bindButton);
+    };
+
+    const applySdShieldBannerScaleToRenderedBlock = (
+      blockElem,
+      scaleWithShield
+    ) => {
+      if (!blockElem || !exposed?.vars) {
+        return false;
+      }
+
+      const panelIndex = exposed.vars.currentlySelectedPanelIndex;
+      const subPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
+      const rowIndex = exposed.vars.currentlySelectedRowIndex;
+      const blockIndex = exposed.vars.currentlySelectedBlockIndex;
+
+      const selector =
+        `.blockElementMaster[data-panel-index="${panelIndex}"]` +
+        `[data-subpanel="${subPanelIndex}"] ` +
+        `.bE-shieldElement[data-sign-row="${rowIndex}"]` +
+        `[data-sign-block="${blockIndex}"]`;
+
+      const rendered = Array.from(document.querySelectorAll(selector));
+      if (!rendered.length) {
+        return false;
+      }
+
+      const requestedScale =
+        ShieldElement.prototype.getShieldScale(blockElem.shieldSize);
+      const nextBannerScale = scaleWithShield ? requestedScale : 1;
+
+      rendered.forEach((element) => {
+        element.style.setProperty(
+          "--requestedShieldScale",
+          String(requestedScale)
+        );
+        element.style.setProperty(
+          "--bannerScale",
+          String(nextBannerScale)
+        );
+      });
+
+      return true;
+    };
+
+    const bindSdShieldScaleBannersCheckbox = () => {
+      const checkbox = document.getElementById(
+        "sdShield_scaleBannersWithShield"
+      );
+
+      if (!checkbox || checkbox.dataset.sdShieldScaleBannerBound === "true") {
+        return;
+      }
+
+      checkbox.dataset.sdShieldScaleBannerBound = "true";
+
+      checkbox.addEventListener("change", () => {
+        const currentBlockElem =
+          exposed && typeof exposed.getCurrentBlockElem === "function"
+            ? exposed.getCurrentBlockElem()
+            : null;
+
+        if (!currentBlockElem) {
+          scheduleSdShieldReadForm();
+          return;
+        }
+
+        runShieldUndoableCommit(() => {
+          currentBlockElem.scaleBannersWithShield = !!checkbox.checked;
+
+          const updatedInPlace =
+            applySdShieldBannerScaleToRenderedBlock(
+              currentBlockElem,
+              currentBlockElem.scaleBannersWithShield
+            );
+
+          if (!updatedInPlace && exposed && typeof exposed.redraw === "function") {
+            exposed.redraw();
+          }
+        });
+      });
+    };
+
+    const bindSdShieldSizeSlider = () => {
+      const slider = document.getElementById("sdShield_shieldSizeSlider");
+      const input = document.getElementById("sdShield_shieldSize");
+
+      if (!slider || !input) {
+        return;
+      }
+
+      const clampSliderValue = (value) => {
+        const parsed = parseFloat(value);
+        if (!Number.isFinite(parsed)) {
+          return 3;
+        }
+        return Math.max(1, Math.min(5, parsed));
+      };
+
+      const syncSliderFromInput = () => {
+        slider.value = String(clampSliderValue(input.value));
+      };
+
+      if (slider.dataset.sdShieldSizeBound !== "true") {
+        slider.dataset.sdShieldSizeBound = "true";
+
+        slider.addEventListener("input", () => {
+          input.value = slider.value;
+        });
+
+        slider.addEventListener("change", () => {
+          input.value = slider.value;
+          scheduleSdShieldReadForm();
+        });
+
+        input.addEventListener("change", syncSliderFromInput);
+        input.addEventListener("blur", syncSliderFromInput);
+      }
+
+      syncSliderFromInput();
+    };
+
+    const setupSdShieldCompactControls = (root = document) => {
+      bindSdShieldChoiceButtons(root);
+      bindSdShieldSizeSlider();
+      syncSdShieldChoiceButtons(root);
+    };
+
+    /* Keep shield banner editing responsive even if an individual control's
+       one-time form listener has already been consumed. */
+    let sdShieldBannerPreviewFrame = 0;
+
+    const scheduleSdShieldBannerPreviewRedraw = () => {
+      if (sdShieldBannerPreviewFrame) {
+        return;
+      }
+
+      const redraw = () => {
+        sdShieldBannerPreviewFrame = 0;
+        if (exposed && typeof exposed.redraw === "function") {
+          exposed.redraw();
+        }
+      };
+
+      if (typeof requestAnimationFrame === "function") {
+        sdShieldBannerPreviewFrame = requestAnimationFrame(redraw);
+      } else {
+        sdShieldBannerPreviewFrame = window.setTimeout(redraw, 0);
+      }
+    };
+
+    const syncLiveSdShieldBannerText = (target) => {
+      const currentBlockElem =
+        exposed && typeof exposed.getCurrentBlockElem === "function"
+          ? exposed.getCurrentBlockElem()
+          : null;
+
+      if (!currentBlockElem || !target) {
+        return false;
+      }
+
+      const manualCheckbox = document.getElementById("sdShield_manualBanners");
+      if (manualCheckbox && !manualCheckbox.checked) {
+        return false;
+      }
+
+      let propertyName = "";
+      if (target.id === "sdShield_bannerCustomText") {
+        propertyName = "bannerType";
+      } else if (target.id === "sdShield_bannerCustomText2") {
+        propertyName = "bannerType2";
+      }
+
+      if (!propertyName) {
+        return false;
+      }
+
+      beginSdShieldLiveBannerUndo();
+
+      const nextValue = String(target.value ?? "");
+      currentBlockElem[propertyName] =
+        nextValue.length > 0
+          ? nextValue
+          : ShieldElement.prototype.defaultBannerType;
+
+      if (typeof syncSdShieldBannerBackgroundColorPickerVisuals === "function") {
+        syncSdShieldBannerBackgroundColorPickerVisuals();
+      }
+
+      scheduleSdShieldBannerPreviewRedraw();
+      return true;
+    };
+
+    const bindSdShieldEditorCommitFallback = () => {
+      if (document.documentElement.dataset.sdShieldCommitFallbackBound === "true") {
+        return;
+      }
+
+      document.documentElement.dataset.sdShieldCommitFallbackBound = "true";
+
+      const commitIds = new Set([
+        "sdShield_bannerType",
+        "sdShield_bannerType2",
+        "sdShield_bannerBackgroundColor1",
+        "sdShield_bannerBackgroundColor2",
+        "sdShield_bannerFontFamily1",
+        "sdShield_bannerFontFamily2",
+        "sdShield_roadNameFontFamily",
+        "sdShield_bannerFontSize1Display",
+        "sdShield_bannerFontSize2Display",
+        "sdShield_roadNameFontSizeDisplay",
+        "sdShield_bannerLetterSpacing",
+        "sdShield_bannerLetterSpacingVal",
+        "sdShield_routeNumber",
+        "sdShield_shieldType",
+        "sdShield_shieldSize",
+        "sdShield_scaleBannersWithShield",
+        "sdShield_to",
+        "sdShield_roadName",
+        "sdShield_countyText",
+      ]);
+
+      const queueCommit = (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        if (
+          target.id === "sdShield_bannerCustomText" ||
+          target.id === "sdShield_bannerCustomText2" ||
+          commitIds.has(target.id)
+        ) {
+          scheduleSdShieldReadForm();
+        }
+      };
+
+      document.addEventListener("change", queueCommit, true);
+      document.addEventListener("blur", queueCommit, true);
+    };
+
+    let blockMarginStepperCommitting = false;
+
+    const bindBlockMarginStepperCommit = () => {
+      const marginInputs = [
+        document.getElementById("sdBlock_topPaddingVal"),
+        document.getElementById("sdBlock_bottomPaddingVal"),
+      ].filter(Boolean);
+
+      const normalizeMarginInputValue = (value, fallback = 0) => {
+        const parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : fallback;
+      };
+
+      const syncSliderFromInput = (input) => {
+        const controlId = String(input.id || "").replace(/Val$/, "");
+        const slider = document.getElementById(controlId);
+        if (!slider) {
+          return;
+        }
+
+        const normalized = normalizeMarginInputValue(input.value, 0);
+        slider.value = Math.max(0, Math.min(3, normalized));
+      };
+
+      const commitInput = (input) => {
+        if (blockMarginStepperCommitting) {
+          return;
+        }
+
+        blockMarginStepperCommitting = true;
+        try {
+          const normalized = normalizeMarginInputValue(input.value, 0);
+          input.value = normalized;
+          syncSliderFromInput(input);
+
+          if (typeof readForm === "function") {
+            readForm();
+          }
+        } finally {
+          setTimeout(() => {
+            blockMarginStepperCommitting = false;
+          }, 0);
+        }
+      };
+
+      marginInputs.forEach((input) => {
+        input.step = "0.1";
+
+        if (input.dataset.blockMarginStepperBound === "true") {
+          return;
+        }
+
+        input.dataset.blockMarginStepperBound = "true";
+
+        ["input", "change"].forEach((eventName) => {
+          input.addEventListener(
+            eventName,
+            (event) => {
+              if (blockMarginStepperCommitting) {
+                return;
+              }
+
+              event.stopImmediatePropagation();
+              syncSliderFromInput(input);
+            },
+            true
+          );
+        });
+
+        input.addEventListener(
+          "keydown",
+          (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              input.blur();
+            }
+          },
+          true
+        );
+
+        input.addEventListener(
+          "blur",
+          (event) => {
+            if (blockMarginStepperCommitting) {
+              return;
+            }
+
+            event.stopImmediatePropagation();
+            commitInput(input);
+          },
+          true
+        );
+      });
+    };
+
+    const isSliderPairedNumberInput = (input) => {
+      if (
+        !input ||
+        String(input.tagName || "").toUpperCase() !== "INPUT" ||
+        String(input.type || "").toLowerCase() !== "number"
+      ) {
+        return false;
+      }
+
+      const shieldEditor = input.closest(
+        '#smSPProperties > [data-property="sdShield"]'
+      );
+      if (!shieldEditor) {
+        return false;
+      }
+
+      const rangeSiblingSelectors = [
+        'input[type="range"] + input[type="number"]',
+        'input[type="range"] ~ input[type="number"]',
+      ];
+      if (rangeSiblingSelectors.some((selector) => input.matches(selector))) {
+        return true;
+      }
+
+      const parent = input.parentElement;
+      if (parent && parent.querySelector('input[type="range"]')) {
+        return true;
+      }
+
+      const inputId = String(input.id || "");
+      if (inputId.endsWith("Val")) {
+        const matchingRange = document.getElementById(inputId.slice(0, -3));
+        return !!matchingRange && String(matchingRange.type || "").toLowerCase() === "range";
+      }
+
+      if (inputId === "sdShield_shieldSize") {
+        const matchingRange = document.getElementById("sdShield_shieldSizeSlider");
+        return !!matchingRange && String(matchingRange.type || "").toLowerCase() === "range";
+      }
+
+      return false;
+    };
+
+    const disableSliderNumberInputSteppers = (root = document) => {
+      if (!root || typeof root.querySelectorAll !== "function") {
+        return;
+      }
+
+      root.querySelectorAll('input[type="number"]').forEach((input) => {
+        if (!isSliderPairedNumberInput(input)) {
+          input.classList.remove("sliderNumberInputNoStepper");
+          return;
+        }
+
+        input.classList.add("sliderNumberInputNoStepper");
+        input.removeAttribute("data-toolTip");
+        input.removeAttribute("data-tooltip");
+        input.removeAttribute("title");
+        delete input.dataset.toolTip;
+        delete input.dataset.tooltip;
+      });
+    };
+
+    const bindSliderNumberInputStepperCleanup = () => {
+      if (document.documentElement.dataset.sliderStepperCleanupBound === "true") {
+        disableSliderNumberInputSteppers(document);
+        return;
+      }
+
+      document.documentElement.dataset.sliderStepperCleanupBound = "true";
+      disableSliderNumberInputSteppers(document);
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+              return;
+            }
+
+            if (isSliderPairedNumberInput(node)) {
+              disableSliderNumberInputSteppers(node.parentElement || document);
+            } else if (typeof node.querySelectorAll === "function") {
+              disableSliderNumberInputSteppers(node);
+            }
+          });
+        });
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    };
+    const isDedupableSelectElement = (selectEl) =>
+      !!(
+        selectEl &&
+        String(selectEl.tagName || "").toUpperCase() === "SELECT" &&
+        selectEl.options
+      );
+
+    const getSelectOptionDedupeKey = (option) => {
+      if (!option) {
+        return "";
+      }
+
+      const value = String(option.value ?? "").trim();
+      const text = String(option.textContent ?? "").trim();
+      return (value || text).toLowerCase();
+    };
+
+    const dedupeSelectOptions = (selectEl) => {
+      if (!isDedupableSelectElement(selectEl)) {
+        return;
+      }
+
+      const currentValue = selectEl.value;
+      const selectedKeys = new Set(
+        Array.from(selectEl.options)
+          .filter((option) => option.selected)
+          .map(getSelectOptionDedupeKey)
+          .filter(Boolean)
+      );
+      const seen = new Map();
+
+      Array.from(selectEl.options).forEach((option) => {
+        const key = getSelectOptionDedupeKey(option);
+
+        if (!key) {
+          return;
+        }
+
+        if (!seen.has(key)) {
+          seen.set(key, option);
+          return;
+        }
+
+        const firstOption = seen.get(key);
+        if (option.selected || selectedKeys.has(key)) {
+          firstOption.selected = true;
+        }
+        option.remove();
+      });
+
+      if (
+        currentValue &&
+        Array.from(selectEl.options).some((option) => option.value === currentValue)
+      ) {
+        selectEl.value = currentValue;
+      }
+    };
+
+    const dedupeAllSelectOptions = (root = document) => {
+      if (!root || typeof root.querySelectorAll !== "function") {
+        return;
+      }
+
+      root.querySelectorAll("select").forEach(dedupeSelectOptions);
+    };
+
+    const scheduleDedupeSelectOptions = (selectEl) => {
+      if (!isDedupableSelectElement(selectEl)) {
+        return;
+      }
+
+      if (selectEl.dataset.selectDedupeQueued === "true") {
+        return;
+      }
+
+      selectEl.dataset.selectDedupeQueued = "true";
+      const run = () => {
+        delete selectEl.dataset.selectDedupeQueued;
+        dedupeSelectOptions(selectEl);
+      };
+
+      if (typeof queueMicrotask === "function") {
+        queueMicrotask(run);
+      } else {
+        setTimeout(run, 0);
+      }
+    };
+
+    const enableSelectOptionDeduplication = () => {
+      if (
+        typeof lib !== "undefined" &&
+        lib &&
+        typeof lib.appendOption === "function" &&
+        lib.appendOption._dedupesSelectOptions !== true
+      ) {
+        const originalAppendOption = lib.appendOption;
+
+        lib.appendOption = function (selectEl, value, options = {}) {
+          if (!isDedupableSelectElement(selectEl)) {
+            return originalAppendOption.call(this, selectEl, value, options);
+          }
+
+          const requestedValue = String(value ?? "");
+          const requestedKey = requestedValue.trim().toLowerCase();
+          const requestedText =
+            options && Object.prototype.hasOwnProperty.call(options, "text")
+              ? String(options.text ?? "")
+              : requestedValue;
+          const existingOption = Array.from(selectEl.options).find((option) => {
+            const optionKey = String(option.value ?? "").trim().toLowerCase();
+            return optionKey && optionKey === requestedKey;
+          });
+
+          if (existingOption) {
+            if (requestedText && existingOption.textContent !== requestedText) {
+              existingOption.textContent = requestedText;
+            }
+            if (options && options.selected === true) {
+              Array.from(selectEl.options).forEach((option) => {
+                option.selected = false;
+              });
+              existingOption.selected = true;
+              selectEl.value = existingOption.value;
+            }
+            dedupeSelectOptions(selectEl);
+            return existingOption;
+          }
+
+          const beforeLength = selectEl.options.length;
+          originalAppendOption.call(this, selectEl, value, options);
+          const appendedOption =
+            selectEl.options.length > beforeLength
+              ? selectEl.options[selectEl.options.length - 1]
+              : null;
+          dedupeSelectOptions(selectEl);
+          return appendedOption;
+        };
+
+        lib.appendOption._dedupesSelectOptions = true;
+      }
+
+      if (document.documentElement.dataset.selectOptionDedupeBound === "true") {
+        return;
+      }
+
+      document.documentElement.dataset.selectOptionDedupeBound = "true";
+
+      const observer = new MutationObserver((mutations) => {
+        const changedSelects = new Set();
+
+        mutations.forEach((mutation) => {
+          if (isDedupableSelectElement(mutation.target)) {
+            changedSelects.add(mutation.target);
+          }
+
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+              return;
+            }
+
+            if (isDedupableSelectElement(node)) {
+              changedSelects.add(node);
+            }
+
+            if (typeof node.querySelectorAll === "function") {
+              node.querySelectorAll("select").forEach((selectEl) => {
+                changedSelects.add(selectEl);
+              });
+            }
+          });
+        });
+
+        changedSelects.forEach(scheduleDedupeSelectOptions);
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+
+      document.addEventListener(
+        "change",
+        (event) => {
+          const selectEl =
+            event.target && typeof event.target.closest === "function"
+              ? event.target.closest("select")
+              : null;
+          scheduleDedupeSelectOptions(selectEl);
+        },
+        true
+      );
     };
     const STORAGE_KEYS = {
         postPosition: "signMaker.postPosition",
@@ -1574,7 +2399,7 @@ const formHandler = (function () {
       label.className = "profilePickerTriggerLabel";
       const caret = document.createElement("span");
       caret.className = "profilePickerTriggerCaret material-symbols-outlined";
-      caret.textContent = "arrow_drop_down";
+      caret.textContent = "keyboard_arrow_down";
       const menu = document.createElement("div");
       menu.className = "profilePickerMenu";
 
@@ -2672,6 +3497,96 @@ const getPostThicknessFallback = () =>
     return !!configBar && configBar.dataset.currentMenu === "subPanelConfig";
   };
 
+  let subpanelHeightSyncFrame = 0;
+
+  const syncSubpanelModalHeight = () => {
+    if (!subpanelMenuIsOpen()) {
+      return;
+    }
+
+    const modal = document.querySelector(".sMModal.subPanelConfig");
+    const content = modal?.querySelector(":scope > .sMModalContent");
+
+    if (!modal || !content || window.getComputedStyle(modal).display === "none") {
+      return;
+    }
+
+    const activeHolder = Array.from(content.children).find((holder) => {
+      const style = window.getComputedStyle(holder);
+      return (
+        !holder.classList.contains("tabHidden") &&
+        style.display !== "none" &&
+        style.visibility !== "hidden"
+      );
+    });
+
+    if (!activeHolder) {
+      return;
+    }
+
+    /* Remove any previous measured height before taking a fresh measurement. */
+    content.style.removeProperty("height");
+    content.style.removeProperty("overflow-y");
+
+    const rootStyle = window.getComputedStyle(document.documentElement);
+    const zoom = Math.max(0.01, parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1);
+    const contentRect = content.getBoundingClientRect();
+    const contentStyle = window.getComputedStyle(content);
+    const paddingBottom = (parseFloat(contentStyle.paddingBottom) || 0) * zoom;
+
+    let visibleBottom = contentRect.top;
+
+    const candidates = [activeHolder, ...activeHolder.querySelectorAll("*")];
+    candidates.forEach((element) => {
+      const style = window.getComputedStyle(element);
+
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        style.position === "fixed" ||
+        element.closest(
+          ".fontPickerMenu, .colorPickerMenu, .colorPickerCustomPanel, .shieldPickerPopover, .profilePickerMenu, dialog"
+        )
+      ) {
+        return;
+      }
+
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        return;
+      }
+
+      if (rect.bottom > visibleBottom) {
+        visibleBottom = rect.bottom;
+      }
+    });
+
+    const desiredScreenHeight = Math.max(0, visibleBottom - contentRect.top + paddingBottom);
+    const availableScreenHeight = Math.max(0, window.innerHeight - contentRect.top - 12);
+    const desiredCssHeight = desiredScreenHeight / zoom;
+    const availableCssHeight = availableScreenHeight / zoom;
+    const needsScroll = desiredCssHeight > availableCssHeight + 1;
+    const targetHeight = Math.max(0, Math.min(desiredCssHeight, availableCssHeight));
+
+    content.style.setProperty("height", `${targetHeight}px`, "important");
+    content.style.setProperty("max-height", `${availableCssHeight}px`, "important");
+    content.style.setProperty("overflow-y", needsScroll ? "auto" : "hidden", "important");
+    content.style.setProperty("overflow-x", "hidden", "important");
+  };
+
+  const scheduleSubpanelModalHeightSync = () => {
+    if (subpanelHeightSyncFrame) {
+      cancelAnimationFrame(subpanelHeightSyncFrame);
+    }
+
+    subpanelHeightSyncFrame = requestAnimationFrame(() => {
+      subpanelHeightSyncFrame = requestAnimationFrame(() => {
+        subpanelHeightSyncFrame = 0;
+        syncSubpanelModalHeight();
+      });
+    });
+  };
+
   const CUSTOM_ICON_VALUE_PREFIX = "CUSTOMICON-";
   let customIconRecords = [];
 
@@ -3065,6 +3980,20 @@ const getPostThicknessFallback = () =>
       Object.values(imageDataByVariant).find(Boolean) ||
       String(record.imageData || "");
 
+    const sourceShieldBase = String(record.sourceShieldBase || "").trim();
+    const usesUploadedImage = record.usesUploadedImage === true;
+    const preserveCountyText =
+      record.preserveCountyText === true &&
+      !usesUploadedImage &&
+      (typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+        ? ShieldElement.prototype.normalizeShieldCode(sourceShieldBase).toUpperCase() === "C"
+        : sourceShieldBase.toUpperCase() === "C");
+    const preserveShieldBacks =
+      !usesUploadedImage &&
+      (typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+        ? ShieldElement.prototype.normalizeShieldCode(sourceShieldBase).toUpperCase() === "C"
+        : sourceShieldBase.toUpperCase() === "C");
+
     return {
       id,
       value,
@@ -3078,6 +4007,10 @@ const getPostThicknessFallback = () =>
       routeStyleByVariant,
       anchor: anchorByVariant[activeVariant] || legacyAnchor,
       anchorByVariant,
+      sourceShieldBase,
+      usesUploadedImage,
+      preserveCountyText,
+      preserveShieldBacks,
       dateCreated: record.dateCreated || new Date().toISOString(),
       dateModified: record.dateModified || record.dateCreated || new Date().toISOString(),
     };
@@ -3168,9 +4101,14 @@ const getPostThicknessFallback = () =>
       assetFolder: "",
       suppressRouteNumber: false,
       categories: ["Custom"],
-      className: `CUSTOMSHIELD customShieldMakerSaved customShieldMaker-${record.id}`,
+      className: `CUSTOMSHIELD customShieldMakerSaved customShieldMaker-${record.id}${
+        record.preserveShieldBacks === true ? " customShieldMakerCountyBackSource" : ""
+      }`,
       customShieldMaker: true,
       customShieldMakerId: record.id,
+      sourceShieldBase: record.sourceShieldBase || "",
+      preserveCountyText: record.preserveCountyText === true,
+      preserveShieldBacks: record.preserveShieldBacks === true,
       customRouteStyle: record.routeStyle,
       customAnchor: record.anchor,
       customRouteStyleByVariant: record.routeStyleByVariant || {},
@@ -5703,6 +6641,84 @@ const getPostThicknessFallback = () =>
       return colorSelect?.value || "Black";
     };
 
+    const clearCustomShieldMakerTemporaryRouteColors = () => {
+      if (!colorSelect) {
+        return;
+      }
+
+      const temporaryOptions = Array.from(colorSelect.options || []).filter(
+        (option) => option.dataset.customShieldMakerTemporaryColor === "true"
+      );
+      const selectedWasTemporary = temporaryOptions.some(
+        (option) => option.value === colorSelect.value
+      );
+
+      temporaryOptions.forEach((option) => option.remove());
+
+      if (selectedWasTemporary) {
+        colorSelect.value = Array.from(colorSelect.options || []).some(
+          (option) => option.value === "Black"
+        )
+          ? "Black"
+          : colorSelect.options?.[0]?.value || "";
+      }
+
+      if (typeof syncAllColorPickers === "function") {
+        syncAllColorPickers();
+      }
+    };
+
+    const ensureCustomShieldMakerTemporaryRouteColor = (value) => {
+      if (!colorSelect) {
+        return String(value || "").trim();
+      }
+
+      const rawValue = String(value || "").trim();
+      const normalizedValue =
+        typeof normalizeCustomCssColorValue === "function"
+          ? normalizeCustomCssColorValue(rawValue)
+          : rawValue;
+      const resolvedValue = normalizedValue || rawValue;
+
+      if (!resolvedValue) {
+        return "";
+      }
+
+      const comparableValue =
+        typeof getCustomColorComparableValue === "function"
+          ? getCustomColorComparableValue(resolvedValue)
+          : resolvedValue.toLowerCase();
+      const existingOption = Array.from(colorSelect.options || []).find((option) => {
+        if (option.value === resolvedValue || option.value === rawValue) {
+          return true;
+        }
+
+        if (!comparableValue || typeof getCustomColorComparableValue !== "function") {
+          return false;
+        }
+
+        return getCustomColorComparableValue(option.value) === comparableValue;
+      });
+
+      if (existingOption) {
+        return existingOption.value;
+      }
+
+      if (
+        typeof isValidCssColorValue === "function" &&
+        !isValidCssColorValue(resolvedValue)
+      ) {
+        return "";
+      }
+
+      const option = document.createElement("option");
+      option.value = resolvedValue;
+      option.textContent = resolvedValue;
+      option.dataset.customShieldMakerTemporaryColor = "true";
+      colorSelect.appendChild(option);
+      return option.value;
+    };
+
     const updateCustomShieldMakerCustomColorControls = () => {
       if (customColorControls) {
         customColorControls.hidden = true;
@@ -5720,8 +6736,9 @@ const getPostThicknessFallback = () =>
     };
 
     const setCustomShieldMakerRouteColorControlValue = (value) => {
-      const normalizedValue = String(value || "Black").trim() || "Black";
-      setSelectValueSafely(colorSelect, normalizedValue, "Black");
+      const rawValue = String(value || "Black").trim() || "Black";
+      const resolvedValue = ensureCustomShieldMakerTemporaryRouteColor(rawValue);
+      setSelectValueSafely(colorSelect, resolvedValue || rawValue, "Black");
       if (typeof syncAllColorPickers === "function") {
         syncAllColorPickers();
       }
@@ -6084,14 +7101,40 @@ const getPostThicknessFallback = () =>
         return;
       }
 
+      const routeCharacters = Array.from(String(routeText || ""));
+      const isDigit = (character) => /^[0-9]$/.test(character || "");
+
       routeNumber.replaceChildren();
 
-      for (const character of Array.from(routeText)) {
+      routeCharacters.forEach((character, index) => {
+        const previousCharacter = routeCharacters[index - 1] || "";
+        const nextCharacter = routeCharacters[index + 1] || "";
+        const classNames = ["routeChar", "customShieldMakerRouteChar"];
+
+        if (/^[0-9A-Za-z]$/.test(character)) {
+          classNames.push(`routeChar-${character.toUpperCase()}`);
+        } else if (character === " ") {
+          classNames.push("routeChar-space");
+        }
+
+        if (isDigit(character) && isDigit(previousCharacter)) {
+          classNames.push("routeChar-hasPreviousDigit");
+        }
+        if (isDigit(character) && isDigit(nextCharacter)) {
+          classNames.push("routeChar-hasNextDigit");
+        }
+        if (character === "3" && previousCharacter === "3") {
+          classNames.push("routeChar-previous3");
+        }
+        if (character === "3" && nextCharacter === "3") {
+          classNames.push("routeChar-next3");
+        }
+
         const characterSpan = document.createElement("span");
-        characterSpan.className = "customShieldMakerRouteChar";
+        characterSpan.className = classNames.join(" ");
         characterSpan.textContent = character === " " ? "\u00A0" : character;
         routeNumber.appendChild(characterSpan);
-      }
+      });
     };
 
     const applyCustomShieldMakerLetterSpacing = (spacingValue) => {
@@ -6309,7 +7352,25 @@ const getPostThicknessFallback = () =>
       const sampleRoute = sampleElement.querySelector(".routeNumber");
 
       if (sampleImg && previewImg) {
-        previewImg.src = sampleImg.currentSrc || sampleImg.src;
+        const sampleImageSource =
+          sampleImg.currentSrc ||
+          sampleImg.getAttribute("src") ||
+          sampleImg.src ||
+          "";
+        const sampleImageFallback =
+          typeof window.getSignMakerAssetFallback === "function"
+            ? window.getSignMakerAssetFallback(sampleImageSource)
+            : null;
+
+        previewImg.src = sampleImageFallback || sampleImageSource;
+
+        if (typeof window.applySignMakerAssetFallback === "function") {
+          window.applySignMakerAssetFallback(
+            previewImg,
+            sampleImageSource
+          );
+        }
+
         previewImg.hidden = false;
       }
 
@@ -6373,9 +7434,15 @@ const getPostThicknessFallback = () =>
 
         const routeFontWeight = parseFloat(computedRoute.fontWeight);
         const colorName = findNamedColorFromComputedColor(computedRoute.color);
+        const computedRouteColor =
+          typeof normalizeCustomCssColorValue === "function"
+            ? normalizeCustomCssColorValue(computedRoute.color)
+            : computedRoute.color;
         const fontName = getFontOptionFromComputedFamily(computedRoute.fontFamily);
 
-        setCustomShieldMakerRouteColorControlValue(colorName || "Black");
+        setCustomShieldMakerRouteColorControlValue(
+          colorName || computedRouteColor || computedRoute.color || "Black"
+        );
         setSelectValueSafely(fontSelect, fontName, "Series D");
 
         if (fontSizeInput) {
@@ -6521,6 +7588,14 @@ const getPostThicknessFallback = () =>
       const renderedSelectedFont = typeof resolveTextFontFamilyForRender === "function"
         ? resolveTextFontFamilyForRender(selectedFont, { backgroundColor: "Blue" }, { color: "Blue" })
         : selectedFont;
+      const normalizedRenderedSelectedFont = String(renderedSelectedFont || "")
+        .replace(/["']/g, "")
+        .trim();
+      const usesSeriesDSpacingFix = normalizedRenderedSelectedFont === "Series D";
+      routeNumber.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
+      document
+        .getElementById("customShieldMakerShieldShell")
+        ?.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
       routeNumber.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
       routeNumber.style.fontSize = previewEmFromDisplayValue(
         fontSizeInput?.value,
@@ -6625,7 +7700,9 @@ const getPostThicknessFallback = () =>
         }
 
         if (colorSelect) {
-          setSelectValueSafely(colorSelect, snapshot.color || "Black", "Black");
+          setCustomShieldMakerRouteColorControlValue(
+            snapshot.color || "Black"
+          );
         }
 
         if (customColorInput) {
@@ -6823,10 +7900,15 @@ const getPostThicknessFallback = () =>
       );
 
       dialog._editingCustomShieldId = normalizedRecord.id;
-      dialog.dataset.customShieldMakerUserUploaded = "true";
+      if (normalizedRecord.usesUploadedImage) {
+        dialog.dataset.customShieldMakerUserUploaded = "true";
+      } else {
+        delete dialog.dataset.customShieldMakerUserUploaded;
+      }
       dialog._customShieldMakerSource = {
         shieldBase: normalizedRecord.value,
         type: normalizedRecord.value,
+        sourceShieldBase: normalizedRecord.sourceShieldBase || "",
         routeNumber: normalizedRecord.routeNumber || routeInput?.value || "",
         alignment: normalizedRecord.routeStyleByVariant?.[activeVariant]?.alignment || "center",
       };
@@ -6887,6 +7969,24 @@ const getPostThicknessFallback = () =>
       const name = String(nameInput?.value || fallbackName).trim() || fallbackName;
       const routeStyleByVariant = {};
       const anchorByVariant = {};
+      const makerSource = dialog._customShieldMakerSource || {};
+      const sourceShieldBase = String(
+        existingRecord?.sourceShieldBase ||
+          makerSource.sourceShieldBase ||
+          makerSource.shieldBase ||
+          makerSource.type ||
+          ""
+      ).trim();
+      const normalizedSourceShieldBase =
+        typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+          ? ShieldElement.prototype.normalizeShieldCode(sourceShieldBase).toUpperCase()
+          : sourceShieldBase.toUpperCase();
+      const usesUploadedImage =
+        dialog.dataset.customShieldMakerUserUploaded === "true";
+      const preserveCountyText =
+        normalizedSourceShieldBase === "C" && !usesUploadedImage;
+      const preserveShieldBacks =
+        normalizedSourceShieldBase === "C" && !usesUploadedImage;
 
       for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
         routeStyleByVariant[variantKey] = normalizeCustomShieldMakerRouteStyle(
@@ -6911,6 +8011,10 @@ const getPostThicknessFallback = () =>
         routeStyleByVariant,
         anchor: anchorByVariant[activeVariant],
         anchorByVariant,
+        sourceShieldBase,
+        usesUploadedImage,
+        preserveCountyText,
+        preserveShieldBacks,
         dateCreated: existingRecord?.dateCreated || now,
         dateModified: now,
       };
@@ -7051,12 +8155,13 @@ const getPostThicknessFallback = () =>
       if (dialog.open) {
         dialog.close();
       } else {
-        dialog.style.display = "none";
+        hideCustomShieldMaker();
       }
     };
 
     const hideCustomShieldMaker = () => {
       dialog.style.display = "none";
+      clearCustomShieldMakerTemporaryRouteColors();
 
       if (holder) {
         const hasOtherOpenDialog = Array.from(holder.querySelectorAll("dialog")).some(
@@ -7267,14 +8372,173 @@ const getPostThicknessFallback = () =>
     updateCustomShieldMakerPreview();
   };
   
+
+    const prepareSdShieldBannerTextInputs = () => {
+      [
+        document.getElementById("sdShield_bannerCustomText"),
+        document.getElementById("sdShield_bannerCustomText2"),
+      ].filter(Boolean).forEach((input) => {
+        input.placeholder = "Banner Text";
+        input.removeAttribute("data-toolTip");
+        input.removeAttribute("data-tooltip");
+        input.removeAttribute("title");
+        delete input.dataset.toolTip;
+        delete input.dataset.tooltip;
+      });
+    };
+
+    const PANEL_PADDING_SIDES = ["Top", "Right", "Bottom", "Left"];
+    const PANEL_PADDING_DEFAULTS = [0.3, 0.75, 0.3, 0.75];
+    const PANEL_PADDING_SLIDER_MIN = -0.5;
+    const PANEL_PADDING_SLIDER_MAX = 1.5;
+    const PANEL_PADDING_SLIDER_STEP = 0.05;
+
+    const getPanelPaddingValues = (paddingValue) => {
+      const parsed = String(paddingValue || "")
+        .trim()
+        .split(/\s+/)
+        .map((part) => parseFloat(part))
+        .filter((value) => Number.isFinite(value));
+
+      if (parsed.length === 1) {
+        return [parsed[0], parsed[0], parsed[0], parsed[0]];
+      }
+      if (parsed.length === 2) {
+        return [parsed[0], parsed[1], parsed[0], parsed[1]];
+      }
+      if (parsed.length === 3) {
+        return [parsed[0], parsed[1], parsed[2], parsed[1]];
+      }
+      if (parsed.length >= 4) {
+        return parsed.slice(0, 4);
+      }
+
+      return [...PANEL_PADDING_DEFAULTS];
+    };
+
+    const getPanelPaddingSliderValue = (value) => {
+      const parsed = Number(value);
+      const safeValue = Number.isFinite(parsed) ? parsed : 0;
+      const clamped = Math.max(
+        PANEL_PADDING_SLIDER_MIN,
+        Math.min(PANEL_PADDING_SLIDER_MAX, safeValue)
+      );
+      const stepIndex = Math.round(
+        (clamped - PANEL_PADDING_SLIDER_MIN) / PANEL_PADDING_SLIDER_STEP
+      );
+      const snapped =
+        PANEL_PADDING_SLIDER_MIN + stepIndex * PANEL_PADDING_SLIDER_STEP;
+
+      return Number(snapped.toFixed(2));
+    };
+
+    const formatPanelPaddingDisplayValue = (value) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return "0.00";
+      }
+
+      const numericText = String(parsed);
+      if (/e/i.test(numericText)) {
+        return parsed.toFixed(2);
+      }
+
+      const decimalIndex = numericText.indexOf(".");
+      if (decimalIndex === -1) {
+        return `${numericText}.00`;
+      }
+
+      const decimalPlaces = numericText.length - decimalIndex - 1;
+      if (decimalPlaces === 1) {
+        return `${numericText}0`;
+      }
+
+      return numericText;
+    };
+
+    const setPanelPaddingControlValue = (side, value) => {
+      const parsed = Number(value);
+      const safeValue = Number.isFinite(parsed) ? parsed : 0;
+      const input = document.getElementById(`padding${side}`);
+      const slider = document.getElementById(`padding${side}Slider`);
+
+      if (input) {
+        input.value = formatPanelPaddingDisplayValue(safeValue);
+      }
+
+      if (slider) {
+        slider.value = getPanelPaddingSliderValue(safeValue).toFixed(2);
+      }
+    };
+
+    const syncPanelPaddingControlsFromSign = (sign) => {
+      const values = getPanelPaddingValues(sign?.padding);
+      PANEL_PADDING_SIDES.forEach((side, index) => {
+        setPanelPaddingControlValue(side, values[index]);
+      });
+    };
+
+    const bindPanelPaddingControls = () => {
+      PANEL_PADDING_SIDES.forEach((side) => {
+        const input = document.getElementById(`padding${side}`);
+        const slider = document.getElementById(`padding${side}Slider`);
+
+        if (!input || !slider || input.dataset.panelPaddingBound === "true") {
+          return;
+        }
+
+        input.dataset.panelPaddingBound = "true";
+        slider.dataset.panelPaddingBound = "true";
+
+        slider.addEventListener("input", () => {
+          const value = Number(slider.value);
+          if (Number.isFinite(value)) {
+            input.value = formatPanelPaddingDisplayValue(value);
+            readForm();
+          }
+        });
+
+        input.addEventListener("input", () => {
+          const value = parseFloat(input.value);
+          if (Number.isFinite(value)) {
+            slider.value = getPanelPaddingSliderValue(value).toFixed(2);
+          }
+        });
+
+        input.addEventListener("blur", () => {
+          const value = parseFloat(input.value);
+          if (!Number.isFinite(value)) {
+            syncPanelPaddingControlsFromSign(exposed?.getCurrentPanel?.()?.sign);
+            return;
+          }
+
+          input.value = formatPanelPaddingDisplayValue(value);
+          slider.value = getPanelPaddingSliderValue(value).toFixed(2);
+          readForm();
+        });
+      });
+    };
+
   const initialize = async (appExposed) => {
     exposed = appExposed;
     post = exposed.getPost();
+    prepareSdShieldBannerTextInputs();
+    enableSelectOptionDeduplication();
+    dedupeAllSelectOptions(document);
     applyStoredPreferences();
     await loadCustomIconRecords();
     await initUI();
+    dedupeAllSelectOptions(document);
     initCustomShieldMaker();
+    dedupeAllSelectOptions(document);
     initializeColorPickers();
+    dedupeAllSelectOptions(document);
+    bindPanelPaddingControls();
+    syncPanelPaddingControlsFromSign(exposed?.getCurrentPanel?.()?.sign);
+    const selectionFlashElmt = document.getElementById("disableFlash");
+    if (selectionFlashElmt) {
+      selectionFlashElmt.checked = post?.disableFlash !== true;
+    }
     bindConfigPositionControls();
     bindKeybindModeButtons(document);
     applyConfigBarPosition(getStoredConfigBarPosition());
@@ -7454,7 +8718,9 @@ const getPostThicknessFallback = () =>
 
     const getFontPickerFamilies = () => {
       const allFonts = Array.isArray(TextElement.prototype.fontFamily)
-        ? TextElement.prototype.fontFamily
+        ? TextElement.prototype.fontFamily.filter(
+            (font, index, fonts) => fonts.indexOf(font) === index
+          )
         : [];
 
       const familyDefs = [
@@ -7596,7 +8862,7 @@ const getPostThicknessFallback = () =>
 
       const triggerCaret = document.createElement("span");
       triggerCaret.className = "fontPickerTriggerCaret";
-      triggerCaret.textContent = "arrow_drop_down";
+      triggerCaret.textContent = "keyboard_arrow_down";
 
       const menu = document.createElement("div");
       menu.className = "fontPickerMenu";
@@ -7646,7 +8912,15 @@ const getPostThicknessFallback = () =>
           ? Math.max(edgePadding, triggerRect.top - rootFontSize * 12)
           : Math.max(edgePadding, triggerRect.bottom + 3);
         const availableBelow = Math.max(0, viewportHeight - preferredTop - edgePadding);
-        const minimumMenuWidth = triggerRect.width;
+        const isInlineShieldBannerFontPicker =
+          selectEl.classList.contains("sdShieldBannerFontSelect");
+        const isInlineShieldRoadNameFontPicker =
+          selectEl.id === "sdShield_roadNameFontFamily";
+        const minimumMenuWidth = isInlineShieldRoadNameFontPicker
+          ? Math.max(triggerRect.width, rootFontSize * 7.25)
+          : isInlineShieldBannerFontPicker
+            ? Math.max(triggerRect.width, rootFontSize * 7.25)
+            : triggerRect.width;
         const menuWidth = Math.min(
           Math.max(triggerRect.width, minimumMenuWidth),
           Math.max(minimumMenuWidth, viewportWidth - edgePadding * 2)
@@ -7846,10 +9120,15 @@ const getPostThicknessFallback = () =>
           label.classList.toggle("hidden", shouldHide);
         }
 
-        render();
-        syncFloatingFontPickerMenuClasses();
+        /* Closed font menus only need their trigger refreshed. Rebuilding every
+           font-family row during each form refresh is much more expensive. */
         if (wrapper.classList.contains("open")) {
+          render();
+          syncFloatingFontPickerMenuClasses();
           positionFloatingFontPickerMenu();
+        } else {
+          updateTrigger();
+          syncFloatingFontPickerMenuClasses();
         }
       };
 
@@ -7941,6 +9220,9 @@ const getPostThicknessFallback = () =>
         "sdCtrlText_fontFamily",
         "sdAdvisory_fontFamily",
         "sdActionMessage_fontFamily",
+        "sdShield_bannerFontFamily1",
+        "sdShield_bannerFontFamily2",
+        "sdShield_roadNameFontFamily",
         "exitTabFontFamily",
       ].forEach((id) => {
         createFontPicker({
@@ -8372,10 +9654,34 @@ const getPostThicknessFallback = () =>
       const lowerValue = rawValue.toLowerCase();
 
       if (lowerValue === "inherit" || lowerValue === "panel color" || lowerValue === "default") {
-        return getCurrentPanelColorForPicker();
+        const effectiveOverride = selectEl?.dataset?.colorPickerEffectiveColor || "";
+        return effectiveOverride || getCurrentPanelColorForPicker();
       }
 
       if (lowerValue === "match bg" || lowerValue === "match background") {
+        if (selectEl?.id === "sdBlock_borderColor") {
+          const blockBackgroundSelect = document.querySelector("#sdBlock_backgroundColor");
+          let blockBackgroundValue = blockBackgroundSelect?.value || "Inherit";
+
+          if (/^(inherit|panel color|default)$/i.test(blockBackgroundValue)) {
+            blockBackgroundValue = getCurrentPanelColorForPicker();
+          }
+
+          const lightBlockBackgrounds = new Set([
+            "orange",
+            "white",
+            "yellow",
+            "fluorescent yellow-green",
+            "fluorescent pink",
+          ]);
+
+          return lightBlockBackgrounds.has(
+            String(blockBackgroundValue || "").trim().toLowerCase()
+          )
+            ? "Black"
+            : "White";
+        }
+
         const siblingBackgroundValue = getSiblingColorSelectValue(selectEl, [
           ["borderColor", "backgroundColor"],
           ["border", "background"],
@@ -8431,25 +9737,45 @@ const getPostThicknessFallback = () =>
       return existingOption;
     };
 
+    const ensureDefaultColorOptionsForSelect = (selectEl) => {
+      if (!selectEl || typeof lib === "undefined" || !lib.colors) {
+        return;
+      }
+
+      const existingColorKeys = new Set(
+        Array.from(selectEl.options || [])
+          .map((option) => getCustomColorComparableValue(option.value || option.textContent))
+          .filter(Boolean)
+      );
+
+      Object.keys(lib.colors).forEach((colorName) => {
+        const colorKey = getCustomColorComparableValue(colorName);
+        if (!colorKey || existingColorKeys.has(colorKey)) {
+          return;
+        }
+
+        const option = document.createElement("option");
+        option.value = colorName;
+        option.textContent = colorName;
+        selectEl.appendChild(option);
+        existingColorKeys.add(colorKey);
+      });
+    };
+
     const ensureCustomColorOptionsForSelect = (selectEl) => {
       if (!isColorSelectElement(selectEl)) {
         return;
       }
 
-      if (!selectEl.options.length && typeof lib !== "undefined" && lib.colors) {
-        Object.keys(lib.colors).forEach((colorName) => {
-          const option = document.createElement("option");
-          option.value = colorName;
-          option.textContent = colorName;
-          selectEl.appendChild(option);
-        });
-      }
+      ensureDefaultColorOptionsForSelect(selectEl);
 
       loadCustomColorRecords()
         .filter((record) => !isDefaultColorValueForCustomPicker(record.value))
         .forEach((record) => {
           ensureNativeColorSelectOption(selectEl, record.value, getCustomColorDisplayName(record));
         });
+
+      dedupeSelectOptions(selectEl);
     };
 
     const ensureCustomColorOptionsForAllColorSelects = (root = document) => {
@@ -8566,6 +9892,62 @@ const getPostThicknessFallback = () =>
       });
     };
 
+    const fitColorPickerTriggerLabelText = (trigger, label) => {
+      if (!trigger || !label) {
+        return;
+      }
+
+      label.style.removeProperty("font-family");
+      label.style.removeProperty("font-size");
+      label.style.setProperty("white-space", "nowrap", "important");
+
+      const availableWidth = label.clientWidth;
+      if (!Number.isFinite(availableWidth) || availableWidth <= 0) {
+        return;
+      }
+
+      const initialStyle = window.getComputedStyle(label);
+      const initialFontSize = parseFloat(initialStyle.fontSize) || 14;
+      const fits = () => label.scrollWidth <= label.clientWidth + 0.5;
+
+      if (fits()) {
+        return;
+      }
+
+      label.style.setProperty(
+        "font-family",
+        '"Inter Tight", "Inter", sans-serif',
+        "important"
+      );
+      if (fits()) {
+        return;
+      }
+
+      const minimumFontSize = Math.min(initialFontSize, 7);
+      let low = minimumFontSize;
+      let high = initialFontSize;
+      let best = minimumFontSize;
+
+      label.style.setProperty("font-size", `${minimumFontSize}px`, "important");
+      if (!fits()) {
+        return;
+      }
+
+      for (let i = 0; i < 12; i += 1) {
+        const midpoint = (low + high) / 2;
+        label.style.setProperty("font-size", `${midpoint}px`, "important");
+
+        if (fits()) {
+          best = midpoint;
+          low = midpoint;
+        } else {
+          high = midpoint;
+        }
+      }
+
+      label.style.setProperty("font-size", `${best}px`, "important");
+    };
+
     const createColorPicker = (selectEl) => {
       if (!isColorSelectElement(selectEl)) {
         return null;
@@ -8586,6 +9968,17 @@ const getPostThicknessFallback = () =>
       trigger.type = "button";
       trigger.className = "colorPickerTrigger";
 
+      const triggerTooltip =
+        selectEl.getAttribute("data-toolTip") ||
+        selectEl.dataset.tooltip ||
+        selectEl.getAttribute("title") ||
+        "";
+      if (triggerTooltip) {
+        trigger.setAttribute("data-toolTip", triggerTooltip);
+        trigger.dataset.tooltip = triggerTooltip;
+        trigger.title = triggerTooltip;
+      }
+
       const triggerIcon = document.createElement("span");
       triggerIcon.className = "colorPickerSwatch colorPickerTriggerSwatch";
 
@@ -8594,7 +9987,7 @@ const getPostThicknessFallback = () =>
 
       const triggerCaret = document.createElement("span");
       triggerCaret.className = "colorPickerTriggerCaret";
-      triggerCaret.textContent = "arrow_drop_down";
+      triggerCaret.textContent = "keyboard_arrow_down";
 
       const menu = document.createElement("div");
       menu.className = "colorPickerMenu";
@@ -8694,6 +10087,11 @@ const getPostThicknessFallback = () =>
       colorPickerFloatingRoot.appendChild(customPanel);
       selectEl.classList.add("colorPickerNativeSelect");
 
+      wrapper.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+
       wrapper._colorPickerSelect = selectEl;
       menu._colorPickerWrapper = wrapper;
       menu._colorPickerSelect = selectEl;
@@ -8761,40 +10159,37 @@ const getPostThicknessFallback = () =>
         const rootFontSize = parseFloat(
           window.getComputedStyle(document.documentElement).fontSize
         ) || 16;
-        const currentOptionForWidth = Array.from(selectEl.options || []).find(
-          (option) => option.value === selectEl.value
-        );
-        const currentLabelForWidth = getOptionLabel(currentOptionForWidth) || selectEl.value || "Color";
         const isCustomShieldMakerColorSelect =
           selectEl.id === "customShieldMakerRouteColor" ||
           !!selectEl.closest("#customShieldMaker");
-        const labelBasedMinimumWidth = isCustomShieldMakerColorSelect
-          ? 0
-          : Math.min(
-              rootFontSize * 14,
-              Math.max(rootFontSize * 9.25, currentLabelForWidth.length * rootFontSize * 0.62 + rootFontSize * 4.25)
-            );
-        const minimumColorPickerWidth = labelBasedMinimumWidth;
         const minimumColorPickerHeight = rootFontSize * 1.45;
         const computedWidth = parseFloat(computed.width);
         const computedMinWidth = parseFloat(computed.minWidth);
         const computedHeight = parseFloat(computed.height);
-        const targetWidth = Math.max(
+
+        const measuredWidth = Math.max(
           Number.isFinite(rect.width) ? rect.width : 0,
           Number.isFinite(computedWidth) ? computedWidth : 0,
-          Number.isFinite(computedMinWidth) ? computedMinWidth : 0,
-          minimumColorPickerWidth
+          Number.isFinite(computedMinWidth) ? computedMinWidth : 0
         );
+        const storedBaseWidth = parseFloat(wrapper.dataset.colorPickerBaseWidth || "");
+        if (!Number.isFinite(storedBaseWidth) && measuredWidth > 0) {
+          wrapper.dataset.colorPickerBaseWidth = String(measuredWidth);
+        }
+
+        const targetWidth = Number.isFinite(storedBaseWidth)
+          ? storedBaseWidth
+          : measuredWidth;
         const targetHeight = Math.max(
           Number.isFinite(rect.height) ? rect.height : 0,
           Number.isFinite(computedHeight) ? computedHeight : 0,
           minimumColorPickerHeight
         );
 
-        wrapper.style.width = targetWidth + "px";
-        wrapper.style.minWidth = isCustomShieldMakerColorSelect
-          ? "0px"
-          : minimumColorPickerWidth + "px";
+        if (targetWidth > 0) {
+          wrapper.style.width = targetWidth + "px";
+          wrapper.style.minWidth = targetWidth + "px";
+        }
         wrapper.style.maxWidth = isCustomShieldMakerColorSelect ? "100%" : "none";
         trigger.style.width = "100%";
         trigger.style.minWidth = "100%";
@@ -8937,6 +10332,32 @@ const getPostThicknessFallback = () =>
         ensureCustomColorOptionsForSelect(selectEl);
         menu.innerHTML = "";
 
+        const standardOptions = Array.from(selectEl.options || []).filter(
+          (option) => option.value && option.dataset.customColor !== "true"
+        );
+        const renderedStandardColorValues = new Set();
+
+        const appendStandardOption = (option) => {
+          if (!option) {
+            return;
+          }
+
+          const comparableValue =
+            getCustomColorComparableValue(option.value) ||
+            String(option.value).toLowerCase();
+          if (renderedStandardColorValues.has(comparableValue)) {
+            return;
+          }
+
+          renderedStandardColorValues.add(comparableValue);
+          menu.appendChild(
+            makeColorButton({
+              value: option.value,
+              label: getOptionLabel(option),
+            })
+          );
+        };
+
         const customColorButton = document.createElement("button");
         customColorButton.type = "button";
         customColorButton.className = "colorPickerItem colorPickerCustomColorButton";
@@ -8948,23 +10369,32 @@ const getPostThicknessFallback = () =>
         });
         menu.appendChild(customColorButton);
 
-        const renderedStandardColorValues = new Set();
-        Array.from(selectEl.options || [])
-          .filter((option) => option.value && option.dataset.customColor !== "true")
-          .forEach((option) => {
-            const comparableValue = getCustomColorComparableValue(option.value) || String(option.value).toLowerCase();
-            if (renderedStandardColorValues.has(comparableValue)) {
-              return;
-            }
+        const isPreferredDefaultColorOption = (option) => {
+          if (!option) {
+            return false;
+          }
 
-            renderedStandardColorValues.add(comparableValue);
-            menu.appendChild(
-              makeColorButton({
-                value: option.value,
-                label: getOptionLabel(option),
-              })
-            );
-          });
+          const value = String(option.value || "").trim().toLowerCase();
+          const label = String(getOptionLabel(option) || "").trim().toLowerCase();
+          const candidates = [value, label];
+
+          return candidates.some((candidate) =>
+            candidate === "inherit" ||
+            candidate === "match bg" ||
+            candidate === "match background" ||
+            candidate === "panel color" ||
+            candidate === "default"
+          );
+        };
+
+        const preferredDefaultOptions = standardOptions.filter(
+          isPreferredDefaultColorOption
+        );
+        preferredDefaultOptions.forEach(appendStandardOption);
+
+        standardOptions
+          .filter((option) => !isPreferredDefaultColorOption(option))
+          .forEach(appendStandardOption);
 
         const records = loadCustomColorRecords().filter((record) => {
           if (isDefaultColorValueForCustomPicker(record.value)) {
@@ -8999,6 +10429,10 @@ const getPostThicknessFallback = () =>
           (option) => option.value === currentValue
         );
         triggerLabel.textContent = getOptionLabel(currentOption) || currentValue || "Color";
+        fitColorPickerTriggerLabelText(trigger, triggerLabel);
+        requestAnimationFrame(() =>
+          fitColorPickerTriggerLabelText(trigger, triggerLabel)
+        );
         const resolvedValue = getColorOptionIconValue(currentValue, selectEl);
         triggerIcon.style.background = resolvedValue || "";
         triggerIcon.classList.toggle("specialColorSwatch", !resolvedValue);
@@ -9133,19 +10567,11 @@ const getPostThicknessFallback = () =>
         }
       };
 
-      let ignoreNextColorPickerClick = false;
-      trigger.addEventListener("pointerdown", (event) => {
-        ignoreNextColorPickerClick = true;
-        toggleColorPickerOpen(event);
+      trigger.addEventListener("mousedown", (event) => {
+        event.preventDefault();
       });
 
       trigger.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (ignoreNextColorPickerClick) {
-          ignoreNextColorPickerClick = false;
-          return;
-        }
         toggleColorPickerOpen(event);
       });
 
@@ -9286,6 +10712,13 @@ const getPostThicknessFallback = () =>
     
     const SHIELD_PICKER_MANUAL_ORDER = {
       
+      "us-florida": [
+        "FL",
+        "FLToll",
+        "FLCFX",
+        "FLTP",
+      ],
+
       "us-georgia": [
         "GA",
         "GAALT",
@@ -9299,6 +10732,11 @@ const getPostThicknessFallback = () =>
         "MA",
         "MATP",
         "MA-PIKE",
+      ],
+
+      "us-nevada": [
+        "NV",
+        "NVCC",
       ],
         
       "us-newjersey": [
@@ -9325,6 +10763,13 @@ const getPostThicknessFallback = () =>
         "PA",
         "PATPLOGO",
         "PATP",
+      ],
+
+      "us-puertorico": [
+        "PR",
+        "PR2",
+        "PR3",
+        "PR4",
       ],
 
       "us-texas": [
@@ -9440,9 +10885,26 @@ const getPostThicknessFallback = () =>
             id: "us-florida",
             label: "Florida",
             children: [
-              { value: "FL", label: "Florida", asset: "img/shields/United States/FL/FL-2Digit.svg" },
-              { value: "FLToll", label: "Florida Toll", asset: "img/shields/United States/FL/FLToll-Current.svg" },
-              { value: "FLTURNPIKE", label: "Florida’s Turnpike", asset: "img/shields/United States/FL/FLTURNPIKE.svg" },
+              {
+                value: "FL",
+                label: "Florida",
+                asset: "img/shields/United States/Florida/FDOT/FL-36-2Digit.svg",
+              },
+              {
+                value: "FLToll",
+                label: "FDOT Toll",
+                asset: "img/shields/United States/Florida/FDOT/TollFDOT-48.svg",
+              },
+              {
+                value: "FLCFX",
+                label: "CFX Toll",
+                asset: "img/shields/United States/Florida/CFX/CFX-48.svg",
+              },
+              {
+                value: "FLTP",
+                label: "Florida's Turnpike",
+                asset: "img/shields/United States/Florida/FDOT/FLTP-48.svg",
+              },
             ],
           },
 
@@ -9506,7 +10968,7 @@ const getPostThicknessFallback = () =>
             ],
           },
 
-          { value: "LA", label: "Louisiana", asset: "img/shields/United States/LA-2Digit.svg" },
+          { value: "LA", label: "Louisiana", asset: "img/shields/United States/LA/LA-2Digit.svg" },
           { value: "ME", label: "Maine", asset: "img/shields/United States/ME/ME-2Digit.svg" },
           { value: "MD", label: "Maryland", asset: "img/shields/United States/MD-2Digit.svg" },
 
@@ -9520,7 +10982,15 @@ const getPostThicknessFallback = () =>
           },
 
           { value: "MI", label: "Michigan", asset: "img/shields/United States/MI-2Digit.svg" },
-          { value: "MN", label: "Minnesota", asset: "img/shields/United States/MN/MN-2Digit.svg" },
+          {
+            id: "us-minnesota",
+            label: "Minnesota",
+            children: [
+              { value: "MN", label: "Minnesota", asset: "img/shields/United States/MN/MN-2Digit.svg" },
+              { value: "MNBUS", label: "Minnesota Business", asset: "img/shields/United States/MN/MNBUS-2Digit.svg" },
+              { value: "MNCo", label: "Minnesota County", asset: "img/shields/United States/MN/MNCo-2Digit.svg" },
+            ],
+          },
           { value: "MS", label: "Mississippi", asset: "img/shields/United States/MS-2Digit.svg" },
           { value: "MO", label: "Missouri", asset: "img/shields/United States/MO-2Digit.svg" },
 
@@ -9543,7 +11013,14 @@ const getPostThicknessFallback = () =>
             ],
           },
 
-          { value: "NV", label: "Nevada", asset: "img/shields/United States/NV-2Digit.svg" },
+          {
+            id: "us-nevada",
+            label: "Nevada",
+            children: [
+              { value: "NV", label: "Nevada", asset: "img/shields/United States/NV/NV-2Digit.svg" },
+              { value: "NVCC", label: "Clark County", asset: "img/shields/United States/NV/NVCC-2Digit.svg" },
+            ],
+          },
           { value: "NH", label: "New Hampshire", asset: "img/shields/United States/NH-2Digit.svg" },
 
           
@@ -9663,12 +11140,11 @@ const getPostThicknessFallback = () =>
           {
             id: "us-puertorico",
             label: "Puerto Rico",
-            disabled: true,
             children: [
-              { value: "PR", label: "Puerto Rico (primary)", disabled: true },
-              { value: "PR-URBAN", label: "Puerto Rico (urban primary)", disabled: true },
-              { value: "PR-SECONDARY", label: "Puerto Rico (secondary)", disabled: true },
-              { value: "PR-TERTIARY", label: "Puerto Rico (tertiary)", disabled: true },
+              { value: "PR", label: "PR Primary", asset: "img/shields/United States/PR/PR-2Digit.svg" },
+              { value: "PR2", label: "PR Urban Primary", asset: "img/shields/United States/PR/PR2-2Digit.svg" },
+              { value: "PR3", label: "PR Secondary", asset: "img/shields/United States/PR/PR3-2Digit.svg" },
+              { value: "PR4", label: "PR Tertiary", asset: "img/shields/United States/PR/PR4-2Digit.svg" },
             ],
           },
 
@@ -9931,6 +11407,7 @@ const getPostThicknessFallback = () =>
           "us-massachusetts",
           "us-maine",
           "us-minnesota",
+          "us-nevada",
           "us-nebraska",
           "us-wisconsin",
         ]);
@@ -9955,8 +11432,8 @@ const getPostThicknessFallback = () =>
         "AZ-LOOP",
         "FL",
         "FLToll",
+        "FLCFX",
         "FLTP",
-        "FL-TURNPIKE",
         "GA",
         "GAALT",
         "GABYP",
@@ -9997,7 +11474,10 @@ const getPostThicknessFallback = () =>
         "ME-TURNPIKE",
         "MN",
         "MNBUS",
+        "MNCo",
         "MN-BUSINESS",
+        "NV",
+        "NVCC",
         "NE",
         "NELINK",
         "NE-LINK",
@@ -10051,13 +11531,30 @@ const getPostThicknessFallback = () =>
           ]),
         category("us-arizona", "Arizona", [
           node("AZ", "Arizona", "img/shields/United States/AZ/AZ-2Digit.svg"),
-          node("AZLOOP", "Arizona Loop", "img/shields/United States/AZ/AZLOOP-3Digit.svg"),
+          node("AZLOOP", "Arizona Loop", "img/shields/United States/AZ/AZLOOP-2Digit.svg"),
         ]),
         
         category("us-florida", "Florida", [
-          node("FL", "Florida", "img/shields/United States/FL/FL-2Digit.svg"),
-          node("FLToll", "Florida Toll", "img/shields/United States/FL/FLToll-Current.svg"),
-          node("FLTP", "Florida’s Turnpike", "img/shields/United States/FL/FLTP.svg"),
+          node(
+            "FL",
+            "Florida",
+            "img/shields/United States/Florida/FDOT/FL-36-2Digit.svg"
+          ),
+          node(
+            "FLToll",
+            "FDOT Toll",
+            "img/shields/United States/Florida/FDOT/TollFDOT-48.svg"
+          ),
+          node(
+            "FLCFX",
+            "CFX Toll",
+            "img/shields/United States/Florida/CFX/CFX-48.svg"
+          ),
+          node(
+            "FLTP",
+            "Florida's Turnpike",
+            "img/shields/United States/Florida/FDOT/FLTP-48.svg"
+          ),
         ]),
 
         category("us-georgia", "Georgia", [
@@ -10108,6 +11605,12 @@ const getPostThicknessFallback = () =>
         category("us-minnesota", "Minnesota", [
           node("MN", "Minnesota", "img/shields/United States/MN/MN-2Digit.svg"),
           node("MNBUS", "Minnesota Business", "img/shields/United States/MN/MNBUS-2Digit.svg"),
+          node("MNCo", "Minnesota County", "img/shields/United States/MN/MNCo-2Digit.svg"),
+        ]),
+
+        category("us-nevada", "Nevada", [
+          node("NV", "Nevada", "img/shields/United States/NV/NV-2Digit.svg"),
+          node("NVCC", "Clark County", "img/shields/United States/NV/NVCC-2Digit.svg"),
         ]),
 
         category("us-nebraska", "Nebraska", [
@@ -10254,19 +11757,81 @@ const getPostThicknessFallback = () =>
       return entry.label;
     };
 
+    const setShieldPickerButtonIcon = (
+      image,
+      requestedPath,
+      finalFallback = SHIELD_DROPDOWN_PLACEHOLDER_ICON
+    ) => {
+      if (!image) {
+        return;
+      }
+
+      const requested = String(requestedPath || "").trim();
+      const bundledFallback =
+        requested &&
+        typeof window.getSignMakerAssetFallback === "function"
+          ? window.getSignMakerAssetFallback(requested)
+          : null;
+
+      image.onerror = null;
+
+      if (bundledFallback) {
+        // Keep the button from flashing the generic placeholder while the
+        // renamed local asset is being checked.
+        image.src = bundledFallback;
+
+        if (requested && !requested.startsWith("data:")) {
+          const probe = new Image();
+          probe.onload = () => {
+            image.src = requested;
+            if (typeof window.applySignMakerAssetFallback === "function") {
+              window.applySignMakerAssetFallback(
+                image,
+                requested,
+                finalFallback
+              );
+            }
+          };
+          probe.src = requested;
+        }
+
+        return;
+      }
+
+      image.src = requested || finalFallback;
+
+      if (typeof window.applySignMakerAssetFallback === "function") {
+        window.applySignMakerAssetFallback(
+          image,
+          requested || image.src,
+          finalFallback
+        );
+      } else {
+        image.onerror = () => {
+          image.onerror = null;
+          image.src = finalFallback;
+        };
+      }
+    };
+
     const buildShieldPickerIconSrc = (entry) => {
+      const resolveAsset = (path) =>
+        typeof window.resolveSignMakerAsset === "function"
+          ? window.resolveSignMakerAsset(path)
+          : path;
+
       if (!entry) {
         return SHIELD_DROPDOWN_PLACEHOLDER_ICON;
       }
 
       if (entry.asset) {
-        return entry.asset;
+        return resolveAsset(entry.asset);
       }
 
       if (Array.isArray(entry.children) && entry.children.length) {
         const firstChildShield = findFirstSelectableShieldEntry(entry.children);
         if (firstChildShield && firstChildShield.asset) {
-          return firstChildShield.asset;
+          return resolveAsset(firstChildShield.asset);
         }
       }
 
@@ -10298,6 +11863,364 @@ const getPostThicknessFallback = () =>
       });
     };
     
+    let activeSubpanelBlockTypePicker = null;
+    let subpanelBlockTypePickerMenu = null;
+    let subpanelBlockTypePickerGlobalEventsBound = false;
+
+    const getSubpanelBlockTypeEntries = () =>
+      Object.entries(Control.prototype.blockElements || {}).map(([value, label]) => ({
+        value,
+        label: String(label || value),
+      }));
+
+    const syncSubpanelStandaloneBlockTypePickerWidth = (wrapper, trigger, label) => {
+      if (!wrapper || !trigger || !label) {
+        return;
+      }
+
+      /* Measure outside the flex button so the current row cannot squeeze the
+         probe and make the picker narrower than its longest option. */
+      const labelStyle = window.getComputedStyle(label);
+      const probe = document.createElement("span");
+      probe.style.position = "fixed";
+      probe.style.left = "-10000px";
+      probe.style.top = "-10000px";
+      probe.style.display = "inline-block";
+      probe.style.visibility = "hidden";
+      probe.style.pointerEvents = "none";
+      probe.style.width = "max-content";
+      probe.style.minWidth = "max-content";
+      probe.style.maxWidth = "none";
+      probe.style.whiteSpace = "nowrap";
+      probe.style.fontFamily = labelStyle.fontFamily;
+      probe.style.fontSize = labelStyle.fontSize;
+      probe.style.fontWeight = labelStyle.fontWeight;
+      probe.style.fontStyle = labelStyle.fontStyle;
+      probe.style.letterSpacing = labelStyle.letterSpacing;
+      probe.style.lineHeight = labelStyle.lineHeight;
+      document.body.appendChild(probe);
+
+      let widestLabel = 0;
+      for (const entry of getSubpanelBlockTypeEntries()) {
+        probe.textContent = entry.label;
+        widestLabel = Math.max(widestLabel, probe.getBoundingClientRect().width);
+      }
+
+      const triggerStyle = window.getComputedStyle(trigger);
+      const paddingLeft = parseFloat(triggerStyle.paddingLeft) || 0;
+      const paddingRight = parseFloat(triggerStyle.paddingRight) || 0;
+      const borderLeft = parseFloat(triggerStyle.borderLeftWidth) || 0;
+      const borderRight = parseFloat(triggerStyle.borderRightWidth) || 0;
+      const targetWidth = Math.ceil(
+        widestLabel + paddingLeft + paddingRight + borderLeft + borderRight + 2
+      );
+
+      probe.remove();
+
+      if (targetWidth > 0) {
+        wrapper.style.setProperty("--block-type-trigger-width", `${targetWidth}px`);
+      }
+    };
+
+    const getSubpanelBlockTypePickerHost = () => document.body;
+
+    const ensureSubpanelBlockTypePickerMenu = () => {
+      if (subpanelBlockTypePickerMenu && subpanelBlockTypePickerMenu.isConnected) {
+        return subpanelBlockTypePickerMenu;
+      }
+
+      const popover = document.createElement("div");
+      popover.id = "subpanelBlockTypePickerMenu";
+      popover.className = "shieldPickerPopover blockTypePickerPopover";
+
+      const list = document.createElement("div");
+      list.className = "blockTypePickerList";
+      popover.appendChild(list);
+
+      popover.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+
+      getSubpanelBlockTypePickerHost().appendChild(popover);
+      subpanelBlockTypePickerMenu = popover;
+      return popover;
+    };
+
+    const placeSubpanelBlockTypePicker = () => {
+      const active = activeSubpanelBlockTypePicker;
+      const popover = subpanelBlockTypePickerMenu;
+
+      if (!active || !popover || !active.anchor?.isConnected) {
+        return;
+      }
+
+      const rect = active.anchor.getBoundingClientRect();
+      const visualScale =
+        parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue("--sm-app-zoom")
+        ) || 1;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const bottomSpace = Math.max(90, viewportHeight - rect.bottom - 12);
+
+      popover.style.position = "fixed";
+      popover.style.width = "max-content";
+      popover.style.minWidth = active.inline ? "0px" : rect.width + "px";
+      popover.style.maxWidth = "calc(100vw - 16px)";
+      popover.style.top = rect.bottom + 2 + "px";
+      popover.style.bottom = "auto";
+      popover.style.maxHeight =
+        Math.max(90, Math.min(620, bottomSpace / visualScale)) + "px";
+
+      const menuWidth = popover.getBoundingClientRect().width || rect.width;
+      const desiredLeft = rect.left;
+      const clampedLeft = Math.min(
+        Math.max(8, desiredLeft),
+        Math.max(8, viewportWidth - menuWidth - 8)
+      );
+      popover.style.left = clampedLeft + "px";
+    };
+
+    const closeSubpanelBlockTypePicker = () => {
+      if (activeSubpanelBlockTypePicker?.wrapper) {
+        activeSubpanelBlockTypePicker.wrapper.classList.remove("open");
+      }
+
+      if (subpanelBlockTypePickerMenu) {
+        subpanelBlockTypePickerMenu.classList.remove("open");
+      }
+
+      activeSubpanelBlockTypePicker = null;
+    };
+
+    const bindSubpanelBlockTypePickerGlobalEvents = () => {
+      if (subpanelBlockTypePickerGlobalEventsBound) {
+        return;
+      }
+
+      subpanelBlockTypePickerGlobalEventsBound = true;
+
+      document.addEventListener("click", (event) => {
+        const active = activeSubpanelBlockTypePicker;
+        if (!active) {
+          return;
+        }
+
+        const clickedTrigger = active.trigger?.contains(event.target);
+        const clickedMenu = subpanelBlockTypePickerMenu?.contains(event.target);
+        if (!clickedTrigger && !clickedMenu) {
+          closeSubpanelBlockTypePicker();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && activeSubpanelBlockTypePicker) {
+          closeSubpanelBlockTypePicker();
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (activeSubpanelBlockTypePicker) {
+          placeSubpanelBlockTypePicker();
+        }
+      });
+
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (activeSubpanelBlockTypePicker) {
+            placeSubpanelBlockTypePicker();
+          }
+        },
+        true
+      );
+    };
+
+    const renderSubpanelBlockTypePickerItems = (selectedValue, onSelect) => {
+      const popover = ensureSubpanelBlockTypePickerMenu();
+      const list = popover.querySelector(".blockTypePickerList");
+      if (!list) {
+        return;
+      }
+
+      list.innerHTML = "";
+
+      for (const entry of getSubpanelBlockTypeEntries()) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "shieldPickerItem blockTypePickerItem";
+        item.textContent = entry.label;
+        item.dataset.blockTypeValue = entry.value;
+        item.classList.toggle("selected", entry.value === selectedValue);
+
+        item.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          closeSubpanelBlockTypePicker();
+          onSelect(entry.value, entry.label);
+        });
+
+        list.appendChild(item);
+      }
+    };
+
+    const openSubpanelBlockTypePicker = ({
+      wrapper,
+      trigger,
+      anchor,
+      value,
+      inline = false,
+      onSelect,
+    }) => {
+      bindSubpanelBlockTypePickerGlobalEvents();
+
+      if (
+        activeSubpanelBlockTypePicker?.wrapper === wrapper &&
+        wrapper.classList.contains("open")
+      ) {
+        closeSubpanelBlockTypePicker();
+        return;
+      }
+
+      closeSubpanelBlockTypePicker();
+
+      const popover = ensureSubpanelBlockTypePickerMenu();
+      const host = getSubpanelBlockTypePickerHost();
+      if (popover.parentElement !== host) {
+        host.appendChild(popover);
+      }
+      renderSubpanelBlockTypePickerItems(value, onSelect);
+
+      activeSubpanelBlockTypePicker = {
+        wrapper,
+        trigger,
+        anchor: anchor || trigger,
+        inline,
+      };
+
+      wrapper.classList.add("open");
+      popover.classList.add("open");
+      placeSubpanelBlockTypePicker();
+    };
+
+    const ensureSubpanelNewElementTypePicker = () => {
+      const nativeSelect = document.getElementById("sMSPElementSelect");
+      if (!nativeSelect) {
+        return null;
+      }
+
+      let wrapper = document.getElementById("sMSPElementTypePicker");
+      if (!wrapper) {
+        wrapper = document.createElement("div");
+        wrapper.id = "sMSPElementTypePicker";
+        wrapper.className = "shieldPicker blockTypePicker blockTypeStandalonePicker";
+
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.className = "shieldPickerTrigger blockTypePickerTrigger";
+        trigger.setAttribute("aria-label", "Choose new block type");
+
+        const label = document.createElement("span");
+        label.className = "shieldPickerTriggerLabel blockTypePickerTriggerLabel";
+        trigger.appendChild(label);
+
+        const caret = document.createElement("span");
+        caret.className = "shieldPickerTriggerCaret";
+        caret.textContent = "keyboard_arrow_down";
+        trigger.appendChild(caret);
+
+        wrapper.appendChild(trigger);
+        nativeSelect.insertAdjacentElement("afterend", wrapper);
+
+        trigger.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          openSubpanelBlockTypePicker({
+            wrapper,
+            trigger,
+            anchor: trigger,
+            value: nativeSelect.value,
+            onSelect: (nextValue) => {
+              nativeSelect.value = nextValue;
+              syncLabel();
+            },
+          });
+        });
+
+        const syncLabel = () => {
+          const entry = getSubpanelBlockTypeEntries().find(
+            (item) => item.value === nativeSelect.value
+          );
+          label.textContent = entry?.label || "Control Text";
+          syncSubpanelStandaloneBlockTypePickerWidth(wrapper, trigger, label);
+        };
+
+        wrapper._syncBlockTypePickerLabel = syncLabel;
+      }
+
+      nativeSelect.classList.add("blockTypeNativeSelectHidden");
+      wrapper._syncBlockTypePickerLabel?.();
+      return wrapper;
+    };
+
+    const createInlineSubpanelBlockTypePicker = ({
+      nativeSelect,
+      row,
+      item,
+      currentValue,
+      anchor,
+    }) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "shieldPicker blockTypePicker blockTypeInlinePicker";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "blockTypeInlinePickerTrigger";
+      trigger.setAttribute("aria-label", "Change block type");
+      trigger.title = "Change block type";
+      trigger.draggable = false;
+
+      const caret = document.createElement("span");
+      caret.className = "shieldPickerTriggerCaret";
+      caret.textContent = "keyboard_arrow_down";
+      trigger.appendChild(caret);
+
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(nativeSelect);
+      nativeSelect.classList.add("blockTypeNativeSelectHidden");
+
+      trigger.addEventListener("mousedown", (event) => {
+        event.stopPropagation();
+      });
+
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        openSubpanelBlockTypePicker({
+          wrapper,
+          trigger,
+          anchor: trigger,
+          value: currentValue,
+          inline: true,
+          onSelect: (nextValue) => {
+            nativeSelect.value = nextValue;
+            if (typeof exposed.replaceControlElemTypeAt === "function") {
+              exposed.replaceControlElemTypeAt(row, item, nextValue);
+            }
+          },
+        });
+      });
+
+      trigger.addEventListener("dragstart", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+
+      return wrapper;
+    };
+
     const createShieldPickerRow = ({
       node,
       depth = 0,
@@ -10350,9 +12273,17 @@ const getPostThicknessFallback = () =>
       icon.loading = "lazy";
       icon.decoding = "async";
       icon.draggable = false;
-      icon.onerror = () => {
-        icon.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
-      };
+      if (typeof window.applySignMakerAssetFallback === "function") {
+        window.applySignMakerAssetFallback(
+          icon,
+          icon.getAttribute("src") || icon.src,
+          SHIELD_DROPDOWN_PLACEHOLDER_ICON
+        );
+      } else {
+        icon.onerror = () => {
+          icon.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+        };
+      }
       button.appendChild(icon);
 
       const label = document.createElement("span");
@@ -10363,7 +12294,7 @@ const getPostThicknessFallback = () =>
       if (node.children && node.children.length) {
         const caret = document.createElement("span");
         caret.className = "shieldPickerItemCaret";
-        caret.textContent = "▸";
+        caret.setAttribute("aria-hidden", "true");
         button.appendChild(caret);
       }
 
@@ -10469,6 +12400,63 @@ const getPostThicknessFallback = () =>
       });
     };
 
+    const fitShieldPickerTriggerLabelText = (trigger, label) => {
+      if (!trigger || !label) {
+        return;
+      }
+
+      label.style.removeProperty("font-family");
+      label.style.removeProperty("font-size");
+      label.style.setProperty("white-space", "nowrap", "important");
+
+      const availableWidth = label.clientWidth;
+      if (!Number.isFinite(availableWidth) || availableWidth <= 0) {
+        return;
+      }
+
+      const initialStyle = window.getComputedStyle(label);
+      const initialFontSize = parseFloat(initialStyle.fontSize) || 14;
+
+      const fits = () => label.scrollWidth <= label.clientWidth + 0.5;
+
+      if (fits()) {
+        return;
+      }
+
+      label.style.setProperty(
+        "font-family",
+        '"Inter Tight", "Inter", sans-serif',
+        "important"
+      );
+      if (fits()) {
+        return;
+      }
+
+      const minimumFontSize = Math.min(initialFontSize, 7);
+      let low = minimumFontSize;
+      let high = initialFontSize;
+      let best = minimumFontSize;
+
+      label.style.setProperty("font-size", `${minimumFontSize}px`, "important");
+      if (!fits()) {
+        return;
+      }
+
+      for (let i = 0; i < 12; i += 1) {
+        const midpoint = (low + high) / 2;
+        label.style.setProperty("font-size", `${midpoint}px`, "important");
+
+        if (fits()) {
+          best = midpoint;
+          low = midpoint;
+        } else {
+          high = midpoint;
+        }
+      }
+
+      label.style.setProperty("font-size", `${best}px`, "important");
+    };
+
     const createShieldPicker = ({
       mount,
       value,
@@ -10494,7 +12482,7 @@ const getPostThicknessFallback = () =>
 
       const triggerCaret = document.createElement("span");
       triggerCaret.className = "shieldPickerTriggerCaret";
-      triggerCaret.textContent = "▾";
+      triggerCaret.textContent = "keyboard_arrow_down";
       trigger.appendChild(triggerCaret);
         
         const popover = document.createElement("div");
@@ -10592,10 +12580,18 @@ const getPostThicknessFallback = () =>
         triggerLabel.textContent = entry
           ? buildShieldPickerTriggerLabel(entry)
           : placeholder;
-        triggerIcon.src = buildShieldPickerIconSrc(entry);
-        triggerIcon.onerror = () => {
-          triggerIcon.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
-        };
+        const triggerIconPath = buildShieldPickerIconSrc(entry);
+        setShieldPickerButtonIcon(
+          triggerIcon,
+          triggerIconPath,
+          SHIELD_DROPDOWN_PLACEHOLDER_ICON
+        );
+        fitShieldPickerTriggerLabelText(trigger, triggerLabel);
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(() =>
+            fitShieldPickerTriggerLabelText(trigger, triggerLabel)
+          );
+        }
       };
 
       const openCustomShieldMakerFromPicker = () => {
@@ -10832,7 +12828,11 @@ const getPostThicknessFallback = () =>
         null;
 
       if (pickerApi && typeof pickerApi.setValue === "function") {
-        pickerApi.setValue(normalizedValue);
+        const pickerValue =
+          typeof pickerApi.getValue === "function" ? pickerApi.getValue() : null;
+        if (String(pickerValue || "") !== String(normalizedValue)) {
+          pickerApi.setValue(normalizedValue);
+        }
       }
 
       if (updateBlock) {
@@ -10848,6 +12848,685 @@ const getPostThicknessFallback = () =>
       }
 
       return normalizedValue;
+    };
+
+    const sdShieldVariantSelectionMemory = new WeakMap();
+
+    const getSdShieldAutoVariantValue = () =>
+      ShieldElement.prototype.defaultVariant || "Auto";
+
+    const getSdShieldVariantConfig = (baseValue) =>
+      ShieldElement.prototype.getBlockShieldConfig(
+        baseValue || ShieldElement.prototype.defaultShieldBase || "I"
+      );
+
+    const sdShieldUsesExplicitFirstVariant = (baseValue) => {
+      const normalized =
+        typeof ShieldElement.prototype.normalizeShieldCode === "function"
+          ? ShieldElement.prototype.normalizeShieldCode(
+              String(baseValue || "")
+            ).toUpperCase()
+          : String(baseValue || "").replace(/\s+/g, "").toUpperCase();
+
+      return (
+        normalized === "FLTOLL" ||
+        normalized === "FLCFX" ||
+        normalized === "C"
+      );
+    };
+
+    const getSdShieldDefaultVariantValue = (baseValue) => {
+      const variants = getSdShieldVariantValues(baseValue);
+      return sdShieldUsesExplicitFirstVariant(baseValue) && variants.length
+        ? variants[0]
+        : getSdShieldAutoVariantValue();
+    };
+
+    const getSdShieldVariantValues = (baseValue) => {
+      const config = getSdShieldVariantConfig(baseValue);
+      if (!config || !Array.isArray(config.variants)) {
+        return [];
+      }
+
+      const seenArtwork = new Set();
+
+      return config.variants.filter((variant) => {
+        if (!variant) {
+          return false;
+        }
+
+        const variantKey =
+          ShieldElement.prototype.formatVariantKey(variant);
+        const artworkVariantKey =
+          typeof ShieldElement.prototype.getShieldArtworkVariantKey === "function"
+            ? ShieldElement.prototype.getShieldArtworkVariantKey(
+                config,
+                variantKey
+              )
+            : variantKey;
+        const artworkPath =
+          ShieldElement.prototype.getShieldAssetPath(
+            config,
+            artworkVariantKey
+          ) || artworkVariantKey;
+
+        if (seenArtwork.has(artworkPath)) {
+          return false;
+        }
+
+        seenArtwork.add(artworkPath);
+        return true;
+      });
+    };
+
+    const getSdShieldVariantMemory = (blockElem, create = false) => {
+      if (!blockElem || (typeof blockElem !== "object" && typeof blockElem !== "function")) {
+        return null;
+      }
+
+      let memory = sdShieldVariantSelectionMemory.get(blockElem) || null;
+      if (!memory && create) {
+        memory = new Map();
+        sdShieldVariantSelectionMemory.set(blockElem, memory);
+      }
+      return memory;
+    };
+
+    const rememberSdShieldVariantSelection = (blockElem, baseValue, variantValue) => {
+      const normalizedBase = String(baseValue || "").trim();
+      const normalizedVariant = String(variantValue || "").trim();
+      if (!blockElem || !normalizedBase || !normalizedVariant) {
+        return;
+      }
+
+      getSdShieldVariantMemory(blockElem, true).set(
+        normalizedBase,
+        normalizedVariant
+      );
+    };
+
+    const getRememberedSdShieldVariantSelection = (blockElem, baseValue) => {
+      const memory = getSdShieldVariantMemory(blockElem, false);
+      return memory ? memory.get(String(baseValue || "").trim()) || "" : "";
+    };
+
+    const getSdShieldVariantRouteNumber = () => {
+      const routeInput = document.getElementById("sdShield_routeNumber");
+      if (routeInput) {
+        return String(routeInput.value || "");
+      }
+
+      const currentBlockElem =
+        exposed && typeof exposed.getCurrentBlockElem === "function"
+          ? exposed.getCurrentBlockElem()
+          : null;
+      return String(currentBlockElem?.routeNumber || "");
+    };
+
+    const getSdShieldVariantPreview = (baseValue, variantValue) => {
+      const config = getSdShieldVariantConfig(baseValue);
+      if (!config) {
+        return { src: SHIELD_DROPDOWN_PLACEHOLDER_ICON, resolvedVariant: "" };
+      }
+
+      const autoValue = getSdShieldAutoVariantValue();
+      const requestedVariant = String(variantValue || autoValue).trim();
+      const resolvedVariant =
+        requestedVariant.toLowerCase() === String(autoValue).toLowerCase()
+          ? ShieldElement.prototype.resolveBlockVariant(
+              autoValue,
+              getSdShieldVariantRouteNumber(),
+              config
+            )
+          : requestedVariant;
+      const variantKey = ShieldElement.prototype.formatVariantKey(resolvedVariant);
+      const src = ShieldElement.prototype.getShieldAssetPath(config, variantKey);
+
+      return {
+        src: src || SHIELD_DROPDOWN_PLACEHOLDER_ICON,
+        resolvedVariant,
+      };
+    };
+
+    const sdShieldAssetPreloadPromises = new Map();
+
+    const getSdShieldFinalAssetPath = ({
+      baseValue,
+      variantValue,
+      shieldBacks = false,
+    }) => {
+      const config = getSdShieldVariantConfig(baseValue);
+      if (!config) {
+        return "";
+      }
+
+      const autoValue = getSdShieldAutoVariantValue();
+      const requestedVariant = String(variantValue || autoValue).trim();
+      const resolvedVariant =
+        requestedVariant.toLowerCase() === String(autoValue).toLowerCase()
+          ? ShieldElement.prototype.resolveBlockVariant(
+              autoValue,
+              getSdShieldVariantRouteNumber(),
+              config
+            )
+          : requestedVariant;
+      const variantKey =
+        ShieldElement.prototype.formatVariantKey(resolvedVariant);
+
+      if (
+        typeof ShieldElement.prototype.getRenderedShieldAssetPath === "function"
+      ) {
+        return ShieldElement.prototype.getRenderedShieldAssetPath(
+          config,
+          variantKey,
+          {
+            shieldBase: baseValue,
+            shieldBacks,
+          }
+        );
+      }
+
+      return ShieldElement.prototype.getShieldAssetPath(
+        config,
+        variantKey
+      );
+    };
+
+    const preloadSdShieldAsset = ({
+      baseValue,
+      variantValue,
+      shieldBacks = false,
+    }) => {
+      const src = getSdShieldFinalAssetPath({
+        baseValue,
+        variantValue,
+        shieldBacks,
+      });
+
+      if (!src || src === SHIELD_DROPDOWN_PLACEHOLDER_ICON) {
+        return Promise.resolve(false);
+      }
+
+      window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS =
+        window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS || new Map();
+
+      if (sdShieldAssetPreloadPromises.has(src)) {
+        return sdShieldAssetPreloadPromises.get(src);
+      }
+
+      const promise = new Promise((resolve) => {
+        const image = new Image();
+
+        const finish = (ok) => {
+          if (
+            ok &&
+            image.naturalWidth > 0 &&
+            image.naturalHeight > 0
+          ) {
+            window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS.set(
+              src,
+              image.naturalWidth / image.naturalHeight
+            );
+          }
+          resolve(ok);
+        };
+
+        image.onload = async () => {
+          if (typeof image.decode === "function") {
+            try {
+              await image.decode();
+            } catch (error) {}
+          }
+          finish(true);
+        };
+
+        image.onerror = () => finish(false);
+        image.src = src;
+
+        if (image.complete && image.naturalWidth > 0) {
+          image.onload();
+        }
+      });
+
+      sdShieldAssetPreloadPromises.set(src, promise);
+      return promise;
+    };
+
+    const populateSdShieldVariantNativeOptions = (
+      baseValue,
+      requestedValue = null
+    ) => {
+      const nativeSelect = document.getElementById("sdShield_shieldType");
+      if (!nativeSelect) {
+        return {
+          baseValue,
+          variants: [],
+          options: [],
+          value: "",
+          unavailable: true,
+        };
+      }
+
+      const autoValue = getSdShieldAutoVariantValue();
+      const variants = getSdShieldVariantValues(baseValue);
+      const allowAuto = !sdShieldUsesExplicitFirstVariant(baseValue);
+      const options = allowAuto
+        ? [
+            autoValue,
+            ...variants.filter((variant) => variant !== autoValue),
+          ]
+        : variants.filter((variant) => variant !== autoValue);
+      const fallbackValue =
+        options[0] ||
+        (allowAuto ? autoValue : "");
+      const currentValue = String(
+        requestedValue || nativeSelect.value || fallbackValue
+      ).trim();
+      const nextValue = options.includes(currentValue)
+        ? currentValue
+        : fallbackValue;
+
+      nativeSelect.innerHTML = "";
+      options.forEach((variant) => {
+        lib.appendOption(nativeSelect, variant, {
+          text: variant === autoValue ? "Auto" : variant,
+        });
+      });
+      nativeSelect.value = nextValue;
+
+      return {
+        baseValue,
+        variants,
+        options,
+        value: nextValue,
+        unavailable: variants.length <= 1,
+      };
+    };
+
+    const createSdShieldVariantPicker = ({ mount, onChange }) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "shieldPicker shieldVariantPicker";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "shieldPickerTrigger shieldVariantPickerTrigger";
+
+      const triggerIcon = document.createElement("img");
+      triggerIcon.className =
+        "shieldPickerTriggerIcon shieldVariantPickerTriggerIcon";
+      triggerIcon.alt = "";
+      triggerIcon.draggable = false;
+      trigger.appendChild(triggerIcon);
+
+      const triggerLabel = document.createElement("span");
+      triggerLabel.className =
+        "shieldPickerTriggerLabel shieldVariantPickerTriggerLabel";
+      trigger.appendChild(triggerLabel);
+
+      const triggerCaret = document.createElement("span");
+      triggerCaret.className =
+        "shieldPickerTriggerCaret shieldVariantPickerTriggerCaret";
+      triggerCaret.textContent = "keyboard_arrow_down";
+      trigger.appendChild(triggerCaret);
+
+      const popover = document.createElement("div");
+      popover.className = "shieldPickerPopover shieldVariantPickerPopover";
+
+      const list = document.createElement("div");
+      list.className = "shieldVariantPickerList";
+      popover.appendChild(list);
+
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(popover);
+      mount.replaceWith(wrapper);
+
+      let state = {
+        baseValue: ShieldElement.prototype.defaultShieldBase || "I",
+        variants: [],
+        options: [],
+        value: getSdShieldAutoVariantValue(),
+        unavailable: true,
+      };
+
+      const close = () => {
+        wrapper.classList.remove("open");
+      };
+
+      const placePopover = () => {
+        const rect = trigger.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const estimatedHeight = Math.max(1, state.options.length) * 42 + 8;
+        const bottomSpace = viewportHeight - rect.bottom - 10;
+        const topSpace = rect.top - 10;
+        const openUpward = bottomSpace < estimatedHeight && topSpace > bottomSpace;
+
+        popover.style.position = "fixed";
+        popover.style.left = rect.left + "px";
+        popover.style.width = Math.max(rect.width, 136) + "px";
+
+        if (openUpward) {
+          popover.style.top = "auto";
+          popover.style.bottom = viewportHeight - rect.top + 2 + "px";
+        } else {
+          popover.style.bottom = "auto";
+          popover.style.top = rect.bottom + 2 + "px";
+        }
+      };
+
+      const applyImageFallback = (image, requestedPath = "") => {
+        if (typeof window.applySignMakerAssetFallback === "function") {
+          window.applySignMakerAssetFallback(
+            image,
+            requestedPath || image.getAttribute("src") || image.src,
+            SHIELD_DROPDOWN_PLACEHOLDER_ICON
+          );
+          return;
+        }
+
+        image.onerror = () => {
+          image.onerror = null;
+          image.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+        };
+      };
+
+      const renderItems = () => {
+        list.innerHTML = "";
+        const autoValue = getSdShieldAutoVariantValue();
+
+        for (const variant of state.options) {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = "shieldPickerItem shieldVariantPickerItem";
+          item.dataset.variantValue = variant;
+          item.classList.toggle("selected", variant === state.value);
+
+          const icon = document.createElement("img");
+          icon.className = "shieldPickerItemIcon shieldVariantPickerItemIcon";
+          const preview = getSdShieldVariantPreview(state.baseValue, variant);
+          icon.src = preview.src;
+          icon.alt = "";
+          icon.loading = "lazy";
+          icon.decoding = "async";
+          icon.draggable = false;
+          applyImageFallback(icon, preview.src);
+          item.appendChild(icon);
+
+          const label = document.createElement("span");
+          label.className = "shieldPickerItemLabel shieldVariantPickerItemLabel";
+          label.textContent = variant === autoValue ? "Auto" : variant;
+          item.appendChild(label);
+
+          if (variant === autoValue && preview.resolvedVariant) {
+            item.title = `Auto uses ${preview.resolvedVariant} for the current route number`;
+          }
+
+          item.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (state.unavailable) {
+              return;
+            }
+
+            state.value = variant;
+            close();
+            syncTrigger();
+            renderItems();
+            if (typeof onChange === "function") {
+              onChange(variant);
+            }
+          });
+
+          list.appendChild(item);
+        }
+      };
+
+      const syncTrigger = () => {
+        const preview = getSdShieldVariantPreview(state.baseValue, state.value);
+        setShieldPickerButtonIcon(
+          triggerIcon,
+          preview.src,
+          SHIELD_DROPDOWN_PLACEHOLDER_ICON
+        );
+
+        if (state.unavailable) {
+          triggerLabel.textContent = "Unavailable";
+          trigger.disabled = true;
+          trigger.setAttribute("aria-disabled", "true");
+          wrapper.classList.add("unavailable");
+          triggerCaret.hidden = true;
+          trigger.title = "This shield has only one available variant";
+          fitShieldPickerTriggerLabelText(trigger, triggerLabel);
+          if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(() =>
+              fitShieldPickerTriggerLabelText(trigger, triggerLabel)
+            );
+          }
+          close();
+          return;
+        }
+
+        trigger.disabled = false;
+        trigger.removeAttribute("aria-disabled");
+        wrapper.classList.remove("unavailable");
+        triggerCaret.hidden = false;
+        triggerLabel.textContent =
+          state.value === getSdShieldAutoVariantValue() ? "Auto" : state.value;
+        fitShieldPickerTriggerLabelText(trigger, triggerLabel);
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(() =>
+            fitShieldPickerTriggerLabelText(trigger, triggerLabel)
+          );
+        }
+        trigger.title =
+          state.value === getSdShieldAutoVariantValue() && preview.resolvedVariant
+            ? `Auto uses ${preview.resolvedVariant} for the current route number`
+            : state.value;
+      };
+
+      const setState = (nextState) => {
+        state = {
+          ...state,
+          ...nextState,
+        };
+        syncTrigger();
+        renderItems();
+      };
+
+      const refreshPreview = () => {
+        syncTrigger();
+        if (wrapper.classList.contains("open")) {
+          renderItems();
+          placePopover();
+        }
+      };
+
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (state.unavailable) {
+          return;
+        }
+
+        const willOpen = !wrapper.classList.contains("open");
+        document
+          .querySelectorAll(".shieldVariantPicker.open")
+          .forEach((picker) => {
+            if (picker !== wrapper) {
+              picker.classList.remove("open");
+            }
+          });
+        wrapper.classList.toggle("open", willOpen);
+        if (willOpen) {
+          renderItems();
+          placePopover();
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target) && !popover.contains(event.target)) {
+          close();
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (wrapper.classList.contains("open")) {
+          placePopover();
+        }
+      });
+
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (wrapper.classList.contains("open")) {
+            placePopover();
+          }
+        },
+        true
+      );
+
+      return {
+        element: wrapper,
+        setState,
+        refreshPreview,
+        getValue: () => state.value,
+      };
+    };
+
+    const syncSdShieldVariantPickerForBase = (
+      baseValue,
+      {
+        requestedValue = null,
+        preferRemembered = false,
+        updateBlock = false,
+      } = {}
+    ) => {
+      const nativeSelect = document.getElementById("sdShield_shieldType");
+      if (!nativeSelect) {
+        return null;
+      }
+
+      const normalizedBase =
+        baseValue ||
+        document.getElementById("sdShield_shieldBase")?.dataset?.pickerValue ||
+        document.getElementById("sdShield_shieldBase")?.value ||
+        ShieldElement.prototype.defaultShieldBase ||
+        "I";
+      const currentBlockElem =
+        exposed && typeof exposed.getCurrentBlockElem === "function"
+          ? exposed.getCurrentBlockElem()
+          : null;
+      const autoValue = getSdShieldAutoVariantValue();
+      const variants = getSdShieldVariantValues(normalizedBase);
+      const allowAuto = !sdShieldUsesExplicitFirstVariant(normalizedBase);
+      const allowed = allowAuto
+        ? [
+            autoValue,
+            ...variants.filter((variant) => variant !== autoValue),
+          ]
+        : variants.filter((variant) => variant !== autoValue);
+      const defaultValue =
+        allowed[0] ||
+        (allowAuto ? autoValue : "");
+      const rememberedValue = preferRemembered
+        ? getRememberedSdShieldVariantSelection(currentBlockElem, normalizedBase)
+        : "";
+      const desiredValue =
+        (rememberedValue && allowed.includes(rememberedValue) && rememberedValue) ||
+        (requestedValue && allowed.includes(requestedValue) && requestedValue) ||
+        defaultValue;
+
+      const state = populateSdShieldVariantNativeOptions(
+        normalizedBase,
+        desiredValue
+      );
+
+      let pickerHost = nativeSelect.parentElement?.querySelector(
+        ".sdShieldVariantPickerHost"
+      );
+      if (!pickerHost) {
+        pickerHost = document.createElement("div");
+        pickerHost.className = "sdShieldVariantPickerHost";
+        nativeSelect.insertAdjacentElement("afterend", pickerHost);
+      }
+
+      nativeSelect.style.display = "none";
+
+      let pickerApi =
+        nativeSelect._shieldVariantPickerApi ||
+        pickerHost._shieldVariantPickerApi ||
+        null;
+
+      if (!pickerApi) {
+        const placeholderSelect = document.createElement("select");
+        placeholderSelect.id = "sdShield_shieldType_pickerProxy";
+        pickerHost.innerHTML = "";
+        pickerHost.appendChild(placeholderSelect);
+
+        pickerApi = createSdShieldVariantPicker({
+          mount: placeholderSelect,
+          onChange: async (nextValue) => {
+            const currentBase =
+              document.getElementById("sdShield_shieldBase")?.dataset?.pickerValue ||
+              document.getElementById("sdShield_shieldBase")?.value ||
+              normalizedBase;
+            const blockElem =
+              exposed && typeof exposed.getCurrentBlockElem === "function"
+                ? exposed.getCurrentBlockElem()
+                : null;
+
+            await preloadSdShieldAsset({
+              baseValue: currentBase,
+              variantValue: nextValue,
+              shieldBacks: blockElem?.shieldBacks === true,
+            });
+
+            runShieldUndoableCommit(() => {
+              nativeSelect.value = nextValue;
+              rememberSdShieldVariantSelection(blockElem, currentBase, nextValue);
+
+              if (blockElem) {
+                blockElem.shieldType = nextValue;
+              }
+
+              if (exposed && typeof exposed.redraw === "function") {
+                exposed.redraw();
+              }
+            });
+          },
+        });
+
+        nativeSelect._shieldVariantPickerApi = pickerApi;
+        pickerHost._shieldVariantPickerApi = pickerApi;
+      }
+
+      pickerApi.setState(state);
+
+      if (currentBlockElem) {
+        rememberSdShieldVariantSelection(
+          currentBlockElem,
+          normalizedBase,
+          state.value
+        );
+        if (updateBlock) {
+          currentBlockElem.shieldType = state.value;
+        }
+      }
+
+      const routeInput = document.getElementById("sdShield_routeNumber");
+      if (routeInput && routeInput.dataset.shieldVariantPreviewBound !== "true") {
+        routeInput.dataset.shieldVariantPreviewBound = "true";
+        routeInput.addEventListener("input", () => {
+          const currentApi =
+            nativeSelect._shieldVariantPickerApi ||
+            pickerHost._shieldVariantPickerApi ||
+            null;
+          if (currentApi && typeof currentApi.refreshPreview === "function") {
+            currentApi.refreshPreview();
+          }
+        });
+      }
+
+      return state;
     };
 
     const ensureSdShieldBasePicker = () => {
@@ -10887,20 +13566,103 @@ const getPostThicknessFallback = () =>
             ShieldElement.prototype.defaultShieldBase ||
             "I",
           placeholder: "Shield type",
-          onChange: (nextValue) => {
+          onChange: async (nextValue) => {
             if (!nextValue) {
               return;
             }
 
-            runShieldUndoableCommit(() => {
-              syncShieldBasePickerValue(nextValue, { updateBlock: true });
-
-              updateShieldCountyVisibility();
-
-              if (typeof readForm === "function") {
-                readForm();
-              }
+            /*
+             * The visible picker changes before the hidden native select and
+             * block data do. Synchronize the selected base immediately so any
+             * pending readForm/updateForm pass cannot restore conditional
+             * controls from the previously selected shield.
+             */
+            const liveSelectedBase = syncShieldBasePickerValue(nextValue, {
+              updateBlock: false,
             });
+            updateShieldCountyVisibility(liveSelectedBase);
+
+            let selectedBase = liveSelectedBase;
+            let selectedVariant = getSdShieldDefaultVariantValue(selectedBase);
+
+            runShieldUndoableCommit(() => {
+              const currentBlockElem =
+                exposed && typeof exposed.getCurrentBlockElem === "function"
+                  ? exposed.getCurrentBlockElem()
+                  : null;
+              const currentBase =
+                currentBlockElem?.shieldBase ||
+                currentBlockElem?.type ||
+                ShieldElement.prototype.defaultShieldBase ||
+                "I";
+              const nativeVariantSelect =
+                document.getElementById("sdShield_shieldType");
+
+              if (nativeVariantSelect) {
+                rememberSdShieldVariantSelection(
+                  currentBlockElem,
+                  currentBase,
+                  nativeVariantSelect.value ||
+                    currentBlockElem?.shieldType ||
+                    getSdShieldAutoVariantValue()
+                );
+              }
+
+              selectedBase = syncShieldBasePickerValue(nextValue, {
+                updateBlock: true,
+              });
+
+              if (
+                currentBlockElem &&
+                String(selectedBase) !== String(currentBase)
+              ) {
+                currentBlockElem.shieldBacks = false;
+
+                const shieldBacksCheckbox =
+                  document.getElementById("sdShield_shieldBacks");
+                if (shieldBacksCheckbox) {
+                  shieldBacksCheckbox.checked = false;
+                }
+              }
+
+              const variantState = syncSdShieldVariantPickerForBase(
+                selectedBase,
+                {
+                  preferRemembered: true,
+                  updateBlock: true,
+                }
+              );
+
+              if (variantState?.value) {
+                selectedVariant = variantState.value;
+              }
+
+              if (currentBlockElem) {
+                currentBlockElem.shieldBase = selectedBase;
+                currentBlockElem.type = selectedBase;
+                if (variantState?.value) {
+                  currentBlockElem.shieldType = variantState.value;
+                }
+              }
+
+              updateShieldCountyVisibility(selectedBase);
+            });
+
+            /* Keep the controls correct even if another synchronous form pass
+               ran during the undo transaction. */
+            updateShieldCountyVisibility(selectedBase);
+
+            await preloadSdShieldAsset({
+              baseValue: selectedBase,
+              variantValue: selectedVariant,
+              shieldBacks: false,
+            });
+
+            updateShieldCountyVisibility(selectedBase);
+
+            if (exposed && typeof exposed.redraw === "function") {
+              exposed.redraw();
+            }
           },
         });
 
@@ -11193,17 +13955,26 @@ const getPostThicknessFallback = () =>
       };
     });
     
-    const APL_ARROW_PICKER_ITEMS = [
+    const APL_ARROW_PICKER_ALL_ITEMS = [
       { value: "UP", label: "Up", arrowType: "APL_UP", flip: false },
       { value: "UP_LEFT", label: "Up Left Turn", arrowType: "APL_UP_TURN", flip: true },
       { value: "UP_RIGHT", label: "Up Right Turn", arrowType: "APL_UP_TURN", flip: false },
       { value: "DUAL_TURN", label: "Dual Turn", arrowType: "APL_DUAL_TURN", flip: false },
       { value: "LEFT_TURN", label: "Left Turn", arrowType: "APL_TURN", flip: true },
       { value: "RIGHT_TURN", label: "Right Turn", arrowType: "APL_TURN", flip: false },
+      { value: "UP_CFX", label: "CFX Up", arrowType: "APL_UP_CFX", flip: false },
+      { value: "UP_LEFT_CFX", label: "CFX Up Left Turn", arrowType: "APL_UP_TURN_CFX", flip: true },
+      { value: "UP_RIGHT_CFX", label: "CFX Up Right Turn", arrowType: "APL_UP_TURN_CFX", flip: false },
+      { value: "LEFT_TURN_CFX", label: "CFX Left Turn", arrowType: "APL_TURN_CFX", flip: true },
+      { value: "RIGHT_TURN_CFX", label: "CFX Right Turn", arrowType: "APL_TURN_CFX", flip: false },
     ];
 
+    const APL_ARROW_PICKER_ITEMS = APL_ARROW_PICKER_ALL_ITEMS.filter(
+      (item) => !item.value.includes("CFX")
+    );
+
     const createAPLArrowPreviewNode = (value) => {
-      const item = APL_ARROW_PICKER_ITEMS.find((entry) => entry.value === value);
+      const item = APL_ARROW_PICKER_ALL_ITEMS.find((entry) => entry.value === value);
       if (!item) {
         return null;
       }
@@ -11269,7 +14040,7 @@ const getPostThicknessFallback = () =>
 
         const triggerCaret = document.createElement("span");
         triggerCaret.className = "shieldPickerTriggerCaret";
-        triggerCaret.textContent = "▾";
+        triggerCaret.textContent = "keyboard_arrow_down";
         trigger.appendChild(triggerCaret);
 
         const popover = document.createElement("div");
@@ -12112,6 +14883,10 @@ const getPostThicknessFallback = () =>
         }
       }
 
+      if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
+        scheduleSubpanelModalHeightSync();
+      }
+
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
         const panelSelect = ensurePanelSelectorPopoverPortal();
         if (panelSelect) {
@@ -12146,6 +14921,28 @@ const getPostThicknessFallback = () =>
           button.className = "sMConfigOption selected";
         } else {
           button.className = "sMConfigOption";
+        }
+      }
+
+      if (sMConfigBar.dataset.currentMenu === "templates") {
+        const templatesModal = document.querySelector(".sMModal.templates");
+        if (templatesModal) {
+          templatesModal.dataset.currentMenu = "sMTemplatesSaved";
+
+          for (const holder of templatesModal.querySelectorAll(".sMModalContent > *")) {
+            holder.classList.toggle("tabHidden", holder.id !== "sMTemplatesSaved");
+          }
+
+          for (const tab of templatesModal.querySelectorAll(".sMModalTab")) {
+            tab.classList.toggle("selected", tab.dataset.tab === "sMTemplatesSaved");
+          }
+
+          if (
+            typeof app !== "undefined" &&
+            typeof app.refreshTemplatesList === "function"
+          ) {
+            app.refreshTemplatesList();
+          }
         }
       }
 
@@ -12432,6 +15229,33 @@ const getPostThicknessFallback = () =>
         }
 
         if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
+          const currentMenuId = sMConfigBar.dataset.currentMenu;
+          const currentMenuRoot =
+            currentMenuId === "panelSelector"
+              ? document.getElementById("panelSelect")
+              : document.querySelector(`.sMModal.${currentMenuId}`);
+
+          const openNestedPicker = currentMenuRoot?.querySelector(
+            ".colorPicker.open, .shieldPicker.open, .fontPicker.open, .profilePicker.open"
+          );
+
+          if (openNestedPicker) {
+            openNestedPicker.classList.remove("open");
+            document.activeElement?.blur?.();
+            return true;
+          }
+
+          const activeEl = document.activeElement;
+          const activeEditorControl =
+            activeEl &&
+            currentMenuRoot?.contains(activeEl) &&
+            activeEl.matches?.("input, textarea, select, [contenteditable='true']");
+
+          if (activeEditorControl) {
+            activeEl.blur();
+            return true;
+          }
+
           closeCurrentSidebarMenu();
           return true;
         }
@@ -13004,7 +15828,7 @@ const getPostThicknessFallback = () =>
     }
       
       document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") {
+        if (event.key !== "Escape" || event.defaultPrevented) {
           return;
         }
 
@@ -13038,6 +15862,11 @@ const getPostThicknessFallback = () =>
         ].filter((dialog) => dialog && dialog.open);
 
         if (!openDialogs.length) {
+          if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeTopmostUI();
+          }
           return;
         }
 
@@ -13238,6 +16067,7 @@ const getPostThicknessFallback = () =>
     }
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
+    window.addEventListener("resize", scheduleSubpanelModalHeightSync);
 
     document.addEventListener("click", (event) => {
       if (event.ctrlKey || event.metaKey || event.shiftKey) {
@@ -13311,11 +16141,17 @@ const getPostThicknessFallback = () =>
       newRowDropTargetButton.addEventListener("drop", handleNewRowDrop);
     }
 
+    bindSliderNumberInputStepperCleanup();
+
     const toolTip = document.createElement("span");
     toolTip.className = "toolTip";
     toolTip.style.opacity = 0;
     document.body.appendChild(toolTip);
     for (const element of document.querySelectorAll("[data-toolTip]")) {
+      if (element.classList && element.classList.contains("sliderNumberInputNoStepper")) {
+        continue;
+      }
+
       element.addEventListener("mouseover", () => {
         const boundingRect = element.getBoundingClientRect();
         toolTip.textContent = element.dataset.tooltip;
@@ -13532,6 +16368,7 @@ const getPostThicknessFallback = () =>
             text: Control.prototype.blockElements[element],
         });
     }
+    ensureSubpanelNewElementTypePicker();
     
 
     // Populate the guide arrow options
@@ -13952,6 +16789,7 @@ const getPostThicknessFallback = () =>
         settingsDefaultsShieldSize: "3",
         settingsDefaultsShieldBanner1: "Right",
         settingsDefaultsShieldBanner2: "Above",
+        settingsDefaultsShieldManualBanners: true,
 
         settingsDefaultsAdvisoryText: "Advisory",
         settingsDefaultsAdvisoryFontFamily: "Highway Gothic",
@@ -14831,6 +17669,7 @@ const getPostThicknessFallback = () =>
       "settingsDefaultsShieldRouteNumber",
       "settingsDefaultsShieldBanner1",
       "settingsDefaultsShieldBanner2",
+      "settingsDefaultsShieldManualBanners",
       "settingsDefaultsAdvisoryText",
       "settingsDefaultsAdvisoryColor",
       "settingsDefaultsAdvisoryBg",
@@ -15208,70 +18047,57 @@ const getPostThicknessFallback = () =>
     }
       if (shield_shieldBase) {
         shield_shieldBase.addEventListener("change", () => {
-          updateShieldCountyVisibility();
+          updateShieldCountyVisibility(
+            shield_shieldBase.dataset?.pickerValue || shield_shieldBase.value
+          );
         });
         updateShieldCountyVisibility();
       }
 
       const shieldVariantSelect = document.querySelector("#sdShield_shieldType");
       if (shieldVariantSelect && ShieldElement.prototype.blockShieldVariants) {
-        const AUTO_VARIANT_VALUE = ShieldElement.prototype.defaultVariant || "Auto";
-
-        const populateVariantOptions = (baseValue, currentValue) => {
-          shieldVariantSelect.innerHTML = "";
-
-          const config = ShieldElement.prototype.getBlockShieldConfig(baseValue);
-          const variants =
-            (config && Array.isArray(config.variants) && config.variants.length
-              ? config.variants
-              : []) || [];
-
-          const baseOptions = variants.length
-            ? variants
-            : (ShieldElement.prototype.blockShieldVariants || []).map(
-                (variant) => variant.value || variant
-              );
-
-          const optionsToUse = [
-            AUTO_VARIANT_VALUE,
-            ...baseOptions.filter((variant) => variant !== AUTO_VARIANT_VALUE),
-          ];
-
-          for (const variant of optionsToUse) {
-            lib.appendOption(shieldVariantSelect, variant, {
-              text: variant === AUTO_VARIANT_VALUE ? "Auto" : variant,
-            });
-          }
-
-          const nextValue =
-            currentValue && optionsToUse.includes(currentValue)
-              ? currentValue
-              : AUTO_VARIANT_VALUE;
-
-          shieldVariantSelect.value = nextValue;
-        };
-
-        populateVariantOptions(
+        const currentBlockElem =
+          exposed && typeof exposed.getCurrentBlockElem === "function"
+            ? exposed.getCurrentBlockElem()
+            : null;
+        const currentBase =
+          currentBlockElem?.shieldBase ||
+          currentBlockElem?.type ||
           shield_shieldBase?.dataset?.pickerValue ||
-            shield_shieldBase?.value ||
-            ShieldElement.prototype.defaultShieldBase,
-          shieldVariantSelect.value || AUTO_VARIANT_VALUE
-        );
+          shield_shieldBase?.value ||
+          ShieldElement.prototype.defaultShieldBase ||
+          "I";
+        const currentVariant =
+          currentBlockElem?.shieldType ||
+          shieldVariantSelect.value ||
+          getSdShieldAutoVariantValue();
 
-        if (shield_shieldBase) {
+        syncSdShieldVariantPickerForBase(currentBase, {
+          requestedValue: currentVariant,
+          updateBlock: !!currentBlockElem,
+        });
+
+        if (shield_shieldBase && shield_shieldBase.dataset.variantPickerBaseBound !== "true") {
+          shield_shieldBase.dataset.variantPickerBaseBound = "true";
           shield_shieldBase.addEventListener("change", () => {
-            runShieldUndoableCommit(() => {
-              populateVariantOptions(
-                shield_shieldBase.dataset?.pickerValue ||
-                  shield_shieldBase.value ||
-                  ShieldElement.prototype.defaultShieldBase,
-                AUTO_VARIANT_VALUE
-              );
+            const blockElem =
+              exposed && typeof exposed.getCurrentBlockElem === "function"
+                ? exposed.getCurrentBlockElem()
+                : null;
+            const nextBase =
+              shield_shieldBase.dataset?.pickerValue ||
+              shield_shieldBase.value ||
+              blockElem?.shieldBase ||
+              blockElem?.type ||
+              ShieldElement.prototype.defaultShieldBase ||
+              "I";
 
-              if (typeof readForm === "function") {
-                readForm();
-              }
+            syncSdShieldVariantPickerForBase(nextBase, {
+              requestedValue: blockElem?.shieldType || getSdShieldAutoVariantValue(),
+              preferRemembered: true,
+              updateBlock: !!blockElem,
             });
+            scheduleSdShieldReadForm();
           });
         }
       }
@@ -15280,7 +18106,7 @@ const getPostThicknessFallback = () =>
       if (manualBannerCheckbox) {
         manualBannerCheckbox.addEventListener("change", () => {
           syncManualBannerInputMode({ convert: true });
-          readForm();
+          scheduleSdShieldReadForm();
         });
       }
 
@@ -15294,19 +18120,143 @@ const getPostThicknessFallback = () =>
         field.dataset.shieldUndoBound = "true";
 
         for (const eventName of eventNames) {
-          field.addEventListener(eventName, () => {
-            runShieldUndoableCommit(() => {
-              if (typeof readForm === "function") {
-                readForm();
-              }
-            });
-          });
+          field.addEventListener(eventName, scheduleSdShieldReadForm);
         }
+      };
+
+      const bindSdShieldBacksCheckbox = () => {
+        const checkbox = document.getElementById("sdShield_shieldBacks");
+
+        if (!checkbox || checkbox.dataset.sdShieldBacksBound === "true") {
+          return;
+        }
+
+        checkbox.dataset.sdShieldBacksBound = "true";
+
+        checkbox.addEventListener("change", async () => {
+          const currentBlockElem =
+            exposed && typeof exposed.getCurrentBlockElem === "function"
+              ? exposed.getCurrentBlockElem()
+              : null;
+
+          if (!currentBlockElem) {
+            return;
+          }
+
+          const normalizedShieldValue =
+            typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+              ? ShieldElement.prototype
+                  .normalizeShieldCode(
+                    currentBlockElem.shieldBase ||
+                    currentBlockElem.type ||
+                    ""
+                  )
+                  .toUpperCase()
+              : String(
+                  currentBlockElem.shieldBase ||
+                  currentBlockElem.type ||
+                  ""
+                ).toUpperCase();
+
+          const selectedShieldConfig =
+            typeof ShieldElement?.prototype?.getBlockShieldConfig === "function"
+              ? ShieldElement.prototype.getBlockShieldConfig(
+                  currentBlockElem.shieldBase ||
+                  currentBlockElem.type ||
+                  normalizedShieldValue
+                )
+              : null;
+
+          const supportsShieldBacks =
+            typeof ShieldElement?.prototype?.supportsShieldBacks === "function"
+              ? ShieldElement.prototype.supportsShieldBacks(
+                  selectedShieldConfig || normalizedShieldValue
+                )
+              : normalizedShieldValue === "US" ||
+                normalizedShieldValue === "NJ" ||
+                normalizedShieldValue === "C" ||
+                normalizedShieldValue === "NVCC";
+
+          if (!supportsShieldBacks) {
+            checkbox.checked = false;
+            return;
+          }
+
+          await preloadSdShieldAsset({
+            baseValue:
+              currentBlockElem.shieldBase ||
+              currentBlockElem.type ||
+              "",
+            variantValue:
+              currentBlockElem.shieldType ||
+              getSdShieldAutoVariantValue(),
+            shieldBacks: !!checkbox.checked,
+          });
+
+          runShieldUndoableCommit(() => {
+            currentBlockElem.shieldBacks = !!checkbox.checked;
+
+            if (exposed && typeof exposed.redraw === "function") {
+              exposed.redraw();
+            }
+          });
+
+          updateShieldCountyVisibility();
+        });
+      };
+
+      const bindShieldLetterSpacingControls = () => {
+        const range = document.getElementById("sdShield_bannerLetterSpacing");
+        const value = document.getElementById("sdShield_bannerLetterSpacingVal");
+
+        if (!range || !value || range.dataset.shieldLetterSpacingBound === "true") {
+          return;
+        }
+
+        range.dataset.shieldLetterSpacingBound = "true";
+
+        const syncFromRange = () => {
+          value.value = range.value;
+        };
+
+        const syncFromValue = () => {
+          const nextValue = normalizeShieldBannerLetterSpacing(value.value);
+          range.value = String(nextValue);
+          value.value = String(nextValue);
+        };
+
+        range.addEventListener("input", syncFromRange);
+        value.addEventListener("input", () => {
+          range.value = value.value;
+        });
+        value.addEventListener("change", () => {
+          syncFromValue();
+          scheduleSdShieldReadForm();
+        });
+        value.addEventListener("blur", syncFromValue);
       };
 
       bindShieldUndoField("sdShield_routeNumber", ["change", "blur"]);
       bindShieldUndoField("sdShield_shieldType", ["change"]);
       bindShieldUndoField("sdShield_shieldSize", ["change", "blur"]);
+      bindShieldUndoField("sdShield_bannerLetterSpacing", ["change"]);
+      bindShieldUndoField("sdShield_bannerFontSize1Display", ["change", "blur"]);
+      bindShieldUndoField("sdShield_bannerFontSize2Display", ["change", "blur"]);
+      bindShieldUndoField("sdShield_roadNameFontSizeDisplay", ["change", "blur"]);
+      bindShieldUndoField("sdShield_bannerBackgroundColor1", ["change"]);
+      bindShieldUndoField("sdShield_bannerBackgroundColor2", ["change"]);
+      bindShieldUndoField("sdShield_bannerType", ["change"]);
+      bindShieldUndoField("sdShield_bannerType2", ["change"]);
+      bindShieldUndoField("sdShield_bannerCustomText", ["blur"]);
+      bindShieldUndoField("sdShield_bannerCustomText2", ["blur"]);
+      bindShieldUndoField("sdShield_roadName", ["blur"]);
+      bindShieldUndoField("sdShield_countyText", ["blur"]);
+      bindSdShieldScaleBannersCheckbox();
+      bindSdShieldBacksCheckbox();
+      bindShieldUndoField("sdShield_to", ["change"]);
+      bindShieldLetterSpacingControls();
+      setupSdShieldCompactControls();
+      bindSdShieldEditorCommitFallback();
 
       /* Populate the fixed Shield banner dropdowns */
       const blockShieldBannerSelects = [
@@ -15323,19 +18273,16 @@ const getPostThicknessFallback = () =>
 
         select.innerHTML = "";
 
+        const blankOption = document.createElement("option");
+        blankOption.value = "";
+        blankOption.textContent = "";
+        select.appendChild(blankOption);
+
         for (const bannerType of bannerTypeOptions) {
           const optionValue = getBannerDropdownValue(bannerType);
           lib.appendOption(select, optionValue, {
             text: optionValue,
           });
-        }
-
-        if (
-          !bannerTypeOptions.some(
-            (bannerType) => getBannerDropdownValue(bannerType) === "NONE"
-          )
-        ) {
-          lib.appendOption(select, "NONE", { text: "NONE" });
         }
       }
 
@@ -15382,31 +18329,131 @@ const getPostThicknessFallback = () =>
         lib.appendOption(select, bannerPosition);
       }
     }
+    setupSdShieldCompactControls();
 
-    const blockBannerFontSelect = document.querySelector(
-      "#sdShield_bannerFontFamily"
-    );
-    if (blockBannerFontSelect) {
+    const populateShieldBannerFontSelect = (select) => {
+      if (!select) {
+        return;
+      }
+
       const bannerFontOptions = ShieldElement.prototype.getBannerFontOptions();
+      select.innerHTML = "";
+
       if (
         (!bannerFontOptions || !bannerFontOptions.length) &&
         ShieldElement.prototype.defaultBannerFontFamily
       ) {
-        lib.appendOption(
-          blockBannerFontSelect,
-          ShieldElement.prototype.defaultBannerFontFamily
-        );
+        lib.appendOption(select, ShieldElement.prototype.defaultBannerFontFamily);
       } else {
         for (const font of bannerFontOptions) {
-          lib.appendOption(blockBannerFontSelect, font);
+          lib.appendOption(select, font);
         }
       }
+
       const defaultBannerFont =
-        ShieldElement.prototype.defaultBannerFontFamily ||
-        (bannerFontOptions.length ? bannerFontOptions[0] : "");
-      if (defaultBannerFont) {
-        blockBannerFontSelect.value = defaultBannerFont;
+        select.id === "sdShield_roadNameFontFamily"
+          ? (ShieldElement.prototype.defaultRoadNameFontFamily || "Series E")
+          : (ShieldElement.prototype.defaultBannerFontFamily ||
+              (bannerFontOptions.length ? bannerFontOptions[0] : ""));
+      if (defaultBannerFont && !select.value) {
+        select.value = defaultBannerFont;
       }
+    };
+
+    const shieldBannerFontSelects = [
+      document.querySelector("#sdShield_bannerFontFamily1"),
+      document.querySelector("#sdShield_bannerFontFamily2"),
+      document.querySelector("#sdShield_roadNameFontFamily"),
+    ].filter(Boolean);
+
+    shieldBannerFontSelects.forEach((select) => {
+      populateShieldBannerFontSelect(select);
+    });
+
+    const setupInlineShieldBannerFontSelect = (select, displayInputId) => {
+      if (!select || select.dataset.inlineShieldBannerFontBound === "true") {
+        return;
+      }
+
+      select.dataset.inlineShieldBannerFontBound = "true";
+      select.addEventListener("change", () => {
+        select.dataset.shieldBannerFontUserChanged = "true";
+        const sizeInput = document.getElementById(displayInputId);
+        if (sizeInput && (!sizeInput.value || sizeInput.value === "14" || sizeInput.value === "16")) {
+          sizeInput.value = getShieldBannerFontSizeDisplayValue(
+            ShieldElement.prototype.getDefaultBannerFontSizeForFont(select.value)
+          );
+        }
+        scheduleSdShieldReadForm();
+      });
+
+      if (!select._fontPickerApi && typeof createFontPicker === "function") {
+        createFontPicker({
+          selectEl: select,
+          mode: "allFontsGrouped",
+        });
+      }
+    };
+
+    setupInlineShieldBannerFontSelect(
+      document.querySelector("#sdShield_bannerFontFamily1"),
+      "sdShield_bannerFontSize1Display"
+    );
+    setupInlineShieldBannerFontSelect(
+      document.querySelector("#sdShield_bannerFontFamily2"),
+      "sdShield_bannerFontSize2Display"
+    );
+
+    const setupInlineShieldRoadNameFontSelect = (select, displayInputId) => {
+      if (!select || select.dataset.inlineShieldRoadNameFontBound === "true") {
+        return;
+      }
+
+      select.dataset.inlineShieldRoadNameFontBound = "true";
+      select.dataset.previousFontValue = select.value || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E";
+      select.addEventListener("change", () => {
+        const sizeInput = document.getElementById(displayInputId);
+        const previousFont = select.dataset.previousFontValue || "";
+        const previousWasHighway = ShieldElement.prototype.isHighwayGothicBannerFont(previousFont);
+        const previousWasClearview = isClearviewUiFont(previousFont);
+        const nextIsHighway = ShieldElement.prototype.isHighwayGothicBannerFont(select.value);
+        const nextIsClearview = isClearviewUiFont(select.value);
+        const currentDisplaySize = String(sizeInput?.value || "").trim();
+
+        if (sizeInput) {
+          if (previousWasHighway && nextIsClearview && currentDisplaySize === "12") {
+            sizeInput.value = "11";
+          } else if (previousWasClearview && nextIsHighway && currentDisplaySize === "11") {
+            sizeInput.value = "12";
+          } else if (!currentDisplaySize) {
+            sizeInput.value = getShieldRoadNameFontSizeDisplayValue(
+              getShieldRoadNameDefaultFontSize(select.value)
+            );
+          }
+        }
+
+        select.dataset.previousFontValue = select.value || "";
+        scheduleSdShieldReadForm();
+      });
+
+      if (!select._fontPickerApi && typeof createFontPicker === "function") {
+        createFontPicker({
+          selectEl: select,
+          mode: "allFontsGrouped",
+        });
+      }
+    };
+
+    setupInlineShieldRoadNameFontSelect(
+      document.querySelector("#sdShield_roadNameFontFamily"),
+      "sdShield_roadNameFontSizeDisplay"
+    );
+
+    const blockBannerFontSelect = document.querySelector(
+      "#sdShield_bannerFontFamily"
+    );
+    if (blockBannerFontSelect && blockBannerFontSelect.dataset.globalShieldBannerFontBound !== "true") {
+      blockBannerFontSelect.dataset.globalShieldBannerFontBound = "true";
       blockBannerFontSelect.addEventListener("change", () => {
         const selectedFont = blockBannerFontSelect.value;
         const bannerFontSizeInput = document.getElementById("sdShield_fontSize");
@@ -15435,8 +18482,31 @@ const getPostThicknessFallback = () =>
           }
         }
 
-        readForm();
+        scheduleSdShieldReadForm();
       });
+    }
+
+    [
+      document.getElementById("sdShield_bannerBackgroundColor1"),
+      document.getElementById("sdShield_bannerBackgroundColor2"),
+    ].forEach((select) => {
+      if (!select) {
+        return;
+      }
+
+      select.innerHTML = "";
+      (TextElement.prototype.backgroundColor || ["Inherit"]).forEach((color) => {
+        lib.appendOption(select, color);
+      });
+      if (!select.value) {
+        select.value = ShieldElement.prototype.defaultBannerBackgroundColor || "Inherit";
+      }
+    });
+
+    bindSdShieldBannerBackgroundColorVisualSync();
+
+    if (typeof syncAllFontPickers === "function") {
+      syncAllFontPickers();
     }
 
 
@@ -15614,7 +18684,7 @@ const getPostThicknessFallback = () =>
       shieldCategory.className = "shieldCategory";
       shieldCategoryHead.className = "shieldCategoryHead";
       dropdownArrow.className = "material-symbols-outlined";
-      dropdownArrow.textContent = "arrow_drop_down";
+      dropdownArrow.textContent = "keyboard_arrow_down";
       shieldCategoryName.className = "shieldCategoryName";
       shieldCategoryName.textContent = name + " (Expand)";
 
@@ -15622,7 +18692,7 @@ const getPostThicknessFallback = () =>
         shieldCategory.classList.toggle("open");
         dropdownArrow.textContent = shieldCategory.classList.contains("open")
           ? "arrow_drop_up"
-          : "arrow_drop_down";
+          : "keyboard_arrow_down";
         shieldCategoryName.textContent =
           name +
           (shieldCategory.classList.contains("open")
@@ -15870,28 +18940,135 @@ const getPostThicknessFallback = () =>
   };
 
     
-    const updateShieldCountyVisibility = () => {
+    const updateShieldCountyVisibility = (shieldBaseOverride = null) => {
       const shieldBaseEl = document.getElementById("sdShield_shieldBase");
+      const countyRow = document.querySelector(
+        '#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow'
+      );
       const countyLabel = document.getElementById("sdShield_countyTextLabel");
       const countyInput = document.getElementById("sdShield_countyText");
+      const shieldBacksLabel = document.querySelector(
+        'label[for="sdShield_shieldBacks"]'
+      );
+      const shieldBacksCheckbox =
+        document.getElementById("sdShield_shieldBacks");
+      const currentBlockElem =
+        exposed && typeof exposed.getCurrentBlockElem === "function"
+          ? exposed.getCurrentBlockElem()
+          : null;
 
-      if (!shieldBaseEl || !countyLabel || !countyInput) {
+      if (!shieldBaseEl) {
         return;
       }
 
-      const selectedValue = String(shieldBaseEl.value || "").toLowerCase();
-      const selectedText = String(
-        shieldBaseEl.options?.[shieldBaseEl.selectedIndex]?.text || ""
-      ).toLowerCase();
+      const pickerApi =
+        shieldBaseEl._shieldPickerApi ||
+        shieldBaseEl.parentElement?.querySelector(".sdShieldBasePickerHost")
+          ?._shieldPickerApi ||
+        null;
+      const pickerValue =
+        pickerApi && typeof pickerApi.getValue === "function"
+          ? pickerApi.getValue()
+          : "";
 
+      /*
+       * The custom shield picker updates its visible selection before the
+       * asynchronous asset preload finishes. Prefer an explicit picker value
+       * when one is supplied, then the live picker API, then the saved block.
+       * This keeps conditional controls in sync immediately instead of waiting
+       * for another form edit/read cycle.
+       */
+      const selectedRawValue =
+        shieldBaseOverride ||
+        pickerValue ||
+        currentBlockElem?.shieldBase ||
+        currentBlockElem?.type ||
+        shieldBaseEl.dataset?.pickerValue ||
+        shieldBaseEl.value ||
+        "";
+      const selectedValue = String(selectedRawValue).trim();
+
+      const normalizedShieldValue =
+        typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+          ? ShieldElement.prototype
+              .normalizeShieldCode(selectedValue)
+              .toUpperCase()
+          : selectedValue.toUpperCase();
+      /* County Text belongs to the County base (C), including Standard and
+         Green variants. A saved Custom Shield Maker shield can also retain the
+         mechanic when it originated from County and still uses the original
+         County shield image. */
+      const selectedShieldConfig =
+        typeof ShieldElement?.prototype?.getBlockShieldConfig === "function"
+          ? ShieldElement.prototype.getBlockShieldConfig(selectedValue)
+          : null;
       const isCountyShield =
-        selectedValue === "county" ||
-        selectedText === "county" ||
-        selectedValue.includes("county") ||
-        selectedText.includes("county");
+        typeof ShieldElement?.prototype?.isCountyShield === "function"
+          ? ShieldElement.prototype.isCountyShield(
+              selectedShieldConfig || { value: selectedValue }
+            )
+          : normalizedShieldValue === "C";
 
-      countyLabel.classList.toggle("sdShieldCountyHidden", !isCountyShield);
-      countyInput.classList.toggle("sdShieldCountyHidden", !isCountyShield);
+      if (countyRow) {
+        countyRow.hidden = !isCountyShield;
+        countyRow.style.setProperty(
+          "display",
+          isCountyShield ? "" : "none",
+          isCountyShield ? "" : "important"
+        );
+        countyRow.setAttribute(
+          "aria-hidden",
+          isCountyShield ? "false" : "true"
+        );
+      }
+
+      if (countyLabel) {
+        countyLabel.classList.toggle("sdShieldCountyHidden", !isCountyShield);
+      }
+      if (countyInput) {
+        countyInput.classList.toggle("sdShieldCountyHidden", !isCountyShield);
+        countyInput.disabled = !isCountyShield;
+      }
+
+      const supportsShieldBacks =
+        typeof ShieldElement?.prototype?.supportsShieldBacks === "function"
+          ? ShieldElement.prototype.supportsShieldBacks(
+              selectedShieldConfig || normalizedShieldValue
+            )
+          : normalizedShieldValue === "US" ||
+            normalizedShieldValue === "NJ" ||
+            normalizedShieldValue === "C" ||
+            normalizedShieldValue === "NVCC";
+
+      if (shieldBacksLabel) {
+        shieldBacksLabel.hidden = !supportsShieldBacks;
+        shieldBacksLabel.style.setProperty(
+          "display",
+          supportsShieldBacks ? "" : "none",
+          supportsShieldBacks ? "" : "important"
+        );
+        shieldBacksLabel.setAttribute(
+          "aria-hidden",
+          supportsShieldBacks ? "false" : "true"
+        );
+      }
+
+      if (shieldBacksCheckbox) {
+        shieldBacksCheckbox.hidden = !supportsShieldBacks;
+        shieldBacksCheckbox.style.setProperty(
+          "display",
+          supportsShieldBacks ? "" : "none",
+          supportsShieldBacks ? "" : "important"
+        );
+        shieldBacksCheckbox.disabled = !supportsShieldBacks;
+
+        if (supportsShieldBacks && currentBlockElem) {
+          shieldBacksCheckbox.checked =
+            currentBlockElem.shieldBacks === true;
+        } else if (!supportsShieldBacks) {
+          shieldBacksCheckbox.checked = false;
+        }
+      }
     };
 
     
@@ -15950,11 +19127,325 @@ const getPostThicknessFallback = () =>
     };
     const getDefaultBannerType = () =>
       getBannerDropdownValue(
-        ShieldElement.prototype.defaultBannerType || "None"
+        ShieldElement.prototype.defaultBannerType ?? ""
       );
 
     const normalizeManualBannerText = (value) =>
       String(value || "").trim();
+
+    const normalizeShieldBannerLetterSpacing = (value) => {
+      if (
+        typeof ShieldElement !== "undefined" &&
+        ShieldElement.prototype &&
+        typeof ShieldElement.prototype.normalizeBannerLetterSpacing === "function"
+      ) {
+        return ShieldElement.prototype.normalizeBannerLetterSpacing(value);
+      }
+
+      if (typeof normalizeTextLetterSpacing === "function") {
+        return normalizeTextLetterSpacing(value, 0);
+      }
+
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? Math.max(-0.15, Math.min(0.5, parsed)) : 0;
+    };
+
+    const normalizeShieldBannerFontSize = (value, fallback = null) => {
+      if (
+        typeof ShieldElement !== "undefined" &&
+        ShieldElement.prototype &&
+        typeof ShieldElement.prototype.normalizeFontSize === "function"
+      ) {
+        return ShieldElement.prototype.normalizeFontSize(
+          value,
+          fallback ?? ShieldElement.prototype.defaultBannerFontSize ?? 1.6
+        );
+      }
+
+      const parsed = parseFloat(value);
+      const fallbackParsed = parseFloat(fallback);
+      const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1.6;
+      return Number.isFinite(parsed) ? Math.max(0.5, Math.min(3, parsed)) : resolvedFallback;
+    };
+
+    const getShieldBannerFontSizeDisplayValue = (value, fallback = null) => {
+      const normalized = normalizeShieldBannerFontSize(value, fallback);
+      return String(Math.round(normalized * 10));
+    };
+
+    const getShieldBannerFontSizeFromDisplayValue = (value, fallback = null) => {
+      const parsed = parseFloat(value);
+      const fallbackParsed = parseFloat(fallback);
+      const resolvedFallback = Number.isFinite(fallbackParsed)
+        ? fallbackParsed
+        : ShieldElement.prototype.defaultBannerFontSize || 1.6;
+      return normalizeShieldBannerFontSize(
+        Number.isFinite(parsed) ? parsed / 10 : resolvedFallback,
+        resolvedFallback
+      );
+    };
+
+    const getShieldRoadNameDefaultFontSize = (fontFamily) => {
+      if (
+        typeof ShieldElement !== "undefined" &&
+        ShieldElement.prototype &&
+        typeof ShieldElement.prototype.getDefaultRoadNameFontSizeForFont === "function"
+      ) {
+        return ShieldElement.prototype.getDefaultRoadNameFontSizeForFont(fontFamily);
+      }
+
+      return isHighwayGothicUiFont(fontFamily) ? 1.6 : 1.1;
+    };
+
+    const getShieldRoadNameFontSizeDisplayValue = (value, fallback = null) => {
+      const normalized = normalizeShieldBannerFontSize(value, fallback ?? 1.6);
+      return String(Math.round(normalized * 10));
+    };
+
+    const getShieldRoadNameFontSizeFromDisplayValue = (value, fallback = null) => {
+      const parsed = parseFloat(value);
+      const fallbackParsed = parseFloat(fallback);
+      const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1.6;
+      return normalizeShieldBannerFontSize(
+        Number.isFinite(parsed) ? parsed / 10 : resolvedFallback,
+        resolvedFallback
+      );
+    };
+
+    const normalizeShieldBannerBackgroundColor = (value) => {
+      if (
+        typeof ShieldElement !== "undefined" &&
+        ShieldElement.prototype &&
+        typeof ShieldElement.prototype.normalizeBannerBackgroundColor === "function"
+      ) {
+        return ShieldElement.prototype.normalizeBannerBackgroundColor(value);
+      }
+
+      const raw = String(value ?? "").trim();
+      return raw || "Inherit";
+    };
+
+    const getSdShieldAutomaticBannerBackgroundColor = (bannerValue) => {
+      if (
+        typeof ShieldElement === "undefined" ||
+        !ShieldElement.prototype ||
+        typeof ShieldElement.prototype.getBannerDisplayInfo !== "function"
+      ) {
+        const normalized = String(bannerValue || "")
+          .trim()
+          .toUpperCase()
+          .replace(/\s+/g, " ");
+        if (["TOLL", "TOLLWAY", "TURNPIKE", "TOLL ROAD"].includes(normalized)) {
+          return "Yellow";
+        }
+        if (["TRUCKS", "NO TRUCKS", "HAZMATS", "NO HAZMATS"].includes(normalized)) {
+          return "White";
+        }
+        if (normalized === "DETOUR") {
+          return "Orange";
+        }
+        return "";
+      }
+
+      const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
+      if (bannerInfo.quoted) {
+        return "";
+      }
+      return bannerInfo.automaticBackgroundColor || "";
+    };
+
+    const syncSdShieldBannerBackgroundColorPickerVisuals = () => {
+      const pairs = [
+        {
+          bannerInput: document.getElementById("sdShield_bannerCustomText"),
+          bannerSelect: document.getElementById("sdShield_bannerType"),
+          colorSelect: document.getElementById("sdShield_bannerBackgroundColor1"),
+        },
+        {
+          bannerInput: document.getElementById("sdShield_bannerCustomText2"),
+          bannerSelect: document.getElementById("sdShield_bannerType2"),
+          colorSelect: document.getElementById("sdShield_bannerBackgroundColor2"),
+        },
+      ];
+
+      pairs.forEach(({ bannerInput, bannerSelect, colorSelect }) => {
+        if (!colorSelect) {
+          return;
+        }
+
+        const manualCheckbox = document.getElementById("sdShield_manualBanners");
+        const manualBanners = !manualCheckbox || manualCheckbox.checked;
+        const bannerValue = manualBanners
+          ? bannerInput?.value || ""
+          : bannerSelect?.value || "";
+        const currentColor = normalizeShieldBannerBackgroundColor(colorSelect.value);
+        const usesInheritedBackground =
+          !currentColor || /^(inherit|none|default)$/i.test(currentColor);
+        const automaticBackgroundColor = getSdShieldAutomaticBannerBackgroundColor(bannerValue);
+
+        const previousEffectiveColor =
+          colorSelect.dataset.colorPickerEffectiveColor || "";
+        const nextEffectiveColor =
+          usesInheritedBackground && automaticBackgroundColor
+            ? automaticBackgroundColor
+            : "";
+
+        if (nextEffectiveColor) {
+          colorSelect.dataset.colorPickerEffectiveColor = nextEffectiveColor;
+        } else {
+          delete colorSelect.dataset.colorPickerEffectiveColor;
+        }
+
+        if (
+          previousEffectiveColor !== nextEffectiveColor &&
+          colorSelect._colorPickerApi &&
+          typeof colorSelect._colorPickerApi.sync === "function"
+        ) {
+          colorSelect._colorPickerApi.sync();
+        }
+      });
+    };
+
+    const bindSdShieldBannerBackgroundColorVisualSync = () => {
+      if (document.documentElement.dataset.sdShieldBannerColorVisualSyncBound === "true") {
+        syncSdShieldBannerBackgroundColorPickerVisuals();
+        return;
+      }
+
+      document.documentElement.dataset.sdShieldBannerColorVisualSyncBound = "true";
+
+      [
+        "sdShield_bannerCustomText",
+        "sdShield_bannerCustomText2",
+        "sdShield_bannerType",
+        "sdShield_bannerType2",
+        "sdShield_bannerBackgroundColor1",
+        "sdShield_bannerBackgroundColor2",
+        "sdShield_manualBanners",
+      ].forEach((id) => {
+        const element = document.getElementById(id);
+        if (!element) {
+          return;
+        }
+
+        ["input", "change", "blur"].forEach((eventName) => {
+          element.addEventListener(eventName, syncSdShieldBannerBackgroundColorPickerVisuals);
+        });
+      });
+
+      syncSdShieldBannerBackgroundColorPickerVisuals();
+    };
+
+    const normalizeSdShieldBannerStyleFields = (shield) => {
+      if (!shield || typeof shield !== "object") {
+        return;
+      }
+
+      shield.bannerFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+        shield.bannerFontFamily
+      );
+      shield.fontSize = normalizeShieldBannerFontSize(shield.fontSize);
+      shield.bannerFontFamily1 = ShieldElement.prototype.normalizeBannerFontFamily(
+        shield.bannerFontFamily1 || shield.bannerFontFamily
+      );
+      shield.bannerFontFamily2 = ShieldElement.prototype.normalizeBannerFontFamily(
+        shield.bannerFontFamily2 || shield.bannerFontFamily
+      );
+      shield.bannerFontSize1 = normalizeShieldBannerFontSize(
+        shield.bannerFontSize1,
+        shield.fontSize
+      );
+      shield.bannerFontSize2 = normalizeShieldBannerFontSize(
+        shield.bannerFontSize2,
+        shield.fontSize
+      );
+      shield.bannerBackgroundColor1 = normalizeShieldBannerBackgroundColor(
+        shield.bannerBackgroundColor1
+      );
+      shield.bannerBackgroundColor2 = normalizeShieldBannerBackgroundColor(
+        shield.bannerBackgroundColor2
+      );
+      shield.roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+        shield.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E"
+      );
+      shield.roadNameFontSize = normalizeShieldBannerFontSize(
+        shield.roadNameFontSize,
+        getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+      );
+    };
+
+    const readSdShieldBannerFontSizeDisplayFields = (shield) => {
+      if (!shield || typeof shield !== "object") {
+        return;
+      }
+
+      const firstInput = document.getElementById("sdShield_bannerFontSize1Display");
+      const secondInput = document.getElementById("sdShield_bannerFontSize2Display");
+      const roadNameInput = document.getElementById("sdShield_roadNameFontSizeDisplay");
+      const roadNameFontSelect = document.getElementById("sdShield_roadNameFontFamily");
+
+      shield.bannerFontSize1 = getShieldBannerFontSizeFromDisplayValue(
+        firstInput?.value,
+        shield.bannerFontSize1 || shield.fontSize
+      );
+      shield.bannerFontSize2 = getShieldBannerFontSizeFromDisplayValue(
+        secondInput?.value,
+        shield.bannerFontSize2 || shield.fontSize
+      );
+      if (roadNameFontSelect) {
+        shield.roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+          roadNameFontSelect.value || shield.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E"
+        );
+      }
+      shield.roadNameFontSize = getShieldRoadNameFontSizeFromDisplayValue(
+        roadNameInput?.value,
+        shield.roadNameFontSize || getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+      );
+
+      if (firstInput) {
+        firstInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize1, shield.fontSize);
+      }
+      if (secondInput) {
+        secondInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize2, shield.fontSize);
+      }
+      if (roadNameInput) {
+        roadNameInput.value = getShieldRoadNameFontSizeDisplayValue(
+          shield.roadNameFontSize,
+          getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+        );
+      }
+    };
+
+    const writeSdShieldBannerFontSizeDisplayFields = (shield) => {
+      if (!shield || typeof shield !== "object") {
+        return;
+      }
+
+      const firstInput = document.getElementById("sdShield_bannerFontSize1Display");
+      const secondInput = document.getElementById("sdShield_bannerFontSize2Display");
+      const roadNameInput = document.getElementById("sdShield_roadNameFontSizeDisplay");
+      const roadNameFontSelect = document.getElementById("sdShield_roadNameFontFamily");
+
+      if (roadNameFontSelect) {
+        const roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+          shield.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E"
+        );
+        roadNameFontSelect.value = roadNameFontFamily;
+        roadNameFontSelect.dataset.previousFontValue = roadNameFontFamily;
+      }
+      if (firstInput) {
+        firstInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize1, shield.fontSize);
+      }
+      if (secondInput) {
+        secondInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize2, shield.fontSize);
+      }
+      if (roadNameInput) {
+        roadNameInput.value = getShieldRoadNameFontSizeDisplayValue(
+          shield.roadNameFontSize,
+          getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+        );
+      }
+    };
 
     const findManualBannerOptionCaseInsensitive = (value) => {
       const normalized = normalizeManualBannerText(value).toLowerCase();
@@ -16358,7 +19849,9 @@ const getPostThicknessFallback = () =>
       ? Math.max(0, panelBorderRadiusInput)
       : Panel.prototype.defaultBorderRadius;
 
-    post.disableFlash = form["disableFlash"].checked;
+    // The UI is now positive: checked means selection flashing is enabled.
+    // Keep the existing persisted disableFlash property for backward compatibility.
+    post.disableFlash = !form["disableFlash"].checked;
 
     // Exit Tab
     if (exitTab) {
@@ -16764,15 +20257,14 @@ const getPostThicknessFallback = () =>
     currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
 
     // Sign
-    currentPanel.sign.padding =
-      form["paddingTop"].value.toString() +
-      "rem " +
-      form["paddingRight"].value.toString() +
-      "rem " +
-      form["paddingBottom"].value.toString() +
-      "rem " +
-      form["paddingLeft"].value.toString() +
-      "rem";
+    const existingPanelPadding = getPanelPaddingValues(currentPanel.sign.padding);
+    const nextPanelPadding = PANEL_PADDING_SIDES.map((side, index) => {
+      const value = parseFloat(form[`padding${side}`]?.value);
+      return Number.isFinite(value) ? value : existingPanelPadding[index];
+    });
+    currentPanel.sign.padding = nextPanelPadding
+      .map((value) => `${value}rem`)
+      .join(" ");
     // Global Settings
     if (form["globalPosition"]) {
       currentPanel.sign.globalPositioning = form["globalPosition"].value;
@@ -16926,6 +20418,10 @@ const getPostThicknessFallback = () =>
       }
     }
 
+    if (blockElemType === "sdShield") {
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+    }
+
     for (const propertyName in currentBlockElem) {
       const elementId = `${blockElemType}_${propertyName}`;
       const element = document.getElementById(elementId);
@@ -16971,18 +20467,25 @@ const getPostThicknessFallback = () =>
               currentBlockElem[propertyName] =
                 customValue.length > 0
                   ? customValue
-                  : ShieldElement.prototype.defaultBannerType || "None";
+                  : ShieldElement.prototype.defaultBannerType;
             } else {
               const selectedValue = element.tagName === "SELECT"
                 ? element.value
-                : ShieldElement.prototype.defaultBannerType || "None";
+                : ShieldElement.prototype.defaultBannerType;
 
               currentBlockElem[propertyName] =
-                selectedValue || ShieldElement.prototype.defaultBannerType || "None";
+                selectedValue || ShieldElement.prototype.defaultBannerType || "";
             }
 
             continue;
           }
+        if (
+          blockElemType === "sdShield" &&
+          propertyName === "shieldBacks"
+        ) {
+          continue;
+        }
+
         if (element.type === "checkbox") {
           currentBlockElem[propertyName] = element.checked;
         } else if (element.type === "radio") {
@@ -16990,7 +20493,36 @@ const getPostThicknessFallback = () =>
             currentBlockElem[propertyName] = element.value;
           }
         } else if (element.tagName === "SELECT") {
-          currentBlockElem[propertyName] = element.value;
+          const isShieldBannerFontProperty =
+            blockElemType === "sdShield" &&
+            (propertyName === "bannerFontFamily1" ||
+              propertyName === "bannerFontFamily2");
+
+          if (isShieldBannerFontProperty) {
+            const currentFont = ShieldElement.prototype.normalizeBannerFontFamily(
+              currentBlockElem[propertyName] || currentBlockElem.bannerFontFamily
+            );
+            const selectedFont = ShieldElement.prototype.normalizeBannerFontFamily(
+              element.value
+            );
+            const userChangedFont =
+              element.dataset.shieldBannerFontUserChanged === "true";
+
+            // A picker refresh can briefly make the native select report its
+            // first option (Series 1). Preserve the existing banner font unless
+            // Series 1 was explicitly selected by the user.
+            currentBlockElem[propertyName] =
+              !userChangedFont &&
+              selectedFont === "Series 1" &&
+              currentFont &&
+              currentFont !== "Series 1"
+                ? currentFont
+                : selectedFont;
+
+            element.dataset.shieldBannerFontUserChanged = "false";
+          } else {
+            currentBlockElem[propertyName] = element.value;
+          }
         } else {
           currentBlockElem[propertyName] = element.value;
         }
@@ -17028,14 +20560,40 @@ const getPostThicknessFallback = () =>
       ensureSdShieldBasePicker();
 
       const manualCheckbox = document.getElementById("sdShield_manualBanners");
-      currentBlockElem.manualBanners = !manualCheckbox || manualCheckbox.checked;
+      if (manualCheckbox) {
+        currentBlockElem.manualBanners = manualCheckbox.checked;
+      } else if (currentBlockElem.manualBanners === undefined) {
+        currentBlockElem.manualBanners = getDefaultManualBannersSetting();
+      }
 
       const roadNameInput = document.getElementById("sdShield_roadName");
       currentBlockElem.roadName = roadNameInput
         ? String(roadNameInput.value || "").trim()
         : "";
 
+      const bannerLetterSpacingInput = document.getElementById(
+        "sdShield_bannerLetterSpacing"
+      );
+      const bannerLetterSpacingValueInput = document.getElementById(
+        "sdShield_bannerLetterSpacingVal"
+      );
+      currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
+        bannerLetterSpacingInput
+          ? bannerLetterSpacingInput.value
+          : currentBlockElem.bannerLetterSpacing
+      );
+      if (bannerLetterSpacingInput) {
+        bannerLetterSpacingInput.value = String(currentBlockElem.bannerLetterSpacing);
+      }
+      if (bannerLetterSpacingValueInput) {
+        bannerLetterSpacingValueInput.value = String(currentBlockElem.bannerLetterSpacing);
+      }
+
+      readSdShieldBannerFontSizeDisplayFields(currentBlockElem);
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+
       syncManualBannerInputMode();
+      syncSdShieldBannerBackgroundColorPickerVisuals();
     }
 
     if (blockElemType === "sdShield") {
@@ -17289,24 +20847,11 @@ const getPostThicknessFallback = () =>
 
     applyExitOnlyArrowVisibility();
     
-    var paddingValues = currentPanel.sign.padding.split("rem");
+    syncPanelPaddingControlsFromSign(currentPanel.sign);
 
-    var left = parseFloat(paddingValues[3]);
-    var ctop = parseFloat(paddingValues[0]);
-    var right = parseFloat(paddingValues[1]);
-    var bottom = parseFloat(paddingValues[2]);
-
-    const paddingLeft = document.getElementById("paddingLeft");
-    const paddingTop = document.getElementById("paddingTop");
-    const paddingRight = document.getElementById("paddingRight");
-    const paddingBottom = document.getElementById("paddingBottom");
-
-    paddingLeft.value = left;
-    paddingTop.value = ctop;
-    paddingRight.value = right;
-    paddingBottom.value = bottom;
-
-    updateForm();
+    if (!(sdShieldReadFormFastPass && blockElemType === "sdShield")) {
+      updateForm();
+    }
     exposed.redraw();
     } finally {
         if (
@@ -18321,7 +21866,7 @@ const getPostThicknessFallback = () =>
 
           const toggleIcon = document.createElement("span");
           toggleIcon.className = "material-symbols-outlined";
-          toggleIcon.textContent = "arrow_drop_down";
+          toggleIcon.textContent = "keyboard_arrow_down";
           toggleButton.appendChild(toggleIcon);
 
           toggleButton.addEventListener("click", (event) => {
@@ -18349,26 +21894,76 @@ const getPostThicknessFallback = () =>
           const spacingLabel = document.createElement("span");
           spacingLabel.textContent = "Spacing:";
 
+          const spacingSlider = document.createElement("input");
+          spacingSlider.type = "range";
+          spacingSlider.min = "0";
+          spacingSlider.max = "5";
+          spacingSlider.step = "0.1";
+          spacingSlider.value = String(
+            Math.max(0, Math.min(5, parseFloat(stackInfo.spacing ?? 0) || 0))
+          );
+          spacingSlider.className = "stackedPanelSpacingSlider";
+
           const spacingInput = document.createElement("input");
           spacingInput.type = "number";
-          spacingInput.min = "-4";
-          spacingInput.max = "4";
           spacingInput.step = "0.1";
           spacingInput.value = String(stackInfo.spacing ?? 0);
           spacingInput.className = "stackedPanelSpacingInput";
-          spacingInput.addEventListener("change", () => {
-            const parsedValue = parseFloat(spacingInput.value);
-            const value = Number.isFinite(parsedValue)
-              ? Math.max(-4, Math.min(4, parsedValue))
-              : 0;
+
+          const parseStackedSpacing = (rawValue) => {
+            const parsedValue = parseFloat(rawValue);
+            return Number.isFinite(parsedValue) ? parsedValue : 0;
+          };
+
+          const clampStackedSpacingSlider = (value) =>
+            Math.max(0, Math.min(5, Number.isFinite(value) ? value : 0));
+
+          const syncStackedSpacingSlider = (value) => {
+            spacingSlider.value = String(clampStackedSpacingSlider(value));
+          };
+
+          const commitStackedSpacing = (rawValue) => {
+            const value = parseStackedSpacing(rawValue);
+            syncStackedSpacingSlider(value);
             spacingInput.value = String(value);
 
             if (typeof app.setStackedPanelSpacing === "function") {
               app.setStackedPanelSpacing(value);
             }
+          };
+
+          spacingSlider.addEventListener("input", () => {
+            spacingInput.value = spacingSlider.value;
+          });
+          spacingSlider.addEventListener("change", () => {
+            commitStackedSpacing(spacingSlider.value);
+          });
+          spacingInput.addEventListener("input", () => {
+            const parsedValue = parseFloat(spacingInput.value);
+            if (Number.isFinite(parsedValue)) {
+              syncStackedSpacingSlider(parsedValue);
+            }
+          });
+          spacingInput.addEventListener("change", () => {
+            commitStackedSpacing(spacingInput.value);
+          });
+          spacingInput.addEventListener("blur", () => {
+            const value = parseStackedSpacing(spacingInput.value);
+            syncStackedSpacingSlider(value);
+            spacingInput.value = String(value);
+          });
+
+          [spacingSlider, spacingInput].forEach((control) => {
+            control.addEventListener("pointerdown", (event) => event.stopPropagation());
+            control.addEventListener("mousedown", (event) => event.stopPropagation());
+            control.addEventListener("dragstart", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            });
           });
 
           spacingRow.appendChild(spacingLabel);
+          spacingRow.appendChild(spacingSlider);
           spacingRow.appendChild(spacingInput);
 
           const matchWidthRow = document.createElement("label");
@@ -18833,6 +22428,13 @@ const getPostThicknessFallback = () =>
         if (arrow?.type === "APL_UP_TURN") return arrow.flip ? "UP_LEFT" : "UP_RIGHT";
         if (arrow?.type === "APL_DUAL_TURN") return "DUAL_TURN";
         if (arrow?.type === "APL_TURN") return arrow.flip ? "LEFT_TURN" : "RIGHT_TURN";
+        if (arrow?.type === "APL_UP_CFX") return "UP_CFX";
+        if (arrow?.type === "APL_UP_TURN_CFX") {
+          return arrow.flip ? "UP_LEFT_CFX" : "UP_RIGHT_CFX";
+        }
+        if (arrow?.type === "APL_TURN_CFX") {
+          return arrow.flip ? "LEFT_TURN_CFX" : "RIGHT_TURN_CFX";
+        }
         return "UP";
       };
 
@@ -18844,6 +22446,11 @@ const getPostThicknessFallback = () =>
           DUAL_TURN: "Dual Turn",
           LEFT_TURN: "Left Turn",
           RIGHT_TURN: "Right Turn",
+          UP_CFX: "CFX Up",
+          UP_LEFT_CFX: "CFX Up Left Turn",
+          UP_RIGHT_CFX: "CFX Up Right Turn",
+          LEFT_TURN_CFX: "CFX Left Turn",
+          RIGHT_TURN_CFX: "CFX Right Turn",
         };
 
         return labels[getAPLArrowKind(arrow)] || "Up";
@@ -19429,6 +23036,13 @@ const getPostThicknessFallback = () =>
       panelBorderRadiusElmt.value = resolvedRadius;
     }
 
+    const selectionFlashElmt = document.getElementById("disableFlash");
+    if (selectionFlashElmt) {
+      selectionFlashElmt.checked = post?.disableFlash !== true;
+    }
+
+    syncPanelPaddingControlsFromSign(panel.sign);
+
     // Global Panel
     const outActionMessage = document.getElementById("outActionMessage");
     const outActionMessageLabel = document.getElementById(
@@ -19897,6 +23511,7 @@ const getPostThicknessFallback = () =>
       ? currentBlockElements.rows
       : [];
 
+    closeSubpanelBlockTypePicker();
     sMSPTextList.innerHTML = "";
     ensureSubpanelClipboardSelectionForRows(currentRows);
 
@@ -19952,10 +23567,6 @@ const getPostThicknessFallback = () =>
         blockTypeLabel.textContent =
           Control.prototype.blockElements[currentBlockElemType] || "Block";
 
-        const blockTypeChevron = document.createElement("span");
-        blockTypeChevron.className = "blockTypeChevron";
-        blockTypeChevron.textContent = "▾";
-
         const blockTypeSelect = document.createElement("select");
         blockTypeSelect.className = "blockTypeInlineSelect";
         blockTypeSelect.value = currentBlockElemType;
@@ -19969,35 +23580,16 @@ const getPostThicknessFallback = () =>
           });
         }
 
-        blockTypeSelect.addEventListener("mousedown", (event) => {
-          event.stopPropagation();
-        });
-
-        blockTypeSelect.addEventListener("click", (event) => {
-          event.stopPropagation();
-        });
-
-        blockTypeSelect.addEventListener("dragstart", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-        });
-
-        blockTypeSelect.addEventListener("change", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-
-          if (typeof exposed.replaceControlElemTypeAt === "function") {
-            exposed.replaceControlElemTypeAt(
-              row,
-              item,
-              blockTypeSelect.value
-            );
-          }
+        const blockTypePicker = createInlineSubpanelBlockTypePicker({
+          nativeSelect: blockTypeSelect,
+          row,
+          item,
+          currentValue: currentBlockElemType,
+          anchor: textEditorBlock,
         });
 
         textEditorBlock.appendChild(blockTypeLabel);
-        textEditorBlock.appendChild(blockTypeChevron);
-        textEditorBlock.appendChild(blockTypeSelect);
+        textEditorBlock.appendChild(blockTypePicker);
 
         sMControlRow.appendChild(textEditorBlock);
         textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
@@ -20197,14 +23789,21 @@ const getPostThicknessFallback = () =>
     }
 
     if (blockElemType === "sdShield") {
-      currentBlockElem.bannerFontFamily =
-        ShieldElement.prototype.normalizeBannerFontFamily(
-          currentBlockElem.bannerFontFamily
-        );
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
       currentBlockElem.scaleBannersWithShield =
         ShieldElement.prototype.normalizeScaleBannersWithShield(
           currentBlockElem.scaleBannersWithShield
         );
+      if (currentBlockElem.shieldBacks === undefined) {
+        currentBlockElem.shieldBacks = false;
+      } else {
+        currentBlockElem.shieldBacks =
+          currentBlockElem.shieldBacks === true ||
+          currentBlockElem.shieldBacks === "true" ||
+          currentBlockElem.shieldBacks === 1 ||
+          currentBlockElem.shieldBacks === "1" ||
+          currentBlockElem.shieldBacks === "on";
+      }
       if (currentBlockElem.indentFirstLetter === undefined) {
         currentBlockElem.indentFirstLetter = true;
       }
@@ -20223,11 +23822,14 @@ const getPostThicknessFallback = () =>
         currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
       }
       if (currentBlockElem.manualBanners === undefined) {
-        currentBlockElem.manualBanners = true;
+        currentBlockElem.manualBanners = getDefaultManualBannersSetting();
       }
       if (currentBlockElem.roadName === undefined) {
         currentBlockElem.roadName = "";
       }
+      currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
+        currentBlockElem.bannerLetterSpacing
+      );
       if (currentBlockElem.alignment === undefined) {
         currentBlockElem.alignment = "Center";
       }
@@ -20272,15 +23874,16 @@ const getPostThicknessFallback = () =>
 
           if (element.tagName === "SELECT") {
             element.value = matchedPreset || getDefaultBannerType();
-            element.addEventListener("change", readForm, { once: true });
+            element.addEventListener("change", scheduleSdShieldReadForm, { once: true });
           }
 
           if (customInput) {
             customInput.value = manualBanners ? currentBanner : "";
-            customInput.addEventListener("blur", readForm, { once: true });
+            customInput.addEventListener("blur", scheduleSdShieldReadForm, { once: true });
           }
 
           syncManualBannerInputMode();
+          syncSdShieldBannerBackgroundColorPickerVisuals();
 
           if (displayElement) {
             displayElement.textContent = currentBanner;
@@ -20289,14 +23892,17 @@ const getPostThicknessFallback = () =>
           continue;
         }
 
+        const formReadHandler =
+          blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
+
         if (element.type === "checkbox") {
           element.checked = currentBlockElem[propertyName];
-          element.addEventListener("change", readForm, { once: true });
+          element.addEventListener("change", formReadHandler, { once: true });
         } else if (element.type === "radio") {
           if (element.value === currentBlockElem[propertyName].toString()) {
             element.checked = true;
           }
-          element.addEventListener("change", readForm, { once: true });
+          element.addEventListener("change", formReadHandler, { once: true });
         } else if (element.tagName === "SELECT") {
           const currentSelectValue =
             propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
@@ -20307,14 +23913,21 @@ const getPostThicknessFallback = () =>
             lib.appendOption(element, currentSelectValue);
           }
           element.value = currentSelectValue;
+          if (
+            blockElemType === "sdShield" &&
+            (propertyName === "bannerFontFamily1" ||
+              propertyName === "bannerFontFamily2")
+          ) {
+            element.dataset.shieldBannerFontUserChanged = "false";
+          }
 
-          element.addEventListener("change", readForm, { once: true });
-          element.addEventListener("blur", readForm, { once: true });
+          element.addEventListener("change", formReadHandler, { once: true });
+          element.addEventListener("blur", formReadHandler, { once: true });
         } else {
           element.value = currentBlockElem[propertyName];
           element.addEventListener(
             element.type === "text" ? "blur" : "change",
-            readForm,
+            formReadHandler,
             { once: true }
           );
 
@@ -20340,6 +23953,18 @@ const getPostThicknessFallback = () =>
         } else {
           displayElement.textContent = currentBlockElem[propertyName];
         }
+      }
+    }
+
+    if (blockElemType === "sdShield") {
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+      writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
+      setupSdShieldCompactControls();
+      if (typeof syncAllFontPickers === "function") {
+        syncAllFontPickers();
+      }
+      if (typeof syncAllColorPickers === "function") {
+        syncAllColorPickers();
       }
     }
 
@@ -20418,6 +24043,7 @@ const getPostThicknessFallback = () =>
         bottomPadValEl.textContent = bottomPadValue;
       }
     }
+    bindBlockMarginStepperCommit();
 
     document.querySelector("#sdBlock_backgroundColor").value =
       selectedBlockProperties.backgroundColor;
@@ -20653,12 +24279,21 @@ const getPostThicknessFallback = () =>
       ) {
         ensureSdShieldBasePicker();
 
-        syncShieldBasePickerValue(
+        const selectedShieldBase = syncShieldBasePickerValue(
           currentBlockElemForPickerSync.shieldBase ||
             currentBlockElemForPickerSync.type ||
             ShieldElement.prototype.defaultShieldBase ||
             "I"
         );
+
+        if (typeof syncSdShieldVariantPickerForBase === "function") {
+          syncSdShieldVariantPickerForBase(selectedShieldBase, {
+            requestedValue:
+              currentBlockElemForPickerSync.shieldType ||
+              getSdShieldAutoVariantValue(),
+            updateBlock: true,
+          });
+        }
       }
 
       if (typeof ensureGuideArrowPicker === "function") {
@@ -20698,7 +24333,21 @@ const getPostThicknessFallback = () =>
       syncAllFontPickers();
       syncAllColorPickers();
       applyExitOnlyArrowVisibility();
+
+      /* updateForm can run after redraws, block changes, undo/redo, and picker
+         commits. Re-derive these conditional shield controls every time so
+         their visibility never depends on a later field edit. */
+      if (blockElemType === "sdShield") {
+        updateShieldCountyVisibility(
+          currentBlockElem?.shieldBase ||
+            currentBlockElem?.type ||
+            ShieldElement.prototype.defaultShieldBase ||
+            "I"
+        );
+      }
+
       syncGlobalBlockControls();
+      scheduleSubpanelModalHeightSync();
   };
     
     /* END OF UPDATEFORM */
@@ -20897,6 +24546,10 @@ const getPostThicknessFallback = () =>
 
       // Populate banner type options
       const bannerTypeSelectElmt = document.createElement("select");
+      const blankBannerTypeOption = document.createElement("option");
+      blankBannerTypeOption.value = "";
+      blankBannerTypeOption.textContent = "";
+      bannerTypeSelectElmt.appendChild(blankBannerTypeOption);
       for (const bannerType of Shield.prototype.bannerTypes) {
         const optionValue = getBannerDropdownValue(bannerType);
         lib.appendOption(bannerTypeSelectElmt, optionValue, {
@@ -20911,7 +24564,7 @@ const getPostThicknessFallback = () =>
       rowContainerElmt.appendChild(bannerTypeSelectElmt);
       const bannerCustomInputElmt = document.createElement("input");
       bannerCustomInputElmt.type = "text";
-      bannerCustomInputElmt.placeholder = "Custom text";
+      bannerCustomInputElmt.placeholder = "Banner Text";
       bannerCustomInputElmt.id = `shield${shieldIndex}_bannerCustomText`;
       const isCustomBanner =
         !findBannerDropdownPresetValue(shields[shieldIndex].bannerType);
@@ -20941,6 +24594,10 @@ const getPostThicknessFallback = () =>
       rowContainerElmt.appendChild(document.createElement("br"));
 
       const bannerType2SelectElmt = document.createElement("select");
+      const blankBannerType2Option = document.createElement("option");
+      blankBannerType2Option.value = "";
+      blankBannerType2Option.textContent = "";
+      bannerType2SelectElmt.appendChild(blankBannerType2Option);
       for (const bannerType2 of Shield.prototype.bannerTypes) {
         const optionValue = getBannerDropdownValue(bannerType2);
         lib.appendOption(bannerType2SelectElmt, optionValue, {
@@ -20955,7 +24612,7 @@ const getPostThicknessFallback = () =>
       rowContainerElmt.appendChild(bannerType2SelectElmt);
       const bannerCustomInputElmt2 = document.createElement("input");
       bannerCustomInputElmt2.type = "text";
-      bannerCustomInputElmt2.placeholder = "Custom text";
+      bannerCustomInputElmt2.placeholder = "Banner Text";
       bannerCustomInputElmt2.id = `shield${shieldIndex}_bannerCustomText2`;
       const isCustomBanner2 =
         !findBannerDropdownPresetValue(shields[shieldIndex].bannerType2);

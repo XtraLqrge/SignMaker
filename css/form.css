@@ -1481,7 +1481,7 @@ textarea {
   padding: 0.75rem 0.5rem;
   width: 100%;
   min-width: 0;
-  font-size: 1.05rem;
+  font-size: 1.28rem;
 }
 
 .downloadPrimaryButton:hover {
@@ -1634,7 +1634,7 @@ textarea {
 .downloadPanelButtonsMessage {
   min-height: 0;
   font-family: "Inter", sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   line-height: 1.25;
   opacity: 0.75;
 }
@@ -2488,14 +2488,21 @@ label[for="sdBlock_bottomPadding"] {
 
 .shieldPickerItemCaret {
   flex: 0 0 auto;
-  opacity: 0.8;
-  transform: rotate(0deg);
+  display: block;
+  width: 0.86rem;
+  height: 0.86rem;
+  opacity: 0.9;
+  background-image: var(--sm-dropdown-chevron-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.86rem 0.86rem;
+  transform: rotate(-90deg);
   transform-origin: center;
   transition: transform 0.22s ease;
 }
 
 .shieldPickerItem.expanded .shieldPickerItemCaret {
-  transform: rotate(-90deg);
+  transform: rotate(0deg);
 }
 
 #presetShieldList {
@@ -3728,7 +3735,7 @@ dialog:not([open]) {
 }
 
 .templateRenameBtn .material-symbols-outlined {
-  font-size: 1.05rem;
+  font-size: 1.28rem;
 }
 
 .templateItemDate {
@@ -3816,7 +3823,7 @@ dialog:not([open]) {
 
 .settingsModalCard h3 {
   margin: 1.35rem 0 0.7rem 0;
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
   padding-top: 0.9rem;
 }
@@ -5048,7 +5055,7 @@ dialog:not([open]) {
 .arrowPicker .shieldPickerItem {
   min-height: 1.75rem;
   padding-top: 0.18rem;
-  padding-bottom: 0.18rem;
+  padding-bottom: 0.08rem;
 }
 
 .arrowPicker .shieldPickerPopover {
@@ -6136,9 +6143,9 @@ label[for="sdShield_bannerFontSize"] {
 }
 
 #sdShield_fontSize {
-  width: 3.5rem !important;
-  min-width: 3.5rem !important;
-  max-width: 3.5rem !important;
+  width: 1.75rem !important;
+  min-width: 1.75rem !important;
+  max-width: 1.75rem !important;
   box-sizing: border-box;
 }
 
@@ -7676,7 +7683,7 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 /* Shield block editor: Road Name banner field */
 #smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
   display: grid !important;
-  grid-template-columns: 7rem minmax(12rem, 18rem) 1fr;
+  grid-template-columns: 7rem minmax(12rem, 18rem) max-content 8rem 4rem;
   column-gap: 0.5rem;
   row-gap: 0.35rem;
   align-items: center;
@@ -7701,6 +7708,25 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   min-width: 12rem !important;
   max-width: 18rem !important;
   box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerLetterSpacingLabel {
+  width: max-content !important;
+  max-width: max-content !important;
+  text-align: right;
+  white-space: nowrap !important;
+}
+
+#sdShield_bannerLetterSpacing {
+  width: 4rem !important;
+  min-width: 4rem !important;
+  max-width: 4rem !important;
+}
+
+#sdShield_bannerLetterSpacingVal {
+  width: 4rem !important;
+  min-width: 4rem !important;
+  max-width: 4rem !important;
 }
 
 /* SETTINGS INTERFACE CONTROLS */
@@ -7838,7 +7864,7 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   padding: 0.1rem 0.15rem;
   box-sizing: border-box;
   font-family: "Inter", sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.15;
   color: var(--textColor);
@@ -8169,7 +8195,7 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.72rem;
+  font-size: 0.86rem;
   font-weight: 700;
   opacity: 0.9;
 }
@@ -8579,7 +8605,7 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 }
 
 .sdIconResetButton .material-symbols-outlined {
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   line-height: 1;
 }
 
@@ -8765,7 +8791,7 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 }
 
 .stackedPanelOptionsButton .material-symbols-outlined {
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   line-height: 1;
   transition: transform 0.16s ease;
 }
@@ -11198,8 +11224,8 @@ html[data-config-position="bottom"] .modals {
 }
 
 #customShieldMaker .customShieldMakerAlignmentButton {
-  width: 1.9rem;
-  min-width: 1.9rem;
+  width: 2.08rem;
+  min-width: 2.08rem;
   max-width: 1.9rem;
   height: 1.9rem;
   min-height: 1.9rem;
@@ -11490,4 +11516,2544 @@ html[data-config-position="bottom"] .modals {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+/* Shield block editor compact row layout */
+#smSPProperties > [data-property="sdShield"].sdShieldEditorLayout {
+  width: fit-content !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"].sdShieldEditorLayout > div {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  display: grid !important;
+  align-items: center;
+  justify-content: start;
+  column-gap: 0.45rem;
+  row-gap: 0.35rem;
+  margin: 0.5rem 0;
+  width: max-content !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 8.4rem 3.6rem max-content 3.54rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow {
+  grid-template-columns: 7rem max-content max-content max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 7rem max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
+  grid-template-columns: 7rem 10.8rem max-content 4rem 1.6rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow {
+  grid-template-columns: 7rem 10rem max-content 3.5rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  grid-template-columns: 7rem 10rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow label,
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow label,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow label,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow label,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow label,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow label {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  line-height: 1.05;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow > label:first-child {
+  width: 7rem !important;
+  text-align: right;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .sdShieldBasePickerHost,
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPicker,
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldBasePicker,
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldBaseButton {
+  width: 8.4rem !important;
+  min-width: 8.4rem !important;
+  max-width: 8.4rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTrigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_routeNumber {
+  width: 3.6rem !important;
+  min-width: 3.6rem !important;
+  max-width: 3.6rem !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldType {
+  width: 3.54rem !important;
+  min-width: 3.54rem !important;
+  max-width: 3.54rem !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldSizeSlider {
+  width: 3.5rem !important;
+  min-width: 3.5rem !important;
+  max-width: 3.5rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldSize,
+#smSPProperties > [data-property="sdShield"] .sdShieldSizeValue {
+  width: 1.75rem !important;
+  min-width: 1.75rem !important;
+  max-width: 1.75rem !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_fontSize {
+  width: 3.5rem !important;
+  min-width: 3.5rem !important;
+  max-width: 3.5rem !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerType,
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerType2,
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerCustomText,
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerCustomText2 {
+  width: 10ch !important;
+  min-width: 10ch !important;
+  max-width: 10ch !important;
+  box-sizing: content-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_roadName {
+  width: 10.8rem !important;
+  min-width: 10.8rem !important;
+  max-width: 10.8rem !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerLetterSpacing {
+  width: 4rem !important;
+  min-width: 4rem !important;
+  max-width: 4rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerLetterSpacingVal {
+  width: 1.6rem !important;
+  min-width: 1.6rem !important;
+  max-width: 1.6rem !important;
+  box-sizing: border-box;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerFontFamily {
+  width: 10rem !important;
+  min-width: 10rem !important;
+  max-width: 10rem !important;
+}
+
+.sdShieldChoiceGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08rem;
+}
+
+.sdShieldPositionButtons {
+  margin-left: 0.45rem;
+}
+
+.sdShieldCapButtons {
+  margin-left: 0.6rem;
+}
+
+.sdShieldSquareButton {
+  width: 1.45rem;
+  height: 1.45rem;
+  min-width: 1.45rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sdShieldSquareButton:hover {
+  background: var(--hoverColor);
+}
+
+.sdShieldSquareButton.activated {
+  background: rgba(var(--baseColor), 0.55) !important;
+  box-shadow: inset 0 0 0 0.08rem rgba(255, 255, 255, 0.45);
+}
+
+.sdShieldSquareButton .material-symbols-outlined {
+  font-size: 1.12rem;
+  line-height: 1;
+}
+
+.sdShieldCapButton {
+  width: 2.08rem;
+  min-width: 2.08rem;
+  gap: 0.02rem;
+  letter-spacing: 0;
+  align-items: flex-end;
+  padding-bottom: 0.08rem;
+  box-sizing: border-box;
+}
+
+.sdShieldCapButton span {
+  display: inline-block;
+  align-self: flex-end;
+  line-height: 0.68;
+}
+
+.sdShieldCapButton span:not(.sdShieldBigA) {
+  font-size: 0.86rem;
+}
+
+.sdShieldCapButton .sdShieldBigA {
+  font-size: 1.28rem;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldHiddenControl,
+#smSPProperties > [data-property="sdShield"] select[hidden],
+#smSPProperties > [data-property="sdShield"] input[hidden] {
+  display: none !important;
+}
+
+/* Shield editor refinement */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 12.6rem 3.6rem max-content 6.2rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .sdShieldBasePickerHost,
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPicker,
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldBasePicker,
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldBaseButton {
+  width: 12.6rem !important;
+  min-width: 12.6rem !important;
+  max-width: 12.6rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldType {
+  width: 6.2rem !important;
+  min-width: 6.2rem !important;
+  max-width: 6.2rem !important;
+}
+
+.sdShieldSquareButton {
+  width: 1.32rem !important;
+  min-width: 1.32rem !important;
+  max-width: 1.32rem !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+}
+
+.sdShieldSquareButton.activated {
+  background: rgb(38, 40, 45) !important;
+  box-shadow: inset 0 0 0 0.05rem rgba(255, 255, 255, 0.12) !important;
+  font-weight: 900 !important;
+}
+
+.sdShieldSquareButton.activated .material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 700, "GRAD" 0, "opsz" 24 !important;
+}
+
+.sdShieldCapButtons {
+  margin-left: 0.45rem !important;
+}
+
+.sdShieldCapButton {
+  width: 2.28rem !important;
+  min-width: 2.28rem !important;
+  max-width: 2.28rem !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  gap: 0.01rem !important;
+  padding: 0 0 0.04rem 0 !important;
+  overflow: visible !important;
+}
+
+.sdShieldCapButton span {
+  align-self: flex-end !important;
+  display: inline-block !important;
+  line-height: 0.72 !important;
+  transform: translateY(-0.05rem);
+}
+
+.sdShieldCapButton span:not(.sdShieldBigA) {
+  font-size: 0.9rem !important;
+}
+
+.sdShieldCapButton .sdShieldBigA {
+  font-size: 1.32rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] input[type="number"].sliderNumberInputNoStepper {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+#smSPProperties > [data-property="sdShield"] input[type="number"].sliderNumberInputNoStepper::-webkit-outer-spin-button,
+#smSPProperties > [data-property="sdShield"] input[type="number"].sliderNumberInputNoStepper::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
+/* Shield editor follow-up layout refinements */
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  column-gap: 0.45rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow {
+  grid-template-columns: 6rem max-content max-content max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 6rem max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
+  grid-template-columns: 6rem 8.1rem max-content 4rem 2.4rem !important;
+  column-gap: 0.65rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow {
+  grid-template-columns: 6rem 10rem max-content 3.5rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  grid-template-columns: 6rem 10rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow > label:first-child {
+  width: 6rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 12.6rem 3.6rem max-content 4.35rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldType {
+  width: 4.35rem !important;
+  min-width: 4.35rem !important;
+  max-width: 4.35rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_roadName {
+  width: 8.1rem !important;
+  min-width: 8.1rem !important;
+  max-width: 8.1rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerLetterSpacingLabel {
+  margin-left: 0.25rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerLetterSpacingVal {
+  width: 2.4rem !important;
+  min-width: 2.4rem !important;
+  max-width: 2.4rem !important;
+}
+
+.sdShieldSquareButton,
+.sdShieldSquareButton:hover,
+.sdShieldSquareButton:focus,
+.sdShieldSquareButton:active {
+  transition: none !important;
+  animation: none !important;
+}
+
+.sdShieldSquareButton {
+  width: 1.22rem !important;
+  min-width: 1.22rem !important;
+  max-width: 1.22rem !important;
+  height: 1.22rem !important;
+  min-height: 1.22rem !important;
+  max-height: 1.22rem !important;
+}
+
+.sdShieldSquareButton.activated {
+  background: rgb(62, 65, 72) !important;
+  box-shadow: none !important;
+  font-weight: 900 !important;
+}
+
+.sdShieldSquareButton.activated .material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 700, "GRAD" 0, "opsz" 24 !important;
+}
+
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] select,
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .shieldPickerTrigger,
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .fontPickerTrigger,
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .colorPickerTrigger {
+  background-color: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  border-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .sdShieldSquareButton {
+  background: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:hover {
+  background: rgb(222, 226, 235) !important;
+}
+
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .sdShieldSquareButton.activated {
+  background: rgb(202, 208, 220) !important;
+  color: #000 !important;
+  box-shadow: none !important;
+  font-weight: 900 !important;
+}
+
+.sdShieldCapButton {
+  width: 2.18rem !important;
+  min-width: 2.18rem !important;
+  max-width: 2.18rem !important;
+  height: 1.22rem !important;
+  min-height: 1.22rem !important;
+  max-height: 1.22rem !important;
+  padding: 0 0 0.02rem 0 !important;
+}
+
+.sdShieldCapButton span {
+  transform: translateY(-0.12rem) !important;
+}
+
+/* Use a chevron-style dropdown icon in dark mode instead of the old triangle. */
+html[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.7rem center !important;
+  background-size: 1rem !important;
+}
+
+.shieldPickerTriggerCaret,
+.fontPickerTriggerCaret,
+.colorPickerTriggerCaret,
+.profilePickerTriggerCaret,
+.profileManagerTriggerCaret {
+  font-family: "Material Symbols Outlined" !important;
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+}
+
+:root[data-theme="dark"] .shieldPickerTriggerCaret,
+:root[data-theme="dark"] .fontPickerTriggerCaret,
+:root[data-theme="dark"] .colorPickerTriggerCaret,
+:root[data-theme="dark"] .profilePickerTriggerCaret,
+:root[data-theme="dark"] .profileManagerTriggerCaret {
+  color: #fff !important;
+}
+
+/* Hide native number steppers only for slider-paired number inputs inside
+   the Shield element editor. Number inputs everywhere else keep their native
+   increment/decrement controls. */
+#smSPProperties > [data-property="sdShield"] input[type="number"].sliderNumberInputNoStepper {
+  appearance: textfield !important;
+  -moz-appearance: textfield !important;
+  -webkit-appearance: none !important;
+}
+
+#smSPProperties > [data-property="sdShield"] input[type="number"].sliderNumberInputNoStepper::-webkit-outer-spin-button,
+#smSPProperties > [data-property="sdShield"] input[type="number"].sliderNumberInputNoStepper::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  display: none !important;
+  margin: 0 !important;
+}
+
+
+/* Dropdown and Shield-editor polish */
+:root[data-theme="dark"] .colorPickerTrigger {
+  background: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+:root[data-theme="light"] .colorPickerTrigger {
+  background: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  border-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+:root[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 1rem center !important;
+  background-size: 1.15rem 1.15rem !important;
+  padding-right: 2.25rem !important;
+}
+
+:root[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 1rem center !important;
+  background-size: 1.15rem 1.15rem !important;
+  padding-right: 2.25rem !important;
+}
+
+.shieldPickerTriggerCaret,
+.fontPickerTriggerCaret,
+.colorPickerTriggerCaret,
+.profilePickerTriggerCaret,
+.profileManagerTriggerCaret {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  margin-left: auto !important;
+  flex: 0 0 1.15rem !important;
+  font-family: "Material Symbols Outlined" !important;
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+  font-variation-settings: "FILL" 0, "wght" 700, "GRAD" 0, "opsz" 24 !important;
+  transform-origin: center center !important;
+}
+
+:root[data-theme="dark"] .shieldPickerTriggerCaret,
+:root[data-theme="dark"] .fontPickerTriggerCaret,
+:root[data-theme="dark"] .colorPickerTriggerCaret,
+:root[data-theme="dark"] .profilePickerTriggerCaret,
+:root[data-theme="dark"] .profileManagerTriggerCaret {
+  color: #fff !important;
+}
+
+:root[data-theme="light"] .shieldPickerTriggerCaret,
+:root[data-theme="light"] .fontPickerTriggerCaret,
+:root[data-theme="light"] .colorPickerTriggerCaret,
+:root[data-theme="light"] .profilePickerTriggerCaret,
+:root[data-theme="light"] .profileManagerTriggerCaret {
+  color: #000 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  column-gap: 0.48rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow {
+  grid-template-columns: 5.35rem max-content max-content max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 5.35rem max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
+  grid-template-columns: 5.35rem 6.08rem max-content 4rem 3.6rem !important;
+  column-gap: 0.72rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow {
+  grid-template-columns: 5.35rem 10rem max-content 3.5rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  grid-template-columns: 5.35rem 10rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow > label:first-child {
+  width: 5.35rem !important;
+  text-align: right !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 12.6rem 3.6rem max-content 3.05rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldType {
+  width: 3.05rem !important;
+  min-width: 3.05rem !important;
+  max-width: 3.05rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_roadName {
+  width: 6.08rem !important;
+  min-width: 6.08rem !important;
+  max-width: 6.08rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerLetterSpacingLabel {
+  margin-left: 0.4rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerLetterSpacingVal {
+  width: 3.6rem !important;
+  min-width: 3.6rem !important;
+  max-width: 3.6rem !important;
+}
+
+.sdShieldSquareButton,
+.sdShieldSquareButton:hover,
+.sdShieldSquareButton:focus,
+.sdShieldSquareButton:active,
+.sdShieldSquareButton *,
+.sdShieldSquareButton:hover *,
+.sdShieldSquareButton:focus *,
+.sdShieldSquareButton:active * {
+  transition: none !important;
+  animation: none !important;
+}
+
+.sdShieldSquareButton.activated,
+:root[data-theme="dark"] #smSPProperties > [data-property="sdShield"] .sdShieldSquareButton.activated {
+  background: rgb(76, 80, 88) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  font-weight: 900 !important;
+}
+
+:root[data-theme="light"] #smSPProperties > [data-property="sdShield"] .sdShieldSquareButton.activated {
+  background: rgb(214, 219, 230) !important;
+  color: #000 !important;
+  box-shadow: none !important;
+  font-weight: 900 !important;
+}
+
+.sdShieldSquareButton.activated .material-symbols-outlined,
+.sdShieldSquareButton.activated span {
+  font-weight: 900 !important;
+  font-variation-settings: "FILL" 0, "wght" 800, "GRAD" 0, "opsz" 24 !important;
+}
+
+/* Dropdown consistency */
+:root[data-theme="dark"] {
+  --sm-dropdown-chevron-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+:root[data-theme="light"] {
+  --sm-dropdown-chevron-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+select {
+  background-image: var(--sm-dropdown-chevron-icon) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.5rem center !important;
+  background-size: 0.95rem 0.95rem !important;
+  padding-right: 1.55rem !important;
+}
+
+.shieldPickerTrigger,
+.fontPickerTrigger,
+.colorPickerTrigger,
+.profilePickerTrigger,
+.profileManagerTrigger {
+  position: relative !important;
+  background-color: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  background-image: none !important;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-color 0.15s ease-in-out !important;
+}
+
+.colorPickerTrigger,
+:root[data-theme="dark"] .colorPickerTrigger,
+:root[data-theme="light"] .colorPickerTrigger {
+  background-color: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  border-color: rgba(var(--baseColor), 0.28) !important;
+}
+
+.shieldPickerTriggerCaret,
+.fontPickerTriggerCaret,
+.colorPickerTriggerCaret,
+.profilePickerTriggerCaret,
+.profileManagerTriggerCaret {
+  font-size: 0 !important;
+  color: transparent !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  margin-left: auto !important;
+  flex: 0 0 1rem !important;
+  line-height: 1 !important;
+  background: none !important;
+  transform-origin: center center !important;
+}
+
+.shieldPickerTriggerCaret::before,
+.fontPickerTriggerCaret::before,
+.colorPickerTriggerCaret::before,
+.profilePickerTriggerCaret::before,
+.profileManagerTriggerCaret::before {
+  content: "";
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  background-image: var(--sm-dropdown-chevron-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.95rem 0.95rem;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  column-gap: 0.48rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow {
+  grid-template-columns: 4.75rem max-content max-content max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 4.75rem max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
+  grid-template-columns: 4.75rem 6.08rem max-content 4rem 3.6rem !important;
+  column-gap: 0.72rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow {
+  grid-template-columns: 4.75rem 10rem max-content 3.5rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  grid-template-columns: 4.75rem 10rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow > label:first-child {
+  width: 4.75rem !important;
+  text-align: right !important;
+}
+
+/* Consistent dropdown chevrons */
+:root[data-theme="dark"] {
+  --sm-dropdown-chevron-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.85' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 9.5l5 5 5-5'/%3E%3C/svg%3E");
+}
+
+:root[data-theme="light"] {
+  --sm-dropdown-chevron-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.85' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 9.5l5 5 5-5'/%3E%3C/svg%3E");
+}
+
+select,
+:root[data-theme="dark"] select,
+:root[data-theme="light"] select {
+  background-image: var(--sm-dropdown-chevron-icon) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.45rem center !important;
+  background-size: 0.92rem 0.92rem !important;
+  padding-right: 1.65rem !important;
+}
+
+.shieldPickerTrigger,
+.fontPickerTrigger,
+.colorPickerTrigger,
+.profilePickerTrigger,
+.profileManagerTrigger,
+.aplInlineTypePicker .shieldPickerTrigger,
+#smSPProperties .fontPickerTrigger,
+#smSPProperties .colorPickerTrigger,
+#smSPProperties .shieldPickerTrigger,
+#customShieldMaker .fontPickerTrigger,
+#customShieldMaker .colorPickerTrigger,
+.sMModal.exitTabConfig .profilePickerTrigger,
+.sMModal.exitTabConfig .fontPickerTrigger,
+.sMModal.exitTabConfig .colorPickerTrigger,
+.sMModal.panelStyleConfig .colorPickerTrigger {
+  position: relative !important;
+  padding-right: 1.75rem !important;
+  background-image: none !important;
+}
+
+.shieldPickerTriggerCaret,
+.fontPickerTriggerCaret,
+.colorPickerTriggerCaret,
+.profilePickerTriggerCaret,
+.profileManagerTriggerCaret,
+.aplInlineTypePicker .shieldPickerTriggerCaret,
+#smSPProperties .fontPickerTriggerCaret,
+#smSPProperties .colorPickerTriggerCaret,
+#smSPProperties .shieldPickerTriggerCaret,
+#customShieldMaker .fontPickerTriggerCaret,
+#customShieldMaker .colorPickerTriggerCaret,
+.sMModal.exitTabConfig .profilePickerTriggerCaret,
+.sMModal.exitTabConfig .fontPickerTriggerCaret,
+.sMModal.exitTabConfig .colorPickerTriggerCaret {
+  position: absolute !important;
+  right: 0.45rem !important;
+  top: 50% !important;
+  left: auto !important;
+  bottom: auto !important;
+  display: block !important;
+  width: 0.92rem !important;
+  min-width: 0.92rem !important;
+  max-width: 0.92rem !important;
+  height: 0.92rem !important;
+  min-height: 0.92rem !important;
+  max-height: 0.92rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 0 0 0.92rem !important;
+  color: transparent !important;
+  background: transparent !important;
+  font-size: 0 !important;
+  font-weight: 400 !important;
+  line-height: 0 !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transform: translateY(-50%) !important;
+  transition: none !important;
+  animation: none !important;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24 !important;
+}
+
+.shieldPicker.open .shieldPickerTriggerCaret,
+.fontPicker.open .fontPickerTriggerCaret,
+.colorPicker.open .colorPickerTriggerCaret,
+.profilePicker.open .profilePickerTriggerCaret,
+.profileManager.open .profileManagerTriggerCaret {
+  transform: translateY(-50%) !important;
+}
+
+.shieldPickerTriggerCaret::before,
+.fontPickerTriggerCaret::before,
+.colorPickerTriggerCaret::before,
+.profilePickerTriggerCaret::before,
+.profileManagerTriggerCaret::before,
+.aplInlineTypePicker .shieldPickerTriggerCaret::before,
+#smSPProperties .fontPickerTriggerCaret::before,
+#smSPProperties .colorPickerTriggerCaret::before,
+#smSPProperties .shieldPickerTriggerCaret::before,
+#customShieldMaker .fontPickerTriggerCaret::before,
+#customShieldMaker .colorPickerTriggerCaret::before,
+.sMModal.exitTabConfig .profilePickerTriggerCaret::before,
+.sMModal.exitTabConfig .fontPickerTriggerCaret::before,
+.sMModal.exitTabConfig .colorPickerTriggerCaret::before {
+  content: "" !important;
+  display: block !important;
+  width: 0.92rem !important;
+  height: 0.92rem !important;
+  background-color: transparent !important;
+  background-image: var(--sm-dropdown-chevron-icon) !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 0.92rem 0.92rem !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+}
+
+
+/* Final dropdown and shield editor alignment adjustments */
+:root[data-theme="dark"] {
+  --sm-dropdown-chevron-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") !important;
+}
+
+:root[data-theme="light"] {
+  --sm-dropdown-chevron-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") !important;
+}
+
+select,
+:root[data-theme="dark"] select,
+:root[data-theme="light"] select {
+  background-image: var(--sm-dropdown-chevron-icon) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.28rem center !important;
+  background-size: 1.12rem 1.12rem !important;
+  padding-right: 1.7rem !important;
+}
+
+.shieldPickerTrigger,
+.fontPickerTrigger,
+.colorPickerTrigger,
+.profilePickerTrigger,
+.profileManagerTrigger,
+.aplInlineTypePicker .shieldPickerTrigger,
+#smSPProperties .fontPickerTrigger,
+#smSPProperties .colorPickerTrigger,
+#smSPProperties .shieldPickerTrigger,
+#customShieldMaker .fontPickerTrigger,
+#customShieldMaker .colorPickerTrigger,
+.sMModal.exitTabConfig .profilePickerTrigger,
+.sMModal.exitTabConfig .fontPickerTrigger,
+.sMModal.exitTabConfig .colorPickerTrigger,
+.sMModal.panelStyleConfig .colorPickerTrigger {
+  position: relative !important;
+  padding-right: 1.75rem !important;
+  background-image: none !important;
+}
+
+.shieldPickerTriggerCaret,
+.fontPickerTriggerCaret,
+.colorPickerTriggerCaret,
+.profilePickerTriggerCaret,
+.profileManagerTriggerCaret,
+.aplInlineTypePicker .shieldPickerTriggerCaret,
+#smSPProperties .fontPickerTriggerCaret,
+#smSPProperties .colorPickerTriggerCaret,
+#smSPProperties .shieldPickerTriggerCaret,
+#customShieldMaker .fontPickerTriggerCaret,
+#customShieldMaker .colorPickerTriggerCaret,
+.sMModal.exitTabConfig .profilePickerTriggerCaret,
+.sMModal.exitTabConfig .fontPickerTriggerCaret,
+.sMModal.exitTabConfig .colorPickerTriggerCaret {
+  position: absolute !important;
+  right: 0.28rem !important;
+  top: 50% !important;
+  left: auto !important;
+  bottom: auto !important;
+  display: block !important;
+  width: 1.12rem !important;
+  min-width: 1.12rem !important;
+  max-width: 1.12rem !important;
+  height: 1.12rem !important;
+  min-height: 1.12rem !important;
+  max-height: 1.12rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 0 0 1.12rem !important;
+  color: transparent !important;
+  background: transparent !important;
+  font-size: 0 !important;
+  font-weight: 400 !important;
+  line-height: 0 !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transform: translateY(-50%) rotate(0deg) !important;
+  transform-origin: center center !important;
+  transition: transform 0.16s ease-in-out !important;
+  animation: none !important;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24 !important;
+}
+
+.shieldPicker.open .shieldPickerTriggerCaret,
+.fontPicker.open .fontPickerTriggerCaret,
+.colorPicker.open .colorPickerTriggerCaret,
+.profilePicker.open .profilePickerTriggerCaret,
+.profileManager.open .profileManagerTriggerCaret {
+  transform: translateY(-50%) rotate(180deg) !important;
+}
+
+.shieldPickerTriggerCaret::before,
+.fontPickerTriggerCaret::before,
+.colorPickerTriggerCaret::before,
+.profilePickerTriggerCaret::before,
+.profileManagerTriggerCaret::before,
+.aplInlineTypePicker .shieldPickerTriggerCaret::before,
+#smSPProperties .fontPickerTriggerCaret::before,
+#smSPProperties .colorPickerTriggerCaret::before,
+#smSPProperties .shieldPickerTriggerCaret::before,
+#customShieldMaker .fontPickerTriggerCaret::before,
+#customShieldMaker .colorPickerTriggerCaret::before,
+.sMModal.exitTabConfig .profilePickerTriggerCaret::before,
+.sMModal.exitTabConfig .fontPickerTriggerCaret::before,
+.sMModal.exitTabConfig .colorPickerTriggerCaret::before {
+  content: "" !important;
+  display: block !important;
+  width: 1.12rem !important;
+  height: 1.12rem !important;
+  background-color: transparent !important;
+  background-image: var(--sm-dropdown-chevron-icon) !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 1.12rem 1.12rem !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+}
+
+.textEditorBlock {
+  grid-template-columns: max-content 0.9rem !important;
+}
+
+.textEditorBlock .blockTypeChevron {
+  width: 0.9rem !important;
+  height: 0.9rem !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  font-weight: 400 !important;
+  line-height: 0 !important;
+  background: none !important;
+  transform: none !important;
+}
+
+.textEditorBlock .blockTypeChevron::before {
+  content: "" !important;
+  display: block !important;
+  width: 0.9rem !important;
+  height: 0.9rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 0.9rem 0.9rem !important;
+}
+
+.textEditorBlock .blockTypeInlineSelect {
+  opacity: 0 !important;
+  color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  column-gap: 0.48rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow {
+  grid-template-columns: 4.3rem max-content max-content max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 4.3rem max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
+  grid-template-columns: 4.3rem 7.3rem max-content 4rem 3.6rem !important;
+  column-gap: 0.55rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow {
+  grid-template-columns: 4.3rem 10rem max-content 3.5rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow {
+  grid-template-columns: 4.3rem 10rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow > label:first-child,
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow > label:first-child {
+  width: 4.3rem !important;
+  text-align: right !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 12.6rem 3.6rem max-content 4.1rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldType {
+  width: 4.1rem !important;
+  min-width: 4.1rem !important;
+  max-width: 4.1rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_roadName {
+  width: 7.3rem !important;
+  min-width: 7.3rem !important;
+  max-width: 7.3rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerLetterSpacingLabel {
+  margin-left: 0.15rem !important;
+}
+
+/* Subpanel block element dropdown chevron correction */
+.textEditorBlock {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.textEditorBlockLabel {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.textEditorBlock .blockTypeChevron {
+  position: absolute !important;
+  right: 0.55rem !important;
+  top: 50% !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: 3 !important;
+  display: block !important;
+  width: 1.25rem !important;
+  min-width: 1.25rem !important;
+  max-width: 1.25rem !important;
+  height: 1.25rem !important;
+  min-height: 1.25rem !important;
+  max-height: 1.25rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: transparent !important;
+  background: transparent !important;
+  font-size: 0 !important;
+  font-weight: 400 !important;
+  line-height: 0 !important;
+  text-indent: -9999px !important;
+  pointer-events: none !important;
+  transform: translateY(-50%) !important;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24 !important;
+}
+
+.textEditorBlock .blockTypeChevron::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  background: transparent !important;
+  background-image: none !important;
+  border-right: 0.16rem solid #fff !important;
+  border-bottom: 0.16rem solid #fff !important;
+  box-sizing: border-box !important;
+  width: 0.58rem !important;
+  height: 0.58rem !important;
+  left: 50% !important;
+  top: 43% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) rotate(45deg) !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+}
+
+.textEditorBlock .blockTypeInlineSelect {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0.25rem !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 4 !important;
+  width: 2rem !important;
+  height: 100% !important;
+  min-width: 2rem !important;
+  max-width: 2rem !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  color: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.textEditorBlock .blockTypeInlineSelect::-ms-expand {
+  display: none !important;
+}
+
+/* Per-banner shield controls */
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 4.3rem 5.3rem max-content 5.1rem max-content 1.85rem 4.5rem max-content !important;
+  column-gap: 0.38rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerCustomInput {
+  width: 10ch !important;
+  min-width: 10ch !important;
+  max-width: 10ch !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTrigger {
+  width: 5.1rem !important;
+  min-width: 5.1rem !important;
+  max-width: 5.1rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.28rem !important;
+  padding-right: 1.45rem !important;
+  font-size: 0.58rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerInlineSizeLabel {
+  font-size: 0.72rem !important;
+  justify-self: end !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerInlineSizeInput {
+  width: 1.85rem !important;
+  min-width: 1.85rem !important;
+  max-width: 1.85rem !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  box-sizing: border-box !important;
+  padding: 0 0.2rem !important;
+  font-size: 0.78rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTrigger {
+  width: 4.5rem !important;
+  min-width: 4.5rem !important;
+  max-width: 4.5rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.28rem !important;
+  padding-right: 1.45rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerSwatch {
+  width: 0.72rem !important;
+  min-width: 0.72rem !important;
+  height: 0.72rem !important;
+  min-height: 0.72rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldPositionButtons {
+  margin-left: 0.34rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButtons {
+  margin-left: 0.34rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 4.3rem 5.3rem max-content max-content 6.05rem max-content 2.1rem 5.35rem !important;
+  column-gap: 0.34rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldPositionButtons {
+  margin-left: 0.32rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButtons {
+  margin-left: 0.36rem !important;
+  margin-right: 0.1rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTrigger {
+  width: 6.05rem !important;
+  min-width: 6.05rem !important;
+  max-width: 6.05rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.32rem !important;
+  padding-right: 1.35rem !important;
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTriggerLabel {
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerInlineSizeInput {
+  width: 2.1rem !important;
+  min-width: 2.1rem !important;
+  max-width: 2.1rem !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTrigger {
+  width: 5.35rem !important;
+  min-width: 5.35rem !important;
+  max-width: 5.35rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.32rem !important;
+  padding-right: 1.35rem !important;
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTriggerLabel {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton {
+  width: 2.18rem !important;
+  min-width: 2.18rem !important;
+  max-width: 2.18rem !important;
+}
+
+span.toolTip {
+  white-space: pre-line;
+  text-align: center;
+}
+
+
+/* Shield banner row cleanup */
+#smSPProperties > [data-property="sdShield"] .sdShieldFontRow {
+  display: none !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerRow {
+  grid-template-columns: 4.3rem 5.3rem max-content max-content 7.25rem max-content 2.1rem 8.85rem !important;
+  column-gap: 0.34rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTrigger {
+  width: 7.25rem !important;
+  min-width: 7.25rem !important;
+  max-width: 7.25rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.32rem !important;
+  padding-right: 1.35rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerFontSelect + .fontPicker .fontPickerTriggerLabel {
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTrigger {
+  width: 8.85rem !important;
+  min-width: 8.85rem !important;
+  max-width: 8.85rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBannerBackgroundColorSelect + .colorPicker .colorPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.32rem !important;
+  padding-right: 1.35rem !important;
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton,
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton.activated {
+  font-weight: 500 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton span,
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton.activated span {
+  font-weight: 500 !important;
+  transform: translateY(-0.04rem) !important;
+  line-height: 1 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton .sdShieldBigA,
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton.activated .sdShieldBigA {
+  font-size: 1.18rem !important;
+  font-weight: 500 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton span:not(.sdShieldBigA),
+#smSPProperties > [data-property="sdShield"] .sdShieldCapButton.activated span:not(.sdShieldBigA) {
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  --sd-shield-top-control-height: 2.2rem;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTrigger,
+#smSPProperties > [data-property="sdShield"] #sdShield_routeNumber {
+  height: var(--sd-shield-top-control-height) !important;
+  min-height: var(--sd-shield-top-control-height) !important;
+  max-height: var(--sd-shield-top-control-height) !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTrigger {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameRow {
+  grid-template-columns: 4.3rem 7.3rem 7.25rem max-content 2.1rem max-content 4rem 2.15rem !important;
+  column-gap: 0.42rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameFontSelect + .fontPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameFontSelect + .fontPicker .fontPickerTrigger {
+  width: 7.25rem !important;
+  min-width: 7.25rem !important;
+  max-width: 7.25rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameFontSelect + .fontPicker .fontPickerTrigger {
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding-left: 0.32rem !important;
+  padding-right: 1.35rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameFontSelect + .fontPicker .fontPickerTriggerLabel {
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameInlineSizeLabel {
+  font-size: 0.72rem !important;
+  justify-self: end !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldRoadNameInlineSizeInput {
+  width: 2.1rem !important;
+  min-width: 2.1rem !important;
+  max-width: 2.1rem !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  box-sizing: border-box !important;
+  padding: 0 0.2rem !important;
+  font-size: 0.78rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_bannerLetterSpacingVal {
+  width: 2.15rem !important;
+  min-width: 2.15rem !important;
+  max-width: 2.15rem !important;
+}
+
+#smSPProperties .shieldPicker.open .shieldPickerTriggerCaret,
+#smSPProperties .fontPicker.open .fontPickerTriggerCaret,
+#smSPProperties .colorPicker.open .colorPickerTriggerCaret {
+  transform: translateY(-50%) rotate(180deg) !important;
+}
+
+#smSPProperties .shieldPickerTriggerCaret,
+#smSPProperties .fontPickerTriggerCaret,
+#smSPProperties .colorPickerTriggerCaret {
+  transition: transform 0.16s ease-in-out !important;
+}
+
+#sdBlock_topPaddingVal,
+#sdBlock_bottomPaddingVal {
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+}
+
+#sdBlock_topPaddingVal::-webkit-outer-spin-button,
+#sdBlock_topPaddingVal::-webkit-inner-spin-button,
+#sdBlock_bottomPaddingVal::-webkit-outer-spin-button,
+#sdBlock_bottomPaddingVal::-webkit-inner-spin-button {
+  -webkit-appearance: inner-spin-button !important;
+  appearance: auto !important;
+  display: block !important;
+  opacity: 0 !important;
+  margin: 0 !important;
+}
+
+#sdBlock_topPaddingVal:hover::-webkit-outer-spin-button,
+#sdBlock_topPaddingVal:hover::-webkit-inner-spin-button,
+#sdBlock_topPaddingVal:focus::-webkit-outer-spin-button,
+#sdBlock_topPaddingVal:focus::-webkit-inner-spin-button,
+#sdBlock_bottomPaddingVal:hover::-webkit-outer-spin-button,
+#sdBlock_bottomPaddingVal:hover::-webkit-inner-spin-button,
+#sdBlock_bottomPaddingVal:focus::-webkit-outer-spin-button,
+#sdBlock_bottomPaddingVal:focus::-webkit-inner-spin-button {
+  opacity: 1 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:hover,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:focus,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:active,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton * {
+  transition: none !important;
+  animation: none !important;
+}
+
+
+/* Final shield control responsiveness and dropdown animation polish */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  --sd-shield-top-control-height: 2.2rem !important;
+  align-items: center !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTrigger,
+#smSPProperties > [data-property="sdShield"] #sdShield_routeNumber {
+  height: var(--sd-shield-top-control-height) !important;
+  min-height: var(--sd-shield-top-control-height) !important;
+  max-height: var(--sd-shield-top-control-height) !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTrigger {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTriggerIcon {
+  height: calc(var(--sd-shield-top-control-height) - 0.7rem) !important;
+  max-height: calc(var(--sd-shield-top-control-height) - 0.7rem) !important;
+  width: calc(var(--sd-shield-top-control-height) - 0.7rem) !important;
+  max-width: calc(var(--sd-shield-top-control-height) - 0.7rem) !important;
+  object-fit: contain !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton *,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:hover,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:focus,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton:active,
+#smSPProperties > [data-property="sdShield"] .sdShieldSquareButton.activated {
+  transition: none !important;
+  animation: none !important;
+}
+
+#smSPProperties .shieldPickerTriggerCaret,
+#smSPProperties .fontPickerTriggerCaret,
+#smSPProperties .colorPickerTriggerCaret {
+  transform: translateY(-50%) rotate(0deg) !important;
+  transition: transform 0.16s ease-in-out !important;
+}
+
+#smSPProperties .shieldPicker.open .shieldPickerTriggerCaret,
+#smSPProperties .fontPicker.open .fontPickerTriggerCaret,
+#smSPProperties .colorPicker.open .colorPickerTriggerCaret {
+  transform: translateY(-50%) rotate(180deg) !important;
+}
+
+#sdBlock_topPaddingVal,
+#sdBlock_bottomPaddingVal {
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+}
+
+#sdBlock_topPaddingVal::-webkit-outer-spin-button,
+#sdBlock_topPaddingVal::-webkit-inner-spin-button,
+#sdBlock_bottomPaddingVal::-webkit-outer-spin-button,
+#sdBlock_bottomPaddingVal::-webkit-inner-spin-button {
+  -webkit-appearance: inner-spin-button !important;
+  appearance: auto !important;
+  display: block !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+}
+
+#sdBlock_topPaddingVal:hover::-webkit-outer-spin-button,
+#sdBlock_topPaddingVal:hover::-webkit-inner-spin-button,
+#sdBlock_topPaddingVal:focus::-webkit-outer-spin-button,
+#sdBlock_topPaddingVal:focus::-webkit-inner-spin-button,
+#sdBlock_bottomPaddingVal:hover::-webkit-outer-spin-button,
+#sdBlock_bottomPaddingVal:hover::-webkit-inner-spin-button,
+#sdBlock_bottomPaddingVal:focus::-webkit-outer-spin-button,
+#sdBlock_bottomPaddingVal:focus::-webkit-inner-spin-button {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Shield variant picker */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 12.6rem 3.6rem max-content 6.55rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_shieldType {
+  display: none !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldVariantPickerHost,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger {
+  width: 6.55rem !important;
+  min-width: 6.55rem !important;
+  max-width: 6.55rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker {
+  min-width: 0 !important;
+  height: var(--sd-shield-top-control-height) !important;
+  min-height: var(--sd-shield-top-control-height) !important;
+  max-height: var(--sd-shield-top-control-height) !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger {
+  display: grid !important;
+  grid-template-columns: 1.3rem minmax(0, 1fr) 0.85rem !important;
+  align-items: center !important;
+  column-gap: 0.35rem !important;
+  height: var(--sd-shield-top-control-height) !important;
+  min-height: var(--sd-shield-top-control-height) !important;
+  max-height: var(--sd-shield-top-control-height) !important;
+  padding: 0 0.35rem !important;
+  overflow: hidden !important;
+  text-align: left !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerIcon {
+  width: 1.3rem !important;
+  min-width: 1.3rem !important;
+  max-width: 1.3rem !important;
+  height: 1.3rem !important;
+  min-height: 1.3rem !important;
+  max-height: 1.3rem !important;
+  object-fit: contain !important;
+  justify-self: center !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerLabel {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.82rem !important;
+  line-height: 1 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerCaret {
+  justify-self: end !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker.unavailable .shieldVariantPickerTrigger {
+  grid-template-columns: 1.3rem minmax(0, 1fr) !important;
+  cursor: default !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker.unavailable .shieldVariantPickerTriggerCaret {
+  display: none !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger:disabled {
+  opacity: 1 !important;
+  color: var(--textColor) !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerPopover {
+  min-width: 8.5rem !important;
+  width: 8.5rem !important;
+  max-width: 8.5rem !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0.22rem !important;
+  z-index: 2147483647 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerList {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  gap: 0.12rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItem {
+  display: grid !important;
+  grid-template-columns: 1.8rem minmax(0, 1fr) !important;
+  align-items: center !important;
+  column-gap: 0.55rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 2.15rem !important;
+  padding: 0.25rem 0.5rem !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItemIcon {
+  width: 1.65rem !important;
+  min-width: 1.65rem !important;
+  max-width: 1.65rem !important;
+  height: 1.65rem !important;
+  min-height: 1.65rem !important;
+  max-height: 1.65rem !important;
+  object-fit: contain !important;
+  justify-self: center !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItemLabel {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.86rem !important;
+  line-height: 1.05 !important;
+}
+
+/* Shield variant picker sizing and placement */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .sdShieldBasePickerHost .shieldPickerTriggerIcon {
+  width: 1rem !important;
+  min-width: 1rem !important;
+  max-width: 1rem !important;
+  height: 1rem !important;
+  min-height: 1rem !important;
+  max-height: 1rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger {
+  grid-template-columns: 1rem minmax(0, 1fr) 0.85rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerIcon {
+  width: 0.95rem !important;
+  min-width: 0.95rem !important;
+  max-width: 0.95rem !important;
+  height: 0.95rem !important;
+  min-height: 0.95rem !important;
+  max-height: 0.95rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker.unavailable .shieldVariantPickerTrigger {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker.unavailable .shieldVariantPickerTriggerIcon {
+  display: none !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItem {
+  grid-template-columns: 1.35rem minmax(0, 1fr) !important;
+  column-gap: 0.45rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItemIcon {
+  width: 1.15rem !important;
+  min-width: 1.15rem !important;
+  max-width: 1.15rem !important;
+  height: 1.15rem !important;
+  min-height: 1.15rem !important;
+  max-height: 1.15rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerPopover {
+  position: absolute !important;
+  left: 0 !important;
+  right: auto !important;
+  top: calc(100% + 0.2rem) !important;
+  bottom: auto !important;
+}
+
+
+/* Shield top-row compact sizing */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  --sd-shield-top-control-height: 1.85rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPicker,
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldPickerTrigger,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger,
+#smSPProperties > [data-property="sdShield"] #sdShield_routeNumber {
+  height: var(--sd-shield-top-control-height) !important;
+  min-height: var(--sd-shield-top-control-height) !important;
+  max-height: var(--sd-shield-top-control-height) !important;
+  box-sizing: border-box !important;
+}
+
+/* Match the shield previews in the base and variant buttons. */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .sdShieldBasePickerHost .shieldPickerTriggerIcon,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerIcon {
+  width: 0.9rem !important;
+  min-width: 0.9rem !important;
+  max-width: 0.9rem !important;
+  height: 0.9rem !important;
+  min-height: 0.9rem !important;
+  max-height: 0.9rem !important;
+  object-fit: contain !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger {
+  grid-template-columns: 0.9rem minmax(0, 1fr) 0.8rem !important;
+  column-gap: 0.3rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#smSPProperties > [data-property="sdShield"] #sdShield_routeNumber {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Compact the variant picker rows while keeping every variant visible. */
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerList {
+  gap: 0.06rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItem {
+  grid-template-columns: 1.05rem minmax(0, 1fr) !important;
+  column-gap: 0.35rem !important;
+  min-height: 1.62rem !important;
+  height: 1.62rem !important;
+  padding: 0.08rem 0.38rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItemIcon {
+  width: 0.82rem !important;
+  min-width: 0.82rem !important;
+  max-width: 0.82rem !important;
+  height: 0.82rem !important;
+  min-height: 0.82rem !important;
+  max-height: 0.82rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItemLabel {
+  font-size: 0.8rem !important;
+  line-height: 1 !important;
+}
+
+/* Subpanel block type custom dropdowns */
+#sMSPElementSelect.blockTypeNativeSelectHidden,
+.textEditorBlock .blockTypeInlineSelect.blockTypeNativeSelectHidden {
+  display: none !important;
+}
+
+.SMSPNewElementHolder .blockTypeStandalonePicker {
+  position: relative !important;
+  display: inline-flex !important;
+  flex-direction: column !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.SMSPNewElementHolder .blockTypeStandalonePicker .blockTypePickerTrigger {
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 1.55rem !important;
+  min-height: 1.55rem !important;
+  max-height: 1.55rem !important;
+  margin: 0 !important;
+  padding: 0 1.7rem 0 0.42rem !important;
+  box-sizing: border-box !important;
+}
+
+.SMSPNewElementHolder .blockTypePickerTriggerLabel {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+  font-size: 0.92rem !important;
+  line-height: 1 !important;
+}
+
+.blockTypePickerPopover {
+  z-index: 2147483647 !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: calc(100vw - 16px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: 0.12rem 0 !important;
+  box-sizing: border-box !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-0.18rem) scaleY(0.985) !important;
+  transform-origin: top center !important;
+  transition:
+    opacity 0.16s ease-in-out,
+    transform 0.16s ease-in-out,
+    visibility 0s linear 0.16s !important;
+}
+
+.blockTypePickerPopover.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) scaleY(1) !important;
+  transition:
+    opacity 0.16s ease-in-out,
+    transform 0.16s ease-in-out,
+    visibility 0s linear 0s !important;
+}
+
+.blockTypePickerList {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.blockTypePickerItem {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  min-width: max-content !important;
+  min-height: 1.72rem !important;
+  padding: 0.22rem 0.55rem !important;
+  box-sizing: border-box !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+  line-height: 1.05 !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.blockTypePicker.open > .blockTypePickerTrigger .shieldPickerTriggerCaret,
+.blockTypeStandalonePicker.open .shieldPickerTriggerCaret {
+  transform: translateY(-50%) rotate(180deg) !important;
+  transition: transform 0.16s ease-in-out !important;
+}
+
+.textEditorBlock {
+  grid-template-columns: max-content 1rem !important;
+  column-gap: 0.28rem !important;
+  padding: 0.3rem 0.7rem !important;
+  overflow: visible !important;
+}
+
+.textEditorBlock .blockTypeInlinePicker {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1rem !important;
+  min-width: 1rem !important;
+  max-width: 1rem !important;
+  height: 1rem !important;
+  min-height: 1rem !important;
+  max-height: 1rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.textEditorBlock .blockTypeInlinePickerTrigger {
+  position: relative !important;
+  display: block !important;
+  width: 1rem !important;
+  min-width: 1rem !important;
+  max-width: 1rem !important;
+  height: 1rem !important;
+  min-height: 1rem !important;
+  max-height: 1rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.textEditorBlock .blockTypeInlinePickerTrigger:hover,
+.textEditorBlock .blockTypeInlinePickerTrigger:focus,
+.textEditorBlock .blockTypeInlinePickerTrigger:active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.textEditorBlock .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret {
+  position: absolute !important;
+  left: 50% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: 0.9rem !important;
+  min-width: 0.9rem !important;
+  max-width: 0.9rem !important;
+  height: 0.9rem !important;
+  min-height: 0.9rem !important;
+  max-height: 0.9rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translate(-50%, -50%) rotate(0deg) !important;
+  transform-origin: center center !important;
+  transition: transform 0.16s ease-in-out !important;
+}
+
+.textEditorBlock .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret::before {
+  width: 0.9rem !important;
+  height: 0.9rem !important;
+  background-size: 0.9rem 0.9rem !important;
+}
+
+.textEditorBlock .blockTypeInlinePicker.open .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret {
+  transform: translate(-50%, -50%) rotate(180deg) !important;
+}
+
+
+/* Final compact subpanel block-type picker sizing */
+.SMSPNewElementHolder .blockTypeStandalonePicker {
+  width: var(--block-type-trigger-width, max-content) !important;
+  min-width: var(--block-type-trigger-width, max-content) !important;
+  max-width: var(--block-type-trigger-width, max-content) !important;
+  flex: 0 0 var(--block-type-trigger-width, max-content) !important;
+}
+
+.SMSPNewElementHolder .blockTypeStandalonePicker .blockTypePickerTrigger {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding: 0 1.35rem 0 0.32rem !important;
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+}
+
+.SMSPNewElementHolder .blockTypePickerTriggerLabel {
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+}
+
+.blockTypePickerPopover {
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: calc(100vw - 16px) !important;
+  padding: 0.08rem 0 !important;
+}
+
+.blockTypePickerList {
+  width: max-content !important;
+  min-width: max-content !important;
+}
+
+.blockTypePickerItem {
+  width: 100% !important;
+  min-width: max-content !important;
+  min-height: 1.32rem !important;
+  height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding: 0.08rem 0.38rem !important;
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+}
+
+/* Restore the compact block-label pill height and use the normal dropdown chevron size. */
+.textEditorBlock {
+  grid-template-columns: max-content 1.12rem !important;
+  column-gap: 0.18rem !important;
+  height: 1.32rem !important;
+  min-height: 1.32rem !important;
+  max-height: 1.32rem !important;
+  padding: 0.08rem 0.32rem !important;
+  line-height: 1 !important;
+}
+
+.textEditorBlockLabel {
+  font-size: 0.72rem !important;
+  line-height: 1 !important;
+}
+
+.textEditorBlock .blockTypeInlinePicker,
+.textEditorBlock .blockTypeInlinePickerTrigger {
+  width: 1.12rem !important;
+  min-width: 1.12rem !important;
+  max-width: 1.12rem !important;
+  height: 1.12rem !important;
+  min-height: 1.12rem !important;
+  max-height: 1.12rem !important;
+}
+
+.textEditorBlock .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret {
+  width: 1.12rem !important;
+  min-width: 1.12rem !important;
+  max-width: 1.12rem !important;
+  height: 1.12rem !important;
+  min-height: 1.12rem !important;
+  max-height: 1.12rem !important;
+}
+
+.textEditorBlock .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret::before {
+  width: 1.12rem !important;
+  height: 1.12rem !important;
+  background-size: 1.12rem 1.12rem !important;
+}
+
+/* Keep the Add Panel Below dropdown group only as wide as its content. */
+.stackedPanelTabGroup.addStackedPanelSlot {
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: max-content !important;
+  flex: 0 0 auto !important;
+}
+
+.stackedPanelTabGroup.addStackedPanelSlot > .stackedPanelTabButton {
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: max-content !important;
+  flex: 0 0 auto !important;
+}
+
+.stackedPanelTabGroup.addStackedPanelSlot > .stackedPanelOptionsWrapper {
+  width: 1.45rem !important;
+  min-width: 1.45rem !important;
+  max-width: 1.45rem !important;
+  flex: 0 0 1.45rem !important;
+}
+
+/* Slider + value field for additional-panel spacing. */
+.stackedPanelOptionsRow {
+  display: grid !important;
+  grid-template-columns: max-content 5.2rem 2.7rem !important;
+  align-items: center !important;
+  column-gap: 0.42rem !important;
+}
+
+.stackedPanelSpacingSlider {
+  width: 5.2rem !important;
+  min-width: 5.2rem !important;
+  max-width: 5.2rem !important;
+  margin: 0 !important;
+}
+
+.stackedPanelSpacingInput {
+  width: 2.7rem !important;
+  min-width: 2.7rem !important;
+  max-width: 2.7rem !important;
+  height: 1.45rem !important;
+  min-height: 1.45rem !important;
+  max-height: 1.45rem !important;
+  margin: 0 !important;
+  padding: 0.08rem 0.22rem !important;
+  box-sizing: border-box !important;
+}
+
+/* Shield top-row alignment and variant preview normalization */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .shieldVariantPickerTriggerIcon {
+  width: 0.9rem !important;
+  min-width: 0.9rem !important;
+  max-width: 0.9rem !important;
+  height: 0.9rem !important;
+  min-height: 0.9rem !important;
+  max-height: 0.9rem !important;
+  object-fit: contain !important;
+}
+
+/* The county row sits between the shield picker row and alignment row.
+   Remove the empty row completely when County Text is unavailable. */
+#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow:has(> #sdShield_countyText.sdShieldCountyHidden) {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
+/* Let the additional-panel settings dropdown size to all of its contents. */
+.stackedPanelOptionsDropdown {
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+}
+
+.stackedPanelOptionsCheckboxRow {
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+}
+
+
+
+/* Keep descenders visible in the compact shield-variant picker without changing its height. */
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItem,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerList {
+  overflow: visible !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerLabel,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerItemLabel {
+  position: relative !important;
+  z-index: 2 !important;
+  overflow: visible !important;
+  line-height: 1.18 !important;
+  padding-bottom: 0.08em !important;
+}
+
+#sdShield_bannerCustomText::placeholder,
+#sdShield_bannerCustomText2::placeholder {
+  color: rgba(255, 255, 255, 0.42) !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme="light"] #sdShield_bannerCustomText::placeholder,
+:root[data-theme="light"] #sdShield_bannerCustomText2::placeholder {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Final shield picker label fitting and chevron sizing. */
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow {
+  grid-template-columns: 12.6rem 3.6rem max-content 8.8rem max-content 3.5rem 1.75rem !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldVariantPickerHost,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger {
+  width: 8.8rem !important;
+  min-width: 8.8rem !important;
+  max-width: 8.8rem !important;
+  box-sizing: border-box !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldTopRow .sdShieldBasePickerHost .shieldPickerTriggerLabel,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTriggerLabel {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  line-height: 1 !important;
+}
+
+.shieldPickerItemCaret {
+  width: 1.12rem !important;
+  min-width: 1.12rem !important;
+  max-width: 1.12rem !important;
+  height: 1.12rem !important;
+  min-height: 1.12rem !important;
+  max-height: 1.12rem !important;
+  background-size: 1.12rem 1.12rem !important;
+}
+
+/* Keep the Shield variant button and dropdown aligned at the compact width. */
+#smSPProperties > [data-property="sdShield"] .sdShieldVariantPickerHost,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPicker,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerTrigger,
+#smSPProperties > [data-property="sdShield"] .shieldVariantPickerPopover {
+  width: 8.8rem !important;
+  min-width: 8.8rem !important;
+  max-width: 8.8rem !important;
+  box-sizing: border-box !important;
+}
+
+/* The alignment/options row now includes the UI-only Shield backs control. */
+#smSPProperties > [data-property="sdShield"] .sdShieldSecondRow {
+  grid-template-columns: 4.3rem max-content max-content max-content max-content max-content max-content max-content !important;
+}
+
+#smSPProperties > [data-property="sdShield"] .sdShieldBacksLabel {
+  width: max-content !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+}
+
+
+
+/* Color picker labels stay within the original control width. */
+.colorPickerTriggerLabel {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+/* Panel Style uses label/control rows, with section headings spanning both columns. */
+.sMModal.panelStyleConfig .panelStyleSectionHeader {
+  grid-column: 1 / -1 !important;
+  width: 100%;
+  margin: 0 0 0.2rem !important;
+  justify-self: stretch;
+}
+
+.sMModal.panelStyleConfig #sMPanelAppearance > div,
+.sMModal.panelStyleConfig #sMPanelPadding > div {
+  grid-auto-flow: row !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelAppearance label,
+.sMModal.panelStyleConfig #sMPanelPadding label {
+  grid-column: 1 !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelAppearance select,
+.sMModal.panelStyleConfig #sMPanelAppearance input,
+.sMModal.panelStyleConfig #sMPanelAppearance .colorPicker,
+.sMModal.panelStyleConfig #sMPanelPadding select,
+.sMModal.panelStyleConfig #sMPanelPadding input,
+.sMModal.panelStyleConfig #sMPanelPadding .colorPicker {
+  grid-column: 2 !important;
+}
+
+.sMModal.panelStyleConfig #resetPadding {
+  grid-column: 1 / -1 !important;
+}
+
+/* Final Panel Style layout: compact labels, wider controls, and 3-column padding rows. */
+.sMModal.panelStyleConfig #sMPanelAppearance > div {
+  grid-template-columns: 6.8rem minmax(0, 1fr) !important;
+  column-gap: 0.55rem !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding > div {
+  grid-template-columns: 3.2rem minmax(6.5rem, 1fr) 3.35rem !important;
+  column-gap: 0.42rem !important;
+  row-gap: 0.48rem !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding .panelStyleSectionHeader {
+  grid-column: 1 / -1 !important;
+  margin-top: 0.35rem !important;
+  padding-top: 0.12rem;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding label {
+  grid-column: 1 !important;
+  white-space: nowrap;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingSlider {
+  grid-column: 2 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue {
+  grid-column: 3 !important;
+  width: 3.35rem !important;
+  min-width: 3.35rem !important;
+  max-width: 3.35rem !important;
+  margin: 0 !important;
+  padding-left: 0.3rem;
+  padding-right: 0.18rem;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keep the native number-input increment/decrement controls for padding values. */
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue {
+  appearance: auto !important;
+  -moz-appearance: auto !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue::-webkit-outer-spin-button,
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue::-webkit-inner-spin-button {
+  -webkit-appearance: inner-spin-button !important;
+  opacity: 0 !important;
+  margin: 0 !important;
+}
+
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue:hover::-webkit-outer-spin-button,
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue:hover::-webkit-inner-spin-button,
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue:focus::-webkit-outer-spin-button,
+.sMModal.panelStyleConfig #sMPanelPadding .panelPaddingValue:focus::-webkit-inner-spin-button {
+  opacity: 1 !important;
+}
+
+.sMModal.panelStyleConfig #resetPadding {
+  grid-column: 1 / -1 !important;
+}
+
+
+/* Native number steppers everywhere except slider-paired inputs in the
+   Shield element editor. Keep them unobtrusive until hover/focus. */
+input[type="number"]:not(.sliderNumberInputNoStepper) {
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+}
+
+input[type="number"]:not(.sliderNumberInputNoStepper)::-webkit-outer-spin-button,
+input[type="number"]:not(.sliderNumberInputNoStepper)::-webkit-inner-spin-button {
+  -webkit-appearance: inner-spin-button !important;
+  appearance: auto !important;
+  opacity: 0;
+  margin: 0;
+}
+
+input[type="number"]:not(.sliderNumberInputNoStepper):hover::-webkit-outer-spin-button,
+input[type="number"]:not(.sliderNumberInputNoStepper):hover::-webkit-inner-spin-button,
+input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-outer-spin-button,
+input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+
+/* Templates menu: keep one compact width for Saved and Presets. */
+.sMModal.templates {
+  width: 44.5rem !important;
+  min-width: 0 !important;
+  max-width: min(44.5rem, calc((100vw - 3rem) / var(--sm-app-zoom, 1))) !important;
+}
+
+.sMModal.templates .sMModalContent {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.sMModal.templates #sMTemplatesSaved,
+.sMModal.templates #sMTemplatesPreset,
+.sMModal.templates .templateSaveSection,
+.sMModal.templates .templateListSection,
+.sMModal.templates #savedTemplatesList {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+.sMModal.templates .templateItem {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+
+/* Keep the Subpanels editor sized to its visible content instead of leaving
+   a scrollable empty region below the editor. */
+.sMModal.subPanelConfig {
+  height: fit-content !important;
+  min-height: 0 !important;
+}
+
+.sMModal.subPanelConfig .sMModalContent {
+  height: fit-content !important;
+  min-height: 0 !important;
+  max-height: calc((100vh - 7rem) / var(--sm-app-zoom, 1)) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.sMModal.subPanelConfig .sMModalContent > div,
+.sMModal.subPanelConfig #sMSPSettings > div,
+.sMModal.subPanelConfig #sMSPBlocks,
+.sMModal.subPanelConfig #sMSPTextEditor {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  flex: 0 0 auto !important;
+}
+
+
+/* Subpanels content-height guard: JavaScript measures the actual visible editor
+   and only enables scrolling when that content exceeds the viewport. */
+.sMModal.subPanelConfig {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.sMModal.subPanelConfig .sMModalContent {
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.sMModal.subPanelConfig .sMModalContent > :not(.tabHidden) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+/* Block-label chevrons stay white in every theme. */
+.textEditorBlock .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") !important;
+  filter: none !important;
 }

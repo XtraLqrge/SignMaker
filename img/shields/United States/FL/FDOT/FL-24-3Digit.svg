@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="24" viewBox="0 0 48 24" role="img" aria-labelledby="title source">
+  <title id="title">FDOT Florida variable-width guide-sign route marker, 48-inch base by 24 inches</title>
+  <metadata id="source">FDOT FY 2026-27 Standard Plans, Index 700-102, sheet 16 of 21. Florida ribbon reconstructed from the authored variable-guide CADD compound at the published 1.75-inch width; common outer contour is CADD-derived.</metadata>
+  <rect id="panel-outline" x="0.0625" y="0.0625" width="47.875" height="23.875" rx="1.1875" fill="#ffffff" stroke="#000000" stroke-width="0.125"/>
+  <path id="florida-outline" d="M42.2019 22.75L44.009 22.4608L46.75 20.1051L46.7384 16.5109L45.6271 12.863L44.0862 10.626L44.1324 9.7557L42.2868 6.9775L41.103 1.9566L38.0225 1.9703L37.6976 2.532L28.864 2.5528L28.5133 1.5709L19.25 1.25L19.6451 6.2485L22.0967 6.3863L22.706 6.1665L25.4482 7.0793L27.5762 8.9451L30.2989 7.9701L31.7468 8.7758L32.5977 7.2467L30.4563 6.055L27.9556 6.9504L26.3362 5.5304L22.683 4.3145L21.8386 4.619L21.2692 4.587L21.1491 3.0668L27.265 3.2787L27.6318 4.3057L38.7086 4.2796L39.0346 3.7158L39.719 3.7128L40.6555 7.6845L42.3542 10.2416L42.3072 11.1282L44.0321 13.6323L44.9893 16.7743L44.9974 19.3038L43.2438 20.811L42.536 20.9243L41.8842 20.5505L41.0136 22.0685Z" fill="#000000" fill-rule="evenodd"/>
+</svg>

@@ -272,11 +272,13 @@
 }
 
 /* Series D digit-3 spacing correction */
-.bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar {
+.bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar,
+.customShieldMakerShieldShell.seriesDSpacingFix .routeNumber .routeChar {
   display: inline-block;
 }
 
-.bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar-3 {
+.bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar-3,
+.customShieldMakerShieldShell.seriesDSpacingFix .routeNumber .routeChar-3 {
   display: inline-block;
   width: 0.501em;
   min-width: 0.501em;
@@ -300,6 +302,13 @@
 
 .bannerShieldContainer .routeNumber .routeChar {
   display: inline-block;
+}
+
+/* Do not let letter-spacing after the final route-number character shift the
+   visually centered digit group to the right. Spacing remains between digits,
+   but the last character contributes no trailing spacing. */
+.bannerShieldContainer .routeNumber .routeChar:last-child {
+  letter-spacing: 0 !important;
 }
 
 /* NO 1 */
@@ -326,24 +335,43 @@
 /* COUNTY */
 .bannerShieldContainer.C .routeNumber {
   color: var(--countyYellow);
-    font-family: "Series D";
+  font-family: "Series D";
   font-size: 1.5em;
   top: 0.3em;
 }
 .bannerShieldContainer.C.one .routeNumber {
-    font-size: 1.8em;
-    top: 0.25em;
+  font-size: 1.8em;
+  top: 0.25em;
 }
 .bannerShieldContainer.C.two .routeNumber {
-    font-size: 1.7em;
-    top: 0.3em;
+  font-size: 1.7em;
+  top: 0.3em;
 }
 .bannerShieldContainer.C.three .routeNumber {
-    font-size: 1.5em;
-    top: 0.35em;
+  font-size: 1.5em;
+  top: 0.35em;
 }
 .bannerShieldContainer.C.four .routeNumber {
   font-family: "Series C";
+}
+
+
+/* County-style shield backs use one shared square backing size. The extra
+   outer margin reserves layout space for the visible backing. */
+.bannerShieldContainer.C.shieldBacks .shield,
+.bannerShieldContainer.NVCC.shieldBacks .shield,
+.bannerShieldContainer.customShieldMakerCountyBackSource.shieldBacks .shield {
+  background: var(--yellow);
+  box-shadow:
+    0 0 0 calc(0.20rem * var(--shieldScale, 1)) var(--yellow);
+  margin: calc(0.27rem * var(--shieldScale, 1));
+}
+
+.bannerShieldContainer.C:not(.shieldBacks) .shield,
+.bannerShieldContainer.NVCC:not(.shieldBacks) .shield,
+.bannerShieldContainer.customShieldMakerCountyBackSource:not(.shieldBacks) .shield {
+  background: transparent;
+  box-shadow: none;
 }
 
 /* ALABAMA */
@@ -474,12 +502,16 @@
   color: var(--black);
   font-family: "Series D";
   font-size: 1.5em;
-  top: 0.65em;
+  top: 0.6em;
+  letter-spacing: -0.05em;
 }
 
 /* FLORIDA */
 .bannerShieldContainer.FL .routeNumber {
-    color: var(--black);
+  color: var(--black);
+  top: 0.3em;
+  right: 0.15em;
+  font-size: 1.5em;
 }
 .bannerShieldContainer.FL.one .routeNumber,
 .bannerShieldContainer.FL.two .routeNumber,
@@ -488,34 +520,44 @@
   font-size: 2.2em;
   top: 0.2em;
 }
-
 .bannerShieldContainer.FL.four .routeNumber {
   font-family: "Series C";
-    font-size: 2.2em;
+  font-size: 2.2em;
   top: 0.2em;
+}
+
+.bannerShieldContainer.FL.variant-3digit-58-36-.three .routeNumber,
+.bannerShieldContainer.FL.variant-3digit-58-36-.four .routeNumber{
+  transform: translateX(-0.1em) !important;
+  letter-spacing: -0.02em !important;
+}
+.bannerShieldContainer.FL.toll .banner {
+  display: none;
 }
 .bannerShieldContainer.FL.toll .routeNumber,
 .bannerShieldContainer.FL.cfxtoll .routeNumber {
   font-family: "Series C";
   font-size: 1.3em;
-  top: 0.72em;
-    left: -0.15em;
+  top: 0.7em;
+}
+.bannerShieldContainer.FL.toll .routeNumber {
+  left: -0.2rem;
+}
+.bannerShieldContainer.FL.turnpike .routeNumber {
+  opacity: 0;
 }
 
 /* GEORGIA */
 .bannerShieldContainer.GA .routeNumber {
   color: var(--black);
-    font-size: 2.5em;
+  font-size: 2.5em;
+  font-family: "Series C";
   top: 0em;
 }
-.bannerShieldContainer.GA.one .routeNumber,
-.bannerShieldContainer.GA.two .routeNumber {
-  font-family: "Series C";
-}
 .bannerShieldContainer.GA.three .routeNumber {
-  font-family: "Series C";
-    font-size: 2.4em;
-    top: 0.01em;
+  font-size: 2.3em;
+  top: 0.05em;
+  letter-spacing: -0.01em;
 }
 
 /*
@@ -573,23 +615,29 @@
 
 /* ILLINOIS */
 .bannerShieldContainer.IL .routeNumber {
-  color: var(--black);
-  font-family: "Series D";
-  top: 0.175em;
-  font-size: 2.25em;
+    color: var(--black);
+    font-family: "Series D";
+    top: 0.175em;
+    font-size: 2.25em;
 }
 
 /* INDIANA */
 .bannerShieldContainer.IN .routeNumber {
-  color: var(--black);
-  font-family: "Series D";
-  top: 0.1em;
-  font-size: 2.5em;
+    color: var(--black);
+    font-family: "Series D";
+    top: 0.05em;
+    font-size: 2.6em;
 }
 .bannerShieldContainer.IN.three .routeNumber {
-    font-family: "Series C";
-    top: 0.1em;
-    font-size: 2.5em;
+    font-family: "Series D" !important;
+    letter-spacing: -0.06em;
+}
+.bannerShieldContainer.IN.three.threeNoOne .routeNumber {
+    font-family: "Series D" !important;
+    letter-spacing: -0.06em;
+}
+.bannerShieldContainer.IN.three.threeWithOne .routeNumber {
+    letter-spacing: 0em !important;
 }
 
 /* IOWA */
@@ -640,18 +688,25 @@
 /* LOUISIANA */
 .bannerShieldContainer.LA .routeNumber {
   color: var(--black);
-  font-family: "Series C";
-  font-size: 1.75em;
-  top: 0.45em;
+  font-family: "Series D";
 }
-.bannerShieldContainer.LA.three .routeNumber {
-    font-size: 1.5em;
-    top: 0.65em;
+.bannerShieldContainer.LA.one .routeNumber,
+.bannerShieldContainer.LA.two .routeNumber {
+  font-size: 2.5em;
+  top: 0.12em;
 }
+.bannerShieldContainer.LA.three .routeNumber,
 .bannerShieldContainer.LA.four .routeNumber {
-    font-family: "Series B";
-    font-size: 1.5em;
-    top: 0.65em;
+  font-size: 2.2em;
+  top: 0.22em;
+  letter-spacing: -0.07em;
+}
+.bannerShieldContainer.LA.four.fourWithOne .routeNumber {
+  font-family: "Series D";
+}
+.bannerShieldContainer.LA.four.fourNoOne .routeNumber {
+  font-family: "Series C";
+  letter-spacing: -0.02em;
 }
 
 /* MAINE */
@@ -708,6 +763,14 @@
 .bannerShieldContainer.MN.three .routeNumber,
 .bannerShieldContainer.MNBUS.three .routeNumber {
     font-family: "Series C"
+}
+.bannerShieldContainer.MNCo .routeNumber {
+    font-family: "Series D";
+    font-size: 2em;
+    top: 0.2em;
+}
+.bannerShieldContainer.MNCo.three .routeNumber {
+  font-family: "Series C";
 }
 
 /* MISSISSIPPI */
@@ -785,13 +848,20 @@
 .bannerShieldContainer.NV .routeNumber {
   color: var(--black);
   font-family: "Series D";
-  font-size: 1.35em;
-  top: 0.05em;
+  font-size: 2em;
+  top: -0.2em;
+  letter-spacing: -0.05em;
 }
-.bannerShieldContainer.NV.three .routeNumber {
-    font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.075em;
+.bannerShieldContainer.NVCC .routeNumber {
+  color: #003881;
+  font-family: "Series C";
+  font-size: 1.5em;
+  top: 0.2em;
+}
+.bannerShieldContainer.NVCC.three .routeNumber {
+  font-family: "Series C";
+  font-size: 1.4em;
+  top: 0.3em;
 }
 
 /* NEW HAMPSHIRE */
@@ -948,7 +1018,77 @@
     top: 0.2em;
 }
 
-/* PUERTO RICO (NOT CREATED) */
+/* PUERTO RICO */
+.bannerShieldContainer.PR .routeNumber {
+  color: var(--white);
+  font-family: "Series D";
+  font-size: 2.5em;
+  top: -0.15em;
+}
+.bannerShieldContainer.PR.one .routeNumber {
+  font-size: 3em;
+  top: -0.2em;
+}
+.bannerShieldContainer.PR.three .routeNumber {
+  font-family: "Series C";
+}
+.bannerShieldContainer.PR.three.threeWithOne .routeNumber {
+  font-family: "Series D";
+}
+
+.bannerShieldContainer.PR2 .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 2.5em;
+  top: -0.15em;
+}
+.bannerShieldContainer.PR2.one .routeNumber {
+  font-size: 3em;
+  top: -0.2em;
+}
+.bannerShieldContainer.PR2.three .routeNumber {
+  font-family: "Series C";
+}
+.bannerShieldContainer.PR2.threeWithOne .routeNumber {
+  font-family: "Series D";
+}
+
+.bannerShieldContainer.PR3 .routeNumber {
+  color: var(--countyYellow);
+  font-family: "Series D";
+  font-size: 2.25em;
+  top: -0em;
+}
+.bannerShieldContainer.PR3.one .routeNumber {
+  font-size: 2.5em;
+  top: -0.05em;
+}
+.bannerShieldContainer.PR3.two .routeNumber {
+  letter-spacing: -0.03em;
+  right: 0.03em;
+}
+.bannerShieldContainer.PR3.three .routeNumber {
+  font-family: "Series C";
+}
+.bannerShieldContainer.PR3.three.threeWithOne .routeNumber {
+  font-family: "Series D";
+}
+.bannerShieldContainer.PR3.four .routeNumber {
+  font-family: "Series B";
+}
+.bannerShieldContainer.PR4 .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 2.5em;
+  top: -0.05em;
+}
+
+.bannerShieldContainer.PR4.three .routeNumber {
+  font-family: "Series C";
+}
+.bannerShieldContainer.PR4.four .routeNumber {
+  font-family: "Series B";
+}
 
 /* RHODE ISLAND */
 .bannerShieldContainer.RI .routeNumber {
@@ -1187,12 +1327,9 @@
     font-family: "Series D";
     top: -0.04em;
 }
-.bannerShieldContainer.WI.one .routeNumber,
-.bannerShieldContainer.WI.two .routeNumber {
-    font-family: "Series D";
-}
-.bannerShieldContainer.WI.three .routeNumber {
-  font-family: "Series B";
+.bannerShieldContainer.WI.threeNoOne .routeNumber {
+    font-family: "Series D" !important;
+    letter-spacing: -0.03em;
 }
 .bannerShieldContainer.WICo .routeNumber {
   color: var(--black);
@@ -1390,37 +1527,38 @@
 .bannerShieldContainer.NLTC .routeNumber {
     color: #016B4D;
     font-family: "Series D";
-    font-size: 1.25em;
-    top: 0.76em;
+    font-size: 1.4em;
+    top: 0.4em;
 }
 .bannerShieldContainer.NLTC.three .routeNumber {
     font-family: "Series C";
-    font-size: 1.05em;
-    top: 0.9em;
+    font-size: 1.1em;
+    top: 0.8em;
 }
 
 /* Nova Scotia */
 .bannerShieldContainer.NS .routeNumber {
     color: var(--black);
+    font-size: 2.5em;
+    top: -0.05em;
+}
+.bannerShieldContainer.NS.one .routeNumber {
     font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.42em;
+}
+.bannerShieldContainer.NS.two .routeNumber {
+    font-family: "Series C";
 }
 .bannerShieldContainer.NS.three .routeNumber {
-    font-family: "Series C";
-    font-size: 1.5em;
-    top: 0.58em;
-}
-.bannerShieldContainer.NSCONN .routeNumber {
     color: var(--white);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.4em;
-}
-.bannerShieldContainer.NSCONN.three .routeNumber {
-    font-family: "Series C";
     font-size: 1.5em;
-    top: 0.58em;
+    top: 0.6em;
+    font-family: "Series C";
+}
+.bannerShieldContainer.NS.CONN .routeNumber {
+    color: var(--white);
+    font-family: "Series C";
+    font-size: 2em;
+    top: 0.1em;
 }
 .bannerShieldContainer.NSTC .routeNumber {
     color: #016B4D;
@@ -1437,12 +1575,21 @@
 /* Ontario */
 .bannerShieldContainer.ON .routeNumber {
     color: var(--black);
+}
+.bannerShieldCOntainer.ON.one .routeNumber {
+    font-family: "Series E";
+    font-size: 2.7em;
+    top: 0.15em;
+}
+.bannerShieldContainer.ON.two .routeNumber {
     font-family: "Series D";
-    font-size: 2.25em;
-    top: 0.25em;
+    font-size: 2.5em;
+    top: 0.215em;
 }
 .bannerShieldContainer.ON.three .routeNumber {
     font-family: "Series C";
+    font-size: 2.5em;
+    top: 0.215em;
 }
 .bannerShieldContainer.ON2 .routeNumber {
     color: var(--black);
@@ -1481,9 +1628,9 @@
 /* PEI */
 .bannerShieldContainer.PEI .routeNumber {
     color: var(--black);
-    font-family: "Series D";
-    font-size: 1.65em;
-    top: 0.58em;
+    font-family: "Series C";
+    font-size: 1.7em;
+    top: 0.5em;
 }
 .bannerShieldContainer.QCTC .routeNumber {
     color: #016B4D;
@@ -1523,23 +1670,19 @@
 .bannerShieldContainer.SK .routeNumber,
 .bannerShieldContainer.SK2 .routeNumber {
     color: var(--white);
-    font-family: "Series D";
-    font-size: 1.75em;
-    top: 0.45em;
-}
-
-.bannerShieldContainer.SK.three .routeNumber,
-.bannerShieldContainer.SK2.three .routeNumber {
     font-family: "Series C";
     font-size: 1.5em;
-    top: 0.62em;
+    top: 0.5em;
+}
+.bannerShieldContainer.SK2 .routeNumber {
+  color: #003883;
 }
 
 .bannerShieldContainer.SKTC .routeNumber {
     color: #016B4D;
     font-family: "Series D";
     font-size: 1.25em;
-    top: 0.76em;
+    top: 0.6em;
 }
 
 .bannerShieldContainer.SKTC.three .routeNumber {
@@ -1549,7 +1692,6 @@
 }
 
 /* === Logo-only / no-route-number shields === */
-
 .bannerShieldContainer.GSP .routeNumber,
 .bannerShieldContainer.NJTP .routeNumber,
 .bannerShieldContainer.PIP .routeNumber,
@@ -1685,7 +1827,8 @@
 
 .bE-shieldElement .stackedBannerSlot.bilingualDirectionBanner .bannerA {
   border-bottom: 0.055em solid var(--white) !important;
-  padding-bottom: 0.08em !important;
+  padding-top: 0.04em !important;
+  padding-bottom: 0.04em !important;
   margin-bottom: 0.08em !important;
 }
 
@@ -2501,3 +2644,627 @@
   margin-top: calc(0.02rem * var(--shieldScale, 1)) !important;
 }
 
+
+/* background color applied from the shield banner editor. */
+.bE-shieldElement .customBannerBackground {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(0.08rem * var(--shieldScale, 1));
+  padding: calc(0.03rem * var(--shieldScale, 1)) calc(0.16rem * var(--shieldScale, 1));
+  box-sizing: border-box;
+}
+
+
+/* Final shield banner plaque sizing and background cleanup */
+.bE-shieldElement .bannerA.customBannerBackground,
+.bE-shieldElement .bannerB.customBannerBackground,
+.bE-shieldElement .bannerA.specialShieldPlaque,
+.bE-shieldElement .bannerB.specialShieldPlaque {
+  display: inline-block !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  box-sizing: border-box !important;
+  position: static !important;
+  top: auto !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0.08em !important;
+  padding: 0.10em 0.18em 0.005em 0.18em !important;
+  line-height: 0.8 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.bE-shieldElement .bannerA.specialShieldPlaque,
+.bE-shieldElement .bannerB.specialShieldPlaque {
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.85) !important;
+}
+
+.bE-shieldElement .bannerA.TOLL.yellowElmt,
+.bE-shieldElement .bannerB.TOLL.yellowElmt {
+  background: var(--yellow) !important;
+  color: var(--black) !important;
+}
+
+.bE-shieldElement .bannerA.truckPlaque.whiteElmt,
+.bE-shieldElement .bannerB.truckPlaque.whiteElmt {
+  background: var(--white) !important;
+  color: var(--black) !important;
+}
+
+.bE-shieldElement .bannerA.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter,
+.bE-shieldElement .bannerB.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter {
+  font-size: calc((var(--fontSize) + 0.3rem) * var(--bannerScale, 1) * 0.85) !important;
+  font-weight: 1 !important;
+}
+
+.bE-shieldElement .bannerA.customBannerBackground:not(.noIndent):not(.exportRealFirstLetter):first-letter,
+.bE-shieldElement .bannerB.customBannerBackground:not(.noIndent):not(.exportRealFirstLetter):first-letter {
+  font-size: calc((var(--fontSize) + 0.3rem) * var(--bannerScale, 1)) !important;
+  font-weight: 1 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot,
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.tollStackedBanner,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.truckStackedBanner {
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot .customBannerBackground,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot .specialShieldPlaque,
+.bE-shieldElement .bannerShieldContainer .bannerSlot .customBannerBackground,
+.bE-shieldElement .bannerShieldContainer .bannerSlot .specialShieldPlaque {
+  margin: 0 !important;
+  padding: 0.10em 0.18em 0.005em 0.18em !important;
+}
+
+/* Colored normal banners use the same plaque geometry as the TOLL/TRUCKS plaques. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque) {
+  display: inline-block !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  box-sizing: border-box !important;
+  position: static !important;
+  top: auto !important;
+  border: none !important;
+  border-radius: 0.08em !important;
+  padding-top: 0.10em !important;
+  padding-bottom: 0.005em !important;
+  padding-left: 0.18em !important;
+  padding-right: 0.18em !important;
+  line-height: 0.8 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+/* On the right side, move the normal colored plaque outward instead of using
+   the shield gap as colored left padding. This makes its inner edge line up
+   with TOLL/TRUCKS/NO TRUCKS and moves the text with the plaque. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-right
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-right
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.tollStackedBanner.bannerSlot-right
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.TOLL):not(.truckPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.tollStackedBanner.bannerSlot-right
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.TOLL):not(.truckPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.truckStackedBanner.bannerSlot-right
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.truckPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.truckStackedBanner.bannerSlot-right
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.truckPlaque) {
+  margin-left: calc(0.32rem * var(--shieldScale, 1)) !important;
+  margin-right: 0 !important;
+  padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
+  padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
+}
+
+/* Mirror the plaque spacing when the banners are on the left of the shield. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-left
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-left
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.tollStackedBanner.bannerSlot-left
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.TOLL):not(.truckPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.tollStackedBanner.bannerSlot-left
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.TOLL):not(.truckPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.truckStackedBanner.bannerSlot-left
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.truckPlaque),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.truckStackedBanner.bannerSlot-left
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.truckPlaque) {
+  margin-left: 0 !important;
+  margin-right: calc(0.32rem * var(--shieldScale, 1)) !important;
+  padding-left: calc(0.30rem * var(--shieldScale, 1)) !important;
+  padding-right: calc(0.30rem * var(--shieldScale, 1)) !important;
+}
+
+/* Keep colored enlarged-first-letter stacks from using the old negative overlap. */
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack:has(> .customBannerBackground)
+  > .bannerA + .bannerB,
+.bE-shieldElement
+  .stackedBannerSlot.plainEnlargedSideBannerStack:has(> .customBannerBackground)
+  > .bannerB + .bannerA {
+  margin-top: 0 !important;
+}
+
+/* Special plaque spacing. */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-above,
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-above,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.tollStackedBanner.bannerSlot-above,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.truckStackedBanner.bannerSlot-above {
+  margin-top: 0 !important;
+  margin-bottom: calc(0.48rem * var(--shieldScale, 1)) !important;
+}
+
+/* Keep the plaque in place while lowering only the shield. */
+.bE-shieldElement .bannerShieldContainer:has(> .tollBannerSlot.bannerSlot-above) > .shield,
+.bE-shieldElement .bannerShieldContainer:has(> .truckBannerSlot.bannerSlot-above) > .shield,
+.bE-shieldElement .bannerShieldContainer:has(> .stackedBannerSlot.tollStackedBanner.bannerSlot-above) > .shield,
+.bE-shieldElement .bannerShieldContainer:has(> .stackedBannerSlot.truckStackedBanner.bannerSlot-above) > .shield {
+  transform: translateY(calc(0.197rem * var(--shieldScale, 1))) !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-below,
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-below,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.tollStackedBanner.bannerSlot-below,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.truckStackedBanner.bannerSlot-below {
+  margin-top: calc(0.10rem * var(--shieldScale, 1)) !important;
+  margin-bottom: 0 !important;
+}
+
+/* A single side special plaque must start at the same horizontal offset from the
+   shield as that same plaque does when it is stacked with another banner. */
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-right,
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-right {
+  margin-left: calc(0.32rem * var(--shieldScale, 1)) !important;
+  margin-right: 0 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .tollBannerSlot.bannerSlot-left,
+.bE-shieldElement .bannerShieldContainer .truckBannerSlot.bannerSlot-left {
+  margin-right: calc(0.32rem * var(--shieldScale, 1)) !important;
+  margin-left: 0 !important;
+}
+
+/* Current FDOT/CFX route markers use published physical dimensions. */
+.bannerShieldContainer.officialFdotShield .shield,
+.bannerShieldContainer.officialCfxShield .shield {
+  box-sizing: border-box;
+  margin: 0;
+  position: relative;
+}
+
+.bannerShieldContainer.officialFdotShield .shieldImg,
+.bannerShieldContainer.officialCfxShield .shieldImg {
+  display: block;
+  max-width: none;
+  object-fit: fill;
+}
+
+.bannerShieldContainer.variableGuideWidth .shield {
+  background: var(--white);
+  border-radius: var(--variableGuideRadius);
+  overflow: hidden;
+}
+
+.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shieldImg {
+  clip-path: inset(var(--variableGuideArtworkClip));
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1;
+}
+
+.bannerShieldContainer.variableGuideWidth .shield::before {
+  background: var(--white);
+  bottom: 0;
+  content: "";
+  left: calc(100% - var(--variableGuideAssetWidth));
+  position: absolute;
+  top: 0;
+  width: var(--variableGuideSeamCover);
+  z-index: 2;
+}
+
+.bannerShieldContainer.FDOTSTATE.variableGuideWidth .variableGuideContour {
+  height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 3;
+}
+
+/* Keep the official 1/8-inch SVG contour, but guarantee a visible editor pixel. */
+.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after {
+  border: 1px solid var(--black);
+  border-radius: inherit;
+  box-sizing: border-box;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.exportCaptureTarget .bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after,
+.exportStaticCaptureClone .bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after,
+.exportCaptureTarget.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after,
+.exportStaticCaptureClone.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after {
+  display: none;
+}
+
+.bannerShieldContainer.officialFdotShield .routeNumber.officialRouteNumber,
+.bannerShieldContainer.officialCfxShield .routeNumber.officialRouteNumber {
+  bottom: auto;
+  left: 0;
+  font-feature-settings: "kern" 0;
+  font-kerning: none;
+  font-synthesis: none;
+  letter-spacing: 0;
+  line-height: 1;
+  margin: 0;
+  right: auto;
+  text-align: left;
+  top: calc(var(--officialRouteCapTop, 0rem) - 0.142857143em);
+  transform: none;
+  transform-origin: 0 50%;
+  white-space: nowrap;
+  width: max-content;
+  z-index: 4;
+}
+
+/* Florida official artwork may render larger than the user Shield Size value.
+   Banner typography must still follow the user-entered size only. */
+.bE-shieldElement.floridaOfficialShieldUserBannerScale .bannerA,
+.bE-shieldElement.floridaOfficialShieldUserBannerScale .bannerB {
+  font-size:
+    calc(var(--fontSize) * var(--requestedShieldScale, 1)) !important;
+}
+
+.bE-shieldElement.floridaOfficialShieldUserBannerScale
+  .bannerA:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter,
+.bE-shieldElement.floridaOfficialShieldUserBannerScale
+  .bannerB:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter {
+  font-size:
+    calc((var(--fontSize) + 0.3rem) * var(--requestedShieldScale, 1)) !important;
+}
+
+.bE-shieldElement.floridaOfficialShieldUserBannerScale
+  .bannerA.specialShieldPlaque,
+.bE-shieldElement.floridaOfficialShieldUserBannerScale
+  .bannerB.specialShieldPlaque {
+  font-size:
+    calc(var(--fontSize) * var(--requestedShieldScale, 1) * 0.85) !important;
+}
+
+.bE-shieldElement.floridaOfficialShieldUserBannerScale
+  .bannerA.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter,
+.bE-shieldElement.floridaOfficialShieldUserBannerScale
+  .bannerB.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter {
+  font-size:
+    calc((var(--fontSize) + 0.3rem) * var(--requestedShieldScale, 1) * 0.85) !important;
+}
+
+/* Ontario primary is intentionally enlarged to the same 4/3 visual scale used
+   by the 48-inch Florida toll shields, while still following Shield Size. */
+.bE-shieldElement.ontarioPrimaryInternalScale .shield,
+.bE-shieldElement.ontarioPrimaryInternalScale .shieldImg {
+  height: calc(var(--requestedShieldSize, 3rem) * 4 / 3) !important;
+}
+
+.bE-shieldElement.ontarioPrimaryInternalScale .shieldImg {
+  width: auto !important;
+}
+
+/* Bilingual direction stacks stay vertically centered beside the shield.
+   This intentionally overrides the later generic side-stack top anchoring. */
+.bE-shieldElement
+  .bannerShieldContainer.sideBannerStackLayout
+  > .sideBannerStack.bilingualDirectionBanner.bannerSlot-left,
+.bE-shieldElement
+  .bannerShieldContainer.sideBannerStackLayout
+  > .sideBannerStack.bilingualDirectionBanner.bannerSlot-right {
+  align-self: center !important;
+  margin-top: 0 !important;
+  transform: none !important;
+  align-items: stretch !important;
+  width: max-content;
+}
+
+/* Use a plain divider line between the English and French directions.
+   Stretching the children makes the divider match the wider line of text. */
+.bE-shieldElement
+  .stackedBannerSlot.bilingualDirectionBanner
+  .bannerA,
+.bE-shieldElement
+  .stackedBannerSlot.bilingualDirectionBanner
+  .bannerB {
+  border-radius: 0 !important;
+}
+
+.bE-shieldElement
+  .stackedBannerSlot.bilingualDirectionBanner
+  .bannerA {
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 0.055em solid var(--white) !important;
+  border-radius: 0 !important;
+}
+
+
+/* Shared special plaques use the exact same geometry as a standalone
+   TOLL, TRUCKS, or NO TRUCKS plaque. The shared copy is only a placement
+   mechanism; it must not introduce a second visual style. */
+.bE-hasSharedAboveBanners > .bE-sharedAboveBannerText.specialShieldPlaque {
+  display: inline-block !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  border-radius: 0.08em !important;
+  font-size: calc(var(--fontSize) * var(--bannerScale, 1) * 0.85) !important;
+  line-height: 0.8 !important;
+  padding: 0.10em 0.18em 0.005em 0.18em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.bE-hasSharedAboveBanners > .bE-sharedAboveBannerText.TOLL.yellowElmt {
+  background: var(--yellow) !important;
+  color: var(--black) !important;
+}
+
+.bE-hasSharedAboveBanners > .bE-sharedAboveBannerText.truckPlaque.whiteElmt {
+  background: var(--white) !important;
+  color: var(--black) !important;
+}
+
+/* A hidden source banner keeps only its vertical footprint while a shared
+   Above banner is displayed. */
+.bE-shieldElement .bannerA.bE-sharedAboveBannerSource,
+.bE-shieldElement .bannerB.bE-sharedAboveBannerSource {
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Above colored banners need additional layout room because the plaque box
+   participates in flow while the normal banner text is visually shifted up.
+   Use separate values for EFL and non-EFL builds so the visible text-to-shield
+   gap matches the corresponding uncolored banner. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-above:has(> .customBannerBackground:not(.specialShieldPlaque):not(.noIndent)) {
+  margin-bottom: calc(0.35rem * var(--bannerScale, 1)) !important;
+}
+
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-above:has(> .customBannerBackground:not(.specialShieldPlaque).noIndent) {
+  margin-bottom: calc(0.65rem * var(--bannerScale, 1)) !important;
+}
+
+/* Normal Below banners already sit at the correct distance from the shield,
+   but their relative top shift leaves unused layout height underneath them.
+   Collapse that empty footprint without moving the visible banner itself. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-below:not(.roadNameStackedBanner):has(> .bannerA, > .bannerB):not(:has(> .customBannerBackground)):not(:has(> .specialShieldPlaque)) {
+  margin-bottom: calc(-0.95rem * var(--shieldScale, 1)) !important;
+}
+
+/* Enlarged first letters increase the colored side plaque box above the normal
+   banner's visual baseline. Lower only the EFL-colored build. The non-EFL
+   colored build already aligns correctly and is intentionally untouched. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-left
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.noIndent),
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-left
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.noIndent),
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-right
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.noIndent),
+.bE-shieldElement
+  .bannerShieldContainer
+  .bannerSlot-right
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.noIndent) {
+  transform: translateY(calc(0.45rem * var(--bannerScale, 1))) !important;
+}
+
+/* Side stacks that contain a colored banner with an enlarged first letter need
+   to remain a normal vertical stack. The single-banner EFL correction moves an
+   individual colored plaque downward, which is correct by itself but causes a
+   stacked top plaque to overlap the line below it. Keep the stack anchored at
+   the same top edge as an uncolored stack and let every following line occupy
+   its own flow space. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.sideBannerStack:has(> .customBannerBackground:not(.specialShieldPlaque):not(.noIndent)) {
+  gap: calc(0.06rem * var(--shieldScale, 1)) !important;
+  margin-top: 0 !important;
+  transform: none !important;
+}
+
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.sideBannerStack
+  > .bannerA.customBannerBackground:not(.specialShieldPlaque):not(.noIndent),
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.sideBannerStack
+  > .bannerB.customBannerBackground:not(.specialShieldPlaque):not(.noIndent) {
+  transform: none !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Do not reuse the old negative line overlap once an EFL-colored plaque is in
+   the side stack. This keeps Banner 2 and a Road Name fully visible beneath it. */
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.sideBannerStack:has(> .customBannerBackground:not(.specialShieldPlaque):not(.noIndent))
+  > .bannerA,
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.sideBannerStack:has(> .customBannerBackground:not(.specialShieldPlaque):not(.noIndent))
+  > .bannerB,
+.bE-shieldElement
+  .bannerShieldContainer
+  .stackedBannerSlot.sideBannerStack:has(> .customBannerBackground:not(.specialShieldPlaque):not(.noIndent))
+  > .bannerRoadName {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Automatic special banner extensions. HAZMATS/NO HAZMATS reuse the white
+   plaque build, TOLLWAY/TURNPIKE/TOLL ROAD reuse the yellow plaque build, and
+   DETOUR uses the same geometry with an orange background. */
+.bE-shieldElement .bannerA.detourPlaque.orangeElmt,
+.bE-shieldElement .bannerB.detourPlaque.orangeElmt {
+  background: var(--orange) !important;
+  color: var(--black) !important;
+}
+
+/* Any editor-applied light banner background must render dark text. This also
+   covers fluorescent pink, orange, yellow, white, and light custom hex colors. */
+.bE-shieldElement .bannerA.lightBannerBackground,
+.bE-shieldElement .bannerB.lightBannerBackground,
+.bE-shieldElement .bannerRoadName.lightBannerBackground {
+  color: var(--black) !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .detourBannerSlot {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.detourStackedBanner {
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* DETOUR follows the exact same single/stacked placement rules as the existing
+   automatic TOLL/TRUCKS plaques. */
+.bE-shieldElement .bannerShieldContainer .detourBannerSlot.bannerSlot-above,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.detourStackedBanner.bannerSlot-above {
+  margin-top: 0 !important;
+  margin-bottom: calc(0.48rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .bannerShieldContainer:has(> .detourBannerSlot.bannerSlot-above) > .shield,
+.bE-shieldElement .bannerShieldContainer:has(> .stackedBannerSlot.detourStackedBanner.bannerSlot-above) > .shield {
+  transform: translateY(calc(0.197rem * var(--shieldScale, 1))) !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .detourBannerSlot.bannerSlot-below,
+.bE-shieldElement .bannerShieldContainer .stackedBannerSlot.detourStackedBanner.bannerSlot-below {
+  margin-top: calc(0.10rem * var(--shieldScale, 1)) !important;
+  margin-bottom: 0 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .detourBannerSlot.bannerSlot-right {
+  margin-left: calc(0.32rem * var(--shieldScale, 1)) !important;
+  margin-right: 0 !important;
+}
+
+.bE-shieldElement .bannerShieldContainer .detourBannerSlot.bannerSlot-left {
+  margin-right: calc(0.32rem * var(--shieldScale, 1)) !important;
+  margin-left: 0 !important;
+}
+
+/* Shared DETOUR plaques use the same orange plaque build when consecutive
+   Above banners merge across shields. */
+.bE-hasSharedAboveBanners > .bE-sharedAboveBannerText.detourPlaque.orangeElmt {
+  background: var(--orange) !important;
+  color: var(--black) !important;
+}
+
+/* Match the existing white/yellow special-plaque side-stack geometry for DETOUR. */
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-right {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+  align-items: flex-start;
+}
+
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-left {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-top: 0 !important;
+  align-items: flex-end;
+}
+
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-right .bannerA:not(.detourPlaque),
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-right .bannerB:not(.detourPlaque) {
+  padding-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-right: 0 !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-left .bannerA:not(.detourPlaque),
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-left .bannerB:not(.detourPlaque) {
+  padding-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+  padding-left: 0 !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-right .detourPlaque.orangeElmt {
+  margin-left: calc(0.5rem * var(--shieldScale, 1)) !important;
+}
+
+.bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-left .detourPlaque.orangeElmt {
+  margin-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+}

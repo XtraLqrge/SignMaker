@@ -6,6 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
   <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer, DuskDarf1, XtraLqrge" />
   <meta name="description" content="Version 2.19 (BETA)" />
+  <meta name="google-site-verification" content="VxkA5T9XJaSoh3-BDZHmrBpQHw62FtBuPgPLY3B3pSY" />
   <title>Highway Sign Maker</title>
   <script>
     (function () {
@@ -43,11 +44,11 @@
   </script>
   <link rel="icon" type="image/x-icon" href="img/other-symbols/icon.png" />
   <!-- CSS Links -->
-  <link href="css/page.css" rel="stylesheet" type="text/css" />
-  <link href="css/signs.css" rel="stylesheet" type="text/css" />
-  <link href="css/shields.css" rel="stylesheet" type="text/css" />
-  <link href="css/form.css" rel="stylesheet" type="text/css" />
-  <link href="css/sign-foundation.css" rel="stylesheet" type="text/css" />
+  <link href="css/page.css?v=20261008b" rel="stylesheet" type="text/css" />
+  <link href="css/signs.css?v=20261026-messages1" rel="stylesheet" type="text/css" />
+  <link href="css/shields.css?v=20261025c" rel="stylesheet" type="text/css" />
+  <link href="css/form.css?v=20261026-messages1" rel="stylesheet" type="text/css" />
+  <link href="css/sign-foundation.css?v=20261025a" rel="stylesheet" type="text/css" />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   <link rel="stylesheet"
@@ -56,18 +57,20 @@
   <script src="https://cdn.jsdelivr.net/gh/peterhry/CircleType@2.3.1/dist/circletype.min.js"></script>
   <script src="js/HtmlToImage.js" type="text/javascript"></script>
   <script src="js/lib.js" type="text/javascript"></script>
-  <script src="js/Shield.js" type="text/javascript"></script>
-  <script src="js/Sign.js" type="text/javascript"></script>
-  <script src="js/ExitTab.js" type="text/javascript"></script>
-  <script src="js/Panel.js" type="text/javascript"></script>
+  <script src="js/Shield.js?v=20261001b" type="text/javascript"></script>
+  <script src="js/Sign.js?v=20261008d" type="text/javascript"></script>
+  <script src="js/ExitTab.js?v=20261025c" type="text/javascript"></script>
+  <script src="js/Panel.js?v=20261026-messages1" type="text/javascript"></script>
+  <script src="js/VmsPanel.js?v=20261026-messages1" type="text/javascript"></script>
   <script src="js/Post.js" type="text/javascript"></script>
-  <script src="js/Arrows.js" type="text/javascript"></script>
-  <script src="js/Control.js" type="text/javascript"></script>
+  <script src="js/Arrows.js?v=20261001b" type="text/javascript"></script>
+  <script src="js/Control.js?v=20261026-messages1" type="text/javascript"></script>
   <script src="js/SubPanels.js" type="text/javascript"></script>
-  <script src="js/form.js" type="text/javascript"></script>
+  <script src="js/IconPicker.js?v=20261026-icons2" type="text/javascript"></script>
+  <script src="js/form.js?v=20261026-messages1" type="text/javascript"></script>
   <script src="js/IndexDB.js" type="text/javascript"></script>
   <script src="js/CustomShields.js" type="text/javascript"></script>
-  <script src="js/main.js" type="text/javascript"></script>
+  <script src="js/main.js?v=20261027-arrows1" type="text/javascript"></script>
 </head>
 
 <body onload="app.init();">
@@ -196,14 +199,14 @@
           <h3>Saved Images</h3>
           <div id="savedCustomShieldsList">
             <div class="customShieldItem">
-              <img src="img/shields/United States/I-2Digit.svg" class="shieldItemImg">
+              <img src="img/shields/United States/Interstate/I-2Digit.svg" class="shieldItemImg">
               <span class="shieldItemName">Custom Shield 1</span>
               <button class="deleteCustomShieldBtn">
                 <span class="material-symbols-outlined">delete</span>
               </button>
             </div>
             <div class="customShieldItem selected">
-              <img src="img/shields/United States/I-2Digit.svg" class="shieldItemImg">
+              <img src="img/shields/United States/Interstate/I-2Digit.svg" class="shieldItemImg">
               <span class="shieldItemName">Custom Shield 2</span>
               <button class="deleteCustomShieldBtn">
                 <span class="material-symbols-outlined">delete</span>
@@ -213,7 +216,7 @@
         </div>
       </div>
       <div class="shieldPreview">
-        <img class="selectedShieldPreview" src="/img/shields/United States/I-2Digit.svg" />
+        <img class="selectedShieldPreview" src="img/shields/United States/Interstate/I-2Digit.svg" />
         <br />
         <span class="selectedShieldName">Interstate</span>
         <br />
@@ -392,8 +395,30 @@
               <label for="panelBorderRadius">Border Radius:</label>
               <input type="number" id="panelBorderRadius" name="panelBorderRadius" value=".75" min="0" max="5"
                 step=".05" onblur="formHandler.readForm();" />
+              <label for="panelBorderThickness">Border Thickness:</label>
+              <div class="panelBorderThicknessControl">
+                <input type="range" id="panelBorderThickness" name="panelBorderThickness" min="0" max="0.4" step="0.1" value="0.2" />
+                <output id="panelBorderThicknessValue" for="panelBorderThickness">100%</output>
+              </div>
               <label for="disableFlash">Selection Flash:</label>
               <input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm();" checked />
+              <div id="vmsPanelSettings" hidden>
+                <h4 class="panelStyleSectionHeader">VMS Display</h4>
+                <label for="vmsResolution">LED Resolution:</label>
+                <select id="vmsResolution" onchange="formHandler.readForm();">
+                  <option value="extra-low">Extra Low</option>
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="extra-high">Extra High</option>
+                </select>
+                <label for="vmsAntialias">Antialiasing:</label>
+                <input type="checkbox" id="vmsAntialias" onchange="formHandler.readForm();" checked />
+                <label for="vmsFrameColor">Frame Color:</label>
+                <select id="vmsFrameColor" onchange="formHandler.readForm();">
+                  <option value="#3c3e42">Dark Gray</option>
+                </select>
+              </div>
             </div>
           </div>
           <div id="sMPanelPadding" class="panelStyleSection">
@@ -416,6 +441,8 @@
               <input class="panelPaddingSlider" type="range" id="paddingLeftSlider" min="-0.5" max="1.5" step="0.05" value="0.75" />
               <input class="panelPaddingValue" type="number" id="paddingLeft" value="0.75" placeholder="0.75" step="0.05" />
 
+              <button id="toggleVmsPanel" type="button" onclick="app.toggleVmsPanel();"
+                aria-pressed="false" aria-controls="vmsPanelSettings">Switch Panel to VMS</button>
               <button id="resetPadding" class="resetClass" type="button" onclick="app.resetPadding();">
                 Reset to Default
               </button>
@@ -624,6 +651,23 @@
                   />
                   <label for="fontSize" id="fontValue" class="exitTabSliderValue">18</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="sizeReset" aria-label="Reset text size">
+                    <span class="material-symbols-outlined">refresh</span>
+                  </button>
+                </div>
+
+                <div class="exitTabSliderGroup" data-exit-slider="cornerRadius">
+                  <div class="exitTabCornerRadiusLabel">
+                    <label for="exitTabCornerRadius">Set Corner Radius (rem):</label>
+                    <input type="checkbox" id="exitTabUsePanelCornerRadius" name="exitTabUsePanelCornerRadius" checked
+                      title="Use parent panel corner radius" aria-label="Use parent panel corner radius"
+                      onchange="formHandler.readForm();" />
+                  </div>
+                  <input type="range" id="exitTabCornerRadius" name="exitTabCornerRadius"
+                    min="0" max="2" step="0.05" value="0.75"
+                    oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);"
+                    onchange="formHandler.readForm();" />
+                  <label for="exitTabCornerRadius" id="exitTabCornerRadiusValue" class="exitTabSliderValue">0.75</label>
+                  <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabCornerRadiusReset" aria-label="Reset corner radius">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
                 </div>
@@ -869,21 +913,21 @@
                       <button class="dragIndicator">
                         <span class="material-symbols-outlined">drag_indicator</span>
                       </button>
-                      <span class="smSPShieldBlock"><img src="img/shields/AZ-2.svg"
+                      <span class="smSPShieldBlock"><img src="img/shields/United States/AZ/AZ-2Digit.svg"
                           class="smSPShieldVisual" />AZ-45</span>
                     </div>
                     <div class="smSPShieldRow">
                       <button class="dragIndicator">
                         <span class="material-symbols-outlined">drag_indicator</span>
                       </button>
-                      <span class="smSPShieldBlock"><img src="img/shields/TX-2-TOLL.svg"
+                      <span class="smSPShieldBlock"><img src="img/shields/United States/TX/TXTOLL-2Digit.svg"
                           class="smSPShieldVisual" />TX-45 TOLL</span>
                     </div>
                     <div class="smSPShieldRow">
                       <button class="dragIndicator">
                         <span class="material-symbols-outlined">drag_indicator</span>
                       </button>
-                      <span class="smSPShieldBlock"><img src="img/shields/United States/I-2Digit.svg"
+                      <span class="smSPShieldBlock"><img src="img/shields/United States/Interstate/I-2Digit.svg"
                           class="smSPShieldVisual" />I-35E</span>
                     </div>
                   </div>
@@ -892,7 +936,7 @@
                   <button class="dragIndicator">
                     <span class="material-symbols-outlined">drag_indicator</span>
                   </button>
-                  <span class="smSPShieldBlock"><img src="img/shields/United States/I-2Digit.svg"
+                  <span class="smSPShieldBlock"><img src="img/shields/United States/Interstate/I-2Digit.svg"
                       class="smSPShieldVisual" />I-35</span>
                 </div>
               </div>
@@ -902,7 +946,7 @@
                 <div id="smSPShieldImgConfig">
                   <div>
                     <div id="smSPShieldImgPreview">
-                      <img src="img/shields/United States/I-2Digit.svg" class="smSPShieldLargeVisual" />
+                      <img src="img/shields/United States/Interstate/I-2Digit.svg" class="smSPShieldLargeVisual" />
                     </div>
                     <button id="changeImgBtn">
                       <span class="material-symbols-outlined">image</span>Change Image
@@ -1279,14 +1323,14 @@
                     <input type="number" id="sdAdvisory_borderRadius" placeholder="4" max="16" min="0" step="1" value="4" />
 
                     <label for="sdAdvisory_horizPadding">Horizontal Padding (rem):</label>
-                    <input type="range" min="0" max="3" value=".3" step=".1" id="sdAdvisory_horizPadding" />
-                    <input id="sdAdvisory_horizPaddingVal" class="smallVal" type="number" value=".3" step="0.1" />
+                    <input type="range" min="0" max="3" value=".2" step=".1" id="sdAdvisory_horizPadding" />
+                    <input id="sdAdvisory_horizPaddingVal" class="smallVal" type="number" value=".2" step="0.1" />
                   </div>
 
                   <div class="sdCtrlTextSettingsRow">
                     <label for="sdAdvisory_vertPadding">Vertical Padding (rem):</label>
-                    <input type="range" min="0" max="3" value=".3" step=".1" id="sdAdvisory_vertPadding" />
-                    <input id="sdAdvisory_vertPaddingVal" class="smallVal" type="number" value=".3" step="0.1" />
+                    <input type="range" min="0" max="3" value=".1" step=".1" id="sdAdvisory_vertPadding" />
+                    <input id="sdAdvisory_vertPaddingVal" class="smallVal" type="number" value=".1" step="0.1" />
                   </div>
 
                   <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
@@ -1575,14 +1619,10 @@
               </div>
               <div id="smSPBlockProperties">
                 <h4>Row Properties</h4>
-                <label for="sdBlock_topPadding">Top Margin (rem): </label>
-                <input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" />
-                <input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1" />
-                <label for="sdBlock_bottomPadding">Bottom Margin (rem):
-                </label>
-                <input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" />
-                <input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1" />
-                <br />
+                <div class="sdBlockMarginControls">
+                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" /><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1" /></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" /><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1" /></div>
+                </div>
                 <label for="sdBlock_backgroundColor">BG:</label>
                 <select id="sdBlock_backgroundColor"></select>
                 <label for="sdBlock_borderColor">Border:</label>
@@ -1662,16 +1702,54 @@
           <div data-tab="sMStandardArrows" class="sMModalTab selected">
             Standard Arrows
           </div>
+          <div data-tab="sMExitOnlyArrows" class="sMModalTab">Exit Only</div>
           <div data-tab="sMAPL" class="sMModalTab">Arrow-Per-Lane (APL)</div>
         </nav>
         <div class="sMModalContent">
           <div id="sMStandardArrows">
-            <div>
-              <legend>Standard Arrows</legend>
-              <label for="guideArrow">Arrows:</label>
+            <div class="standardArrowEditor">
+              <h3>Standard Arrows</h3>
+              <div class="standardArrowRow standardArrowTypeRow"><label for="standardArrowType">Arrow:</label><div class="standardArrowPickerHost"><select id="standardArrowType" aria-label="Standard arrow type"></select></div><input type="number" id="guideArrowLanes" name="guideArrowLanes" min="0" max="6" step="1" aria-label="Arrow count" /></div>
+              <div class="standardArrowRow"><label for="standardArrowAngle">Angle:</label><div class="guideArrowAngleScale"><input type="range" id="standardArrowAngle" min="0" max="315" step="45" value="0" /><div class="guideArrowAngleTicks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><input type="number" id="standardArrowAngleValue" step="1" value="0" aria-label="Angle in degrees" /><button type="button" class="guideArrowReset" data-standard-reset="Angle" aria-label="Reset arrow angle"><span class="material-symbols-outlined">refresh</span></button><button type="button" id="standardArrowFlip" class="standardArrowFlipButton" aria-pressed="false" hidden>Flip</button></div>
+              <div class="standardArrowRow"><label for="standardArrowSize">Size (rem):</label><input type="range" id="standardArrowSize" min="1" max="5" step="0.1" value="3" /><input type="number" id="standardArrowSizeValue" min="1" max="5" step="0.1" value="3.0" aria-label="Arrow size" /><button type="button" class="guideArrowReset" data-standard-reset="Size" aria-label="Reset arrow size"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="standardArrowRow"><label for="standardArrowPadding">Padding:</label><input type="range" id="standardArrowPadding" min="0" max="1" step="0.05" value="0.2" /><input type="number" id="standardArrowPaddingValue" min="0" max="5" step="0.01" value="0.20" aria-label="Arrow area padding" /><button type="button" class="guideArrowReset" data-standard-reset="Padding" aria-label="Reset arrow padding"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="standardArrowRow"><label for="standardArrowSpacing">Spacing:</label><input type="range" id="standardArrowSpacing" min="4" max="12" step="0.10" value="8.5" /><input type="number" id="standardArrowSpacingValue" min="0" max="25" step="0.01" value="8.50" aria-label="Space between arrows" /><button type="button" class="guideArrowReset" data-standard-reset="Spacing" aria-label="Reset arrow spacing"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="standardArrowRow"><span class="standardArrowLabel">Alignment:</span><div class="standardArrowChoices" role="group" aria-label="Arrow alignment"><button type="button" data-standard-alignment="Left">L</button><button type="button" data-standard-alignment="Center">C</button><button type="button" data-standard-alignment="Right">R</button><button type="button" disabled title="Justified alignment is not available yet">J</button></div></div>
+              <div class="standardArrowRow"><span class="standardArrowLabel">Position:</span><div class="standardArrowChoices" role="group" aria-label="Arrow area position"><button type="button" data-standard-position="Left" aria-label="Left"><span class="material-symbols-outlined">chevron_left</span></button><button type="button" disabled title="Top position is not available yet" aria-label="Top"><span class="material-symbols-outlined">keyboard_arrow_up</span></button><button type="button" data-standard-position="Down" aria-label="Down"><span class="material-symbols-outlined">keyboard_arrow_down</span></button><button type="button" data-standard-position="Right" aria-label="Right"><span class="material-symbols-outlined">chevron_right</span></button></div></div>
+              <details class="standardArrowIndividual" id="standardArrowIndividual"><summary>Individual arrows</summary><div id="standardArrowIndividualRows"></div><button type="button" id="standardArrowIndividualReset" class="individualArrowReset"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Reset individual arrows</button></details>
+            </div>
+          </div>
+          <div id="sMExitOnlyArrows" class="tabHidden">
+            <div class="exitOnlyEditor">
+              <div class="exitOnlyModes" role="group" aria-label="Exit only style">
+                <button type="button" data-exit-mode="Exit Only">Standard</button>
+                <button type="button" data-exit-mode="Half Exit Only">Lane Split</button>
+                <button type="button" data-exit-mode="Split Exit Only">Boxed</button>
+              </div>
+              <h4>Arrows</h4>
+              <div class="exitOnlyRow exitOnlyArrowTypeRow"><label for="exitArrowType">Arrow:</label><div class="standardArrowPickerHost"><select id="exitArrowType" aria-label="Exit only arrow type"></select></div><input type="number" id="exitArrowCount" min="0" max="6" step="1" value="1" aria-label="Exit only arrow count" /></div>
+              <div class="exitOnlyRow"><label for="exitArrowAngle">Angle:</label><div class="guideArrowAngleScale"><input type="range" id="exitArrowAngle" min="0" max="315" step="45" value="0" /><div class="guideArrowAngleTicks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><input type="number" id="exitArrowAngleValue" step="1" value="0" aria-label="Exit only arrow angle" /><button type="button" class="guideArrowReset" data-exit-reset="Angle" aria-label="Reset exit only arrow angle"><span class="material-symbols-outlined">refresh</span></button><button type="button" id="exitArrowFlip" class="standardArrowFlipButton" aria-pressed="false" hidden>Flip</button></div>
+              <div class="exitOnlyRow"><label for="exitArrowSize">Size:</label><input type="range" id="exitArrowSize" min="1" max="5" step="0.1" value="3" /><input type="number" id="exitArrowSizeValue" min="1" max="5" step="0.1" value="3.0" aria-label="Exit only arrow size" /><button type="button" class="guideArrowReset" data-exit-reset="Size" aria-label="Reset exit only arrow size"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding:</label><input type="range" id="exitArrowPadding" min="0" max="1" step="0.05" value="0.2" /><input type="number" id="exitArrowPaddingValue" min="0" max="5" step="0.01" value="0.20" aria-label="Exit only arrow padding" /><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only arrow padding"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><label for="exitArrowSpacing">Spacing:</label><input type="range" id="exitArrowSpacing" min="4" max="12" step="0.10" value="8.5" /><input type="number" id="exitArrowSpacingValue" min="0" max="25" step="0.01" value="8.50" aria-label="Space between exit only arrows" /><button type="button" class="guideArrowReset" data-exit-reset="Spacing" aria-label="Reset exit only arrow spacing"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><span class="standardArrowLabel">Alignment:</span><div class="standardArrowChoices" role="group" aria-label="Exit only arrow alignment"><button type="button" data-exit-alignment="Left">L</button><button type="button" data-exit-alignment="Center">C</button><button type="button" data-exit-alignment="Right">R</button><button type="button" disabled title="Justified alignment is not available yet">J</button></div></div>
+              <h4>Text</h4>
+              <div class="exitOnlyRow exitOnlyTextRow"><span class="standardArrowLabel">Text:</span><div class="exitOnlyTextInputs"><input type="text" id="exitTextLeft" value="EXIT" aria-label="Left exit only text" title="Type \\n for a new line" /><input type="text" id="exitTextRight" value="ONLY" aria-label="Right exit only text" title="Type \\n for a new line" /></div></div>
+              <div class="exitOnlyRow"><label for="exitTextFont">Font:</label><select id="exitTextFont"></select></div>
+              <div class="exitOnlyRow"><label for="exitTextSize">Size:</label><input type="range" id="exitTextSize" min="50" max="100" step="5" value="70" /><input type="number" id="exitTextSizeValue" min="50" max="100" step="5" value="70" aria-label="Exit only text size" /><button type="button" class="guideArrowReset" data-exit-reset="TextSize" aria-label="Reset exit only text size"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><label for="exitTextSpacing">Spacing:</label><input type="range" id="exitTextSpacing" min="-0.15" max="0.15" step="0.01" value="0" /><input type="number" id="exitTextSpacingValue" step="0.01" value="0.00" aria-label="Exit only letter spacing" /><button type="button" class="guideArrowReset" data-exit-reset="TextSpacing" aria-label="Reset exit only letter spacing"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><label for="exitTextColor">Color:</label><select id="exitTextColor"><option>Inherit</option></select></div>
+              <h4>Background</h4>
+              <div class="exitOnlyRow exitOnlyColorRow"><label for="exitBackgroundColor">Background:</label><select id="exitBackgroundColor"></select><label class="exitOnlyColorOption" for="exitTopBorder">Top border:</label><input type="checkbox" id="exitTopBorder" /></div>
+              <div class="exitOnlyRow exitOnlyColorRow"><label for="exitBorderColor">Border:</label><select id="exitBorderColor"><option>Inherit</option></select><label class="exitOnlyColorOption" for="exitColorEdges">Color corners:</label><input type="checkbox" id="exitColorEdges" checked /></div>
+              <div class="exitOnlyRow exitOnlyColorRow exitOnlyTexasRow" hidden><label class="exitOnlyColorOption" for="exitTexasBorder">Texas border:</label><input type="checkbox" id="exitTexasBorder" checked /></div>
+              <div class="exitOnlyRow exitOnlyForceWidthRow" hidden><label for="exitForceSubpanelWidth">Force subpanel width:</label><input type="checkbox" id="exitForceSubpanelWidth" /></div>
+            </div>
+            <div class="exitOnlyLegacyControls" hidden>
+              <legend>Exit Only Arrows</legend>
+              <label for="guideArrow">Arrow:</label>
               <select id="guideArrow" onchange="formHandler.readForm();"></select>
-              <input type="number" id="guideArrowLanes" name="guideArrowLanes" min="1" max="6"
-                onblur="formHandler.readForm();" />
+              <input type="number" id="exitGuideArrowLanes" min="0" max="6" step="1" aria-label="Exit Only arrow count" />
               <br />
               <label id="arrowLocationLabel" for="arrowLocations">Arrow Location:</label>
               <select id="arrowLocations" onchange="formHandler.readForm();"></select>
@@ -1727,7 +1805,13 @@
           </div>
           <div id="sMAPL" class="tabHidden">
             <div>
-              <legend>Arrow Per Lane</legend>
+              <div class="aplMenuHeader">
+                <legend>Arrow Per Lane</legend>
+                <label class="aplMergeAdjacentLabel" for="aplMergeAdjacentExitOnly">
+                  <input id="aplMergeAdjacentExitOnly" type="checkbox" />
+                  Merge adjacent Exit Only labels
+                </label>
+              </div>
 
               <div id="aplSelectedSubpanelStatus" class="aplSelectedSubpanelStatus">
                 Selected Subpanel: SubPanel 1
@@ -1805,13 +1889,17 @@
       <div class="assetSelectorHeader">
         <div>
           <h3>Select Icon</h3>
-          <p>Choose an icon preview to apply it to the selected block.</p>
+          <p>Choose an icon to replace the current icon.</p>
         </div>
         <button id="closeIconSelector" class="assetSelectorClose" type="button" aria-label="Close icon selector">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <div class="customIconUploadToolbar">
+      <div class="iconPickerTabs" role="tablist" aria-label="Icon source">
+        <button id="iconPickerUploadedTab" type="button" role="tab" aria-selected="true" aria-controls="iconGrid" data-icon-page="uploaded">Uploaded Icons</button>
+        <button id="iconPickerBuiltInTab" type="button" role="tab" aria-selected="false" aria-controls="iconGrid" data-icon-page="built-in">Built-in Icons</button>
+      </div>
+      <div class="customIconUploadToolbar iconPickerToolbar">
         <button id="uploadCustomIconButton" class="customIconUploadButton" type="button">
           <span class="material-symbols-outlined">upload_file</span>
           <span>Upload Icon</span>
@@ -1822,9 +1910,21 @@
           accept=".svg,.png,image/svg+xml,image/png"
           hidden
         />
+        <div class="iconPickerDisplayControls">
+          <label for="iconPickerSort">Sort</label>
+          <select id="iconPickerSort">
+            <option value="recent">Recently added</option>
+            <option value="alphabetical">Alphabetical</option>
+          </select>
+          <label for="iconPickerView">View</label>
+          <select id="iconPickerView">
+            <option value="grid">Grid view</option>
+            <option value="list">List view</option>
+          </select>
+        </div>
       </div>
       <input type="search" id="iconSearch" class="assetSelectorSearch" placeholder="Search icons..." />
-      <div id="iconGrid" class="iconGrid assetPickerGrid"></div>
+      <div id="iconGrid" class="iconGrid assetPickerGrid" role="tabpanel" aria-labelledby="iconPickerUploadedTab" data-view="grid"></div>
     </dialog>
 
     <dialog id="tollLogoSelectorModal" class="assetSelectorDialog">
@@ -2213,8 +2313,8 @@
 
                   <label for="settingsDefaultsShieldSize">Shield size (rem):</label>
                   <div class="settingsDefaultsSliderRow">
-                    <input id="settingsDefaultsShieldSize" type="range" min="2" max="4" step="0.5" value="3" />
-                    <span id="settingsDefaultsShieldSizeValue">3 rem</span>
+                    <input id="settingsDefaultsShieldSize" type="range" min="2" max="4" step="0.1" value="2.7" />
+                    <input id="settingsDefaultsShieldSizeValue" type="number" min="2" max="4" step="0.1" value="2.7" aria-label="Default shield size in rem" />
                   </div>
 
                   <label for="settingsDefaultsShieldBanner1">1st banner position:</label>

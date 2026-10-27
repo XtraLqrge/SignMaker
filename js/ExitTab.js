@@ -24,12 +24,14 @@ class ExitTab {
       useTextBasedIcon = false,
       fullBorder = ExitTab.prototype.defaultFullBorder,
       squareCorners = ExitTab.prototype.defaultSquareCorners,
+      cornerRadius = ExitTab.prototype.defaultCornerRadius,
       topOffset = ExitTab.prototype.defaultTopOffset,
       showLeft = ExitTab.prototype.defaultShowLeft,
       borderThickness = ExitTab.prototype.defaultBorderThickness,
       minHeight = ExitTab.prototype.defaultMinHeight,
       nestedExitTabs = [],
       nestedTabSpacing = ExitTab.prototype.defaultNestedTabSpacing,
+      dragOffsetRem = 0,
       FHWAFont = ExitTab.prototype.defaultFHWAFont,
       fontFamily = null,
       fontSize = ExitTab.prototype.defaultFontSize,
@@ -82,6 +84,11 @@ class ExitTab {
 
     this.fullBorder = fullBorder;
     this.squareCorners = squareCorners;
+    this.cornerRadius = cornerRadius === "panel" || cornerRadius == null
+      ? "panel"
+      : Number.isFinite(Number(cornerRadius))
+        ? Math.max(0, Math.min(2, Number(cornerRadius)))
+        : "panel";
     const parsedBorderThickness =
       typeof borderThickness === "number"
         ? borderThickness
@@ -103,6 +110,8 @@ class ExitTab {
     this.nestedTabSpacing = Number.isFinite(parsedNestedTabSpacing)
       ? Math.max(0, parsedNestedTabSpacing)
       : 0;
+    const parsedDragOffset = Number(dragOffsetRem);
+    this.dragOffsetRem = Number.isFinite(parsedDragOffset) ? parsedDragOffset : 0;
     const resolvedFontFamily = (() => {
       const explicitFont = typeof fontFamily === "string" && fontFamily.trim().length
         ? fontFamily.trim()
@@ -127,8 +136,10 @@ class ExitTab {
         ? (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
         : (ExitTab.prototype.defaultFHWAFontFamily || "Series EEM");
     })();
-    this.fontFamily = resolvedFontFamily;
-    this.FHWAFont = /^Series\s/i.test(String(resolvedFontFamily || ""));
+    this.fontFamily = typeof normalizeTextFontFamilyName === "function"
+      ? normalizeTextFontFamilyName(resolvedFontFamily)
+      : resolvedFontFamily;
+    this.FHWAFont = /^Series\s/i.test(String(this.fontFamily || ""));
     this.icon = icon;
     this.showLeft = showLeft;
     this.fontSize = fontSize;
@@ -245,6 +256,7 @@ class ExitTab {
       variant: exisitingTab.variant,
       icon: exisitingTab.icon,
       squareCorners: exisitingTab.squareCorners,
+      cornerRadius: exisitingTab.cornerRadius,
       fullBorder: exisitingTab.fullBorder,
       borderThickness: exisitingTab.borderThickness,
       minHeight: exisitingTab.minHeight,
@@ -280,6 +292,7 @@ ExitTab.prototype.defaultTollLogoSize = 3;
 ExitTab.prototype.defaultIcon = "AIRPORT";
 ExitTab.prototype.defaultFullBorder = true;
 ExitTab.prototype.defaultSquareCorners = true;
+ExitTab.prototype.defaultCornerRadius = "panel";
 ExitTab.prototype.defaultTopOffset = false;
 ExitTab.prototype.defaultFHWAFont = true;
 ExitTab.prototype.defaultFontFamily = "Series EEM";
@@ -345,8 +358,12 @@ ExitTab.prototype.fontFamilies = (() => {
     "Series EEM",
     "Series EM",
     "Series F",
-    "Transport",
-    "DIN 1451",
+    "Transport Regular",
+    "Transport Heavy",
+    "DIN 1451 Regular",
+    "DIN 1451 Narrow",
+    "Motorway Permanent",
+    "Motorway Temporary",
   ];
 })();
 ExitTab.prototype.textColors = ExitTab.prototype.colors.slice();
@@ -370,6 +387,7 @@ ExitTab.prototype.profileFormattingKeys = [
   "showLeft",
   "fullBorder",
   "squareCorners",
+  "cornerRadius",
   "topOffset",
   "verticalArrangement",
   "caStyle",
@@ -412,6 +430,7 @@ ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.protot
     showLeft: ExitTab.prototype.defaultShowLeft,
     fullBorder: ExitTab.prototype.defaultFullBorder,
     squareCorners: ExitTab.prototype.defaultSquareCorners,
+    cornerRadius: ExitTab.prototype.defaultCornerRadius,
     topOffset: ExitTab.prototype.defaultTopOffset,
     verticalArrangement: ExitTab.prototype.defaultVerticalArrangement,
     caStyle: ExitTab.prototype.defaultCAStyle,

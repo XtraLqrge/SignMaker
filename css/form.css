@@ -3516,6 +3516,119 @@ dialog:not([open]) {
   overflow: hidden !important;
 }
 
+#sMAPL > div {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+#sMAPL .aplMenuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+#sMAPL .aplMergeAdjacentLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  font: 0.8rem "Inter", sans-serif;
+  cursor: pointer;
+}
+#sMAPL .aplMergeAdjacentLabel input {
+  margin: 0;
+}
+
+.aplExitTextSettingsRow {
+  display: grid;
+  grid-template-columns: 5.8rem 5.8rem 9.3rem max-content max-content;
+  gap: 0.6rem;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.15rem 0.25rem 0.45rem 2.35rem;
+}
+.aplExitTextSettingsRow > * {
+  min-width: 0;
+}
+.aplExitTextSettingsRow .aplExitTextField-size,
+.aplExitTextSettingsRow .aplExitTextField-spacing {
+  display: grid;
+  grid-template-columns: max-content 3.25rem;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  font: 0.85rem "Inter", sans-serif;
+}
+.aplExitTextSettingsRow .aplExitTextFontField {
+  width: 9.3rem;
+}
+.aplExitTextSettingsRow input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  padding: 0.2rem 0.4rem;
+  font: 0.88rem "Inter", sans-serif;
+  color: var(--textColor);
+  background: rgb(var(--inputColor));
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  appearance: textfield;
+}
+.aplExitTextSettingsRow input::-webkit-inner-spin-button,
+.aplExitTextSettingsRow input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.aplExitTextSettingsRow .aplExitTextFontPicker,
+.aplExitTextSettingsRow .aplExitTextFontPicker .fontPickerTrigger {
+  display: block;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  height: 2rem;
+}
+.aplExitTextSettingsRow .aplExitTextFontPicker .fontPickerTrigger {
+  display: inline-flex;
+  padding-left: 0.55rem;
+  padding-right: 1.55rem;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.aplExitTextFontMenu {
+  min-width: 18rem !important;
+}
+
+/* APL plaques grow around a single line of text without changing arrow gaps. */
+.aplExitOnlyIndividualLabel {
+  left: calc(var(--aplExitOnlyGap) + var(--aplExitOnlyStemOffset));
+  right: auto;
+  width: max-content;
+  min-width: 4rem;
+  max-width: none;
+  height: auto;
+  min-height: 1.35rem;
+  padding: 0.12rem 0.42rem 0;
+  line-height: 1;
+  white-space: pre !important;
+  transform: none;
+}
+.aplExitOnlyFlexibleLabel {
+  width: max-content;
+  max-width: none;
+  height: auto;
+  min-height: 1.35rem;
+  padding: 0.12rem 0.42rem 0;
+  line-height: 1;
+  white-space: pre !important;
+}
+
 .aplArrowDeleteButton {
   width: 4.25rem !important;
   min-width: 4.25rem !important;
@@ -4326,6 +4439,20 @@ dialog:not([open]) {
   min-width: 3.5rem;
   text-align: left;
   white-space: nowrap;
+}
+
+#settingsDefaultShields .settingsDefaultsSliderRow {
+  grid-template-columns: minmax(0, 12rem) 4.5rem;
+}
+
+#settingsDefaultsShieldSizeValue {
+  box-sizing: border-box;
+  width: 4.5rem;
+  min-width: 0;
+  height: 2.25rem;
+  padding: 0.25rem 0.4rem;
+  text-align: center;
+  font: inherit;
 }
 
 @media (max-width: 760px) {
@@ -5454,6 +5581,26 @@ dialog:not([open]) {
   text-align: right;
   line-height: 1.1;
   margin: 0;
+}
+
+.exitTabCornerRadiusLabel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  line-height: 1.1;
+  text-align: right;
+}
+
+.exitTabCornerRadiusLabel label {
+  margin: 0;
+  cursor: pointer;
+}
+
+.exitTabCornerRadiusLabel input[type="checkbox"] {
+  flex: none;
+  margin: 0;
+  cursor: pointer;
 }
 
 .exitTabSliderGroup input[type="range"] {
@@ -8248,6 +8395,16 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   line-height: 1;
 }
 
+#customShieldMaker .motorwayRouteNumber,
+.customShieldMakerRenderedContainer .motorwayRouteNumber {
+  line-height: 1.6 !important;
+}
+
+#customShieldMaker .motorwayRouteNumber .routeChar,
+.customShieldMakerRenderedContainer .motorwayRouteNumber .routeChar {
+  line-height: 1.6 !important;
+}
+
 #customShieldMaker .customShieldMakerCustomColorControls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1.9rem;
@@ -8666,14 +8823,17 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  padding: 0.6rem;
   background-color: rgba(var(--baseColor), 0.18);
   border: 0.12rem solid rgba(var(--baseColor), 0.35);
   margin: 0 auto;
 }
 
 .sdIconPreviewBox img {
-  max-width: 72%;
-  max-height: 72%;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   display: block;
 }
@@ -13584,6 +13744,439 @@ span.toolTip {
   background-size: 0.9rem 0.9rem !important;
 }
 
+/* Exit Only editor */
+.sMModal.guideArrowConfig[data-current-menu="sMExitOnlyArrows"] {
+  width: max-content !important;
+  max-width: calc(100vw - 2rem) !important;
+}
+.exitOnlyLegacyControls { display: none !important; }
+.exitOnlyEditor {
+  display: grid;
+  gap: 0.44rem;
+  padding: 0.55rem 0.8rem 0.85rem;
+  min-width: 0;
+}
+.exitOnlyEditor h4 {
+  margin: 0.5rem 0 0.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.exitOnlyModes { display: flex; gap: 0.22rem; }
+.exitOnlyModes button {
+  flex: 1;
+  min-height: 1.85rem;
+  border: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font: 400 0.9rem "Inter", sans-serif;
+  cursor: pointer;
+}
+.exitOnlyModes button.selected {
+  color: #fff;
+  background: rgb(76, 80, 88);
+  font-weight: 700;
+}
+:root[data-theme="light"] .exitOnlyModes button.selected {
+  color: #000;
+  background: rgb(214, 219, 230);
+}
+.exitOnlyRow {
+  display: grid;
+  grid-template-columns: 5.1rem minmax(11rem, 15rem) 3.9rem 1.85rem;
+  gap: 0.38rem;
+  align-items: center;
+  min-width: 0;
+}
+.exitOnlyRow > label,
+.exitOnlyRow > .standardArrowLabel {
+  width: auto !important;
+  margin: 0 !important;
+  text-align: right;
+  font-size: 0.95rem;
+}
+.exitOnlyRow input[type="range"] { width: 100% !important; min-width: 0; margin: 0; }
+.exitOnlyRow input[type="number"] {
+  width: 100% !important;
+  min-width: 0;
+  height: 1.85rem !important;
+  box-sizing: border-box;
+  margin: 0 !important;
+  text-align: center;
+  font-size: 1.06rem !important;
+  font-weight: 600;
+}
+.exitOnlyRow .standardArrowFlipButton {
+  grid-column: 3;
+  width: 100%; height: 1.85rem; padding: 0; margin: 0; border: 0;
+  background: rgb(var(--inputColor)); color: var(--textColor);
+  font: 400 0.95rem "Inter", sans-serif; cursor: pointer;
+}
+.exitOnlyRow .standardArrowFlipButton[hidden] { display: none !important; }
+.exitOnlyRow .standardArrowFlipButton.selected { color: #fff; background: rgb(76, 80, 88); font-weight: 700; }
+:root[data-theme="light"] .exitOnlyRow .standardArrowFlipButton.selected { color: #000; background: rgb(214, 219, 230); }
+.exitOnlyRow .standardArrowChoices { grid-column: 2 / 5; }
+.exitOnlyRow .standardArrowChoices button[hidden] { display: none !important; }
+.exitOnlyRow .standardArrowPickerHost { position: relative; min-width: 0; }
+.exitOnlyRow .standardArrowPickerHost .arrowPicker,
+.exitOnlyRow .standardArrowPickerHost .shieldPickerTrigger { width: 100% !important; box-sizing: border-box; }
+.exitOnlyRow > select:not(#exitArrowType) { grid-column: 2 / 5; width: 100%; min-width: 0; }
+.exitOnlyRow input[type="checkbox"] { grid-column: 2; justify-self: start; }
+.exitOnlyTextRow .exitOnlyTextInputs {
+  grid-column: 2 / 5;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+.exitOnlyTextRow input[type="text"] {
+  width: 100%; min-width: 0; height: 1.85rem;
+  box-sizing: border-box; margin: 0; padding: 0.25rem 0.45rem;
+  border: 0; background: rgb(var(--inputColor)); color: var(--textColor);
+  font: 600 0.98rem "Inter", sans-serif;
+}
+.exitOnlyRow .colorPicker { grid-column: 2 / 5; width: 100%; }
+.exitOnlyRow .colorPickerTrigger { width: 100%; }
+.exitOnlyRow .colorPickerTrigger:disabled { opacity: 0.45; cursor: default; }
+.exitOnlyRow .fontPicker { grid-column: 2 / 5; width: 100%; }
+.exitOnlyRow input:disabled { opacity: 0.4; }
+.exitOnlyColorRow {
+  grid-template-columns: 5.1rem minmax(10.8rem, 12.2rem) minmax(6.8rem, 1fr) 1.85rem;
+}
+.exitOnlyColorRow > select:not(#exitArrowType),
+.exitOnlyColorRow .colorPicker { grid-column: 2; min-width: 0; }
+.exitOnlyColorRow > .exitOnlyColorOption { grid-column: 3; white-space: nowrap; }
+.exitOnlyColorRow input[type="checkbox"] { grid-column: 4; justify-self: center; }
+.exitOnlyColorRow[hidden] { display: none !important; }
+.exitOnlyForceWidthRow > label { grid-column: 1 / 3; }
+.exitOnlyForceWidthRow input[type="checkbox"] { grid-column: 3; justify-self: start; }
+.exitOnlyForceWidthRow[hidden] { display: none !important; }
+
+#smSPBlockProperties .sdBlockMarginControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+#smSPBlockProperties .sdBlockMarginControl {
+  display: grid;
+  grid-template-columns: max-content minmax(5rem, 1fr) 4.5rem;
+  align-items: center;
+  column-gap: 0.35rem;
+  min-width: 0;
+}
+#smSPBlockProperties .sdBlockMarginControl label { width: auto; white-space: nowrap; }
+#smSPBlockProperties .sdBlockMarginControl input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  align-self: center;
+}
+#smSPBlockProperties .sdBlockMarginControl input[type="number"] {
+  box-sizing: border-box;
+  width: 4.5rem;
+  min-width: 4.5rem;
+  max-width: 4.5rem;
+  margin: 0;
+}
+
+/* Standard guide-arrow editor */
+.sMModal.guideArrowConfig[data-current-menu="sMStandardArrows"] {
+  width: max-content !important;
+  max-width: calc(100vw - 2rem) !important;
+}
+
+.sMModal.guideArrowConfig .sMModalBar {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.standardArrowEditor {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.standardArrowEditor h3 {
+  text-align: left;
+  margin: 0 0 0.2rem;
+  font-size: 1.15rem;
+}
+
+.standardArrowIndividual {
+  margin-top: 0.45rem;
+  border-top: 1px solid currentColor;
+  padding-top: 0.55rem;
+}
+.standardArrowIndividual summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.2rem 0;
+}
+.standardArrowIndividual[data-disabled="true"] { opacity: 0.42; }
+#standardArrowIndividualRows {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 0.55rem;
+}
+.individualArrowReset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 1.85rem;
+  margin-top: 0.55rem;
+  border: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font: 500 0.95rem "Inter", sans-serif;
+  cursor: pointer;
+}
+.individualArrowReset .material-symbols-outlined { font-size: 1.3rem; }
+.individualArrowRow {
+  display: grid;
+  grid-template-columns: 4.7rem minmax(11rem, 1fr) 3.8rem;
+  gap: 0.38rem;
+  align-items: center;
+  padding: 0.2rem;
+}
+.individualArrowHeadings { font-size: 0.75rem; opacity: 0.8; }
+.individualArrowRow select,
+.individualArrowRow input { width: 100%; min-width: 0; box-sizing: border-box; height: 1.85rem; }
+.individualArrowRow input[type="number"] { font-size: 1.06rem; font-weight: 600; text-align: center; }
+.individualArrowPickerHost { min-width: 0; }
+.individualArrowPickerHost .shieldPickerTriggerLabel { font-size: 1.08rem; }
+.individualArrowPickerHost .shieldPickerItemLabel { font-size: 1.04rem; }
+.individualArrowSpacingRow {
+  display: grid;
+  grid-template-columns: 7.3rem minmax(9rem, 1fr) 3.8rem;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.12rem 0.2rem 0.5rem;
+}
+.individualArrowSpacingRow label { font-size: 0.86rem; white-space: nowrap; }
+.individualArrowSpacingRow input { min-width: 0; width: 100%; box-sizing: border-box; }
+.individualArrowSpacingRow input[type="number"] { height: 1.85rem; text-align: center; font-size: 1.03rem; }
+.modernExitOnly-laneSplit .modernExitColoredLane { flex: 0 0 auto; }
+.modernExitOnly-laneSplit .modernExitPlainLane { flex: 1 1 auto; }
+.modernExitSequence[data-arrow-count="1"][data-alignment="center"] {
+  justify-content: center !important;
+  column-gap: 0.55rem !important;
+}
+.modernExitSequence[data-arrow-count="1"][data-alignment="center"] > .modernExitTextSlot {
+  flex: 0 0 auto !important;
+  width: max-content !important;
+  min-width: max-content !important;
+}
+.signHolder.hasStandardGuideArrowWidthReserve.forceWidenedSubpanels {
+  width: var(--standardGuideArrowMinWidth) !important;
+  min-width: var(--standardGuideArrowMinWidth) !important;
+  justify-content: stretch !important;
+}
+.signHolder.hasStandardGuideArrowWidthReserve.forceWidenedSubpanels > .subPanelDisplay:not(.hasAplWidthReserve) {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: max-content !important;
+}
+.signHolder.hasStandardGuideArrowWidthReserve.forceWidenedSubpanels > .subPanelDisplay:not(.hasAplWidthReserve) > .signContentContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+.standardGuideArrowFrame[data-standard-arrow-index] {
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.standardGuideArrowFrame[data-standard-arrow-index]:active { cursor: grabbing; }
+
+.standardArrowRow {
+  display: grid;
+  grid-template-columns: 5.1rem minmax(11rem, 15rem) 3.9rem 1.85rem;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.standardArrowRow > label,
+.standardArrowRow > .standardArrowLabel {
+  width: auto !important;
+  margin: 0 !important;
+  text-align: right;
+  font-size: 0.95rem;
+}
+
+.standardArrowRow input[type="range"] {
+  width: 100% !important;
+  min-width: 0;
+  margin: 0;
+}
+
+.standardArrowRow input[type="number"] {
+  width: 100% !important;
+  min-width: 0;
+  height: 1.85rem !important;
+  box-sizing: border-box;
+  text-align: center;
+  margin: 0 !important;
+  font-size: 1.06rem !important;
+  font-weight: 600;
+}
+
+.standardArrowRow .standardArrowFlipButton {
+  grid-column: 3;
+  width: 100%;
+  height: 1.85rem;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font: 400 0.95rem "Inter", sans-serif;
+  cursor: pointer;
+}
+
+.standardArrowRow .standardArrowFlipButton[hidden] { display: none !important; }
+
+.standardArrowRow .standardArrowFlipButton.selected {
+  background: rgb(76, 80, 88);
+  color: #fff;
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .standardArrowRow .standardArrowFlipButton.selected {
+  background: rgb(214, 219, 230);
+  color: #000;
+}
+
+.standardArrowRow .standardArrowPickerHost {
+  min-width: 0;
+  position: relative;
+}
+.standardArrowTypeRow,
+.exitOnlyArrowTypeRow {
+  grid-template-columns: 5.1rem minmax(11rem, 15rem) 1.85rem 3.9rem;
+}
+.standardArrowTypeRow .standardArrowPickerHost,
+.exitOnlyArrowTypeRow .standardArrowPickerHost {
+  grid-column: 2 / 4;
+}
+
+.standardArrowPickerHost .arrowPicker,
+.standardArrowPickerHost .shieldPickerTrigger {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.standardArrowPickerHost .shieldPickerTrigger {
+  height: 1.85rem !important;
+  min-height: 1.85rem !important;
+}
+
+.standardArrowChoices {
+  display: flex;
+  gap: 0.12rem;
+  grid-column: 2 / 5;
+}
+
+.guideArrowReset {
+  grid-column: 4;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  cursor: pointer;
+}
+.guideArrowReset .material-symbols-outlined {
+  font-size: 1.45rem;
+  font-weight: 400;
+  line-height: 1;
+}
+.guideArrowReset:disabled { opacity: 0.4; cursor: default; }
+
+.guideArrowAngleScale {
+  grid-column: 2;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 1.85rem;
+}
+.guideArrowAngleScale input[type="range"] { position: relative; z-index: 1; }
+.guideArrowAngleTicks {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: calc(50% + 0.3rem);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  color: var(--textColor);
+}
+.guideArrowAngleTicks i {
+  display: block;
+  width: 1px;
+  height: 0.23rem;
+  background: currentColor;
+}
+.guideArrowAngleScale:has(input:disabled) .guideArrowAngleTicks { opacity: 0.4; }
+
+.standardArrowChoices button {
+  width: 1.85rem;
+  min-width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 1.24rem;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.standardArrowChoices button.selected {
+  background: rgb(76, 80, 88) !important;
+  color: #fff !important;
+  font-weight: 800;
+}
+
+:root[data-theme="light"] .standardArrowChoices button.selected {
+  background: rgb(214, 219, 230) !important;
+  color: #000 !important;
+}
+
+.standardArrowChoices button .material-symbols-outlined {
+  font-size: 1.7rem !important;
+  font-weight: 400;
+  line-height: 1;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.standardArrowChoices button.selected .material-symbols-outlined {
+  font-weight: 800;
+  font-variation-settings: "FILL" 0, "wght" 800, "GRAD" 0, "opsz" 24;
+}
+
+.standardArrowChoices button:disabled { opacity: 0.4; cursor: default; }
+
+.standardArrowRow input:disabled { opacity: 0.4; }
+
 .textEditorBlock .blockTypeInlinePicker.open .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret {
   transform: translate(-50%, -50%) rotate(180deg) !important;
 }
@@ -14056,4 +14649,405 @@ input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-
 .textEditorBlock .blockTypeInlinePickerTrigger .shieldPickerTriggerCaret::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") !important;
   filter: none !important;
+}
+
+/* Icon picker pages, favorites, and the shared grid/list presentation. */
+#iconSelectorModal[open] {
+  display: flex !important;
+  flex-direction: column;
+}
+
+#iconSelectorModal .iconPickerTabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  padding: 0.75rem 1.25rem 0;
+}
+
+#iconSelectorModal .iconPickerTabs button {
+  border: 0;
+  padding: 0.6rem 0.95rem;
+  background: var(--assetPickerCardBg);
+  color: var(--assetPickerText);
+  font: 500 0.95rem "Inter", sans-serif;
+  cursor: pointer;
+}
+
+#iconSelectorModal .iconPickerTabs button[aria-selected="true"] {
+  background: #2262b5;
+  color: white;
+  font-weight: 700;
+}
+
+#iconSelectorModal .iconPickerToolbar {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding-bottom: 0.7rem;
+}
+
+#iconSelectorModal .iconPickerDisplayControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--assetPickerText);
+  font: 500 0.9rem "Inter", sans-serif;
+}
+
+#iconSelectorModal .iconPickerDisplayControls label {
+  width: auto;
+  margin: 0 0 0 0.5rem;
+}
+
+#iconSelectorModal .iconPickerDisplayControls select {
+  width: auto;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0.4rem 1.65rem 0.4rem 0.65rem;
+  border: 1px solid var(--assetPickerInputBorder);
+  background-color: var(--assetPickerInputBg);
+  color: var(--assetPickerText);
+  font: 500 0.95rem "Inter", sans-serif;
+}
+
+#iconSelectorModal #iconGrid {
+  display: block !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto;
+  padding-top: 0.85rem;
+}
+
+#iconGrid .iconPickerSection + .iconPickerSection {
+  margin-top: 1.35rem;
+}
+
+#iconGrid .iconPickerSectionHeading {
+  margin: 0 0 0.65rem;
+  color: var(--assetPickerMutedText);
+  font: 600 0.95rem "Inter", sans-serif;
+}
+
+#iconGrid .iconPickerItems {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 112px));
+  align-items: start;
+  gap: 0.9rem;
+}
+
+#iconGrid .iconPickerCard {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 132px;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+#iconGrid .iconPickerCard:focus-within {
+  outline: 2px solid var(--selectedColor);
+  outline-offset: -2px;
+}
+
+#iconGrid .iconPickerChooseButton {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+}
+
+#iconGrid .iconPickerChooseButton .assetGridPreview {
+  position: absolute;
+  inset: 8px auto auto 50%;
+  transform: translateX(-50%);
+  width: 82px;
+  height: 82px;
+  padding: 0;
+  aspect-ratio: auto;
+  background: transparent !important;
+}
+
+#iconGrid .iconPickerChooseButton .iconPickerPreviewImage {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+#iconGrid .iconPickerCard .assetGridLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  max-height: 100%;
+  padding: 0.3rem;
+  overflow: auto;
+  box-sizing: border-box;
+  background: rgba(70, 75, 85, 0.8);
+  color: white !important;
+  text-align: center;
+}
+
+#iconGrid .iconPickerLabelText {
+  display: block;
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+#iconGrid .iconPickerActions {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: flex;
+  gap: 0.25rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#iconGrid .iconPickerActions button {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.8rem;
+  height: 1.8rem;
+  min-width: 1.8rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(25, 29, 38, 0.9);
+  color: white;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  cursor: pointer;
+}
+
+#iconGrid .iconPickerCard:hover .iconPickerActions button {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#iconGrid .iconPickerActions .customIconDeleteButton:hover {
+  background: #8c2b5f;
+}
+
+#iconGrid .iconPickerActions .iconPickerFavoriteButton:hover {
+  background: #4d4424;
+}
+
+#iconGrid .iconPickerFavoriteButton svg {
+  display: block;
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: #ffd44d;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+#iconGrid .iconPickerFavoriteButton[aria-pressed="true"] svg {
+  fill: #ffd44d;
+}
+
+#iconGrid[data-view="list"] .iconPickerItems {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.8rem;
+}
+
+#iconGrid[data-view="list"] .iconPickerCard {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-rows: auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.35rem 5rem 0.35rem 0.65rem;
+  height: auto;
+  min-height: 0;
+}
+
+#iconGrid[data-view="list"] .iconPickerChooseButton {
+  position: static;
+  inset: auto;
+  width: 3.5rem;
+  height: 3.25rem;
+  min-height: 0;
+  padding: 0;
+}
+
+#iconGrid[data-view="list"] .iconPickerChooseButton .assetGridPreview {
+  position: static;
+  transform: none;
+  width: 3.5rem;
+  height: 3.25rem;
+}
+
+#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel {
+  position: relative;
+  inset: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  min-width: 0;
+  max-height: none;
+  padding: 0;
+  background: transparent;
+  color: var(--assetPickerText) !important;
+  text-align: left;
+  overflow: visible;
+}
+
+#iconGrid[data-view="list"] .iconPickerLabelText {
+  width: auto;
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+#iconGrid .iconPickerRenameButton {
+  position: absolute;
+  right: 0.15rem;
+  bottom: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: white;
+  opacity: 0;
+  cursor: pointer;
+}
+
+#iconGrid .assetGridLabel:hover .iconPickerRenameButton,
+#iconGrid .iconPickerRenameButton:focus-visible {
+  opacity: 1;
+  background: rgba(25, 28, 33, 0.82);
+  color: white;
+  border-radius: 2px;
+}
+
+#iconGrid .iconPickerRenameButton .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+#iconGrid .iconPickerLabelText[hidden],
+#iconGrid .iconPickerRenameButton[hidden] {
+  display: none !important;
+}
+
+#iconGrid .assetGridLabel.renaming {
+  padding: 0.2rem;
+}
+
+#iconGrid .iconPickerRenameInput {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 1.7rem;
+  margin: 0;
+  padding: 0.15rem;
+  border: 1px solid #72a9ff;
+  box-sizing: border-box;
+  background: #202838;
+  color: white;
+  font: 500 0.78rem "Inter", sans-serif;
+  text-align: left;
+}
+
+#iconGrid[data-view="list"] .iconPickerRenameButton {
+  position: static;
+  transform: none;
+  flex: 0 0 auto;
+  color: var(--assetPickerText);
+}
+
+#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel {
+  padding-right: 0;
+}
+
+#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel.renaming {
+  width: 100%;
+}
+
+#iconGrid[data-view="list"] .iconPickerRenameInput {
+  font-size: 1rem;
+}
+
+/* VMS display controls use the same two-column rows as Appearance. */
+.sMModal.panelStyleConfig #vmsPanelSettings {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 6.8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem 0.55rem;
+}
+
+.sMModal.panelStyleConfig #vmsPanelSettings[hidden] {
+  display: none;
+}
+
+.sMModal.panelStyleConfig #vmsPanelSettings h4 {
+  margin-top: 0.4rem !important;
+}
+
+.sMModal.panelStyleConfig #toggleVmsPanel {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0.15rem 0 0;
+  padding: 0.45rem;
+  background: var(--selectedColor);
+  color: white;
+  font: 600 0.85rem "Inter", sans-serif;
+  cursor: pointer;
+}
+
+.panelBorderThicknessControl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panelBorderThicknessControl input[type="range"] {
+  width: 6.5rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.panelBorderThicknessControl output {
+  width: 2.8rem;
+  font-size: 0.8rem;
+  text-align: right;
 }

@@ -111,7 +111,7 @@
   padding: 0;
   align-self: center;
   justify-self: end;
-  font-family: var(--bannerFontFamily, "Series E");
+  font-family: var(--toBannerFontFamily, var(--bannerFontFamily, "Series E"));
   line-height: 1;
   white-space: nowrap;
 }
@@ -219,7 +219,7 @@
 }
 
 .bE-shieldElement .to {
-  font-size: calc(1.5rem * var(--shieldScale, 1));
+  font-size: calc(var(--toBannerFontSize, 1.5rem) * var(--bannerScale, 1));
 }
 
 .bE-shieldElement .countyLabel,
@@ -453,8 +453,8 @@
 .bannerShieldContainer.CA .routeNumber {
   color: var(--white);
   font-family: "Series D";
-  top: 0.2em;
-  font-size: 2em;
+  top: 0.1em;
+  font-size: 2.2em;
 }
 .bannerShieldContainer.CA.three .routeNumber {
   font-family: "Series C";
@@ -881,7 +881,7 @@
 .bannerShieldContainer.NJ .routeNumber {
     color: var(--black);
     font-family: "Series C";
-    top: -0.03em;
+    top: -0.06em;
     font-size: 2.5em;
 }
 
@@ -1333,9 +1333,14 @@
 }
 .bannerShieldContainer.WICo .routeNumber {
   color: var(--black);
-  font-size: 2.5em;
+  font-size: 2.7em;
+  top: -0.07em;
+}
+.bannerShieldContainer.WICo.one .routeNumber {
+  font-family: "Series E";
+}
+.bannerShieldContainer.WICo.two .routeNumber {
   font-family: "Series D";
-  top: -0.04em;
 }
 .bannerShieldContainer.WICo.three .routeNumber {
   font-family: "Series C";

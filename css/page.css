@@ -221,11 +221,27 @@
 }
 
 @font-face {
-  font-family: "Transport";
-  src: url("../fonts/Transport.woff2") format("woff2"),
+  font-family: "Transport Regular";
+  src: url("../fonts/Roadgeek 2005 Transport Medium Regular.woff2") format("woff2"),
+    url("../fonts/Roadgeek 2005 Transport Medium Regular.woff") format("woff"),
+    url("../fonts/Roadgeek 2005 Transport Medium Regular.ttf") format("truetype"),
+    url("../fonts/Transport.woff2") format("woff2"),
     url("../fonts/Transport.woff") format("woff"),
     url("../fonts/Transport.ttf") format("truetype");
-  font-weight: 500;
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Transport Heavy";
+  src: url("../fonts/Roadgeek 2005 Transport Heavy Regular.woff2") format("woff2"),
+    url("../fonts/Roadgeek 2005 Transport Heavy Regular.woff") format("woff"),
+    url("../fonts/Roadgeek 2005 Transport Heavy Regular.ttf") format("truetype"),
+    url("../fonts/Transport.woff2") format("woff2"),
+    url("../fonts/Transport.woff") format("woff"),
+    url("../fonts/Transport.ttf") format("truetype");
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
@@ -236,11 +252,43 @@
 }
 
 @font-face {
-  font-family: "DIN 1451";
-  src: url("../fonts/DIN1451.woff2") format("woff2"),
-       url("../fonts/DIN1451.woff") format("woff"),
-       url("../fonts/DIN1451.ttf") format("truetype");
-  font-weight: 500;
+  font-family: "DIN 1451 Regular";
+  src: url("../fonts/Roadgeek 2005 Mittelschrift Regular.woff2") format("woff2"),
+       url("../fonts/Roadgeek 2005 Mittelschrift Regular.woff") format("woff"),
+       url("../fonts/Roadgeek 2005 Mittelschrift Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DIN 1451 Narrow";
+  src: url("../fonts/Roadgeek 2005 Engschrift Regular.woff2") format("woff2"),
+       url("../fonts/Roadgeek 2005 Engschrift Regular.woff") format("woff"),
+       url("../fonts/Roadgeek 2005 Engschrift Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Motorway Permanent";
+  src: url("../fonts/Motorway Permanent.woff2") format("woff2"),
+       url("../fonts/Motorway Permanent.woff") format("woff"),
+       url("../fonts/Motorway Permanent.ttf") format("truetype");
+  unicode-range: U+0030-0039, U+0041-0042, U+0045, U+004D, U+004E, U+0053, U+0057, U+0065, U+006E, U+0073, U+0077;
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Motorway Temporary";
+  src: url("../fonts/Motorway Temporary.woff2") format("woff2"),
+       url("../fonts/Motorway Temporary.woff") format("woff"),
+       url("../fonts/Motorway Temporary.ttf") format("truetype");
+  unicode-range: U+0030-0039, U+0041-0042, U+0045, U+004D, U+004E, U+0053, U+0057, U+0065, U+006E, U+0073, U+0077;
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }

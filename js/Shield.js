@@ -65,7 +65,7 @@ class Shield {
 /* CFX APL artwork bundled here for the arrow renderer. Florida shield artwork
    is loaded from the project image folders. */
 window.SIGNMAKER_PORTED_ASSETS = window.SIGNMAKER_PORTED_ASSETS || {};
-Object.assign(window.SIGNMAKER_PORTED_ASSETS, {"img/arrowBlocks/APL_UP_CFX.svg":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDMxMSA3NTIiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0zMDAuNjYxNjQxLC01ODEuNDU5NjQ0KSI+CiAgICAgICAgPGcgaWQ9IlVwIj4KICAgICAgICAgICAgPHBhdGggZD0iTTQxNS4wMjQsMTMzMi45NjRMNDk4Ljk5MSwxMzMyLjk3OUw0OTguOTkxLDc1Ni4xMDhDNDk4Ljk5MSw3NTYuMTA4IDUxOS41NjcsNzU5LjU2MyA1NDMuMDk4LDc2My41MTRDNTUzLjkzNCw3NjUuMzM0IDU2NC43NzEsNzYwLjI5MSA1NzAuMzU3LDc1MC44MjlDNTc1Ljk0NCw3NDEuMzY4IDU3NS4xMjUsNzI5LjQ0MyA1NjguMjk4LDcyMC44MzRDNTIyLjkwNCw2NjMuNTkgNDU3Ljc3NSw1ODEuNDYgNDU3Ljc3NSw1ODEuNDZDNDU3Ljc3NSw1ODEuNDYgMzkyLjUwNiw2NjMuMzQzIDM0Ni4xMDUsNzIxLjU1N0MzMzkuMTQ5LDczMC4yODQgMzM4LjM5Miw3NDIuNDI5IDM0NC4yMTIsNzUxLjk1MkMzNTAuMDMyLDc2MS40NzQgMzYxLjE4NSw3NjYuMzQgMzcyLjEyNCw3NjQuMTNDMzk1LjMwNiw3NTkuNDQ3IDQxNS4xNyw3NTUuNDM0IDQxNS4xNyw3NTUuNDM0TDQxNS4wMjQsMTMzMi45NjRaIiBzdHlsZT0iZmlsbDojZmZmOyIvPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==","img/arrowBlocks/APL_UP_TURN_CFX.svg":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDY0MCA3NTIiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC05ODYuODczOTYyLC01ODEuNDU5NjQ0KSI+CiAgICAgICAgPGcgaWQ9IlVwLVR1cm4iIHNlcmlmOmlkPSJVcCBUdXJuIj4KICAgICAgICAgICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoMSwwLDAsMSw2ODYuMjEyMzIxLDApIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik00MTUuMDI0LDEzMzIuOTY0TDQ5OC45OTEsMTMzMi45NzlMNDk4Ljk5MSw3NTYuMTA4QzQ5OC45OTEsNzU2LjEwOCA1MTkuNTY3LDc1OS41NjMgNTQzLjA5OCw3NjMuNTE0QzU1My45MzQsNzY1LjMzNCA1NjQuNzcxLDc2MC4yOTEgNTcwLjM1Nyw3NTAuODI5QzU3NS45NDQsNzQxLjM2OCA1NzUuMTI1LDcyOS40NDMgNTY4LjI5OCw3MjAuODM0QzUyMi45MDQsNjYzLjU5IDQ1Ny43NzUsNTgxLjQ2IDQ1Ny43NzUsNTgxLjQ2QzQ1Ny43NzUsNTgxLjQ2IDM5Mi41MDYsNjYzLjM0MyAzNDYuMTA1LDcyMS41NTdDMzM5LjE0OSw3MzAuMjg0IDMzOC4zOTIsNzQyLjQyOSAzNDQuMjEyLDc1MS45NTJDMzUwLjAzMiw3NjEuNDc0IDM2MS4xODUsNzY2LjM0IDM3Mi4xMjQsNzY0LjEzQzM5NS4zMDYsNzU5LjQ0NyA0MTUuMTcsNzU1LjQzNCA0MTUuMTcsNzU1LjQzNEw0MTUuMDI0LDEzMzIuOTY0WiIgc3R5bGU9ImZpbGw6I2ZmZjsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgwLjcwNzEwNywwLjcwNzEwNywtMC43MDcxMDcsMC43MDcxMDcsMTcxNC4xMDM4NTgsOS45MTMxOTMpIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik00MTUuMDI0LDEyNDguMTExTDQ5OC45OTEsMTI0OC4xMjZMNDk4Ljk5MSw3NTYuMTA4QzQ5OC45OTEsNzU2LjEwOCA1MTkuNTY3LDc1OS41NjMgNTQzLjA5OCw3NjMuNTE0QzU1My45MzQsNzY1LjMzNCA1NjQuNzcxLDc2MC4yOTEgNTcwLjM1Nyw3NTAuODI5QzU3NS45NDQsNzQxLjM2OCA1NzUuMTI1LDcyOS40NDMgNTY4LjI5OCw3MjAuODM0QzUyMi45MDQsNjYzLjU5IDQ1Ny43NzUsNTgxLjQ2IDQ1Ny43NzUsNTgxLjQ2QzQ1Ny43NzUsNTgxLjQ2IDM5Mi41MDYsNjYzLjM0MyAzNDYuMTA1LDcyMS41NTdDMzM5LjE0OSw3MzAuMjg0IDMzOC4zOTIsNzQyLjQyOSAzNDQuMjEyLDc1MS45NTJDMzUwLjAzMiw3NjEuNDc0IDM2MS4xODUsNzY2LjM0IDM3Mi4xMjQsNzY0LjEzQzM5NS4zMDYsNzU5LjQ0NyA0MTUuMTcsNzU1LjQzNCA0MTUuMTcsNzU1LjQzNEw0MTUuMDI0LDEyNDguMTExWiIgc3R5bGU9ImZpbGw6I2ZmZjsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==","img/arrowBlocks/APL_TURN_CFX.svg":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDUwMiA1MDEiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0xODcwLjI0MzY4MSwtNzQ0Ljc2MzA1MykiPgogICAgICAgIDxnIHRyYW5zZm9ybT0ibWF0cml4KDAuNzA3MTA3LDAuNzA3MTA3LC0wLjcwNzEwNywwLjcwNzEwNywyNDU5LjMyNTA3OSw5LjkxMzE5MykiPgogICAgICAgICAgICA8ZyBpZD0iVHVybiI+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNNDE1LjAyNCwxMjQ4LjExMUw0OTguOTkxLDEyNDguMTI2TDQ5OC45OTEsNzU2LjEwOEM0OTguOTkxLDc1Ni4xMDggNTE5LjU2Nyw3NTkuNTYzIDU0My4wOTgsNzYzLjUxNEM1NTMuOTM0LDc2NS4zMzQgNTY0Ljc3MSw3NjAuMjkxIDU3MC4zNTcsNzUwLjgyOUM1NzUuOTQ0LDc0MS4zNjggNTc1LjEyNSw3MjkuNDQzIDU2OC4yOTgsNzIwLjgzNEM1MjIuOTA0LDY2My41OSA0NTcuNzc1LDU4MS40NiA0NTcuNzc1LDU4MS40NkM0NTcuNzc1LDU4MS40NiAzOTIuNTA2LDY2My4zNDMgMzQ2LjEwNSw3MjEuNTU3QzMzOS4xNDksNzMwLjI4NCAzMzguMzkyLDc0Mi40MjkgMzQ0LjIxMiw3NTEuOTUyQzM1MC4wMzIsNzYxLjQ3NCAzNjEuMTg1LDc2Ni4zNCAzNzIuMTI0LDc2NC4xM0MzOTUuMzA2LDc1OS40NDcgNDE1LjE3LDc1NS40MzQgNDE1LjE3LDc1NS40MzRMNDE1LjAyNCwxMjQ4LjExMVoiIHN0eWxlPSJmaWxsOiNmZmY7Ii8+CiAgICAgICAgICAgIDwvZz4KICAgICAgICA8L2c+CiAgICA8L2c+Cjwvc3ZnPgo="});
+Object.assign(window.SIGNMAKER_PORTED_ASSETS, {"img/arrows/APL_UP_CFX.svg":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDMxMSA3NTIiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0zMDAuNjYxNjQxLC01ODEuNDU5NjQ0KSI+CiAgICAgICAgPGcgaWQ9IlVwIj4KICAgICAgICAgICAgPHBhdGggZD0iTTQxNS4wMjQsMTMzMi45NjRMNDk4Ljk5MSwxMzMyLjk3OUw0OTguOTkxLDc1Ni4xMDhDNDk4Ljk5MSw3NTYuMTA4IDUxOS41NjcsNzU5LjU2MyA1NDMuMDk4LDc2My41MTRDNTUzLjkzNCw3NjUuMzM0IDU2NC43NzEsNzYwLjI5MSA1NzAuMzU3LDc1MC44MjlDNTc1Ljk0NCw3NDEuMzY4IDU3NS4xMjUsNzI5LjQ0MyA1NjguMjk4LDcyMC44MzRDNTIyLjkwNCw2NjMuNTkgNDU3Ljc3NSw1ODEuNDYgNDU3Ljc3NSw1ODEuNDZDNDU3Ljc3NSw1ODEuNDYgMzkyLjUwNiw2NjMuMzQzIDM0Ni4xMDUsNzIxLjU1N0MzMzkuMTQ5LDczMC4yODQgMzM4LjM5Miw3NDIuNDI5IDM0NC4yMTIsNzUxLjk1MkMzNTAuMDMyLDc2MS40NzQgMzYxLjE4NSw3NjYuMzQgMzcyLjEyNCw3NjQuMTNDMzk1LjMwNiw3NTkuNDQ3IDQxNS4xNyw3NTUuNDM0IDQxNS4xNyw3NTUuNDM0TDQxNS4wMjQsMTMzMi45NjRaIiBzdHlsZT0iZmlsbDojZmZmOyIvPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==","img/arrows/APL_UP_TURN_CFX.svg":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDY0MCA3NTIiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC05ODYuODczOTYyLC01ODEuNDU5NjQ0KSI+CiAgICAgICAgPGcgaWQ9IlVwLVR1cm4iIHNlcmlmOmlkPSJVcCBUdXJuIj4KICAgICAgICAgICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoMSwwLDAsMSw2ODYuMjEyMzIxLDApIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik00MTUuMDI0LDEzMzIuOTY0TDQ5OC45OTEsMTMzMi45NzlMNDk4Ljk5MSw3NTYuMTA4QzQ5OC45OTEsNzU2LjEwOCA1MTkuNTY3LDc1OS41NjMgNTQzLjA5OCw3NjMuNTE0QzU1My45MzQsNzY1LjMzNCA1NjQuNzcxLDc2MC4yOTEgNTcwLjM1Nyw3NTAuODI5QzU3NS45NDQsNzQxLjM2OCA1NzUuMTI1LDcyOS40NDMgNTY4LjI5OCw3MjAuODM0QzUyMi45MDQsNjYzLjU5IDQ1Ny43NzUsNTgxLjQ2IDQ1Ny43NzUsNTgxLjQ2QzQ1Ny43NzUsNTgxLjQ2IDM5Mi41MDYsNjYzLjM0MyAzNDYuMTA1LDcyMS41NTdDMzM5LjE0OSw3MzAuMjg0IDMzOC4zOTIsNzQyLjQyOSAzNDQuMjEyLDc1MS45NTJDMzUwLjAzMiw3NjEuNDc0IDM2MS4xODUsNzY2LjM0IDM3Mi4xMjQsNzY0LjEzQzM5NS4zMDYsNzU5LjQ0NyA0MTUuMTcsNzU1LjQzNCA0MTUuMTcsNzU1LjQzNEw0MTUuMDI0LDEzMzIuOTY0WiIgc3R5bGU9ImZpbGw6I2ZmZjsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgwLjcwNzEwNywwLjcwNzEwNywtMC43MDcxMDcsMC43MDcxMDcsMTcxNC4xMDM4NTgsOS45MTMxOTMpIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik00MTUuMDI0LDEyNDguMTExTDQ5OC45OTEsMTI0OC4xMjZMNDk4Ljk5MSw3NTYuMTA4QzQ5OC45OTEsNzU2LjEwOCA1MTkuNTY3LDc1OS41NjMgNTQzLjA5OCw3NjMuNTE0QzU1My45MzQsNzY1LjMzNCA1NjQuNzcxLDc2MC4yOTEgNTcwLjM1Nyw3NTAuODI5QzU3NS45NDQsNzQxLjM2OCA1NzUuMTI1LDcyOS40NDMgNTY4LjI5OCw3MjAuODM0QzUyMi45MDQsNjYzLjU5IDQ1Ny43NzUsNTgxLjQ2IDQ1Ny43NzUsNTgxLjQ2QzQ1Ny43NzUsNTgxLjQ2IDM5Mi41MDYsNjYzLjM0MyAzNDYuMTA1LDcyMS41NTdDMzM5LjE0OSw3MzAuMjg0IDMzOC4zOTIsNzQyLjQyOSAzNDQuMjEyLDc1MS45NTJDMzUwLjAzMiw3NjEuNDc0IDM2MS4xODUsNzY2LjM0IDM3Mi4xMjQsNzY0LjEzQzM5NS4zMDYsNzU5LjQ0NyA0MTUuMTcsNzU1LjQzNCA0MTUuMTcsNzU1LjQzNEw0MTUuMDI0LDEyNDguMTExWiIgc3R5bGU9ImZpbGw6I2ZmZjsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==","img/arrows/APL_TURN_CFX.svg":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDUwMiA1MDEiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0xODcwLjI0MzY4MSwtNzQ0Ljc2MzA1MykiPgogICAgICAgIDxnIHRyYW5zZm9ybT0ibWF0cml4KDAuNzA3MTA3LDAuNzA3MTA3LC0wLjcwNzEwNywwLjcwNzEwNywyNDU5LjMyNTA3OSw5LjkxMzE5MykiPgogICAgICAgICAgICA8ZyBpZD0iVHVybiI+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNNDE1LjAyNCwxMjQ4LjExMUw0OTguOTkxLDEyNDguMTI2TDQ5OC45OTEsNzU2LjEwOEM0OTguOTkxLDc1Ni4xMDggNTE5LjU2Nyw3NTkuNTYzIDU0My4wOTgsNzYzLjUxNEM1NTMuOTM0LDc2NS4zMzQgNTY0Ljc3MSw3NjAuMjkxIDU3MC4zNTcsNzUwLjgyOUM1NzUuOTQ0LDc0MS4zNjggNTc1LjEyNSw3MjkuNDQzIDU2OC4yOTgsNzIwLjgzNEM1MjIuOTA0LDY2My41OSA0NTcuNzc1LDU4MS40NiA0NTcuNzc1LDU4MS40NkM0NTcuNzc1LDU4MS40NiAzOTIuNTA2LDY2My4zNDMgMzQ2LjEwNSw3MjEuNTU3QzMzOS4xNDksNzMwLjI4NCAzMzguMzkyLDc0Mi40MjkgMzQ0LjIxMiw3NTEuOTUyQzM1MC4wMzIsNzYxLjQ3NCAzNjEuMTg1LDc2Ni4zNCAzNzIuMTI0LDc2NC4xM0MzOTUuMzA2LDc1OS40NDcgNDE1LjE3LDc1NS40MzQgNDE1LjE3LDc1NS40MzRMNDE1LjAyNCwxMjQ4LjExMVoiIHN0eWxlPSJmaWxsOiNmZmY7Ii8+CiAgICAgICAgICAgIDwvZz4KICAgICAgICA8L2c+CiAgICA8L2c+Cjwvc3ZnPgo="});
 
 window.SIGNMAKER_ASSET_FALLBACKS = Object.assign(
   window.SIGNMAKER_ASSET_FALLBACKS || {},
@@ -268,18 +268,19 @@ Shield.prototype.getDirectoryFromShield = (name, variant) => {
     ""
   );
 
+  const properties = Shield.prototype.getPropertiesFromName(name);
+
   const sharedTwoDigitArtwork = new Set([
-    "C", "AK", "AZLOOP", "CO", "CT", "DC", "HI", "MN", "MNBUS", "MT2", "NC", "NELINK", "NESPUR", "NH", "NM", "NV", "TN", "VA2", "WA", "AB", "AB2", "ABTC", "BC", "BCYH", "BCTC", "MB", "MB2", "MBTC", "NB", "NBCONN", "NBLOCAL", "NBTC", "NLTC", "NSCONN", "NSTC", "ON2", "ON3", "ONTC", "QC2", "QCTC", "SK", "SK2", "SKTC", "TCH", "TCHLEAF"
+    "C", "AK", "AZLOOP", "CO", "CT", "DC", "HI", "MN", "MNBUS", "MT2", "NC", "NELINK", "NESPUR", "NH", "NM", "NV", "TN", "VA2", "WA", "AB", "AB2", "ABTC", "BC", "BCYH", "BCTC", "MB", "MB2", "MBTC", "NB", "NBCONN", "NBLOCAL", "NBTC", "NLTC", "NSCONN", "NSTC", "ON2", "ON3", "ONTC", "PEI", "QC2", "QCTC", "SK", "SK2", "SKTC", "TCH", "TCHLEAF"
   ]);
 
   if (
     variant === "3Digit" &&
-    sharedTwoDigitArtwork.has(String(name || "").toUpperCase())
+    sharedTwoDigitArtwork.has(String(properties?.assetName || name || "").toUpperCase())
   ) {
     variant = "2Digit";
   }
 
-  const properties = Shield.prototype.getPropertiesFromName(name);
   const mappedAsset = properties?.assetPathByVariant?.[variant];
 
   if (mappedAsset) {
@@ -304,10 +305,12 @@ Shield.prototype.getDirectoryFromShield = (name, variant) => {
           return (cat.folder || category) + "/" + catSearch;
         }
       } else if (cat.type == "shield" && category == name) {
+        str += cat.folder ? cat.folder + "/" : "";
+        const assetName = cat.assetName || name;
         if (cat.variants.length > 0 && variant) {
-          str += name + "-" + variant + ".svg";
+          str += assetName + "-" + variant + ".svg";
         } else {
-          str += name + ".svg";
+          str += assetName + ".svg";
         }
         return str;
       }
@@ -403,6 +406,7 @@ Shield.prototype.shieldDirectory = {
     AK: { type: "shield", name: "Alaska", variants: ["2 Digit", "3 Digit"] },
     Arizona: {
       type: "category",
+      folder: "AZ",
       AZ: {
         type: "shield",
         name: "Arizona",
@@ -499,10 +503,10 @@ Shield.prototype.shieldDirectory = {
     HI: { type: "shield", name: "Hawaii", variants: ["2 Digit", "3 Digit"] },
     ID: { type: "shield", name: "Idaho", variants: ["2 Digit", "3 Digit"] },
     IL: { type: "shield", name: "Illinois", variants: ["2 Digit", "3 Digit"] },
-    IN: { type: "shield", name: "Indiana", variants: ["2 Digit", "3 Digit"] },
+    IN: { type: "shield", name: "Indiana", folder: "IN", variants: ["2 Digit", "3 Digit"] },
     IA: { type: "shield", name: "Iowa", variants: ["2 Digit", "3 Digit"] },
-    KS: { type: "shield", name: "Kansas", variants: ["2 Digit", "3 Digit"] },
-    KY: { type: "shield", name: "Kentucky", variants: ["2 Digit", "3 Digit"] },
+    KS: { type: "shield", name: "Kansas", folder: "KS", variants: ["2 Digit", "3 Digit"] },
+    KY: { type: "shield", name: "Kentucky", folder: "KY", variants: ["2 Digit", "3 Digit"] },
     LA: {
       type: "shield",
       name: "Louisiana",
@@ -513,11 +517,12 @@ Shield.prototype.shieldDirectory = {
         "4Digit": "img/shields/United States/LA/LA-4Digit.svg",
       },
     },
-    ME: { type: "shield", name: "Maine", variants: ["2 Digit", "3 Digit"] },
+    ME: { type: "shield", name: "Maine", folder: "ME", variants: ["2 Digit", "3 Digit"] },
     MD: { type: "shield", name: "Maryland", variants: ["2 Digit", "3 Digit"] },
     MA: {
       type: "shield",
       name: "Massachusetts",
+      folder: "MA",
       variants: ["2 Digit", "3 Digit"],
     },
     MI: { type: "shield", name: "Michigan", variants: ["2 Digit", "3 Digit"] },
@@ -545,6 +550,7 @@ Shield.prototype.shieldDirectory = {
     "MT 2nd": {
       type: "shield",
       name: "Montana (2nd)",
+      assetName: "MT2",
       variants: ["2 Digit", "3 Digit"],
     },
     NE: {
@@ -590,6 +596,7 @@ Shield.prototype.shieldDirectory = {
     NJ: {
       type: "shield",
       name: "New Jersey",
+      folder: "NJ",
       variants: ["2 Digit", "3 Digit"],
     },
     NM: {
@@ -597,7 +604,7 @@ Shield.prototype.shieldDirectory = {
       name: "New Mexico",
       variants: ["2 Digit", "3 Digit"],
     },
-    NY: { type: "shield", name: "New York", variants: ["2 Digit", "3 Digit"] },
+    NY: { type: "shield", name: "New York", folder: "NY", variants: ["2 Digit", "3 Digit"] },
     NC: {
       type: "shield",
       name: "North Carolina",
@@ -612,11 +619,12 @@ Shield.prototype.shieldDirectory = {
         type: "category",
         OH: { type: "shield", name: "Ohio", variants: ["2 Digit", "3 Digit"] },
       },
-    OK: { type: "shield", name: "Oklahoma", variants: ["2 Digit", "3 Digit"] },
+    OK: { type: "shield", name: "Oklahoma", folder: "OK", variants: ["2 Digit", "3 Digit"] },
     OR: { type: "shield", name: "Oregon", variants: ["2 Digit", "3 Digit"] },
     PA: {
       type: "shield",
       name: "Pennsylvania",
+      folder: "PA",
       variants: ["2 Digit", "3 Digit"],
     },
     RI: {
@@ -638,6 +646,7 @@ Shield.prototype.shieldDirectory = {
     "TN 2nd": {
       type: "shield",
       name: "Tennessee (2nd)",
+      assetName: "TN2",
       variants: ["2 Digit", "3 Digit"],
     },
     TX: {
@@ -677,12 +686,14 @@ Shield.prototype.shieldDirectory = {
     "VT 2nd": {
       type: "shield",
       name: "Vermont (2nd)",
+      assetName: "VT2",
       variants: ["2 Digit", "3 Digit"],
     },
     VA: { type: "shield", name: "Virginia", variants: ["2 Digit", "3 Digit"] },
     "VA 2nd": {
       type: "shield",
       name: "Virginia (2nd)",
+      assetName: "VA2",
       variants: ["2 Digit", "3 Digit"],
     },
     WA: {
@@ -732,26 +743,32 @@ Shield.prototype.shieldDirectory = {
     PEI: {
       type: "shield",
       name: "Prince Edward Island",
+      folder: "PEI",
       variants: ["2 Digit", "3 Digit"],
     },
     NS: {
       type: "shield",
       name: "Nova Scotia",
+      folder: "NS",
       variants: ["2 Digit", "3 Digit"],
     },
-    QC: { type: "shield", name: "Quebec", variants: ["2 Digit", "3 Digit"] },
+    QC: { type: "shield", name: "Quebec", folder: "QC", variants: ["2 Digit", "3 Digit"] },
     "QC 2nd": {
       type: "shield",
       name: "Quebec (alt)",
+      folder: "QC",
+      assetName: "QC2",
       variants: ["2 Digit", "3 Digit"],
     },
     NL: {
       type: "shield",
       name: "Newfoundland and Labrador",
+      folder: "NL",
       variants: ["2 Digit", "3 Digit"],
     },
     "New Brunswick": {
       type: "category",
+      folder: "NB",
       NB: {
         type: "shield",
         name: "New Brunswick",

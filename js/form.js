@@ -984,6 +984,7 @@ const formHandler = (function () {
         shieldPickerScrollTop: "signMaker.shieldPickerScrollTop",
         customShieldMakerShields: "signMaker.customShieldMaker.shields.v1",
         customIconPickerIcons: "signMaker.customIconPicker.icons.v1",
+        iconPickerPreferences: "signMaker.iconPicker.preferences.v1",
         customColors: "signMaker.customColors.v1",
         templateLoadWarning: "signMaker.templateLoadWarning",
     };
@@ -1190,9 +1191,34 @@ const formHandler = (function () {
     ]);
 
     const formatExitTabSliderDisplayValue = (valueId, value) =>
-      EXIT_TAB_DECIMAL_VALUE_IDS.has(valueId)
+      valueId === "exitTabCornerRadiusValue"
+        ? Number(value).toFixed(2)
+        : EXIT_TAB_DECIMAL_VALUE_IDS.has(valueId)
         ? formatExitTabDecimalValue(value)
         : String(value);
+
+    const getSelectedPanelCornerRadius = () => {
+      const panelIndex = exposed?.vars?.currentlySelectedPanelIndex ?? 0;
+      const radius = parseFloat(post?.panels?.[panelIndex]?.borderRadius);
+      return Number.isFinite(radius) ? Math.max(0, radius) : Panel.prototype.defaultBorderRadius;
+    };
+
+    const readExitTabCornerRadiusFromForm = () => {
+      const slider = document.getElementById("exitTabCornerRadius");
+      const inherit = document.getElementById("exitTabUsePanelCornerRadius")?.checked !== false;
+      if (slider) {
+        if (!inherit && slider.disabled && slider.dataset.customRadius !== undefined) {
+          slider.value = slider.dataset.customRadius;
+        }
+        slider.disabled = inherit || document.getElementById("squareCorners")?.checked === true;
+        if (!inherit) slider.dataset.customRadius = slider.value;
+        const label = document.getElementById("exitTabCornerRadiusValue");
+        if (label) label.textContent = formatExitTabSliderDisplayValue(
+          "exitTabCornerRadiusValue", inherit ? getSelectedPanelCornerRadius() : slider.value
+        );
+      }
+      return inherit ? "panel" : Number(slider?.value ?? getSelectedPanelCornerRadius());
+    };
 
 
     const setExitTabRangeControlValue = (input, value) => {
@@ -1217,6 +1243,7 @@ const formHandler = (function () {
         "borderThickness",
         "minHeight",
         "fontSize",
+        "exitTabCornerRadius",
         "nestedTabSpacing",
         "exitTabHorizontalPadding",
         "exitTabTextSizePercent",
@@ -1306,6 +1333,7 @@ const formHandler = (function () {
             "showLeft",
             "fullBorder",
             "squareCorners",
+            "cornerRadius",
             "topOffset",
             "verticalArrangement",
             "caStyle",
@@ -1361,6 +1389,7 @@ const formHandler = (function () {
         showLeft: false,
         fullBorder: true,
         squareCorners: true,
+        cornerRadius: "panel",
         topOffset: false,
         verticalArrangement: false,
         caStyle: false,
@@ -1464,6 +1493,11 @@ const formHandler = (function () {
       normalized.showLeft = normalized.showLeft === true;
       normalized.fullBorder = normalized.fullBorder === true;
       normalized.squareCorners = normalized.squareCorners === true;
+      normalized.cornerRadius = normalized.cornerRadius === "panel" || normalized.cornerRadius == null
+        ? "panel"
+        : Number.isFinite(Number(normalized.cornerRadius))
+          ? Math.max(0, Math.min(2, Number(normalized.cornerRadius)))
+          : "panel";
       normalized.topOffset = normalized.topOffset === true;
       normalized.verticalArrangement = normalized.verticalArrangement === true;
       normalized.caStyle = normalized.caStyle === true;
@@ -1759,6 +1793,7 @@ const formHandler = (function () {
       const limitVariant = options.variant
         ? normalizeExitTabProfileVariant(options.variant)
         : null;
+      const preserveWidth = options.preserveWidth === true;
       let changed = false;
 
       forEachExitTabInPost((exitTab) => {
@@ -1772,11 +1807,13 @@ const formHandler = (function () {
           return;
         }
 
+        const existingWidth = exitTab.width;
         copyExitTabProfileSettingsToTarget(
           getExitTabProfileSettings(profile, tabVariant),
           exitTab,
           { preserveText: true }
         );
+        if (preserveWidth && existingWidth) exitTab.width = existingWidth;
         exitTab.variant = tabVariant;
         exitTab.profileId = resolvedProfileId;
         changed = true;
@@ -1855,6 +1892,7 @@ const formHandler = (function () {
       ExitTab.prototype.defaultShowLeft = normalized.showLeft === true;
       ExitTab.prototype.defaultFullBorder = normalized.fullBorder === true;
       ExitTab.prototype.defaultSquareCorners = normalized.squareCorners === true;
+      ExitTab.prototype.defaultCornerRadius = normalized.cornerRadius;
       ExitTab.prototype.defaultTopOffset = normalized.topOffset === true;
       ExitTab.prototype.defaultVerticalArrangement =
         normalized.verticalArrangement === true;
@@ -2060,7 +2098,10 @@ const formHandler = (function () {
       );
       profile.settings = profile.settingsByVariant.Default;
       setExitTabProfileIdOnTab(exitTab, profile.id);
-      applyExitTabProfileToLinkedTabs(profile.id, { variant });
+      applyExitTabProfileToLinkedTabs(profile.id, {
+        variant,
+        preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+      });
       return true;
     };
 
@@ -2227,7 +2268,9 @@ const formHandler = (function () {
       delete updated.number;
       updated.variant = resolvedVariant;
       updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
-      updated.width = form["exitTabWidth"]?.value || updated.width || "Edge";
+      if (form["exitTabWidth"] && document.activeElement === form["exitTabWidth"]) {
+        updated.width = form["exitTabWidth"].value || updated.width;
+      }
       updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
       updated.textColor =
         form["exitTabTextColor"]?.value || updated.textColor || "Panel Color";
@@ -2251,6 +2294,7 @@ const formHandler = (function () {
       );
       updated.fullBorder = form["fullBorder"]?.checked === true;
       updated.squareCorners = form["squareCorners"]?.checked === true;
+      updated.cornerRadius = readExitTabCornerRadiusFromForm();
       updated.showLeft = form["showLeft"]?.checked === true;
       updated.topOffset = form["topOffset"]?.checked === true;
       updated.verticalArrangement =
@@ -2354,7 +2398,10 @@ const formHandler = (function () {
         );
       profile.settings = profile.settingsByVariant.Default;
       store.selectedId = profile.id;
-      applyExitTabProfileToLinkedTabs(profile.id, { variant: activeVariant });
+      applyExitTabProfileToLinkedTabs(profile.id, {
+        variant: activeVariant,
+        preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+      });
 
       if (
         profile.id === EXIT_TAB_DEFAULT_PROFILE_ID &&
@@ -3589,6 +3636,7 @@ const getPostThicknessFallback = () =>
 
   const CUSTOM_ICON_VALUE_PREFIX = "CUSTOMICON-";
   let customIconRecords = [];
+  let iconPickerController = null;
 
   const createCustomIconId = () =>
     "cicon_" +
@@ -3650,8 +3698,10 @@ const getPostThicknessFallback = () =>
         customIconPicker: true,
         customIconId: record.id,
         customIconOrder: index,
+        dateCreated: record.dateCreated,
       };
     });
+    iconPickerController?.applyLabels();
   };
 
   const loadCustomIconRecords = async () => {
@@ -3769,6 +3819,11 @@ const getPostThicknessFallback = () =>
     }
 
     for (const panel of currentPost.panels) {
+      for (const tab of panel.exitTabs || []) {
+        for (const item of [tab, ...(tab.nestedExitTabs || [])]) {
+          if (item.icon === targetValue) item.icon = IconElement.prototype.defaultIcon;
+        }
+      }
       const sign = panel?.sign;
 
       if (!sign) {
@@ -3793,6 +3848,64 @@ const getPostThicknessFallback = () =>
         }
       }
     }
+  };
+
+  const getIconPickerController = () => {
+    if (!iconPickerController) {
+      iconPickerController = new IconPickerController({
+        icons: IconElement.prototype.icons,
+        loadPreferences: async () => {
+          const stored = getStoredItem(STORAGE_KEYS.iconPickerPreferences) ||
+            await getPersistentFormValue(STORAGE_KEYS.iconPickerPreferences);
+          return stored ? JSON.parse(stored) : null;
+        },
+        savePreferences: (preferences) => {
+          const serialized = JSON.stringify(preferences);
+          setStoredItem(STORAGE_KEYS.iconPickerPreferences, serialized);
+          setPersistentFormValue(STORAGE_KEYS.iconPickerPreferences, serialized).catch((error) => {
+            console.warn("Unable to save icon picker preferences", error);
+          });
+        },
+        uploadIcon: upsertCustomIconRecord,
+        prepareIcon: (key) => {
+          const definition = IconElement.prototype.icons[key];
+          const source = definition?.src || definition?.asset || definition?.url || "";
+          return prepareTightImageSource(source);
+        },
+        onLabelsChanged: () => {
+          for (const [inputId, labelId, prefix] of [
+            ["sdIcon_icon", "sdIcon_selectedLabel", "Current: "],
+            ["exitIconPickerValue", "exitIconCurrent", ""],
+            ["settingsDefaultsIconValue", "settingsDefaultsIconCurrent", ""],
+          ]) {
+            const input = document.getElementById(inputId);
+            const label = document.getElementById(labelId);
+            const definition = IconElement.prototype.icons[input?.value];
+            if (label && definition) label.textContent = prefix + definition.label;
+          }
+        },
+        deleteIcon: (definition, key) => {
+          if (!deleteCustomIconRecord(definition.customIconId)) return false;
+          exposed?.beginUndoableChange?.();
+          try {
+            const fallback = IconElement.prototype.defaultIcon;
+            for (const id of ["sdIcon_icon", "exitIconPickerValue", "settingsDefaultsIconValue"]) {
+              const input = document.getElementById(id);
+              if (input?.value !== key) continue;
+              input.value = fallback;
+              if (id === "settingsDefaultsIconValue") saveSettingsDefaultsField(id, fallback);
+            }
+            revertCustomIconUsageToDefault(key);
+            updateForm();
+            exposed?.redraw?.();
+          } finally {
+            exposed?.endUndoableChange?.();
+          }
+          return true;
+        },
+      });
+    }
+    return iconPickerController;
   };
 
   const CUSTOM_SHIELD_MAKER_VALUE_PREFIX = "CUSTOMSHIELD-";
@@ -4922,7 +5035,7 @@ const getPostThicknessFallback = () =>
       post.panelSpacing = getDefaultPanelSpacingPreference();
     }
 
-    const storedControlFont = getStoredItem(STORAGE_KEYS.controlTextFont);
+    const storedControlFont = normalizeUiFontValue(getStoredItem(STORAGE_KEYS.controlTextFont));
     const availableFonts = TextElement.prototype.fontFamily;
     if (
       storedControlFont &&
@@ -4932,7 +5045,7 @@ const getPostThicknessFallback = () =>
       ControlTextElement.setDefaultFont(storedControlFont);
     }
 
-    const storedBannerFont = getStoredItem(STORAGE_KEYS.bannerFontFamily);
+    const storedBannerFont = normalizeUiFontValue(getStoredItem(STORAGE_KEYS.bannerFontFamily));
     const bannerFonts = ShieldElement.prototype.getBannerFontOptions();
     if (
       storedBannerFont &&
@@ -7101,7 +7214,10 @@ const getPostThicknessFallback = () =>
         return;
       }
 
-      const routeCharacters = Array.from(String(routeText || ""));
+      const motorway = isMotorwayFont(fontSelect?.value);
+      const routeCharacters = Array.from(motorway
+        ? encodeMotorwayRouteText(routeText) : String(routeText || ""));
+      routeNumber.classList.toggle("motorwayRouteNumber", motorway);
       const isDigit = (character) => /^[0-9]$/.test(character || "");
 
       routeNumber.replaceChildren();
@@ -7598,7 +7714,9 @@ const getPostThicknessFallback = () =>
         ?.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
       routeNumber.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
       routeNumber.style.fontSize = previewEmFromDisplayValue(
-        fontSizeInput?.value,
+        isMotorwayFont(renderedSelectedFont)
+          ? getDisplayInputValue(fontSizeInput, 220) * 0.8
+          : fontSizeInput?.value,
         220
       );
       routeNumber.style.fontWeight = String(cssWeight);
@@ -8251,18 +8369,31 @@ const getPostThicknessFallback = () =>
       reader.readAsDataURL(file);
     });
 
+    const constrainMotorwayRouteInput = () => {
+      if (!routeInput || !isMotorwayFont(fontSelect?.value)) return;
+      const previous = routeInput.value;
+      const cursor = routeInput.selectionStart;
+      routeInput.value = normalizeMotorwayRouteText(previous);
+      if (cursor !== null && document.activeElement === routeInput) {
+        const position = normalizeMotorwayRouteText(previous.slice(0, cursor)).length;
+        routeInput.setSelectionRange(position, position);
+      }
+    };
     routeInput?.addEventListener("input", () => {
+      constrainMotorwayRouteInput();
       syncCustomShieldMakerVariantFromRouteNumber();
       updateCustomShieldMakerPreview();
       persistCurrentCustomShieldMakerVariantState();
       recordCustomShieldMakerHistoryCheckpoint();
     });
     routeInput?.addEventListener("change", () => {
+      constrainMotorwayRouteInput();
       syncCustomShieldMakerVariantFromRouteNumber();
       updateCustomShieldMakerPreview();
       persistCurrentCustomShieldMakerVariantState();
       recordCustomShieldMakerHistoryCheckpoint();
     });
+    fontSelect?.addEventListener("change", constrainMotorwayRouteInput);
 
     const applyCustomShieldMakerAlignment = (
       value,
@@ -8596,6 +8727,9 @@ const getPostThicknessFallback = () =>
     };
     
     const resolveFontPickerPreviewFont = (fontFamily) => {
+      if (fontFamily === "Motorway" || /^Motorway (?:Permanent|Temporary)$/.test(fontFamily)) {
+        return "Inter";
+      }
       if (typeof resolveTextFontFamilyForRender !== "function") {
         return fontFamily || "Inter";
       }
@@ -8627,10 +8761,13 @@ const getPostThicknessFallback = () =>
         selectEl.style.fontFamily = 'Arial, sans-serif';
         selectEl.style.fontSize = "1rem";
       } else if (selectEl.value === "Transport") {
-        selectEl.style.fontFamily = '"Transport", sans-serif';
+        selectEl.style.fontFamily = '"Transport Regular", sans-serif';
         selectEl.style.fontSize = "1rem";
       } else if (selectEl.value === "DIN 1451") {
-        selectEl.style.fontFamily = '"DIN 1451", sans-serif';
+        selectEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+        selectEl.style.fontSize = "1rem";
+      } else if (selectEl.value === "Motorway") {
+        selectEl.style.fontFamily = '"Transport Regular", sans-serif';
         selectEl.style.fontSize = "1rem";
       } else if (selectEl.value === "Rawlinson") {
         selectEl.style.fontFamily = '"Rawlinson Regular", serif';
@@ -8668,7 +8805,13 @@ const getPostThicknessFallback = () =>
           selectEl.style.fontFamily = 'Arial, sans-serif';
           selectEl.style.fontSize = "1rem";
         } else if (selectEl.value === "Transport") {
-          selectEl.style.fontFamily = '"Transport", sans-serif';
+          selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "DIN 1451") {
+          selectEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "Motorway") {
+          selectEl.style.fontFamily = '"Transport Regular", sans-serif';
           selectEl.style.fontSize = "1rem";
         } else {
           selectEl.style.fontFamily = 'Inter, sans-serif';
@@ -8714,12 +8857,11 @@ const getPostThicknessFallback = () =>
       }
     };
     
-    const FONT_PICKER_SINGLE_FONT_FAMILIES = new Set(["Transport", "DIN 1451"]);
-
-    const getFontPickerFamilies = () => {
+    const getFontPickerFamilies = (includeMotorway = false) => {
       const allFonts = Array.isArray(TextElement.prototype.fontFamily)
         ? TextElement.prototype.fontFamily.filter(
-            (font, index, fonts) => fonts.indexOf(font) === index
+            (font, index, fonts) => fonts.indexOf(font) === index &&
+              (includeMotorway || !isMotorwayFont(font))
           )
         : [];
 
@@ -8745,13 +8887,18 @@ const getPostThicknessFallback = () =>
         },
         {
           family: "Transport",
-          previewFont: "Transport",
-          fonts: allFonts.filter((font) => font === "Transport"),
+          previewFont: "Transport Regular",
+          fonts: allFonts.filter((font) => /^Transport (?:Regular|Heavy)$/.test(font)),
         },
         {
           family: "DIN 1451",
-          previewFont: "DIN 1451",
-          fonts: allFonts.filter((font) => font === "DIN 1451"),
+          previewFont: "DIN 1451 Regular",
+          fonts: allFonts.filter((font) => /^DIN 1451 (?:Regular|Narrow)$/.test(font)),
+        },
+        {
+          family: "Motorway",
+          previewFont: "Motorway Permanent",
+          fonts: allFonts.filter((font) => /^Motorway (?:Permanent|Temporary)$/.test(font)),
         },
         {
           family: "ITC Stone Sans",
@@ -8916,7 +9063,11 @@ const getPostThicknessFallback = () =>
           selectEl.classList.contains("sdShieldBannerFontSelect");
         const isInlineShieldRoadNameFontPicker =
           selectEl.id === "sdShield_roadNameFontFamily";
-        const minimumMenuWidth = isInlineShieldRoadNameFontPicker
+        const isAplExitTextFontPicker =
+          wrapper.classList.contains("aplExitTextFontPicker");
+        const minimumMenuWidth = isAplExitTextFontPicker
+          ? Math.max(triggerRect.width, rootFontSize * 18)
+          : isInlineShieldRoadNameFontPicker
           ? Math.max(triggerRect.width, rootFontSize * 7.25)
           : isInlineShieldBannerFontPicker
             ? Math.max(triggerRect.width, rootFontSize * 7.25)
@@ -9024,37 +9175,10 @@ const getPostThicknessFallback = () =>
         return button;
       };
 
-      const makeSingleFontFamilyHeaderButton = (familyDef) => {
-        const fontValue = familyDef.fonts[0];
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "fontPickerItem fontPickerFamilyHeader fontPickerSingleFontFamilyHeader fontPickerFontItem";
-        button.dataset.fontValue = fontValue;
-        button.textContent = getUiFontDisplayName(familyDef.family);
-        const previewFont = familyDef.previewFont || fontValue;
-        const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
-        button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
-        button.style.fontSize = getFontPickerDisplaySize(previewFont);
-
-        if (selectEl.value === fontValue) {
-          button.classList.add("selected");
-        }
-
-        button.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setNativeFontSelectValue(selectEl, fontValue);
-          wrapper.classList.remove("open");
-          syncAllFontPickers();
-        });
-
-        return button;
-      };
-
       const render = () => {
         menu.innerHTML = "";
 
-        const families = getFontPickerFamilies();
+        const families = getFontPickerFamilies(isCustomShieldFontPicker);
 
         if (mode === "allFontsGrouped") {
           for (const familyDef of families) {
@@ -9080,16 +9204,11 @@ const getPostThicknessFallback = () =>
             const children = document.createElement("div");
             children.className = "fontPickerFamilyChildren";
 
-            if (FONT_PICKER_SINGLE_FONT_FAMILIES.has(familyDef.family)) {
-              familyBlock.appendChild(makeSingleFontFamilyHeaderButton(familyDef));
-            } else {
-              for (const font of familyDef.fonts) {
-                children.appendChild(makeFontButton(font));
-              }
-
-              familyBlock.appendChild(familyHeader);
-              familyBlock.appendChild(children);
+            for (const font of familyDef.fonts) {
+              children.appendChild(makeFontButton(font));
             }
+            familyBlock.appendChild(familyHeader);
+            familyBlock.appendChild(children);
             menu.appendChild(familyBlock);
           }
         } else if (mode === "family") {
@@ -9109,17 +9228,6 @@ const getPostThicknessFallback = () =>
       };
 
       const sync = () => {
-        const shouldHide =
-          mode === "familyFont" &&
-          FONT_PICKER_SINGLE_FONT_FAMILIES.has(linkedFamilySelect?.value || "");
-
-        wrapper.classList.toggle("hidden", shouldHide);
-
-        const label = document.querySelector(`label[for="${selectEl.id}"]`);
-        if (label) {
-          label.classList.toggle("hidden", shouldHide);
-        }
-
         /* Closed font menus only need their trigger refreshed. Rebuilding every
            font-family row during each form refresh is much more expensive. */
         if (wrapper.classList.contains("open")) {
@@ -9168,12 +9276,13 @@ const getPostThicknessFallback = () =>
         event.stopPropagation();
       });
       
-      document.addEventListener("click", (event) => {
+      const closePickerOnOutsideClick = (event) => {
         if (!wrapper.contains(event.target) && !menu.contains(event.target)) {
           wrapper.classList.remove("open");
           syncFloatingFontPickerMenuClasses();
         }
-      });
+      };
+      document.addEventListener("click", closePickerOnOutsideClick);
 
       window.addEventListener("resize", positionFloatingFontPickerMenu);
       window.addEventListener("scroll", positionFloatingFontPickerMenu, true);
@@ -9199,6 +9308,15 @@ const getPostThicknessFallback = () =>
         sync,
         position: positionFloatingFontPickerMenu,
         syncFloatingMenu: syncFloatingFontPickerMenuClasses,
+        destroy: () => {
+          document.removeEventListener("click", closePickerOnOutsideClick);
+          window.removeEventListener("resize", positionFloatingFontPickerMenu);
+          window.removeEventListener("scroll", positionFloatingFontPickerMenu, true);
+          fontPickerClassObserver.disconnect();
+          menu.remove();
+          wrapper.remove();
+          delete selectEl._fontPickerApi;
+        },
       };
 
       selectEl._fontPickerApi = api;
@@ -9224,6 +9342,7 @@ const getPostThicknessFallback = () =>
         "sdShield_bannerFontFamily2",
         "sdShield_roadNameFontFamily",
         "exitTabFontFamily",
+        "exitTextFont",
       ].forEach((id) => {
         createFontPicker({
           selectEl: document.getElementById(id),
@@ -13714,7 +13833,7 @@ const getPostThicknessFallback = () =>
         pickerApi = createFlatArrowPicker({
           mount: placeholderSelect,
             value: String(nativeSelect.value || "None").split(":")[0].trim(),          placeholder: "Arrows",
-          items: ARROW_PICKER_ITEMS,
+          items: EXIT_ONLY_TYPE_ITEMS,
             previewOptions: { exitDirection: false },
           onChange: (nextValue) => {
             nativeSelect.value = nextValue;
@@ -13783,9 +13902,6 @@ const getPostThicknessFallback = () =>
     
     const getArrowDisplayLabel = (value) => String(value || "").split(":")[0].trim();
 
-    const isAltLeftUpArrowLabel = (label) =>
-      /^alt\.\s*left\/up\s+arrow$/i.test(String(label || "").trim());
-
     const getGuideArrowEntryByLabel = (label) =>
       Sign.prototype.guideArrows.find(
         (entry) => getArrowDisplayLabel(entry) === label
@@ -13822,13 +13938,13 @@ const getPostThicknessFallback = () =>
         return null;
       }
 
-      const directArrowBlockMap = {
-        "Down (CA)": "img/arrowBlocks/DOWN_CA.svg",
-        "Down (IL)": "img/arrowBlocks/DOWN_IL.svg",
+      const directArrowMap = {
+        "Down (Ontario)": "DOWN_ON",
+        "Down (alt)": "DOWN_ALT",
       };
 
-      if (directArrowBlockMap[label]) {
-        return directArrowBlockMap[label];
+      if (directArrowMap[label]) {
+        return window.resolveLegacyGuideArrow(directArrowMap[label]);
       }
 
       const hardMap = {
@@ -13854,11 +13970,7 @@ const getPostThicknessFallback = () =>
         return null;
       }
 
-      const folder = /^[A-E]-[1-4]$/i.test(code)
-        ? "img/arrows"
-        : "img/arrows/SpecialArrows";
-
-      return `${folder}/${code}.svg`;
+      return window.resolveLegacyGuideArrow(code);
     };
 
     const createArrowPreviewNode = (value, options = {}) => {
@@ -13883,7 +13995,7 @@ const getPostThicknessFallback = () =>
       const makeSpecialBox = (theme, invertArrow = false) => {
         const box = document.createElement("span");
         box.className = `arrowPickerSpecialSvgBox ${theme}`;
-        box.appendChild(makeArrowImg("img/arrows/C-1.svg", "", invertArrow));
+        box.appendChild(makeArrowImg(ArrowElement.prototype.arrows.DOWN.src, "", invertArrow));
         return box;
       };
 
@@ -13909,28 +14021,18 @@ const getPostThicknessFallback = () =>
         return wrap;
       }
 
-        let path = getArrowIconPathFromValue(value, options);
-        const shouldFlipAltLeftUpArrow = isAltLeftUpArrowLabel(label);
-
-        if (shouldFlipAltLeftUpArrow) {
-          path = "img/arrows/B-1.svg";
-        }
-
-        if (!path) {
+        const arrowAsset = getArrowIconPathFromValue(value, options);
+        if (!arrowAsset) {
           return null;
         }
 
       const img = document.createElement("img");
       img.className = "arrowPickerIconImage";
       img.alt = "";
-      img.src = path;
+      img.src = arrowAsset.src;
       img.loading = "lazy";
       img.decoding = "async";
-      if (shouldFlipAltLeftUpArrow) {
-        img.classList.add("altLeftUpArrowFlipped");
-        img.style.transform = "scaleX(-1)";
-        img.style.transformOrigin = "center center";
-      }
+      img.style.transform = `rotate(${arrowAsset.rotation}deg)`;
       img.onerror = () => {
         img.style.display = "none";
       };
@@ -13945,6 +14047,26 @@ const getPostThicknessFallback = () =>
         rawValue: entry,
       };
     });
+
+    const STANDARD_ARROW_KEYS = [
+      "DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B",
+      "TYPE_C_45", "TYPE_C_45_ALT", "TYPE_C_90", "TYPE_D", "TYPE_E",
+      "APL_UP", "APL_TURN", "APL_UP_TURN", "APL_DUAL_TURN",
+      "APL_UP_CFX", "APL_TURN_CFX", "APL_UP_TURN_CFX", "DOWN_ON", "UK"
+    ];
+    const STANDARD_ARROW_LABELS = {
+      TYPE_C_45: "Type C 45°",
+      TYPE_C_45_ALT: "Type C 45° (alt)", TYPE_C_90: "Type C 90°",
+      APL_UP_CFX: "CFX APL Up", APL_TURN_CFX: "CFX APL Turn",
+      APL_UP_TURN_CFX: "CFX APL Up Turn"
+    };
+    const STANDARD_ARROW_ITEMS = STANDARD_ARROW_KEYS.map((key) => ({
+      value: key,
+      label: STANDARD_ARROW_LABELS[key] || ArrowElement.prototype.arrows[key]?.label || key
+    }));
+    const EXIT_ONLY_TYPE_ITEMS = ARROW_PICKER_ITEMS.filter((item) =>
+      ["None", "Exit Only", "Split Exit Only", "Half Exit Only"].includes(item.label)
+    );
 
     const EXIT_ONLY_DIRECTION_ITEMS = Sign.prototype.exitguideArrows.map((entry) => {
       const label = getArrowDisplayLabel(entry);
@@ -14014,6 +14136,7 @@ const getPostThicknessFallback = () =>
         previewOptions = {},
         createPreviewNode = createArrowPreviewNode,
     }) => {
+        const pickerListeners = new AbortController();
         const wrapper = document.createElement("div");
         wrapper.className = "shieldPicker arrowPicker";
     
@@ -14128,25 +14251,26 @@ const getPostThicknessFallback = () =>
           if (!clickedInsideTrigger && !clickedInsidePopover) {
             wrapper.classList.remove("open");
           }
-        });
+        }, { signal: pickerListeners.signal });
         
         window.addEventListener("resize", () => {
           if (wrapper.classList.contains("open")) {
             placePopover();
           }
-        });
+        }, { signal: pickerListeners.signal });
 
         window.addEventListener("scroll", () => {
           if (wrapper.classList.contains("open")) {
             placePopover();
           }
-        }, true);
+        }, { capture: true, signal: pickerListeners.signal });
 
       syncTrigger();
       renderList();
 
       return {
         element: wrapper,
+        destroy: () => pickerListeners.abort(),
         getValue: () => currentValue,
         setValue: (nextValue) => {
           currentValue = nextValue || "";
@@ -14154,6 +14278,646 @@ const getPostThicknessFallback = () =>
           renderList();
         },
       };
+    };
+
+    const standardArrowField = (name) => document.getElementById(`standardArrow${name}`);
+    const clampStandardValue = (value, min, max, precision, fallback) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed)
+        ? Math.min(max, Math.max(min, Math.round(parsed * precision) / precision))
+        : fallback;
+    };
+    const normalizeStandardAngle = (value) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? ((Math.round(parsed) % 360) + 360) % 360 : 0;
+    };
+    const normalizeExitTextSpacing = (value) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
+    };
+    const standardDefaultSide = (sign) =>
+      sign?.standardArrowAlignment === "Left" || sign?.standardArrowPosition === "Left" ? "Left" : "Center";
+    const exitDefaultSide = (sign) => sign?.exitArrowAlignment === "Left" ? "Left" : "Center";
+    const splitDefaultSide = (sign, panel, angleValue = sign?.exitArrowAngle) => {
+      const angle = normalizeStandardAngle(angleValue);
+      const pointsLeft = Math.sin(angle * Math.PI / 180) < -0.001 ||
+        (isFixedDirectionArrow(sign?.exitArrowType) && sign?.exitArrowFlip === true);
+      const leftExitTab = panel?.exitTabs?.some((tab) => tab?.position === "Left");
+      return pointsLeft || leftExitTab ? "Left" : "Right";
+    };
+    const replaceDefaultAngle = (field, key, oldSide, newSide) => {
+      const value = field("AngleValue");
+      if (normalizeStandardAngle(value.value) !== getDefaultGuideArrowAngle(key, oldSide)) return;
+      const angle = getDefaultGuideArrowAngle(key, newSide);
+      field("Angle").value = String(angle);
+      value.value = String(angle);
+    };
+    const isFixedDirectionArrow = (key) => key?.startsWith("TYPE_C_") || key === "TYPE_E";
+    const standardArrowPreview = (key) => {
+      const src = ArrowElement.prototype.arrows[key]?.src;
+      if (!src) return null;
+      const image = document.createElement("img");
+      image.src = src;
+      image.alt = "";
+      image.className = "arrowPickerIconImage";
+      return image;
+    };
+    const guideArrowAssetLoads = new Map();
+    const waitForGuideArrowAsset = (key) => {
+      const src = ArrowElement.prototype.arrows[key]?.src;
+      if (!src) return Promise.resolve();
+      if (!guideArrowAssetLoads.has(src)) {
+        const image = new Image();
+        image.src = src;
+        const ready = typeof image.decode === "function"
+          ? image.decode().catch(() => {})
+          : new Promise((resolve) => {
+              if (image.complete) return resolve();
+              image.addEventListener("load", resolve, { once: true });
+              image.addEventListener("error", resolve, { once: true });
+            });
+        guideArrowAssetLoads.set(src, ready);
+      }
+      return guideArrowAssetLoads.get(src);
+    };
+    let standardArrowSelection = 0;
+    let selectedStandardArrowIndex = -1;
+    let individualArrowPickers = [];
+    const syncIndividualArrowControls = (sign) => {
+      const host = document.getElementById("standardArrowIndividualRows");
+      if (!host || !sign) return;
+      for (const picker of individualArrowPickers) picker.destroy();
+      individualArrowPickers = [];
+      host.replaceChildren();
+      const count = Math.max(0, Math.min(6, Math.round(Number(sign.guideArrowLanes) || 0)));
+      const section = document.getElementById("standardArrowIndividual");
+      const disabled = count < 2 || ["Left", "Right"].includes(sign.standardArrowPosition);
+      section.dataset.disabled = String(disabled);
+      section.inert = disabled;
+      section.querySelector("summary").setAttribute("aria-disabled", String(disabled));
+      if (disabled) {
+        section.open = false;
+        host.textContent = count < 2 ? "Add at least two arrows to edit them individually." : "Individual arrows are available in the down position.";
+        return;
+      }
+      const details = Array.isArray(sign.standardArrowIndividuals) ? sign.standardArrowIndividuals : [];
+      const headings = document.createElement("div");
+      headings.className = "individualArrowRow individualArrowHeadings";
+      for (const title of ["Arrow", "Type", "Angle"]) {
+        const heading = document.createElement("span");
+        heading.textContent = title;
+        headings.append(heading);
+      }
+      host.append(headings);
+      for (let i = 0; i < count; i++) {
+        const item = details[i] || {};
+        const row = document.createElement("div");
+        row.className = "individualArrowRow";
+        row.classList.toggle("selected", i === selectedStandardArrowIndex);
+        const label = document.createElement("span");
+        label.textContent = `Arrow ${i + 1}`;
+        const typeHost = document.createElement("div");
+        typeHost.className = "standardArrowPickerHost individualArrowPickerHost";
+        const proxy = document.createElement("select");
+        typeHost.append(proxy);
+        const typeValue = STANDARD_ARROW_KEYS.includes(item.type) ? item.type : "";
+        const angle = document.createElement("input");
+        angle.type = "number";
+        angle.step = "1";
+        angle.value = String(item.angle == null ? normalizeStandardAngle(sign.standardArrowAngle) : normalizeStandardAngle(item.angle));
+        angle.setAttribute("aria-label", `Arrow ${i + 1} angle in degrees`);
+        angle.disabled = isFixedDirectionArrow(typeValue || sign.standardArrowType);
+        const mutate = (key, value, { deferHistoryEnd = false, refresh = true } = {}) => {
+          exposed.beginUndoableChange();
+          sign.standardArrowIndividuals ||= [];
+          sign.standardArrowIndividuals[i] ||= {};
+          sign.standardArrowIndividuals[i][key] = value;
+          selectedStandardArrowIndex = i;
+          exposed.redraw();
+          if (!deferHistoryEnd) exposed.endUndoableChange();
+          if (refresh) syncIndividualArrowControls(sign);
+        };
+        let typeSelection = 0;
+        const picker = createFlatArrowPicker({
+          mount: proxy,
+          value: typeValue,
+          items: [
+            { value: "", label: `Default (${STANDARD_ARROW_ITEMS.find((entry) => entry.value === sign.standardArrowType)?.label || "Down"})` },
+            ...STANDARD_ARROW_ITEMS
+          ],
+          createPreviewNode: standardArrowPreview,
+          onChange: async (previous) => {
+          const selection = ++typeSelection;
+          await waitForGuideArrowAsset(previous);
+          if (selection !== typeSelection || exposed.getCurrentPanel()?.sign !== sign) return;
+          const defaultAngle = getDefaultGuideArrowAngle(previous || sign.standardArrowType, standardDefaultSide(sign));
+          exposed.beginUndoableChange();
+          sign.standardArrowIndividuals ||= [];
+          sign.standardArrowIndividuals[i] = { ...(sign.standardArrowIndividuals[i] || {}), type: previous || null, angle: previous ? defaultAngle : null };
+          selectedStandardArrowIndex = i;
+          exposed.endUndoableChange();
+          exposed.redraw();
+          syncIndividualArrowControls(sign);
+          }
+        });
+        individualArrowPickers.push(picker);
+        angle.addEventListener("change", () => mutate("angle", normalizeStandardAngle(angle.value)));
+        angle.addEventListener("keydown", (event) => { if (event.key === "Enter") angle.blur(); });
+        row.append(label, typeHost, angle);
+        host.append(row);
+        if (i < count - 1) {
+          const spacingRow = document.createElement("div");
+          spacingRow.className = "individualArrowSpacingRow";
+          const spacingLabel = document.createElement("label");
+          spacingLabel.textContent = `Spacing ${i + 1}–${i + 2}`;
+          const slider = document.createElement("input");
+          slider.type = "range";
+          slider.min = "4";
+          slider.max = "12";
+          slider.step = "0.1";
+          const number = document.createElement("input");
+          number.type = "number";
+          number.min = "0";
+          number.max = "25";
+          number.step = "0.01";
+          const spacing = clampStandardValue(item.spacingAfter ?? sign.standardArrowSpacing, 0, 25, 100, 8.5);
+          slider.value = String(Math.min(12, Math.max(4, spacing)));
+          number.value = spacing.toFixed(2);
+          spacingLabel.htmlFor = `individualArrowSpacing${i}`;
+          slider.id = spacingLabel.htmlFor;
+          number.setAttribute("aria-label", `Spacing between arrows ${i + 1} and ${i + 2}`);
+          slider.addEventListener("input", () => {
+            number.value = Number(slider.value).toFixed(2);
+            mutate("spacingAfter", Number(slider.value), { deferHistoryEnd: true, refresh: false });
+          });
+          const finish = () => exposed.endUndoableChange();
+          for (const eventName of ["change", "pointerup", "pointercancel", "blur"]) slider.addEventListener(eventName, finish);
+          number.addEventListener("change", () => {
+            const value = clampStandardValue(number.value, 0, 25, 100, 8.5);
+            number.value = value.toFixed(2);
+            slider.value = String(Math.min(12, Math.max(4, value)));
+            mutate("spacingAfter", value, { refresh: false });
+          });
+          number.addEventListener("keydown", (event) => { if (event.key === "Enter") number.blur(); });
+          spacingRow.append(spacingLabel, slider, number);
+          host.append(spacingRow);
+        }
+      }
+    };
+    const selectStandardArrowIndividual = (index) => {
+      const sign = exposed.getCurrentPanel()?.sign;
+      if (Number(sign?.guideArrowLanes) < 2 || ["Left", "Right"].includes(sign?.standardArrowPosition)) return;
+      selectedStandardArrowIndex = index;
+      document.getElementById("standardArrowIndividual").open = true;
+      syncIndividualArrowControls(exposed.getCurrentPanel()?.sign);
+    };
+    const ensureStandardArrowPicker = () => {
+      const select = standardArrowField("Type");
+      if (!select) return;
+      if (!select._arrowPickerApi) {
+        for (const item of STANDARD_ARROW_ITEMS) {
+          select.add(new Option(item.label, item.value));
+        }
+        select.style.display = "none";
+        const proxy = document.createElement("select");
+        select.parentElement.appendChild(proxy);
+        select._arrowPickerApi = createFlatArrowPicker({
+          mount: proxy,
+          value: select.value || "DOWN",
+          items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
+          createPreviewNode: standardArrowPreview,
+          onChange: async (key) => {
+            if (key === "None") {
+              standardArrowField("Type")._arrowPickerApi.setValue(select.value || "DOWN");
+              document.getElementById("guideArrowLanes").value = "0";
+              document.getElementById("guideArrow").value = "Standard Arrow";
+              readForm();
+              return;
+            }
+            const selection = ++standardArrowSelection;
+            await waitForGuideArrowAsset(key);
+            if (selection !== standardArrowSelection) return;
+            const angle = getDefaultGuideArrowAngle(key, standardDefaultSide(exposed.getCurrentPanel()?.sign));
+            select.value = key;
+            if (Number(document.getElementById("guideArrowLanes").value) === 0) {
+              document.getElementById("guideArrowLanes").value = "1";
+            }
+            standardArrowField("Angle").value = String(angle);
+            standardArrowField("AngleValue").value = String(angle);
+            document.getElementById("guideArrow").value = "Standard Arrow";
+            readForm();
+          }
+        });
+      }
+      return select._arrowPickerApi;
+    };
+    const syncStandardArrowControls = (sign) => {
+      if (!sign) return;
+      const type = STANDARD_ARROW_KEYS.includes(sign.standardArrowType) ? sign.standardArrowType : "DOWN";
+      const typeSelect = standardArrowField("Type");
+      typeSelect.value = type;
+      ensureStandardArrowPicker()?.setValue(type);
+      const fixedDirection = isFixedDirectionArrow(type);
+      const angleSlider = standardArrowField("Angle");
+      const angleInput = standardArrowField("AngleValue");
+      const flipButton = standardArrowField("Flip");
+      angleSlider.disabled = fixedDirection;
+      angleInput.hidden = fixedDirection;
+      flipButton.hidden = !fixedDirection;
+      document.querySelector('[data-standard-reset="Angle"]').disabled = fixedDirection;
+      flipButton.setAttribute("aria-pressed", String(sign.standardArrowFlip === true));
+      flipButton.classList.toggle("selected", sign.standardArrowFlip === true);
+      for (const [name, value, digits] of [
+        ["Angle", normalizeStandardAngle(sign.standardArrowAngle), 0],
+        ["Size", clampStandardValue(sign.standardArrowSize, 1, 5, 10, 3), 1],
+        ["Padding", clampStandardValue(sign.standardArrowPadding ?? sign.exitOnlyPadding, 0, 5, 100, 0.2), 2],
+        ["Spacing", clampStandardValue(sign.standardArrowSpacing, 0, 25, 100, 8.5), 2]
+      ]) {
+        standardArrowField(name).value = Math.min(Number(standardArrowField(name).max), value);
+        standardArrowField(`${name}Value`).value = value.toFixed(digits);
+      }
+      for (const button of document.querySelectorAll("[data-standard-alignment], [data-standard-position]")) {
+        const selected = button.dataset.standardAlignment
+          ? button.dataset.standardAlignment === (sign.standardArrowAlignment || "Center")
+          : button.dataset.standardPosition === (sign.standardArrowPosition || "Down");
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      }
+      const side = ["Left", "Right"].includes(sign.standardArrowPosition);
+      standardArrowField("Spacing").disabled = side || Number(sign.guideArrowLanes) < 2;
+      standardArrowField("SpacingValue").disabled = side || Number(sign.guideArrowLanes) < 2;
+      document.querySelector('[data-standard-reset="Spacing"]').disabled = side || Number(sign.guideArrowLanes) < 2;
+      document.getElementById("exitGuideArrowLanes").value = sign.guideArrowLanes ?? 1;
+      syncIndividualArrowControls(sign);
+    };
+    const bindStandardArrowControls = () => {
+      ensureStandardArrowPicker();
+      document.getElementById("standardArrowIndividualReset").addEventListener("click", () => {
+        const sign = exposed.getCurrentPanel()?.sign;
+        if (!sign) return;
+        exposed.beginUndoableChange();
+        sign.standardArrowIndividuals = [];
+        exposed.endUndoableChange();
+        selectedStandardArrowIndex = -1;
+        document.getElementById("standardArrowIndividual").open = false;
+        syncIndividualArrowControls(sign);
+        exposed.redraw();
+      });
+      document.addEventListener("pointerdown", (event) => {
+        const active = document.activeElement;
+        if (active?.matches?.('.standardArrowRow input[type="number"]') &&
+            event.target !== active) {
+          active.blur();
+        }
+      }, true);
+      for (const field of document.querySelectorAll('.standardArrowRow input[type="number"]')) {
+        field.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") field.blur();
+        });
+      }
+      const commit = (options) => {
+        document.getElementById("guideArrow").value = "Standard Arrow";
+        readForm(options);
+      };
+      const count = document.getElementById("guideArrowLanes");
+      count.addEventListener("change", () => {
+        count.value = String(clampStandardValue(count.value, 0, 6, 1, 0));
+        commit();
+      });
+      for (const [name, min, max, precision, digits, fallback] of [
+        ["Angle", 0, 359, 1, 0, 0],
+        ["Size", 1, 5, 10, 1, 3],
+        ["Padding", 0, 5, 100, 2, 0.2],
+        ["Spacing", 0, 25, 100, 2, 8.5]
+      ]) {
+        const slider = standardArrowField(name);
+        const number = standardArrowField(`${name}Value`);
+        slider.addEventListener("input", () => {
+          number.value = Number(slider.value).toFixed(digits);
+          commit({ deferHistoryEnd: true });
+        });
+        const finishSlider = () => exposed?.endUndoableChange?.();
+        slider.addEventListener("change", finishSlider);
+        slider.addEventListener("pointerup", finishSlider);
+        slider.addEventListener("pointercancel", finishSlider);
+        slider.addEventListener("blur", finishSlider);
+        number.addEventListener("change", () => {
+          const value = name === "Angle"
+            ? normalizeStandardAngle(number.value)
+            : clampStandardValue(number.value, min, max, precision, fallback);
+          number.value = value.toFixed(digits);
+          slider.value = String(Math.min(Number(slider.max), value));
+          commit();
+        });
+      }
+      standardArrowField("Flip").addEventListener("click", () => {
+        const button = standardArrowField("Flip");
+        button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
+        commit();
+      });
+      for (const button of document.querySelectorAll("[data-standard-reset]")) {
+        button.addEventListener("click", () => {
+          const name = button.dataset.standardReset;
+          const defaults = { Angle: getDefaultGuideArrowAngle(standardArrowField("Type").value,
+            standardDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+          const digits = name === "Angle" ? 0 : name === "Size" ? 1 : 2;
+          standardArrowField(name).value = String(defaults[name]);
+          standardArrowField(`${name}Value`).value = defaults[name].toFixed(digits);
+          commit();
+        });
+      }
+      for (const button of document.querySelectorAll("[data-standard-alignment], [data-standard-position]")) {
+        button.addEventListener("click", () => {
+          const property = button.dataset.standardAlignment ? "standardArrowAlignment" : "standardArrowPosition";
+          const sign = exposed.getCurrentPanel()?.sign;
+          if (!sign) return;
+          const oldSide = standardDefaultSide(sign);
+          sign[property] = button.dataset.standardAlignment || button.dataset.standardPosition;
+          replaceDefaultAngle(standardArrowField, standardArrowField("Type").value, oldSide, standardDefaultSide(sign));
+          commit();
+        });
+      }
+      document.getElementById("exitGuideArrowLanes").addEventListener("change", (event) => {
+        count.value = String(clampStandardValue(event.target.value, 0, 6, 1, 0));
+        event.target.value = count.value;
+        readForm();
+      });
+    };
+
+    const exitArrowField = (name) => document.getElementById(`exitArrow${name}`);
+    const exitTextField = (name) => document.getElementById(`exitText${name}`);
+    let exitArrowSelection = 0;
+    const ensureExitArrowPicker = () => {
+      const select = exitArrowField("Type");
+      if (!select || select._arrowPickerApi) return select?._arrowPickerApi;
+      STANDARD_ARROW_ITEMS.forEach((item) => select.add(new Option(item.label, item.value)));
+      select.style.display = "none";
+      const proxy = document.createElement("select");
+      select.parentElement.appendChild(proxy);
+      select._arrowPickerApi = createFlatArrowPicker({
+        mount: proxy, value: select.value || "DOWN", items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
+        createPreviewNode: standardArrowPreview,
+        onChange: async (key) => {
+          if (key === "None") {
+            exitArrowField("Type")._arrowPickerApi.setValue(select.value || "DOWN");
+            exitArrowField("Count").value = "0";
+            document.getElementById("guideArrowLanes").value = "0";
+            readForm();
+            return;
+          }
+          const selection = ++exitArrowSelection;
+          await waitForGuideArrowAsset(key);
+          if (selection !== exitArrowSelection) return;
+          const angle = getDefaultGuideArrowAngle(key, exitDefaultSide(exposed.getCurrentPanel()?.sign));
+          select.value = key;
+          if (Number(exitArrowField("Count").value) === 0) {
+            exitArrowField("Count").value = "1";
+          }
+          exitArrowField("Angle").value = String(angle);
+          exitArrowField("AngleValue").value = String(angle);
+          if (!["Exit Only", "Half Exit Only", "Split Exit Only"].includes(document.getElementById("guideArrow").value)) {
+            document.getElementById("guideArrow").value = "Exit Only";
+          }
+          readForm();
+        }
+      });
+      return select._arrowPickerApi;
+    };
+    const syncExitOnlyEditor = (sign, panel) => {
+      if (!sign) return;
+      const mode = ["Exit Only", "Half Exit Only", "Split Exit Only"].includes(sign.guideArrow)
+        ? sign.guideArrow : "Exit Only";
+      if (mode === "Half Exit Only" && !["Left", "Right"].includes(sign.exitArrowAlignment)) {
+        sign.exitArrowAlignment = splitDefaultSide(sign, panel);
+      }
+      document.querySelectorAll("[data-exit-mode]").forEach((button) => {
+        const selected = button.dataset.exitMode === mode;
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+      const type = STANDARD_ARROW_KEYS.includes(sign.exitArrowType) ? sign.exitArrowType : "DOWN";
+      exitArrowField("Type").value = type;
+      ensureExitArrowPicker()?.setValue(type);
+      const fixed = isFixedDirectionArrow(type);
+      exitArrowField("Angle").disabled = fixed;
+      exitArrowField("AngleValue").hidden = fixed;
+      exitArrowField("Flip").hidden = !fixed;
+      document.querySelector('[data-exit-reset="Angle"]').disabled = fixed;
+      exitArrowField("Flip").classList.toggle("selected", sign.exitArrowFlip === true);
+      exitArrowField("Flip").setAttribute("aria-pressed", String(sign.exitArrowFlip === true));
+      exitArrowField("Count").value = sign.guideArrowLanes ?? 1;
+      for (const [name, value, digits] of [
+        ["Angle", normalizeStandardAngle(sign.exitArrowAngle), 0],
+        ["Size", clampStandardValue(sign.exitArrowSize, 1, 5, 10, 3), 1],
+        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 5, 100, 0.2), 2],
+        ["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2]
+      ]) {
+        exitArrowField(name).value = Math.min(Number(exitArrowField(name).max), value);
+        exitArrowField(`${name}Value`).value = value.toFixed(digits);
+      }
+      exitArrowField("Spacing").disabled = Number(sign.guideArrowLanes) < 2;
+      exitArrowField("SpacingValue").disabled = Number(sign.guideArrowLanes) < 2;
+      document.querySelector('[data-exit-reset="Spacing"]').disabled = Number(sign.guideArrowLanes) < 2;
+      const alignmentDisabled = mode !== "Half Exit Only" && Number(sign.guideArrowLanes) > 1;
+      document.querySelectorAll("[data-exit-alignment]").forEach((button) => {
+        const split = mode === "Half Exit Only";
+        button.hidden = split && !["Left", "Right"].includes(button.dataset.exitAlignment);
+        const selected = button.dataset.exitAlignment === (alignmentDisabled ? "Center" : sign.exitArrowAlignment || "Center");
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+        button.disabled = alignmentDisabled || !button.dataset.exitAlignment || button.hidden;
+      });
+      exitTextField("Left").value = String(sign.exitOnlyLeftText ?? "EXIT").replace(/\r\n?|\n/g, "\\n");
+      exitTextField("Right").value = String(sign.exitOnlyRightText ?? "ONLY").replace(/\r\n?|\n/g, "\\n");
+      exitTextField("Font").value = sign.exitTextFont || "Series E";
+      exitTextField("Font")._fontPickerApi?.sync();
+      for (const [name, value, digits] of [
+        ["Size", clampStandardValue(sign.exitTextSize, 50, 100, 1, 70), 0],
+        ["Spacing", normalizeExitTextSpacing(sign.exitTextSpacing), 2]
+      ]) {
+        exitTextField(name).value = Math.max(Number(exitTextField(name).min), Math.min(Number(exitTextField(name).max), value));
+        exitTextField(`${name}Value`).value = value.toFixed(digits);
+      }
+      const bg = getResolvedColorValue(sign.exitBackgroundColor || "Yellow");
+      let rgb = String(bg).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+      if (!rgb && /^#[0-9a-f]{6}$/i.test(bg)) {
+        rgb = [bg, parseInt(bg.slice(1, 3), 16), parseInt(bg.slice(3, 5), 16), parseInt(bg.slice(5, 7), 16)];
+      }
+      const linear = (channel) => {
+        const fraction = Number(channel) / 255;
+        return fraction <= 0.04045 ? fraction / 12.92 : ((fraction + 0.055) / 1.055) ** 2.4;
+      };
+      const luminance = rgb && (0.2126 * linear(rgb[1]) + 0.7152 * linear(rgb[2]) + 0.0722 * linear(rgb[3]));
+      const inheritedColor = luminance !== null && luminance > 0.179
+        ? "Black" : "White";
+      for (const id of ["exitTextColor", "exitBorderColor"]) {
+        document.getElementById(id).dataset.colorPickerEffectiveColor = inheritedColor;
+      }
+      for (const [id, value] of [
+        ["exitTextColor", sign.exitTextColor || "Inherit"],
+        ["exitBackgroundColor", sign.exitBackgroundColor || "Yellow"],
+        ["exitBorderColor", sign.exitBorderColor || "Inherit"]
+      ]) {
+        const select = document.getElementById(id);
+        select.value = value;
+        select._colorPickerApi?.sync();
+      }
+      document.getElementById("exitTopBorder").checked = !!sign.exitTopBorder;
+      document.getElementById("exitColorEdges").checked = !!sign.exitColorEdges;
+      const texasBorder = document.getElementById("exitTexasBorder");
+      texasBorder.checked = sign.exitTexasBorder !== false;
+      texasBorder.closest(".exitOnlyTexasRow").hidden = !!sign.exitColorEdges || mode === "Split Exit Only";
+      texasBorder.disabled = !!sign.exitColorEdges || mode === "Split Exit Only";
+      const forceWidth = document.getElementById("exitForceSubpanelWidth");
+      forceWidth.checked = !!sign.exitForceSubpanelWidth;
+      forceWidth.closest(".exitOnlyForceWidthRow").hidden = mode !== "Half Exit Only" ||
+        sign.subPanels?.length !== 2;
+      document.getElementById("exitBorderColor").disabled = mode === "Split Exit Only";
+      document.getElementById("exitTopBorder").disabled = mode === "Split Exit Only";
+      document.getElementById("exitColorEdges").disabled = mode === "Split Exit Only" || panel?.corner !== "Sharp";
+      const borderTrigger = document.querySelector('.colorPicker[data-source-select-id="exitBorderColor"] .colorPickerTrigger');
+      if (borderTrigger) borderTrigger.disabled = mode === "Split Exit Only";
+    };
+    const bindExitOnlyEditor = () => {
+      ensureExitArrowPicker();
+      const splitAlignmentHistory = new WeakMap();
+      const fontSelect = exitTextField("Font");
+      getExitTabAvailableFonts().forEach((font) => fontSelect.add(new Option(font, font)));
+      if (![...fontSelect.options].some((option) => option.value === "Series E")) {
+        fontSelect.add(new Option("Series E", "Series E"));
+      }
+      fontSelect.value = "Series E";
+      for (const id of ["exitTextColor", "exitBackgroundColor", "exitBorderColor"]) {
+        const select = document.getElementById(id);
+        Object.keys(lib.colors).forEach((color) => select.add(new Option(color, color)));
+        select.value = id === "exitBackgroundColor" ? "Yellow" : "Inherit";
+      }
+      const commit = (options) => {
+        if (!["Exit Only", "Half Exit Only", "Split Exit Only"].includes(document.getElementById("guideArrow").value)) {
+          document.getElementById("guideArrow").value = "Exit Only";
+        }
+        document.getElementById("guideArrowLanes").value = exitArrowField("Count").value;
+        document.getElementById("exitOnlyLeftText").value = exitTextField("Left").value;
+        document.getElementById("exitOnlyRightText").value = exitTextField("Right").value;
+        readForm(options);
+      };
+      document.querySelectorAll("[data-exit-mode]").forEach((button) => button.addEventListener("click", () => {
+        const sign = exposed.getCurrentPanel()?.sign;
+        if (sign && button.dataset.exitMode === "Half Exit Only" && sign.guideArrow !== "Half Exit Only") {
+          splitAlignmentHistory.set(sign, {
+            previous: sign.exitArrowAlignment || "Center",
+            changed: false
+          });
+          const oldSide = exitDefaultSide(sign);
+          const nextSide = splitDefaultSide(sign, exposed.getCurrentPanel(), exitArrowField("AngleValue").value);
+          sign.exitArrowAlignment = nextSide;
+          replaceDefaultAngle(exitArrowField, exitArrowField("Type").value, oldSide, nextSide);
+        }
+        if (sign && sign.guideArrow === "Half Exit Only" && button.dataset.exitMode !== "Half Exit Only") {
+          const history = splitAlignmentHistory.get(sign);
+          if (history?.previous === "Center" && !history.changed) {
+            sign.exitArrowAlignment = "Center";
+          }
+          splitAlignmentHistory.delete(sign);
+        }
+        document.getElementById("guideArrow").value = button.dataset.exitMode;
+        commit();
+      }));
+      exitArrowField("Count").addEventListener("change", () => {
+        exitArrowField("Count").value = clampStandardValue(exitArrowField("Count").value, 0, 6, 1, 1);
+        commit();
+      });
+      for (const [field, name, min, max, precision, digits, fallback] of [
+        [exitArrowField, "Angle", 0, 359, 1, 0, 0],
+        [exitArrowField, "Size", 1, 5, 10, 1, 3],
+        [exitArrowField, "Padding", 0, 5, 100, 2, 0.2],
+        [exitArrowField, "Spacing", 0, 25, 100, 2, 8.5],
+        [exitTextField, "Size", 50, 100, 1, 0, 70],
+        [exitTextField, "Spacing", -0.15, 0.5, 100, 2, 0]
+      ]) {
+        const slider = field(name);
+        const number = field(`${name}Value`);
+        slider.addEventListener("input", () => {
+          number.value = Number(slider.value).toFixed(digits);
+          commit({ deferHistoryEnd: true });
+        });
+        const finish = () => exposed?.endUndoableChange?.();
+        ["change", "pointerup", "pointercancel", "blur"].forEach((event) => slider.addEventListener(event, finish));
+        number.addEventListener("change", () => {
+          let value = field === exitArrowField && name === "Angle"
+            ? normalizeStandardAngle(number.value)
+            : field === exitTextField && name === "Spacing"
+            ? normalizeExitTextSpacing(number.value)
+            : clampStandardValue(number.value, min, max, precision, fallback);
+          if (field === exitTextField && name === "Size") value = Math.round(value / 5) * 5;
+          number.value = value.toFixed(digits);
+          slider.value = Math.max(Number(slider.min), Math.min(Number(slider.max), value));
+          commit();
+        });
+        number.addEventListener("keydown", (event) => { if (event.key === "Enter") number.blur(); });
+      }
+      document.addEventListener("pointerdown", (event) => {
+        const active = document.activeElement;
+        if (active?.matches?.('.exitOnlyRow input[type="number"]') && event.target !== active) active.blur();
+      }, true);
+      exitArrowField("Flip").addEventListener("click", () => {
+        const button = exitArrowField("Flip");
+        button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
+        commit();
+      });
+      for (const button of document.querySelectorAll("[data-exit-reset]")) {
+        button.addEventListener("click", () => {
+          const reset = button.dataset.exitReset;
+          const isText = reset.startsWith("Text");
+          const name = isText ? reset.slice(4) : reset;
+          const field = isText ? exitTextField : exitArrowField;
+          const defaults = isText
+            ? { Size: 70, Spacing: 0 }
+            : { Angle: getDefaultGuideArrowAngle(exitArrowField("Type").value,
+                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+          const digits = name === "Angle" || (isText && name === "Size") ? 0 : name === "Size" ? 1 : 2;
+          field(name).value = String(defaults[name]);
+          field(`${name}Value`).value = defaults[name].toFixed(digits);
+          commit();
+        });
+      }
+      document.querySelectorAll("[data-exit-alignment]").forEach((button) => button.addEventListener("click", () => {
+        const sign = exposed.getCurrentPanel()?.sign;
+        if (sign) {
+          if (sign.guideArrow === "Half Exit Only") {
+            const history = splitAlignmentHistory.get(sign);
+            if (history) history.changed = true;
+          }
+          const oldSide = exitDefaultSide(sign);
+          sign.exitArrowAlignment = button.dataset.exitAlignment;
+          replaceDefaultAngle(exitArrowField, exitArrowField("Type").value, oldSide, exitDefaultSide(sign));
+        }
+        commit();
+      }));
+      ["Left", "Right"].forEach((name) => {
+        const input = exitTextField(name);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") input.blur();
+        });
+        input.addEventListener("paste", (event) => {
+          const pasted = event.clipboardData?.getData("text/plain");
+          if (!pasted || !/[\r\n]/.test(pasted)) return;
+          event.preventDefault();
+          input.setRangeText(pasted.replace(/\r\n?|\n/g, "\\n"), input.selectionStart, input.selectionEnd, "end");
+        });
+        input.addEventListener("blur", () => {
+          const stored = exposed.getCurrentPanel()?.sign?.[`exitOnly${name}Text`];
+          if (input.value !== String(stored ?? (name === "Left" ? "EXIT" : "ONLY")).replace(/\r\n?|\n/g, "\\n")) {
+            commit();
+          }
+        });
+      });
+      document.addEventListener("pointerdown", (event) => {
+        const active = document.activeElement;
+        if (active?.matches?.('.exitOnlyTextRow input[type="text"]') && event.target !== active) active.blur();
+      }, true);
+      ["exitTextFont", "exitTextColor", "exitBackgroundColor", "exitBorderColor", "exitTopBorder", "exitColorEdges", "exitTexasBorder", "exitForceSubpanelWidth"]
+        .forEach((id) => document.getElementById(id).addEventListener("change", () => commit()));
     };
 
   const initUI = async () => {
@@ -14654,6 +15418,15 @@ const getPostThicknessFallback = () =>
 
       bindShortcutCaptureInputs(document);
       
+      const panelBorderSlider = document.getElementById("panelBorderThickness");
+      if (panelBorderSlider && panelBorderSlider.dataset.boundPanelBorder !== "true") {
+        panelBorderSlider.dataset.boundPanelBorder = "true";
+        panelBorderSlider.addEventListener("input", () => readForm({ deferHistoryEnd: true }));
+        const finishPanelBorderChange = () => exposed?.endUndoableChange?.();
+        ["change", "pointerup", "pointercancel", "blur"].forEach((event) =>
+          panelBorderSlider.addEventListener(event, finishPanelBorderChange));
+      }
+
       const bindExitTabSliderReset = (buttonId, inputId, valueId, getResetValue) => {
         const button = document.getElementById(buttonId);
         const input = document.getElementById(inputId);
@@ -14704,6 +15477,24 @@ const getPostThicknessFallback = () =>
             : settings.fontSize;
         }
       );
+
+      const radiusReset = document.getElementById("exitTabCornerRadiusReset");
+      if (radiusReset && radiusReset.dataset.boundReset !== "true") {
+        radiusReset.dataset.boundReset = "true";
+        radiusReset.addEventListener("click", () => {
+          const setting = getExitTabProfileContextSettings()?.cornerRadius;
+          const inherit = setting === "panel" || setting == null;
+          const slider = document.getElementById("exitTabCornerRadius");
+          const checkbox = document.getElementById("exitTabUsePanelCornerRadius");
+          checkbox.checked = inherit;
+          slider.value = String(inherit
+            ? Math.min(2, getSelectedPanelCornerRadius())
+            : Math.max(0, Math.min(2, Number(setting) || 0)));
+          slider.disabled = false;
+          if (!inherit) slider.dataset.customRadius = slider.value;
+          formHandler.readForm();
+        });
+      }
 
       bindExitTabSliderReset(
         "nestedSpacingReset",
@@ -15332,9 +16123,11 @@ const getPostThicknessFallback = () =>
           reDisplay();
         }
 
-        const targetTab =
-          resolvedMode === "apl"
-            ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
+        const activeGuideArrow = exposed.getCurrentPanel()?.sign?.guideArrow || "None";
+        const targetTab = resolvedMode === "apl"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
+          : activeGuideArrow.includes("Exit Only")
+            ? '.guideArrowConfig .sMModalTab[data-tab="sMExitOnlyArrows"]'
             : '.guideArrowConfig .sMModalTab[data-tab="sMStandardArrows"]';
 
         const tabButton = document.querySelector(targetTab);
@@ -15787,12 +16580,30 @@ const getPostThicknessFallback = () =>
               }
           }
           
-          if (button.dataset.tab === "sMStandardArrows") {
-            if (
-              exposed &&
-              typeof exposed.setCurrentPanelArrowMode === "function"
-            ) {
-              exposed.setCurrentPanelArrowMode("standard");
+          if (button.dataset.tab === "sMStandardArrows" ||
+              button.dataset.tab === "sMExitOnlyArrows") {
+            const guideArrowSelect = document.getElementById("guideArrow");
+            if (guideArrowSelect) {
+              const sign = exposed.getCurrentPanel()?.sign;
+              const current = guideArrowSelect.value;
+              const next = button.dataset.tab === "sMStandardArrows"
+                ? "Standard Arrow"
+                : ["Exit Only", "Half Exit Only", "Split Exit Only"].includes(current)
+                  ? current : "Exit Only";
+              if (current !== next || exposed.getCurrentPanel()?.sign?.arrowMode !== "standard") {
+                if (sign?.standardArrowPosition === "Down" &&
+                    (current === "Standard Arrow" || ["Exit Only", "Half Exit Only", "Split Exit Only"].includes(current))) {
+                  const fromStandard = current === "Standard Arrow";
+                  const type = fromStandard ? sign.standardArrowType : sign.exitArrowType;
+                  const target = fromStandard ? exitArrowField("Type") : standardArrowField("Type");
+                  if (STANDARD_ARROW_KEYS.includes(type) && target) {
+                    target.value = type;
+                    target._arrowPickerApi?.setValue(type);
+                  }
+                }
+                guideArrowSelect.value = next;
+                readForm();
+              }
             }
           }
 
@@ -16378,6 +17189,8 @@ const getPostThicknessFallback = () =>
 
       lib.appendOption(guideArrowSelectElmt, display);
     }
+    bindStandardArrowControls();
+    bindExitOnlyEditor();
 
     // Populate the exit only guide arrow options
     const exitOnlyDirectionElmt = document.getElementById("exitOnlyDirection");
@@ -16448,6 +17261,7 @@ const getPostThicknessFallback = () =>
 
     for (const elem of textElem_fontFamilySelects) {
       for (const fontFamily of TextElement.prototype.fontFamily) {
+        if (isMotorwayFont(fontFamily)) continue;
         lib.appendOption(elem, fontFamily);
       }
     }
@@ -16567,11 +17381,11 @@ const getPostThicknessFallback = () =>
       );
 
       const transportFonts = TextElement.prototype.fontFamily.filter(
-        (font) => font === "Transport"
+        (font) => /^Transport (?:Regular|Heavy)$/.test(font)
       );
 
       const din1451Fonts = TextElement.prototype.fontFamily.filter(
-        (font) => font === "DIN 1451"
+        (font) => /^DIN 1451 (?:Regular|Narrow)$/.test(font)
       );
 
       const rawlinsonFonts = TextElement.prototype.fontFamily.filter((font) =>
@@ -16607,8 +17421,8 @@ const getPostThicknessFallback = () =>
         Arial: arialFonts.includes("Arial")
           ? "Arial"
           : (arialFonts[0] || ""),
-        Transport: transportFonts[0] || "",
-        "DIN 1451": din1451Fonts[0] || "",
+        Transport: transportFonts.includes("Transport Regular") ? "Transport Regular" : transportFonts[0] || "",
+        "DIN 1451": din1451Fonts.includes("DIN 1451 Regular") ? "DIN 1451 Regular" : din1451Fonts[0] || "",
           Rawlinson: rawlinsonFonts.includes("Rawlinson Regular")
             ? "Rawlinson Regular"
             : (rawlinsonFonts[0] || ""),
@@ -16649,7 +17463,7 @@ const getPostThicknessFallback = () =>
     };
 
     const shouldUseSettingsDefaultsFontButtons = (family) =>
-      family === "Clearview" || family === "Highway Gothic";
+      ["Clearview", "Highway Gothic", "Transport", "DIN 1451"].includes(family);
 
     const getSettingsDefaultsFontSuffix = (font, family) => {
       if (family === "Clearview") {
@@ -16660,10 +17474,13 @@ const getPostThicknessFallback = () =>
         return String(font || "").replace(/^Series\s*/i, "").trim();
       }
 
-      return String(font || "").trim();
+      return String(font || "").replace(`${family} `, "").trim();
     };
 
     const sortSettingsDefaultsFontsForButtons = (family, fonts) => {
+      if (family !== "Clearview" && family !== "Highway Gothic") {
+        return [...fonts];
+      }
       const order =
         family === "Highway Gothic"
           ? settingsDefaultsHighwayGothicFontOrder
@@ -16740,7 +17557,7 @@ const getPostThicknessFallback = () =>
         button.textContent = getSettingsDefaultsFontSuffix(font, selectedFamily);
         button.classList.toggle("active", fontSelect.value === font);
 
-        button.style.fontFamily = `"${font}", sans-serif`;
+        button.style.fontFamily = `"${resolveFontPickerPreviewFont(font)}", sans-serif`;
         button.style.fontSize =
           selectedFamily === "Highway Gothic" ? "0.9rem" : "0.8rem";
 
@@ -16786,7 +17603,7 @@ const getPostThicknessFallback = () =>
 
         settingsDefaultsShieldType: ShieldElement.prototype.defaultShieldBase,
         settingsDefaultsShieldRouteNumber: "",
-        settingsDefaultsShieldSize: "3",
+        settingsDefaultsShieldSize: "2.7",
         settingsDefaultsShieldBanner1: "Right",
         settingsDefaultsShieldBanner2: "Above",
         settingsDefaultsShieldManualBanners: true,
@@ -17020,10 +17837,12 @@ const getPostThicknessFallback = () =>
       ].forEach((id) => bindExitTabSettingsDefaultsPersistence(id, { checkbox: true }));
       
       const getSettingsDefaultsFamilyPreviewFont = (family) => {
-        if (family === "Clearview") return '"Clearview 5WR", "Transport", sans-serif';
+        if (family === "Clearview") return '"Clearview 5WR", "Transport Regular", sans-serif';
         if (family === "Highway Gothic") return '"Series EM", "Highway Gothic", sans-serif';
         if (family === "Arial") return 'Arial, sans-serif';
-        if (family === "Transport") return '"Transport", sans-serif';
+        if (family === "Transport") return '"Transport Regular", sans-serif';
+        if (family === "DIN 1451") return '"DIN 1451 Regular", sans-serif';
+        if (family === "Motorway") return '"Transport Regular", sans-serif';
         return 'Inter, sans-serif';
       };
 
@@ -17354,9 +18173,12 @@ const getPostThicknessFallback = () =>
         } else if (selectEl.value === "Arial") {
           selectEl.style.fontFamily = "Arial";
         } else if (selectEl.value === "Transport") {
-          selectEl.style.fontFamily = "Transport";
+          selectEl.style.fontFamily = '"Transport Regular", sans-serif';
         } else if (selectEl.value === "DIN 1451") {
-          selectEl.style.fontFamily = '"DIN 1451", sans-serif';
+          selectEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+          selectEl.style.fontSize = "1rem";
+        } else if (selectEl.value === "Motorway") {
+          selectEl.style.fontFamily = '"Transport Regular", sans-serif';
           selectEl.style.fontSize = "1rem";
         } else if (selectEl.value === "Rawlinson") {
           selectEl.style.fontFamily = '"Rawlinson Regular", serif';
@@ -17422,11 +18244,30 @@ const getPostThicknessFallback = () =>
         (value) => `${value}%`
       );
 
-      bindSettingsDefaultsSlider(
-        "settingsDefaultsShieldSize",
-        "settingsDefaultsShieldSizeValue",
-        (value) => `${value} rem`
-      );
+      const shieldSizeSlider = document.getElementById("settingsDefaultsShieldSize");
+      const shieldSizeInput = document.getElementById("settingsDefaultsShieldSizeValue");
+      if (shieldSizeSlider && shieldSizeInput) {
+        const syncShieldSizeInput = () => {
+          shieldSizeInput.value = shieldSizeSlider.value;
+        };
+        syncShieldSizeInput();
+        if (shieldSizeInput.dataset.defaultsInputBound !== "true") {
+          shieldSizeInput.dataset.defaultsInputBound = "true";
+          shieldSizeSlider.addEventListener("input", syncShieldSizeInput);
+          shieldSizeSlider.addEventListener("change", syncShieldSizeInput);
+          shieldSizeInput.addEventListener("change", () => {
+            const entered = Number(shieldSizeInput.value);
+            if (Number.isFinite(entered) && shieldSizeInput.value.trim() !== "") {
+              shieldSizeSlider.value = String(
+                Math.round(Math.max(2, Math.min(4, entered)) * 10) / 10
+              );
+              shieldSizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
+              shieldSizeSlider.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            syncShieldSizeInput();
+          });
+        }
+      }
       
       bindSettingsDefaultsSlider(
         "settingsDefaultsExitTabBorderThickness",
@@ -17894,8 +18735,8 @@ const getPostThicknessFallback = () =>
                 `${document.getElementById("settingsDefaultsAdvisorySize").value}%`;
               document.getElementById("settingsDefaultsActionSizeValue").textContent =
                 `${document.getElementById("settingsDefaultsActionSize").value}%`;
-              document.getElementById("settingsDefaultsShieldSizeValue").textContent =
-                `${document.getElementById("settingsDefaultsShieldSize").value} rem`;
+              document.getElementById("settingsDefaultsShieldSizeValue").value =
+                document.getElementById("settingsDefaultsShieldSize").value;
               
 
             settingsDefaultsFontFamilyIds.forEach((id) => {
@@ -17914,7 +18755,13 @@ const getPostThicknessFallback = () =>
                 familyEl.style.fontFamily = "Arial, sans-serif";
                 familyEl.style.fontSize = "1rem";
               } else if (familyEl.value === "Transport") {
-                familyEl.style.fontFamily = '"Transport", sans-serif';
+                familyEl.style.fontFamily = '"Transport Regular", sans-serif';
+                familyEl.style.fontSize = "1rem";
+              } else if (familyEl.value === "DIN 1451") {
+                familyEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+                familyEl.style.fontSize = "1rem";
+              } else if (familyEl.value === "Motorway") {
+                familyEl.style.fontFamily = '"Transport Regular", sans-serif';
                 familyEl.style.fontSize = "1rem";
               } else {
                 familyEl.style.fontFamily = "Inter, sans-serif";
@@ -19573,10 +20420,7 @@ const getPostThicknessFallback = () =>
     if (previewImage) {
       const src = String(definition?.src || definition?.asset || definition?.url || "");
       const invertInput = document.getElementById("sdIcon_invertColors");
-      delete previewImage.dataset.tightIconBoundsAttached;
-      delete previewImage.dataset.tightIconBoundsApplied;
-      delete previewImage.dataset.tightIconBoundsFailed;
-      previewImage.src = src;
+      setPreparedIconImageSource(previewImage, src);
       previewImage.alt = displayName;
       previewImage.hidden = !src;
       previewImage.classList.toggle(
@@ -19584,9 +20428,6 @@ const getPostThicknessFallback = () =>
         !!invertInput && invertInput.checked
       );
 
-      if (src && typeof applyTightImageBounds === "function") {
-        applyTightImageBounds(previewImage);
-      }
     }
   };
 
@@ -19776,7 +20617,8 @@ const getPostThicknessFallback = () =>
     
   // Handle Form
   // Read the form and update the page by redrawing it.
-  const readForm = function () {
+  const readForm = function (options = {}) {
+    const deferHistoryEnd = options?.deferHistoryEnd === true;
     syncPostReference();
     if (
         exposed &&
@@ -19786,6 +20628,8 @@ const getPostThicknessFallback = () =>
       }
     try {
     const form = document.forms[0];
+
+    readExitTabCornerRadiusFromForm();
 
     if (exitTabEditorMode === "default") {
       const profileVariantChanged = readExitTabProfileForm();
@@ -19811,6 +20655,15 @@ const getPostThicknessFallback = () =>
       updateForm();
       return;
     }
+
+    const redrawAfterExitTabEdit = () => {
+      const keepOtherPanels =
+        document.getElementById("sMConfigBar")?.dataset.currentMenu === "exitTabConfig" &&
+        currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID;
+      exposed.redraw(keepOtherPanels
+        ? { preserveOtherPanels: true, changedPanelIndex: exposed.vars.currentlySelectedPanelIndex }
+        : undefined);
+    };
 
     const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
     const subPanel =
@@ -19844,10 +20697,24 @@ const getPostThicknessFallback = () =>
     // Panel
     currentPanel.color = form["panelColor"].value;
     currentPanel.corner = form["panelCorner"].value;
+    const nextPanelBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelBorderThickness"].value });
+    if (nextPanelBorderThickness !== Panel.getBorderThickness(currentPanel)) {
+      Panel.setBorderThickness(currentPanel, nextPanelBorderThickness);
+      if (form["borderThickness"]) form["borderThickness"].value = String(nextPanelBorderThickness);
+    }
     const panelBorderRadiusInput = parseFloat(form["panelBorderRadius"].value);
     currentPanel.borderRadius = Number.isFinite(panelBorderRadiusInput)
       ? Math.max(0, panelBorderRadiusInput)
       : Panel.prototype.defaultBorderRadius;
+
+    if (currentPanel.isVms === true) {
+      Object.assign(currentPanel, VmsPanel.settings({
+        vmsResolution: form["vmsResolution"].value,
+        vmsResolutionVersion: 5,
+        vmsAntialias: form["vmsAntialias"].checked,
+        vmsFrameColor: form["vmsFrameColor"].value,
+      }));
+    }
 
     // The UI is now positive: checked means selection flashing is enabled.
     // Keep the existing persisted disableFlash property for backward compatibility.
@@ -19864,6 +20731,7 @@ const getPostThicknessFallback = () =>
     const isAssetExitTabVariant = isExitTabAssetVariantValue(requestedExitVariant);
 
     if (requestedExitVariant !== previousExitVariant) {
+      const savedWidth = exitTab.width;
       const profile = getExitTabProfileById(
         currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID
       );
@@ -19873,11 +20741,14 @@ const getPostThicknessFallback = () =>
         { preserveText: true }
       );
       exitTab.variant = requestedExitVariant;
+      if (currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID && savedWidth) {
+        exitTab.width = savedWidth;
+      }
       setExitTabProfileIdOnTab(exitTab, currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID);
       toggleExitTabVariantOptionsVisibility(exitTab.variant);
       updateForm();
       if (typeof exposed?.redraw === "function") {
-        exposed.redraw();
+        redrawAfterExitTabEdit();
       }
       return;
     }
@@ -19909,9 +20780,10 @@ const getPostThicknessFallback = () =>
       updateExitTabBilingualControls(exitTab);
     const aplEdgeAllowed = syncExitTabWidthOptions(exitTab);
     const previousExitTabWidth = exitTab.width || "Edge";
-    const requestedExitTabWidth = form["exitTabWidth"]
-      ? form["exitTabWidth"].value
-      : exitTab.width || "Full";
+    const requestedExitTabWidth = form["exitTabWidth"] &&
+      document.activeElement === form["exitTabWidth"]
+        ? form["exitTabWidth"].value
+        : exitTab.width || "Full";
 
     const shouldForceEmptyCurrentExitTabToEdge = false;
 
@@ -19956,14 +20828,8 @@ const getPostThicknessFallback = () =>
           nextShowLeft = nextExitTabPosition === "Left";
         }
 
-        const showLeftChangedFromPrevious = previousShowLeft !== nextShowLeft;
-
         exitTab.position = nextExitTabPosition;
         exitTab.showLeft = nextShowLeft;
-
-        if (showLeftChangedFromPrevious && form["topOffset"]) {
-          form["topOffset"].checked = nextShowLeft;
-        }
 
         if (exitTabPositionField) {
           exitTabPositionField.value = exitTab.position;
@@ -20192,6 +21058,7 @@ const getPostThicknessFallback = () =>
 
         exitTab.fullBorder = form["fullBorder"].checked;
         exitTab.squareCorners = form["squareCorners"].checked;
+        exitTab.cornerRadius = readExitTabCornerRadiusFromForm();
         exitTab.topOffset = form["topOffset"].checked;
         exitTab.verticalArrangement = form["verticalArrangement"].checked;
         exitTab.caStyle = nextCaStyleState;
@@ -20748,6 +21615,35 @@ const getPostThicknessFallback = () =>
 
         currentPanel.sign.guideArrowLanes = form["guideArrowLanes"].value;
         currentPanel.sign.arrowPosition = form["arrowLocations"].value;
+        if (guideArrow_result === "Standard Arrow") {
+          currentPanel.sign.standardArrowType = standardArrowField("Type").value;
+          currentPanel.sign.standardArrowAngle = normalizeStandardAngle(standardArrowField("AngleValue").value);
+          currentPanel.sign.standardArrowFlip = standardArrowField("Flip").getAttribute("aria-pressed") === "true";
+          currentPanel.sign.standardArrowSize = clampStandardValue(standardArrowField("SizeValue").value, 1, 5, 10, 3);
+          currentPanel.sign.standardArrowPadding = clampStandardValue(standardArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+          currentPanel.sign.standardArrowSpacing = clampStandardValue(standardArrowField("SpacingValue").value, 0, 25, 100, 8.5);
+        }
+        if (["Exit Only", "Half Exit Only", "Split Exit Only"].includes(guideArrow_result)) {
+          const sign = currentPanel.sign;
+          sign.exitOnlyEditorVersion = 2;
+          sign.exitArrowType = exitArrowField("Type").value;
+          sign.exitArrowAngle = normalizeStandardAngle(exitArrowField("AngleValue").value);
+          sign.exitArrowFlip = exitArrowField("Flip").getAttribute("aria-pressed") === "true";
+          sign.exitArrowSize = clampStandardValue(exitArrowField("SizeValue").value, 1, 5, 10, 3);
+          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+          sign.exitArrowSpacing = clampStandardValue(exitArrowField("SpacingValue").value, 0, 25, 100, 8.5);
+          sign.exitTextFont = exitTextField("Font").value || "Series E";
+          sign.exitTextSize = clampStandardValue(exitTextField("SizeValue").value, 50, 100, 1, 70);
+          sign.exitTextSpacing = normalizeExitTextSpacing(exitTextField("SpacingValue").value);
+          sign.exitTextColor = exitTextField("Color").value || "Inherit";
+          sign.exitBackgroundColor = document.getElementById("exitBackgroundColor").value || "Yellow";
+          sign.exitBorderColor = document.getElementById("exitBorderColor").value || "Inherit";
+          sign.exitTopBorder = document.getElementById("exitTopBorder").checked;
+          sign.exitColorEdges = document.getElementById("exitColorEdges").checked;
+          sign.exitTexasBorder = document.getElementById("exitTexasBorder").checked;
+          sign.exitForceSubpanelWidth = document.getElementById("exitForceSubpanelWidth").checked;
+          sign.exitArrowAlignment = sign.exitArrowAlignment || "Center";
+        }
 
     var exitOnlyDirection_result = form["exitOnlyDirection"].value;
 
@@ -20852,9 +21748,9 @@ const getPostThicknessFallback = () =>
     if (!(sdShieldReadFormFastPass && blockElemType === "sdShield")) {
       updateForm();
     }
-    exposed.redraw();
+    redrawAfterExitTabEdit();
     } finally {
-        if (
+        if (!deferHistoryEnd &&
         exposed &&
         typeof exposed.endUndoableChange === "function"
         ) {
@@ -20975,13 +21871,6 @@ const getPostThicknessFallback = () =>
         const grid = document.getElementById(gridId);
         const input = document.getElementById(inputId);
         const label = document.getElementById(labelId);
-        const customIconUploadButton = modalId === "iconSelectorModal"
-          ? document.getElementById("uploadCustomIconButton")
-          : null;
-        const customIconFileInput = modalId === "iconSelectorModal"
-          ? document.getElementById("uploadCustomIconFile")
-          : null;
-
         if (!chooseBtn || !modal || !grid || !input || !sourceObject) {
           return;
         }
@@ -21006,7 +21895,11 @@ const getPostThicknessFallback = () =>
         const applyAssetSelection = (key) => {
           input.value = key;
           input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.dispatchEvent(new Event("change", { bubbles: true }));
+          // Icon picks commit below once. Dispatching change as well can run
+          // the field's form reader and cause a second complete redraw.
+          if (modalId !== "iconSelectorModal" || !shouldReadForm) {
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          }
 
           updateCurrentLabel();
 
@@ -21015,35 +21908,14 @@ const getPostThicknessFallback = () =>
           }
         };
 
-        const deleteCustomIconFromPicker = (definition, key) => {
-          const deletedRecord = deleteCustomIconRecord(definition.customIconId);
-
-          if (!deletedRecord) {
-            return;
-          }
-
-          if (input.value === key) {
-            applyAssetSelection(defaultKey);
-          }
-
-          if (document.getElementById("sdIcon_icon")?.value === key) {
-            document.getElementById("sdIcon_icon").value = defaultKey;
-          }
-
-          if (document.getElementById("settingsDefaultsIconValue")?.value === key) {
-            document.getElementById("settingsDefaultsIconValue").value = defaultKey;
-            saveSettingsDefaultsField("settingsDefaultsIconValue", defaultKey);
-          }
-
-          revertCustomIconUsageToDefault(key);
-
-          if (typeof exposed?.redraw === "function") {
-            exposed.redraw();
-          }
-
-          updateForm();
-          populateGrid(search?.value || "");
-        };
+        if (modalId === "iconSelectorModal") {
+          getIconPickerController().bindTarget(chooseBtn, {
+            getCurrentKey,
+            onSelect: applyAssetSelection,
+          });
+          updateCurrentLabel();
+          return;
+        }
 
           const populateGrid = (filter = "") => {
             lib.clearChildren(grid);
@@ -21124,29 +21996,6 @@ const getPostThicknessFallback = () =>
               item.appendChild(preview);
               item.appendChild(text);
 
-              if (definition?.customIconPicker) {
-                item.classList.add("customIconGridCard");
-
-                const deleteButton = document.createElement("button");
-                deleteButton.type = "button";
-                deleteButton.className = "customIconDeleteButton";
-                deleteButton.title = `Delete ${itemLabel}`;
-                deleteButton.setAttribute("aria-label", `Delete ${itemLabel}`);
-
-                const deleteIcon = document.createElement("span");
-                deleteIcon.className = "material-symbols-outlined";
-                deleteIcon.textContent = "delete";
-                deleteButton.appendChild(deleteIcon);
-
-                deleteButton.addEventListener("click", (event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  deleteCustomIconFromPicker(definition, key);
-                });
-
-                item.appendChild(deleteButton);
-              }
-
               item.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -21172,60 +22021,6 @@ const getPostThicknessFallback = () =>
 
         if (chooseBtn.dataset.assetSelectorInitialized !== "true") {
           chooseBtn.dataset.assetSelectorInitialized = "true";
-
-          if (
-            customIconUploadButton &&
-            customIconFileInput &&
-            customIconUploadButton.dataset.customIconUploadBound !== "true"
-          ) {
-            customIconUploadButton.dataset.customIconUploadBound = "true";
-
-            customIconUploadButton.addEventListener("click", (event) => {
-              event.preventDefault();
-              customIconFileInput.click();
-            });
-
-            customIconFileInput.addEventListener("change", (event) => {
-              const file = event.target.files && event.target.files[0];
-
-              if (!file) {
-                return;
-              }
-
-              const isValidFile =
-                file.type === "image/svg+xml" ||
-                file.type === "image/png" ||
-                /\.(svg|png)$/i.test(file.name);
-
-              if (!isValidFile) {
-                event.target.value = "";
-                return;
-              }
-
-              const reader = new FileReader();
-
-              reader.onload = (readerEvent) => {
-                const record = upsertCustomIconRecord({
-                  label: file.name,
-                  src: readerEvent.target?.result || "",
-                });
-
-                event.target.value = "";
-
-                if (!record) {
-                  return;
-                }
-
-                if (search) {
-                  search.value = "";
-                }
-
-                populateGrid("");
-              };
-
-              reader.readAsDataURL(file);
-            });
-          }
 
           chooseBtn.addEventListener("click", (event) => {
             event.preventDefault();
@@ -22684,7 +23479,74 @@ const getPostThicknessFallback = () =>
           arrowRow.appendChild(exitOnlyLabel);
           arrowRow.appendChild(deleteButton);
 
-        return arrowRow;
+          const fragment = document.createDocumentFragment();
+          fragment.appendChild(arrowRow);
+          if (arrow.exitOnly === true) {
+            const settings = arrow.aplExitText || {};
+            const textRow = document.createElement("div");
+            textRow.className = "aplExitTextSettingsRow";
+            const addInput = (property, label, value, options = {}) => {
+              const holder = document.createElement("div");
+              holder.className = `aplExitTextField aplExitTextField-${property}`;
+              if (options.showLabel) {
+                const title = document.createElement("span");
+                title.textContent = label;
+                holder.appendChild(title);
+              }
+              const input = document.createElement("input");
+              input.type = options.type || "text";
+              input.value = String(value);
+              input.setAttribute("aria-label", `${label} for APL arrow ${arrowIndex + 1}`);
+              if (options.min != null) input.min = String(options.min);
+              if (options.max != null) input.max = String(options.max);
+              if (options.step != null) input.step = String(options.step);
+              input.addEventListener("change", () => {
+                let next = input.value;
+                if (options.type === "number") {
+                  const parsed = Number(next);
+                  next = String(Number.isFinite(parsed)
+                    ? Math.max(options.min, Math.min(options.max, parsed))
+                    : value);
+                }
+                exposed.setAPLExitOnlyTextSetting(arrowIndex, property, next);
+              });
+              input.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") input.blur();
+              });
+              stopControlDragStart(input);
+              holder.appendChild(input);
+              textRow.appendChild(holder);
+            };
+            addInput("left", "Left text", settings.left ?? "EXIT");
+            addInput("right", "Right text", settings.right ?? "ONLY");
+            const fontHolder = document.createElement("div");
+            fontHolder.className = "aplExitTextFontField";
+            const fontSelect = document.createElement("select");
+            getExitTabAvailableFonts().forEach((font) => fontSelect.add(new Option(font, font)));
+            if (![...fontSelect.options].some((option) => option.value === "Series E")) {
+              fontSelect.add(new Option("Series E", "Series E"));
+            }
+            fontSelect.value = settings.font || "Series E";
+            fontSelect.setAttribute("aria-label", `Font for APL arrow ${arrowIndex + 1}`);
+            fontSelect.addEventListener("change", () =>
+              exposed.setAPLExitOnlyTextSetting(arrowIndex, "font", fontSelect.value));
+            stopControlDragStart(fontSelect);
+            fontHolder.appendChild(fontSelect);
+            textRow.appendChild(fontHolder);
+            queueMicrotask(() => {
+              if (fontSelect.isConnected) {
+                const picker = createFontPicker({ selectEl: fontSelect, mode: "allFontsGrouped" });
+                picker?.wrapper?.classList.add("aplExitTextFontPicker");
+                picker?.menu?.classList.add("aplExitTextFontMenu");
+              }
+            });
+            addInput("size", "Size", settings.size ?? 70,
+              { type: "number", min: 50, max: 150, step: 1, showLabel: true });
+            addInput("spacing", "Spacing", settings.spacing ?? 0,
+              { type: "number", min: -0.15, max: 0.5, step: 0.01, showLabel: true });
+            fragment.appendChild(textRow);
+          }
+        return fragment;
       };
       
       const createAPLSpacingRow = (arrowIndex, arrow) => {
@@ -22798,6 +23660,19 @@ const getPostThicknessFallback = () =>
       };
 
       if (aplArrowList) {
+        const mergeAdjacentCheckbox = document.getElementById("aplMergeAdjacentExitOnly");
+        if (mergeAdjacentCheckbox) {
+          mergeAdjacentCheckbox.checked = panel.sign.aplExitOnlyMergeAdjacent === true;
+          if (mergeAdjacentCheckbox.dataset.aplMergeBound !== "true") {
+            mergeAdjacentCheckbox.dataset.aplMergeBound = "true";
+            mergeAdjacentCheckbox.addEventListener("change", () => {
+              exposed.setAPLExitOnlyMergeAdjacent(mergeAdjacentCheckbox.checked);
+            });
+          }
+        }
+        aplArrowList.querySelectorAll(".aplExitTextFontField select").forEach((select) => {
+          select._fontPickerApi?.destroy?.();
+        });
         lib.clearChildren(aplArrowList);
 
         const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
@@ -23036,12 +23911,27 @@ const getPostThicknessFallback = () =>
       panelBorderRadiusElmt.value = resolvedRadius;
     }
 
+    const panelBorderThickness = Panel.getBorderThickness(panel);
+    document.getElementById("panelBorderThickness").value = String(panelBorderThickness);
+    document.getElementById("panelBorderThicknessValue").value = `${Math.round(panelBorderThickness / 0.2 * 100)}%`;
     const selectionFlashElmt = document.getElementById("disableFlash");
     if (selectionFlashElmt) {
       selectionFlashElmt.checked = post?.disableFlash !== true;
     }
 
     syncPanelPaddingControlsFromSign(panel.sign);
+
+    const vmsSettings = VmsPanel.settings(panel);
+    document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
+    document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
+    document.getElementById("vmsAntialias").checked = vmsSettings.vmsAntialias;
+    const frameColorSelect = document.getElementById("vmsFrameColor");
+    ensureCustomColorOptionsForSelect(frameColorSelect);
+    const frameColorOption = ensureNativeColorSelectOption(frameColorSelect, vmsSettings.vmsFrameColor);
+    frameColorSelect.value = frameColorOption?.value || vmsSettings.vmsFrameColor;
+    const vmsToggle = document.getElementById("toggleVmsPanel");
+    vmsToggle.textContent = panel.isVms === true ? "Switch Panel to Regular" : "Switch Panel to VMS";
+    vmsToggle.setAttribute("aria-pressed", String(panel.isVms === true));
 
     // Global Panel
     const outActionMessage = document.getElementById("outActionMessage");
@@ -23138,9 +24028,12 @@ const getPostThicknessFallback = () =>
         break;
       }
     }
-    if (!exitTabWidthMatched) {
-      exitTab.width = "Edge";
-      exitTabWidthSelectElmt.value = "Edge";
+    if (!exitTabWidthMatched && exitTab.width) {
+      const option = document.createElement("option");
+      option.value = exitTab.width;
+      option.textContent = exitTab.width;
+      exitTabWidthSelectElmt.appendChild(option);
+      exitTabWidthSelectElmt.value = exitTab.width;
     }
 
     const exitTabColorElmt = document.querySelector("#exitColor");
@@ -23326,6 +24219,31 @@ const getPostThicknessFallback = () =>
 
     const squareCorners = document.getElementById("squareCorners");
     squareCorners.checked = exitTab.squareCorners;
+
+    const cornerRadius = document.getElementById("exitTabCornerRadius");
+    if (cornerRadius) {
+      const bindingKey = exitTabEditorMode === "default"
+        ? `default:${selectedExitTabProfileId}:${selectedExitTabProfileVariant}`
+        : `current:${exposed.vars.currentlySelectedPanelIndex}:${exposed.vars.currentlySelectedExitTabIndex}:${exposed.vars.currentlySelectedNestedExitTabIndex}`;
+      if (cornerRadius.dataset.bindingKey !== bindingKey) {
+        delete cornerRadius.dataset.customRadius;
+        cornerRadius.dataset.bindingKey = bindingKey;
+      }
+      const inheritsPanelRadius = exitTab.cornerRadius === "panel" || exitTab.cornerRadius == null;
+      const customRadius = Number(exitTab.cornerRadius);
+      const parentRadius = getSelectedPanelCornerRadius();
+      const effectiveRadius = exitTab.squareCorners === true
+        ? 0.25
+        : inheritsPanelRadius ? parentRadius : customRadius;
+      if (!inheritsPanelRadius && Number.isFinite(customRadius)) {
+        cornerRadius.dataset.customRadius = String(Math.max(0, Math.min(2, customRadius)));
+      }
+      document.getElementById("exitTabUsePanelCornerRadius").checked = inheritsPanelRadius;
+      setExitTabRangeControlValue(cornerRadius, Math.max(0, Math.min(2, effectiveRadius)));
+      cornerRadius.disabled = inheritsPanelRadius || exitTab.squareCorners === true;
+      document.getElementById("exitTabCornerRadiusValue").textContent =
+        formatExitTabSliderDisplayValue("exitTabCornerRadiusValue", effectiveRadius);
+    }
 
     const topOffset = document.getElementById("topOffset");
     topOffset.checked = exitTab.topOffset;
@@ -24125,6 +25043,8 @@ const getPostThicknessFallback = () =>
 
     const guideArrowLanesElmt = document.getElementById("guideArrowLanes");
     guideArrowLanesElmt.value = panel.sign.guideArrowLanes;
+    syncStandardArrowControls(panel.sign);
+    syncExitOnlyEditor(panel.sign, panel);
 
     const useCanadianDownArrowsElmt = document.getElementById(
       "useCanadianDownArrows"
@@ -24965,6 +25885,7 @@ const getPostThicknessFallback = () =>
       ensureSubpanelMenuOpen: () => ensureSubpanelMenuOpenPublic(),
       ensureExitTabMenuOpen: () => ensureExitTabMenuOpenPublic(),
       ensureGuideArrowMenuOpen: (mode) => ensureGuideArrowMenuOpenPublic(mode),
+      selectStandardArrowIndividual,
       setExitTabEditorMode,
       setExitTabProfileSelected,
       applyExitTabProfileToCurrentTab,

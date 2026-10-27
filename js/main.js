@@ -127,8 +127,8 @@ const app = (function () {
     }
 
     const additions = [
-      "Down (IL):DOWN_IL",
-      "Down (CA):DOWN_CA",
+      "Down (alt):DOWN_ALT",
+      "Down (Ontario):DOWN_ON",
     ];
 
     const getLabel = (entry) => String(entry || "").split(":")[0].trim();
@@ -164,6 +164,15 @@ const app = (function () {
   const getCurrentPanel = () => {
     return post.panels[currentlySelectedPanelIndex];
   };
+
+  let selectedGuideArrowPanelIndex = -1;
+  let selectedGuideArrowIndex = -1;
+  let guideArrowPointerDragActive = false;
+  let copiedGuideArrowArea = null;
+  const guideArrowProperty = (key) => /^(standardArrow|exitArrow|exitOnly|exitText|exitBackground|exitBorder|exitTopBorder|exitColorEdges|exitTexasBorder|aplArrow)/.test(key) ||
+    ["guideArrow", "guideArrowLanes", "arrowMode", "arrowPosition", "arrows", "exitguideArrows", "hideExitArrow", "useCanadianDownArrows", "quebecExitMarkerEnabled"].includes(key);
+  const copyGuideArrowArea = (sign) => JSON.parse(JSON.stringify(Object.fromEntries(Object.keys(sign)
+    .filter(guideArrowProperty).map((key) => [key, sign[key]]))));
 
   const isStackedPanelBottom = (panelIndex = currentlySelectedPanelIndex) =>
     !!(
@@ -264,7 +273,8 @@ const app = (function () {
 
   const isEmptyDefaultExitTab = (exitTab = {}) =>
     String(exitTab?.variant || "Default") === "Default" &&
-    String(exitTab?.number ?? "").trim() === "";
+    String(exitTab?.number ?? "").trim() === "" &&
+    exitTab?.showLeft !== true;
 
   const isExitTabHighwayGothicFontFamily = (fontFamily) =>
     /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(String(fontFamily || ""));
@@ -887,6 +897,34 @@ const app = (function () {
 
     const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) * (rgb.a || 1);
     return luminance > 155 ? "var(--black)" : "var(--white)";
+  };
+
+  const getExitOnlyContrastColor = (value) => {
+    const rgb = resolveCssColorToRgb(value);
+    if (!rgb) return getReadableTextColorForCssColor(value);
+    const linear = (channel) => {
+      const fraction = channel / 255;
+      return fraction <= 0.04045 ? fraction / 12.92 : ((fraction + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = 0.2126 * linear(rgb.r) + 0.7152 * linear(rgb.g) + 0.0722 * linear(rgb.b);
+    return luminance > 0.179 ? "var(--black)" : "var(--white)";
+  };
+
+  const exitOnlyArrowMasks = new Map();
+  const embeddedExitOnlyArrowMasks = new Map();
+  const exitOnlyArrowRatios = new Map();
+  const getEmbeddedExitOnlyArrowMask = (src) => {
+    if (!exitOnlyArrowMasks.has(src)) {
+      exitOnlyArrowMasks.set(src, fetch(src)
+        .then((response) => response.ok ? response.text() : null)
+        .then((svg) => svg ? `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")` : null)
+        .then((mask) => {
+          if (mask) embeddedExitOnlyArrowMasks.set(src, mask);
+          return mask;
+        })
+        .catch(() => null));
+    }
+    return exitOnlyArrowMasks.get(src);
   };
 
   const applyCustomPanelColorVars = (panelElmt, colorValue) => {
@@ -1642,7 +1680,7 @@ const app = (function () {
           }
         }
 
-        restoreAppState(snapshot);
+        restoreAppState(snapshot, { skipUi: true });
         return true;
       } catch (error) {
         console.error("Failed to load saved app state", error);
@@ -1716,6 +1754,24 @@ const app = (function () {
                   const ElemClass = Control.prototype.blockToClassElems[elemType];
                   const elem = new ElemClass(elemData);
                   Object.assign(elem, elemData);
+                  if (typeof elem.fontFamily === "string") {
+                    elem.fontFamily = normalizeTextFontFamilyName(elem.fontFamily);
+                  }
+                  if (elemType === "ShieldElement") {
+                    for (const key of ["bannerFontFamily", "bannerFontFamily1", "bannerFontFamily2", "roadNameFontFamily"]) {
+                      if (typeof elem[key] === "string") elem[key] = normalizeTextFontFamilyName(elem[key]);
+                    }
+                  }
+                  if (elemType === "ArrowElement") {
+                    if (elem.arrow === "TYPE_C") {
+                      elem.arrow = "DOWN";
+                      elem.rotation = ((Number(elem.rotation) || 0) + 180) % 360;
+                    } else if (elem.arrow === "DOWN_CA") {
+                      elem.arrow = "DOWN_ON";
+                    } else if (elem.arrow === "DOWN_IL") {
+                      elem.arrow = "DOWN_ALT";
+                    }
+                  }
                   delete elem._elementType;
                   delete elem.__undoType;
                   row.push(elem);
@@ -1799,11 +1855,29 @@ const app = (function () {
             sign.shields = signData.shields.map((shieldData) => {
               const shield = new Shield(shieldData);
               Object.assign(shield, shieldData);
+              for (const key of ["bannerFontFamily", "bannerFontFamily1", "bannerFontFamily2", "roadNameFontFamily"]) {
+                if (typeof shield[key] === "string") shield[key] = normalizeTextFontFamilyName(shield[key]);
+              }
               return shield;
             });
           }
 
           Object.assign(sign, signData);
+          if (typeof sign.exitTextFont === "string") {
+            sign.exitTextFont = normalizeTextFontFamilyName(sign.exitTextFont);
+          }
+          if (sign.exitOnlyEditorVersion === 1) {
+            sign.exitColorEdges = true;
+            sign.exitOnlyEditorVersion = 2;
+          }
+          if (sign.standardArrowType === "TYPE_C") {
+            sign.standardArrowType = "DOWN";
+            sign.standardArrowAngle = ((Number(sign.standardArrowAngle) || 0) + 180) % 360;
+          } else if (sign.standardArrowType === "DOWN_CA") {
+            sign.standardArrowType = "DOWN_ON";
+          } else if (sign.standardArrowType === "DOWN_IL") {
+            sign.standardArrowType = "DOWN_ALT";
+          }
           sign.subPanels = subPanels;
           
           if (signData.globalTopBlockElements) {
@@ -1846,6 +1920,9 @@ const app = (function () {
             : panel.exitTabs;
 
           Object.assign(panel, panelData);
+          panel.borderThickness = Panel.getBorderThickness(panelData);
+          delete panel.hideBorder;
+          Object.assign(panel, VmsPanel.settings(panelData));
           panel.exitTabs = normalizedExitTabs;
           panel.sign = sign;
           newPost.panels.push(panel);
@@ -1889,7 +1966,7 @@ const app = (function () {
       });
     };
 
-    const restoreAppState = (snapshot, { deferUi = false } = {}) => {
+    const restoreAppState = (snapshot, { deferUi = false, skipUi = false } = {}) => {
       if (!snapshot) {
         return;
       }
@@ -1998,7 +2075,9 @@ const app = (function () {
 
         currentHistorySnapshot = snapshot;
 
-        if (deferUi) {
+        if (skipUi) {
+          cancelScheduledHistoryUiRefresh();
+        } else if (deferUi) {
           scheduleHistoryUiRefresh();
         } else {
           cancelScheduledHistoryUiRefresh();
@@ -3270,6 +3349,7 @@ const app = (function () {
     };
 
     const createDynamicBorderPaintLayer = () => {
+      if (!Object.values(borderWidths).some((width) => width > 0)) return null;
       const borderRows = [...rowInfos, ...resolvedDividerBorderInfos].filter(({ rect }) =>
         ["top", "right", "bottom", "left"].some((edge) =>
           touchesSignEdge(rect, edge)
@@ -3639,6 +3719,80 @@ const app = (function () {
     const MIN_POST_VIEW_SCALE = 0.42;
     let postViewportLayoutFrame = null;
     let postViewportLayoutObserver = null;
+    let ruralPostLayoutFrame = null;
+    let ruralPostResizeObserver = null;
+    let ruralPostResizeBound = false;
+
+    const updateRuralPostLayout = () => {
+      const container = document.getElementById("postContainer");
+      if (!container?.classList.contains("polePositionRural") || post.showPost === true) return;
+
+      const firstGroup = document.getElementById("panelContainer")?.firstElementChild;
+      const mainPanel = firstGroup?.classList.contains("panelStack")
+        ? firstGroup.querySelector(":scope > .panel.stackedPanelMain")
+        : firstGroup;
+      const mainSign = mainPanel?.querySelector(":scope > .signContainer");
+      const posts = Array.from(container.querySelectorAll(":scope > .post"));
+      if (!mainSign || posts.length !== 2) return;
+
+      const mainRect = mainSign.getBoundingClientRect();
+      if (mainRect.width <= 0 || mainRect.height <= 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const scaleX = container.offsetWidth
+        ? containerRect.width / container.offsetWidth : 1;
+      const scaleY = container.offsetHeight
+        ? containerRect.height / container.offsetHeight : scaleX;
+      const unitX = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1;
+      const unitY = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : 1;
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const top = (mainRect.top - containerRect.top) / unitY;
+      // The supports start at the main panel, but must reach below any panels
+      // stacked beneath it. Keep only a short length exposed below the sign.
+      const lowestSignBottom = Array.from(
+        firstGroup.querySelectorAll(".signContainer, .exitTabContainer.tabVisible")
+      ).reduce((bottom, part) => {
+        const rect = part.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 ? Math.max(bottom, rect.bottom) : bottom;
+      }, mainRect.bottom);
+      const height = Math.max(8 * rem, (lowestSignBottom - mainRect.top) / unitY + 6 * rem);
+
+      posts.forEach((support, index) => {
+        const centerX = mainRect.left + mainRect.width * (index === 0 ? 0.1 : 0.9);
+        support.style.left = `${(centerX - containerRect.left) / unitX - support.offsetWidth / 2}px`;
+        support.style.top = `${top}px`;
+        support.style.height = `${height}px`;
+        support.style.visibility = "visible";
+      });
+    };
+
+    const scheduleRuralPostLayoutUpdate = () => {
+      if (ruralPostLayoutFrame !== null) cancelAnimationFrame(ruralPostLayoutFrame);
+      ruralPostLayoutFrame = requestAnimationFrame(() => {
+        ruralPostLayoutFrame = null;
+        updateRuralPostLayout();
+      });
+    };
+
+    const watchRuralPostLayout = () => {
+      ruralPostResizeObserver?.disconnect();
+      const container = document.getElementById("postContainer");
+      if (!container?.classList.contains("polePositionRural")) return;
+
+      updateRuralPostLayout();
+      if (typeof ResizeObserver !== "undefined") {
+        ruralPostResizeObserver = new ResizeObserver(scheduleRuralPostLayoutUpdate);
+        container.querySelectorAll("#panelContainer .signContainer, #panelContainer .exitTabContainer.tabVisible")
+          .forEach((part) => ruralPostResizeObserver.observe(part));
+      }
+      if (!ruralPostResizeBound) {
+        window.addEventListener("resize", scheduleRuralPostLayoutUpdate);
+        ruralPostResizeBound = true;
+      }
+      scheduleRuralPostLayoutUpdate();
+      if (document.fonts?.ready) {
+        document.fonts.ready.then(scheduleRuralPostLayoutUpdate).catch(() => {});
+      }
+    };
 
     const getVisibleSideMenuElements = () => {
       const viewportWidth =
@@ -3820,6 +3974,7 @@ const app = (function () {
       postViewportLayoutFrame = window.requestAnimationFrame(() => {
         postViewportLayoutFrame = null;
         updatePostViewportLayout();
+        VmsPanel.refreshPreviews();
       });
     };
     
@@ -4014,19 +4169,23 @@ const app = (function () {
     const init = async function () {
       post = new Post(DEFAULT_POST_POSITION);
       post.panelSpacing = getDefaultPanelSpacing();
+      post.newPanel();
+      currentlySelectedPanelIndex = 0;
 
       ensureExtendedGuideArrowOptions();
       bindDownloadResolutionControl();
 
-      formHandler.init(exposeToFormHandler);
+      const formInitialization = formHandler.init(exposeToFormHandler);
 
-      // Initialize CustomShields after formHandler and wait for it
+      // The form loads saved custom icons. Finish that work before restoring
+      // and drawing a sign that may refer to those icon IDs.
       window.customShields = new CustomShields();
+      await formInitialization;
       await window.customShields.initialized;
 
         const restored = await loadSavedAppState();
 
-        if (!restored) {
+        if (post.panels.length === 0) {
           post.newPanel();
           currentlySelectedPanelIndex = post.panels.length - 1;
         }
@@ -4034,6 +4193,7 @@ const app = (function () {
         const migratedLegacyNoneBanners =
           migrateLegacyNoneShieldBannersOnce();
 
+        await prepareIconImagesForPost(post);
         formHandler.updateForm();
         redraw();
 
@@ -4055,6 +4215,41 @@ const app = (function () {
             pendingHistoryRestoreSnapshot || serializeAppState() || currentHistorySnapshot || null
           );
         });
+        document.addEventListener("keydown", (event) => {
+          if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.defaultPrevented) return;
+          const key = event.key.toLowerCase();
+          if (!["c", "x", "v"].includes(key)) return;
+          const target = event.target;
+          if (document.querySelector("dialog[open]")) return;
+          if (target?.isContentEditable || target?.closest?.("input, textarea, select, [contenteditable], [role='dialog']")) return;
+          if (key === "v" && !copiedGuideArrowArea) return;
+          if (key !== "v" && (selectedGuideArrowPanelIndex !== currentlySelectedPanelIndex ||
+              getCurrentPanel()?.sign?.guideArrow === "None" && getCurrentPanel()?.sign?.arrowMode !== "apl")) return;
+          const sign = getCurrentPanel()?.sign;
+          if (!sign) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          if (key === "c" || key === "x") copiedGuideArrowArea = copyGuideArrowArea(sign);
+          if (key === "x" || key === "v") {
+            runWithUndo(() => {
+              if (key === "x") {
+                sign.guideArrow = "None";
+                sign.arrowMode = "standard";
+                sign.guideArrowLanes = 0;
+                sign.aplArrows = [];
+                sign.standardArrowIndividuals = [];
+                selectedGuideArrowPanelIndex = -1;
+                selectedGuideArrowIndex = -1;
+              } else {
+                Object.assign(sign, JSON.parse(JSON.stringify(copiedGuideArrowArea)));
+                selectedGuideArrowPanelIndex = currentlySelectedPanelIndex;
+                selectedGuideArrowIndex = -1;
+              }
+              formHandler.updateForm();
+              redraw();
+            });
+          }
+        }, true);
         window.addEventListener("keydown", (event) => {
           const modifierPressed = event.ctrlKey || event.metaKey;
 
@@ -4508,6 +4703,10 @@ const app = (function () {
   };
 
   const handleRenderedPanelDragStart = (event) => {
+    if (guideArrowPointerDragActive) {
+      event.preventDefault();
+      return;
+    }
     const panel = event.currentTarget;
     const fromIndex = Number(panel.dataset.panelIndex);
     if (Number.isNaN(fromIndex)) {
@@ -4596,6 +4795,8 @@ const app = (function () {
       }
 
       currentlySelectedPanelIndex = clamp(panelNumber, 0, post.panels.length - 1);
+      selectedGuideArrowPanelIndex = -1;
+      selectedGuideArrowIndex = -1;
 
       const unhidPanel = unhidePanelForSelection(currentlySelectedPanelIndex);
       if (unhidPanel) {
@@ -4841,6 +5042,8 @@ const app = (function () {
 
   // Set the current editing (SUB)panel based off paramter number, within the correct range (0 < # of panels - 1)
     const changeEditingSubPanel = function (subPanelNumber) {
+      selectedGuideArrowPanelIndex = -1;
+      selectedGuideArrowIndex = -1;
       const sign = getCurrentPanel()?.sign;
 
       if (!sign) {
@@ -4927,6 +5130,591 @@ const app = (function () {
 
       return !aplTab.classList.contains("tabHidden");
     };
+
+    const newExitTabLayoutId = () =>
+      globalThis.crypto?.randomUUID?.() ||
+      `layout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const ensureExitTabLayoutIds = (panel) => {
+      const subpanelIds = new Set();
+      panel.sign?.subPanels?.forEach((subpanel) => {
+        if (!subpanel.layoutId || subpanelIds.has(subpanel.layoutId)) {
+          subpanel.layoutId = newExitTabLayoutId();
+        }
+        subpanelIds.add(subpanel.layoutId);
+      });
+      const tabIds = new Set();
+      panel.exitTabs?.forEach((tab) => {
+        [tab, ...(tab.nestedExitTabs || [])].forEach((item) => {
+          if (!item.layoutId || tabIds.has(item.layoutId)) {
+            item.layoutId = newExitTabLayoutId();
+          }
+          tabIds.add(item.layoutId);
+
+          const hasDragPlacement = !!item.dragSnapAnchor || !!Number(item.dragOffsetRem);
+          if (hasDragPlacement && (
+            (item.dragLayoutPosition !== undefined && item.dragLayoutPosition !== item.position) ||
+            (item !== tab && item.dragParentLayoutPosition !== undefined &&
+              item.dragParentLayoutPosition !== tab.position)
+          )) {
+            item.dragOffsetRem = 0;
+            item.dragSnapAnchor = null;
+          }
+          if (item.dragSnapAnchor || Number(item.dragOffsetRem)) {
+            item.dragLayoutPosition = item.position;
+            if (item !== tab) item.dragParentLayoutPosition = tab.position;
+          } else {
+            delete item.dragLayoutPosition;
+            delete item.dragParentLayoutPosition;
+          }
+        });
+      });
+    };
+
+    const getExitTabAnchorRect = (panelElmt, anchor) => {
+      if (anchor?.kind === "panel") {
+        return panelElmt.querySelector(":scope > .signContainer > .sign")?.getBoundingClientRect();
+      }
+      if (anchor?.kind === "subpanel") {
+        const target = Array.from(panelElmt.querySelectorAll(".sign .subPanelDisplay"))
+          .find((elmt) => elmt.dataset.layoutId === anchor.id);
+        return target?.getClientRects().length ? target.getBoundingClientRect() : null;
+      }
+      if (anchor?.kind === "tab") {
+        const target = Array.from(panelElmt.querySelectorAll(".exitTabHolder > .exitTab"))
+          .find((elmt) => elmt.dataset.layoutId === anchor.id);
+        return target?.getClientRects().length && getComputedStyle(target).visibility === "visible"
+          ? target.getBoundingClientRect() : null;
+      }
+      return null;
+    };
+
+    const exitTabAnchorPoint = (rect, point) =>
+      point === "left" ? rect.left : point === "right" ? rect.right : (rect.left + rect.right) / 2;
+
+    const getExitTabAnchorPoint = (panelElmt, anchor, rect) => {
+      if (anchor.kind === "subpanel" && anchor.seam && anchor.point !== "center") {
+        const subpanel = Array.from(panelElmt.querySelectorAll(".sign .subPanelDisplay"))
+          .find((elmt) => elmt.dataset.layoutId === anchor.id);
+        const divider = anchor.point === "left"
+          ? subpanel?.previousElementSibling
+          : subpanel?.nextElementSibling;
+        if (divider?.classList.contains("subDivider")) {
+          const dividerRect = divider.getBoundingClientRect();
+          return (dividerRect.left + dividerRect.right) / 2;
+        }
+      }
+      return exitTabAnchorPoint(rect, anchor.point);
+    };
+
+    const getAnchoredExitTabLeft = (panelElmt, tabElmt, anchor) => {
+      const first = getExitTabAnchorRect(panelElmt, anchor);
+      if (!first) return null;
+      const second = anchor.between && getExitTabAnchorRect(panelElmt, anchor.between);
+      if (anchor.between && !second) return null;
+      const target = second
+        ? (getExitTabAnchorPoint(panelElmt, anchor, first) +
+            getExitTabAnchorPoint(panelElmt, anchor.between, second)) / 2
+        : getExitTabAnchorPoint(panelElmt, anchor, first);
+      const tabWidth = tabElmt.getBoundingClientRect().width;
+      const borderSide = anchor.seam && anchor.self !== "center"
+        ? parseFloat(getComputedStyle(tabElmt)[anchor.self === "right"
+          ? "borderRightWidth" : "borderLeftWidth"]) / 2 || 0
+        : 0;
+      const selfPoint = anchor.self === "right"
+        ? tabWidth - borderSide
+        : anchor.self === "center" ? tabWidth / 2 : borderSide;
+      return target - selfPoint;
+    };
+
+    const wouldCycleExitTabAnchor = (panelElmt, tabElmt, anchor) => {
+      const panel = post.panels[Number(panelElmt.dataset.panelIndex)];
+      const byId = new Map();
+      panel?.exitTabs?.forEach((tab) => {
+        [tab, ...(tab.nestedExitTabs || [])].forEach((item) => byId.set(item.layoutId, item));
+      });
+      const visited = new Set();
+      const pointsToDraggedTab = (target) => {
+        if (target?.kind !== "tab") return false;
+        if (target.id === tabElmt.dataset.layoutId) return true;
+        if (visited.has(target.id)) return false;
+        visited.add(target.id);
+        const next = byId.get(target.id)?.dragSnapAnchor;
+        return next && (pointsToDraggedTab(next) || pointsToDraggedTab(next.between));
+      };
+      return pointsToDraggedTab(anchor) || pointsToDraggedTab(anchor?.between);
+    };
+
+    // Work in rendered coordinates so snapping also follows the post's zoom.
+    const resolveExitTabDragPlacement = (
+      panelElmt, tabElmt, requestedLeft, snap = true, allowCrossing = false
+    ) => {
+      const signElmt = panelElmt.querySelector(":scope > .signContainer > .sign");
+      if (!signElmt) return { left: requestedLeft, anchor: null };
+      const sign = signElmt.getBoundingClientRect();
+      const tab = tabElmt.getBoundingClientRect();
+      const width = tab.width;
+      if (!width || width > sign.width) return { left: tab.left, anchor: null };
+
+      const blockers = Array.from(panelElmt.querySelectorAll(".exitTabHolder > .exitTab"))
+        .filter((other) => other !== tabElmt && other.getClientRects().length &&
+          getComputedStyle(other).visibility === "visible")
+        .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.width > 0 && rect.top < tab.bottom - 1 && rect.bottom > tab.top + 1)
+        .sort((a, b) => a.rect.left - b.rect.left);
+
+      const allowed = allowCrossing ? [[sign.left, sign.right - width]] : [];
+      if (!allowCrossing) {
+        let edge = sign.left;
+        for (const { rect: other } of blockers) {
+          if (other.left - edge >= width) allowed.push([edge, other.left - width]);
+          edge = Math.max(edge, other.right);
+        }
+        if (sign.right - edge >= width) allowed.push([edge, sign.right - width]);
+      }
+      if (!allowed.length) return { left: tab.left, anchor: null };
+
+      const clampToAllowed = (left) => allowed.reduce((best, range) => {
+        const clamped = Math.max(range[0], Math.min(range[1], left));
+        return Math.abs(clamped - left) < Math.abs(best - left) ? clamped : best;
+      }, allowed[0][0]);
+      if (!snap) return { left: clampToAllowed(requestedLeft), anchor: null };
+
+      const candidates = [];
+      const addCandidates = (rect, target, element = null) => {
+        const leftAnchor = { ...target, point: "left", self: "left",
+          ...(element?.previousElementSibling?.classList.contains("subDivider") ? { seam: true } : {}) };
+        const rightAnchor = { ...target, point: "right", self: "right",
+          ...(element?.nextElementSibling?.classList.contains("subDivider") ? { seam: true } : {}) };
+        candidates.push(
+          { left: element ? getAnchoredExitTabLeft(panelElmt, tabElmt, leftAnchor) : rect.left,
+            anchor: leftAnchor },
+          { left: element ? getAnchoredExitTabLeft(panelElmt, tabElmt, rightAnchor) : rect.right - width,
+            anchor: rightAnchor },
+          { left: (rect.left + rect.right - width) / 2,
+            anchor: { ...target, point: "center", self: "center" } }
+        );
+      };
+      addCandidates(sign, { kind: "panel" });
+      signElmt.querySelectorAll(".subPanelDisplay").forEach((subpanel) => {
+        const rect = subpanel.getBoundingClientRect();
+        addCandidates(rect, { kind: "subpanel", id: subpanel.dataset.layoutId }, subpanel);
+      });
+      blockers.forEach(({ element, rect: other }, index) => {
+        const target = { kind: "tab", id: element.dataset.layoutId };
+        candidates.push(
+          { left: other.left - width, anchor: { ...target, point: "left", self: "right" } },
+          { left: other.right, anchor: { ...target, point: "right", self: "left" } },
+          { left: (other.left + other.right - width) / 2,
+            anchor: { ...target, point: "center", self: "center" } }
+        );
+        if (index > 0) {
+          const previous = blockers[index - 1];
+          candidates.push(
+            { left: (previous.rect.right + other.left - width) / 2,
+              anchor: { kind: "tab", id: previous.element.dataset.layoutId,
+                point: "right", self: "center", between: { ...target, point: "left" } } },
+            { left: ((previous.rect.left + previous.rect.right + other.left + other.right) / 4) - width / 2,
+              anchor: { kind: "tab", id: previous.element.dataset.layoutId,
+                point: "center", self: "center", between: { ...target, point: "center" } } }
+          );
+        }
+      });
+      const scale = signElmt.offsetWidth ? sign.width / signElmt.offsetWidth : 1;
+      const threshold = 10 * scale;
+      const nearby = candidates
+        .filter(({ left }) => Number.isFinite(left) &&
+          allowed.some(([low, high]) => left >= low - 0.5 && left <= high + 0.5))
+        .filter(({ anchor }) => !allowCrossing || anchor.kind !== "tab" ||
+          anchor.self !== "center" || !!anchor.between)
+        .filter(({ anchor }) => !wouldCycleExitTabAnchor(panelElmt, tabElmt, anchor))
+        .filter(({ left }) => Math.abs(left - requestedLeft) <= threshold)
+        .sort((a, b) => Math.abs(a.left - requestedLeft) - Math.abs(b.left - requestedLeft))[0];
+      return nearby
+        ? { left: clampToAllowed(nearby.left), anchor: nearby.anchor }
+        : { left: clampToAllowed(requestedLeft), anchor: null };
+    };
+
+    const setRenderedExitTabOffset = (holder, offset) => {
+      holder.style.translate = offset ? `${offset}rem 0` : "";
+      holder.dataset.dragOffsetRem = String(offset);
+      const container = holder.closest(".exitTabContainer");
+      if (container) {
+        container.classList.toggle("hasDraggedExitTab",
+          Array.from(container.querySelectorAll(".exitTabHolder"))
+            .some((item) => Number(item.dataset.dragOffsetRem || 0) !== 0));
+      }
+    };
+
+    const getExitTabRemPixels = (tabElmt) => {
+      const rect = tabElmt.getBoundingClientRect();
+      const scale = tabElmt.offsetWidth ? rect.width / tabElmt.offsetWidth : 1;
+      return (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * scale;
+    };
+
+    const moveRenderedExitTabToLeft = (holder, tabElmt, tab, left) => {
+      const rect = tabElmt.getBoundingClientRect();
+      if (Math.abs(left - rect.left) < 0.05) return false;
+      tab.dragOffsetRem = Math.round(((Number(tab.dragOffsetRem) || 0) +
+        (left - rect.left) / getExitTabRemPixels(tabElmt)) * 10000) / 10000;
+      setRenderedExitTabOffset(holder, tab.dragOffsetRem);
+      return true;
+    };
+
+    // Older saved tabs have a numeric drag offset but no stored snap target.
+    // Adopt a target only when that saved position already lines up closely.
+    const adoptNearbyExitTabAnchors = (panelElmt, panel) => {
+      panelElmt.querySelectorAll(".exitTabHolder > .exitTab.draggableExitTab").forEach((tabElmt) => {
+        const holder = tabElmt.parentElement;
+        const parentTab = panel.exitTabs[Number(holder.dataset.exitTabIndex)];
+        const nestedIndex = Number(holder.dataset.nestedExitTabIndex);
+        const tab = nestedIndex >= 0 ? parentTab?.nestedExitTabs?.[nestedIndex] : parentTab;
+        if (!tab || Object.prototype.hasOwnProperty.call(tab, "dragSnapAnchor") ||
+            !Number(tab.dragOffsetRem) ||
+            !tabElmt.getClientRects().length ||
+            getComputedStyle(tabElmt).visibility !== "visible") return;
+        const rect = tabElmt.getBoundingClientRect();
+        const placement = resolveExitTabDragPlacement(panelElmt, tabElmt, rect.left);
+        const scale = tabElmt.offsetWidth ? rect.width / tabElmt.offsetWidth : 1;
+        tab.dragSnapAnchor = placement.anchor &&
+          Math.abs(placement.left - rect.left) <= 5 * scale
+          ? placement.anchor : null;
+      });
+    };
+
+    const applyRenderedExitTabAnchors = (panelElmt, panel) => {
+      if (!panelElmt.isConnected || panelElmt.dataset.exitTabDragActive === "true") return;
+      const tabs = Array.from(panelElmt.querySelectorAll(".exitTabHolder > .exitTab.draggableExitTab"));
+      const byId = new Map(tabs.map((element) => [element.dataset.layoutId, element]));
+      const completed = new Set();
+      const visiting = new Set();
+      const signRect = panelElmt.querySelector(":scope > .signContainer > .sign")?.getBoundingClientRect();
+      const apply = (tabElmt) => {
+        if (completed.has(tabElmt) || visiting.has(tabElmt)) return;
+        visiting.add(tabElmt);
+        const holder = tabElmt.parentElement;
+        const parentTab = panel.exitTabs[Number(holder.dataset.exitTabIndex)];
+        const nestedIndex = Number(holder.dataset.nestedExitTabIndex);
+        const tab = nestedIndex >= 0 ? parentTab?.nestedExitTabs?.[nestedIndex] : parentTab;
+        const anchor = tab?.dragSnapAnchor;
+        if (anchor && tabElmt.getClientRects().length &&
+            getComputedStyle(tabElmt).visibility === "visible") {
+          if (anchor.kind === "subpanel" && (anchor.point === "left" || anchor.point === "right")) {
+            anchor.seam = true;
+          }
+          for (const target of [anchor, anchor.between].filter(Boolean)) {
+            const dependency = target.kind === "tab" ? byId.get(target.id) : null;
+            if (dependency && dependency !== tabElmt && !visiting.has(dependency)) apply(dependency);
+          }
+          const desiredLeft = getAnchoredExitTabLeft(panelElmt, tabElmt, anchor);
+          if (desiredLeft !== null) {
+            const rect = tabElmt.getBoundingClientRect();
+            // Move all anchors to their new positions before collision checks.
+            // Otherwise a tab can be blocked by a neighbor's old position.
+            const safeLeft = signRect && rect.width <= signRect.width
+              ? Math.max(signRect.left, Math.min(signRect.right - rect.width, desiredLeft))
+              : rect.left;
+            if (Math.abs(safeLeft - rect.left) >= 0.05) {
+              const offset = Math.round(((Number(tab.dragOffsetRem) || 0) +
+                (safeLeft - rect.left) / getExitTabRemPixels(tabElmt)) * 10000) / 10000;
+              tab.dragOffsetRem = offset;
+              setRenderedExitTabOffset(holder, offset);
+            }
+          }
+        }
+        visiting.delete(tabElmt);
+        completed.add(tabElmt);
+      };
+      tabs.forEach(apply);
+      // A changed alignment can shift an unanchored tab beyond the sign too.
+      // Bring every visible tab inside before resolving collisions between tabs.
+      tabs.forEach((tabElmt) => {
+        const holder = tabElmt.parentElement;
+        const parentTab = panel.exitTabs[Number(holder.dataset.exitTabIndex)];
+        const nestedIndex = Number(holder.dataset.nestedExitTabIndex);
+        const tab = nestedIndex >= 0 ? parentTab?.nestedExitTabs?.[nestedIndex] : parentTab;
+        if (!tab || !signRect || !tabElmt.getClientRects().length ||
+            getComputedStyle(tabElmt).visibility !== "visible") return;
+        const rect = tabElmt.getBoundingClientRect();
+        if (rect.width > signRect.width) return;
+        const boundedLeft = Math.max(signRect.left, Math.min(signRect.right - rect.width, rect.left));
+        if (Math.abs(boundedLeft - rect.left) > 1) {
+          moveRenderedExitTabToLeft(holder, tabElmt, tab, boundedLeft);
+          tab.dragLayoutPosition = tab.position;
+          if (nestedIndex >= 0) tab.dragParentLayoutPosition = parentTab.position;
+        }
+      });
+      for (let pass = 0; pass < tabs.length; pass++) {
+        let changed = false;
+        tabs.forEach((tabElmt) => {
+          const holder = tabElmt.parentElement;
+          const parentTab = panel.exitTabs[Number(holder.dataset.exitTabIndex)];
+          const nestedIndex = Number(holder.dataset.nestedExitTabIndex);
+          const tab = nestedIndex >= 0 ? parentTab?.nestedExitTabs?.[nestedIndex] : parentTab;
+          if (!tab || !tabElmt.getClientRects().length ||
+              getComputedStyle(tabElmt).visibility !== "visible") return;
+          const rect = tabElmt.getBoundingClientRect();
+          const safeLeft = resolveExitTabDragPlacement(panelElmt, tabElmt, rect.left, false).left;
+          if (Math.abs(safeLeft - rect.left) < (tab.dragSnapAnchor ? 0.05 : 0.5)) return;
+          if (moveRenderedExitTabToLeft(holder, tabElmt, tab, safeLeft)) {
+            changed = true;
+            tab.dragLayoutPosition = tab.position;
+            if (nestedIndex >= 0) tab.dragParentLayoutPosition = parentTab.position;
+          }
+        });
+        if (!changed) break;
+      }
+
+      // Two tabs can overlap so much that neither has a free interval on its
+      // own. Pack that row together when their combined width fits the sign.
+      if (signRect) {
+        const visible = tabs.filter((element) => element.getClientRects().length &&
+          getComputedStyle(element).visibility === "visible");
+        const bands = [];
+        visible.forEach((element) => {
+          const rect = element.getBoundingClientRect();
+          const band = bands.find((item) => rect.top < item.bottom - 1 &&
+            rect.bottom > item.top + 1);
+          if (band) {
+            band.tabs.push(element);
+            band.top = Math.min(band.top, rect.top);
+            band.bottom = Math.max(band.bottom, rect.bottom);
+          } else {
+            bands.push({ tabs: [element], top: rect.top, bottom: rect.bottom });
+          }
+        });
+        bands.forEach(({ tabs: bandTabs }) => {
+          if (bandTabs.length < 2) return;
+          const positions = bandTabs.map((element) => ({
+            element, rect: element.getBoundingClientRect(), left: element.getBoundingClientRect().left,
+          })).sort((a, b) => a.left - b.left);
+          const totalWidth = positions.reduce((sum, item) => sum + item.rect.width, 0);
+          if (totalWidth > signRect.width + 0.5) return;
+          let right = signRect.left;
+          positions.forEach((item) => {
+            item.left = Math.max(right, Math.min(item.left, signRect.right - item.rect.width));
+            right = item.left + item.rect.width;
+          });
+          if (right > signRect.right) {
+            right = signRect.right;
+            for (let i = positions.length - 1; i >= 0; i--) {
+              positions[i].left = Math.min(positions[i].left, right - positions[i].rect.width);
+              right = positions[i].left;
+            }
+          }
+          positions.forEach(({ element, left }) => {
+            const holder = element.parentElement;
+            const parentTab = panel.exitTabs[Number(holder.dataset.exitTabIndex)];
+            const nestedIndex = Number(holder.dataset.nestedExitTabIndex);
+            const tab = nestedIndex >= 0 ? parentTab?.nestedExitTabs?.[nestedIndex] : parentTab;
+            if (tab && moveRenderedExitTabToLeft(holder, element, tab, left)) {
+              tab.dragLayoutPosition = tab.position;
+              if (nestedIndex >= 0) tab.dragParentLayoutPosition = parentTab.position;
+            }
+          });
+        });
+      }
+    };
+
+    let exitTabAnchorObservers = [];
+    const watchRenderedExitTabAnchors = (panelElmt, panel) => {
+      if (!panelElmt.querySelector(".exitTab.draggableExitTab")) return;
+      let frame = 0;
+      const schedule = () => {
+        if (frame || !panelElmt.isConnected) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          applyRenderedExitTabAnchors(panelElmt, panel);
+        });
+      };
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(schedule);
+        [panelElmt, ...panelElmt.querySelectorAll(".sign, .subPanelDisplay, .exitTab")]
+          .forEach((element) => observer.observe(element));
+        exitTabAnchorObservers.push(observer);
+      }
+      document.fonts?.ready?.then(schedule).catch(() => {});
+    };
+
+    const getExitTabDragPeers = (panelElmt, tabElmt) => {
+      const draggedRect = tabElmt.getBoundingClientRect();
+      return Array.from(panelElmt.querySelectorAll(".exitTabHolder > .exitTab.draggableExitTab"))
+        .filter((element) => element.getClientRects().length &&
+          getComputedStyle(element).visibility === "visible")
+        .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.top < draggedRect.bottom - 1 &&
+          rect.bottom > draggedRect.top + 1)
+        .sort((a, b) => a.rect.left - b.rect.left);
+    };
+
+    const settleDraggedExitTabOrder = (panelElmt, tabElmt, exitTab, initialPeers) => {
+      const panel = post.panels[Number(panelElmt.dataset.panelIndex)];
+      const signElmt = panelElmt.querySelector(":scope > .signContainer > .sign");
+      if (!panel || !signElmt) return;
+      const signRect = signElmt.getBoundingClientRect();
+      const draggedRect = tabElmt.getBoundingClientRect();
+      const originalIndex = initialPeers.findIndex(({ element }) => element === tabElmt);
+      const others = initialPeers.filter(({ element }) => element !== tabElmt &&
+        element.isConnected && element.getClientRects().length);
+      if (originalIndex < 0 || !others.length) {
+        const placement = resolveExitTabDragPlacement(panelElmt, tabElmt, draggedRect.left);
+        moveRenderedExitTabToLeft(tabElmt.parentElement, tabElmt, exitTab, placement.left);
+        exitTab.dragSnapAnchor = placement.anchor;
+        applyRenderedExitTabAnchors(panelElmt, panel);
+        return;
+      }
+
+      const center = draggedRect.left + draggedRect.width / 2;
+      const nextIndex = others.filter(({ rect }) => center > rect.left + rect.width / 2).length;
+      if (nextIndex !== originalIndex) {
+        const ordered = others.slice();
+        ordered.splice(nextIndex, 0, { element: tabElmt, rect: draggedRect });
+        const totalWidth = ordered.reduce((sum, entry) => sum + entry.rect.width, 0);
+        if (totalWidth <= signRect.width + 0.5) {
+          const slots = initialPeers.map(({ rect }) => rect.left);
+          const positions = ordered.map((entry, index) => ({
+            element: entry.element,
+            width: entry.rect.width,
+            left: entry.element === tabElmt ? draggedRect.left : slots[index],
+          }));
+          let right = signRect.left;
+          positions.forEach((entry) => {
+            entry.left = Math.max(right, Math.min(entry.left, signRect.right - entry.width));
+            right = entry.left + entry.width;
+          });
+          if (right > signRect.right) {
+            right = signRect.right;
+            for (let i = positions.length - 1; i >= 0; i--) {
+              positions[i].left = Math.min(positions[i].left, right - positions[i].width);
+              right = positions[i].left;
+            }
+          }
+          positions.forEach(({ element, left }) => {
+            const holder = element.parentElement;
+            const parentTab = panel.exitTabs[Number(holder.dataset.exitTabIndex)];
+            const nestedIndex = Number(holder.dataset.nestedExitTabIndex);
+            const tab = nestedIndex >= 0 ? parentTab?.nestedExitTabs?.[nestedIndex] : parentTab;
+            if (!tab || !moveRenderedExitTabToLeft(holder, element, tab, left)) return;
+            tab.dragSnapAnchor = null;
+            tab.dragLayoutPosition = tab.position;
+            if (nestedIndex >= 0) tab.dragParentLayoutPosition = parentTab.position;
+          });
+          exitTab.dragSnapAnchor = null;
+        }
+      }
+
+      const placement = resolveExitTabDragPlacement(
+        panelElmt, tabElmt, tabElmt.getBoundingClientRect().left
+      );
+      moveRenderedExitTabToLeft(tabElmt.parentElement, tabElmt, exitTab, placement.left);
+      exitTab.dragSnapAnchor = placement.anchor;
+      applyRenderedExitTabAnchors(panelElmt, panel);
+    };
+
+    const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
+      if (!panelElmt || !holder || !tabElmt || !exitTab) return;
+      tabElmt.classList.add("draggableExitTab");
+      const initialOffset = Number(exitTab.dragOffsetRem) || 0;
+      setRenderedExitTabOffset(holder, initialOffset);
+
+      let suppressClick = false;
+      holder.addEventListener("click", (event) => {
+        if (!suppressClick) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        suppressClick = false;
+      }, true);
+      tabElmt.addEventListener("dragstart", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      tabElmt.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        const signElmt = panelElmt.querySelector(":scope > .signContainer > .sign");
+        if (!signElmt) return;
+        const startRect = tabElmt.getBoundingClientRect();
+        if (startRect.width >= signElmt.getBoundingClientRect().width - 1) return;
+        event.stopPropagation();
+        const startX = event.clientX;
+        const initialPeers = getExitTabDragPeers(panelElmt, tabElmt);
+        const previousZIndex = holder.style.zIndex;
+        const dragContainer = holder.closest(".exitTabContainer");
+        const previousContainerZIndex = dragContainer?.style.zIndex;
+        const startOffset = Number(exitTab.dragOffsetRem) || 0;
+        const startAnchor = exitTab.dragSnapAnchor || null;
+        const startLayoutPosition = exitTab.dragLayoutPosition;
+        const startParentLayoutPosition = exitTab.dragParentLayoutPosition;
+        const scale = tabElmt.offsetWidth ? startRect.width / tabElmt.offsetWidth : 1;
+        const remPixels = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) * scale;
+        const wasPanelDraggable = panelElmt.draggable;
+        panelElmt.draggable = false;
+        tabElmt.setPointerCapture(event.pointerId);
+        let moved = false;
+
+        const finish = (endEvent, cancelled) => {
+          endEvent.stopPropagation();
+          tabElmt.removeEventListener("pointermove", move);
+          tabElmt.removeEventListener("pointerup", up);
+          tabElmt.removeEventListener("pointercancel", cancel);
+          if (tabElmt.hasPointerCapture(endEvent.pointerId)) tabElmt.releasePointerCapture(endEvent.pointerId);
+          panelElmt.draggable = wasPanelDraggable;
+          if (!moved) return;
+          delete panelElmt.dataset.exitTabDragActive;
+          tabElmt.classList.remove("draggingExitTab");
+          holder.style.zIndex = previousZIndex;
+          if (dragContainer) dragContainer.style.zIndex = previousContainerZIndex;
+          if (cancelled) {
+            exitTab.dragOffsetRem = startOffset;
+            exitTab.dragSnapAnchor = startAnchor;
+            if (startLayoutPosition === undefined) delete exitTab.dragLayoutPosition;
+            else exitTab.dragLayoutPosition = startLayoutPosition;
+            if (startParentLayoutPosition === undefined) delete exitTab.dragParentLayoutPosition;
+            else exitTab.dragParentLayoutPosition = startParentLayoutPosition;
+            setRenderedExitTabOffset(holder, startOffset);
+            applyRenderedExitTabAnchors(panelElmt, post.panels[Number(panelElmt.dataset.panelIndex)]);
+          } else {
+            suppressClick = true;
+            setTimeout(() => { suppressClick = false; }, 0);
+            settleDraggedExitTabOrder(panelElmt, tabElmt, exitTab, initialPeers);
+            schedulePanelBorderGradientUpdate(panelElmt);
+          }
+          endUndoableChange();
+        };
+        const move = (moveEvent) => {
+          if (moveEvent.pointerId !== event.pointerId) return;
+          moveEvent.preventDefault();
+          moveEvent.stopPropagation();
+          if (!moved && Math.abs(moveEvent.clientX - startX) < 3) return;
+          if (!moved) {
+            moved = true;
+            beginUndoableChange();
+            panelElmt.dataset.exitTabDragActive = "true";
+            tabElmt.classList.add("draggingExitTab");
+            holder.style.zIndex = "5";
+            if (dragContainer) dragContainer.style.zIndex = "4";
+          }
+          const placement = resolveExitTabDragPlacement(
+            panelElmt, tabElmt, startRect.left + moveEvent.clientX - startX,
+            true, true
+          );
+          const offset = Math.round((startOffset + (placement.left - startRect.left) / remPixels) * 10000) / 10000;
+          exitTab.dragOffsetRem = offset;
+          exitTab.dragSnapAnchor = placement.anchor;
+          exitTab.dragLayoutPosition = exitTab.position;
+          const parentTab = post.panels[Number(panelElmt.dataset.panelIndex)]
+            ?.exitTabs?.[Number(holder.dataset.exitTabIndex)];
+          if (parentTab && parentTab !== exitTab) {
+            exitTab.dragParentLayoutPosition = parentTab.position;
+          }
+          setRenderedExitTabOffset(holder, offset);
+        };
+        const up = (upEvent) => finish(upEvent, false);
+        const cancel = (cancelEvent) => finish(cancelEvent, true);
+        tabElmt.addEventListener("pointermove", move);
+        tabElmt.addEventListener("pointerup", up);
+        tabElmt.addEventListener("pointercancel", cancel);
+      });
+    };
     
     const selectRenderedPanelArea = ({
       panelIndex,
@@ -4938,9 +5726,13 @@ const app = (function () {
       menu = "subpanel",
       guideMode = null,
       flashTarget = null,
+      suppressRedraw = false,
+      deferMenu = false,
     } = {}) => {
       const selectedPanelIndex = clamp(panelIndex, 0, post.panels.length - 1);
       currentlySelectedPanelIndex = selectedPanelIndex;
+      selectedGuideArrowPanelIndex = menu === "guideArrows" ? selectedPanelIndex : -1;
+      if (menu !== "guideArrows") selectedGuideArrowIndex = -1;
 
       const selectedPanel = getCurrentPanel();
       const subPanelCount = selectedPanel?.sign?.subPanels?.length || 0;
@@ -5001,25 +5793,24 @@ const app = (function () {
 
       formHandler.updateForm();
 
-      if (
-        menu === "exitTabs" &&
-        typeof formHandler.ensureExitTabMenuOpen === "function"
-      ) {
+      if (!deferMenu && menu === "exitTabs" &&
+          typeof formHandler.ensureExitTabMenuOpen === "function") {
         formHandler.ensureExitTabMenuOpen();
-      } else if (
-        menu === "guideArrows" &&
-        typeof formHandler.ensureGuideArrowMenuOpen === "function"
-      ) {
+      } else if (!deferMenu && menu === "guideArrows" &&
+          typeof formHandler.ensureGuideArrowMenuOpen === "function") {
         const mode =
           guideMode ||
           (selectedPanel?.sign?.arrowMode === "apl" ? "apl" : "standard");
 
         formHandler.ensureGuideArrowMenuOpen(mode);
-      } else if (
-        menu === "subpanel" &&
-        typeof formHandler.ensureSubpanelMenuOpen === "function"
-      ) {
+      } else if (!deferMenu && menu === "subpanel" &&
+          typeof formHandler.ensureSubpanelMenuOpen === "function") {
         formHandler.ensureSubpanelMenuOpen();
+      }
+
+      if (suppressRedraw) {
+        if (flashTarget) flashElementAfterPostTransform(() => flashTarget);
+        return;
       }
 
         const flashTargetKind = flashTarget?.matches?.("[data-sign-row][data-sign-block]")
@@ -5340,6 +6131,7 @@ const app = (function () {
           } else if (previousExitTab) {
             copyExitTabFormatting(previousExitTab, newTab);
           }
+          newTab.borderThickness = Panel.getBorderThickness(panel);
           newTab.number = "";
           newTab.bilingualTopText = "EXIT";
           newTab.nestedExitTabs = [];
@@ -8588,6 +9380,26 @@ const app = (function () {
         });
       };
 
+      const setAPLExitOnlyMergeAdjacent = function (mergeAdjacent) {
+        return runWithUndo(() => {
+          getCurrentPanel().sign.aplExitOnlyMergeAdjacent = !!mergeAdjacent;
+          formHandler.updateForm();
+          redraw();
+        });
+      };
+
+      const setAPLExitOnlyTextSetting = function (index, property, value) {
+        return runWithUndo(() => {
+          const sign = getCurrentPanel().sign;
+          const arrow = sign.aplArrows?.[index];
+          if (!arrow || !["left", "right", "font", "size", "spacing"].includes(property)) return;
+          arrow.aplExitText ||= {};
+          arrow.aplExitText[property] = value;
+          formHandler.updateForm();
+          redraw();
+        });
+      };
+
       const moveAPLArrow = function (
         fromIndex,
         {
@@ -9090,7 +9902,7 @@ const app = (function () {
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
   };
 
-  const copyBlobToClipboard = async (blob, mimeType, fileName = "copiedSign") => {
+  const copyBlobToClipboard = async (blobOrPromise, mimeType, fileName = "copiedSign") => {
     if (
       !navigator.clipboard ||
       typeof navigator.clipboard.write !== "function" ||
@@ -9106,17 +9918,20 @@ const app = (function () {
       throw new Error(`This browser does not support copying ${mimeType} to the clipboard.`);
     }
 
-    const clipboardBlob =
+    const clipboardBlob = Promise.resolve(blobOrPromise).then((blob) =>
       typeof File !== "undefined" && fileName
         ? new File([blob], fileName, { type: mimeType })
-        : blob;
+        : blob
+    );
+    // A clipboard rejection can arrive before a pending export finishes.
+    clipboardBlob.catch(() => {});
 
     let clipboardItem;
 
     try {
-      clipboardItem = new ClipboardItem({ [mimeType]: Promise.resolve(clipboardBlob) });
-    } catch (error) {
       clipboardItem = new ClipboardItem({ [mimeType]: clipboardBlob });
+    } catch (error) {
+      clipboardItem = new ClipboardItem({ [mimeType]: await clipboardBlob });
     }
 
     await navigator.clipboard.write([clipboardItem]);
@@ -9299,6 +10114,15 @@ const app = (function () {
   const getExportBox = (element) => {
     const rect = element.getBoundingClientRect();
 
+    // The static wrapper is the deliberate crop. Its scrollWidth can include
+    // overflowing descendants even though they are clipped by the wrapper.
+    if (element.classList.contains("exportStaticCaptureWrapper")) {
+      return {
+        width: Math.ceil(Math.max(rect.width, 1)),
+        height: Math.ceil(Math.max(rect.height, 1)),
+      };
+    }
+
     return {
       width: Math.ceil(
         Math.max(rect.width, element.scrollWidth, element.offsetWidth, 1)
@@ -9384,8 +10208,29 @@ const app = (function () {
     return inlinedCss;
   };
 
-  const getSafeExportFontEmbedCSS = async () => {
+  const vmsFontFaceCache = new Map();
+  const inlineVmsFontFace = async (rule) => {
+    const urls = Array.from(rule.cssText.matchAll(/url\((['"]?)([^'"\)]+)\1\)/g), (match) => match[2]);
+    const rank = (url) => /\.woff2(?:[?#]|$)/i.test(url) ? 0 : /\.woff(?:[?#]|$)/i.test(url) ? 1 : 2;
+    urls.sort((a, b) => rank(a) - rank(b));
+    for (const url of urls) {
+      try {
+        const response = await fetch(new URL(url, rule.baseHref || document.baseURI).href, { cache: "force-cache" });
+        if (!response.ok) continue;
+        const blob = await response.blob();
+        const signature = String.fromCharCode(...new Uint8Array(await blob.slice(0, 4).arrayBuffer()));
+        if (!["wOFF", "wOF2", "OTTO", "true", "typ1", "ttcf", "\u0000\u0001\u0000\u0000"].includes(signature)) continue;
+        const data = await readBlobAsDataUrl(blob);
+        return rule.cssText.replace(/src\s*:[^;]+;/i, `src: url("${data}");`);
+      } catch (error) {}
+    }
+    return "";
+  };
+  const getSafeExportFontEmbedCSS = async (root = null) => {
     const fontFaceRules = [];
+    const normalizeFamily = (value) => String(value || "").trim().replace(/^["']|["']$/g, "").toLowerCase();
+    const usedFamilies = root ? new Set([root, ...root.querySelectorAll("*")].flatMap((element) =>
+      getComputedStyle(element).fontFamily.split(",").map(normalizeFamily))) : null;
 
     for (const sheet of Array.from(document.styleSheets)) {
       let rules;
@@ -9399,6 +10244,7 @@ const app = (function () {
 
       for (const rule of rules) {
         if (rule.type === CSSRule.FONT_FACE_RULE) {
+          if (usedFamilies && !usedFamilies.has(normalizeFamily(rule.style.fontFamily))) continue;
           fontFaceRules.push({
             cssText: rule.cssText,
             baseHref: sheet.href || document.baseURI,
@@ -9408,9 +10254,12 @@ const app = (function () {
     }
 
     const inlinedRules = await Promise.all(
-      fontFaceRules.map((rule) =>
-        inlineFontFaceUrls(rule.cssText, rule.baseHref)
-      )
+      fontFaceRules.map((rule) => {
+        if (!root) return inlineFontFaceUrls(rule.cssText, rule.baseHref);
+        const key = rule.baseHref + ":" + rule.cssText;
+        if (!vmsFontFaceCache.has(key)) vmsFontFaceCache.set(key, inlineVmsFontFace(rule));
+        return vmsFontFaceCache.get(key);
+      })
     );
 
     return inlinedRules.join("\n");
@@ -9422,7 +10271,7 @@ const app = (function () {
     }
 
     const bannerElements = Array.from(
-      root.querySelectorAll(".bannerA:not(.TOLL):not(.noIndent), .bannerB:not(.TOLL):not(.noIndent)")
+      root.querySelectorAll(".bannerA:not(.TOLL):not(.noIndent):not(.exportRealFirstLetter), .bannerB:not(.TOLL):not(.noIndent):not(.exportRealFirstLetter)")
     );
 
     const restoreCallbacks = [];
@@ -9529,6 +10378,11 @@ const app = (function () {
   ) => {
     const rects = [];
     const addRect = (node, { force = false } = {}) => {
+      // The VMS housing already bounds its entire screen. Content beyond a
+      // fixed-width screen is clipped and must not enlarge the export crop.
+      if (node?.closest?.(".panel.vmsPanel > .signContainer, .panel.vmsPanel > .vmsPanelDisplay")) {
+        return;
+      }
       const isTransparentPanelWrapper =
         node &&
         node.classList &&
@@ -9847,13 +10701,36 @@ const app = (function () {
         )
       : 0;
 
-    const sourceInfos = sourceElements.map((sourceElement) => ({
-      sourceElement,
-      sourceRect: sourceElement.getBoundingClientRect(),
-      bounds: getElementAndDescendantBounds(sourceElement, {
+    const sourceInfos = sourceElements.map((sourceElement) => {
+      const sourceRect = sourceElement.getBoundingClientRect();
+      const bounds = getElementAndDescendantBounds(sourceElement, {
         includeSelf: true,
-      }),
-    }));
+      });
+
+      // Panel wrappers may be wider than the rendered sign, especially for
+      // narrow panels. Crop horizontally to painted sections rather than the
+      // wrapper or every nested layout box.
+      if (
+        sourceElements.length === 1 &&
+        isPanelExportSourceElement(sourceElement)
+      ) {
+        const paintedRects = Array.from(
+          sourceElement.querySelectorAll(
+            ".sign, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame"
+          )
+        )
+          .filter(isElementVisibleForExport)
+          .map((node) => node.getBoundingClientRect());
+
+        if (paintedRects.length) {
+          bounds.left = Math.min(...paintedRects.map((rect) => rect.left));
+          bounds.right = Math.max(...paintedRects.map((rect) => rect.right));
+          bounds.width = Math.max(bounds.right - bounds.left, 1);
+        }
+      }
+
+      return { sourceElement, sourceRect, bounds };
+    });
 
     const left = Math.min(...sourceInfos.map((info) => info.bounds.left));
     const top = Math.min(...sourceInfos.map((info) => info.bounds.top));
@@ -10089,6 +10966,11 @@ const app = (function () {
   };
 
   const withTemporaryExportStyles = async (element, callback) => {
+    await waitForPendingRenderedArrows(element);
+    await VmsPanel.refresh(element);
+    if (element?.id === "postContainer") {
+      updateRuralPostLayout();
+    }
     const staticClone = createStaticExportClone(element);
     const exportElement = staticClone ? staticClone.node : element;
     const oldInline = staticClone
@@ -10138,6 +11020,9 @@ const app = (function () {
       refreshDynamicPanelBorders(exportElement);
       await waitForNextFrame();
       refreshDynamicPanelBorders(exportElement);
+      await waitForNextFrame();
+
+      await VmsPanel.refresh(exportElement, { force: true, exporting: true });
       await waitForNextFrame();
 
       const box = getExportBox(exportElement);
@@ -10367,14 +11252,17 @@ const app = (function () {
       setDownloadButtonsDisabled(true);
 
       try {
-        const pngDataUrl = await saveSign(file, true, false);
-        const pngBlob = await dataUrlToBlob(pngDataUrl, "image/png");
+        const pngBlob = Promise.resolve().then(async () =>
+          dataUrlToBlob(await saveSign(file, true, false), "image/png")
+        );
         await copyBlobToClipboard(pngBlob, "image/png", "copiedSign.png");
         flashDownloadActionButton("copyPNG", "Copied");
       } catch (error) {
         console.error("Unable to copy PNG", error);
         flashDownloadActionButton("copyPNG", "Failed", "error");
-        alert("Unable to copy PNG: " + (error?.message || error));
+        alert(/document is not focused/i.test(String(error?.message || error))
+          ? "Bring this tab to the front and click Copy PNG again."
+          : "Unable to copy PNG: " + (error?.message || error));
       } finally {
         syncDownloadSelection();
       }
@@ -10416,8 +11304,9 @@ const app = (function () {
           return false;
         }
 
-        const pngDataUrl = await saveSign(file, true, false);
-        const pngBlob = await dataUrlToBlob(pngDataUrl, "image/png");
+        const pngBlob = Promise.resolve().then(async () =>
+          dataUrlToBlob(await saveSign(file, true, false), "image/png")
+        );
         await copyBlobToClipboard(
           pngBlob,
           "image/png",
@@ -10426,7 +11315,9 @@ const app = (function () {
         return true;
       } catch (error) {
         console.error("Unable to copy panel PNG", error);
-        alert("Unable to copy panel PNG: " + (error?.message || error));
+        alert(/document is not focused/i.test(String(error?.message || error))
+          ? "Bring this tab to the front and click Copy PNG again."
+          : "Unable to copy panel PNG: " + (error?.message || error));
         return false;
       } finally {
         fileInfo.fileType = previousFileInfo.fileType;
@@ -10551,6 +11442,14 @@ const app = (function () {
       }
     };
 
+    const toggleVmsPanel = () => runWithUndo(() => {
+      const panel = getCurrentPanel();
+      if (!panel) return;
+      VmsPanel.setEnabled(panel, panel.isVms !== true);
+      formHandler.updateForm();
+      redraw({ preserveOtherPanels: true, changedPanelIndex: currentlySelectedPanelIndex });
+    });
+
     const resetPadding = function (mode, params) {
       return runWithUndo(() => {
         getCurrentPanel().sign.padding = "0.3rem 0.75rem 0.3rem 0.75rem";
@@ -10568,10 +11467,142 @@ const app = (function () {
   /**
    * Redraw the panels on the post.
    */
-    
-  const redraw = function () {
+  const renderedArrowKinds = [
+    ".standardGuideArrowFrame", ".modernExitArrowFrame", ".aplArrowSlot",
+    ".bE-arrowElement",
+    "img.arrow, img.exitOnlyArrow, img.halfarrow, img.sideLeftArrow, img.sideRightArrow",
+  ];
+  const renderedArrowReadiness = new WeakMap();
+  const pendingRenderedArrows = new WeakMap();
+  const renderedArrowMaskLoads = new Map();
+  const renderedArrowImages = (frame) => frame.tagName === "IMG"
+    ? [frame] : Array.from(frame.querySelectorAll("img"));
+
+  const waitForRenderedArrowImage = async (image) => {
+    image.loading = "eager";
+    image.decoding = "sync";
+    if (!image.complete) {
+      const loaded = await new Promise((resolve) => {
+        const finish = (ok) => {
+          image.removeEventListener("load", loaded);
+          image.removeEventListener("error", failed);
+          resolve(ok);
+        };
+        const loaded = () => finish(true), failed = () => finish(false);
+        image.addEventListener("load", loaded, { once: true });
+        image.addEventListener("error", failed, { once: true });
+        if (image.complete) finish(image.naturalWidth > 0);
+      });
+      if (!loaded) return false;
+    }
+    if (!image.naturalWidth || !image.naturalHeight) return false;
+    if (typeof image.decode === "function") {
+      try { await image.decode(); } catch (error) { return false; }
+    }
+    return true;
+  };
+
+  const waitForRenderedArrow = (frame) => {
+    const cached = renderedArrowReadiness.get(frame);
+    if (cached) return cached.promise;
+    const state = { ready: false, promise: null };
+    renderedArrowReadiness.set(frame, state);
+    state.promise = Promise.all([
+      ...renderedArrowImages(frame).map(waitForRenderedArrowImage),
+      frame._arrowMaskReady || true,
+    ]).then((results) => {
+      state.ready = results.every(Boolean);
+      if (state.ready) frame._refreshArrowLayout?.();
+      return state.ready;
+    }).catch(() => false);
+    return state.promise;
+  };
+
+  const waitForRenderedArrowMask = (mask, source) => {
+    const key = mask || source;
+    if (renderedArrowMaskLoads.has(key)) return renderedArrowMaskLoads.get(key);
+    const image = document.createElement("img");
+    image.src = mask ? mask.slice(5, -2) : source;
+    const ready = waitForRenderedArrowImage(image).then(async (ok) => {
+      if (!ok) { renderedArrowMaskLoads.delete(key); return false; }
+      await waitForNextFrame();
+      await waitForNextFrame();
+      return true;
+    });
+    renderedArrowMaskLoads.set(key, ready);
+    return ready;
+  };
+
+  const collectRenderedArrows = (root) => {
+    const frames = new Map();
+    const panels = Array.from(root.querySelectorAll(".panel[data-panel-index]"));
+    if (root.matches?.(".panel[data-panel-index]")) panels.unshift(root);
+    panels.forEach((panel) => {
+      renderedArrowKinds.forEach((selector, kind) => {
+        panel.querySelectorAll(selector).forEach((frame, index) => {
+          frames.set(`${panel.dataset.panelIndex}/${kind}/${index}`, frame);
+        });
+      });
+    });
+    return frames;
+  };
+
+  const retainRenderedArrows = (root, previousFrames) => {
+    collectRenderedArrows(root).forEach((frame, key) => {
+      const previous = previousFrames.get(key);
+      if (previous === frame) return;
+      const ready = waitForRenderedArrow(frame);
+      if (!previous || !renderedArrowReadiness.get(previous)?.ready) return;
+      // Move the actual painted frame, including its geometry and color mask.
+      // A cloned image can have its own undecoded interval even after preload.
+      const request = { parent: frame.parentElement, promise: null };
+      pendingRenderedArrows.set(previous, request);
+      frame.replaceWith(previous);
+      request.promise = ready.then((ok) => {
+        if (pendingRenderedArrows.get(previous) !== request) return;
+        pendingRenderedArrows.delete(previous);
+        if (!ok || !previous.isConnected || previous.parentElement !== request.parent) return;
+        previous.replaceWith(frame);
+        frame._refreshArrowLayout?.();
+        const panel = frame.closest(".panel[data-panel-index]");
+        if (panel) {
+          const model = post.panels[Number(panel.dataset.panelIndex)];
+          if (model) applyRenderedExitTabAnchors(panel, model);
+          schedulePanelBorderGradientUpdate(panel);
+        }
+        schedulePostViewportLayoutUpdate();
+      });
+    });
+  };
+
+  const waitForPendingRenderedArrows = async (root) => {
+    let pending;
+    do {
+      pending = Array.from(collectRenderedArrows(root).values())
+        .map((frame) => pendingRenderedArrows.get(frame)?.promise).filter(Boolean);
+      await Promise.all(pending);
+    } while (pending.length);
+  };
+
+  const redraw = function (options = {}) {
+    VmsPanel.disconnect();
     const postContainerElmt = document.getElementById("postContainer");
     const panelContainerElmt = document.getElementById("panelContainer");
+    const previousArrowFrames = collectRenderedArrows(panelContainerElmt);
+    exitTabAnchorObservers.forEach((observer) => observer.disconnect());
+    exitTabAnchorObservers = [];
+    const panelsToKeep = new Map();
+    if (options?.preserveOtherPanels === true && Number.isInteger(options.changedPanelIndex)) {
+      Array.from(panelContainerElmt.children).forEach((panelNode) => {
+        const indices = Array.from(panelNode.classList.contains("panel")
+          ? [panelNode]
+          : panelNode.querySelectorAll(".panel[data-panel-index]"))
+          .map((panel) => Number(panel.dataset.panelIndex));
+        if (indices.length && indices.every((index) => Number.isInteger(index) && index !== options.changedPanelIndex)) {
+          panelsToKeep.set(indices.join(","), panelNode);
+        }
+      });
+    }
     const posts = document.getElementsByClassName("post");
     const availablePolePositions = Post.prototype.polePositions;
     const polePosition = availablePolePositions.includes(post.polePosition)
@@ -10595,6 +11626,14 @@ const app = (function () {
 
     // post
 
+    if (polePosition !== "Rural") {
+      for (const support of posts) {
+        support.style.removeProperty("left");
+        support.style.removeProperty("top");
+        support.style.removeProperty("height");
+      }
+    }
+
     if (post.showPost == true) {
       for (let i = 0; i < posts.length; i++) {
         posts[i].style.visibility = "hidden";
@@ -10617,8 +11656,10 @@ const app = (function () {
         if (posts[1]) {
           posts[1].style.visibility = "visible";
         }
-      } else if (polePosition === "rural" || polePosition === "center") {
-        // Posts remain hidden; custom backgrounds render supports.
+      } else if (polePosition === "rural") {
+        // Reveal supports only after the main sign has been measured.
+      } else if (polePosition === "center") {
+        // The centered support is painted on the panel container.
       } else {
         for (let i = 0; i < posts.length; i++) {
           posts[i].style.visibility = "visible";
@@ -10657,6 +11698,7 @@ const app = (function () {
 
       for (let index = 0; index < post.panels.length; index++) {
           const panel = post.panels[index];
+          ensureExitTabLayoutIds(panel);
 
           normalizeExitTabAplEdgeAvailabilityForPanel(panel);
 
@@ -10672,6 +11714,10 @@ const app = (function () {
             ? "customPanelColor"
             : getColorClassToken(panel.color, "green");
           panelElmt.className = `panel ${panelColorClass} ${panel.corner.toLowerCase()}`;
+          const panelBorderThickness = Panel.getBorderThickness(panel);
+          panelElmt.classList.toggle("panelBorderHidden", panelBorderThickness === 0);
+          panelElmt.style.setProperty("--panelBorderWidth", `${panelBorderThickness}rem`);
+          VmsPanel.configure(panelElmt, panel);
           applyCustomPanelColorVars(panelElmt, panel.color);
           if (isPanelConfiguredHidden(index)) {
             panelElmt.classList.add("panelHiddenFromPost");
@@ -10888,13 +11934,16 @@ const app = (function () {
                        const exitTabElmt = document.createElement("div");
                        exitTabElmt.className = `exitTab ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
                        const normalizedExitTabFontFamily = normalizeExitTabFontFamily(exitTab);
-                       const renderedExitTabFontFamily = typeof resolveTextFontFamilyForRender === "function"
+                       let renderedExitTabFontFamily = typeof resolveTextFontFamilyForRender === "function"
                          ? resolveTextFontFamilyForRender(
                              normalizedExitTabFontFamily,
                              { backgroundColor: exitTab.color || panel.color || "Green" },
                              { color: panel.color || "Green" }
                            )
                          : normalizedExitTabFontFamily;
+                       if (isMotorwayFont(renderedExitTabFontFamily)) {
+                         renderedExitTabFontFamily = getMotorwayFallbackFont(renderedExitTabFontFamily);
+                       }
                        const normalizedExitTabCharacterSpacing = (() => {
                          const parsed = parseFloat(exitTab.characterSpacing);
                          return Number.isFinite(parsed)
@@ -10977,6 +12026,7 @@ const app = (function () {
                        const isBorderlessTab =
                          normalizedBorderThickness <= 0 || isTransparentAssetExitTab;
                        const borderThicknessRem = normalizedBorderThickness.toString() + "rem";
+                       exitTabElmt.style.setProperty("--exitTabBorderWidth", borderThicknessRem);
                        if (isBorderlessTab) {
                            exitTabElmt.classList.add("borderless");
                        }
@@ -10990,7 +12040,7 @@ const app = (function () {
                            return element;
                        };
                        const appendStandardExitNumber = (parentElmt) => {
-                           if (!parentElmt || !exitTab.number) {
+                           if (!parentElmt || !String(exitTab.number ?? "").trim()) {
                                return;
                            }
                            const normalizedNumberText = String(exitTab.number).replace(
@@ -11224,6 +12274,7 @@ const app = (function () {
                        exitTabElmt.dataset.panelIndex = String(index);
                        exitTabElmt.dataset.exitTabIndex = String(exitTabIndex);
                        exitTabElmt.dataset.nestedExitTabIndex = String(nestIndex);
+                       exitTabElmt.dataset.layoutId = exitTab.layoutId;
                        exitTabHolderElmt.addEventListener("click", (event) => {
                          event.stopPropagation();
 
@@ -11243,6 +12294,9 @@ const app = (function () {
                        exitTabHolderElmt.appendChild(exitTabElmt);
                        
                        exitTabCont.appendChild(exitTabHolderElmt);
+                       if (!shouldCollapseEmptyExitTab) {
+                         bindRenderedExitTabDrag(panelElmt, exitTabHolderElmt, exitTabElmt, exitTab);
+                       }
 
                        if (isTransparentAssetExitTab) {
                          exitTabElmt.classList.add("transparentAsset");
@@ -11313,23 +12367,36 @@ const app = (function () {
                            ) {
                                if (exitTab.variant == "Default") {
                                    const leftElmt = document.createElement("div");
+                                   const standaloneLeftLabel =
+                                     exitTab.showLeft === true &&
+                                     exitTab.bilingual !== true &&
+                                     String(exitTab.number ?? "").trim() === "";
                                    const shouldLeftAlignFullLeftExitTab =
                                      exitTab.showLeft === true &&
                                      String(exitTab.position || "").toLowerCase() === "left" &&
                                      String(exitTab.width || "").toLowerCase() === "full";
                                    
                                    if (exitTab.showLeft) {
-                                       leftElmt.classList.add("yellowElmt");
+                                       leftElmt.classList.add("yellowElmt", "leftExitLabel");
                                        registerExitTabText(leftElmt);
-                                       leftElmt.appendChild(document.createTextNode("LEFT"));
+                                       const leftTextElmt = document.createElement("span");
+                                       leftTextElmt.className = "leftExitLabelText";
+                                       leftTextElmt.textContent = "LEFT";
+                                       leftElmt.appendChild(leftTextElmt);
                                        exitTabElmt.appendChild(leftElmt);
                                        exitTabElmt.style.display = "inline-block";
                                        if (shouldLeftAlignFullLeftExitTab) {
                                            exitTabElmt.classList.add("fullLeftPositionedWithLeftLabel");
                                        }
-                                       
-                                       if (exitTab.number) {
-                                           leftElmt.style.marginRight = "0.4rem";
+
+                                       if (standaloneLeftLabel) {
+                                           exitTabElmt.classList.add("standaloneLeftExitTab");
+                                           exitTabHolderElmt.classList.add("standaloneLeftExitTab");
+                                           if (nestedExitTabs === 0) {
+                                               exitTabCont.classList.add("standaloneLeftExitTab");
+                                           }
+                                       } else {
+                                           leftElmt.classList.add("withExitText");
                                        }
                                    }
                                    
@@ -11360,6 +12427,28 @@ const app = (function () {
                                      appendBilingualExitNumber(exitTabElmt);
                                    } else {
                                      appendStandardExitNumber(exitTabElmt);
+                                     if (exitTab.showLeft && !standaloneLeftLabel && !exitTab.verticalArrangement &&
+                                         !String(exitTab.number ?? "").replace(/\\n/g, "\n").includes("\n")) {
+                                       const prefixElmt = leftElmt.nextElementSibling;
+                                       const spacerElmt = prefixElmt?.nextElementSibling;
+                                       const numeralElmt = spacerElmt?.nextElementSibling;
+                                       if (prefixElmt?.classList.contains("exitFormat") &&
+                                           spacerElmt?.classList.contains("exitTabTextSpacer") &&
+                                           numeralElmt?.classList.contains("numeral")) {
+                                         const trailingElmt = numeralElmt.nextElementSibling;
+                                         const leadingGroup = document.createElement("div");
+                                         leadingGroup.className = "leftExitNumberLeading";
+                                         leadingGroup.append(prefixElmt, spacerElmt);
+                                         const numberGroup = document.createElement("div");
+                                         numberGroup.className = "leftExitNumberValue";
+                                         numberGroup.appendChild(numeralElmt);
+                                         if (trailingElmt?.classList.contains("exitTabTrailing")) {
+                                           numberGroup.appendChild(trailingElmt);
+                                         }
+                                         exitTabElmt.append(leadingGroup, numberGroup);
+                                         exitTabElmt.classList.add("leftExitNumberAligned");
+                                       }
+                                     }
                                    }
                                } else if (exitTab.variant == "Toll Logo") {
                                    exitTabCont.classList.add("tollLogoExitTabContainer");
@@ -11440,9 +12529,10 @@ const app = (function () {
                                    if (iconDef) {
                                        const iconWrapperElmt = document.createElement("div");
                                        iconWrapperElmt.className = "exitTabIconWrapper";
-                                       const iconImgElmt = document.createElement("img");
+                                       const iconImgElmt = createPreparedIconImage(
+                                         iconDef.src || iconDef.asset || iconDef.url || ""
+                                       );
                                        iconImgElmt.className = "exitTabIconImage";
-                                       iconImgElmt.src = iconDef.src || iconDef.asset || iconDef.url || "";
                                        iconImgElmt.alt = iconDef.label || iconDef.name || iconKey;
                                        iconWrapperElmt.appendChild(iconImgElmt);
                                        exitTabElmt.appendChild(iconWrapperElmt);
@@ -11520,7 +12610,12 @@ const app = (function () {
                                        }
                                    }
                                }
-                               const cornerRadius = exitTab.squareCorners ? "0.25rem" : "0.5rem";
+                               const configuredRadius = Number(exitTab.cornerRadius);
+                               const cornerRadius = exitTab.squareCorners
+                                 ? "0.25rem"
+                                 : exitTab.cornerRadius == null || exitTab.cornerRadius === "panel" || !Number.isFinite(configuredRadius)
+                                   ? `${panelBorderRadius}rem`
+                                   : `${Math.max(0, configuredRadius)}rem`;
                                
                                const applyExitTabCornerShape = (elmt, fullBorder, borderless) => {
                                    if (!elmt) return;
@@ -11597,6 +12692,17 @@ const app = (function () {
                                );
 
                                exitTabElmt.style.fontSize = resolvedFontSize.toString() + "px";
+                               if (exitTab.showLeft === true && exitTab.variant === "Default") {
+                                 // Both font families use the same LEFT label size at
+                                 // their respective default text sizes (18 and 22).
+                                 const leftLabelFontSize = usesHighwayGothicFont
+                                   ? resolvedFontSize
+                                   : resolvedFontSize * (27 / 22);
+                                 exitTabElmt.style.setProperty(
+                                   "--leftExitLabelFontSize",
+                                   Math.max(1, leftLabelFontSize).toString() + "px"
+                                 );
+                               }
                                // #endregion
                                // Increase minHeight when vertical arrangement is enabled to accommodate stacked content
                                // Large numerals (1.5em scale) need extra space, so increase minHeight more
@@ -12202,6 +13308,9 @@ const app = (function () {
           }
           
           signCont.appendChild(signElmt);
+          if (polePosition === "Rural") {
+            scheduleRuralPostLayoutUpdate();
+          }
           
           const g_top = document.createElement("div");
           g_top.className = `globalTop`;
@@ -12227,6 +13336,7 @@ const app = (function () {
             signHolderElmt.classList.add("forceWidenedSubpanels");
           }
 
+          let exitTabAnchorsReady = false;
           const syncWidenedSubpanelFill = () => {
             const apply = () => {
               if (!signElmt || !signHolderElmt) {
@@ -12243,7 +13353,35 @@ const app = (function () {
               ) {
                 signElmt.classList.add("hasWideningPanelFeature");
                 signHolderElmt.classList.add("forceWidenedSubpanels");
+
+                const subpanels = Array.from(signHolderElmt.children)
+                  .filter((child) => child.classList.contains("subPanelDisplay"));
+                const dividers = Array.from(signHolderElmt.children)
+                  .filter((child) => child.classList.contains("subDivider"));
+                const subpanelWidth = subpanels.reduce(
+                  (sum, child) => sum + child.getBoundingClientRect().width, 0
+                );
+                const dividerWidth = dividers.reduce(
+                  (sum, child) => sum + child.getBoundingClientRect().width, 0
+                );
+                const holderStyle = getComputedStyle(signHolderElmt);
+                const innerWidth = Math.max(signElmt.clientWidth, signHolderElmt.clientWidth) -
+                  (parseFloat(holderStyle.paddingLeft) || 0) -
+                  (parseFloat(holderStyle.paddingRight) || 0);
+                const gapWidth = Math.max(0, subpanels.length + dividers.length - 1) *
+                  (parseFloat(holderStyle.columnGap || holderStyle.gap) || 0);
+                const missingWidth = innerWidth - subpanelWidth - dividerWidth - gapWidth;
+                if (subpanels.length && missingWidth > 1) {
+                  const extra = missingWidth / subpanels.length;
+                  subpanels.forEach((child) => {
+                    const width = child.getBoundingClientRect().width;
+                    child.style.boxSizing = "border-box";
+                    child.style.width = `${width + extra}px`;
+                    child.style.minWidth = `${width + extra}px`;
+                  });
+                }
               }
+              if (exitTabAnchorsReady) applyRenderedExitTabAnchors(panelElmt, panel);
             };
 
             apply();
@@ -12251,6 +13389,9 @@ const app = (function () {
               apply();
               requestAnimationFrame(apply);
             });
+            if (document.fonts?.ready) {
+              document.fonts.ready.then(apply).catch(() => {});
+            }
           };
 
           const applyAplEdgeExitTabLayout = () => {
@@ -12566,8 +13707,11 @@ const app = (function () {
           
           signCont.appendChild(guideArrowsElmt);
           guideArrowsElmt.dataset.panelIndex = String(index);
+          let suppressArrowBandClickUntil = 0;
           
           guideArrowsElmt.addEventListener("click", (event) => {
+              if (event.target.closest(".standardGuideArrowFrame") ||
+                  performance.now() < suppressArrowBandClickUntil) return;
               event.stopPropagation();
               
               const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);
@@ -12577,6 +13721,7 @@ const app = (function () {
                   subPanelIndex: 0,
                   menu: "guideArrows",
                   guideMode: "standard",
+                  suppressRedraw: true,
                   flashTarget: event.currentTarget,
               });
           });
@@ -12607,7 +13752,7 @@ const app = (function () {
           
           const sideLeftArrowElmt = document.createElement("img");
           sideLeftArrowElmt.className = "sideLeftArrow";
-          sideLeftArrowElmt.src = "img/arrows/A-4.svg";
+          sideLeftArrowElmt.src = ArrowElement.prototype.arrows.TYPE_A.src;
           sideLeftArrowElmt.dataset.panelIndex = String(index);
           sideLeftArrowElmt.addEventListener("click", (event) => {
               event.preventDefault();
@@ -12630,6 +13775,7 @@ const app = (function () {
           // Calculate APL arrow groups before the loop
           const aplArrows =
             panel.sign.arrowMode === "apl" ? panel.sign.aplArrows || [] : [];
+          const separateAPLExitOnlyLabels = panel.sign.aplExitOnlyMergeAdjacent !== true;
           
           const aplSubpanelGroups = getAPLSubpanelGroupsForSign(panel.sign);
           const aplVisualArrowOrder = [];
@@ -12731,6 +13877,51 @@ const app = (function () {
               `${getAPLExitOnlyStemOffsetRem(arrow)}rem`
             );
           };
+
+          const aplExitText = (arrow) => arrow?.aplExitText || {};
+          const makeAPLExitLabel = (arrow, text, className) => {
+            const label = document.createElement("span");
+            label.className = `aplExitOnlyLabel ${className}`;
+            label.textContent = text;
+            label.style.whiteSpace = "pre";
+            const settings = aplExitText(arrow);
+            if (settings.font) {
+              const font = typeof resolveTextFontFamilyForRender === "function"
+                ? resolveTextFontFamilyForRender(settings.font, {}, panel)
+                : settings.font;
+              label.style.fontFamily = `"${String(font).replace(/["\\]/g, "")}"`;
+            }
+            const size = Number(settings.size);
+            label.style.fontSize = `${1.28 * Math.max(50, Math.min(150,
+              settings.size != null && Number.isFinite(size) ? size : 70)) / 70}rem`;
+            const spacing = Number(settings.spacing);
+            if (settings.spacing != null && Number.isFinite(spacing)) {
+              label.style.letterSpacing = `${Math.max(-0.15, Math.min(0.5, spacing))}em`;
+            }
+            return label;
+          };
+          const aplExitWord = (arrow, side) =>
+            String(aplExitText(arrow)[side] ?? (side === "left" ? "EXIT" : "ONLY"))
+              .replace(/\\n|\r?\n/g, " ");
+          const aplExitCombined = (arrow) => {
+            const left = aplExitWord(arrow, "left");
+            const right = aplExitWord(arrow, "right");
+            return left + (left && right ? " " : "") + right;
+          };
+          const aplExitMeasureContext = document.createElement("canvas").getContext("2d");
+          const getAPLExitLabelWidthRem = (arrow, text = aplExitCombined(arrow)) => {
+            const settings = aplExitText(arrow);
+            const fontSizeRem = 1.28 * Math.max(50, Math.min(150, Number(settings.size) || 70)) / 70;
+            const rootPixels = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const font = typeof resolveTextFontFamilyForRender === "function"
+              ? resolveTextFontFamilyForRender(settings.font || "Series E", {}, panel)
+              : (settings.font || "Series E");
+            aplExitMeasureContext.font = `500 ${fontSizeRem * rootPixels}px "${String(font).replace(/["\\]/g, "")}"`;
+            const letterSpacing = Number(settings.spacing) || 0;
+            const textRem = aplExitMeasureContext.measureText(text).width / rootPixels +
+              Math.max(0, text.length - 1) * fontSizeRem * letterSpacing;
+            return Math.max(4, textRem + 0.84);
+          };
           
           const getAPLArrowZoneHeightRem = () => {
             const maxArrowHeightRem = aplArrows.reduce((maxHeight, arrow) => {
@@ -12763,40 +13954,6 @@ const app = (function () {
             });
           }
 
-          const getAPLExitOnlyRenderedSides = (arrow, subPanelIndex) => {
-            if (!isExitOnlyValue(arrow?.exitOnly)) {
-              return { left: false, right: false };
-            }
-
-            const arrowGroup = getAPLArrowGroup(subPanelIndex);
-            const arrowIndex = arrowGroup.findIndex(
-              (arrowData) => arrowData?.arrow === arrow
-            );
-
-            if (arrowIndex < 0) {
-              return { left: true, right: true };
-            }
-
-            const sharedAcrossBoundary = isBoundarySharedExitOnlyArrow(
-              subPanelIndex,
-              arrowIndex
-            );
-
-            const sharedInsideSubpanel =
-              isAPLExitOnlyArrowAt(subPanelIndex, arrowIndex - 1) ||
-              isAPLExitOnlyArrowAt(subPanelIndex, arrowIndex + 1);
-
-            /*
-              Shared APL Exit Only arrows do not render their individual EXIT/ONLY
-              labels, so they should not reserve the old far-side label width.
-            */
-            if (sharedAcrossBoundary || sharedInsideSubpanel) {
-              return { left: false, right: false };
-            }
-
-            return { left: true, right: true };
-          };
-
         const getAPLExitOnlyExtentsRem = (arrow, subPanelIndex) => {
           if (!isExitOnlyValue(arrow?.exitOnly)) {
             return { left: 0, right: 0 };
@@ -12804,16 +13961,25 @@ const app = (function () {
 
           const gap = getAPLExitOnlyGapRem(arrow);
           const stemOffset = getAPLExitOnlyStemOffsetRem(arrow);
-
-          const renderedSides = getAPLExitOnlyRenderedSides(arrow, subPanelIndex);
+          const group = getAPLArrowGroup(subPanelIndex);
+          const position = group.findIndex((item) => item.arrow === arrow);
+          const sharedInsideSubpanel = position >= 0 && (
+            isExitOnlyValue(group[position - 1]?.arrow?.exitOnly) ||
+            isExitOnlyValue(group[position + 1]?.arrow?.exitOnly)
+          );
+          const sharedAcrossBoundary = position >= 0 &&
+            isBoundarySharedExitOnlyArrow(subPanelIndex, position);
+          if (!separateAPLExitOnlyLabels && (sharedInsideSubpanel || sharedAcrossBoundary)) {
+            return { left: 0, right: 0 };
+          }
 
           return {
-            left: renderedSides.left
-              ? APL_EXIT_ONLY_LABEL_WIDTH_REM + gap - stemOffset
+            left: separateAPLExitOnlyLabels
+              ? getAPLExitLabelWidthRem(arrow, aplExitWord(arrow, "left")) + gap - stemOffset
               : 0,
-            right: renderedSides.right
-              ? APL_EXIT_ONLY_LABEL_WIDTH_REM + gap + stemOffset
-              : 0,
+            right: getAPLExitLabelWidthRem(
+              arrow, separateAPLExitOnlyLabels ? aplExitWord(arrow, "right") : aplExitCombined(arrow)
+            ) + gap + stemOffset,
           };
         };
 
@@ -12953,7 +14119,7 @@ const app = (function () {
           const sharedExitOnlyBoundaryArrowKeys = new Set();
           const sharedExitOnlyBoundaryDividerArrowKeys = new Set();
 
-          if (panel.sign.arrowMode === "apl") {
+          if (panel.sign.arrowMode === "apl" && !separateAPLExitOnlyLabels) {
             for (
               let dividerSubPanelIndex = 1;
               dividerSubPanelIndex < panel.sign.subPanels.length;
@@ -13136,25 +14302,21 @@ const app = (function () {
                                divArrowSlot.appendChild(divArrowImg);
                                
                                if (isExitOnlyValue(dividerArrow.exitOnly)) {
-                                   const boundarySharedExitOnly =
-                                     isBoundarySharedExitOnlyDividerArrow(subPanelIndex);
-
                                    divArrowSlot.classList.add("aplExitOnlyContainer");
                                    applyAPLExitOnlyLabelPlacementStyles(divArrowSlot, dividerArrow);
-
-                                   if (boundarySharedExitOnly) {
-                                       divArrowSlot.classList.add("aplExitOnlySharedRunMember");
+                                   if (separateAPLExitOnlyLabels) {
+                                     divArrowSlot.appendChild(makeAPLExitLabel(
+                                       dividerArrow, aplExitWord(dividerArrow, "left"), "aplExitOnlyExit aplExitOnlyFlexibleLabel"
+                                     ));
+                                     divArrowSlot.appendChild(makeAPLExitLabel(
+                                       dividerArrow, aplExitWord(dividerArrow, "right"), "aplExitOnlyOnly aplExitOnlyFlexibleLabel"
+                                     ));
+                                   } else if (isBoundarySharedExitOnlyDividerArrow(subPanelIndex)) {
+                                     divArrowSlot.classList.add("aplExitOnlySharedRunMember");
                                    } else {
-                                       const exitSpan = document.createElement("span");
-                                       exitSpan.className = "aplExitOnlyLabel aplExitOnlyExit";
-                                       exitSpan.textContent = "EXIT";
-                                       
-                                       const onlySpan = document.createElement("span");
-                                       onlySpan.className = "aplExitOnlyLabel aplExitOnlyOnly";
-                                       onlySpan.textContent = "ONLY";
-                                       
-                                       divArrowSlot.appendChild(exitSpan);
-                                       divArrowSlot.appendChild(onlySpan);
+                                     divArrowSlot.appendChild(makeAPLExitLabel(
+                                       dividerArrow, aplExitCombined(dividerArrow), "aplExitOnlyIndividualLabel"
+                                     ));
                                    }
                                }
                                
@@ -13163,22 +14325,25 @@ const app = (function () {
                                
                            }
                        }
-                     
                      if (sharedExitOnlyBoundaryDividers.has(subPanelIndex)) {
-                         subDivider.classList.add("hasSharedExitOnlyBoundary");
-
-                         const sharedBoundaryLabel = document.createElement("span");
-                         sharedBoundaryLabel.className =
-                           "aplExitOnlyLabel aplExitOnlySharedLabel aplExitOnlyBoundarySharedLabel";
-                         sharedBoundaryLabel.textContent = "EXIT ONLY";
-
-                         sharedBoundaryLabel.style.setProperty(
-                           "--aplExitOnlyBoundaryCenterOffset",
-                           `${getSharedExitOnlyBoundaryCenterOffsetRem(subPanelIndex)}rem`
-                         );
-
-                         subDivider.appendChild(sharedBoundaryLabel);
+                       subDivider.classList.add("hasSharedExitOnlyBoundary");
+                       const boundaryArrow = (panel.sign.aplArrows || []).find(
+                         (item) => item.placement === "divider" &&
+                           item.dividerAfterSubPanelIndex === subPanelIndex - 1 &&
+                           isExitOnlyValue(item.exitOnly)
+                       ) || getAPLArrowGroup(subPanelIndex - 1).at(-1)?.arrow ||
+                         getAPLArrowGroup(subPanelIndex)[0]?.arrow;
+                       const sharedBoundaryLabel = makeAPLExitLabel(
+                         boundaryArrow, aplExitCombined(boundaryArrow),
+                         "aplExitOnlySharedLabel aplExitOnlyBoundarySharedLabel aplExitOnlyFlexibleLabel"
+                       );
+                       sharedBoundaryLabel.style.setProperty(
+                         "--aplExitOnlyBoundaryCenterOffset",
+                         `${getSharedExitOnlyBoundaryCenterOffsetRem(subPanelIndex)}rem`
+                       );
+                       subDivider.appendChild(sharedBoundaryLabel);
                      }
+
                        
                        const dividerHeight = (subPanel && subPanel.height) || "";
                        if (
@@ -13201,6 +14366,15 @@ const app = (function () {
                    new_subPanel.id = "S_subPanel" + subPanelIndex.toString();
                    new_subPanel.dataset.panelIndex = String(index);
                    new_subPanel.dataset.subpanelIndex = String(subPanelIndex);
+                   new_subPanel.dataset.layoutId = subPanel.layoutId;
+                   const bottomBlocks = subPanel.blockElements?.rows?.at(-1);
+                   const textOnlyBottomRow = panel.sign.arrowMode === "apl" &&
+                       panel.sign.aplArrows?.length > 0 &&
+                       Array.isArray(bottomBlocks) && bottomBlocks.length > 0 &&
+                       bottomBlocks.every((block) => block instanceof TextElement &&
+                           !(block instanceof ElectronicSignElement) &&
+                           String(block.textContent ?? "").trim().length > 0);
+                   new_subPanel.classList.toggle("aplTextOnlyBottomRow", textOnlyBottomRow);
                    
                    markSelectedRenderedSubpanel(new_subPanel, subPanelIndex);
                    new_subPanel.addEventListener("click", (event) => {
@@ -13416,52 +14590,38 @@ const app = (function () {
                                arrowSlot.appendChild(arrowImg);
                                
                            if (isExitOnlyValue(arrow.exitOnly)) {
-                               const boundarySharedExitOnly =
-                                 isBoundarySharedExitOnlyArrow(subPanelIndex, gi);
-
-                               const sameSubpanelSharedRun =
-                                 isInSharedExitOnlyRun(arrowGroup, gi);
-
                                arrowSlot.classList.add("aplExitOnlyContainer");
                                applyAPLExitOnlyLabelPlacementStyles(arrowSlot, arrow);
-
-                               if (boundarySharedExitOnly || sameSubpanelSharedRun) {
+                               if (separateAPLExitOnlyLabels) {
+                                 arrowSlot.appendChild(makeAPLExitLabel(
+                                   arrow, aplExitWord(arrow, "left"), "aplExitOnlyExit aplExitOnlyFlexibleLabel"
+                                 ));
+                                 arrowSlot.appendChild(makeAPLExitLabel(
+                                   arrow, aplExitWord(arrow, "right"), "aplExitOnlyOnly aplExitOnlyFlexibleLabel"
+                                 ));
+                               } else {
+                                 const boundaryShared = isBoundarySharedExitOnlyArrow(subPanelIndex, gi);
+                                 const sharedRun = isInSharedExitOnlyRun(arrowGroup, gi);
+                                 if (boundaryShared || sharedRun) {
                                    arrowSlot.classList.add("aplExitOnlySharedRunMember");
-                               }
-
-                               if (
-                                   isFirstSharedExitOnlyArrow(arrowGroup, gi) &&
-                                   !boundarySharedExitOnly
-                               ) {
+                                 }
+                                 if (isFirstSharedExitOnlyArrow(arrowGroup, gi) && !boundaryShared) {
                                    const runEndIndex = getSharedExitOnlyRunEndIndex(arrowGroup, gi);
-                                   const centerOffsetRem = getSharedExitOnlyCenterOffsetRem(
-                                     arrowGroup,
-                                     gi,
-                                     runEndIndex
+                                   const sharedSpan = makeAPLExitLabel(
+                                     arrow, aplExitCombined(arrow),
+                                     "aplExitOnlySharedLabel aplExitOnlyFlexibleLabel"
                                    );
-
-                                   arrowSlot.classList.add("aplExitOnlySharedLead");
-
-                                   const sharedSpan = document.createElement("span");
-                                   sharedSpan.className = "aplExitOnlyLabel aplExitOnlySharedLabel";
-                                   sharedSpan.textContent = "EXIT ONLY";
                                    sharedSpan.style.setProperty(
                                      "--aplExitOnlySharedCenterOffset",
-                                     `${centerOffsetRem}rem`
+                                     `${getSharedExitOnlyCenterOffsetRem(arrowGroup, gi, runEndIndex)}rem`
                                    );
-
+                                   arrowSlot.classList.add("aplExitOnlySharedLead");
                                    arrowSlot.appendChild(sharedSpan);
-                               } else if (!boundarySharedExitOnly && !sameSubpanelSharedRun) {
-                                   const exitSpan = document.createElement("span");
-                                   exitSpan.className = "aplExitOnlyLabel aplExitOnlyExit";
-                                   exitSpan.textContent = "EXIT";
-                                   
-                                   const onlySpan = document.createElement("span");
-                                   onlySpan.className = "aplExitOnlyLabel aplExitOnlyOnly";
-                                   onlySpan.textContent = "ONLY";
-                                   
-                                   arrowSlot.appendChild(exitSpan);
-                                   arrowSlot.appendChild(onlySpan);
+                                 } else if (!boundaryShared && !sharedRun) {
+                                   arrowSlot.appendChild(makeAPLExitLabel(
+                                     arrow, aplExitCombined(arrow), "aplExitOnlyIndividualLabel"
+                                   ));
+                                 }
                                }
                            }
                                
@@ -13745,7 +14905,7 @@ const app = (function () {
           
         const sideRightArrowElmt = document.createElement("img");
         sideRightArrowElmt.className = "sideRightArrow";
-        sideRightArrowElmt.src = "img/arrows/A-1.svg";
+        sideRightArrowElmt.src = ArrowElement.prototype.arrows.TYPE_A.src;
         sideRightArrowElmt.dataset.panelIndex = String(index);
         sideRightArrowElmt.addEventListener("click", (event) => {
             event.preventDefault();
@@ -13764,17 +14924,29 @@ const app = (function () {
         signElmt.appendChild(sideRightArrowElmt);
 
         const syncStandardGuideArrowSubpanelWidth = () => {
+          let intrinsicSubpanelGroupWidth = null;
           const isStandardGuideArrow =
             panel.sign.arrowMode !== "apl" &&
             panel.sign.guideArrow !== "None" &&
             panel.sign.guideArrow !== "Side Left" &&
-            panel.sign.guideArrow !== "Side Right";
+            panel.sign.guideArrow !== "Side Right" &&
+            !(["Exit Only", "Half Exit Only", "Split Exit Only"].includes(panel.sign.guideArrow) &&
+              Number(panel.sign.exitOnlyEditorVersion) >= 1) &&
+            !(panel.sign.guideArrow === "Standard Arrow" &&
+              (Number(panel.sign.guideArrowLanes) === 0 ||
+               ["Left", "Right"].includes(panel.sign.standardArrowPosition)));
 
           if (!isStandardGuideArrow || !arrowContElmt || !signHolderElmt) {
             return;
           }
 
           const apply = () => {
+            if (intrinsicSubpanelGroupWidth === null) {
+              const measuredWidth = Array.from(signHolderElmt.children)
+                .filter((child) => child.matches(".subPanelDisplay, .subDivider"))
+                .reduce((width, child) => width + child.getBoundingClientRect().width, 0);
+              if (measuredWidth > 0) intrinsicSubpanelGroupWidth = measuredWidth;
+            }
             const arrowContainerWidth = Math.ceil(
               Math.max(
                 arrowContElmt.scrollWidth || 0,
@@ -13800,7 +14972,7 @@ const app = (function () {
               currentSubpanelGroupWidth
             );
 
-            if (arrowContainerWidth > currentSubpanelGroupWidth + 1) {
+            if (arrowContainerWidth > intrinsicSubpanelGroupWidth + 1) {
               signHolderElmt.classList.add("hasStandardGuideArrowWidthReserve");
               signHolderElmt.style.setProperty(
                 "--standardGuideArrowMinWidth",
@@ -13820,7 +14992,7 @@ const app = (function () {
             );
 
             const standardGuideArrowImgs = Array.from(
-              arrowContElmt.querySelectorAll("img.arrow, img.exitOnlyArrow, img.qcExitOnlyArrow")
+              arrowContElmt.querySelectorAll("img.arrow, img.standardGuideArrowImage, img.exitOnlyArrow, img.qcExitOnlyArrow")
             ).filter((img) => {
               const rect = img.getBoundingClientRect();
               const styles = window.getComputedStyle(img);
@@ -13873,6 +15045,7 @@ const app = (function () {
             });
           };
 
+          apply();
           requestAnimationFrame(() => {
             apply();
             requestAnimationFrame(apply);
@@ -13887,8 +15060,6 @@ const app = (function () {
           
           // Guide arrows
           
-          const ExitKeys = ["EA", "EB", "EC"];
-          const MainKeys = ["A", "B", "C", "D", "E"];
           var path;
           
           const qcExitMarkerMode =
@@ -13928,40 +15099,9 @@ const app = (function () {
               }
 
               key = String(key || "").trim();
-              const shouldFlipAltLeftUpArrow = /^(?:E?B)-4$/i.test(key);
-
-              if (shouldFlipAltLeftUpArrow) {
-                  key = key.replace(/-4$/i, "-1");
-              }
-
-              const specialGuideArrowBlocks = {
-                  DOWN_CA: {
-                      src: "img/arrowBlocks/DOWN_CA.svg",
-                      className: "canadianDownArrow",
-                  },
-                  DOWN_IL: {
-                      src: "img/arrowBlocks/DOWN_IL.svg",
-                      className: "illinoisDownArrow",
-                  },
-              };
-
-              if (specialGuideArrowBlocks[key]) {
-                  const specialArrowElmt = document.createElement("img");
-                  specialArrowElmt.className = name || "exitOnlyArrow ";
-
-                  if (extra) {
-                      specialArrowElmt.className += " " + extra;
-                  }
-
-                  specialArrowElmt.src = specialGuideArrowBlocks[key].src;
-                  specialArrowElmt.classList.add(specialGuideArrowBlocks[key].className, "downarrow");
-                  return specialArrowElmt;
-              }
-
-              if (
-                  ExitKeys.includes(key.split("-")[0]) ||
-                  MainKeys.includes(key.split("-")[0])
-                  ) {
+              const inverted = /^E(?=[ABC]-)/i.test(key);
+              const legacyArrow = window.resolveLegacyGuideArrow(key);
+              if (legacyArrow) {
                       const downArrowElmt = document.createElement("img");
                       downArrowElmt.className = name || "exitOnlyArrow ";
 
@@ -13969,8 +15109,7 @@ const app = (function () {
                           downArrowElmt.className += " " + extra;
                       }
 
-                      if (ExitKeys.includes(key.split("-")[0])) {
-                          key = key.split("-")[0].split("")[1] + "-" + key.split("-")[1];
+                      if (inverted) {
                           downArrowElmt.style.filter = "invert(1)";
                       }
 
@@ -13988,21 +15127,18 @@ const app = (function () {
                           return downArrowElmt;
                       }
 
-                      const shouldUseCanadianDownArrow =
-                      panel.sign.useCanadianDownArrows && key === "C-1";
-
-                      if (shouldUseCanadianDownArrow) {
-                          downArrowElmt.src = "img/arrowBlocks/DOWN_CA.svg";
-                          downArrowElmt.classList.add("canadianDownArrow");
-                      } else {
-                          downArrowElmt.src = "img/arrows/" + key + ".svg";
+                      const shouldUseOntarioDownArrow =
+                          panel.sign.useCanadianDownArrows && legacyArrow.code === "C-1";
+                      downArrowElmt.src = shouldUseOntarioDownArrow
+                          ? ArrowElement.prototype.arrows.DOWN_ON.src : legacyArrow.src;
+                      downArrowElmt.dataset.legacyArrow = legacyArrow.code;
+                      downArrowElmt.style.setProperty("--legacyArrowRotation", `${legacyArrow.rotation}deg`);
+                      if (legacyArrow.code === "A-1" || legacyArrow.code === "A-4") {
+                          downArrowElmt.style.setProperty("--legacyArrowScale", "1.14");
                       }
-
-                      if (shouldFlipAltLeftUpArrow) {
-                          downArrowElmt.classList.add("altLeftUpArrowFlipped");
-                          downArrowElmt.style.transform = "scaleX(-1)";
-                          downArrowElmt.style.transformOrigin = "center center";
-                      }
+                      if (shouldUseOntarioDownArrow) downArrowElmt.classList.add("canadianDownArrow");
+                      if (legacyArrow.code === "DOWN_ALT") downArrowElmt.classList.add("illinoisDownArrow", "downarrow");
+                      if (legacyArrow.code === "DOWN_ON") downArrowElmt.classList.add("canadianDownArrow", "downarrow");
 
                       return downArrowElmt;
                   }
@@ -14041,7 +15177,7 @@ const app = (function () {
         }
           
           
-          if (panel.sign.guideArrow.includes("Exit Only")) {
+          if (panel.sign.guideArrow.includes("Exit Only") && Number(panel.sign.exitOnlyEditorVersion) < 1) {
               const createExitOnlyArrowElmt = (direction) => {
                 if (qcExitMarkerMode) {
                   return createQuebecExitOnlyArrowElmt();
@@ -14266,7 +15402,761 @@ const app = (function () {
               }
           }
           
-        if ("Side Left" == panel.sign.guideArrow) {
+        if (panel.sign.guideArrow === "Standard Arrow" && panel.sign.arrowMode !== "apl") {
+            const arrowCount = Math.max(0, Math.min(6, Math.round(Number(panel.sign.guideArrowLanes) || 0)));
+            if (arrowCount > 0) {
+                let key = ArrowElement.prototype.arrows[panel.sign.standardArrowType]
+                    ? panel.sign.standardArrowType : "DOWN";
+                let src = ArrowElement.prototype.arrows[key].src;
+                let angle = ((Math.round(Number(panel.sign.standardArrowAngle) || 0) % 360) + 360) % 360;
+                let fixedDirection = key.startsWith("TYPE_C_") || key === "TYPE_E";
+                let renderedAngle = fixedDirection ? 0 : angle;
+                let flipped = fixedDirection && panel.sign.standardArrowFlip === true;
+                const size = Math.max(1, Math.min(5, Number(panel.sign.standardArrowSize) || 3));
+                const padding = Math.max(0, Math.min(5, Number(panel.sign.standardArrowPadding) || 0));
+                const spacing = Math.max(0, Math.min(25, Number(panel.sign.standardArrowSpacing) || 0));
+                const position = ["Left", "Right"].includes(panel.sign.standardArrowPosition)
+                    ? panel.sign.standardArrowPosition : "Down";
+                const alignment = ["Left", "Right"].includes(panel.sign.standardArrowAlignment)
+                    ? panel.sign.standardArrowAlignment : "Center";
+                let extendedScale, adjustArrowBandPadding, initialArrowHeight, diagonalAmount;
+                let verticalPadding, diagonalHorizontalReduction, horizontalPadding, diagonalHeightScale, diagonalHeightReduction;
+                const configureStandardArrow = (detail = {}) => {
+                  key = ArrowElement.prototype.arrows[detail.type] ? detail.type :
+                    ArrowElement.prototype.arrows[panel.sign.standardArrowType] ? panel.sign.standardArrowType : "DOWN";
+                  src = ArrowElement.prototype.arrows[key].src;
+                  angle = ((Math.round(Number(detail.angle ?? panel.sign.standardArrowAngle) || 0) % 360) + 360) % 360;
+                  fixedDirection = key.startsWith("TYPE_C_") || key === "TYPE_E";
+                  renderedAngle = fixedDirection ? 0 : angle;
+                  flipped = fixedDirection && panel.sign.standardArrowFlip === true;
+                  extendedScale = key === "TYPE_A_EXTENDED" ? 1.15 : 1;
+                  adjustArrowBandPadding = ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key);
+                  initialArrowHeight = (key.startsWith("DOWN") ? 1.5 : 1.85) * size / 3 * extendedScale;
+                  diagonalAmount = Math.abs(Math.sin(renderedAngle * Math.PI / 90));
+                  verticalPadding = padding * (2 - 1.5 * diagonalAmount) + (key === "TYPE_B" ? 0.08 : 0);
+                  diagonalHorizontalReduction = key === "TYPE_B" ? 0.25
+                    : ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 : 0.6;
+                  horizontalPadding = ["TYPE_D", "TYPE_E"].includes(key) ? 0 : adjustArrowBandPadding
+                    ? Math.max(0, 0.65 - diagonalHorizontalReduction * size / 3 * diagonalAmount)
+                    : key.startsWith("TYPE_C_") ? 0.75
+                    : 1;
+                  diagonalHeightScale = ["DOWN", "DOWN_ALT"].includes(key) ? 0.9
+                    : ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 * extendedScale
+                    : key === "TYPE_B" ? 0.55 : 0;
+                  diagonalHeightReduction = diagonalHeightScale * size / 3 * diagonalAmount;
+                };
+                configureStandardArrow();
+                const createStandardArrow = () => {
+                    const arrowKey = key, arrowSrc = src, arrowAngle = renderedAngle;
+                    const arrowFlip = flipped, arrowExtendedScale = extendedScale;
+                    const arrowVerticalPadding = verticalPadding, arrowDiagonalAmount = diagonalAmount;
+                    const arrowDiagonalHeightReduction = diagonalHeightReduction;
+                    const frame = document.createElement("span");
+                    frame.className = "standardGuideArrowFrame";
+                    frame.style.width = `${initialArrowHeight}rem`;
+                    frame.style.height = `${Math.max(0.1, initialArrowHeight + arrowVerticalPadding * 2 - arrowDiagonalHeightReduction)}rem`;
+                    const image = document.createElement("img");
+                    image.className = "standardGuideArrowImage";
+                    image.alt = "";
+                    image.style.width = "auto";
+                    image.style.height = `${initialArrowHeight}rem`;
+                    image.style.transform = `translate(-50%, -50%) rotate(${arrowAngle}deg) scaleX(${arrowFlip ? -1 : 1})`;
+                    frame.appendChild(image);
+                    image.draggable = false;
+                    const resizeFrame = () => {
+                        const measuredRatio = image.offsetWidth / image.offsetHeight ||
+                            image.naturalWidth / image.naturalHeight || 1;
+                        const ratio = Number.isFinite(measuredRatio) && measuredRatio > 0 ? measuredRatio : 1;
+                        const originalDiagonalArea = 1.85 * 1.85;
+                        const baseHeight = arrowKey.startsWith("DOWN") ? 1.5 :
+                            arrowKey === "TYPE_B" ? 1.85 : Math.sqrt(originalDiagonalArea / ratio);
+                        const arrowHeight = baseHeight * size / 3 * arrowExtendedScale;
+                        image.style.height = `${arrowHeight}rem`;
+                        const radians = arrowAngle * Math.PI / 180;
+                        const width = arrowHeight * ratio;
+                        const boundsWidth = Math.abs(width * Math.cos(radians)) + Math.abs(arrowHeight * Math.sin(radians));
+                        const boundsHeight = Math.abs(width * Math.sin(radians)) + Math.abs(arrowHeight * Math.cos(radians));
+                        frame.style.width = `${boundsWidth}rem`;
+                        frame.style.height = `${Math.max(0.1, boundsHeight + arrowVerticalPadding * 2 - arrowDiagonalHeightReduction)}rem`;
+                        if (position !== "Down") {
+                            // The rotated rectangle is tallest at diagonal angles, but much
+                            // of its top and bottom corners are empty. Reduce that empty
+                            // vertical space while leaving horizontal placement unchanged.
+                            const opticalInset = Math.min(boundsWidth * 0.25, 0.55 * size / 3 * arrowDiagonalAmount);
+                            signElmt.style.setProperty("--sideGuideArrowReserve", `${Math.max(0.1, boundsWidth + padding * 2 + 0.3 - opticalInset)}rem`);
+                            signElmt.style.minHeight = `${Math.max(0.5, boundsHeight + 0.45 - 1.1 * size / 3 * arrowDiagonalAmount + 2 * arrowVerticalPadding)}rem`;
+                        } else {
+                            syncStandardGuideArrowSubpanelWidth();
+                        }
+                    };
+                    image.addEventListener("load", resizeFrame);
+                    frame._refreshArrowLayout = resizeFrame;
+                    image.src = arrowSrc;
+                    if (image.complete && image.naturalWidth) resizeFrame();
+                    requestAnimationFrame(resizeFrame);
+                    return frame;
+                };
+                if (position === "Down") {
+                    signElmt.style.borderBottomLeftRadius = "0";
+                    signElmt.style.borderBottomRightRadius = "0";
+                    signElmt.style.borderBottomWidth = "0";
+                    signElmt.style.width = "100%";
+                    guideArrowsElmt.classList.add("standardGuideArrowBand");
+                    guideArrowsElmt.style.display = "block";
+                    guideArrowsElmt.style.visibility = "visible";
+                    if (!panel.sign.oSNum && panel.sign.otherSymbol === "None") {
+                        otherSymbolsElmt.style.display = "none";
+                    }
+                    arrowContElmt.style.gap = "0";
+                    arrowContElmt.style.marginLeft = alignment === "Left" ? "0" : "auto";
+                    arrowContElmt.style.marginRight = alignment === "Right" ? "0" : "auto";
+                    for (let i = 0; i < arrowCount; i++) {
+                        const detail = panel.sign.standardArrowIndividuals?.[i] || {};
+                        configureStandardArrow(detail);
+                        const frame = createStandardArrow();
+                        frame.dataset.standardArrowIndex = String(i);
+                        frame.dataset.panelIndex = String(index);
+                        frame.draggable = false;
+                        frame.classList.toggle("selectedGuideArrow", selectedGuideArrowPanelIndex === index && selectedGuideArrowIndex === i);
+                        frame.style.left = `${Math.max(-25, Math.min(25, Number(detail.offsetX) || 0))}rem`;
+                        frame.addEventListener("pointerdown", (event) => {
+                          if (event.button !== 0) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const canDrag = arrowCount > 1 &&
+                            selectedGuideArrowPanelIndex === index &&
+                            currentlySelectedPanelIndex === index &&
+                            document.getElementById("sMConfigBar")?.dataset.currentMenu === "guideArrowConfig" &&
+                            document.querySelector(".guideArrowConfig")?.dataset.currentMenu === "sMStandardArrows" &&
+                            document.getElementById("standardArrowIndividual")?.open === true &&
+                            document.getElementById("standardArrowIndividual")?.inert !== true;
+                          if (!canDrag) {
+                            suppressArrowBandClickUntil = performance.now() + 750;
+                            selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
+                              guideMode: "standard", suppressRedraw: true, deferMenu: true });
+                            formHandler.ensureGuideArrowMenuOpen("standard");
+                            return;
+                          }
+                          suppressArrowBandClickUntil = performance.now() + 750;
+                          const origin = event.clientX;
+                          const initial = Number(detail.offsetX) || 0;
+                          const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                          const canvasScale = arrowContElmt.offsetWidth
+                            ? arrowContElmt.getBoundingClientRect().width / arrowContElmt.offsetWidth : 1;
+                          let moved = false;
+                          const panelWasDraggable = panelElmt.draggable;
+                          panelElmt.draggable = false;
+                          guideArrowPointerDragActive = true;
+                          frame.setPointerCapture(event.pointerId);
+                          selectedGuideArrowIndex = i;
+                          arrowContElmt.querySelectorAll(".standardGuideArrowFrame").forEach((arrow) =>
+                            arrow.classList.toggle("selectedGuideArrow", arrow === frame));
+                          formHandler.selectStandardArrowIndividual(i);
+                          const restorePanelDrag = () => {
+                            panelElmt.draggable = panelWasDraggable;
+                            guideArrowPointerDragActive = false;
+                          };
+                          const move = (moveEvent) => {
+                            if (moveEvent.pointerId !== event.pointerId) return;
+                            if (arrowCount < 2) return;
+                            const delta = (moveEvent.clientX - origin) / (rem * (canvasScale || 1));
+                            if (Math.abs(delta) > 0.1) moved = true;
+                            frame.style.left = `${Math.max(-100, Math.min(100, initial + delta))}rem`;
+                          };
+                          frame.addEventListener("pointermove", move);
+                          const finish = (upEvent) => {
+                            if (upEvent.pointerId !== event.pointerId) return;
+                            suppressArrowBandClickUntil = performance.now() + 750;
+                            frame.removeEventListener("pointermove", move);
+                            restorePanelDrag();
+                            if (moved) runWithUndo(() => {
+                              const frames = Array.from(arrowContElmt.querySelectorAll(".standardGuideArrowFrame"));
+                              const positions = frames.map((node, originalIndex) => ({
+                                originalIndex, rect: node.getBoundingClientRect()
+                              })).sort((a, b) =>
+                                (a.rect.left + a.rect.right) - (b.rect.left + b.rect.right));
+                              const previous = Array.from({ length: arrowCount }, (_, arrowIndex) =>
+                                ({ ...(panel.sign.standardArrowIndividuals?.[arrowIndex] || {}) }));
+                              const updated = positions.map(({ originalIndex }) => ({
+                                ...previous[originalIndex], offsetX: 0
+                              }));
+                              for (let gapIndex = 0; gapIndex < updated.length - 1; gapIndex++) {
+                                const pixels = positions[gapIndex + 1].rect.left - positions[gapIndex].rect.right;
+                                updated[gapIndex].spacingAfter = Math.round(
+                                  Math.max(0, Math.min(25, pixels / (rem * (canvasScale || 1)))) * 100
+                                ) / 100;
+                              }
+                              selectedGuideArrowIndex = positions.findIndex(({ originalIndex }) => originalIndex === i);
+                              panel.sign.standardArrowIndividuals = updated;
+                              redraw();
+                              formHandler.selectStandardArrowIndividual(selectedGuideArrowIndex);
+                            });
+                          };
+                          frame.addEventListener("pointerup", finish, { once: true });
+                          frame.addEventListener("pointercancel", () => {
+                            frame.removeEventListener("pointermove", move);
+                            frame.style.left = `${initial}rem`;
+                            restorePanelDrag();
+                          }, { once: true });
+                        });
+                        frame.addEventListener("click", (event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        });
+                        if (i === 0) frame.style.marginLeft = `${horizontalPadding}rem`;
+                        if (i === arrowCount - 1) frame.style.marginRight = `${horizontalPadding}rem`;
+                        arrowContElmt.appendChild(frame);
+                        if (i < arrowCount - 1) {
+                          const gap = document.createElement("span");
+                          gap.className = "standardGuideArrowGap";
+                          gap.style.width = `${Math.max(0, Math.min(25, Number(detail.spacingAfter ?? spacing) || 0))}rem`;
+                          gap.style.flexShrink = "0";
+                          arrowContElmt.appendChild(gap);
+                        }
+                    }
+                } else {
+                    signElmt.classList.add("hasSideGuideArrow", `hasSide${position}GuideArrow`);
+                    signHolderElmt.classList.add("hasSideGuideArrow", `hasSide${position}GuideArrow`);
+                    sideLeftArrowElmt.remove();
+                    sideRightArrowElmt.remove();
+                    configureStandardArrow(panel.sign.standardArrowIndividuals?.[0] || {});
+                    const sideFrame = createStandardArrow();
+                    sideFrame.classList.add("standardSideGuideArrow", `standardSide${position}`);
+                    sideFrame.style.setProperty("--standardSideInset", `${["TYPE_D", "TYPE_E"].includes(key) ? 0 : 0.35}rem`);
+                    sideFrame.dataset.panelIndex = String(index);
+                    sideFrame.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        selectRenderedPanelArea({ panelIndex: index, subPanelIndex: 0,
+                            menu: "guideArrows", guideMode: "standard", flashTarget: signElmt });
+                        selectedGuideArrowIndex = 0;
+                        formHandler.selectStandardArrowIndividual(0);
+                    });
+                    signElmt.appendChild(sideFrame);
+                }
+            }
+        } else if (["Exit Only", "Half Exit Only", "Split Exit Only"].includes(panel.sign.guideArrow) &&
+                   Number(panel.sign.exitOnlyEditorVersion) >= 1 && panel.sign.arrowMode !== "apl") {
+            const sign = panel.sign;
+            const variant = sign.guideArrow === "Half Exit Only" ? "laneSplit" :
+                sign.guideArrow === "Split Exit Only" ? "boxed" : "standard";
+            const count = Math.max(0, Math.min(6, Math.round(Number(sign.guideArrowLanes) || 0)));
+            const key = ArrowElement.prototype.arrows[sign.exitArrowType] ? sign.exitArrowType : "DOWN";
+            const src = ArrowElement.prototype.arrows[key].src;
+            const fixed = key.startsWith("TYPE_C_") || key === "TYPE_E";
+            const angle = fixed ? 0 : ((Math.round(Number(sign.exitArrowAngle) || 0) % 360) + 360) % 360;
+            const size = Math.max(1, Math.min(5, Number(sign.exitArrowSize) || 3));
+            const padding = Math.max(0, Math.min(5, Number(sign.exitArrowPadding) || 0));
+            const spacing = Math.max(0, Math.min(25, Number(sign.exitArrowSpacing) || 0));
+            const diagonalAmount = Math.abs(Math.sin(angle * Math.PI / 90));
+            const extendedScale = key === "TYPE_A_EXTENDED" ? 1.15 : 1;
+            const verticalPadding = padding * (2 - 1.5 * diagonalAmount) + (key === "TYPE_B" ? 0.08 : 0);
+            const horizontalReduction = key === "TYPE_B" ? 0.43 :
+                ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.55 : 0.6;
+            const noHorizontalPadding = ["TYPE_D", "TYPE_E"].includes(key);
+            const standardEdgePadding = 0.2;
+            const horizontalPadding = noHorizontalPadding ? 0 :
+                ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key)
+                    ? Math.max(0, 0.65 - horizontalReduction * size / 3 * diagonalAmount)
+                    : key.startsWith("TYPE_C_") ? 0.75
+                    : 1;
+            const standardHorizontalPadding = noHorizontalPadding ? 0 :
+                ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key)
+                    ? Math.max(0, 0.45 + standardEdgePadding - (key === "TYPE_B" ? 0.25 :
+                        ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 : 0.6) * size / 3 * diagonalAmount)
+                    : key.startsWith("TYPE_C_") ? 0.55 + standardEdgePadding : 1;
+            const coloredEdgePadding = variant === "boxed" ? standardHorizontalPadding :
+                horizontalPadding + (noHorizontalPadding ? 0 :
+                    variant === "laneSplit" ? 0.18 : ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.12 : 0);
+            const heightReduction =
+                (["DOWN", "DOWN_ALT"].includes(key) ? 0.9 :
+                 ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 * extendedScale :
+                 key === "TYPE_B" ? 0.55 : 0) * size / 3 * diagonalAmount;
+            const background = getResolvedCssColorValue(sign.exitBackgroundColor || "Yellow") || "var(--yellow)";
+            const inherited = getExitOnlyContrastColor(background);
+            const textColor = sign.exitTextColor && sign.exitTextColor !== "Inherit"
+                ? getResolvedCssColorValue(sign.exitTextColor) : inherited;
+            const borderColor = sign.exitBorderColor && sign.exitBorderColor !== "Inherit"
+                ? getResolvedCssColorValue(sign.exitBorderColor) : inherited;
+            const cornerColored = sign.exitColorEdges === true && panel.corner === "Sharp" && variant !== "boxed";
+            const borderWidth = `${panelBorderThickness}rem`;
+
+            signElmt.style.borderBottomLeftRadius = "0";
+            signElmt.style.borderBottomRightRadius = "0";
+            signElmt.style.borderBottomWidth = "0";
+            signElmt.style.width = "100%";
+            guideArrowsElmt.classList.add("modernExitOnly", `modernExitOnly-${variant}`);
+            guideArrowsElmt.classList.toggle("modernExitOnlyColoredEdges", cornerColored);
+            guideArrowsElmt.classList.toggle("modernExitOnlyTexasBorder",
+                sign.exitColorEdges === false && sign.exitTexasBorder !== false && variant !== "boxed");
+            guideArrowsElmt.classList.toggle("modernExitOnlyTopBorder", !!sign.exitTopBorder);
+            guideArrowsElmt.style.display = "flex";
+            guideArrowsElmt.style.visibility = "visible";
+            guideArrowsElmt.style.setProperty("--exitOnlyBackground", background);
+            signCont.style.setProperty("--exitOnlyBackground", background);
+            guideArrowsElmt.style.setProperty("--exitOnlyTextColor", textColor);
+            guideArrowsElmt.style.setProperty("--exitOnlyBorderColor", borderColor);
+            guideArrowsElmt.style.setProperty("--exitOnlyPanelColor", getResolvedCssColorValue(panel.color) || "var(--green)");
+            guideArrowsElmt.style.setProperty("--exitOnlyPanelBorderColor",
+                getReadableTextColorForCssColor(getResolvedCssColorValue(panel.color) || "var(--green)"));
+            guideArrowsElmt.style.setProperty("--exitOnlyTopBorder", sign.exitTopBorder ? borderWidth : "0px");
+            guideArrowsElmt.style.setProperty("--exitOnlyVerticalPadding", `${verticalPadding}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyEdgeRadius", "var(--signBorderRadius, 0.75rem)");
+            otherSymbolsElmt.style.display = "none";
+            sideLeftArrowElmt.remove();
+            sideRightArrowElmt.remove();
+
+            let splitPlainArrowDragging = false;
+            const syncSplitExitLanePlacement = () => {
+                if (variant !== "laneSplit" || splitPlainArrowDragging) return;
+                const colored = arrowContElmt.querySelector(":scope > .modernExitColoredLane");
+                const plain = arrowContElmt.querySelector(":scope > .modernExitPlainLane");
+                const plainArrow = plain?.querySelector(":scope > .modernExitArrowFrame");
+                if (!colored || !plain) return;
+
+                // Measure the intrinsic colored area before assigning it a
+                // subpanel's width. This also clears a previous balanced layout
+                // when a text edit makes that layout too narrow to fit.
+                colored.style.removeProperty("width");
+                colored.style.removeProperty("flex");
+                if (plainArrow) {
+                    plainArrow.style.removeProperty("left");
+                    plainArrow.style.removeProperty("right");
+                    plainArrow.style.removeProperty("transform");
+                }
+
+                const subpanels = Array.from(signHolderElmt.children)
+                    .filter((child) => child.classList.contains("subPanelDisplay"));
+                const dividers = Array.from(signHolderElmt.children)
+                    .filter((child) => child.classList.contains("subDivider"));
+                const coloredLeft = colored.classList.contains("onLeft");
+                const correspondingSubpanel = subpanels[coloredLeft ? 0 : 1];
+                if (sign.exitForceSubpanelWidth && subpanels.length === 2 && correspondingSubpanel) {
+                    const subpanelWidth = correspondingSubpanel.getBoundingClientRect().width;
+                    const intrinsicWidth = colored.getBoundingClientRect().width;
+                    if (intrinsicWidth > subpanelWidth + 1) {
+                        const scale = correspondingSubpanel.getBoundingClientRect().width /
+                            (correspondingSubpanel.offsetWidth || subpanelWidth);
+                        correspondingSubpanel.style.setProperty("--linkedSubpanelWidth",
+                            `${intrinsicWidth / (scale || 1)}px`);
+                    }
+                }
+                const rowRect = arrowContElmt.getBoundingClientRect();
+                const coloredRect = colored.getBoundingClientRect();
+                const leftWidth = subpanels[0]?.getBoundingClientRect().width || 0;
+                const rightWidth = subpanels[1]?.getBoundingClientRect().width || 0;
+                const divider = dividers[0];
+                const dividerRect = divider?.getBoundingClientRect();
+                const dividerVisible = dividerRect?.width > 0 &&
+                    !divider.classList.contains("hiddenDividerWithAplArrow") &&
+                    getComputedStyle(divider).display !== "none";
+                const division = dividerVisible
+                    ? (coloredLeft ? dividerRect.right : dividerRect.left)
+                    : (coloredLeft ? subpanels[0]?.getBoundingClientRect().right
+                        : subpanels[1]?.getBoundingClientRect().left);
+                const coloredWidth = coloredLeft
+                    ? division - rowRect.left : rowRect.right - division;
+                const plainWidth = coloredLeft
+                    ? rowRect.right - division : division - rowRect.left;
+                const balanced = count === 1 && subpanels.length === 2 && dividers.length === 1 &&
+                    leftWidth > 0 && rightWidth > 0 &&
+                    Math.min(leftWidth, rightWidth) / Math.max(leftWidth, rightWidth) >= 0.8 &&
+                    coloredWidth >= coloredRect.width - 1 &&
+                    plainWidth >= (plainArrow?.getBoundingClientRect().width || 0) + 2 *
+                        (parseFloat(getComputedStyle(plain).paddingLeft) || 0);
+                const forceWidth = sign.exitForceSubpanelWidth && subpanels.length === 2 &&
+                    coloredWidth > coloredRect.width + 1;
+
+                if (balanced || forceWidth) {
+                    // The divider is the boundary between the two arrow areas.
+                    // Keep each area aligned with the subpanel directly above it.
+                    colored.style.width = `${coloredWidth}px`;
+                    colored.style.flex = `0 0 ${coloredWidth}px`;
+                    if (balanced && plainArrow) {
+                        plainArrow.style.left = "50%";
+                        plainArrow.style.transform = "translate(-50%, -50%)";
+                    }
+                }
+                if (plainArrow && !balanced) {
+                    // The plain lane can grow without taking its arrow farther
+                    // than the requested gap from the adjacent exit arrow.
+                    const exitArrows = colored.querySelectorAll(".modernExitArrowFrame");
+                    const exitArrow = coloredLeft ? exitArrows[exitArrows.length - 1] : exitArrows[0];
+                    if (!exitArrow) return;
+                    const plainRect = plain.getBoundingClientRect();
+                    const plainArrowRect = plainArrow.getBoundingClientRect();
+                    const exitArrowRect = exitArrow.getBoundingClientRect();
+                    const plainStyle = getComputedStyle(plain);
+                    const outerPadding = parseFloat(coloredLeft
+                        ? plainStyle.paddingRight : plainStyle.paddingLeft) || 0;
+                    const rootSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                    const minCenter = plainRect.left + plainArrowRect.width / 2;
+                    const maxCenter = plainRect.right - plainArrowRect.width / 2;
+                    const farCenter = coloredLeft
+                        ? maxCenter - outerPadding : minCenter + outerPadding;
+                    const gapCenter = coloredLeft
+                        ? exitArrowRect.right + spacing * rootSize + plainArrowRect.width / 2
+                        : exitArrowRect.left - spacing * rootSize - plainArrowRect.width / 2;
+                    const center = Math.max(minCenter, Math.min(maxCenter,
+                        coloredLeft ? Math.min(farCenter, gapCenter) : Math.max(farCenter, gapCenter)));
+                    plainArrow.style.left = `${center - plainRect.left}px`;
+                    plainArrow.style.transform = "translate(-50%, -50%)";
+                }
+                if (plainArrow && sign.exitSplitPlainArrowPosition != null) {
+                    const plainRect = plain.getBoundingClientRect();
+                    const arrowWidth = plainArrow.getBoundingClientRect().width;
+                    const fraction = Math.max(0, Math.min(1, Number(sign.exitSplitPlainArrowPosition) || 0));
+                    const center = Math.max(arrowWidth / 2, Math.min(plainRect.width - arrowWidth / 2,
+                        fraction * plainRect.width));
+                    plainArrow.style.left = `${center / (plainRect.width / (plain.offsetWidth || plainRect.width) || 1)}px`;
+                    plainArrow.style.transform = "translate(-50%, -50%)";
+                }
+            };
+
+            const syncExitOnlyPanelWidth = () => {
+              const apply = () => {
+                if (splitPlainArrowDragging) return;
+                signHolderElmt.classList.remove("hasStandardGuideArrowWidthReserve");
+                signHolderElmt.style.removeProperty("--standardGuideArrowMinWidth");
+                signHolderElmt.style.removeProperty("width");
+                signHolderElmt.style.removeProperty("min-width");
+                signElmt.style.removeProperty("min-width");
+                signCont.style.removeProperty("min-width");
+                const colored = arrowContElmt.querySelector(".modernExitColoredLane");
+                const sequence = colored?.querySelector(".modernExitSequence");
+                if (!sequence) return;
+                const pixels = (value) => parseFloat(value) || 0;
+                const styles = getComputedStyle(sequence);
+                const items = [...sequence.children];
+                const sequenceWidth = items.reduce((width, item) =>
+                    width + item.getBoundingClientRect().width, 0) +
+                    Math.max(0, items.length - 1) * pixels(styles.columnGap);
+                const coloredStyle = getComputedStyle(colored);
+                const coloredWidth = sequenceWidth +
+                    pixels(coloredStyle.paddingLeft) + pixels(coloredStyle.paddingRight) +
+                    pixels(coloredStyle.borderLeftWidth) + pixels(coloredStyle.borderRightWidth);
+                colored.dataset.intrinsicWidth = String(coloredWidth);
+                const plain = arrowContElmt.querySelector(".modernExitPlainLane");
+                const guideStyle = getComputedStyle(guideArrowsElmt);
+                const arrowFrames = [...sequence.querySelectorAll(".modernExitArrowFrame")];
+                const rootSize = pixels(getComputedStyle(document.documentElement).fontSize) || 16;
+                const standardArrowWidth = arrowFrames.length && variant !== "laneSplit"
+                    ? arrowFrames.reduce((width, frame) =>
+                        width + (Number(frame.dataset.standardBoundsWidth) || frame.getBoundingClientRect().width / rootSize) * rootSize, 0) +
+                      Math.max(0, arrowFrames.length - 1) * spacing * rootSize +
+                      2 * standardHorizontalPadding * rootSize + 0.4 * rootSize
+                    : 0;
+                const areaWidth = Math.ceil(Math.max(
+                    coloredWidth + (plain ? plain.getBoundingClientRect().width : 0) +
+                        pixels(guideStyle.borderLeftWidth) + pixels(guideStyle.borderRightWidth) +
+                        pixels(guideStyle.paddingLeft) + pixels(guideStyle.paddingRight),
+                    standardArrowWidth,
+                    guideArrowsElmt.scrollWidth,
+                    guideArrowsElmt.getBoundingClientRect().width,
+                    arrowContElmt.scrollWidth,
+                    arrowContElmt.getBoundingClientRect().width
+                ));
+                const signWidth = Math.ceil(signElmt.getBoundingClientRect().width || 0);
+                const holderWidth = Math.ceil(signHolderElmt.getBoundingClientRect().width || 0);
+                if (areaWidth > holderWidth + 1) {
+                    signHolderElmt.classList.add("hasStandardGuideArrowWidthReserve");
+                    signHolderElmt.style.setProperty("--standardGuideArrowMinWidth", `${areaWidth}px`);
+                    signHolderElmt.style.width = `${areaWidth}px`;
+                    signHolderElmt.style.minWidth = `${areaWidth}px`;
+                }
+                if (areaWidth > signWidth + 1) {
+                    signElmt.style.minWidth = `${areaWidth}px`;
+                    signCont.style.minWidth = `${areaWidth}px`;
+                }
+                // The text slots of a single-arrow exit area may grow after the
+                // sequence's intrinsic width was measured. Fill the subpanel row
+                // against the final rendered area, not that earlier estimate.
+                if (variant === "laneSplit") {
+                    // Position the arrows before this redraw can be painted.
+                    // Later measurements cover font and SVG loading without
+                    // exposing the temporary edge position.
+                    syncWidenedSubpanelFill();
+                    syncSplitExitLanePlacement();
+                    const forcedHolderWidth = Math.ceil(signHolderElmt.scrollWidth || 0);
+                    if (sign.exitForceSubpanelWidth && forcedHolderWidth > signElmt.getBoundingClientRect().width + 1) {
+                        signElmt.style.minWidth = `${forcedHolderWidth}px`;
+                        signCont.style.minWidth = `${forcedHolderWidth}px`;
+                        syncSplitExitLanePlacement();
+                    }
+                    requestAnimationFrame(() => {
+                        syncSplitExitLanePlacement();
+                        requestAnimationFrame(syncSplitExitLanePlacement);
+                    });
+                } else {
+                    requestAnimationFrame(syncWidenedSubpanelFill);
+                }
+              };
+              apply();
+              requestAnimationFrame(() => {
+                apply();
+                requestAnimationFrame(apply);
+              });
+              if (document.fonts?.ready) {
+                document.fonts.ready.then(apply).catch(() => {});
+              }
+            };
+
+            const makeArrow = (plain = false) => {
+                const frame = document.createElement("span");
+                frame.className = "modernExitArrowFrame";
+                const image = document.createElement("img");
+                image.className = "modernExitArrowImage";
+                image.src = src;
+                image.alt = "";
+                image.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scaleX(${fixed && sign.exitArrowFlip ? -1 : 1})`;
+                const arrowTone = plain && (!sign.exitTextColor || sign.exitTextColor === "Inherit")
+                    ? getReadableTextColorForCssColor(getResolvedCssColorValue(panel.color) || "var(--green)")
+                    : textColor;
+                frame.appendChild(image);
+                const shape = document.createElement("span");
+                shape.className = "modernExitArrowImage modernExitArrowShape";
+                shape.style.transform = image.style.transform;
+                shape.style.backgroundColor = arrowTone;
+                const mask = `url("${src.replace(/"/g, "%22")}")`;
+                shape.style.maskImage = embeddedExitOnlyArrowMasks.get(src) || mask;
+                shape.style.webkitMaskImage = shape.style.maskImage;
+                frame.appendChild(shape);
+                image.style.visibility = "hidden";
+                frame._arrowMaskReady = getEmbeddedExitOnlyArrowMask(src).then((embeddedMask) => {
+                    if (embeddedMask) {
+                        shape.style.maskImage = embeddedMask;
+                        shape.style.webkitMaskImage = embeddedMask;
+                    }
+                    return waitForRenderedArrowMask(embeddedMask, src);
+                });
+                let lastRatio = 0;
+                const resize = (ratio) => {
+                    if (!Number.isFinite(ratio) || ratio <= 0 || ratio === lastRatio) return;
+                    lastRatio = ratio;
+                    const baseHeight = key.startsWith("DOWN") ? 1.5 : key === "TYPE_B" ? 1.85 : Math.sqrt(1.85 * 1.85 / ratio);
+                    const height = baseHeight * size / 3 * extendedScale;
+                    const radians = angle * Math.PI / 180;
+                    const width = height * ratio;
+                    const boundsWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
+                    const boundsHeight = Math.abs(width * Math.sin(radians)) + Math.abs(height * Math.cos(radians));
+                    const opticalInset = ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B", "TYPE_D"]
+                        .includes(key) ? Math.min(boundsWidth * 0.18, 0.55) * diagonalAmount : 0;
+                    image.style.height = `${height}rem`;
+                    shape.style.width = `${width}rem`;
+                    shape.style.height = `${height}rem`;
+                    frame.dataset.standardBoundsWidth = String(boundsWidth);
+                    frame.style.width = `${Math.max(0.3, boundsWidth - (plain || variant === "boxed" ? 0 : opticalInset))}rem`;
+                    frame.style.height = `${Math.max(0.1, boundsHeight - heightReduction)}rem`;
+                    syncExitOnlyPanelWidth();
+                };
+                image.addEventListener("load", () => {
+                    const ratio = image.naturalWidth / image.naturalHeight;
+                    if (Number.isFinite(ratio) && ratio > 0) {
+                        exitOnlyArrowRatios.set(src, ratio);
+                        resize(ratio);
+                    }
+                });
+                const cachedRatio = exitOnlyArrowRatios.get(src) ||
+                    (image.complete && image.naturalHeight ? image.naturalWidth / image.naturalHeight : 0);
+                if (cachedRatio) resize(cachedRatio);
+                frame._refreshArrowLayout = syncExitOnlyPanelWidth;
+                return frame;
+            };
+            const makeText = (value, name) => {
+                const el = document.createElement("span");
+                el.className = `modernExitText modernExitText-${name}`;
+                const displayedText = String(value).replace(/\\n/g, "\n");
+                el.textContent = displayedText;
+                if (displayedText.includes("\n")) el.classList.add("modernExitMultiline");
+                if (variant === "boxed") {
+                    el.classList.add(/[gjpqy]/.test(displayedText.split("\n").at(-1))
+                        ? "modernExitHasDescender" : "modernExitNoDescender");
+                }
+                let font = typeof resolveTextFontFamilyForRender === "function"
+                    ? resolveTextFontFamilyForRender(sign.exitTextFont || "Series E",
+                        { backgroundColor: sign.exitBackgroundColor || "Yellow" }, panel)
+                    : sign.exitTextFont || "Series E";
+                if (isMotorwayFont(font)) font = getMotorwayFallbackFont(font);
+                el.style.fontFamily = `"${String(font).replace(/["\\]/g, "")}"`;
+                const gothic = /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(sign.exitTextFont || "Series E");
+                el.style.fontSize = `${1.75 * Math.max(50, Math.min(100, Number(sign.exitTextSize) || 70)) / 100 * (gothic ? 1.2 : 1)}rem`;
+                const letterSpacing = Number(sign.exitTextSpacing);
+                el.style.letterSpacing = `${Number.isFinite(letterSpacing) ? letterSpacing : 0}em`;
+                return el;
+            };
+            const makeColoredLane = (laneCount) => {
+                const lane = document.createElement("div");
+                lane.className = "modernExitColoredLane";
+                const sequence = document.createElement("div");
+                sequence.className = "modernExitSequence";
+                sequence.style.setProperty("--exitOnlyArrowGap", `${spacing}rem`);
+                const appendArrow = () => sequence.appendChild(makeArrow(variant === "boxed"));
+                const appendGap = () => {
+                    const gap = document.createElement("span");
+                    gap.className = "modernExitArrowGap";
+                    sequence.appendChild(gap);
+                };
+                const appendArrows = (number) => {
+                    for (let i = 0; i < number; i++) {
+                        if (i) appendGap();
+                        appendArrow();
+                    }
+                };
+                const makeTextSlot = (value, name) => {
+                    const slot = document.createElement("span");
+                    slot.className = "modernExitTextSlot";
+                    slot.appendChild(makeText(value, name));
+                    return slot;
+                };
+                const leftText = makeTextSlot(sign.exitOnlyLeftText ?? "EXIT", "left");
+                const rightText = makeTextSlot(sign.exitOnlyRightText ?? "ONLY", "right");
+                const combinedText = laneCount === 0 || (laneCount > 1 && laneCount % 2 === 0);
+                const appendTexts = () => {
+                    if (combinedText) {
+                        const left = String(sign.exitOnlyLeftText ?? "EXIT");
+                        const right = String(sign.exitOnlyRightText ?? "ONLY");
+                        const joined = left + (left.length && right.length ? " " : "") + right;
+                        sequence.appendChild(makeTextSlot(joined, "combined"));
+                    } else {
+                        sequence.append(leftText, rightText);
+                    }
+                };
+                // A split exit's alignment moves the colored area as a unit. Its
+                // text and arrows keep their normal order inside that area.
+                const alignment = variant === "laneSplit" || laneCount > 1
+                    ? "Center" : sign.exitArrowAlignment || "Center";
+                sequence.dataset.arrowCount = String(laneCount);
+                sequence.dataset.alignment = alignment.toLowerCase();
+                if (laneCount === 1 && alignment === "Center") {
+                    // Keep both words next to the arrow as the panel widens.
+                    sequence.style.justifyContent = "center";
+                    sequence.style.columnGap = "0.55rem";
+                    for (const slot of [leftText, rightText]) {
+                        slot.style.flex = "0 0 auto";
+                        slot.style.width = "max-content";
+                        slot.style.minWidth = "max-content";
+                    }
+                }
+                if (laneCount === 0) {
+                    appendTexts();
+                } else if (alignment === "Left") {
+                    appendArrows(laneCount);
+                    appendTexts();
+                } else if (alignment === "Right") {
+                    appendTexts();
+                    appendArrows(laneCount);
+                } else if (laneCount === 1) {
+                    sequence.appendChild(leftText);
+                    appendArrow();
+                    sequence.appendChild(rightText);
+                } else if (laneCount % 2 === 0) {
+                    appendArrows(laneCount / 2);
+                    appendTexts();
+                    appendArrows(laneCount / 2);
+                } else {
+                    appendArrows(Math.floor(laneCount / 2));
+                    sequence.appendChild(leftText);
+                    appendArrow();
+                    sequence.appendChild(rightText);
+                    appendArrows(Math.floor(laneCount / 2));
+                }
+                lane.appendChild(sequence);
+                document.fonts?.ready?.then(syncExitOnlyPanelWidth);
+                return lane;
+            };
+
+            arrowContElmt.classList.add("modernExitLayout");
+            if (variant === "laneSplit") {
+                const colored = makeColoredLane(count);
+                const plain = document.createElement("div");
+                plain.className = "modernExitPlainLane";
+                if (count > 0) {
+                    const plainArrow = makeArrow(true);
+                    plainArrow.draggable = false;
+                    plainArrow.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    });
+                    plainArrow.addEventListener("pointerdown", (event) => {
+                        if (event.button !== 0) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        suppressArrowBandClickUntil = performance.now() + 750;
+                        const original = sign.exitSplitPlainArrowPosition;
+                        const initialX = event.clientX;
+                        const laneRect = plain.getBoundingClientRect();
+                        const arrowRect = plainArrow.getBoundingClientRect();
+                        const initialCenter = arrowRect.left + arrowRect.width / 2;
+                        const scale = laneRect.width / (plain.offsetWidth || laneRect.width);
+                        const wasDraggable = panelElmt.draggable;
+                        panelElmt.draggable = false;
+                        guideArrowPointerDragActive = true;
+                        splitPlainArrowDragging = true;
+                        plainArrow.setPointerCapture(event.pointerId);
+                        let moved = false;
+                        let position = original;
+                        const move = (moveEvent) => {
+                            if (moveEvent.pointerId !== event.pointerId) return;
+                            moveEvent.preventDefault();
+                            moveEvent.stopPropagation();
+                            if (laneRect.width <= arrowRect.width) return;
+                            if (Math.abs(moveEvent.clientX - initialX) > 3) moved = true;
+                            if (!moved) return;
+                            const rawCenter = Math.max(laneRect.left + arrowRect.width / 2,
+                                Math.min(laneRect.right - arrowRect.width / 2,
+                                    initialCenter + moveEvent.clientX - initialX));
+                            const midpoint = laneRect.left + laneRect.width / 2;
+                            const center = Math.abs(rawCenter - midpoint) <= 10 ? midpoint : rawCenter;
+                            position = (center - laneRect.left) / laneRect.width;
+                            plainArrow.style.left = `${(center - laneRect.left) / (scale || 1)}px`;
+                            plainArrow.style.transform = "translate(-50%, -50%)";
+                        };
+                        const restore = () => {
+                            window.removeEventListener("pointermove", move, true);
+                            window.removeEventListener("pointerup", finish, true);
+                            window.removeEventListener("pointercancel", cancel, true);
+                            plainArrow.removeEventListener("lostpointercapture", cancel);
+                            panelElmt.draggable = wasDraggable;
+                            guideArrowPointerDragActive = false;
+                            splitPlainArrowDragging = false;
+                            suppressArrowBandClickUntil = performance.now() + 750;
+                        };
+                        const finish = (upEvent) => {
+                            if (upEvent.pointerId !== event.pointerId) return;
+                            upEvent.preventDefault();
+                            upEvent.stopPropagation();
+                            move(upEvent);
+                            restore();
+                            if (moved && position != null) runWithUndo(() => {
+                                sign.exitSplitPlainArrowPosition = position;
+                            });
+                            else selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
+                                guideMode: "standard", suppressRedraw: true, flashTarget: guideArrowsElmt });
+                        };
+                        const cancel = (cancelEvent) => {
+                            if (cancelEvent.pointerId !== event.pointerId) return;
+                            cancelEvent.stopPropagation();
+                            restore();
+                            syncSplitExitLanePlacement();
+                        };
+                        window.addEventListener("pointermove", move, true);
+                        window.addEventListener("pointerup", finish, true);
+                        window.addEventListener("pointercancel", cancel, true);
+                        plainArrow.addEventListener("lostpointercapture", cancel);
+                    });
+                    plain.appendChild(plainArrow);
+                }
+                const coloredLeft = sign.exitArrowAlignment === "Left";
+                arrowContElmt.appendChild(coloredLeft ? colored : plain);
+                arrowContElmt.appendChild(coloredLeft ? plain : colored);
+                colored.classList.add(coloredLeft ? "onLeft" : "onRight");
+                colored.style.borderTopWidth = sign.exitTopBorder ? borderWidth : "0";
+            } else {
+                arrowContElmt.appendChild(makeColoredLane(count));
+            }
+            syncExitOnlyPanelWidth();
+        } else if ("Side Left" == panel.sign.guideArrow) {
             signElmt.classList.add("hasSideGuideArrow", "hasSideLeftGuideArrow");
             signHolderElmt.classList.add("hasSideGuideArrow", "hasSideLeftGuideArrow");
             sideLeftArrowElmt.style.display = "block";
@@ -14805,6 +16695,18 @@ const app = (function () {
                 signElmt.style.removeProperty("border-bottom-width");
                 signElmt.style.removeProperty("width");
             }
+
+          // CSSOM normalizes an assigned "0" width to "0px". The former
+          // string comparison skipped the seam fix for every modern band.
+          if (signElmt.style.borderBottomWidth &&
+              parseFloat(signElmt.style.borderBottomWidth) === 0) {
+              signCont.classList.add("hasBottomGuideArrows");
+              // Full exit tabs can apply an important border-radius shorthand
+              // to the sign. Keep the seam square so its side border reaches
+              // the guide band without curving away at either edge.
+              signElmt.style.setProperty("border-bottom-left-radius", "0", "important");
+              signElmt.style.setProperty("border-bottom-right-radius", "0", "important");
+          }
           
           var width = signCont.clientWidth;
           var exitWidth = firstExitTab.clientWidth;
@@ -14812,14 +16714,59 @@ const app = (function () {
           if (exitWidth > width) {
               signCont.style.width = firstExitTab.clientWidth + "px";
           }
+
+          adoptNearbyExitTabAnchors(panelElmt, panel);
+          exitTabAnchorsReady = true;
+          applyRenderedExitTabAnchors(panelElmt, panel);
           
           schedulePanelBorderGradientUpdate(panelElmt);
           }
+      panelsToKeep.forEach((oldPanel, indicesKey) => {
+        const newPanel = Array.from(panelContainerElmt.children).find((child) => {
+          const indices = Array.from(child.classList.contains("panel")
+            ? [child]
+            : child.querySelectorAll(".panel[data-panel-index]"))
+            .map((panel) => Number(panel.dataset.panelIndex));
+          return indices.join(",") === indicesKey;
+        });
+        if (newPanel) newPanel.replaceWith(oldPanel);
+      });
+      retainRenderedArrows(panelContainerElmt, previousArrowFrames);
+      panelContainerElmt.querySelectorAll(".panel[data-panel-index]").forEach((panelElmt) => {
+        const panel = post.panels[Number(panelElmt.dataset.panelIndex)];
+        if (panel) {
+          applyRenderedExitTabAnchors(panelElmt, panel);
+          watchRenderedExitTabAnchors(panelElmt, panel);
+          VmsPanel.mount(panelElmt);
+        }
+      });
       }
       
+      watchRuralPostLayout();
       schedulePostViewportLayoutUpdate();
     
     // end of redraw //
+
+  VmsPanel.setFontProvider((root) => getSafeExportFontEmbedCSS(root));
+  VmsPanel.setCaptureProvider(async (screen, options) => {
+    const panel = screen.closest(".panel");
+    const captureClone = panel ? createStaticExportClone(panel) : null;
+    const source = captureClone?.node.querySelector(".signContainer");
+    if (!source) {
+      captureClone?.cleanup();
+      throw new Error("Unable to prepare an isolated VMS capture.");
+    }
+    source.dataset.vmsCaptureSource = "true";
+    let restore = () => {};
+    try {
+      restore = materializeExportBannerFirstLetters(source);
+      await waitForImagesInElement(source);
+      return await htmlToImage.toCanvas(source, options);
+    } finally {
+      restore();
+      captureClone?.cleanup();
+    }
+  });
 
   // Expose necessary variables and functions to formHandler
     const exposeToFormHandler = {
@@ -14884,6 +16831,8 @@ const app = (function () {
         addAPLDivider: (...args) => runWithUndo(() => addAPLDivider(...args)),
         setAPLGroupedWithDivider: () => {},
         setAPLExitOnly,
+        setAPLExitOnlyMergeAdjacent,
+        setAPLExitOnlyTextSetting,
         setAPLArrowSpacing,
         setAPLArrowBeforeSpacing,
         setAPLArrowSize,
@@ -15401,6 +17350,7 @@ const app = (function () {
         copySVGSign: copySVGSign,
         copyPanelPNG: copyPanelPNG,
         updatePreview: updatePreview,
+        toggleVmsPanel,
         resetPadding: (...args) => runWithUndo(() => resetPadding(...args)),
         duplicateControlElem: (...args) => runWithUndo(() => duplicateControlElem(...args)),
         applyTemplate: (...args) => runWithUndo(() => applyTemplate(...args)),

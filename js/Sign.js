@@ -28,6 +28,14 @@ const cloneSignModelValue = (value, seen = new WeakMap()) => {
   return clonedObject;
 };
 
+const getDefaultGuideArrowAngle = (type, alignment = "Center") => {
+  const key = String(type || "");
+  if (key.startsWith("DOWN") || key.startsWith("TYPE_C_") ||
+      key === "TYPE_E" || key.startsWith("APL_")) return 0;
+  return alignment === "Left" && ["TYPE_A", "TYPE_A_EXTENDED", "TYPE_B", "TYPE_D"].includes(key)
+    ? 315 : 45;
+};
+
 class Sign {
 
   /**
@@ -54,6 +62,14 @@ class Sign {
     aplArrows = [],
     guideArrow,
     guideArrowLanes = 1,
+    standardArrowType = "DOWN",
+    standardArrowAngle = null,
+    standardArrowFlip = false,
+    standardArrowSize = 3,
+    standardArrowPadding,
+    standardArrowSpacing = 8.5,
+    standardArrowAlignment = "Center",
+    standardArrowPosition = "Down",
     useCanadianDownArrows = false,
     exitguideArrows = "Down Arrow",
     exitOnlyPadding = 0.2,
@@ -61,6 +77,25 @@ class Sign {
     exitOnlyLeftText = "EXIT",
     exitOnlyRightText = "ONLY",
     exitOnlyLabelPreset = "EXIT ONLY",
+    exitOnlyEditorVersion = 0,
+    exitArrowType = "DOWN",
+    exitArrowAngle = null,
+    exitArrowFlip = false,
+    exitArrowSize = 3,
+    exitArrowPadding = 0.2,
+    exitArrowSpacing = 8.5,
+    exitArrowAlignment = "Center",
+    exitTextFont = "Series E",
+    exitTextSize = 70,
+    exitTextSpacing = 0,
+    exitTextColor = "Inherit",
+    exitBackgroundColor = "Yellow",
+    exitBorderColor = "Inherit",
+    exitTopBorder = false,
+    exitColorEdges = true,
+    exitTexasBorder = true,
+    exitForceSubpanelWidth = false,
+    exitSplitPlainArrowPosition = null,
     hideExitArrow = false,
 
     // other
@@ -115,6 +150,15 @@ class Sign {
       this.guideArrowLanes = 0;
     }
     this.useCanadianDownArrows = !!useCanadianDownArrows;
+    this.standardArrowType = standardArrowType;
+    this.standardArrowAngle = standardArrowAngle ?? getDefaultGuideArrowAngle(standardArrowType,
+      standardArrowAlignment === "Left" || standardArrowPosition === "Left" ? "Left" : "Center");
+    this.standardArrowFlip = !!standardArrowFlip;
+    this.standardArrowSize = standardArrowSize;
+    this.standardArrowPadding = standardArrowPadding ?? exitOnlyPadding;
+    this.standardArrowSpacing = standardArrowSpacing;
+    this.standardArrowAlignment = standardArrowAlignment;
+    this.standardArrowPosition = standardArrowPosition;
     this.oSNum = oSNum;
     this.actionMessage = actionMessage;
     this.subPanels = subPanels;
@@ -130,6 +174,28 @@ class Sign {
     this.aplArrows = aplArrows;
     this.exitguideArrows = exitguideArrows;
     this.exitOnlyPadding = exitOnlyPadding;
+    this.exitOnlyEditorVersion = exitOnlyEditorVersion;
+    this.exitArrowType = exitArrowType;
+    this.exitArrowAngle = exitArrowAngle ?? getDefaultGuideArrowAngle(exitArrowType, exitArrowAlignment);
+    this.exitArrowFlip = !!exitArrowFlip;
+    this.exitArrowSize = exitArrowSize;
+    this.exitArrowPadding = exitArrowPadding;
+    this.exitArrowSpacing = exitArrowSpacing;
+    this.exitArrowAlignment = guideArrow === "Half Exit Only" &&
+      !["Left", "Right"].includes(exitArrowAlignment) ? "Right" : exitArrowAlignment;
+    this.exitTextFont = exitTextFont;
+    this.exitTextSize = exitTextSize;
+    this.exitTextSpacing = exitTextSpacing;
+    this.exitTextColor = exitTextColor;
+    this.exitBackgroundColor = exitBackgroundColor;
+    this.exitBorderColor = exitBorderColor;
+    this.exitTopBorder = !!exitTopBorder;
+    this.exitColorEdges = !!exitColorEdges;
+    this.exitTexasBorder = !!exitTexasBorder;
+    this.exitForceSubpanelWidth = !!exitForceSubpanelWidth;
+    this.exitSplitPlainArrowPosition = exitSplitPlainArrowPosition == null ||
+      !Number.isFinite(Number(exitSplitPlainArrowPosition)) ? null :
+      Math.max(0, Math.min(1, Number(exitSplitPlainArrowPosition)));
     const exitOnlyBorderModes = Sign.prototype.exitOnlyBorderModes;
     if (exitOnlyBorderModes.includes(exitOnlyBorderMode)) {
       this.exitOnlyBorderMode = exitOnlyBorderMode;
@@ -412,6 +478,7 @@ class Sign {
 Sign.prototype.shieldPositions = ["Left", "Above", "Right"];
 Sign.prototype.guideArrows = [
   "None",
+  "Standard Arrow",
   "Side Left",
   "Side Right",
   "Down Arrow:C-1",

@@ -20,6 +20,12 @@ class Panel {
 
     this.sign = sign;
     this.exitTabs = exitTabs;
+    this.isVms = false;
+    this.borderThickness = 0.2;
+    this.vmsResolution = "medium";
+    this.vmsResolutionVersion = 5;
+    this.vmsAntialias = true;
+    this.vmsFrameColor = "#3c3e42";
 
     if (typeof borderRadius === "number" && borderRadius >= 0) {
       this.borderRadius = borderRadius;
@@ -30,8 +36,25 @@ class Panel {
 
   newExitTab() {
     const exitTab = new ExitTab();
+    exitTab.borderThickness = Panel.getBorderThickness(this);
 
     this.exitTabs.push(exitTab);
+  }
+
+  static getBorderThickness(panel = {}) {
+    if (panel.hideBorder === true && panel.borderThickness == null) return 0;
+    const value = parseFloat(panel.borderThickness);
+    return Number.isFinite(value) ? Math.round(Math.max(0, Math.min(0.4, value)) * 10) / 10 : 0.2;
+  }
+
+  static setBorderThickness(panel, value) {
+    panel.borderThickness = Panel.getBorderThickness({ borderThickness: value });
+    delete panel.hideBorder;
+    const syncTabs = (tabs) => (tabs || []).forEach((tab) => {
+      tab.borderThickness = panel.borderThickness;
+      syncTabs(tab.nestedExitTabs);
+    });
+    syncTabs(panel.exitTabs);
   }
 
   deleteExitTab(index, secondaryIndex) {

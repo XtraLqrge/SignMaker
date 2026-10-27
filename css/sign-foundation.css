@@ -353,12 +353,12 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
 }
 
 .bE-iconElement {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: inline-grid;
+  place-items: center;
   margin: 0 var(--spacing, 0rem);
-  aspect-ratio: 1 / 1;
-  width: 3.5rem;
+  aspect-ratio: auto;
+  width: max-content;
+  height: max-content;
 }
 
 .bE-iconElement img {

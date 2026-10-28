@@ -1,6 +1,6 @@
 ![SignMaker Preview Thumbnail](https://github.com/JKPotato-Computer/SignMaker/blob/main/img/other-symbols/Banner.png)
 
-### Important: The page for SignMaker v2.19 has moved to https://hwysignmaker.com/.
+### Important: The page for SignMaker v2.19 has moved to [hwysignmaker.com](https://hwysignmaker.com/).
 
 SignMaker is a JavaScript-based app for creating highway guide signs. Based off of [Kurumi's Sign Maker](http://www.kurumi.com/roads/signmaker). Allows for the creation of highway guide signs in the style defined by the United States FHWA in their [MUTCD](https://mutcd.fhwa.dot.gov/kno_2009r1r2.htm).
 

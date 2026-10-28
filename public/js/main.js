@@ -1523,6 +1523,7 @@ const app = (function () {
       if (typeof snapshot !== "string" || !snapshot) {
         return;
       }
+      window.SignMakerFonts?.remember(document.getElementById("panelContainer"));
 
       try {
         window.localStorage.setItem(APP_STORAGE_KEY, snapshot);
@@ -1643,7 +1644,7 @@ const app = (function () {
       }
     };
 
-    const loadSavedAppState = async () => {
+    const readSavedAppStateSnapshot = async () => {
       try {
         let snapshot = null;
 
@@ -1661,13 +1662,23 @@ const app = (function () {
           }
         }
 
-        if (!snapshot) {
-          return false;
-        }
+        return snapshot;
+      } catch (error) {
+        console.error("Failed to read saved app state", error);
+        return null;
+      }
+    };
 
+    const loadSavedAppState = async (savedSnapshot = readSavedAppStateSnapshot()) => {
+      try {
         const restoreMode = getRestoreOnRefreshMode();
 
         if (restoreMode === "never") {
+          return false;
+        }
+
+        const snapshot = await savedSnapshot;
+        if (!snapshot) {
           return false;
         }
 
@@ -4166,7 +4177,10 @@ const app = (function () {
       return changed;
     };
 
+    let initializationStarted = false;
     const init = async function () {
+      if (initializationStarted) return;
+      initializationStarted = true;
       post = new Post(DEFAULT_POST_POSITION);
       post.panelSpacing = getDefaultPanelSpacing();
       post.newPanel();
@@ -4175,36 +4189,47 @@ const app = (function () {
       ensureExtendedGuideArrowOptions();
       bindDownloadResolutionControl();
 
-      const formInitialization = formHandler.init(exposeToFormHandler);
-
-      // The form loads saved custom icons. Finish that work before restoring
-      // and drawing a sign that may refer to those icon IDs.
+      // Read the sign while the form loads its custom icon registry.
+      const savedSnapshot = getRestoreOnRefreshMode() === "never"
+        ? null : readSavedAppStateSnapshot();
+      let restored = false, migratedLegacyNoneBanners = false;
       window.customShields = new CustomShields();
-      await formInitialization;
-      await window.customShields.initialized;
-
-        const restored = await loadSavedAppState();
-
-        if (post.panels.length === 0) {
-          post.newPanel();
-          currentlySelectedPanelIndex = post.panels.length - 1;
-        }
-
-        const migratedLegacyNoneBanners =
-          migrateLegacyNoneShieldBannersOnce();
-
-        await prepareIconImagesForPost(post);
-        formHandler.updateForm();
-        redraw();
-
-        requestAnimationFrame(() => {
-          redraw();
-          if (document.fonts && typeof document.fonts.ready?.then === "function") {
-            document.fonts.ready.then(() => {
-              redraw();
-            });
+      await formHandler.init(exposeToFormHandler, {
+        beforeUI: async () => {
+          restored = await loadSavedAppState(savedSnapshot);
+          if (post.panels.length === 0) {
+            post.newPanel();
+            currentlySelectedPanelIndex = post.panels.length - 1;
           }
+          migratedLegacyNoneBanners = migrateLegacyNoneShieldBannersOnce();
+          await Promise.all([
+            prepareIconImagesForPost(post),
+            window.SignMakerFonts?.preparePost(post),
+          ]);
+          redraw();
+          await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
+          document.documentElement.removeAttribute("data-sign-loading");
+          // Give the panels a paint before the menu setup occupies the thread.
+          if (document.visibilityState !== "hidden") {
+            await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+          }
+        },
+      });
+      formHandler.updateForm();
+
+      // Font loading can change layout without rebuilding every panel or
+      // discarding an in-flight VMS render.
+      const refreshStartupLayout = () => {
+        document.querySelectorAll("#panelContainer .panel[data-panel-index]").forEach((element) => {
+          const panel = post.panels[Number(element.dataset.panelIndex)];
+          if (panel) applyRenderedExitTabAnchors(element, panel);
+          schedulePanelBorderGradientUpdate(element);
         });
+        schedulePostViewportLayoutUpdate();
+        VmsPanel.refreshPreviews();
+      };
+      requestAnimationFrame(refreshStartupLayout);
+      document.fonts?.ready?.then(refreshStartupLayout).catch(() => {});
 
         if (!restored || migratedLegacyNoneBanners) {
           saveAppState();

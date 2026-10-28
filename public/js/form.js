@@ -8650,14 +8650,20 @@ const getPostThicknessFallback = () =>
       });
     };
 
-  const initialize = async (appExposed) => {
+  const initialize = async (appExposed, { beforeUI } = {}) => {
     exposed = appExposed;
     post = exposed.getPost();
     prepareSdShieldBannerTextInputs();
     enableSelectOptionDeduplication();
     dedupeAllSelectOptions(document);
     applyStoredPreferences();
-    await loadCustomIconRecords();
+    await Promise.all([loadCustomIconRecords(), customShieldMakerLoadPromise]);
+    syncCustomShieldMakerConfigs();
+    // Restore and paint the sign before building the editor's option lists.
+    if (typeof beforeUI === "function") {
+      await beforeUI();
+      post = exposed.getPost();
+    }
     await initUI();
     dedupeAllSelectOptions(document);
     initCustomShieldMaker();

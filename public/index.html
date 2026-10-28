@@ -1,7 +1,15 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-sign-loading>
 
 <head>
+  <style>
+    html[data-sign-loading] #postContainer .post {
+      visibility: hidden !important;
+    }
+    html[data-sign-loading] #panelContainer {
+      background: none !important;
+      opacity: 0;
+    }
+  </style>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
@@ -44,18 +52,18 @@
     })();
   </script>
   <link rel="icon" type="image/x-icon" href="img/other-symbols/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <script src="js/FontLoader.js?v=20261028-fonts1"></script>
   <!-- CSS Links -->
-  <link href="css/page.css?v=20261008b" rel="stylesheet" type="text/css" />
+  <link href="css/page.css?v=20261028-fonts1" rel="stylesheet" type="text/css" />
   <link href="css/signs.css?v=20261026-messages1" rel="stylesheet" type="text/css" />
   <link href="css/shields.css?v=20261025c" rel="stylesheet" type="text/css" />
   <link href="css/form.css?v=20261026-messages1" rel="stylesheet" type="text/css" />
   <link href="css/sign-foundation.css?v=20261025a" rel="stylesheet" type="text/css" />
   <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=Overpass:ital,wght@0,100..900;1,100..900&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" />
   <!-- Page Links -->
-  <script src="https://cdn.jsdelivr.net/gh/peterhry/CircleType@2.3.1/dist/circletype.min.js"></script>
   <script src="js/HtmlToImage.js" type="text/javascript"></script>
   <script src="js/lib.js" type="text/javascript"></script>
   <script src="js/Shield.js?v=20261001b" type="text/javascript"></script>
@@ -68,13 +76,13 @@
   <script src="js/Control.js?v=20261026-messages1" type="text/javascript"></script>
   <script src="js/SubPanels.js" type="text/javascript"></script>
   <script src="js/IconPicker.js?v=20261026-icons2" type="text/javascript"></script>
-  <script src="js/form.js?v=20261026-messages1" type="text/javascript"></script>
+  <script src="js/form.js?v=20261028-startup1" type="text/javascript"></script>
   <script src="js/IndexDB.js" type="text/javascript"></script>
   <script src="js/CustomShields.js" type="text/javascript"></script>
-  <script src="js/main.js?v=20261027-arrows1" type="text/javascript"></script>
+  <script src="js/main.js?v=20261028-fonts1" type="text/javascript"></script>
 </head>
 
-<body onload="app.init();">
+<body>
     <div class="top-right-links">
       <a class="mutcd-link" href="https://discord.gg/dgqGZAeZvF" target="_blank" rel="noopener noreferrer">
         <span>Join the Discord!</span>
@@ -2864,6 +2872,9 @@
       </div>
     </div>
   </footer>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => app.init(), { once: true });
+  </script>
 </body>
 
 </html>

@@ -592,3 +592,8 @@ h6 {
 input[type="checkbox"] {
   width: auto;
 }
+
+.footerdiv a {
+    color: #cfdfff; /* Orange */
+
+}

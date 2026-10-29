@@ -895,7 +895,7 @@ const formHandler = (function () {
               existingOption.selected = true;
               selectEl.value = existingOption.value;
             }
-            dedupeSelectOptions(selectEl);
+            scheduleDedupeSelectOptions(selectEl);
             return existingOption;
           }
 
@@ -905,7 +905,7 @@ const formHandler = (function () {
             selectEl.options.length > beforeLength
               ? selectEl.options[selectEl.options.length - 1]
               : null;
-          dedupeSelectOptions(selectEl);
+          scheduleDedupeSelectOptions(selectEl);
           return appendedOption;
         };
 
@@ -8665,9 +8665,7 @@ const getPostThicknessFallback = () =>
       post = exposed.getPost();
     }
     await initUI();
-    dedupeAllSelectOptions(document);
     initCustomShieldMaker();
-    dedupeAllSelectOptions(document);
     initializeColorPickers();
     dedupeAllSelectOptions(document);
     bindPanelPaddingControls();

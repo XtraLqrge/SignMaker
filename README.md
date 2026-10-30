@@ -1,3 +1,9 @@
+## Local development
+
+The app lives in `public/`. Run `python3 -m http.server 8765 --directory public`
+from the repository root and open http://127.0.0.1:8765.
+Validation and asset-generation scripts live in `scripts/`.
+
 ![SignMaker Preview Thumbnail](https://github.com/JKPotato-Computer/SignMaker/blob/main/img/other-symbols/Banner.png)
 
 ### Important: The page for SignMaker v2.19 has moved to [hwysignmaker.com](https://hwysignmaker.com/).

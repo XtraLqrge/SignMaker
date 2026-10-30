@@ -508,43 +508,39 @@
 
 /* FLORIDA */
 .bannerShieldContainer.FL .routeNumber {
-  color: var(--black);
-  top: 0.3em;
-  right: 0.15em;
-  font-size: 1.5em;
+	color: var(--black);
+	top: 0.3em;
+	right: 0.15em;
+	font-size: 1.5em;
 }
 .bannerShieldContainer.FL.one .routeNumber,
 .bannerShieldContainer.FL.two .routeNumber,
 .bannerShieldContainer.FL.three .routeNumber {
-  font-family: "Series D";
-  font-size: 2.2em;
-  top: 0.2em;
+	font-family: "Series D";
+	font-size: 2.2em;
+	top: 0.2em;
 }
 .bannerShieldContainer.FL.four .routeNumber {
-  font-family: "Series C";
-  font-size: 2.2em;
-  top: 0.2em;
+	font-family: "Series C";
+	font-size: 2.2em;
+	top: 0.2em;
 }
 
-.bannerShieldContainer.FL.variant-3digit-58-36-.three .routeNumber,
-.bannerShieldContainer.FL.variant-3digit-58-36-.four .routeNumber{
-  transform: translateX(-0.1em) !important;
-  letter-spacing: -0.02em !important;
-}
+
 .bannerShieldContainer.FL.toll .banner {
-  display: none;
+	display: none;
 }
 .bannerShieldContainer.FL.toll .routeNumber,
 .bannerShieldContainer.FL.cfxtoll .routeNumber {
-  font-family: "Series C";
-  font-size: 1.3em;
-  top: 0.7em;
+	font-family: "Series C";
+	font-size: 1.3em;
+	top: 0.7em;
 }
 .bannerShieldContainer.FL.toll .routeNumber {
-  left: -0.2rem;
+	left: -0.2rem;
 }
 .bannerShieldContainer.FL.turnpike .routeNumber {
-  opacity: 0;
+	opacity: 0;
 }
 
 /* GEORGIA */
@@ -2875,123 +2871,87 @@
 /* Current FDOT/CFX route markers use published physical dimensions. */
 .bannerShieldContainer.officialFdotShield .shield,
 .bannerShieldContainer.officialCfxShield .shield {
-  box-sizing: border-box;
-  margin: 0;
-  position: relative;
+	box-sizing: border-box;
+	margin: 0;
+	position: relative;
 }
 
 .bannerShieldContainer.officialFdotShield .shieldImg,
 .bannerShieldContainer.officialCfxShield .shieldImg {
-  display: block;
-  max-width: none;
-  object-fit: fill;
+	display: block;
+	max-width: none;
+	object-fit: fill;
 }
 
 .bannerShieldContainer.variableGuideWidth .shield {
-  background: var(--white);
-  border-radius: var(--variableGuideRadius);
-  overflow: hidden;
+	background: var(--white);
+	border-radius: var(--variableGuideRadius);
+	overflow: hidden;
 }
 
 .bannerShieldContainer.FDOTSTATE.variableGuideWidth .shieldImg {
-  clip-path: inset(var(--variableGuideArtworkClip));
-  position: absolute;
-  right: 0;
-  top: 0;
-  z-index: 1;
+	clip-path: inset(var(--variableGuideArtworkClip));
+	position: absolute;
+	right: 0;
+	top: 0;
+	z-index: 1;
 }
 
 .bannerShieldContainer.variableGuideWidth .shield::before {
-  background: var(--white);
-  bottom: 0;
-  content: "";
-  left: calc(100% - var(--variableGuideAssetWidth));
-  position: absolute;
-  top: 0;
-  width: var(--variableGuideSeamCover);
-  z-index: 2;
+	background: var(--white);
+	bottom: 0;
+	content: "";
+	left: calc(100% - var(--variableGuideAssetWidth));
+	position: absolute;
+	top: 0;
+	width: var(--variableGuideSeamCover);
+	z-index: 2;
 }
 
 .bannerShieldContainer.FDOTSTATE.variableGuideWidth .variableGuideContour {
-  height: 100%;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  position: absolute;
-  width: 100%;
-  z-index: 3;
+	height: 100%;
+	inset: 0;
+	overflow: visible;
+	pointer-events: none;
+	position: absolute;
+	width: 100%;
+	z-index: 3;
 }
 
 /* Keep the official 1/8-inch SVG contour, but guarantee a visible editor pixel. */
-.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after {
-  border: 1px solid var(--black);
-  border-radius: inherit;
-  box-sizing: border-box;
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 3;
-}
 
-.exportCaptureTarget .bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after,
-.exportStaticCaptureClone .bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after,
-.exportCaptureTarget.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after,
-.exportStaticCaptureClone.bannerShieldContainer.FDOTSTATE.variableGuideWidth .shield::after {
-  display: none;
-}
+
+
 
 .bannerShieldContainer.officialFdotShield .routeNumber.officialRouteNumber,
 .bannerShieldContainer.officialCfxShield .routeNumber.officialRouteNumber {
-  bottom: auto;
-  left: 0;
-  font-feature-settings: "kern" 0;
-  font-kerning: none;
-  font-synthesis: none;
-  letter-spacing: 0;
-  line-height: 1;
-  margin: 0;
-  right: auto;
-  text-align: left;
-  top: calc(var(--officialRouteCapTop, 0rem) - 0.142857143em);
-  transform: none;
-  transform-origin: 0 50%;
-  white-space: nowrap;
-  width: max-content;
-  z-index: 4;
+	bottom: auto;
+	left: 0;
+	font-feature-settings: "kern" 0;
+	font-kerning: none;
+	font-synthesis: none;
+	letter-spacing: 0;
+	line-height: 1;
+	margin: 0;
+	right: auto;
+	text-align: left;
+	top: calc(var(--officialRouteCapTop, 0rem) - 0.142857143em);
+	transform: none;
+	transform-origin: 0 50%;
+	white-space: nowrap;
+	width: max-content;
+	z-index: 4;
 }
 
 /* Florida official artwork may render larger than the user Shield Size value.
    Banner typography must still follow the user-entered size only. */
-.bE-shieldElement.floridaOfficialShieldUserBannerScale .bannerA,
-.bE-shieldElement.floridaOfficialShieldUserBannerScale .bannerB {
-  font-size:
-    calc(var(--fontSize) * var(--requestedShieldScale, 1)) !important;
-}
 
-.bE-shieldElement.floridaOfficialShieldUserBannerScale
-  .bannerA:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter,
-.bE-shieldElement.floridaOfficialShieldUserBannerScale
-  .bannerB:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter {
-  font-size:
-    calc((var(--fontSize) + 0.3rem) * var(--requestedShieldScale, 1)) !important;
-}
 
-.bE-shieldElement.floridaOfficialShieldUserBannerScale
-  .bannerA.specialShieldPlaque,
-.bE-shieldElement.floridaOfficialShieldUserBannerScale
-  .bannerB.specialShieldPlaque {
-  font-size:
-    calc(var(--fontSize) * var(--requestedShieldScale, 1) * 0.85) !important;
-}
 
-.bE-shieldElement.floridaOfficialShieldUserBannerScale
-  .bannerA.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter,
-.bE-shieldElement.floridaOfficialShieldUserBannerScale
-  .bannerB.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter {
-  font-size:
-    calc((var(--fontSize) + 0.3rem) * var(--requestedShieldScale, 1) * 0.85) !important;
-}
+
+
+
+
 
 /* Ontario primary is intentionally enlarged to the same 4/3 visual scale used
    by the 48-inch Florida toll shields, while still following Shield Size. */
@@ -3272,4 +3232,100 @@
 
 .bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-left .detourPlaque.orangeElmt {
   margin-right: calc(0.5rem * var(--shieldScale, 1)) !important;
+}
+
+/* === Kept from v2.2: DuskSMP, NV CC215, multiline banners, grouped block backgrounds === */
+
+/* Outline the white standard U.S. Route SVG only on effective white blocks. */
+.blockElementMaster .bannerShieldContainer.US .shieldImg {
+	filter: var(--usRouteShieldOutline, none);
+}
+
+.panel.white {
+	--usRouteShieldOutline:
+		drop-shadow(1px 0 0 var(--black))
+		drop-shadow(-1px 0 0 var(--black))
+		drop-shadow(0 1px 0 var(--black))
+		drop-shadow(0 -1px 0 var(--black));
+}
+
+.blockElementRow[data-block-background-color="white"] {
+	--usRouteShieldOutline:
+		drop-shadow(1px 0 0 var(--black))
+		drop-shadow(-1px 0 0 var(--black))
+		drop-shadow(0 1px 0 var(--black))
+		drop-shadow(0 -1px 0 var(--black));
+}
+
+.blockElementRow:not([data-block-background-color="white"]):not([data-block-background-color="inherit"]) {
+	--usRouteShieldOutline: none;
+}
+
+.bannerA.multilineBanner,
+.bannerB.multilineBanner {
+	line-height: 0.85;
+	text-align: center;
+}
+
+.bannerShieldContainer.bannerPositionRight .multilineBanner,
+.bE-shieldElement .bannerSlot-right .multilineBanner {
+	text-align: left;
+}
+
+.bannerShieldContainer.bannerPositionLeft .multilineBanner,
+.bE-shieldElement .bannerSlot-left .multilineBanner {
+	text-align: right;
+}
+
+.bannerShieldContainer.NV.cc215 .shield,
+.bannerShieldContainer.NV.variant-cc215 .shield {
+	align-items: center;
+	background: var(--yellow);
+	box-sizing: content-box;
+	display: inline-flex;
+	justify-content: center;
+	padding: calc(0.18rem * var(--shieldScale, 1));
+}
+
+.bannerShieldContainer.DUSKSMP.one .routeNumber,
+.bannerShieldContainer.DUSKSMP.two .routeNumber,
+.bannerShieldContainer.DUSKSMP.three .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: calc(0.6rem * var(--shieldScale, 1));
+	font-size: calc(2rem * var(--shieldScale, 1));
+}
+
+.bannerShieldContainer.DUSKSMP.four .routeNumber {
+	color: var(--black);
+	font-family: "Series C";
+	top: calc(0.6rem * var(--shieldScale, 1));
+	font-size: calc(2rem * var(--shieldScale, 1));
+}
+
+.bannerShieldContainer.DUSKSMP_TOLL.one .routeNumber,
+.bannerShieldContainer.DUSKSMP_TOLL.two .routeNumber,
+.bannerShieldContainer.DUSKSMP_TOLL.three .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: calc(0.9rem * var(--shieldScale, 1));
+	font-size: calc(1.2rem * var(--shieldScale, 1));
+}
+
+.bannerShieldContainer.DUSKSMP_TOLL.four .routeNumber {
+	color: var(--black);
+	font-family: "Series C";
+	top: calc(0.9rem * var(--shieldScale, 1));
+	font-size: calc(1.2rem * var(--shieldScale, 1));
+}
+
+/* Interstate number layout before the v2.19 shield merge (6dd7be7^).
+   Keep the class on the rendered shield so exports retain the selected style. */
+.bannerShieldContainer.I.oldInterstateNumberPositioning .routeNumber {
+  top: 0.16em !important;
+  font-size: 2em;
+  font-family: "Series D" !important;
+}
+.bannerShieldContainer.I.oldInterstateNumberPositioning.four .routeNumber {
+  font-family: "Series C" !important;
 }

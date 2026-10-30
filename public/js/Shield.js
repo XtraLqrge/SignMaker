@@ -235,11 +235,11 @@ Shield.prototype.normalizeShieldName = (name) => {
   const requestedName = String(name ?? "");
   const normalizedName = requestedName.replace(/\s+/g, "");
 
-  if (/^(?:FLTURNPIKE|FL-TURNPIKE)$/i.test(normalizedName)) {
-    return "FLTP";
+  if (/^(?:FLTP|FL-TURNPIKE)$/i.test(normalizedName)) {
+    return "FLTURNPIKE";
   }
-  if (/^FLCFXTOLL$/i.test(normalizedName)) {
-    return "FLCFX";
+  if (/^FLCFX$/i.test(normalizedName)) {
+    return "FLCFXToll";
   }
 
   return requestedName;
@@ -261,6 +261,14 @@ Shield.prototype.migrateLegacyVariant = (name, variant) => {
     : requestedVariant;
 };
 
+// These shields use the same artwork for 2 and 3 digit routes.
+Shield.prototype.sharedTwoDigitArtwork = new Set([
+  "C", "AK", "AZLOOP", "CO", "CT", "DC", "HI", "MN", "MNBUS", "MT2", "NC", "NELINK", "NESPUR", "NH", "NM", "NV", "TN", "VA2", "WA", "AB", "AB2", "ABTC", "BC", "BCYH", "BCTC", "MB", "MB2", "MBTC", "NB", "NBCONN", "NBLOCAL", "NBTC", "NLTC", "NSCONN", "NSTC", "ON2", "ON3", "ONTC", "PEI", "QC2", "QCTC", "SK", "SK2", "SKTC", "TCH", "TCHLEAF"
+]);
+
+Shield.prototype.usesSharedTwoDigitArtwork = (name) =>
+  Shield.prototype.sharedTwoDigitArtwork.has(String(name || "").toUpperCase());
+
 Shield.prototype.getDirectoryFromShield = (name, variant) => {
   name = Shield.prototype.normalizeShieldName(name);
   variant = Shield.prototype.migrateLegacyVariant(name, variant).replace(
@@ -270,13 +278,9 @@ Shield.prototype.getDirectoryFromShield = (name, variant) => {
 
   const properties = Shield.prototype.getPropertiesFromName(name);
 
-  const sharedTwoDigitArtwork = new Set([
-    "C", "AK", "AZLOOP", "CO", "CT", "DC", "HI", "MN", "MNBUS", "MT2", "NC", "NELINK", "NESPUR", "NH", "NM", "NV", "TN", "VA2", "WA", "AB", "AB2", "ABTC", "BC", "BCYH", "BCTC", "MB", "MB2", "MBTC", "NB", "NBCONN", "NBLOCAL", "NBTC", "NLTC", "NSCONN", "NSTC", "ON2", "ON3", "ONTC", "PEI", "QC2", "QCTC", "SK", "SK2", "SKTC", "TCH", "TCHLEAF"
-  ]);
-
   if (
     variant === "3Digit" &&
-    sharedTwoDigitArtwork.has(String(properties?.assetName || name || "").toUpperCase())
+    Shield.prototype.usesSharedTwoDigitArtwork(properties?.assetName || name)
   ) {
     variant = "2Digit";
   }
@@ -428,7 +432,7 @@ Shield.prototype.shieldDirectory = {
     CT: {
       type: "shield",
       name: "Connecticut",
-      variants: ["2 Digit", "3 Digit"],
+      variants: ["2 Digit", "3 Digit", "Merritt"],
     },
     DE: { type: "shield", name: "Delaware", variants: ["2 Digit", "3 Digit"] },
     DC: {
@@ -455,20 +459,15 @@ Shield.prototype.shieldDirectory = {
         name: "FDOT Toll",
         variants: ["40×48", "48×60"],
       },
-      FLCFX: {
+      FLCFXToll: {
         type: "shield",
-        name: "CFX Toll",
-        variants: [
-          "CFX Guide",
-          "CFX Overhead",
-          "FDOT Guide",
-          "FDOT Overhead",
-        ],
+        name: "CFX Toll Route",
+        variants: ["Current", "Old"],
       },
-      FLTP: {
+      FLTURNPIKE: {
         type: "shield",
         name: "Florida's Turnpike",
-        variants: ["Guide", "Overhead", "Toll Banner"],
+        variants: ["Standard", "Toll"],
       },
     },
     GA: {
@@ -506,7 +505,13 @@ Shield.prototype.shieldDirectory = {
     IN: { type: "shield", name: "Indiana", folder: "IN", variants: ["2 Digit", "3 Digit"] },
     IA: { type: "shield", name: "Iowa", variants: ["2 Digit", "3 Digit"] },
     KS: { type: "shield", name: "Kansas", folder: "KS", variants: ["2 Digit", "3 Digit"] },
-    KY: { type: "shield", name: "Kentucky", folder: "KY", variants: ["2 Digit", "3 Digit"] },
+    KY: { type: "shield", name: "Kentucky", folder: "KY", variants: ["2 Digit", "3 Digit", "AA"] },
+    KYPKWY: {
+      type: "shield",
+      name: "Kentucky Parkway",
+      folder: "KY",
+      variants: ["Audubon", "Bluegrass", "Cumberland", "Hal Rogers", "Mountain", "Western KY"],
+    },
     LA: {
       type: "shield",
       name: "Louisiana",
@@ -577,7 +582,8 @@ Shield.prototype.shieldDirectory = {
       NV: {
         type: "shield",
         name: "Nevada",
-        variants: ["2 Digit"],
+        variants: ["2 Digit", "CC215"],
+        fixedRouteVariants: ["CC215"],
         legacyVariantAliases: {
           "3Digit": "2 Digit",
         },
@@ -591,7 +597,7 @@ Shield.prototype.shieldDirectory = {
     NH: {
       type: "shield",
       name: "New Hampshire",
-      variants: ["2 Digit", "3 Digit"],
+      variants: ["2 Digit", "3 Digit", "Spaulding", "Everett"],
     },
     NJ: {
       type: "shield",
@@ -604,7 +610,13 @@ Shield.prototype.shieldDirectory = {
       name: "New Mexico",
       variants: ["2 Digit", "3 Digit"],
     },
-    NY: { type: "shield", name: "New York", folder: "NY", variants: ["2 Digit", "3 Digit"] },
+    NY: { type: "shield", name: "New York", folder: "NY", variants: ["2 Digit", "3 Digit", "Thruway"] },
+    NYPKWY: {
+      type: "shield",
+      name: "New York Parkway",
+      folder: "NY",
+      variants: ["Bear Mountain", "Belt", "Bethpage", "Bronx River 1", "Bronx River 2", "Cross County", "FDR Drive", "Grand Central", "Harlem River Drive", "Heckscher", "Henry Hudson", "Hutchinson River 1", "Hutchinson River 2", "Jackie Robinson", "Korean War Vets", "Loop", "Meadowbrook", "Mosholu", "Niagra Scenic", "Northern", "Ocean", "Palisades Interstate", "Pelham", "Robert Moses Causeway", "Sagtikos", "Saw Mill", "Southern", "Sprain Brook", "Sunken Meadow", "Taconic State", "Wantagh"],
+    },
     NC: {
       type: "shield",
       name: "North Carolina",
@@ -672,7 +684,7 @@ Shield.prototype.shieldDirectory = {
         name: "Texas (Express)",
         variants: ["2 Digit", "3 Digit"],
       },
-      TXFM: { type: "shield", name: "Texas (FM)", variants: ["4 Digit"] },
+      TXFM: { type: "shield", name: "Texas (FM)", variants: ["2 Digit", "3 Digit", "4 Digit", "5 Digit"] },
       TXPARK: { type: "shield", name: "Texas (Park)", variants: ["2 Digit"] },
       TXRM: { type: "shield", name: "Texas (RM)", variants: ["2 Digit"] },
       TXBELTWAY: {
@@ -837,6 +849,19 @@ Shield.prototype.shieldDirectory = {
       variants: ["1 Digit", "2 Digit"],
     },
   },
+  DuskSMP: {
+    type: "category",
+    DUSKSMP: {
+      type: "shield",
+      name: "DuskSMP",
+      variants: [],
+    },
+    DUSKSMP_TOLL: {
+      type: "shield",
+      name: "DuskSMP Toll",
+      variants: [],
+    },
+  },
 };
 
 // Current Florida route-marker catalogue. These definitions intentionally
@@ -874,217 +899,225 @@ Shield.prototype.shieldDirectory = {
 
   florida.FL = {
     type: "shield",
-    name: "State Route",
+    name: "FDOT Florida State Route",
     variants: [
-      "2 Digit (42×36)",
-      "3 Digit (58×36)",
-      "2 Digit (36×30)",
-      "3 Digit (58×30)",
-      "2 Digit (30×24)",
-      "3 Digit (58×24)",
+      "Guide 42x36 1-2 Digit",
+      "Guide 48-58x36 3 Digit",
+      "Guide 36x30 1-2 Digit",
+      "Guide 48-58x30 3 Digit",
+      "Guide 30x24 1-2 Digit",
+      "Guide 48-58x24 3 Digit",
     ],
     className: "FL FDOTSTATE",
     standard: "FDOT",
     officialDimensions: true,
-    maxRouteCharacters: 4,
+    maxRouteCharacters: 3,
     assetPathByVariant: {
-      "2Digit(42×36)": `${fdotFolder}/FL-36-2Digit.svg`,
-      "3Digit(58×36)": `${fdotFolder}/FL-36-3Digit.svg`,
-      "2Digit(36×30)": `${fdotFolder}/FL-30-2Digit.svg`,
-      "3Digit(58×30)": `${fdotFolder}/FL-30-3Digit.svg`,
-      "2Digit(30×24)": `${fdotFolder}/FL-24-2Digit.svg`,
-      "3Digit(58×24)": `${fdotFolder}/FL-24-3Digit.svg`,
+      "Guide42x361-2Digit": `${fdotFolder}/Florida-Guide-42x36-1to2.svg`,
+      "Guide48-58x363Digit": `${fdotFolder}/Florida-Guide-48x36-3plus.svg`,
+      "Guide36x301-2Digit": `${fdotFolder}/Florida-Guide-36x30-1to2.svg`,
+      "Guide48-58x303Digit": `${fdotFolder}/Florida-Guide-48x30-3plus.svg`,
+      "Guide30x241-2Digit": `${fdotFolder}/Florida-Guide-30x24-1to2.svg`,
+      "Guide48-58x243Digit": `${fdotFolder}/Florida-Guide-48x24-3plus.svg`,
     },
     physicalDimensionsByVariant: {
-      "2Digit(42×36)": dimensions(42, 36),
-      "3Digit(58×36)": dimensions(48, 36),
-      "2Digit(36×30)": dimensions(36, 30),
-      "3Digit(58×30)": dimensions(48, 30),
-      "2Digit(30×24)": dimensions(30, 24),
-      "3Digit(58×24)": dimensions(48, 24),
+      "Guide42x361-2Digit": dimensions(42, 36),
+      "Guide48-58x363Digit": dimensions(48, 36),
+      "Guide36x301-2Digit": dimensions(36, 30),
+      "Guide48-58x303Digit": dimensions(48, 30),
+      "Guide30x241-2Digit": dimensions(30, 24),
+      "Guide48-58x243Digit": dimensions(48, 24),
     },
     routeNumberByVariant: {
-      "2Digit(42×36)": routeStyle(15, "Series D", 14.75, {
+      "Guide42x361-2Digit": routeStyle(15, "Series D", 14.75, {
         rightIn: 31,
       }),
-      "3Digit(58×36)": routeStyle(15, "Series D", 14.75, {
+      "Guide48-58x363Digit": routeStyle(15, "Series D", 14.75, {
         leftIn: 1.25,
         variablePanelWidth: variableGuidePanel(11),
       }),
-      "2Digit(36×30)": routeStyle(15, "Series D", 11.75, {
+      "Guide36x301-2Digit": routeStyle(15, "Series D", 11.75, {
         rightIn: 27.25,
       }),
-      "3Digit(58×30)": routeStyle(15, "Series D", 11.75, {
+      "Guide48-58x303Digit": routeStyle(15, "Series D", 11.75, {
         leftIn: 1.25,
         variablePanelWidth: variableGuidePanel(8.75),
       }),
-      "2Digit(30×24)": routeStyle(12, "Series D", 9.25, {
+      "Guide30x241-2Digit": routeStyle(12, "Series D", 9.25, {
         rightIn: 21.75,
       }),
-      "3Digit(58×24)": routeStyle(12, "Series D", 9.25, {
+      "Guide48-58x243Digit": routeStyle(12, "Series D", 9.25, {
         leftIn: 1.25,
         variablePanelWidth: variableGuidePanel(8.25),
       }),
     },
     autoVariantByCharacterCount: {
-      oneToTwo: "2 Digit (42×36)",
-      threeOrMore: "3 Digit (58×36)",
+      oneToTwo: "Guide 42x36 1-2 Digit",
+      threeOrMore: "Guide 48-58x36 3 Digit",
     },
     legacyVariantAliases: {
-      "StateRoute—2Digit(42×36)": "2 Digit (42×36)",
-      "StateRoute—3Digit(58×36)": "3 Digit (58×36)",
-      "StateRoute—2Digit(36×30)": "2 Digit (36×30)",
-      "StateRoute—3Digit(58×30)": "3 Digit (58×30)",
-      "StateRoute—2Digit(30×24)": "2 Digit (30×24)",
-      "StateRoute—3Digit(58×24)": "3 Digit (58×24)",
-      "2DigitOverhead": "2 Digit (42×36)",
-      "3DigitOverhead": "3 Digit (58×36)",
-      "Guide42x361-2Digit": "2 Digit (42×36)",
-      "Guide48-58x363Digit": "3 Digit (58×36)",
-      "Guide36x301-2Digit": "2 Digit (36×30)",
-      "Guide48-58x303Digit": "3 Digit (58×30)",
-      "Guide30x241-2Digit": "2 Digit (30×24)",
-      "Guide48-58x243Digit": "3 Digit (58×24)",
-      "Guide48-58x363+Digit": "3 Digit (58×36)",
-      "Guide48-58x303+Digit": "3 Digit (58×30)",
-      "Guide48-58x243+Digit": "3 Digit (58×24)",
-      "Guide58x363+Digit": "3 Digit (58×36)",
-      "Guide53x303+Digit": "3 Digit (58×30)",
-      "Guide48x243+Digit": "3 Digit (58×24)",
-      "2Digit": "2 Digit (42×36)",
-      "3Digit": "3 Digit (58×36)",
+      "2DigitOverhead": "Guide 42x36 1-2 Digit",
+      "3DigitOverhead": "Guide 48-58x36 3 Digit",
+      "Guide48-58x363+Digit": "Guide 48-58x36 3 Digit",
+      "Guide48-58x303+Digit": "Guide 48-58x30 3 Digit",
+      "Guide48-58x243+Digit": "Guide 48-58x24 3 Digit",
+      "Guide58x363+Digit": "Guide 48-58x36 3 Digit",
+      "Guide53x303+Digit": "Guide 48-58x30 3 Digit",
+      "Guide48x243+Digit": "Guide 48-58x24 3 Digit",
+      "2Digit": "Guide 42x36 1-2 Digit",
+      "3Digit": "Guide 48-58x36 3 Digit",
+      // v2.19 names
+      "2Digit(42×36)": "Guide 42x36 1-2 Digit",
+      "3Digit(58×36)": "Guide 48-58x36 3 Digit",
+      "2Digit(36×30)": "Guide 36x30 1-2 Digit",
+      "3Digit(58×30)": "Guide 48-58x30 3 Digit",
+      "2Digit(30×24)": "Guide 30x24 1-2 Digit",
+      "3Digit(58×24)": "Guide 48-58x24 3 Digit",
       "Freeway48x361-3Digit": {
-        oneToTwo: "2 Digit (42×36)",
-        threeOrMore: "3 Digit (58×36)",
+        oneToTwo: "Guide 42x36 1-2 Digit",
+        threeOrMore: "Guide 48-58x36 3 Digit",
       },
-      Freeway48x364Digit: "3 Digit (58×36)",
-      "Independent24x241-2Digit": "2 Digit (30×24)",
-      "Independent24x243DigitCluster": "3 Digit (58×24)",
-      "Independent30x243-4Digit": "3 Digit (58×24)",
+      Freeway48x364Digit: "Guide 48-58x36 3 Digit",
+      "Independent24x241-2Digit": "Guide 30x24 1-2 Digit",
+      "Independent24x243DigitCluster": "Guide 48-58x24 3 Digit",
+      "Independent30x243-4Digit": "Guide 48-58x24 3 Digit",
     },
   };
 
   florida.FLToll = {
     type: "shield",
-    name: "FDOT Toll",
-    variants: ["40×48", "48×60"],
+    name: "FDOT Toll Route",
+    variants: ["40x48 Guide", "48x60 Overhead", "24x30 Route Marker", "Old (Legacy)", "Selmon (Legacy)"],
+    fixedRouteVariants: ["Selmon (Legacy)"],
     className: "FL toll FDOTTOLL",
     standard: "FDOT",
     officialDimensions: true,
+    maxRouteCharacters: 3,
     assetPathByVariant: {
-      "40×48": `${fdotFolder}/TollFDOT-48.svg`,
-      "48×60": `${fdotFolder}/TollFDOT-60.svg`,
+      "40x48Guide": `${fdotFolder}/Toll-40x48.svg`,
+      "48x60Overhead": `${fdotFolder}/Toll-48x60.svg`,
+      "24x30RouteMarker": `${fdotFolder}/Toll-24x30.svg`,
+      "Old(Legacy)": "img/shields/United States/Florida/FLToll-Old.svg",
+      "Selmon(Legacy)": "img/shields/United States/Florida/FLToll-Selmon.png",
     },
     physicalDimensionsByVariant: {
-      "40×48": dimensions(40, 48),
-      "48×60": dimensions(48, 60),
+      "40x48Guide": dimensions(40, 48),
+      "48x60Overhead": dimensions(48, 60),
+      "24x30RouteMarker": dimensions(24, 30),
     },
     routeNumberByVariant: {
-      "40×48": routeStyle(10, "Series D", 25, { centerXIn: 17.112 }),
-      "48×60": routeStyle(12, "Series D", 28, { centerXIn: 19.76 }),
+      "40x48Guide": routeStyle(10, "Series D", 25, { centerXIn: 17.112 }),
+      "48x60Overhead": routeStyle(12, "Series D", 28, { centerXIn: 19.76 }),
+      "24x30RouteMarker": routeStyle(6, "Series D", 16, { centerXIn: 10.588 }),
     },
     legacyVariantAliases: {
-      "FDOTToll—40×48": "40×48",
-      "FDOTToll—48×60": "48×60",
-      "40x48Guide": "40×48",
-      "48x60Overhead": "48×60",
-      Current: "40×48",
-      Old: "40×48",
-      Selmon: "40×48",
+      // v2.19 names
+      "40×48": "40x48 Guide",
+      "48×60": "48x60 Overhead",
+      Current: "40x48 Guide",
+      Old: "Old (Legacy)",
+      Selmon: "Selmon (Legacy)",
     },
   };
 
-  florida.FLCFX = {
+  florida.FLCFXToll = {
     type: "shield",
-    name: "CFX Toll",
+    name: "CFX Toll Route",
     variants: [
-      "CFX Guide",
-      "CFX Overhead",
-      "FDOT Guide",
-      "FDOT Overhead",
+      "TM 36x48 CFX Jurisdiction",
+      "TM 48x60 CFX Jurisdiction",
+      "TM-ALT 36x48 FDOT Jurisdiction",
+      "TM-ALT 48x60 FDOT Jurisdiction",
+      "Old (Legacy)",
     ],
     className: "FL cfxtoll CFXTOLL",
     standard: "CFX",
     officialDimensions: true,
+    maxRouteCharacters: 3,
     assetPathByVariant: {
-      CFXGuide: `${cfxFolder}/CFX-48.svg`,
-      CFXOverhead: `${cfxFolder}/CFX-60.svg`,
-      FDOTGuide: `${cfxFolder}/CFXFDOT-48.svg`,
-      FDOTOverhead: `${cfxFolder}/CFXFDOT-60.svg`,
+      TM36x48CFXJurisdiction: `${cfxFolder}/CFX-TM-36x48.svg`,
+      TM48x60CFXJurisdiction: `${cfxFolder}/CFX-TM-48x60.svg`,
+      "TM-ALT36x48FDOTJurisdiction": `${cfxFolder}/CFX-TM-ALT-36x48.svg`,
+      "TM-ALT48x60FDOTJurisdiction": `${cfxFolder}/CFX-TM-ALT-48x60.svg`,
+      "Old(Legacy)": "img/shields/United States/Florida/FLCFXToll-Old.svg",
     },
     physicalDimensionsByVariant: {
-      CFXGuide: dimensions(36, 48),
-      CFXOverhead: dimensions(48, 60),
-      FDOTGuide: dimensions(36, 48),
-      FDOTOverhead: dimensions(48, 60),
+      TM36x48CFXJurisdiction: dimensions(36, 48),
+      TM48x60CFXJurisdiction: dimensions(48, 60),
+      "TM-ALT36x48FDOTJurisdiction": dimensions(36, 48),
+      "TM-ALT48x60FDOTJurisdiction": dimensions(48, 60),
     },
     routeNumberByVariant: {
-      CFXGuide: routeStyle(12, "Series D", 22.53, {
+      TM36x48CFXJurisdiction: routeStyle(12, "Series D", 22.53, {
         centerXIn: 15.64,
         maxWidthIn: 22.84,
         allowOpticalSpacing: true,
       }),
-      CFXOverhead: routeStyle(15, "Series D", 27.89, {
+      TM48x60CFXJurisdiction: routeStyle(15, "Series D", 27.89, {
         centerXIn: 20.48,
         maxWidthIn: 31.84,
         allowOpticalSpacing: true,
       }),
-      FDOTGuide: routeStyle(12, "Series D", 22.53, {
+      "TM-ALT36x48FDOTJurisdiction": routeStyle(12, "Series D", 22.53, {
         centerXIn: 15.64,
         maxWidthIn: 22.84,
         allowOpticalSpacing: true,
       }),
-      FDOTOverhead: routeStyle(15, "Series D", 27.89, {
+      "TM-ALT48x60FDOTJurisdiction": routeStyle(15, "Series D", 27.89, {
         centerXIn: 20.48,
         maxWidthIn: 31.84,
         allowOpticalSpacing: true,
       }),
     },
     legacyVariantAliases: {
-      "CFXToll—CFXGuide": "CFX Guide",
-      "CFXToll—CFXOverhead": "CFX Overhead",
-      "CFXToll—FDOTGuide": "FDOT Guide",
-      "CFXToll—FDOTOverhead": "FDOT Overhead",
-      TM36x48CFXJurisdiction: "CFX Guide",
-      TM48x60CFXJurisdiction: "CFX Overhead",
-      "TM-ALT36x48FDOTJurisdiction": "FDOT Guide",
-      "TM-ALT48x60FDOTJurisdiction": "FDOT Overhead",
-      Current: "CFX Guide",
-      Old: "CFX Guide",
+      Current: "TM 36x48 CFX Jurisdiction",
+      Old: "Old (Legacy)",
+      // v2.19 names
+      CFXGuide: "TM 36x48 CFX Jurisdiction",
+      CFXOverhead: "TM 48x60 CFX Jurisdiction",
+      FDOTGuide: "TM-ALT 36x48 FDOT Jurisdiction",
+      FDOTOverhead: "TM-ALT 48x60 FDOT Jurisdiction",
     },
   };
 
-  florida.FLTP = {
+  florida.FLTURNPIKE = {
     type: "shield",
-    name: "Florida's Turnpike",
-    variants: ["Guide", "Overhead", "Toll Banner"],
-    className: "FL turnpike FDOTTURNPIKE",
+    name: "FDOT Florida's Turnpike",
+    variants: [
+      "40x48 Guide",
+      "48x60 Overhead",
+      "30x36 Route Marker",
+      "Toll",
+    ],
+    className: "FL FDOTTURNPIKE",
     standard: "FDOT",
     officialDimensions: true,
     suppressRouteNumber: true,
     assetPathByVariant: {
-      Guide: `${fdotFolder}/FLTP-48.svg`,
-      Overhead: `${fdotFolder}/FLTP-60.svg`,
-      TollBanner: "img/shields/United States/Florida/FLTP-Toll.svg",
+      "40x48Guide": `${fdotFolder}/Turnpike-40x48.svg`,
+      "48x60Overhead": `${fdotFolder}/Turnpike-48x60.svg`,
+      "30x36RouteMarker": `${fdotFolder}/Turnpike-30x36.svg`,
+      Toll: `${fdotFolder}/Turnpike-Toll-30x48.svg`,
     },
     physicalDimensionsByVariant: {
-      Guide: dimensions(40, 48),
-      Overhead: dimensions(48, 60),
+      "40x48Guide": dimensions(40, 48),
+      "48x60Overhead": dimensions(48, 60),
+      "30x36RouteMarker": dimensions(30, 36),
+      // Nominal size of the vector composite; not an issued FDOT panel.
+      Toll: dimensions(30, 48),
     },
     legacyVariantAliases: {
-      "Florida'sTurnpike—Guide": "Guide",
-      "Florida'sTurnpike—Overhead": "Overhead",
-      "Florida'sTurnpike—TollBanner": "Toll Banner",
-      "40x48Guide": "Guide",
-      "48x60Overhead": "Overhead",
-      Standard: "Guide",
-      Toll: "Toll Banner",
+      Standard: "40x48 Guide",
+      // v2.19 names
+      Guide: "40x48 Guide",
+      Overhead: "48x60 Overhead",
+      TollBanner: "Toll",
     },
   };
-
 })();
 
 Shield.prototype.bannerTypes = [
+  "None",
   "North",
   "East",
   "South",
@@ -1109,10 +1142,20 @@ Shield.prototype.bannerTypes = [
   "City",
   "Conn",
   "To",
+  "Via",
   "Turnpike",
   "Nord",
   "Est",
   "Sud",
   "Ouest",
 ];
+
+Shield.prototype.getBannerDisplayText = function (value) {
+  if (!value || value === "None") {
+    return " ";
+  }
+
+  return String(value).replace(/\\n/g, "\n");
+};
+
 Shield.prototype.bannerPositions = ["Above", "Right", "Left"];

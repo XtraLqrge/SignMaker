@@ -6,26 +6,28 @@ class Panel {
    * @param {String} corner - Choice of Sharp or Rounded Corners on the Panel
    * @param {ExitTab} [exitTab=null] - Optional exit tab to include in the panel.
    */
-  constructor(sign, color, exitTabs = [], corner, borderRadius) {
+  constructor(sign, color, exitTabs = [], corner, borderRadius, dms = false) {
     if (Object.keys(lib.colors).includes(color)) {
       this.color = color;
     } else {
       this.color = "Green";
     }
-    if (Object.keys(this.cornerType).includes(corner)) {
+    const availableCornerTypes = Array.isArray(this.cornerType)
+      ? this.cornerType
+      : ["Sharp", "Round"];
+    if (availableCornerTypes.includes(corner)) {
       this.corner = corner;
     } else {
-      this.corner = this.cornerType[0];
+      this.corner = availableCornerTypes.includes(this.defaultCorner)
+        ? this.defaultCorner
+        : availableCornerTypes[1] || "Round";
     }
 
     this.sign = sign;
     this.exitTabs = exitTabs;
-    this.isVms = false;
+    // The old dms flag is v2.2's electronic sign; it now loads as a VMS panel.
+    Object.assign(this, VmsPanel.settings(), { isVms: !!dms });
     this.borderThickness = 0.2;
-    this.vmsResolution = "medium";
-    this.vmsResolutionVersion = 5;
-    this.vmsAntialias = true;
-    this.vmsFrameColor = "#3c3e42";
 
     if (typeof borderRadius === "number" && borderRadius >= 0) {
       this.borderRadius = borderRadius;
@@ -41,12 +43,14 @@ class Panel {
     this.exitTabs.push(exitTab);
   }
 
+  // v2.19 panel border thickness, 0 to 0.4rem in 0.1rem steps (0.2 is standard).
   static getBorderThickness(panel = {}) {
     if (panel.hideBorder === true && panel.borderThickness == null) return 0;
     const value = parseFloat(panel.borderThickness);
     return Number.isFinite(value) ? Math.round(Math.max(0, Math.min(0.4, value)) * 10) / 10 : 0.2;
   }
 
+  // Exit tabs follow the panel's border thickness when it changes.
   static setBorderThickness(panel, value) {
     panel.borderThickness = Panel.getBorderThickness({ borderThickness: value });
     delete panel.hideBorder;
@@ -90,24 +94,12 @@ class Panel {
       if (newNest.length >= maxNested) {
         break;
       }
-      newNest.push(Object.assign(new ExitTab(), nest));
+      newNest.push(Object.assign(new ExitTab(nest), nest));
     }
 
     const exitTab = new ExitTab({
-      number: exisitingTab.number,
-      position: exisitingTab.position,
-      width: exisitingTab.width,
-      color: exisitingTab.color,
-      variant: exisitingTab.variant,
-      icon: exisitingTab.icon,
-      squareCorners: exisitingTab.squareCorners,
-      fullBorder: exisitingTab.fullBorder,
-      borderThickness: exisitingTab.borderThickness,
-      minHeight: exisitingTab.minHeight,
+      ...exisitingTab,
       nestedExitTabs: newNest,
-      verticalArrangement: exisitingTab.verticalArrangement,
-      caStyle: exisitingTab.caStyle,
-      profileId: exisitingTab.profileId,
     });
 
     this.exitTabs.push(exitTab);
@@ -118,4 +110,13 @@ class Panel {
 Panel.prototype.cornerType = ["Sharp", "Round"];
 /* ^^^ DO NOT CHANGE THIS, IDK WHY BUT THE ENTIRE PROGRAM BREAKS WITHOUT THIS LINE ^^^ */
 
+Panel.prototype.defaultCorner = "Round";
 Panel.prototype.defaultBorderRadius = 0.75;
+
+// Applies saved VMS settings, reading v2.2's dms flag as a VMS panel.
+Panel.applyVmsData = function (panel, data = {}) {
+  Object.assign(panel, VmsPanel.settings(data), {
+    isVms: data.isVms === undefined ? !!data.dms : data.isVms === true,
+  });
+  delete panel.dms;
+};

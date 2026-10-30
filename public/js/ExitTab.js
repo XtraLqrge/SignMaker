@@ -1,449 +1,313 @@
+const normalizeExitTabBoolean = (value) =>
+	value === true ||
+	value === "true" ||
+	value === 1 ||
+	value === "1" ||
+	value === "on";
+
 class ExitTab {
-  /**
-   * Creates a new ExitTab.
-   * @param {string} number - Number to display on the exit tab.
-   * @param {string} [position=null] - Position to display the exit tab relative to the sign.
-   * @param {string} [width=null] - Width of the exit tab (narrow or wide).
-   */
-    constructor(options = {}) {
-      const hasExplicitFontFamily =
-        Object.prototype.hasOwnProperty.call(options, "fontFamily") &&
-        typeof options.fontFamily === "string" &&
-        options.fontFamily.trim().length > 0;
-      const hasLegacyFHWAFontChoice =
-        Object.prototype.hasOwnProperty.call(options, "FHWAFont") &&
-        !hasExplicitFontFamily;
+	/**
+	 * Creates a new ExitTab.
+	 * @param {string} number - Number to display on the exit tab.
+	 * @param {string} [position=null] - Position to display the exit tab relative to the sign.
+	 * @param {string} [width=null] - Width of the exit tab (narrow or wide).
+	 */
+	constructor({
+		number = null,
+		position = ExitTab.prototype.defaultPosition,
+		width = ExitTab.prototype.defaultWidth,
+		color = null,
+		variant = "Default",
+		icon = null,
+		useTextBasedIcon = false,
+		fullBorder = ExitTab.prototype.defaultFullBorder,
+		squareCorners = ExitTab.prototype.defaultSquareCorners,
+		extendHorizontalPadding = false,
+		matchSignCornerRadius = false,
+		cornerRadius = ExitTab.prototype.defaultCornerRadius,
+		horizontalPadding = ExitTab.prototype.defaultHorizontalPadding,
+		attached = ExitTab.prototype.defaultAttached,
+		topOffset = ExitTab.prototype.defaultTopOffset,
+		showLeft = false,
+		borderThickness = 0.2,
+		minHeight = 2.25,
+		nestedExitTabs = [],
+		nestedTabSpacing = 0,
+		dragOffsetRem = 0,
+		FHWAFont = ExitTab.prototype.defaultFHWAFont,
+		fontFamily = null,
+		fontSize = 18,
+		characterSpacing = 0,
+		textColor = "Panel Color",
+		exitTextSizePercent = ExitTab.prototype.defaultExitTextSizePercent,
+		exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion,
+		transparent = false,
+		bilingual = false,
+		bilingualTopText = "EXIT",
+		bilingualBottomText = "SORTIE",
+		tollLogoOnly = true,
+		tollLogoSquare = false,
+		tollLogoSize = null,
+		verticalArrangement = ExitTab.prototype.defaultVerticalArrangement,
+		caStyle = ExitTab.prototype.defaultCAStyle
+	} = {}
+	) {
+		this.number = number;
+		const defaultPosition = this.positions.includes(
+			ExitTab.prototype.defaultPosition
+		)
+			? ExitTab.prototype.defaultPosition
+			: this.positions[1];
+		if (this.positions.includes(position)) {
+			this.position = position;
+		} else {
+			this.position = defaultPosition;
+		}
+		const defaultWidth = this.widths.includes(ExitTab.prototype.defaultWidth)
+			? ExitTab.prototype.defaultWidth
+			: this.widths[0];
+		if (this.widths.includes(width)) {
+			this.width = width;
+		} else {
+			this.width = defaultWidth;
+		}
+		if (this.colors.includes(color)) {
+			this.color = color;
+		} else {
+			this.color = this.colors[0];
+		}
 
-      const {
-      number = ExitTab.prototype.defaultText,
-      position = ExitTab.prototype.defaultPosition,
-      width = ExitTab.prototype.defaultWidth,
-      color = ExitTab.prototype.defaultColor,
-      variant = ExitTab.prototype.defaultVariant,
-      icon = null,
-      useTextBasedIcon = false,
-      fullBorder = ExitTab.prototype.defaultFullBorder,
-      squareCorners = ExitTab.prototype.defaultSquareCorners,
-      cornerRadius = ExitTab.prototype.defaultCornerRadius,
-      topOffset = ExitTab.prototype.defaultTopOffset,
-      showLeft = ExitTab.prototype.defaultShowLeft,
-      borderThickness = ExitTab.prototype.defaultBorderThickness,
-      minHeight = ExitTab.prototype.defaultMinHeight,
-      nestedExitTabs = [],
-      nestedTabSpacing = ExitTab.prototype.defaultNestedTabSpacing,
-      dragOffsetRem = 0,
-      FHWAFont = ExitTab.prototype.defaultFHWAFont,
-      fontFamily = null,
-      fontSize = ExitTab.prototype.defaultFontSize,
-      characterSpacing = ExitTab.prototype.defaultCharacterSpacing,
-      horizontalPadding = ExitTab.prototype.defaultHorizontalPadding,
-      exitTextSizePercent = ExitTab.prototype.defaultExitTextSizePercent,
-      exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion,
-      textColor = ExitTab.prototype.defaultTextColor,
-      fullWidthRestoreConfig = null,
-      tollLogoOnly = true,
-      tollLogoSquare = false,
-      tollLogoSize = null,
-      assetHorizontalPadding = 0,
-      assetVerticalPadding = 0,
-      transparent = ExitTab.prototype.defaultTransparent,
-      verticalArrangement = ExitTab.prototype.defaultVerticalArrangement,
-      caStyle = ExitTab.prototype.defaultCAStyle,
-      bilingual = false,
-      bilingualTopText = "EXIT",
-      bilingualBottomText = "SORTIE",
-      profileId = ExitTab.prototype.defaultProfileId
-    } = options;
-    this.profileId =
-      typeof profileId === "string" && profileId.trim().length
-        ? profileId.trim()
-        : ExitTab.prototype.defaultProfileId;
-    this.number = number;
-    if (this.positions.includes(position)) {
-      this.position = position;
-    } else {
-      this.position = this.positions[2];
-    }
-    if (this.widths.includes(width)) {
-      this.width = width;
-    } else {
-      this.width = this.widths[2];
-    }
-    if (this.colors.includes(color)) {
-      this.color = color;
-    } else {
-      this.color = this.colors[0];
-    }
+		if (this.variants.includes(variant)) {
+			this.variant = variant;
+		} else {
+			this.variant = this.variants[0];
+		}
 
-    const normalizedVariant = variant === "Standard" ? "Default" : variant;
-    if (this.variants.includes(normalizedVariant)) {
-      this.variant = normalizedVariant;
-    } else {
-      this.variant = this.variants[0];
-    }
+		const sourceOptions =
+			arguments.length > 0 &&
+			arguments[0] &&
+			typeof arguments[0] === "object"
+				? arguments[0]
+				: null;
+		const hasOption = (key) => sourceOptions?.[key] !== undefined;
 
-    this.fullBorder = fullBorder;
-    this.squareCorners = squareCorners;
-    this.cornerRadius = cornerRadius === "panel" || cornerRadius == null
-      ? "panel"
-      : Number.isFinite(Number(cornerRadius))
-        ? Math.max(0, Math.min(2, Number(cornerRadius)))
-        : "panel";
-    const parsedBorderThickness =
-      typeof borderThickness === "number"
-        ? borderThickness
-        : parseFloat(borderThickness);
-    const fallbackBorderThickness =
-      typeof ExitTab.prototype.defaultBorderThickness === "number"
-        ? ExitTab.prototype.defaultBorderThickness
-        : 0.2;
-    this.borderThickness = Number.isFinite(parsedBorderThickness)
-      ? Math.max(0, parsedBorderThickness)
-      : fallbackBorderThickness;
-    this.topOffset = topOffset;
-    this.minHeight = minHeight;
-    this.nestedExitTabs = nestedExitTabs;
-    const parsedNestedTabSpacing =
-      typeof nestedTabSpacing === "number"
-        ? nestedTabSpacing
-        : parseFloat(nestedTabSpacing);
-    this.nestedTabSpacing = Number.isFinite(parsedNestedTabSpacing)
-      ? Math.max(0, parsedNestedTabSpacing)
-      : 0;
-    const parsedDragOffset = Number(dragOffsetRem);
-    this.dragOffsetRem = Number.isFinite(parsedDragOffset) ? parsedDragOffset : 0;
-    const resolvedFontFamily = (() => {
-      const explicitFont = typeof fontFamily === "string" && fontFamily.trim().length
-        ? fontFamily.trim()
-        : null;
-      if (explicitFont) {
-        return explicitFont;
-      }
+		this.fullBorder = fullBorder;
+		this.squareCorners = normalizeExitTabBoolean(squareCorners);
+		// v2.2 saves used checkboxes for these; v2.19's sliders replace them.
+		// Before the checkboxes were separated, squareCorners also extended the
+		// padding, so older tabs without either setting keep that look.
+		const extendedPadding = hasOption("extendHorizontalPadding")
+			? normalizeExitTabBoolean(extendHorizontalPadding)
+			: this.squareCorners;
+		this.horizontalPadding = hasOption("horizontalPadding")
+			? ExitTab.normalizeHorizontalPadding(horizontalPadding)
+			: sourceOptions && (hasOption("extendHorizontalPadding") || hasOption("squareCorners"))
+				? (extendedPadding ? ExitTab.prototype.extendedHorizontalPadding : 0)
+				: ExitTab.normalizeHorizontalPadding(horizontalPadding);
+		this.cornerRadius = hasOption("cornerRadius")
+			? ExitTab.normalizeCornerRadius(cornerRadius)
+			: hasOption("matchSignCornerRadius")
+				? (normalizeExitTabBoolean(matchSignCornerRadius) ? "panel" : 0.5)
+				: ExitTab.normalizeCornerRadius(cornerRadius);
+		this.attached = !!attached;
+		const parsedBorderThickness =
+			typeof borderThickness === "number"
+				? borderThickness
+				: parseFloat(borderThickness);
+		const fallbackBorderThickness =
+			typeof ExitTab.prototype.defaultBorderThickness === "number"
+				? ExitTab.prototype.defaultBorderThickness
+				: 0.2;
+		this.borderThickness = Number.isFinite(parsedBorderThickness)
+			? Math.max(0, parsedBorderThickness)
+			: fallbackBorderThickness;
+		this.topOffset = topOffset;
+		this.minHeight = minHeight;
+		this.nestedExitTabs = nestedExitTabs;
+		const parsedNestedTabSpacing =
+			typeof nestedTabSpacing === "number"
+				? nestedTabSpacing
+				: parseFloat(nestedTabSpacing);
+		this.nestedTabSpacing = Number.isFinite(parsedNestedTabSpacing)
+			? Math.max(0, parsedNestedTabSpacing)
+			: 0;
+		// v2.19 sideways drag along the sign, in rem.
+		this.dragOffsetRem = Number.isFinite(Number(dragOffsetRem)) ? Number(dragOffsetRem) : 0;
+		const explicitFont = typeof fontFamily === "string" && fontFamily.trim()
+			? fontFamily.trim()
+			: null;
+		this.fontFamily = explicitFont ||
+			(hasOption("FHWAFont")
+				? (FHWAFont ? "Series E" : ExitTab.prototype.defaultClearviewFont)
+				: ExitTab.prototype.defaultFontFamily);
+		this.FHWAFont = /^Series\s/i.test(this.fontFamily);
+		this.icon = icon;
+		this.showLeft = showLeft;
+		this.fontSize = fontSize;
+		const parsedSpacing = parseFloat(characterSpacing);
+		this.characterSpacing = Number.isFinite(parsedSpacing)
+			? Math.max(-0.15, Math.min(0.25, parsedSpacing))
+			: 0;
+		this.textColor = typeof textColor === "string" && textColor.trim()
+			? textColor.trim()
+			: "Panel Color";
+		// v2.19 saves before version 3 stored 100 or 60 meaning "default".
+		const parsedTextSize = parseFloat(exitTextSizePercent);
+		const isLegacyTextSize =
+			parseInt(exitTextSizePercentVersion, 10) !== ExitTab.prototype.exitTextSizePercentVersion &&
+			(parsedTextSize === 100 || parsedTextSize === 60);
+		this.exitTextSizePercent = Number.isFinite(parsedTextSize) && !isLegacyTextSize
+			? Math.max(25, Math.min(100, parsedTextSize))
+			: ExitTab.prototype.defaultExitTextSizePercent;
+		this.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+		this.transparent = transparent === true || transparent === "true";
+		this.bilingual = bilingual === true || bilingual === "true";
+		this.bilingualTopText = typeof bilingualTopText === "string" && bilingualTopText.trim()
+			? bilingualTopText
+			: "EXIT";
+		this.bilingualBottomText = typeof bilingualBottomText === "string" && bilingualBottomText.trim()
+			? bilingualBottomText
+			: "SORTIE";
+		this.verticalArrangement = verticalArrangement;
+		this.caStyle = caStyle;
+		const defaultTollLogoSize =
+			typeof ExitTab.prototype.defaultTollLogoSize === "number"
+				? ExitTab.prototype.defaultTollLogoSize
+				: 3;
+		this.tollLogoOnly = !!tollLogoOnly;
+		this.tollLogoSquare = !!tollLogoSquare;
+		const parsedTollLogoSize =
+			typeof tollLogoSize === "number" ? tollLogoSize : parseFloat(tollLogoSize);
+		this.tollLogoSize = Number.isFinite(parsedTollLogoSize) && parsedTollLogoSize > 0
+			? parsedTollLogoSize
+			: defaultTollLogoSize;
+		if (
+			Array.isArray(this.nestedExitTabs) &&
+			ExitTab.prototype.maxNested != null &&
+			this.nestedExitTabs.length > ExitTab.prototype.maxNested
+		) {
+			this.nestedExitTabs = this.nestedExitTabs.slice(
+				0,
+				ExitTab.prototype.maxNested
+			);
+		}
+	}
 
-      if (!hasLegacyFHWAFontChoice) {
-        const defaultFontFamily =
-          typeof ExitTab.prototype.defaultFontFamily === "string" &&
-          ExitTab.prototype.defaultFontFamily.trim().length
-            ? ExitTab.prototype.defaultFontFamily.trim()
-            : null;
+	nestExitTab() {
+		if (this.nestedExitTabs.length >= ExitTab.prototype.maxNested) {
+			return null;
+		}
+		const exitTab = new ExitTab();
+		this.nestedExitTabs.push(exitTab);
+		return exitTab;
+	}
 
-        if (defaultFontFamily) {
-          return defaultFontFamily;
-        }
-      }
+	deleteNestExitTab(index) {
+		this.nestedExitTabs.splice(index, 1);
+	}
 
-      return FHWAFont === false
-        ? (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
-        : (ExitTab.prototype.defaultFHWAFontFamily || "Series EEM");
-    })();
-    this.fontFamily = typeof normalizeTextFontFamilyName === "function"
-      ? normalizeTextFontFamilyName(resolvedFontFamily)
-      : resolvedFontFamily;
-    this.FHWAFont = /^Series\s/i.test(String(this.fontFamily || ""));
-    this.icon = icon;
-    this.showLeft = showLeft;
-    this.fontSize = fontSize;
-    const parsedCharacterSpacing =
-      typeof characterSpacing === "number"
-        ? characterSpacing
-        : parseFloat(characterSpacing);
-    this.characterSpacing = Number.isFinite(parsedCharacterSpacing)
-      ? Math.max(-0.15, Math.min(0.25, parsedCharacterSpacing))
-      : ExitTab.prototype.defaultCharacterSpacing;
-    const parsedHorizontalPadding =
-      typeof horizontalPadding === "number"
-        ? horizontalPadding
-        : parseFloat(horizontalPadding);
-    this.horizontalPadding = Number.isFinite(parsedHorizontalPadding)
-      ? Math.max(-1, Math.min(3, parsedHorizontalPadding))
-      : ExitTab.prototype.defaultHorizontalPadding;
-    const parsedExitTextSizePercent =
-      typeof exitTextSizePercent === "number"
-        ? exitTextSizePercent
-        : parseFloat(exitTextSizePercent);
-    const parsedExitTextSizeVersion = parseInt(exitTextSizePercentVersion, 10);
-    const isLegacyExitTextSizePercent =
-      parsedExitTextSizeVersion !== ExitTab.prototype.exitTextSizePercentVersion &&
-      Number.isFinite(parsedExitTextSizePercent) &&
-      (parsedExitTextSizePercent === 100 || parsedExitTextSizePercent === 60);
-    this.exitTextSizePercent = isLegacyExitTextSizePercent
-      ? ExitTab.prototype.defaultExitTextSizePercent
-      : Number.isFinite(parsedExitTextSizePercent)
-        ? Math.max(25, Math.min(100, parsedExitTextSizePercent))
-        : ExitTab.prototype.defaultExitTextSizePercent;
-    this.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
-    this.textColor = typeof textColor === "string" && textColor.trim().length
-      ? textColor.trim()
-      : ExitTab.prototype.defaultTextColor;
-    this.fullWidthRestoreConfig =
-      fullWidthRestoreConfig && typeof fullWidthRestoreConfig === "object"
-        ? { ...fullWidthRestoreConfig }
-        : null;
-    this.verticalArrangement = verticalArrangement;
-    this.caStyle = caStyle;
-    const defaultTollLogoSize =
-      typeof ExitTab.prototype.defaultTollLogoSize === "number"
-        ? ExitTab.prototype.defaultTollLogoSize: 3;
-    this.tollLogoOnly = !!tollLogoOnly;
-    this.tollLogoSquare = !!tollLogoSquare;
-    const parsedTollLogoSize =
-      typeof tollLogoSize === "number" ? tollLogoSize : parseFloat(tollLogoSize);
-    this.tollLogoSize = Number.isFinite(parsedTollLogoSize) && parsedTollLogoSize > 0
-      ? parsedTollLogoSize
-      : defaultTollLogoSize;
-    const parsedAssetHorizontalPadding =
-      typeof assetHorizontalPadding === "number"
-        ? assetHorizontalPadding
-        : parseFloat(assetHorizontalPadding);
-    this.assetHorizontalPadding = Number.isFinite(parsedAssetHorizontalPadding)
-      ? Math.max(-3, Math.min(3, parsedAssetHorizontalPadding))
-      : 0;
-    const parsedAssetVerticalPadding =
-      typeof assetVerticalPadding === "number"
-        ? assetVerticalPadding
-        : parseFloat(assetVerticalPadding);
-    this.assetVerticalPadding = Number.isFinite(parsedAssetVerticalPadding)
-      ? Math.max(-3, Math.min(3, parsedAssetVerticalPadding))
-      : 0;
-    this.transparent = transparent === true || transparent === "true";
-    if (
-      Array.isArray(this.nestedExitTabs) &&
-      ExitTab.prototype.maxNested != null &&
-      this.nestedExitTabs.length > ExitTab.prototype.maxNested
-    ) {
-      this.nestedExitTabs = this.nestedExitTabs.slice(
-        0,
-        ExitTab.prototype.maxNested
-      );
-    }
-      this.bilingual = bilingual === true || bilingual === "true";
-      this.bilingualTopText =
-        typeof bilingualTopText === "string" && bilingualTopText.trim().length
-          ? bilingualTopText
-          : "EXIT";
-      this.bilingualBottomText =
-        typeof bilingualBottomText === "string" && bilingualBottomText.trim().length
-          ? bilingualBottomText
-          : "SORTIE";
-  }
+	duplicateNestExitTab(index) {
+		if (this.nestedExitTabs.length >= ExitTab.prototype.maxNested) {
+			return null;
+		}
+		const exisitingTab = this.nestedExitTabs[index];
+		if (!exisitingTab) {
+			return null;
+		}
+		const exitTab = new ExitTab({
+			number: exisitingTab.number,
+			position: exisitingTab.position,
+			width: exisitingTab.width,
+			color: exisitingTab.color,
+			variant: exisitingTab.variant,
+			icon: exisitingTab.icon,
+			squareCorners: exisitingTab.squareCorners,
+			cornerRadius: exisitingTab.cornerRadius,
+			horizontalPadding: exisitingTab.horizontalPadding,
+			fontFamily: exisitingTab.fontFamily,
+			fontSize: exisitingTab.fontSize,
+			characterSpacing: exisitingTab.characterSpacing,
+			textColor: exisitingTab.textColor,
+			exitTextSizePercent: exisitingTab.exitTextSizePercent,
+			transparent: exisitingTab.transparent,
+			bilingual: exisitingTab.bilingual,
+			bilingualTopText: exisitingTab.bilingualTopText,
+			bilingualBottomText: exisitingTab.bilingualBottomText,
+			fullBorder: exisitingTab.fullBorder,
+			attached: exisitingTab.attached,
+			borderThickness: exisitingTab.borderThickness,
+			minHeight: exisitingTab.minHeight,
+			tollLogoOnly: exisitingTab.tollLogoOnly,
+			tollLogoSquare: exisitingTab.tollLogoSquare,
+			tollLogoSize: exisitingTab.tollLogoSize,
+			verticalArrangement: exisitingTab.verticalArrangement,
+			caStyle: exisitingTab.caStyle
+		});
 
-  nestExitTab() {
-    if (this.nestedExitTabs.length >= ExitTab.prototype.maxNested) {
-      return null;
-    }
-    const exitTab = new ExitTab();
-    this.nestedExitTabs.push(exitTab);
-    return exitTab;
-  }
+		this.nestedExitTabs.push(exitTab);
+		return exitTab;
+	}
 
-  deleteNestExitTab(index) {
-    this.nestedExitTabs.splice(index, 1);
-  }
+	static normalizeCornerRadius(value) {
+		if (value === "panel") {
+			return "panel";
+		}
+		const parsed = parseFloat(value);
+		return Number.isFinite(parsed) ? Math.max(0, Math.min(2, parsed)) : 0.5;
+	}
 
-  duplicateNestExitTab(index) {
-    if (this.nestedExitTabs.length >= ExitTab.prototype.maxNested) {
-      return null;
-    }
-    const exisitingTab = this.nestedExitTabs[index];
-    if (!exisitingTab) {
-      return null;
-    }
-    const exitTab = new ExitTab({
-      number: exisitingTab.number,
-      position: exisitingTab.position,
-      width: exisitingTab.width,
-      color: exisitingTab.color,
-      variant: exisitingTab.variant,
-      icon: exisitingTab.icon,
-      squareCorners: exisitingTab.squareCorners,
-      cornerRadius: exisitingTab.cornerRadius,
-      fullBorder: exisitingTab.fullBorder,
-      borderThickness: exisitingTab.borderThickness,
-      minHeight: exisitingTab.minHeight,
-      fontSize: exisitingTab.fontSize,
-      fontFamily: exisitingTab.fontFamily,
-      characterSpacing: exisitingTab.characterSpacing,
-      horizontalPadding: exisitingTab.horizontalPadding,
-      exitTextSizePercent: exisitingTab.exitTextSizePercent,
-      exitTextSizePercentVersion: exisitingTab.exitTextSizePercentVersion,
-      textColor: exisitingTab.textColor,
-      fullWidthRestoreConfig: exisitingTab.fullWidthRestoreConfig,
-      tollLogoOnly: exisitingTab.tollLogoOnly,
-      tollLogoSquare: exisitingTab.tollLogoSquare,
-      tollLogoSize: exisitingTab.tollLogoSize,
-      assetHorizontalPadding: exisitingTab.assetHorizontalPadding,
-      assetVerticalPadding: exisitingTab.assetVerticalPadding,
-      transparent: exisitingTab.transparent,
-      verticalArrangement: exisitingTab.verticalArrangement,
-      caStyle: exisitingTab.caStyle,
-      profileId: exisitingTab.profileId
-    });
-
-    this.nestedExitTabs.push(exitTab);
-    return exitTab;
-  }
+	static normalizeHorizontalPadding(value) {
+		const parsed = parseFloat(value);
+		return Number.isFinite(parsed) ? Math.max(-1, Math.min(3, parsed)) : 0;
+	}
 }
 
 ExitTab.prototype.positions = ["Left", "Center", "Right"];
-ExitTab.prototype.variants = ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+ExitTab.prototype.variants = ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "HOV 1", "HOV 2", "Quebec Exit Marker"];
 ExitTab.prototype.widths = ["Narrow", "Wide", "Full", "Edge", "Out", "Side"];
+ExitTab.prototype.defaultPosition = "Center";
+ExitTab.prototype.defaultWidth = "Narrow";
 ExitTab.prototype.defaultBorderThickness = 0.2;
 ExitTab.prototype.defaultTollLogoSize = 3;
-ExitTab.prototype.defaultIcon = "AIRPORT";
-ExitTab.prototype.defaultFullBorder = true;
-ExitTab.prototype.defaultSquareCorners = true;
-ExitTab.prototype.defaultCornerRadius = "panel";
-ExitTab.prototype.defaultTopOffset = false;
-ExitTab.prototype.defaultFHWAFont = true;
-ExitTab.prototype.defaultFontFamily = "Series EEM";
-ExitTab.prototype.defaultFHWAFontFamily = "Series EEM";
-ExitTab.prototype.defaultClearviewFontFamily = "Series 5WR";
-ExitTab.prototype.defaultCharacterSpacing = 0;
-ExitTab.prototype.defaultTextColor = "Panel Color";
+ExitTab.prototype.defaultFullBorder = false;
+ExitTab.prototype.defaultSquareCorners = false;
+// The old "Extend Padding" checkbox padded tabs out to 1.3rem a side.
+ExitTab.prototype.extendedHorizontalPadding = 0.8;
+ExitTab.prototype.defaultHorizontalPadding = 0;
+ExitTab.prototype.defaultCornerRadius = 0.5;
+ExitTab.prototype.defaultExitTextSizePercent = 67;
 ExitTab.prototype.exitTextSizePercentVersion = 3;
+ExitTab.prototype.defaultAttached = false;
+ExitTab.prototype.defaultTopOffset = true;
+ExitTab.prototype.defaultFHWAFont = false;
+ExitTab.prototype.defaultClearviewFont = "Clearview 4";
+ExitTab.prototype.defaultFontFamily = "Clearview 4";
 ExitTab.prototype.defaultVerticalArrangement = false;
 ExitTab.prototype.defaultCAStyle = false;
-ExitTab.prototype.defaultText = "";
-ExitTab.prototype.defaultProfileId = "default";
-ExitTab.prototype.defaultVariant = "Default";
-ExitTab.prototype.defaultPosition = "Right";
-ExitTab.prototype.defaultWidth = "Edge";
-ExitTab.prototype.defaultColor = "Panel Color";
-ExitTab.prototype.defaultShowLeft = false;
-ExitTab.prototype.defaultMinHeight = 2;
-ExitTab.prototype.defaultNestedTabSpacing = 0;
-ExitTab.prototype.defaultFontSize = 18;
-ExitTab.prototype.defaultHorizontalPadding = 0;
-ExitTab.prototype.defaultTransparent = false;
-ExitTab.prototype.defaultExitTextSizePercent = 70;
 ExitTab.prototype.colors = (() => {
-  const colors = ["Panel Color"];
-  if (typeof lib !== "undefined" && lib?.colors) {
-    colors.push(...Object.keys(lib.colors));
-  } else {
-    colors.push(
-      "Green",
-      "Blue",
-      "Brown",
-      "Yellow",
-      "White",
-      "Black",
-      "Purple",
-      "Orange",
-      "Red",
-      "Fluorescent Pink",
-      "Fluorescent Yellow-Green"
-    );
-  }
-  return colors;
+	const colors = ["Panel Color"];
+	if (typeof lib !== "undefined" && lib?.colors) {
+		colors.push(...Object.keys(lib.colors));
+	} else {
+		colors.push(
+			"Green",
+			"Blue",
+			"Brown",
+			"Yellow",
+			"White",
+			"Black",
+			"Purple",
+			"Orange",
+			"Red",
+			"Fluorescent Pink",
+			"Fluorescent Yellow-Green"
+		);
+	}
+	return colors;
 })();
 ExitTab.prototype.icons = [
-  "Hazardous Materials:HM.png:var(--white):var(--white)",
-  "No Hazardous Materials:NO-HM.png:var(--white):var(--white)",
-  "Hospital:H.png:var(--blue):var(--white)"
+	"Hazardous Materials:HM.png:var(--white):var(--white)",
+	"No Hazardous Materials:NO-HM.png:var(--white):var(--white)",
+	"Hospital:H.png:var(--blue):var(--white)"
 ]
 ExitTab.prototype.maxNested = 999;
-
-ExitTab.prototype.fontFamilies = (() => {
-  if (typeof TextElement !== "undefined" && TextElement.prototype && Array.isArray(TextElement.prototype.fontFamily)) {
-    return TextElement.prototype.fontFamily.slice();
-  }
-  return [
-    "Series 5",
-    "Series 5WR",
-    "Series B",
-    "Series C",
-    "Series D",
-    "Series E",
-    "Series EEM",
-    "Series EM",
-    "Series F",
-    "Transport Regular",
-    "Transport Heavy",
-    "DIN 1451 Regular",
-    "DIN 1451 Narrow",
-    "Motorway Permanent",
-    "Motorway Temporary",
-  ];
-})();
-ExitTab.prototype.textColors = ExitTab.prototype.colors.slice();
-
-
-ExitTab.prototype.profileFormattingKeys = [
-  "variant",
-  "position",
-  "width",
-  "color",
-  "borderThickness",
-  "minHeight",
-  "fontSize",
-  "fontFamily",
-  "characterSpacing",
-  "horizontalPadding",
-  "exitTextSizePercent",
-  "exitTextSizePercentVersion",
-  "textColor",
-  "FHWAFont",
-  "showLeft",
-  "fullBorder",
-  "squareCorners",
-  "cornerRadius",
-  "topOffset",
-  "verticalArrangement",
-  "caStyle",
-  "bilingual",
-  "bilingualBottomText",
-  "icon",
-  "useTextBasedIcon",
-  "tollLogoOnly",
-  "tollLogoSize",
-  "tollLogoSquare",
-  "assetHorizontalPadding",
-  "assetVerticalPadding",
-  "transparent",
-  "nestedTabSpacing",
-];
-
-ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.prototype.defaultVariant) {
-  const normalizedVariant = variant === "Standard" ? "Default" : variant;
-  const resolvedVariant = ExitTab.prototype.variants.includes(normalizedVariant)
-    ? normalizedVariant
-    : "Default";
-  const isTollLogo = resolvedVariant === "Toll Logo";
-  const isIcon = resolvedVariant === "Icon";
-
-  return {
-    variant: resolvedVariant,
-    position: ExitTab.prototype.defaultPosition,
-    width: ExitTab.prototype.defaultWidth,
-    color: ExitTab.prototype.defaultColor,
-    borderThickness: ExitTab.prototype.defaultBorderThickness,
-    minHeight: 2,
-    fontSize: ExitTab.prototype.defaultFontSize,
-    fontFamily: ExitTab.prototype.defaultFontFamily || ExitTab.prototype.defaultFHWAFontFamily || "Series EEM",
-    characterSpacing: ExitTab.prototype.defaultCharacterSpacing,
-    horizontalPadding: ExitTab.prototype.defaultHorizontalPadding,
-    exitTextSizePercent: ExitTab.prototype.defaultExitTextSizePercent,
-    exitTextSizePercentVersion: ExitTab.prototype.exitTextSizePercentVersion,
-    textColor: ExitTab.prototype.defaultTextColor,
-    FHWAFont: /^Series\s/i.test(String(ExitTab.prototype.defaultFontFamily || ExitTab.prototype.defaultFHWAFontFamily || "Series EEM")),
-    showLeft: ExitTab.prototype.defaultShowLeft,
-    fullBorder: ExitTab.prototype.defaultFullBorder,
-    squareCorners: ExitTab.prototype.defaultSquareCorners,
-    cornerRadius: ExitTab.prototype.defaultCornerRadius,
-    topOffset: ExitTab.prototype.defaultTopOffset,
-    verticalArrangement: ExitTab.prototype.defaultVerticalArrangement,
-    caStyle: ExitTab.prototype.defaultCAStyle,
-    bilingual: false,
-    bilingualBottomText: "SORTIE",
-    icon: isTollLogo ? "TxTag" : isIcon ? "AIRPORT" : null,
-    useTextBasedIcon: false,
-    tollLogoOnly: isTollLogo,
-    tollLogoSize: ExitTab.prototype.defaultTollLogoSize,
-    tollLogoSquare: false,
-    assetHorizontalPadding: 0,
-    assetVerticalPadding: 0,
-    transparent: false,
-    nestedTabSpacing: ExitTab.prototype.defaultNestedTabSpacing,
-  };
-};

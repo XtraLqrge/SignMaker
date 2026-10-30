@@ -1,3 +1,4 @@
+
 @font-face {
   font-family: "Series E";
   src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2"),
@@ -218,15 +219,21 @@
 }
 
 @font-face {
-  font-family: "Transport Regular";
-  src: url("../fonts/Roadgeek 2005 Transport Medium Regular.woff2") format("woff2"),
-    url("../fonts/Roadgeek 2005 Transport Medium Regular.woff") format("woff"),
-    url("../fonts/Roadgeek 2005 Transport Medium Regular.ttf") format("truetype");
-  font-weight: normal;
+  font-family: "Transport";
+  src: url("../fonts/Transport.woff2") format("woff2"),
+    url("../fonts/Transport.woff") format("woff"),
+    url("../fonts/Transport.ttf") format("truetype");
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Arial Bold";
+  src: local("Arial Bold");
+}
+
+/* v2.19 fonts. Motorway only has numerals and a few letters. */
 @font-face {
   font-family: "Transport Heavy";
   src: url("../fonts/Roadgeek 2005 Transport Heavy Regular.woff2") format("woff2"),
@@ -238,15 +245,10 @@
 }
 
 @font-face {
-  font-family: "Arial Bold";
-  src: local("Arial Bold");
-}
-
-@font-face {
   font-family: "DIN 1451 Regular";
   src: url("../fonts/Roadgeek 2005 Mittelschrift Regular.woff2") format("woff2"),
-       url("../fonts/Roadgeek 2005 Mittelschrift Regular.woff") format("woff"),
-       url("../fonts/Roadgeek 2005 Mittelschrift Regular.ttf") format("truetype");
+    url("../fonts/Roadgeek 2005 Mittelschrift Regular.woff") format("woff"),
+    url("../fonts/Roadgeek 2005 Mittelschrift Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -255,8 +257,8 @@
 @font-face {
   font-family: "DIN 1451 Narrow";
   src: url("../fonts/Roadgeek 2005 Engschrift Regular.woff2") format("woff2"),
-       url("../fonts/Roadgeek 2005 Engschrift Regular.woff") format("woff"),
-       url("../fonts/Roadgeek 2005 Engschrift Regular.ttf") format("truetype");
+    url("../fonts/Roadgeek 2005 Engschrift Regular.woff") format("woff"),
+    url("../fonts/Roadgeek 2005 Engschrift Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -265,8 +267,8 @@
 @font-face {
   font-family: "Motorway Permanent";
   src: url("../fonts/Motorway Permanent.woff2") format("woff2"),
-       url("../fonts/Motorway Permanent.woff") format("woff"),
-       url("../fonts/Motorway Permanent.ttf") format("truetype");
+    url("../fonts/Motorway Permanent.woff") format("woff"),
+    url("../fonts/Motorway Permanent.ttf") format("truetype");
   unicode-range: U+0030-0039, U+0041-0042, U+0045, U+004D, U+004E, U+0053, U+0057, U+0065, U+006E, U+0073, U+0077;
   font-weight: normal;
   font-style: normal;
@@ -276,8 +278,8 @@
 @font-face {
   font-family: "Motorway Temporary";
   src: url("../fonts/Motorway Temporary.woff2") format("woff2"),
-       url("../fonts/Motorway Temporary.woff") format("woff"),
-       url("../fonts/Motorway Temporary.ttf") format("truetype");
+    url("../fonts/Motorway Temporary.woff") format("woff"),
+    url("../fonts/Motorway Temporary.ttf") format("truetype");
   unicode-range: U+0030-0039, U+0041-0042, U+0045, U+004D, U+004E, U+0053, U+0057, U+0065, U+006E, U+0073, U+0077;
   font-weight: normal;
   font-style: normal;
@@ -287,9 +289,9 @@
 @font-face {
   font-family: "Rawlinson Regular";
   src: url("../fonts/Rawlinson Regular.woff2") format("woff2"),
-       url("../fonts/Rawlinson Regular.woff") format("woff"),
-       url("../fonts/Rawlinson Regular.ttf") format("truetype");
-  font-weight: 400;
+    url("../fonts/Rawlinson Regular.woff") format("woff"),
+    url("../fonts/Rawlinson Regular.ttf") format("truetype");
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
@@ -297,81 +299,79 @@
 @font-face {
   font-family: "Rawlinson Bold";
   src: url("../fonts/Rawlinson Bold.woff2") format("woff2"),
-       url("../fonts/Rawlinson Bold.woff") format("woff"),
-       url("../fonts/Rawlinson Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue Thin";
-  src: url("../fonts/HelveticaNeue-Thin.woff2") format("woff2"),
-       url("../fonts/HelveticaNeue-Thin.woff") format("woff"),
-       url("../fonts/HelveticaNeue-Thin.ttf") format("truetype");
-  font-weight: 100;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue Light";
-  src: url("../fonts/HelveticaNeue-Light.woff2") format("woff2"),
-       url("../fonts/HelveticaNeue-Light.woff") format("woff"),
-       url("../fonts/HelveticaNeue-Light.ttf") format("truetype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue Roman";
-  src: url("../fonts/HelveticaNeue-Roman.woff2") format("woff2"),
-       url("../fonts/HelveticaNeue-Roman.woff") format("woff"),
-       url("../fonts/HelveticaNeue-Roman.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue Medium";
-  src: url("../fonts/HelveticaNeue-Medium.woff2") format("woff2"),
-       url("../fonts/HelveticaNeue-Medium.woff") format("woff"),
-       url("../fonts/HelveticaNeue-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue Bold";
-  src: url("../fonts/HelveticaNeue-Bold.woff2") format("woff2"),
-       url("../fonts/HelveticaNeue-Bold.woff") format("woff"),
-       url("../fonts/HelveticaNeue-Bold.ttf") format("truetype");
-  font-weight: 700;
+    url("../fonts/Rawlinson Bold.woff") format("woff"),
+    url("../fonts/Rawlinson Bold.ttf") format("truetype");
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
   font-family: "ITC Stone Sans Regular";
-  src:
-    url("../fonts/ITC Stone Sans Regular.woff2") format("woff2"),
+  src: url("../fonts/ITC Stone Sans Regular.woff2") format("woff2"),
     url("../fonts/ITC Stone Sans Regular.woff") format("woff"),
     url("../fonts/ITC Stone Sans Regular.ttf") format("truetype");
-  font-weight: 400;
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "ITC Stone Sans Semibold";
-  src:
-    url("../fonts/ITC Stone Sans Semibold Regular.woff2") format("woff2"),
+  font-family: "ITC Stone Sans Bold";
+  src: url("../fonts/ITC Stone Sans Semibold Regular.woff2") format("woff2"),
     url("../fonts/ITC Stone Sans Semibold Regular.woff") format("woff"),
     url("../fonts/ITC Stone Sans Semibold Regular.ttf") format("truetype");
-  font-weight: 600;
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Thin";
+  src: url("../fonts/HelveticaNeue-Thin.woff2") format("woff2"),
+    url("../fonts/HelveticaNeue-Thin.woff") format("woff"),
+    url("../fonts/HelveticaNeue-Thin.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Light";
+  src: url("../fonts/HelveticaNeue-Light.woff2") format("woff2"),
+    url("../fonts/HelveticaNeue-Light.woff") format("woff"),
+    url("../fonts/HelveticaNeue-Light.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Roman";
+  src: url("../fonts/HelveticaNeue-Roman.woff2") format("woff2"),
+    url("../fonts/HelveticaNeue-Roman.woff") format("woff"),
+    url("../fonts/HelveticaNeue-Roman.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Medium";
+  src: url("../fonts/HelveticaNeue-Medium.woff2") format("woff2"),
+    url("../fonts/HelveticaNeue-Medium.woff") format("woff"),
+    url("../fonts/HelveticaNeue-Medium.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Helvetica Bold";
+  src: url("../fonts/HelveticaNeue-Bold.woff2") format("woff2"),
+    url("../fonts/HelveticaNeue-Bold.woff") format("woff"),
+    url("../fonts/HelveticaNeue-Bold.ttf") format("truetype");
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
@@ -402,7 +402,7 @@
 }
 
 :root[data-theme="dark"] {
-  --backgroundColor: rgb(4 20 64);
+  --backgroundColor: rgb(10 28 77);
   --hotbarColor: rgb(43 63 118);
   --textColor: rgb(247 249 251);
   --selectedColor: rgb(255, 255, 255, 0.25);
@@ -428,6 +428,7 @@ body {
   font-family: "Inter";
   font-size: 20px;
   color: var(--textColor);
+  overflow: hidden;
 }
 
 body {
@@ -442,37 +443,40 @@ body {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   align-items: flex-end;
+  gap: 0.4rem;
 }
 
-.mutcd-link {
-  z-index: 1000;
+.top-right-links .mutcd-link {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.65rem;
-  min-width: 0;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--hotbarColor);
+  color: var(--textColor);
+  font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none;
-  background-color: rgb(var(--inputColor));
-  color: var(--textColor);
-  border: 1px solid rgba(var(--baseColor), 0.35);
-  box-shadow: 0 0.25rem 0.45rem rgba(0, 0, 0, 0.15);
-  transition: 0.15s ease-in-out;
 }
 
-.external-link-icon {
+.top-right-links .mutcd-link:hover,
+.top-right-links .mutcd-link:focus-visible {
+  background: var(--hoverColor);
+}
+
+.top-right-links .external-link-icon {
   font-size: 1rem;
   line-height: 1;
-  flex: 0 0 auto;
 }
 
-.mutcd-link:hover {
-  background-color: var(--selectedColor);
-  transform: translateY(-1px);
+@media (max-width: 600px) {
+  .top-right-links {
+    top: 0.5rem;
+    right: 0.5rem;
+    flex-direction: row;
+  }
 }
 
 main,
@@ -483,63 +487,11 @@ footer {
 main {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-body>footer {
-  border-top: solid rgba(255, 255, 255, 0.35) 0.15rem;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-body>footer div:nth-child(1) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background-color: rgba(255, 255, 255, 0.15);
-  width: max-content;
-  padding: 0.5rem 1rem;
-}
-
-body>footer h3 {
-  font-size: 1rem;
-  line-height: 1.05;
-}
-
-body>footer p {
-  font-size: 13px;
-  line-height: 1.15;
-}
-
-body>footer a,
-body>footer a:visited {
-  display: inline;
-  width: auto;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  background: none;
-  border: none;
-  box-shadow: none;
-  color: #4ea3ff;
-  text-decoration: underline;
-  font: inherit;
-  transition: color 0.2s;
-}
-
-body>footer a:hover,
-body>footer a:focus {
-  background: none;
-  color: #7bbcff;
-  text-decoration: underline;
-  scale: none;
 }
 
 h1,
@@ -558,7 +510,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Inter", sans-serif;
+  font-family: "Overpass";
   font-weight: 600;
 }
 
@@ -582,9 +534,4 @@ h6 {
 
 input[type="checkbox"] {
   width: auto;
-}
-
-.footerdiv a {
-    color: #cfdfff;
-
 }

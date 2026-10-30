@@ -243,16 +243,10 @@ class IconPickerController {
     image.loading = "lazy";
     image.decoding = "async";
     image.draggable = false;
-    let fallbackTried = false;
-    image.addEventListener("error", async () => {
-      if (!fallbackTried && typeof window.loadSignMakerIconFallback === "function") {
-        fallbackTried = true;
-        const fallback = await window.loadSignMakerIconFallback(definition.src || definition.asset || definition.url || "");
-        if (fallback) { image.src = fallback; return; }
-      }
+    image.addEventListener("error", () => {
       preview.textContent = "?";
       card.classList.add("assetPreviewMissing");
-    });
+    }, { once: true });
     preview.appendChild(image);
     const caption = document.createElement("span");
     caption.className = "assetGridLabel";

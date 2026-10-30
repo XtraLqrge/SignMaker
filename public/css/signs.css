@@ -13,6 +13,24 @@
       var(--post-color-dark) 100%);
 }
 
+#alignmentGuides {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  pointer-events: none;
+  background-image: linear-gradient(to right,
+      rgba(255, 255, 255, 0.7) 0,
+      rgba(255, 255, 255, 0.7) 1px,
+      transparent 1px);
+  background-position: var(--alignmentGuidePhase, 0rem) 0;
+  background-size: var(--alignmentGuideSpacing, 4rem) 100%;
+  background-repeat: repeat-x;
+}
+
+#alignmentGuides.visible {
+  display: block;
+}
+
 #postContainer.postColorSilver {
   --post-color-mid: rgb(191, 191, 191);
   --post-color-light: rgb(240, 240, 240);
@@ -46,17 +64,9 @@
   visibility: hidden;
 }
 
+#postContainer.polePositionRural .post,
 #postContainer.polePositionCenter .post {
   visibility: hidden;
-}
-
-#postContainer.polePositionRural .post {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 8rem;
-  margin: 0;
-  z-index: 0;
 }
 
 #postContainer.polePositionLeft #panelContainer,
@@ -79,9 +89,22 @@
 
 #postContainer.polePositionRural #panelContainer {
   position: relative;
-  background: none;
+  background-image: linear-gradient(90deg,
+      var(--post-color-mid) 0%,
+      var(--post-color-light) 40%,
+      var(--post-color-dark) 100%),
+    linear-gradient(90deg,
+      var(--post-color-mid) 0%,
+      var(--post-color-light) 40%,
+      var(--post-color-dark) 100%);
+  background-repeat: no-repeat;
+  background-size:
+    var(--postThickness, 1rem) 24rem,
+    var(--postThickness, 1rem) 24rem;
+  background-position:
+    left 1rem bottom,
+    right 1rem bottom;
   margin-top: 20rem;
-  z-index: 1;
 }
 
 #postContainer.polePositionCenter #panelContainer {
@@ -112,6 +135,41 @@
   margin-right: auto;
 }
 
+/* FDOT artwork stays behind the editable sign faces and is also captured in exports. */
+#postContainer.fdotSupportContainer {
+  display: block;
+  width: max-content;
+  height: auto;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+#postContainer.fdotSupportContainer > .post {
+  display: none;
+}
+
+.fdotSupport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  max-width: none;
+}
+
+#postContainer.fdotSupportContainer #panelContainer {
+  position: relative;
+  z-index: 1;
+  height: auto;
+  margin-top: 0;
+  background: none;
+}
+
+#postContainer.fdotSupportContainer .panel .exitTabContainer:not(.tabVisible) {
+  display: none;
+}
+
 #panelContainer {
   display: flex;
   flex-direction: row;
@@ -122,36 +180,189 @@
   gap: var(--panelSpacing, 0rem);
 }
 
+/* v2.19 stacked panels: extra panels drawn above or below a main panel. */
+.panelStack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--stackedPanelSpacing, 0rem);
+  width: max-content;
+  flex: 0 0 auto;
+}
+
+.panelStack.stackedPanelMatchWidth > .panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.panelStack.stackedPanelMatchWidth > .panel > .signContainer,
+.panelStack.stackedPanelMatchWidth > .panel > .signContainer > .sign,
+.panelStack.stackedPanelMatchWidth > .panel > .signContainer > .sign > .signHolder {
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.full {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.panelStack > .panel {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.panelStack > .panel > .exitTabContainer:not(.tabVisible) {
+  display: none;
+}
+
+.panelStack.negativeStackedPanelSpacing {
+  gap: 0;
+}
+
+.panelStack.negativeStackedPanelSpacing > .panel:not(:first-child) {
+  margin-top: var(--stackedPanelOverlap, 0rem) !important;
+}
+
+/* v2.19: a zero border thickness removes the sign's outer rim only. */
+.panel.panelBorderHidden > .signContainer > .sign,
+.panel.panelBorderHidden > .signContainer > .guideArrows,
+.panel.panelBorderHidden > .signContainer > .aplArrows {
+  border-width: 0 !important;
+}
+
+.panel.panelBorderHidden > .signContainer > .guideArrows.modernExitOnlyTexasBorder {
+  padding: 0 !important;
+}
+
+.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitColoredLane,
+.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitPlainLane {
+  border-bottom-width: 0 !important;
+}
+
+.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitLayout > :first-child {
+  border-left-width: 0 !important;
+}
+
+.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitLayout > :last-child {
+  border-right-width: 0 !important;
+}
+
+/* v2.19 custom (non-palette) panel and exit tab colors. */
+.panel.customPanelColor .sign,
+.panel.customPanelColor .signContainer,
+.panel.customPanelColor .exitTabContainer,
+.panel.customPanelColor .guideArrows {
+  background-color: var(--panelCustomBg);
+  border-color: var(--panelCustomFg);
+  color: var(--panelCustomFg);
+}
+
+.panel.customPanelColor .dividerElement {
+  background-color: var(--panelCustomFg);
+}
+
+.panel.customPanelColor .arrow {
+  filter: var(--panelCustomArrowFilter, none);
+}
+
+.exitTab.customExitTabColor,
+.exitTabHolder.customExitTabColor,
+.exitTabContainer.customExitTabColor {
+  background-color: var(--exitTabCustomBg) !important;
+  border-color: var(--exitTabCustomFg);
+  color: var(--exitTabCustomFg);
+}
+
+/* The selected panel still draws while hidden from the post, faded. */
+.panel.panelHiddenFromPost {
+  opacity: 0.4;
+}
+
+.exportCaptureTarget,
+.exportCaptureTarget * {
+  box-sizing: border-box;
+}
+
+#panelContainer.exportCaptureTarget {
+  width: max-content !important;
+  min-width: max-content !important;
+  height: max-content !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  background-image: none !important;
+  align-items: flex-start !important;
+}
+
+#panelContainer.exportCaptureTarget > :is(.panel, .panelStack):first-child {
+  padding-left: 0 !important;
+}
+
+#panelContainer.exportCaptureTarget > :is(.panel, .panelStack):last-child {
+  padding-right: 0 !important;
+}
+
+.exportStaticCaptureWrapper,
+.exportStaticCaptureClone {
+  box-sizing: border-box;
+}
+
+.exportStaticCaptureWrapper {
+  isolation: isolate;
+}
+
+.exportStaticCaptureWrapper .groupPreviewPanel .signContainer,
+.exportStaticCaptureClone.groupPreviewPanel .signContainer {
+  outline: none !important;
+}
+
 .panel {
   --signBorderRadius: 0.75rem;
+  --signBorderWidth: 0.2rem;
   text-align: center;
   display: block;
   padding: 0rem;
   position: relative;
 }
 
-.panel:first-child {
+#panelContainer > :is(.panel, .panelStack):first-child {
   padding-left: 1rem;
 }
 
-.panel:last-child {
+#panelContainer > :is(.panel, .panelStack):last-child {
   padding-right: 1rem;
 }
 
-#postContainer.polePositionRural .panel {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#postContainer.polePositionRural #panelContainer > :is(.panel, .panelStack) {
   margin-top: -10rem;
 }
 
-#postContainer.polePositionCenter .panel {
+#postContainer.polePositionCenter #panelContainer > :is(.panel, .panelStack) {
   margin-top: -22.5rem;
 }
 
-#postContainer.polePositionCenter .panel:not(:first-child) {
-  display: none;
-}
-
-/* Rural shows one panel group, including every panel in that group's stack. */
-#postContainer.polePositionRural #panelContainer > :is(.panel, .panelStack):not(:first-child) {
+/* Rural and center posts show one panel, or one panel's whole stack. */
+#postContainer.polePositionRural #panelContainer > :is(.panel, .panelStack):not(:first-child),
+#postContainer.polePositionCenter #panelContainer > :is(.panel, .panelStack):not(:first-child) {
   display: none;
 }
 
@@ -160,20 +371,29 @@
 }
 
 /* Panel drag-and-drop on rendered sign */
-.panel.panelWiggle {
+.panel.panelWiggle,
+.panelStack.panelWiggle {
   animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate;
   animation-delay: var(--wiggle-delay, 0s);
   cursor: grab;
 }
 
-.panel.dragging {
+.panel.dragging,
+.panelStack.dragging {
   opacity: 0.5;
   cursor: grabbing;
   animation: none;
 }
 
+.panel.templateReplaceTarget {
+  outline: 0.3rem solid var(--selectedColor, rgb(100, 150, 255));
+  outline-offset: 0.2rem;
+}
+
 .panel.dropBefore::before,
-.panel.dropAfter::after {
+.panel.dropAfter::after,
+.panelStack.dropBefore::before,
+.panelStack.dropAfter::after {
   content: "";
   position: absolute;
   top: 10%;
@@ -185,11 +405,13 @@
   z-index: 10;
 }
 
-.panel.dropBefore::before {
+.panel.dropBefore::before,
+.panelStack.dropBefore::before {
   left: 0.25rem;
 }
 
-.panel.dropAfter::after {
+.panel.dropAfter::after,
+.panelStack.dropAfter::after {
   right: 0.25rem;
 }
 
@@ -397,98 +619,29 @@
   padding: 1px;
 }
 
-.exitTabContainer.green {
-  background-color: var(--green) !important;
-}
-
-.exitTabContainer.blue {
-  background-color: var(--blue) !important;
-}
-
-.exitTabContainer.brown {
-  background-color: var(--brown) !important;
-}
-
-.exitTabContainer.yellow {
-  background-color: var(--yellow) !important;
-}
-
-.exitTabContainer.white {
-  background-color: var(--white) !important;
-}
-
-.exitTabContainer.black {
-  background-color: var(--black) !important;
-}
-
-.exitTabContainer.red {
-  background-color: var(--red) !important;
-}
-
-.exitTabContainer.purple {
-  background-color: var(--purple) !important;
-}
-
-.exitTabContainer.orange {
-  background-color: var(--orange) !important;
-}
-
-.exitTabContainer.fluorescent.pink {
-  background-color: var(--fluorescent-pink) !important;
-}
-
-.exitTabContainer.fluorescent.yellow-green {
-  background-color: var(--fluorescent-yellow-green) !important;
-}
-
 .exitTabHolder {
   flex-grow: 1;
 }
 
-.exitTabHolder > .exitTab.draggableExitTab {
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.exitTabHolder > .exitTab.draggableExitTab:active {
-  cursor: grabbing;
-}
-
-/* A tab moved away from its layout slot must not leave a colored rectangle
-   behind in the original slot. The tab itself still paints its background. */
-.panel .exitTabContainer.hasDraggedExitTab,
-.panel .exitTabContainer.hasDraggedExitTab > .exitTabHolder {
-  background-color: transparent !important;
-}
-
 .exitTab {
-  border-radius: 0.5rem 0.5rem 0 0;
+  border-radius: var(--exitTabCornerRadius, 0.5rem) var(--exitTabCornerRadius, 0.5rem) 0 0;
   border-top-style: solid;
-  border-top-width: var(--exitTabBorderWidth, 0.2rem);
+  border-top-width: 0.2rem;
   border-right-style: solid;
-  border-right-width: var(--exitTabBorderWidth, 0.2rem);
+  border-right-width: 0.2rem;
   border-bottom: none;
   border-left-style: solid;
-  border-left-width: var(--exitTabBorderWidth, 0.2rem);
+  border-left-width: 0.2rem;
   font-size: 1rem;
   visibility: hidden;
   /* hides exitTab by default when loading page */
   float: none;
   min-height: 2.25rem;
-  --exitTabBaseHorizontalPadding: 0.5rem;
-  --exitTabHorizontalPadding: 0rem;
-  --exitTabPrefixScale: 0.7;
-  --exitTabCharacterSpacing: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
-  padding-right: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
+  padding: 0 calc(0.5rem + var(--exitTabHorizontalPadding, 0rem));
 }
 
 .exitTab.squareCorners {
   border-radius: 0.25rem 0.25rem 0 0;
-  --exitTabBaseHorizontalPadding: 1.3rem;
 }
 
 .exitTab.squareCorners.out {
@@ -506,7 +659,7 @@
   width: max-content;
   border-bottom-width: 0.2rem;
   border-bottom-style: solid;
-  border-radius: 0.5rem;
+  border-radius: var(--exitTabCornerRadius, 0.5rem);
 }
 
 .out.center {
@@ -515,7 +668,8 @@
 }
 
 .exitTab.narrow,
-.exitTab.edge {
+.exitTab.edge,
+.exitTab.side {
   width: -moz-max-content;
   width: -webkit-max-content;
   width: intrinsic;
@@ -569,6 +723,64 @@
   gap: var(--nestedTabSpacing, 0);
 }
 
+.signContainer {
+  position: relative;
+  isolation: isolate;
+}
+
+.exitTabContainer.attached {
+  align-items: flex-start;
+  margin-bottom: calc(-1 * var(--signBorderWidth, 0.2rem));
+  position: relative;
+  z-index: 3;
+}
+
+.exitTabHolder.attached {
+  padding-bottom: var(--signBorderWidth, 0.2rem);
+}
+
+.signSideLayout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: max-content;
+}
+
+.signSideLayout>.signContainer,
+.signSideLayout>.exitTabContainer.side {
+  flex: 0 0 auto;
+}
+
+.signSideLayout>.exitTabContainer.side {
+  align-items: flex-start;
+  margin: 0;
+  width: max-content;
+}
+
+.signSideLayout>.exitTabContainer.side.left {
+  margin-right: 0.25rem;
+}
+
+.signSideLayout>.exitTabContainer.side.right {
+  margin-left: 0.25rem;
+}
+
+.signSideLayout>.exitTabContainer.side.attached {
+  margin-bottom: 0;
+}
+
+.signSideLayout>.exitTabContainer.side.left.attached {
+  margin-right: 0;
+}
+
+.signSideLayout>.exitTabContainer.side.right.attached {
+  margin-left: 0;
+}
+
+.signSideLayout>.exitTabContainer.side>.exitTabHolder.attached {
+  padding-bottom: 0;
+}
+
 .signContainer,
 .exitTabContainer.narrow,
 .exitTabContainer.edge {
@@ -602,55 +814,19 @@
 
 .exitTab.full {
   width: 100%;
-  box-sizing: border-box;
-  min-width: max-content;
   border-radius: var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) 0 0;
 }
 
-.panel > .exitTabContainer.full {
-  width: 100%;
-  box-sizing: border-box;
+.sign.full.tabVisible {
+  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
 }
 
-.exitTab.full.left.fullLeftPositionedWithLeftLabel {
-  text-align: left;
+.sign.edge.right.tabVisible {
+  border-radius: var(--signBorderRadius, 0.75rem) 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
 }
 
-.exitTab.full.left.fullLeftPositionedWithLeftLabel .exitTabNumberLinesContainer {
-  align-items: flex-start;
-}
-
-.exitTab.full.left.fullLeftPositionedWithLeftLabel .exitTabNumberLine {
-  justify-content: flex-start;
-}
-
-.sign.full.tabVisible,
-.sign.edge.right.tabVisible,
 .sign.edge.left.tabVisible {
-  border-radius: var(--signBorderRadius, 0.75rem);
-}
-
-.sign.tabVisible.exitTabCutsTopLeft,
-.signContainer.exitTabCutsTopLeft > .sign {
-  border-top-left-radius: 0 !important;
-}
-
-.sign.tabVisible.exitTabCutsTopRight,
-.signContainer.exitTabCutsTopRight > .sign {
-  border-top-right-radius: 0 !important;
-}
-
-.sign.tabVisible.exitTabCutsTopLeft.exitTabCutsTopRight,
-.signContainer.exitTabCutsTopLeft.exitTabCutsTopRight > .sign {
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
-}
-
-/* The main panel meets the guide-arrow band at a square seam. The band
-   alone owns the bottom corners, regardless of the exit tab above it. */
-.signContainer:has(> .guideArrows.modernExitOnly) > .sign {
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
+  border-radius: 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
 }
 
 .panel.round .exitTabContainer,
@@ -661,132 +837,31 @@
 .sign {
   border-radius: var(--signBorderRadius, 0.75rem);
   border-style: solid;
-  border-width: var(--panelBorderWidth, 0.2rem);
+  border-width: var(--signBorderWidth, 0.2rem);
   display: block;
   clear: both;
+  position: relative;
+  isolation: isolate;
   visibility: visible;
   overflow: hidden;
-  position: relative;
+  width: 100%;
+}
+
+.fullBleedBorderOverlay {
+  position: absolute;
+  box-sizing: border-box;
+  border-style: solid;
+  pointer-events: none;
+  visibility: visible;
+  z-index: 20;
 }
 
 .signHolder {
   display: flex;
   clear: both;
   flex-direction: row;
-}
-
-.signContainer > .sign {
-  min-width: 100%;
-  box-sizing: border-box;
-}
-
-.signHolder {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
   justify-content: center;
-}
-
-.signHolder > .subPanelDisplay:only-of-type {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 100%;
-}
-
-.signHolder > .subPanelDisplay:only-of-type > .signContentContainer {
-  width: 100%;
-  min-width: 100%;
-}
-
-/* Multiple regular subpanels should size to their own content, not split space evenly */
-.signHolder > .subPanelDisplay:not(.hasAplWidthReserve):not(:only-of-type) {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: max-content;
-  box-sizing: border-box;
-}
-
-.signHolder > .subPanelDisplay:not(.hasAplWidthReserve):not(:only-of-type) > .signContentContainer {
-  width: max-content;
-  min-width: max-content;
-  box-sizing: border-box;
-}
-
-/* Standard guide arrows may widen the overall sign, but they should not make every
-   subpanel share that added width. Each subpanel stays at its content width unless
-   its own content or arrow reserve requires a larger minimum. */
-.signHolder.hasStandardGuideArrowWidthReserve {
-  width: var(--standardGuideArrowMinWidth) !important;
-  min-width: var(--standardGuideArrowMinWidth) !important;
-  max-width: none !important;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve) {
-  flex: 0 0 auto !important;
-  width: max-content !important;
-  min-width: max-content !important;
-  max-width: none !important;
-  box-sizing: border-box;
-}
-
-.signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve) > .signContentContainer {
-  width: max-content !important;
-  min-width: max-content !important;
-  box-sizing: border-box;
-}
-
-.signHolder.hasStandardGuideArrowWidthReserve > .subDivider {
-  flex: 0 0 auto;
-}
-
-.signHolder > .subDivider {
-  flex: 0 0 auto;
-}
-
-.signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow {
-  background-color: transparent !important;
-  position: relative;
-  overflow: visible;
-}
-
-.signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: var(--standardGuideArrowDividerStopOffset, 1.15rem);
-  left: 0;
-  width: 100%;
-  background-color: var(--white);
-}
-
-.panel.white .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.yellow .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.orange .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.fluorescent.yellow-green .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.fluorescent.pink .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before {
-  background-color: var(--black);
-}
-
-.globalTop,
-.globalBottom {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.globalTop.hasGlobalBlocks,
-.globalBottom.hasGlobalBlocks {
-  padding: 0.45rem 0.75rem;
-}
-
-.globalPanelBlockElements {
-  width: 100%;
-}
-
-.globalPanelBlockElements .blockElementRow {
-  width: 100%;
 }
 
 .panel.round .exitTabContainer,
@@ -808,33 +883,26 @@
   margin-bottom: auto;
   display: none;
   height: 2.5rem;
-  width: auto;
   padding: 0.2rem;
-  flex: 0 0 auto;
-  object-fit: contain;
-  box-sizing: content-box;
+}
+
+.sideLeftArrow.bE-arrowElement img,
+.sideRightArrow.bE-arrowElement img {
+  width: auto;
+  max-height: 2.5rem;
+}
+
+.sideLeftArrow.bE-arrowElement,
+.sideRightArrow.bE-arrowElement {
+  display: none;
 }
 
 .sideLeftArrow {
-  margin-left: 0;
-  margin-right: 1rem;
+  margin-left: 1rem;
 }
 
 .sideRightArrow {
-  margin-left: 1rem;
-  margin-right: 0;
-}
-
-.signHolder.hasSideGuideArrow {
-  width: max-content;
-  min-width: max-content;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-
-.signHolder.hasSideGuideArrow > .subPanelDisplay {
-  flex: 0 0 auto;
+  margin-right: 1rem;
 }
 
 .signContentContainer {
@@ -842,7 +910,6 @@
   width: 100%;
   padding: 0.3rem 0.75rem 0.3rem 0.75rem;
   justify-content: center;
-  box-sizing: border-box;
 }
 
 .signContentContainer.shieldPositionLeft {
@@ -859,7 +926,6 @@
   flex-direction: row-reverse;
   align-items: center;
 }
-
 
 .shieldsContainer {
   text-align: center;
@@ -955,7 +1021,7 @@
 
 .guideArrows {
   border-style: solid;
-  border-width: var(--panelBorderWidth, 0.2rem);
+  border-width: var(--signBorderWidth, 0.2rem);
   border-top-width: 0;
   border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
 
@@ -1013,13 +1079,29 @@
 
 .guideArrows.half_exit.only.default .arrowContainer {
   position: relative;
-  z-index: auto;
+  z-index: 1;
 }
 
 .halfarrow {
-  height: 1.8rem;
+  height: 2rem;
   position: relative;
   margin-left: 0rem;
+}
+
+.halfarrow.bE-arrowElement img {
+  width: auto;
+  max-height: 2rem;
+}
+
+.halfarrow.bE-arrowElement {
+  padding-left: var(--exitOnlyArrowHorizontalPadding, 0rem);
+  padding-right: var(--exitOnlyArrowHorizontalPadding, 0rem);
+}
+
+.halfarrow.bE-arrowElement[data-arrow-kind="TYPE_A"] img {
+  width: 1.75rem;
+  height: auto;
+  max-height: none;
 }
 
 .specialExitOnly {
@@ -1042,14 +1124,13 @@
   --fhwaBaselineOffset: 0px;
   display: flex;
   align-items: center;
-  font-family: var(--exitTabFontFamily, "Series EEM");
+  font-family: var(--exitTabFontFamily, "Clearview 4W");
   font-size: 18px;
 }
 
 .exitTab .exitTabText {
   position: relative;
   top: calc(var(--exitTabTextBaseOffset, 0px) + var(--fhwaBaselineOffset) + var(--exitTabAdditionalOffset, 0px));
-  letter-spacing: calc(var(--exitTabCharacterSpacing, 0) * 1em);
 }
 
 .exitTab .numeral {
@@ -1076,49 +1157,62 @@
 }
 
 .exitTab .exitTabVerticalContainer {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.4rem;
-  padding: 0;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 0.15rem 0;
+  position: relative;
+  top: -0.18em;
 }
 
 .exitTab .exitTabVerticalText {
-  line-height: 1.3;
-  margin-bottom: 0;
+  line-height: 1.15;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .exitTab .exitTabVerticalNumber {
-  line-height: 1.3;
   display: flex;
   align-items: baseline;
   justify-content: center;
-  margin-top: 0;
+  line-height: 1.15;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .exitTab.verticalArrangement {
-  padding: 0 0.75rem 0.2rem 0.75rem;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem 0.5rem;
 }
 
+/* California tabs overlap the sign's border, which clips them, so their
+   edges merge into it with rounded joins like real Caltrans signs. */
 .exitTabContainer.caStyle {
   width: auto;
-  margin: 0;
-  padding: 0 0.5rem;
-  order: -1;
+  /* The bottom margin returns the overlap so the panel keeps its height and
+     the tab and legend stay where they were with CA style off. */
+  margin: calc(-1 * var(--signBorderWidth, 0.2rem)) 0 var(--signBorderWidth, 0.2rem);
+  padding: 0;
+  align-self: center;
 }
 
-.exitTabContainer.caStyle .exitTab {
-  border-radius: 0.25rem;
-  min-height: auto;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.9rem;
-  border: 0.15rem solid;
+.exitTabContainer.caStyle.left {
+  align-self: flex-start;
+  margin-left: calc(-1 * var(--signBorderWidth, 0.2rem));
 }
 
-.signContentContainer:has(.exitTabContainer.caStyle) {
-  align-items: flex-start;
+.exitTabContainer.caStyle.right {
+  align-self: flex-end;
+  margin-right: calc(-1 * var(--signBorderWidth, 0.2rem));
+}
+
+.exitTabContainer.caStyle.full {
+  align-self: stretch;
+  margin-left: calc(-1 * var(--signBorderWidth, 0.2rem));
+  margin-right: calc(-1 * var(--signBorderWidth, 0.2rem));
 }
 
 .exitTabContainer.hovExitTabContainer,
@@ -1196,10 +1290,15 @@
 }
 
 .exitTabContainer.tollLogoExitTabContainer.logoOnly {
-  width: max-content;
+  background: transparent !important;
+  border-color: transparent !important;
+  border-style: none;
 }
 
 .exitTabHolder.tollLogoExitHolder.logoOnly {
+  background: transparent !important;
+  border-color: transparent !important;
+  border-style: none;
   flex-grow: 0;
   width: auto;
   padding: 0;
@@ -1218,56 +1317,29 @@
 }
 
 .exitTab.tollLogoExitTab.logoOnly {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.exitTabContainer.transparentAsset,
-.exitTabHolder.transparentAsset,
-.exitTab.transparentAsset {
-  background: transparent !important;
-  border-color: transparent !important;
-}
-
-.exitTabContainer.transparentAsset {
-  width: max-content !important;
-  min-width: 0 !important;
-  max-width: none !important;
-}
-
-.exitTabHolder.transparentAsset {
-  flex-grow: 0 !important;
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  padding: 0 !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.exitTab.transparentAsset {
-  padding: 0 !important;
-  border: none !important;
+  padding: 0;
+  border: none;
   border-width: 0 !important;
   border-style: none !important;
-  min-height: 0 !important;
-  gap: 0 !important;
+  min-height: unset;
+  background: transparent !important;
+  gap: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   overflow: visible;
-  border-radius: 0 !important;
-  width: auto !important;
+  border-radius: 0;
+  width: auto;
 }
 
-.exitTab.tollLogoExitTab.transparentAsset .tollLogoLogoWrapper {
-  width: auto !important;
+.exitTab.tollLogoExitTab.logoOnly .tollLogoLogoWrapper {
+  width: auto;
 }
 
-.exitTab.tollLogoExitTab.transparentAsset .tollLogoImageHolder {
-  margin: 0 !important;
-  width: auto !important;
-  max-width: none !important;
-  min-height: 0 !important;
+.exitTab.tollLogoExitTab.logoOnly .tollLogoImageHolder {
+  margin: 0;
+  width: auto;
+  max-width: none;
   max-height: var(--tollLogoSize, 3rem);
 }
 
@@ -1321,6 +1393,7 @@
 }
 
 .exitTab.fullLeft {
+  font-family: "Series E";
   padding: 0;
   flex-direction: column;
   align-items: stretch;
@@ -1339,13 +1412,13 @@
   letter-spacing: 0.08em;
   text-align: center;
   padding: 0.2rem 0.5rem;
-  border: var(--exitTabBorderWidth, 0.2rem) solid var(--black);
-  border-bottom-width: var(--exitTabBorderWidth, 0.2rem);
+  border: 0.2rem solid var(--black);
+  border-bottom-width: 0.2rem;
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  margin: calc(-1 * var(--exitTabBorderWidth, 0.2rem)) calc(-1 * var(--exitTabBorderWidth, 0.2rem)) 0;
+  margin: -0.2rem -0.2rem 0;
 }
 
 .exitTab.fullLeft .fullLeftNumber {
@@ -1354,13 +1427,13 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem 0.4rem;
-  border: var(--exitTabBorderWidth, 0.2rem) solid var(--white);
+  border: 0.2rem solid var(--white);
   border-top-width: 0;
   border-bottom-left-radius: inherit;
   border-bottom-right-radius: inherit;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
-  margin: 0 calc(-1 * var(--exitTabBorderWidth, 0.2rem)) calc(-1 * var(--exitTabBorderWidth, 0.2rem));
+  margin: 0 -0.2rem -0.2rem;
   background: inherit;
 }
 
@@ -1368,13 +1441,61 @@
   min-width: 0.35rem;
 }
 
-/* BILINGUAL EXIT TABS */
+.exitTab .exitTabTrailing {
+  margin-left: var(--exitTabTrailingGap, 0.04em);
+}
+
+.exitTab .exitTabSeparatedSuffixSpacer {
+  min-width: 1rem;
+}
+
+.exitTab.verticalArrangement .exitTabVerticalTrailing {
+  margin-left: var(--exitTabTrailingGap, 0.04em);
+  position: relative;
+  top: 0;
+}
+
+.exitTab.verticalArrangement .exitTabSeparatedSuffixSpacer {
+  min-width: 0;
+}
+
+.action_message {
+  --fhwaBaselineOffset: 0px;
+  display: inline-flex;
+  align-items: center;
+  font-family: "Series E";
+  justify-content: center;
+  position: relative;
+  top: var(--fhwaBaselineOffset);
+}
+
+.exitFormat {
+  display: inline;
+  --exitTabTextBaseOffset: -0.1rem;
+}
+
+/* v2.19 exit tab text options. Defaults leave v2.2's sizing untouched. */
+.exitTab.customExitTextSize .exitFormat,
+.exitTab.customExitTextSize .exitTabVerticalText {
+  font-size: calc(1.5em * var(--exitTabPrefixScale, 0.67));
+}
+
+.exitTab.customExitTabSpacing .exitTabText {
+  letter-spacing: calc(var(--exitTabCharacterSpacing, 0) * 1em);
+}
+
+.panel .exitTab.customExitTabTextColor,
+.exitTab.customExitTabTextColor {
+  color: var(--exitTabTextColor) !important;
+}
+
+/* Bilingual exit tabs (EXIT / SORTIE stacked beside the number). */
 .exitTab.bilingualExitTab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2.35rem;
-  padding: 0.06rem 0.72rem 0.22rem;
+  padding: 0.06rem calc(0.72rem + var(--exitTabHorizontalPadding, 0rem)) 0.22rem;
   box-sizing: border-box;
   overflow: visible;
 }
@@ -1435,13 +1556,13 @@
   display: inline-block;
   text-align: left;
   white-space: nowrap;
+  font-size: calc(1.5em * var(--exitTabPrefixScale, 0.67));
 }
 
 .exitTabBilingualNumber {
   grid-column: 2;
   grid-row: 1 / span 2;
   display: inline-block;
-  margin-left: 0;
   letter-spacing: 0;
   line-height: 1;
   align-self: center;
@@ -1449,113 +1570,138 @@
   position: relative;
 }
 
-.exitTab .exitTabTrailing {
-  margin-left: var(--exitTabTrailingGap, 0.04em);
+/* Transparent toll logo tabs drop the tab box around the logo. */
+.exitTabContainer.transparentAsset,
+.exitTabHolder.transparentAsset,
+.exitTab.transparentAsset {
+  background: transparent !important;
+  border-color: transparent !important;
 }
 
-.exitTab .exitTabSeparatedSuffixSpacer {
-  min-width: 1rem;
+.exitTabContainer.transparentAsset {
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
 }
 
-.action_message {
-  --fhwaBaselineOffset: 0px;
+.exitTabHolder.transparentAsset {
+  flex-grow: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
   display: inline-flex;
   align-items: center;
-  font-family: "Clearview 5WR";
   justify-content: center;
-  position: relative;
-  top: var(--fhwaBaselineOffset);
 }
 
-.exitFormat {
-  display: inline-block;
-  --exitTabTextBaseOffset: -0.1rem;
-  font-size: calc(1.5em * var(--exitTabNumeralScale, 1) * var(--exitTabPrefixScale, 0.7));
+.exitTab.transparentAsset {
+  padding: 0 !important;
+  border: none !important;
+  min-height: 0 !important;
+  gap: 0 !important;
+  overflow: visible;
+  border-radius: 0 !important;
+  width: auto !important;
 }
 
-.exitTab .exitTabVerticalText,
-.exitTabBilingualLabelText {
-  font-size: calc(1.5em * var(--exitTabNumeralScale, 1) * var(--exitTabPrefixScale, 0.7));
+.exitTab.tollLogoExitTab.transparentAsset .tollLogoLogoWrapper {
+  width: auto !important;
+}
+
+.exitTab.tollLogoExitTab.transparentAsset .tollLogoImageHolder {
+  margin: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  max-height: var(--tollLogoSize, 3rem);
+}
+
+/* Exit tabs sized to the nearest subpanel border. */
+.exitTabContainer.aplEdge {
+  width: var(--aplEdgeTabWidth, auto);
+  min-width: var(--aplEdgeTabWidth, auto);
+  max-width: var(--aplEdgeTabWidth, none);
+  box-sizing: border-box;
+}
+
+.exitTabContainer.aplEdge.left {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.exitTabContainer.aplEdge.right {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.exitTab.aplEdge {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.exitTab.aplEdge.left {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.exitTab.aplEdge.right {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.exitTab.aplEdge.center {
+  justify-content: center;
+  text-align: center;
 }
 
 .exitOnlyArrow {
   display: inline-block;
+
   margin-top: 0.1em;
-  height: 1.8rem;
-  padding: 2px 0.35rem;
+
+  height: 2rem;
 }
 
-.exitOnlyArrow[data-legacy-arrow="A-4"],
-.exitOnlyArrow[data-legacy-arrow="A-1"] {
-  transform: scale(1.14);
-  transform-origin: center center;
+.exitOnlyArrow.bE-arrowElement {
+  padding: 2px calc(2px + var(--exitOnlyArrowHorizontalPadding, 0rem));
 }
 
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="B-4"]:only-of-type),
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="A-4"]:only-of-type),
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="B-1"]:only-of-type),
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="A-1"]:only-of-type) {
-  display: grid;
-  grid-template-columns: 4.4ch auto 4.4ch;
-  align-items: center;
-  column-gap: 0.32rem;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-  margin: 0 auto;
-}
-.guideArrows.exit_only:has(.exitOnlyArrow[data-legacy-arrow="A-4"]),
-.guideArrows.exit_only:has(.exitOnlyArrow[data-legacy-arrow="A-1"]) {
-  padding-top: var(--guideArrowSpacing, 0.25rem) !important;
-  padding-bottom: var(--guideArrowSpacing, 0.25rem) !important;
-  padding-left: 0.1rem !important;
-  padding-right: 0.1rem !important;
+.exitOnlyArrow.bE-arrowElement img {
+  width: auto;
+  max-height: 2rem;
 }
 
-.guideArrows.exit_only:has(.exitOnlyArrow[data-legacy-arrow="A-4"]) .arrowContainer,
-.guideArrows.exit_only:has(.exitOnlyArrow[data-legacy-arrow="A-1"]) .arrowContainer {
-  min-height: 1.0rem;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="A-4"]:only-of-type) > .exitOnlyText:first-of-type,
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="A-1"]:only-of-type) > .exitOnlyText:first-of-type {
-  text-align: right;
-  justify-content: flex-end;
-  padding: 0;
-  margin: 0;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="A-4"]:only-of-type) > .exitOnlyText:last-of-type,
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow[data-legacy-arrow="A-1"]:only-of-type) > .exitOnlyText:last-of-type {
-  text-align: left;
-  justify-content: flex-start;
-  padding: 0;
-  margin: 0;
+.exitOnlyArrow.bE-arrowElement[data-arrow-kind="TYPE_A"] img {
+  width: 1.75rem;
+  height: auto;
+  max-height: none;
 }
 
 .arrowContainer.hideExitOnlyArrows .exitOnlyArrow,
 .arrowContainer.hideExitOnlyArrows .halfarrow {
-  display: none !important;
-  opacity: 0 !important;
+  display: none;
+}
+
+.arrowContainer.hideExitOnlyArrows {
+  min-height: calc(2rem + 4px);
+}
+
+.arrowContainer.hideExitOnlyArrows .exitOnlySpace {
+  display: none;
 }
 
 .exitOnlyText {
   --fhwaBaselineOffset: var(--fhwaBaselineShift);
   font-family: "Series E";
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 4.7ch;
-  width: auto;
-  padding: 0 0.8rem;
+  padding: 0px 10px 0 10px;
   padding-top: 0.18rem;
-  font-size: 1.45rem;
-  word-spacing: 0.2rem;
-  letter-spacing: 0.02rem;
-  margin: -1rem 0;
+  font-size: 1.55rem;
+  word-spacing: 0.3rem;
+  letter-spacing: 0.03rem;
+  margin: -1rem 0rem;
   position: relative;
   top: var(--fhwaBaselineOffset);
-  text-align: center;
-  white-space: nowrap;
 }
 
 .exitOnlyText.split {
@@ -1563,11 +1709,11 @@
   background-color: var(--yellow);
   color: var(--black);
   border-radius: 0.1rem;
-  font-size: 1rem;
-  padding: 0px 0px 0px 3px;
+  font-size: 0.95rem;
+  padding: 0px 3px 0px 3px;
   margin-left: 0.3rem;
   margin-right: 0.3rem;
-  margin-top: 0.3rem;
+  margin-top: 0.5rem;
   font-family: "Series EM";
   height: 1.15rem;
   position: relative;
@@ -1575,11 +1721,8 @@
 }
 
 .exitOnlySpace {
-  display: inline-block;
-  width: 7.6ch;
-  margin-right: 0;
+  margin-right: 5rem;
 }
-
 
 .oText {
   margin: 0 1rem;
@@ -1587,75 +1730,49 @@
 
 .arrow {
   font-size: 4rem;
+  /* Makes arrows large and visble */
   line-height: 0;
+  /* Makes space text (arrow) takes up minimal */
   display: inline-block;
-  margin: 0rem 4.25rem 0.5rem;
+  margin: 0.5rem 5rem;
   padding: 0 0.1rem 0 0.05rem;
-  width: auto;
-  object-fit: contain;
-  vertical-align: middle;
-}
-
-/* Straight / down */
-.arrow.downarrow,
-.arrow.straight,
-.arrow.down,
-.arrow.up,
-.arrow.uparrow {
-  height: 1.5rem;
-}
-
-.arrow[data-legacy-arrow="B-4"],
-.arrow[data-legacy-arrow="B-1"],
-.arrow[data-legacy-arrow="B-3"],
-.arrow[data-legacy-arrow="B-2"] {
-  height: 2rem !important;
-  width: auto !important;
-  object-fit: contain !important;
-}
-
-/* Diagonals */
-.arrow.left\/uparrow,
-.arrow.right\/uparrow,
-.arrow.left\/downarrow,
-.arrow.right\/downarrow {
-  height: 2.25rem;
-}
-
-/* Alt diagonals */
-.arrow.alt.left\/uparrow,
-.arrow.alt.right\/uparrow,
-.arrow.alt.left\/downarrow,
-.arrow.alt.right\/downarrow {
-  height: 2rem !important;
-  width: auto !important;
-  transform: none !important;
-}
-
-/* Wide horizontal arrows */
-.arrow.leftarrow,
-.arrow.rightarrow {
   height: 1.8rem;
-}
-
-/* Sharp curves */
-.arrow.sharpleft,
-.arrow.sharpright {
-    height: 2.5rem;
-}
-
-/* Slight curves */
-.arrow.slightleft,
-.arrow.slightright {
-  height: 2.15rem;
 }
 
 .arrowContainer {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: max-content;
-  margin: 0 auto;
+  /* gap: 3rem; */
+}
+
+.bottomGuideArrow {
+  margin: 0;
+}
+
+.guideArrowAsset {
+  box-sizing: content-box;
+  overflow: visible;
+}
+
+.panel.white .bottomGuideArrow img,
+.panel.yellow .bottomGuideArrow img,
+.panel.orange .bottomGuideArrow img,
+.panel.fluorescent.yellow-green .bottomGuideArrow img,
+.panel.fluorescent.pink .bottomGuideArrow img,
+.panel.white .sideLeftArrow img,
+.panel.white .sideRightArrow img,
+.panel.yellow .sideLeftArrow img,
+.panel.yellow .sideRightArrow img,
+.panel.orange .sideLeftArrow img,
+.panel.orange .sideRightArrow img,
+.panel.fluorescent.yellow-green .sideLeftArrow img,
+.panel.fluorescent.yellow-green .sideRightArrow img,
+.panel.fluorescent.pink .sideLeftArrow img,
+.panel.fluorescent.pink .sideRightArrow img,
+.guideArrows.exit_only .bE-arrowElement img,
+.guideArrows.half_exit.only .halfExitOnlyPanel .bE-arrowElement img {
+  filter: brightness(0);
 }
 
 .arrow:first-child {
@@ -1664,98 +1781,6 @@
 
 .arrow:last-child {
   margin-right: 1rem;
-}
-
-/* 1 Arrow */
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(1):last-of-type) {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: max-content;
-  margin: 0 auto;
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(1):last-of-type) > .exitOnlyText {
-  min-width: auto;
-  padding-left: 0.32rem;
-  padding-right: 0.32rem;
-  margin-left: 0;
-  margin-right: 0;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(1):last-of-type) > img.exitOnlyArrow {
-  padding-left: 0.32rem;
-  padding-right: 0.32rem;
-  margin: 0;
-}
-
-/* 2 Arrows */
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(2):last-of-type) > img.exitOnlyArrow:first-of-type {
-  padding-right: 0.08rem;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(2):last-of-type) > img.exitOnlyArrow:last-of-type {
-  padding-left: 0.08rem;
-}
-
-/* 3 Arrows */
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) .exitOnlyText {
-  min-width: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  margin-left: 0;
-  margin-right: 0;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) > img.exitOnlyArrow:first-of-type {
-  margin-right: 1.15rem;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) > img.exitOnlyArrow:nth-of-type(2) {
-  margin-left: 0.8rem;
-  margin-right: 0.8rem;
-}
-
-.guideArrows.exit_only .arrowContainer:has(> img.exitOnlyArrow:nth-of-type(3):last-of-type) > img.exitOnlyArrow:nth-of-type(3):last-of-type {
-  margin-left: 1.15rem;
-}
-
-
-/* 4 Arrows */
-.guideArrows.exit_only:has(.arrowContainer.exitOnlyFourLane) {
-  width: 100%;
-}
-
-.guideArrows.exit_only .arrowContainer.exitOnlyFourLane {
-  display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  align-items: center !important;
-  justify-items: center !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  padding-left: 0.8rem !important;
-  padding-right: 0.8rem !important;
-  margin: 0 !important;
-  position: relative !important;
-}
-
-.guideArrows.exit_only .arrowContainer.exitOnlyFourLane > .exitOnlyArrow {
-  margin: 0 !important;
-  padding: 2px 0 !important;
-}
-
-.guideArrows.exit_only .arrowContainer.exitOnlyFourLane > .exitOnlyFourLaneText {
-  position: absolute !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  min-width: auto !important;
-  margin: 0 !important;
-  padding-left: 0.35rem !important;
-  padding-right: 0.35rem !important;
-  pointer-events: none;
-  z-index: 1;
 }
 
 .arrowContainer .left {
@@ -1775,8 +1800,15 @@
   margin-top: -0.25rem;
 }
 
-.actionMessage + .arrow {
+.actionMessage+.arrow {
   margin-left: 0.5rem;
+}
+
+.arrow.sharpleft,
+.arrow.sharpright,
+.arrow.leftarrow,
+.arrow.rightarrow {
+  height: 3rem;
 }
 
 .actionMessage {
@@ -1851,41 +1883,78 @@
   height: auto;
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: max-content;
+  flex: 1;
 }
 
 /* Center subpanel content vertically, except for APL subpanels */
-.subPanelDisplay:not(:has(.subpanelAplArrows)) .signContentContainer {
+.subPanelDisplay:not(.smHasAplArrows) .signContentContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+/* APL spacing belongs to each lane, so APL subpanels size to their own
+   content/arrow reserve instead of splitting the sign width equally. */
+.signHolder.smHasAplArrows .subPanelDisplay {
+  flex: 0 0 auto;
   width: max-content;
   min-width: max-content;
   box-sizing: border-box;
 }
 
-/* APL arrows can reserve width for the subpanel they belong to, but APL mode
-   should not make every subpanel split the sign width equally by default. */
-.signHolder:has(.subpanelAplArrows) .subPanelDisplay {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: max-content;
+.subPanelDisplay.hasAplWidthReserve {
+  min-width: var(--aplSubpanelMinWidth, max-content) !important;
 }
 
-.signHolder:has(.subpanelAplArrows) .subPanelDisplay .signContentContainer {
-  width: max-content;
-  min-width: max-content;
+/* Keep the APL holder as wide as the sign while each lane uses its measured
+   content width. The linked width is cleared before every measurement in
+   main.js, so removing a divider-mounted arrow can shrink either lane again. */
+.signHolder.aplContentHolder {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  justify-content: center !important;
+  align-items: stretch;
+  box-sizing: border-box;
 }
-.subPanelDisplay.hasAplExitOnlySubpanel {
-  --aplExitOnlySubpanelReserve: 5.7rem;
-  flex-basis: var(--aplExitOnlySubpanelReserve);
+
+.signHolder.aplContentHolder > .subPanelDisplay {
+  flex: 0 0 auto !important;
+  width: var(--linkedSubpanelWidth, max-content) !important;
+  min-width: var(--linkedSubpanelWidth, max-content) !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+.signHolder.aplContentHolder > .subPanelDisplay.hasAplWidthReserve {
+  min-width: var(
+    --linkedSubpanelWidth,
+    var(--aplSubpanelMinWidth, max-content)
+  ) !important;
+}
+
+.signHolder.aplContentHolder
+  > .subPanelDisplay
+  > .signContentContainer {
+  width: max-content !important;
+  min-width: max-content !important;
+  box-sizing: border-box;
+}
+
+.signHolder.aplContentHolder
+  > .subPanelDisplay.hasAplWidthReserve
+  > .signContentContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.signHolder.aplContentHolder > .subDivider {
+  flex: 0 0 auto;
 }
 
 /* Make content area grow to push APL arrows to consistent bottom position */
-.subPanelDisplay:has(.subpanelAplArrows) .signContentContainer {
+.subPanelDisplay.smHasAplArrows .signContentContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1903,17 +1972,22 @@
 }
 
 /* When APL arrows are present, shorten the divider to stop above arrows */
-.signHolder:has(.subpanelAplArrows) .subDivider {
-  margin-bottom: 6.2rem;
-  /* 6rem min-height + 0.2rem border */
+.signHolder.smHasAplArrows .subDivider {
+  margin-bottom: var(--aplArrowZoneHeight, 6.2rem);
 }
 
 /* If the divider has an arrow, remove the margin so it extends down */
-.signHolder:has(.subpanelAplArrows) .subDivider.hasArrow {
+.signHolder.smHasAplArrows .subDivider.hasArrow {
   margin-bottom: 0;
   background-color: transparent;
   /* Transparent background so we can simulate the line */
   position: relative;
+}
+
+/* Hide Divider keeps the divider's space and APL arrow, but not its line. */
+.signHolder .subDivider.hiddenLine,
+.signHolder .subDivider.hiddenLine::before {
+  background-color: transparent;
 }
 
 /* Simulate the white line stopping above the arrow */
@@ -1921,8 +1995,7 @@
   content: "";
   position: absolute;
   top: 0;
-  bottom: 6.2rem;
-  /* Stop where the line would normally stop */
+  bottom: var(--aplDividerStopOffset, var(--aplArrowZoneHeight, 6.2rem));
   width: 0.2rem;
   background-color: var(--white);
 }
@@ -1931,7 +2004,7 @@
   height: 4.75rem;
   /* Default size (UP) */
   width: auto;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.45rem;
   /* Align with other arrows */
   z-index: 10;
 }
@@ -1966,17 +2039,15 @@
   border-bottom-right-radius: 0.5rem;
 }
 
-img.exitOnlyArrow:first-child {
-  padding-left: 0.8rem;
-  padding-right: 0.3rem;
-}
-img.exitOnlyArrow:last-child {
-  padding-right: 0.8rem;
-  padding-left: 0.3rem;
+.exitOnlyArrow:first-child {
+  padding-left: calc(0.8rem + var(--exitOnlyArrowHorizontalPadding, 0rem));
+  padding-right: calc(0.45rem + var(--exitOnlyArrowHorizontalPadding, 0rem));
 }
 
-/* Full EXIT ONLY containers */
-
+.exitOnlyArrow:last-child {
+  padding-right: calc(0.8rem + var(--exitOnlyArrowHorizontalPadding, 0rem));
+  padding-left: calc(0.6rem + var(--exitOnlyArrowHorizontalPadding, 0rem));
+}
 
 .tagOnlyText {
   color: black;
@@ -1986,14 +2057,14 @@ img.exitOnlyArrow:last-child {
   line-height: 0.8rem;
 }
 
-.exitTab:has(.tagOnlyText) {
+.exitTab.smHasTagOnlyText {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.4rem;
 }
 
-.signContainer:has(.guideArrows.exit_only) {
+.signContainer.smHasExitOnlyArrows {
   /* background: linear-gradient(180deg, var(--green), var(--yellow)); */
 }
 
@@ -2039,7 +2110,7 @@ img.exitOnlyArrow:last-child {
 
 .aplArrows {
   border-style: solid;
-  border-width: var(--panelBorderWidth, 0.2rem);
+  border-width: var(--signBorderWidth, 0.2rem);
   border-top-width: 0;
   border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
   display: none;
@@ -2102,21 +2173,177 @@ img.exitOnlyArrow:last-child {
   filter: invert(1);
 }
 
+/* The outer sign owns the border and rounded corners. Keeping the APL row
+   borderless lets its panel-color fill reach the sign edge without an inset. */
+.subpanelAplArrows {
+  display: block !important;
+  width: 100%;
+  height: var(--aplArrowZoneHeight, 6rem);
+  min-height: var(--aplArrowZoneHeight, 6rem);
+  padding: 0.5rem 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  position: relative;
+  /*z-index: 5;*/
+  box-sizing: border-box;
+}
+
+.aplArrowTrack {
+  display: flex;
+  align-items: flex-end;
+  width: max-content;
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+}
+
+.aplArrowLayoutItem {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: flex-end;
+  min-width: 0;
+  line-height: 0;
+}
+
+/* Extra content room on edge lanes grows outward, keeping the APL track
+   aligned with the divider/edge it belongs to. */
+.subPanelDisplay:first-of-type .aplArrowTrack,
+.subPanelDisplay.firstAplSubPanel .aplArrowTrack {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.subPanelDisplay:last-of-type .aplArrowTrack,
+.subPanelDisplay.lastAplSubPanel .aplArrowTrack {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.subPanelDisplay.firstAplSubPanel.lastAplSubPanel .aplArrowTrack,
+.subPanelDisplay:only-of-type .aplArrowTrack,
+.subPanelDisplay:not(:first-of-type):not(:last-of-type) .aplArrowTrack {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Edge APL tracks align to the sign edge; the sign supplies the corner. */
+.subPanelDisplay:first-of-type .subpanelAplArrows,
+.subPanelDisplay.firstAplSubPanel .subpanelAplArrows {
+  padding-left: 0;
+}
+
+.subPanelDisplay:last-of-type .subpanelAplArrows,
+.subPanelDisplay.lastAplSubPanel .subpanelAplArrows {
+  padding-right: 0;
+}
+
+/* A trailing divider must not reconstruct a second outer corner. */
+.signHolder.smHasAplArrows .subDivider:last-child {
+  border: 0;
+  border-radius: 0;
+}
+
+.panel.white .subpanelAplArrows,
+.panel.yellow .subpanelAplArrows,
+.panel.orange .subpanelAplArrows {
+  border-color: var(--black);
+}
+
+.panel.white .subPanelDisplay:first-of-type .subpanelAplArrows,
+.panel.yellow .subPanelDisplay:first-of-type .subpanelAplArrows,
+.panel.orange .subPanelDisplay:first-of-type .subpanelAplArrows,
+.panel.white .subPanelDisplay.firstAplSubPanel .subpanelAplArrows,
+.panel.yellow .subPanelDisplay.firstAplSubPanel .subpanelAplArrows,
+.panel.orange .subPanelDisplay.firstAplSubPanel .subpanelAplArrows {
+  border-left-color: var(--black);
+}
+
+.panel.white .subPanelDisplay:last-of-type .subpanelAplArrows,
+.panel.yellow .subPanelDisplay:last-of-type .subpanelAplArrows,
+.panel.orange .subPanelDisplay:last-of-type .subpanelAplArrows,
+.panel.white .subPanelDisplay.lastAplSubPanel .subpanelAplArrows,
+.panel.yellow .subPanelDisplay.lastAplSubPanel .subpanelAplArrows,
+.panel.orange .subPanelDisplay.lastAplSubPanel .subpanelAplArrows {
+  border-right-color: var(--black);
+}
+
+/* APL Exit Only Styling */
+.aplExitOnlyContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  gap: 0.25rem;
+}
+
+.aplCombinedExitOnlyGroup {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.aplCombinedExitOnlyGroup > .aplCombinedExitOnlyMember {
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
+}
+
+.aplExitOnlyCombinedLabel {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.aplExitOnlyLabel {
+  background-color: var(--yellow);
+  color: var(--black);
+  font-family: "Series E", sans-serif;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.1rem 1rem;
+  border-radius: 0.1rem
+}
+
+/* APL Exit Only - TURN arrow */
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"] .aplExitOnlyExit {
+  margin-right: 0.15rem
+}
+
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"] .aplExitOnlyOnly {
+  /* Shift ONLY to the left (closer to arrow) */
+  margin-left: -2rem;
+}
+
+/* APL Exit Only - TURN arrow flipped */
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"] .aplExitOnlyExit {
+  /* Shift EXIT to the right (closer to arrow) */
+  margin-right: -2rem;
+}
+
+.aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"] .aplExitOnlyOnly {
+  /* Reset ONLY shift for flipped TURN */
+  margin-left: 0.15rem;
+}
 
 @keyframes flashSelection {
   0% {
-    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0.75);
-    opacity: 1;
+    outline: 0.5rem solid yellow;
   }
 
-  20% {
-    box-shadow: 0 0 0 0.28rem rgba(255, 255, 0, 1);
-    opacity: 1;
+  15% {
+    outline: 1.125rem solid yellow;
+  }
+
+  25% {
+    outline: 0.5rem solid yellow;
   }
 
   100% {
-    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0);
-    opacity: 0;
+    outline: 0.5rem solid rgba(255, 255, 0, 0);
   }
 }
 
@@ -2124,39 +2351,25 @@ img.exitOnlyArrow:last-child {
   position: absolute;
   pointer-events: none;
   z-index: 50;
-  background: rgba(255, 255, 0, 0.08);
-  border-radius: inherit;
-  animation: flashSelection 0.45s ease-out forwards;
-}
-#postContainer {
-  position: relative;
+  background: transparent;
+  animation: flashSelection 0.5s ease-in forwards;
 }
 
-.flash-selection {
-  position: absolute;
-  pointer-events: none;
-  box-sizing: border-box;
-}
-
-/* ---------- Exit Only / Half Exit Only corner fill only, correct parent ---------- */
-
-/* The green corner is coming from .signContainer, not .sign */
-.signContainer:has(> .guideArrows.exit_only),
-.signContainer:has(> .guideArrows.half_exit.only) {
+/* Exit Only / Half Exit Only corner fill */
+.signContainer.smHasExitOnlyRow,
+.signContainer.smHasHalfExitOnlyRow {
   position: relative !important;
   overflow: hidden !important;
 }
 
-/* Keep actual sign and guide arrow contents above the corner patches */
-.signContainer:has(> .guideArrows.exit_only) > *,
-.signContainer:has(> .guideArrows.half_exit.only) > * {
+.signContainer.smHasExitOnlyRow > *,
+.signContainer.smHasHalfExitOnlyRow > * {
   position: relative;
   z-index: 2;
 }
 
-/* Full Exit Only: both bottom corners behind the guide strip should be yellow */
-.signContainer:has(> .guideArrows.exit_only)::before,
-.signContainer:has(> .guideArrows.exit_only)::after {
+.signContainer.smHasExitOnlyRow::before,
+.signContainer.smHasExitOnlyRow::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -2167,15 +2380,14 @@ img.exitOnlyArrow:last-child {
   pointer-events: none;
 }
 
-.signContainer:has(> .guideArrows.exit_only)::before {
+.signContainer.smHasExitOnlyRow::before {
   left: 0;
 }
 
-.signContainer:has(> .guideArrows.exit_only)::after {
+.signContainer.smHasExitOnlyRow::after {
   right: 0;
 }
 
-/* Keep full Exit Only yellow even when .new / .new2 tries to turn it green */
 .guideArrows.exit_only,
 .guideArrows.exit_only.new,
 .guideArrows.exit_only.new2 {
@@ -2184,9 +2396,8 @@ img.exitOnlyArrow:last-child {
   color: var(--black) !important;
 }
 
-/* Half Exit Only: left corner only when the yellow half-exit piece touches the left edge */
-.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.left.new2)::before,
-.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.new:first-child)::before {
+.signContainer.smHalfExitLeftNew2::before,
+.signContainer.smHalfExitFirstNew::before {
   content: "";
   position: absolute;
   bottom: 0;
@@ -2198,9 +2409,8 @@ img.exitOnlyArrow:last-child {
   pointer-events: none;
 }
 
-/* Half Exit Only: right corner only when the yellow half-exit piece touches the right edge */
-.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.right.new2)::after,
-.signContainer:has(> .guideArrows.half_exit.only .arrowContainer.new:last-child)::after {
+.signContainer.smHalfExitRightNew2::after,
+.signContainer.smHalfExitLastNew::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -2210,2350 +2420,6 @@ img.exitOnlyArrow:last-child {
   background-color: var(--yellow) !important;
   z-index: 1;
   pointer-events: none;
-}
-
-/* ---------- Quebec-style exit marker feature ---------- */
-
-.sign,
-.guideArrows {
-  position: relative;
-}
-
-.qcExitMarker {
-  position: absolute;
-  z-index: 18;
-  pointer-events: none;
-  display: block;
-}
-
-.qcExitMarker.qcOnSign {
-  width: var(--qc-marker-width, 3.05rem);
-  height: var(--qc-marker-height, 1.18rem);
-  bottom: 0.42rem;
-}
-
-.qcExitMarker.qcLeft {
-  left: 0.85rem;
-}
-
-.qcExitMarker.qcCenter {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.qcExitMarker.qcRight {
-  right: 0.85rem;
-}
-
-.qcExitMarker.flipped .qcExitMarkerImg {
-  transform: scaleX(-1);
-  transform-origin: center;
-}
-
-.qcExitMarkerImg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.qcExitMarkerNumber {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--black);
-  z-index: 2;
-  font-family: "Series E";
-  font-size: var(--qc-marker-font-size, 1rem);
-  line-height: 1;
-  font-weight: 700;
-  padding-top: 0.01rem;
-}
-
-/* QC marker inside Exit Only / Half Exit Only yellow band */
-
-.guideArrows.qcExitMarkerMode {
-  min-height: 1.95rem;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  position: relative;
-}
-
-.guideArrows.qcExitMarkerMode .exitOnlyText {
-  display: none !important;
-}
-
-.guideArrows.qcExitMarkerMode .arrowContainer {
-  width: 100% !important;
-  min-width: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  box-sizing: border-box;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitOnlyPair {
-  width: 100%;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.72rem !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  box-sizing: border-box;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitOnlyArrow {
-  width: 1.75rem !important;
-  height: 1.75rem !important;
-  display: block !important;
-  flex: 0 0 auto;
-  padding: 0 !important;
-  margin: 0 !important;
-  object-fit: contain !important;
-  filter: none !important;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitOnlyArrow.flipped {
-  transform: scaleX(-1);
-}
-
-.guideArrows.qcExitMarkerMode .qcExitMarker.qcInBand {
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: auto !important;
-  transform: none !important;
-  width: var(--qc-marker-width, 3.05rem) !important;
-  height: var(--qc-marker-height, 1.18rem) !important;
-  flex: 0 0 auto;
-  margin: 0 !important;
-  z-index: 19;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitMarker.flipped .qcExitMarkerImg {
-  transform: scaleX(-1);
-  transform-origin: center;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitMarkerImg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitMarkerNumber {
-  font-size: var(--qc-marker-font-size, 1rem) !important;
-  padding-top: 0 !important;
-}
-
-
-/* Downsize in-panel diagonal guide arrows only.
-   Does not affect Side Left / Side Right, because those use
-   .sideLeftArrow and .sideRightArrow instead of .arrow. */
-
-/* diagonal arrow SVGs */
-.guideArrows .arrow[data-legacy-arrow="A-1"],
-.guideArrows .arrow[data-legacy-arrow="A-4"],
-.guideArrows .arrow[data-legacy-arrow="B-1"],
-.guideArrows .arrow[data-legacy-arrow="B-4"],
-.guideArrows .arrow[data-legacy-arrow="C-1"],
-.guideArrows .arrow[data-legacy-arrow="C-4"],
-.guideArrows .arrow[data-legacy-arrow="D-1"],
-.guideArrows .arrow[data-legacy-arrow="D-4"],
-.guideArrows .arrow[data-legacy-arrow="E-1"],
-.guideArrows .arrow[data-legacy-arrow="E-4"] {
-  height: 1.85rem !important;
-  width: auto !important;
-  object-fit: contain !important;
-}
-
-/* keep true side arrows full size */
-.sideLeftArrow,
-.sideRightArrow {
-  height: 2.2rem;
-}
-
-.guideArrows .arrow.right\/uparrow,
-.guideArrows .arrow.left\/uparrow,
-.guideArrows .arrow.right\/downarrow,
-.guideArrows .arrow.left\/downarrow,
-.guideArrows .arrow.uprightturn,
-.guideArrows .arrow.upleftturn,
-.guideArrows .arrow.downrightturn,
-.guideArrows .arrow.downleftturn {
-  height: 1.85rem !important;
-  width: auto !important;
-}
-
-.guideArrows .arrow.down,
-.guideArrows .arrow.downarrow {
-  height: 1.5rem !important;
-  width: auto !important;
-  object-fit: contain !important;
-}
-
-.guideArrows .arrow.leftarrow,
-.guideArrows .arrow.rightarrow {
-  height: 1.5rem !important;
-  width: auto !important;
-  object-fit: contain !important;
-}
-
-.exitOnlyText.fhwaScaledExitOnlyText {
-  font-size: 120%;
-}
-
-/* ---------- APL subpanel arrows ---------- */
-
-.subPanelDisplay.hasAplWidthReserve {
-  flex: 0 0 auto !important;
-  width: var(--linkedSubpanelWidth, max-content);
-  min-width: var(--linkedSubpanelWidth, var(--aplSubpanelMinWidth)) !important;
-  box-sizing: border-box;
-}
-
-.subPanelDisplay.hasAplWidthReserve .signContentContainer {
-  width: max-content;
-  min-width: 100%;
-  box-sizing: border-box;
-}
-
-.subPanelDisplay.hasAplWidthReserve .subpanelAplArrows {
-  width: var(--aplSubpanelMinWidth) !important;
-  min-width: var(--aplSubpanelMinWidth) !important;
-  max-width: var(--aplSubpanelMinWidth) !important;
-}
-
-.subPanelDisplay.hasAplWidthReserve .subpanelAplArrows {
-  width: 100%;
-}
-
-/* Extra text room on edge APL subpanels should grow outward from the sign lane */
-.signHolder > .subPanelDisplay.hasAplWidthReserve:first-of-type .subpanelAplArrows {
-  margin-left: auto !important;
-  margin-right: 0 !important;
-}
-
-.signHolder > .subPanelDisplay.hasAplWidthReserve:last-of-type .subpanelAplArrows {
-  margin-left: 0 !important;
-  margin-right: auto !important;
-}
-
-.signHolder > .subPanelDisplay.hasAplWidthReserve:not(:first-of-type):not(:last-of-type) .subpanelAplArrows {
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-
-.subPanelDisplay:has(.subpanelAplArrows) .signContentContainer {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
-
-.subpanelAplArrows {
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: flex-end !important;
-  gap: 0 !important;
-
-  width: 100%;
-  height: var(--aplArrowZoneHeight, 5.8rem);
-  min-height: var(--aplArrowZoneHeight, 5.8rem);
-  padding: 0rem 0 0rem 0;
-  margin: 0 !important;
-
-  border: 0 !important;
-  border-radius: 0 !important;
-
-  position: relative;
-  overflow: visible;
-  box-sizing: border-box;
-}
-
-.aplArrowSlot {
-  position: relative;
-  display: block;
-  flex: 0 0 0;
-  width: 0;
-  height: var(--aplArrowSlotHeight, 4.8rem);
-  overflow: visible;
-  line-height: 0;
-}
-
-.aplArrowSlot > .aplArrow {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-
-  display: block;
-  width: auto;
-  max-width: none;
-  margin: 0 !important;
-
-  transform: translateX(-50%);
-  transform-origin: center center;
-}
-
-.aplArrowSlot[data-flipped="true"] > .aplArrow {
-  transform: translateX(-50%) scaleX(-1);
-}
-
-/* APL divider should stop at the arrows, not run full height */
-.signHolder:has(.subpanelAplArrows) .subDivider {
-  width: 0.2rem !important;
-  flex: 0 0 0.2rem !important;
-  align-self: stretch !important;
-  margin: 0 0 var(--aplArrowZoneHeight, 5.8rem) 0 !important;
-  background-color: var(--white) !important;
-  position: relative !important;
-  overflow: visible !important;
-  z-index: 4;
-}
-
-.panel.white .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.yellow .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.orange .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.fluorescent.yellow-green .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.fluorescent.pink .signHolder:has(.subpanelAplArrows) .subDivider {
-  background-color: var(--black) !important;
-}
-
-/* Divider with its own APL arrow: hide the full-height bar, then draw only the upper segment */
-.signHolder:has(.subpanelAplArrows) .subDivider.hasArrow {
-  margin-bottom: 0 !important;
-  background-color: transparent !important;
-}
-
-.subDivider.hasArrow::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: var(--aplDividerStopOffset, var(--aplArrowZoneHeight, 5.5rem));
-  left: 0;
-  width: 0.2rem;
-  background-color: var(--white);
-}
-
-.panel.white .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.yellow .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.orange .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.fluorescent.yellow-green .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.fluorescent.pink .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before {
-  background-color: var(--black);
-}
-
-.signHolder:has(.subpanelAplArrows) .subDivider:last-child {
-  border: 0 !important;
-  border-radius: 0 !important;
-}
-
-.aplDividerArrowSlot {
-  position: absolute;
-  left: 50%;
-  bottom: var(--aplDividerArrowBottomOffset, 0.45rem);
-  z-index: 6;
-  margin: 0;
-  transform: translateX(-50%);
-}
-
-.aplExitOnlyContainer {
-  --aplExitOnlyGap: 1.15rem;
-  --aplExitOnlyLabelBottom: 0.15rem;
-  --aplExitOnlyStemOffset: 0rem;
-}
-
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"],
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"],
-.aplExitOnlyContainer[data-arrow-type="APL_TURN_CFX"],
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN_CFX"] {
-  --aplExitOnlyGap: 0.72rem;
-}
-
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"]:not([data-flipped="true"]),
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"]:not([data-flipped="true"]),
-.aplExitOnlyContainer[data-arrow-type="APL_TURN_CFX"]:not([data-flipped="true"]),
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN_CFX"]:not([data-flipped="true"]) {
-  --aplExitOnlyStemOffset: -1.1rem;
-}
-
-.aplExitOnlyContainer[data-arrow-type="APL_TURN"][data-flipped="true"],
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN"][data-flipped="true"],
-.aplExitOnlyContainer[data-arrow-type="APL_TURN_CFX"][data-flipped="true"],
-.aplExitOnlyContainer[data-arrow-type="APL_UP_TURN_CFX"][data-flipped="true"] {
-  --aplExitOnlyStemOffset: 1.1rem;
-}
-
-.aplExitOnlyContainer[data-arrow-type="APL_DUAL_TURN"] {
-  --aplExitOnlyGap: 0.35rem;
-  --aplExitOnlyStemOffset: 0rem;
-}
-
-.aplExitOnlyLabel {
-  position: absolute;
-  bottom: var(--aplExitOnlyLabelBottom);
-  z-index: 8;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  box-sizing: border-box;
-  min-width: 4rem;
-  max-width: 4rem;
-  height: 1.35rem;
-  padding: 0.12rem 0.18rem 0;
-
-  background-color: var(--yellow);
-  color: var(--black);
-  border-radius: 0.08rem;
-
-  font-family: "Series E", sans-serif;
-  font-size: 1.28rem;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0em;
-  white-space: nowrap;
-}
-
-.aplExitOnlyExit {
-  right: calc(var(--aplExitOnlyGap) - var(--aplExitOnlyStemOffset));
-}
-
-.aplExitOnlyOnly {
-  left: calc(var(--aplExitOnlyGap) + var(--aplExitOnlyStemOffset));
-}
-
-.aplExitOnlySharedLabel {
-  left: var(--aplExitOnlySharedCenterOffset, 0rem);
-  right: auto;
-  transform: translateX(-50%);
-  min-width: 7rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  letter-spacing: 0em;
-}
-
-.subDivider.hasSharedExitOnlyBoundary {
-  position: relative !important;
-  overflow: visible !important;
-}
-
-.subDivider.hasSharedExitOnlyBoundary .aplExitOnlyBoundarySharedLabel {
-  left: calc(50% + var(--aplExitOnlyBoundaryCenterOffset, 0rem));
-  right: auto;
-  transform: translateX(-50%);
-  min-width: 6.9rem;
-  z-index: 12;
-}
-
-/* Divider has its own arrow, so the shared plaque sits in the normal arrow zone */
-.subDivider.hasSharedExitOnlyBoundary.hasArrow .aplExitOnlyBoundarySharedLabel {
-  bottom: calc(var(--aplDividerArrowBottomOffset, 0.45rem) + 0.05rem);
-}
-
-/* Divider has no arrow, so it has to drop into the APL arrow zone below the divider */
-.subDivider.hasSharedExitOnlyBoundary:not(.hasArrow) .aplExitOnlyBoundarySharedLabel {
-  bottom: calc(-6.2rem + var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
-}
-
-/* Lift regular subpanel APL arrows off the sign border */
-.subpanelAplArrows {
-  --aplSubpanelArrowBottomOffset: 0.45rem;
-}
-
-.subpanelAplArrows > .aplArrowSlot > .aplArrow {
-  bottom: var(--aplSubpanelArrowBottomOffset, 0.45rem);
-}
-
-.subpanelAplArrows > .aplExitOnlyContainer .aplExitOnlyLabel {
-  bottom: calc(var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
-}
-
-.subpanelAplArrows > .aplExitOnlyContainer .aplExitOnlySharedLabel {
-  bottom: calc(var(--aplSubpanelArrowBottomOffset, 0.45rem) + 0.05rem);
-}
-
-/* Half Exit Only final layout */
-.signContainer:has(> .guideArrows.half_exit.only.default) {
-  display: inline-flex !important;
-  flex-direction: column !important;
-  width: max-content !important;
-  min-width: max-content !important;
-  overflow: visible !important;
-}
-
-.signContainer:has(> .guideArrows.half_exit.only.default) > .sign {
-  width: 100% !important;
-  min-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.guideArrows.half_exit.only.default {
-  display: block !important;
-  width: 100% !important;
-  min-width: max-content !important;
-
-  padding: 0 !important;
-  margin: 0 !important;
-
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem) !important;
-
-  overflow: visible !important;
-  box-sizing: border-box !important;
-}
-
-.guideArrows.half_exit.only.default > .arrowContainer.new2,
-.guideArrows.half_exit.only.default > .arrowContainer.halfExitWrapper {
-  display: flex !important;
-  align-items: stretch !important;
-  justify-content: stretch !important;
-
-  width: 100% !important;
-  min-width: max-content !important;
-
-  gap: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-
-  background: transparent !important;
-  overflow: visible !important;
-  box-sizing: border-box !important;
-}
-
-/* Green normal-arrow lane */
-.guideArrows.half_exit.only.default .halfExitGuideLane {
-  flex: 1 1 auto !important;
-  min-width: 7.6rem !important;
-
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  padding: var(--guideArrowSpacing, 0.25rem) 0.65rem !important;
-  margin: 0 !important;
-
-  background-color: var(--green) !important;
-
-  border-style: solid !important;
-  border-color: var(--white) !important;
-  border-top-width: 0 !important;
-  border-bottom-width: 0.2rem !important;
-
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-/* Green lane on the left side */
-.guideArrows.half_exit.only.default .halfExitGuideLane.left {
-  border-left-width: 0.2rem !important;
-  border-right-width: 0 !important;
-  border-bottom-left-radius: var(--signBorderRadius, 0.75rem) !important;
-  border-bottom-right-radius: 0 !important;
-}
-
-/* Green lane on the right side */
-.guideArrows.half_exit.only.default .halfExitGuideLane.right {
-  border-left-width: 0 !important;
-  border-right-width: 0.2rem !important;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: var(--signBorderRadius, 0.75rem) !important;
-}
-
-.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow {
-  height: 1.55rem !important;
-  width: auto !important;
-  max-width: none !important;
-
-  margin: 0 !important;
-  padding: 0 !important;
-
-  object-fit: contain !important;
-  filter: none !important;
-}
-
-/* Yellow EXIT ONLY lane */
-.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2 {
-  flex: 0 0 auto !important;
-  min-width: max-content !important;
-
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  gap: 0.32rem !important;
-  padding: var(--guideArrowSpacing, 0.25rem) 0.65rem !important;
-  margin: 0 !important;
-
-  background-color: var(--yellow) !important;
-  color: var(--black) !important;
-
-  border-style: solid !important;
-  border-color: var(--black) !important;
-  border-top-width: 0 !important;
-  border-bottom-width: 0.2rem !important;
-
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-/* Yellow on the left edge: black outside left + bottom only */
-.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2.left {
-  border-left-width: 0.2rem !important;
-  border-right-width: 0 !important;
-  border-bottom-left-radius: var(--signBorderRadius, 0.75rem) !important;
-  border-bottom-right-radius: 0 !important;
-}
-
-/* Yellow on the right edge: black outside right + bottom only */
-.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2.right {
-  border-left-width: 0 !important;
-  border-right-width: 0.2rem !important;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: var(--signBorderRadius, 0.75rem) !important;
-}
-
-.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2 .exitOnlyText {
-  color: var(--black) !important;
-  min-width: max-content !important;
-  width: max-content !important;
-
-  margin: 0 !important;
-  padding: 0 0.22rem !important;
-
-  font-size: 1.22rem !important;
-  line-height: 1 !important;
-  white-space: nowrap !important;
-}
-
-.guideArrows.half_exit.only.default .arrowContainer.half_exit.only.new2 .exitOnlyArrow {
-  height: 1.65rem !important;
-  width: auto !important;
-
-  margin: 0 !important;
-  padding: 0 0.16rem !important;
-
-  object-fit: contain !important;
-  filter: invert(1) !important;
-}
-
-/* Half Exit Only: nudge the white guide arrow inward without changing row width */
-.guideArrows.half_exit.only.default .halfExitGuideLane.left {
-  justify-content: flex-start !important;
-  padding-left: 0.95rem !important;
-  padding-right: 1.65rem !important;
-}
-
-.guideArrows.half_exit.only.default .halfExitGuideLane.right {
-  justify-content: flex-end !important;
-  padding-left: 1.65rem !important;
-  padding-right: 0.95rem !important;
-}
-
-.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow {
-  margin: 0 !important;
-}
-
-
-/* Light-background signs should use black borders/dividers instead of white */
-.panel.yellow .sign,
-.panel.white .sign,
-.panel.orange .sign,
-.panel.fluorescent.yellow-green .sign,
-.panel.fluorescent.pink .sign {
-  border-color: var(--black) !important;
-  color: var(--black);
-}
-
-/* Divider lines between subpanels */
-.panel.yellow .subDivider,
-.panel.white .subDivider,
-.panel.orange .subDivider,
-.panel.fluorescent.yellow-green .subDivider,
-.panel.fluorescent.pink .subDivider {
-  background-color: var(--black) !important;
-}
-
-/* APL divider pseudo-line */
-.panel.yellow .subDivider.hasArrow::before,
-.panel.white .subDivider.hasArrow::before,
-.panel.orange .subDivider.hasArrow::before,
-.panel.fluorescent.yellow-green .subDivider.hasArrow::before,
-.panel.fluorescent.pink .subDivider.hasArrow::before {
-  background-color: var(--black) !important;
-}
-
-/* Borders inside light-background panel content */
-.panel.yellow .streetName,
-.panel.white .streetName,
-.panel.orange .streetName,
-.panel.fluorescent.yellow-green .streetName,
-.panel.fluorescent.pink .streetName {
-  border-color: var(--black) !important;
-}
-
-/* Guide arrow containers/bands on light-background panels */
-.panel.yellow .guideArrows,
-.panel.white .guideArrows,
-.panel.orange .guideArrows,
-.panel.fluorescent.yellow-green .guideArrows,
-.panel.fluorescent.pink .guideArrows {
-  border-color: var(--black) !important;
-  color: var(--black);
-}
-
-/* Side Left / Side Right guide arrows reserve space inside the sign border */
-.sign.hasSideGuideArrow {
-  --sideGuideArrowReserve: 2.65rem;
-  --sideGuideArrowInset: 0.42rem;
-
-  position: relative !important;
-  overflow: hidden !important;
-  width: max-content !important;
-  min-width: max-content !important;
-  max-width: none !important;
-  box-sizing: content-box !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-}
-
-.sign.hasSideLeftGuideArrow {
-  padding-left: var(--sideGuideArrowReserve) !important;
-}
-
-.sign.hasSideRightGuideArrow {
-  padding-right: var(--sideGuideArrowReserve) !important;
-}
-
-.sign.hasSideGuideArrow .signHolder {
-  position: static !important;
-  overflow: visible !important;
-  width: max-content !important;
-  min-width: max-content !important;
-  max-width: none !important;
-  align-items: center;
-  justify-content: center;
-}
-
-.sign.hasSideGuideArrow .sideLeftArrow,
-.sign.hasSideGuideArrow .sideRightArrow {
-  position: absolute !important;
-  top: 50% !important;
-  display: none !important;
-
-  height: 2.15rem !important;
-  width: auto !important;
-  max-width: none !important;
-
-  padding: 0 !important;
-  margin: 0 !important;
-
-  flex: 0 0 auto !important;
-  object-fit: contain !important;
-  transform: translateY(-50%) rotate(var(--sideGuideArrowRotation, 0deg)) !important;
-  z-index: 50;
-  box-sizing: content-box;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.sign.hasSideLeftGuideArrow .sideLeftArrow {
-  display: block !important;
-  left: var(--sideGuideArrowInset) !important;
-}
-
-.sign.hasSideRightGuideArrow .sideRightArrow {
-  display: block !important;
-  right: var(--sideGuideArrowInset) !important;
-}
-
-.sign.hasSideLeftGuideArrow .sideRightArrow,
-.sign.hasSideRightGuideArrow .sideLeftArrow {
-  display: none !important;
-}
-
-.sign.hasSideGuideArrow .subPanelDisplay {
-  flex: 0 0 auto !important;
-}
-
-
-.exportCaptureTarget,
-.exportCaptureTarget * {
-  box-sizing: border-box;
-}
-
-#panelContainer.exportCaptureTarget {
-  width: max-content !important;
-  min-width: max-content !important;
-  height: max-content !important;
-  min-height: 0 !important;
-  overflow: visible !important;
-  background: transparent !important;
-  background-image: none !important;
-  align-items: flex-start !important;
-}
-
-#panelContainer.exportCaptureTarget .panel:first-child {
-  padding-left: 0 !important;
-}
-
-#panelContainer.exportCaptureTarget .panel:last-child {
-  padding-right: 0 !important;
-}
-
-
-/* Dynamic full-bleed corner fill. The segmented colors are applied through
-   the sign's border-image, while these patches only replace the panel color
-   visible outside a rounded corner. */
-.signContainer.hasDynamicSignCornerPatches {
-  position: relative !important;
-}
-
-.signContainer.hasDynamicSignCornerPatches > :not(.dynamicSignCornerPatch) {
-  position: relative;
-  z-index: 2;
-}
-
-.signContainer > .dynamicSignCornerPatch {
-  position: absolute !important;
-  display: block !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-.sign > .dynamicSignCornerPatch {
-  display: none !important;
-}
-
-/* Rendered sign selection and icon spacing fixes */
-.selectedRenderedSubpanel,
-.selectedRenderedBlockRow,
-.selectedRenderedBlockElement {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-.bE-iconElement {
-  display: inline-grid;
-  place-items: center;
-  aspect-ratio: auto;
-  font-size: 0;
-  line-height: 0;
-  width: max-content;
-  height: max-content;
-  min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
-  margin-top: var(--iconVerticalMargin, 0rem);
-  margin-bottom: var(--iconVerticalMargin, 0rem);
-  margin-left: var(--iconHorizontalMargin, 0rem);
-  margin-right: var(--iconHorizontalMargin, 0rem);
-  padding: 0 !important;
-  background-color: transparent !important;
-  border: 0 !important;
-}
-
-.bE-iconElement > .bE-iconBox {
-  display: inline-grid;
-  grid-template-columns: var(--iconPaddingHorizontal, 0rem) auto var(--iconPaddingHorizontal, 0rem);
-  grid-template-rows: var(--iconPaddingVertical, 0rem) auto var(--iconPaddingVertical, 0rem);
-  align-items: center;
-  justify-items: center;
-  font-size: 0;
-  line-height: 0;
-  width: max-content;
-  height: max-content;
-  min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 0 !important;
-}
-
-.bE-iconElement > .bE-iconBox.hasBackground {
-  background-color: var(--iconBgColor);
-}
-
-.bE-iconElement > .bE-iconBox.hasBorder {
-  border: 0.12rem solid var(--iconBorderColor, currentColor);
-  border-radius: var(--borderRadius, 0px);
-}
-
-.bE-iconElement > .bE-iconBox > img,
-.bE-iconElement > img {
-  display: block;
-  grid-column: 2;
-  grid-row: 2;
-  width: auto;
-  height: var(--iconSize, 3rem);
-  max-width: none;
-  max-height: none;
-  object-fit: contain;
-}
-
-/* Export-only real first-letter spans for shield banners and action-message banner text. */
-.exportRealFirstLetter::first-letter {
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-.exportBannerFirstLetter {
-  display: inline;
-}
-
-.bannerA.exportRealFirstLetter,
-.bannerB.exportRealFirstLetter {
-  white-space: nowrap;
-}
-
-.exportStaticCaptureWrapper,
-.exportStaticCaptureClone {
-  box-sizing: border-box;
-}
-
-.exportStaticCaptureWrapper .sign.hasSideGuideArrow {
-  box-sizing: border-box !important;
-}
-
-
-/* Real DOM first-letter sizing for action-message banner text so SVG/PNG export matches the editor. */
-.bE-banner.bE-realBannerFirstLetter::first-letter {
-  font-size: inherit !important;
-}
-
-.bE-banner.bE-realBannerFirstLetter .bE-bannerFirstLetter {
-  display: inline-block;
-  font-size: calc(var(--bannerFirstLetterSize, 120) * 1%);
-  line-height: 1;
-}
-
-.exportStaticCaptureWrapper {
-  isolation: isolate;
-}
-
-
-/* Standard guide-arrow dropdown additions */
-.guideArrows .arrow.illinoisDownArrow,
-.guideArrows .arrow.canadianDownArrow {
-  height: 1.5rem !important;
-  width: auto !important;
-  object-fit: contain !important;
-}
-
-.bE-iconElement > .bE-iconBox.invertColors > img {
-  filter: invert(1);
-  -webkit-filter: invert(1);
-}
-
-/* Multi-line control/action text alignment
-   The control's Alignment setting already controls which block group the element sits in.
-   These rules make that same setting align the individual lines inside one multi-line text block. */
-.bE-textElement.bE-multilineTextElement {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: max-content;
-  max-width: 100%;
-  text-align: var(--alignmentCss, center);
-  white-space: normal;
-}
-
-.bE-textElement.bE-multilineTextElement > .bE-textLine {
-  display: block;
-  width: 100%;
-  text-align: var(--alignmentCss, center);
-  white-space: pre;
-  line-height: inherit;
-}
-
-
-.bE-textElement.bE-betweenLetterSpacing {
-  letter-spacing: var(--betweenLetterSpacing, 0em) !important;
-  margin-right: calc(var(--betweenLetterSpacing, 0em) * -1) !important;
-}
-
-.bE-textElement.bE-betweenLetterSpacing.bE-multilineTextElement {
-  margin-right: 0 !important;
-}
-
-.bE-textElement.bE-betweenLetterSpacing.bE-multilineTextElement > .bE-textLine {
-  margin-right: calc(var(--betweenLetterSpacing, 0em) * -1) !important;
-}
-
-.exitTab .exitTabText {
-  margin-right: calc(var(--exitTabCharacterSpacing, 0) * -1em);
-}
-
-
-/* Series D digit-3 spacing correction for control/action text. */
-.bE-textElement.seriesDSpacingFix .bE-seriesDCharFix {
-  display: inline-block;
-}
-
-.bE-textElement.seriesDSpacingFix .bE-seriesDCharFix-3 {
-  display: inline-block;
-  width: 0.501em;
-  min-width: 0.501em;
-  max-width: 0.501em;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-  text-align: left;
-  text-indent: -0.046em;
-  position: static;
-  transform: none;
-}
-
-/* Tight spaces used by enlarged action-message/control-text numerals. */
-.bE-tightSpace,
-.bE-tightNumeralSpace {
-  display: inline;
-  white-space: pre;
-  font-size: var(--tightNumeralSpaceScale, 0.35em);
-  line-height: 0;
-  vertical-align: baseline;
-}
-
-.bE-tightNumeralSpace {
-  width: auto;
-}
-
-.bE-tightInternalNumeralSpace {
-  font-size: var(--tightInternalNumeralSpaceScale, 0.35em);
-}
-
-
-/* Vertically stacked panels within the same post position */
-.panelStack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--stackedPanelSpacing, 0rem);
-  width: max-content;
-  flex: 0 0 auto;
-}
-
-
-.panelStack.stackedPanelMatchWidth > .panel {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.panelStack.stackedPanelMatchWidth > .panel > .signContainer,
-.panelStack.stackedPanelMatchWidth > .panel > .signContainer > .sign,
-.panelStack.stackedPanelMatchWidth > .panel > .signContainer > .sign > .signHolder {
-  width: 100%;
-  min-width: 100%;
-  box-sizing: border-box;
-}
-
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.full {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.wide,
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.edge,
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.narrow,
-.panelStack.stackedPanelMatchWidth > .panel > .exitTabContainer.out {
-  width: max-content;
-  box-sizing: border-box;
-}
-
-#panelContainer > .panelStack:first-child {
-  padding-left: 1rem;
-}
-
-#panelContainer > .panelStack:last-child {
-  padding-right: 1rem;
-}
-
-.panelStack > .panel {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.panelStack > .panel:first-child,
-.panelStack > .panel:last-child {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.panelStack .stackedPanelBottom {
-  margin-top: 0;
-}
-
-#postContainer.polePositionRural .panelStack,
-#postContainer.polePositionCenter .panelStack {
-  margin-top: -10rem;
-}
-
-#postContainer.polePositionCenter .panelStack {
-  margin-top: -22.5rem;
-}
-
-#postContainer.polePositionRural .panelStack > .panel {
-  margin-top: 0;
-}
-
-/* Additional panels stacked above or below a main panel */
-.panelStack .stackedPanelAdditional,
-.panelStack .stackedPanelAbove,
-.panelStack .stackedPanelBelow,
-.panelStack .stackedPanelMain {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-.panelStack > .panel > .exitTabContainer.emptyExitTab {
-  display: none;
-}
-
-
-/* Collapse hidden exit-tab placeholders inside stacked panel groups so zero spacing is truly zero. */
-.panelStack > .panel > .exitTabContainer:not(.tabVisible) {
-  display: none;
-}
-
-.panelStack.zeroStackedPanelSpacing {
-  gap: 0 !important;
-  row-gap: 0 !important;
-}
-
-
-/* Allow stacked panel spacing to overlap when set below zero. */
-.panelStack.negativeStackedPanelSpacing {
-  gap: 0 !important;
-}
-
-.panelStack.negativeStackedPanelSpacing > .panel:not(:first-child) {
-  margin-top: var(--stackedPanelOverlap, 0rem) !important;
-}
-
-/* The old I-PASS toll logo asset has transparent padding in its SVG viewBox. */
-.exitTab.tollLogoExitTab .tollLogoImageHolder:has(.tollLogoImage[src$="I-Pass.svg"]) {
-  overflow: visible;
-}
-
-.exitTab.tollLogoExitTab .tollLogoImage[src$="I-Pass.svg"],
-.bE-tollLogoElement > img[src$="I-Pass.svg"] {
-  transform: scale(2.15);
-  transform-origin: center center;
-}
-
-/* APL Edge exit tabs */
-.exitTabContainer.aplEdge {
-  width: var(--aplEdgeTabWidth, auto);
-  min-width: var(--aplEdgeTabWidth, auto);
-  max-width: var(--aplEdgeTabWidth, none);
-  box-sizing: border-box;
-}
-
-.exitTabContainer.aplEdge.left {
-  margin-left: 0 !important;
-  margin-right: auto !important;
-}
-
-.exitTabContainer.aplEdge.right {
-  margin-left: auto !important;
-  margin-right: 0 !important;
-}
-
-.exitTab.aplEdge {
-  width: 100% !important;
-  box-sizing: border-box;
-}
-
-.exitTab.aplEdge.left {
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.exitTab.aplEdge.right {
-  justify-content: flex-end;
-  text-align: right;
-}
-
-.exitTab.aplEdge.center {
-  justify-content: center;
-  text-align: center;
-}
-
-/* Nested exit tabs with different alignments should use the full panel width. */
-.exitTabContainer.mixedNestedExitAlignment {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  gap: 0 !important;
-  justify-content: space-between !important;
-  align-items: flex-start;
-  box-sizing: border-box;
-}
-
-.exitTabContainer.mixedNestedExitAlignment .exitTabHolder {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.exitTabContainer.mixedNestedExitAlignment .exitTabHolder.left {
-  order: 0;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-}
-
-.exitTabContainer.mixedNestedExitAlignment .exitTabHolder.center {
-  order: 1;
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-
-.exitTabContainer.mixedNestedExitAlignment .exitTabHolder.right {
-  order: 2;
-  margin-left: auto !important;
-  margin-right: 0 !important;
-}
-
-/* Center vertical exit tabs and keep separated letter suffixes attached to the number. */
-.exitTab.verticalArrangement {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalContainer {
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 0.15rem;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalText,
-.exitTab.verticalArrangement .exitTabVerticalNumber {
-  width: 100%;
-  text-align: center;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalNumber {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0;
-  line-height: 1;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalTrailing {
-  margin-left: var(--exitTabTrailingGap, 0.04em);
-  position: relative;
-  top: 0;
-}
-
-.exitTab.verticalArrangement .exitTabSeparatedSuffixSpacer {
-  min-width: 0;
-}
-
-/* Nested exit tab cleanup: keep nested tabs touching the sign, remove holder color between tabs. */
-.exitTabContainer.hasNestedExitTabs {
-  align-items: flex-end !important;
-  background: transparent !important;
-}
-
-.exitTabContainer.hasNestedExitTabs .exitTabHolder {
-  align-self: flex-end !important;
-  flex-grow: 0 !important;
-  background: transparent !important;
-}
-
-.exitTabContainer.hasNestedExitTabs.mixedNestedExitAlignment {
-  align-items: flex-end !important;
-}
-
-.exitTabContainer.hasNestedExitTabs.mixedNestedExitAlignment .exitTabHolder {
-  align-self: flex-end !important;
-}
-
-/* Vertical exit tabs: center the stacked EXIT/number group inside the tab. */
-.exitTab.verticalArrangement {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-}
-
-.exitTab.verticalArrangement .exitTabText {
-  top: 0 !important;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalContainer {
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  gap: 0.12rem !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalText,
-.exitTab.verticalArrangement .exitTabVerticalNumber,
-.exitTab.verticalArrangement .exitTabVerticalNumber .numeral {
-  line-height: 1 !important;
-}
-
-.exitTab.verticalArrangement .exitTabVerticalNumber {
-  display: inline-flex !important;
-  align-items: baseline !important;
-  justify-content: center !important;
-  width: auto !important;
-  margin: 0 !important;
-}
-
-
-/* Custom color support for rendered panels, exit tabs, and post colors */
-.panel.customPanelColor .sign,
-.panel.customPanelColor .signContainer,
-.panel.customPanelColor .exitTabContainer,
-.panel.customPanelColor .guideArrows {
-  background-color: var(--panelCustomBg);
-  border-color: var(--panelCustomFg);
-  color: var(--panelCustomFg);
-}
-
-.panel.customPanelColor .dividerElement {
-  background-color: var(--panelCustomFg);
-}
-
-.panel.customPanelColor .arrow {
-  filter: var(--panelCustomArrowFilter, none);
-  -webkit-filter: var(--panelCustomArrowFilter, none);
-}
-
-.exitTab.customExitTabColor,
-.exitTabHolder.customExitTabColor,
-.exitTabContainer.customExitTabColor {
-  background-color: var(--exitTabCustomBg) !important;
-  border-color: var(--exitTabCustomFg);
-  color: var(--exitTabCustomFg);
-}
-
-.panel .exitTab.customExitTabTextColor,
-.exitTab.customExitTabTextColor {
-  color: var(--exitTabTextColor) !important;
-}
-
-
-/* Row margin values can be typed below the slider minimum.
-   Sliders still stop at 0, but typed negative margins down to -5 need to affect layout.
-   Keep positive full-bleed spacing as padding and negative full-bleed spacing as real margins. */
-.sign .blockElementRow {
-  margin-top: var(--marginTop, 0rem) !important;
-  margin-bottom: var(--marginBottom, 0rem) !important;
-  padding-top: var(--blockPaddingTopExtra, 0rem) !important;
-  padding-bottom: var(--blockPaddingBottomExtra, 0rem) !important;
-}
-
-/* Full-bleed block rows.
-   The row content stays real DOM. main.js paints the row background and matching
-   border band on .sign using background layers. Keep the row's own background
-   active as an immediate fallback so redraws do not flash the base panel color. */
-.sign .blockElementRow.fullBleed {
-  position: relative;
-  z-index: 1;
-  background-color: var(
-    --fullBleedResolvedBackgroundColor,
-    var(--fullBleedInitialBackgroundColor, transparent)
-  ) !important;
-  background-image: none !important;
-  outline: 0 !important;
-  box-shadow: none !important;
-  align-items: center;
-  overflow: hidden;
-  border-top-left-radius: var(--fullBleedTopLeftRadius, 0px);
-  border-top-right-radius: var(--fullBleedTopRightRadius, 0px);
-  border-bottom-right-radius: var(--fullBleedBottomRightRadius, 0px);
-  border-bottom-left-radius: var(--fullBleedBottomLeftRadius, 0px);
-}
-
-.sign .blockElementRow.fullBleed::before,
-.sign .blockElementRow.fullBleed::after {
-  content: none !important;
-  display: none !important;
-}
-
-.sign .blockElementRow.fullBleed > * {
-  position: relative;
-  z-index: 2;
-}
-
-.sign .blockElementRow.fullBleed > .blockElementLeft,
-.sign .blockElementRow.fullBleed > .blockElementCenter,
-.sign .blockElementRow.fullBleed > .blockElementRight {
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-}
-
-.sign .blockElementRow.fullBleed > .blockElementLeft {
-  justify-content: flex-start;
-}
-
-.sign .blockElementRow.fullBleed > .blockElementCenter {
-  justify-content: center;
-}
-
-.sign .blockElementRow.fullBleed > .blockElementRight {
-  justify-content: flex-end;
-}
-
-.sign .blockElementRow.fullBleed .bE-advisoryMessage,
-.sign .blockElementRow.fullBleed .bE-textElement {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  box-sizing: border-box;
-  line-height: 1;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  vertical-align: middle;
-}
-
-.panel.white .bE-arrowElement,
-.panel.orange .bE-arrowElement,
-.panel.yellow .bE-arrowElement,
-.panel.fluorescent.yellow-green .bE-arrowElement,
-.panel.white .arrow,
-.panel.orange .arrow,
-.panel.yellow .arrow,
-.panel.fluorescent.yellow-green .arrow,
-.panel.white .halfarrow,
-.panel.orange .halfarrow,
-.panel.yellow .halfarrow,
-.panel.fluorescent.yellow-green .halfarrow,
-.panel.white .exitOnlyArrow,
-.panel.orange .exitOnlyArrow,
-.panel.yellow .exitOnlyArrow,
-.panel.fluorescent.yellow-green .exitOnlyArrow,
-.panel.white .sideLeftArrow,
-.panel.yellow .sideLeftArrow,
-.panel.orange .sideLeftArrow,
-.panel.fluorescent.yellow-green .sideLeftArrow,
-.panel.white .sideRightArrow,
-.panel.orange .sideRightArrow,
-.panel.yellow .sideRightArrow,
-.panel.fluorescent.yellow-green .sideRightArrow {
-  filter: invert(100%) !important;
-  -webkit-filter: invert(100%) !important;
-}
-
-/* Widening features can make the sign wider than the subpanel content, but they
-   should not automatically distribute that extra space evenly across every
-   subpanel. Keep the holder as wide as the sign while each subpanel remains at
-   its own measured minimum width. */
-.signHolder.forceWidenedSubpanels,
-.signHolder.aplContentHolder,
-.signHolder.aplBottomRow {
-  width: 100% !important;
-  min-width: 100% !important;
-  max-width: none !important;
-  justify-content: center !important;
-  align-items: stretch;
-  box-sizing: border-box;
-}
-
-.signHolder.forceWidenedSubpanels > .subPanelDisplay,
-.signHolder.aplContentHolder > .subPanelDisplay,
-.signHolder.aplBottomRow > .subPanelDisplay {
-  flex: 0 0 auto !important;
-  width: var(--linkedSubpanelWidth, max-content) !important;
-  min-width: var(--linkedSubpanelWidth, max-content) !important;
-  max-width: none !important;
-  box-sizing: border-box;
-}
-
-.signHolder.forceWidenedSubpanels > .subPanelDisplay.hasAplWidthReserve,
-.signHolder.aplContentHolder > .subPanelDisplay.hasAplWidthReserve,
-.signHolder.aplBottomRow > .subPanelDisplay.hasAplWidthReserve {
-  min-width: var(--linkedSubpanelWidth, var(--aplSubpanelMinWidth, max-content)) !important;
-}
-
-.signHolder.forceWidenedSubpanels > .subPanelDisplay > .signContentContainer,
-.signHolder.aplContentHolder > .subPanelDisplay > .signContentContainer {
-  width: max-content !important;
-  min-width: max-content !important;
-  box-sizing: border-box;
-}
-
-.signHolder.aplContentHolder > .subPanelDisplay.hasAplWidthReserve > .signContentContainer {
-  width: 100% !important;
-  min-width: 100% !important;
-}
-
-.signHolder.forceWidenedSubpanels > .subDivider,
-.signHolder.aplContentHolder > .subDivider,
-.signHolder.aplBottomRow > .subDivider {
-  flex: 0 0 auto;
-}
-
-.signHolder.aplBottomRow {
-  clear: both;
-}
-
-.signHolder.aplContentHolder > .subPanelDisplay.aplTextOnlyBottomRow {
-  margin-bottom: -0.5rem;
-}
-
-.signHolder.aplBottomRow .aplArrowSubPanelDisplay {
-  justify-content: flex-end;
-}
-
-.signHolder.aplBottomRow .subpanelAplArrows {
-  display: flex !important;
-  visibility: visible !important;
-  width: 100% !important;
-  min-width: 100% !important;
-  box-sizing: border-box;
-}
-
-.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider {
-  margin-bottom: 0 !important;
-}
-
-.signHolder.aplContentHolder > .subDivider.hasArrow::before {
-  display: none;
-}
-
-
-/* The separate APL arrow row may contain cloned divider cells only to hold divider arrows.
-   Those cells must not draw divider bars below the global bottom row, and they must not clip
-   the wider arrow artwork centered on the divider. */
-.signHolder.aplBottomRow > .subDivider,
-.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider {
-  background-color: transparent !important;
-  position: relative !important;
-  overflow: visible !important;
-  align-self: stretch !important;
-  margin: 0 !important;
-}
-
-.signHolder.aplBottomRow > .subDivider::before,
-.signHolder.aplBottomRow > .subDivider.hasArrow::before,
-.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider::before,
-.signHolder.aplBottomRow:has(.subpanelAplArrows) > .subDivider.hasArrow::before {
-  content: none !important;
-  display: none !important;
-}
-
-.signHolder.aplBottomRow > .subDivider .aplDividerArrowSlot {
-  display: block !important;
-  visibility: visible !important;
-  overflow: visible !important;
-}
-
-
-/* Dynamic full-bleed fill layer.
-   The SVG layer is clipped to the sign's rounded outer shape, so full-bleed
-   bottom/top rows get real rounded-corner fills instead of square CSS patches. */
-.sign.hasDynamicSignFullBleedLayer {
-  position: relative !important;
-}
-
-.sign > .dynamicSignFullBleedLayer {
-  position: absolute !important;
-  inset: 0 !important;
-  display: block !important;
-  pointer-events: none !important;
-  overflow: hidden !important;
-  z-index: 0 !important;
-}
-
-.sign.hasDynamicSignFullBleedLayer > :not(.dynamicSignFullBleedLayer):not(.dynamicSignCornerPatch) {
-  position: relative;
-  z-index: 1;
-}
-
-.sign.hasDynamicSignFullBleedLayer .blockElementRow.fullBleed {
-  background-color: var(
-    --fullBleedResolvedBackgroundColor,
-    var(--fullBleedInitialBackgroundColor, transparent)
-  ) !important;
-}
-
-/* Clearview fraction rendering. Highway Gothic keeps the existing single-glyph fraction behavior.
-   The custom Clearview fraction uses natural inline flow so wider numerators or
-   denominators push the following fraction pieces right instead of shifting left. */
-.bE-tightClearviewFractionSpace {
-  font-size: var(--tightClearviewFractionSpaceScale, 0.245em);
-}
-
-.bE-clearviewFractionNumeral {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0;
-  position: relative;
-  height: 0.9em;
-  line-height: 1;
-  vertical-align: -0.004em;
-  margin-left: 0.052em;
-  margin-right: 0.018em;
-  white-space: nowrap;
-}
-
-.bE-clearviewFractionNumeral .bE-clearviewFractionDigit,
-.bE-clearviewFractionNumeral .bE-clearviewFractionSlash {
-  position: relative;
-  display: inline-block;
-  flex: 0 0 auto;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-  letter-spacing: 0;
-}
-
-.bE-clearviewFractionNumeral .bE-clearviewFractionDigit {
-  font-size: 0.685em;
-  min-width: 0.27em;
-  text-align: center;
-}
-
-.bE-clearviewFractionNumeral .bE-clearviewFractionNumerator {
-  top: -0.184em;
-  margin-right: -0.063em;
-}
-
-.bE-clearviewFractionNumeral .bE-clearviewFractionDenominator {
-  top: 0.144em;
-  margin-left: 0.082em;
-}
-
-.bE-clearviewFractionNumeral .bE-clearviewFractionSlash {
-  top: -0.032em;
-  width: 0.322em;
-  font-size: 0.87em;
-  line-height: 1;
-  text-align: center;
-  transform: scaleX(0.9) scaleY(0.92);
-  transform-origin: center center;
-  margin-left: -0.052em;
-  margin-right: 0.006em;
-}
-
-/* Do not let an unused default exit-tab placeholder contribute to editor/export bounds. */
-.panel > .exitTabContainer.emptyExitTab {
-  display: none !important;
-}
-
-/* The LEFT label has its own fixed spacing, independent of the exit number. */
-.exitTab .leftExitLabel.exitTabText {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: max-content;
-  font-size: calc(var(--leftExitLabelFontSize, 27px) * 1.16);
-  line-height: 0.92;
-  letter-spacing: normal;
-  padding: 0.05em 0.42em 0.04em;
-  margin: 0.4rem 0;
-  top: 0;
-  white-space: nowrap;
-  border-radius: 0.12em;
-}
-
-.exitTab .leftExitLabel.withExitText {
-  margin-right: 0.4rem;
-}
-
-/* The number begins at the right edge of LEFT, unless a longer prefix needs
-   the first column and its fixed spacer. */
-.exitTab.leftExitNumberAligned {
-  display: inline-grid !important;
-  grid-template-columns: max-content max-content;
-  grid-template-rows: auto auto;
-  justify-content: start;
-  align-items: center;
-}
-
-.exitTab.leftExitNumberAligned .leftExitLabel {
-  grid-column: 1;
-  grid-row: 1;
-  margin-right: 0 !important;
-  margin-bottom: 0.1rem;
-}
-
-.exitTab .leftExitNumberLeading,
-.exitTab .leftExitNumberValue {
-  display: inline-flex;
-  align-items: baseline;
-  white-space: nowrap;
-}
-
-.exitTab .leftExitNumberLeading {
-  grid-column: 1;
-  grid-row: 2;
-  justify-content: center;
-}
-
-/* The real spacer sits after the prefix. Balance it on the other side so
-   the visible prefix, rather than the prefix-plus-space, centers under LEFT. */
-.exitTab .leftExitNumberLeading::before {
-  content: " ";
-  display: inline-block;
-  min-width: 0.35rem;
-  white-space: pre;
-  visibility: hidden;
-}
-
-.exitTab .leftExitNumberValue {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.exitTab .leftExitNumberValue > .numeral:first-child {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.exitTab .leftExitLabelText {
-  display: block;
-  position: relative;
-  top: 0.055em;
-  letter-spacing: 0.05em;
-  margin-right: -0.05em;
-}
-
-/* The SVG image capture places the font's ink higher within the same line box.
-   Offset only the captured copy so its visible LEFT text matches the editor. */
-.exportStaticCaptureWrapper .exitTab .leftExitLabelText,
-.exportCaptureTarget .exitTab .leftExitLabelText {
-  top: 0.125em;
-}
-
-/* A blank LEFT marker is a standalone yellow tab, without an empty green shell. */
-.exitTabContainer.standaloneLeftExitTab {
-  background: transparent !important;
-  width: max-content !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  padding: 0 !important;
-  gap: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-.exitTabContainer.standaloneLeftExitTab.left {
-  margin-left: 0 !important;
-  margin-right: auto !important;
-}
-
-/* A standalone label must also meet a nested tab directly below it. */
-.exitTabContainer:has(> .exitTabHolder.standaloneLeftExitTab) {
-  margin-bottom: 0 !important;
-}
-
-.exitTabHolder.standaloneLeftExitTab {
-  flex: 0 0 auto !important;
-  width: max-content !important;
-  min-width: 0 !important;
-  background: transparent !important;
-  padding: 0 !important;
-}
-
-.exitTab.standaloneLeftExitTab {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: max-content !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-}
-
-.exitTab.standaloneLeftExitTab .leftExitLabel {
-  margin: 0.025em !important;
-  padding: 0.09em 0.52em 0.08em;
-  border: 0.06em solid var(--black);
-  border-radius: 0.14em;
-  box-shadow: 0 0 0 0.025em var(--yellow);
-}
-
-/* Sharp panels fill the outer yellow corners; the black label border stays round. */
-.panel.sharp .exitTab.standaloneLeftExitTab {
-  background: var(--yellow) !important;
-  border-radius: 0 !important;
-}
-
-.panel.sharp .exitTab.standaloneLeftExitTab .leftExitLabel {
-  box-shadow: none;
-}
-
-/* The export SVG paints em borders and transforms differently from the live
-   editor. Keep the standalone outline's dimensions while matching its paint. */
-.exportStaticCaptureWrapper .exitTab.standaloneLeftExitTab .leftExitLabel,
-.exportCaptureTarget .exitTab.standaloneLeftExitTab .leftExitLabel {
-  margin: 0.035em !important;
-  padding: 0.06em 0.49em 0.05em;
-  border-width: 0.08em;
-  box-shadow: 0 0 0 0.035em var(--yellow);
-}
-
-.exportStaticCaptureWrapper .panel.sharp .exitTab.standaloneLeftExitTab .leftExitLabel,
-.exportCaptureTarget .panel.sharp .exitTab.standaloneLeftExitTab .leftExitLabel,
-.panel.sharp.exportCaptureTarget .exitTab.standaloneLeftExitTab .leftExitLabel {
-  box-shadow: none;
-}
-
-
-/* Keep the holder tight, but let it use the exit-tab background color so
-   rounded tab corners never show the parent panel color behind them. */
-.exitTabHolder.green,
-.exitTabHolder.blue,
-.exitTabHolder.brown,
-.exitTabHolder.yellow,
-.exitTabHolder.white,
-.exitTabHolder.black,
-.exitTabHolder.red,
-.exitTabHolder.purple,
-.exitTabHolder.orange,
-.exitTabHolder.fluorescent.pink,
-.exitTabHolder.fluorescent.yellow-green,
-.exitTabHolder.customExitTabColor {
-  padding: 0 !important;
-}
-
-.exitTab {
-  box-sizing: border-box;
-}
-
-
-.exitOnlyLabelHidden {
-  color: transparent !important;
-  text-shadow: none !important;
-}
-
-.iconExitTab .exitTabIconWrapper {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.exitTabIconImage {
-  width: auto;
-  height: var(--exitIconSize, 3rem);
-  object-fit: contain;
-}
-
-/* Exit-only compatibility: when arrows are hidden, keep a single visible label instead of leaving split text gaps. */
-.exitOnlyArrowHiddenText {
-  display: inline-flex !important;
-  min-width: max-content;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.arrowContainer.hideExitOnlyArrows .exitOnlyArrow,
-.arrowContainer.hideExitOnlyArrows .halfarrow {
-  display: none !important;
-  opacity: 0 !important;
-}
-
-.arrowContainer.hideExitOnlyArrows .exitOnlySpace {
-  display: none !important;
-}
-
-
-/* Exit tab asset type padding values are separate from normal text-tab padding. */
-.exitTab.tollLogoExitTab,
-.exitTab.iconExitTab {
-  padding-top: calc(0.35rem + var(--exitTabAssetVerticalPadding, 0rem));
-  padding-bottom: calc(0.35rem + var(--exitTabAssetVerticalPadding, 0rem));
-  padding-left: calc(0.6rem + var(--exitTabHorizontalPadding, 0rem));
-  padding-right: calc(0.6rem + var(--exitTabHorizontalPadding, 0rem));
-}
-
-/* Match the normal Half Exit Only diagonal arrow to the EXIT ONLY arrow. */
-.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow[data-legacy-arrow="A-1"],
-.guideArrows.half_exit.only.default .halfExitGuideLane .halfarrow[data-legacy-arrow="A-4"] {
-  height: 1.65rem !important;
-  transform: scale(1.14) !important;
-  transform-origin: center center !important;
-}
-
-
-/* Use block-level flex formatting for Half Exit Only inside static exports. */
-.exportStaticCaptureWrapper .signContainer:has(> .guideArrows.half_exit.only.default) {
-  display: flex !important;
-}
-
-
-/* Dynamic subpanel divider colors are applied to the divider itself. */
-.subDivider.hasDynamicDividerPaint:not([data-dynamic-divider-uses-before="true"]) {
-  background-color: transparent !important;
-  background-image: var(--dynamicSubDividerPaint) !important;
-}
-
-.subDivider.hasDynamicDividerPaint[data-dynamic-divider-uses-before="true"] {
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-.subDivider.hasDynamicDividerPaint[data-dynamic-divider-uses-before="true"]::before {
-  background-color: transparent !important;
-  background-image: var(--dynamicSubDividerPaint) !important;
-}
-
-/* Small Letters keeps the first letter of each word at full size and scales only the remaining letters. */
-.bE-textElement.bE-smallLettersEnabled .bE-smallLetters {
-  font-size: calc(var(--smallLettersSize, 75) * 1%);
-  line-height: 1;
-  vertical-align: baseline;
-  font-variant: normal;
-  text-transform: none;
-}
-
-/* Second EXIT ONLY design: preserve the standard white panel border and inset the yellow band. */
-.signContainer:has(> .guideArrows.exit_only.new)::before,
-.signContainer:has(> .guideArrows.exit_only.new)::after {
-  content: none !important;
-}
-
-.guideArrows.exit_only.new {
-  background-color: var(--green) !important;
-  border-color: var(--white) !important;
-  color: var(--black) !important;
-  padding: 0 0.16rem 0.16rem !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-.guideArrows.exit_only.new > .arrowContainer.new {
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  box-sizing: border-box !important;
-  background-color: var(--yellow) !important;
-  border: 0 !important;
-  border-bottom-left-radius: calc(var(--signBorderRadius, 0.75rem) - 0.2rem) !important;
-  border-bottom-right-radius: calc(var(--signBorderRadius, 0.75rem) - 0.2rem) !important;
-}
-
-/* Arrow-block assets share one scalable, rotatable frame in both positions. */
-.guideArrows.standardGuideArrowBand {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  margin-top: -0.3rem;
-  z-index: 4 !important;
-}
-
-.standardGuideArrowBand .arrowContainer {
-  display: flex;
-  align-items: center;
-  width: max-content;
-  max-width: none;
-  min-height: 0;
-}
-
-.standardGuideArrowFrame {
-  display: inline-block;
-  position: relative;
-  flex: none;
-  box-sizing: border-box;
-}
-
-.standardGuideArrowBand .standardGuideArrowFrame:first-child { margin-left: 1rem; }
-.standardGuideArrowBand .standardGuideArrowFrame:last-child { margin-right: 1rem; }
-
-.standardGuideArrowImage {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: auto;
-  max-width: none;
-  object-fit: contain;
-  transform-origin: center center;
-}
-
-.sign.hasSideGuideArrow .standardSideGuideArrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 50;
-  cursor: pointer;
-}
-
-.standardSideLeft { left: var(--standardSideInset, 0.35rem); }
-.standardSideRight { right: var(--standardSideInset, 0.35rem); }
-
-.panel.white .standardGuideArrowImage,
-.panel.yellow .standardGuideArrowImage,
-.panel.orange .standardGuideArrowImage,
-.panel.fluorescent.yellow-green .standardGuideArrowImage,
-.panel.fluorescent.pink .standardGuideArrowImage {
-  filter: invert(1);
-}
-
-/* Keep directional guide arrows aligned after the numbered SVGs were consolidated. */
-.arrow[data-legacy-arrow],
-.exitOnlyArrow[data-legacy-arrow],
-.halfarrow[data-legacy-arrow] {
-  transform: rotate(var(--legacyArrowRotation, 0deg)) scale(var(--legacyArrowScale, 1)) !important;
-  transform-origin: center center;
-}
-
-.sideLeftArrow { --sideGuideArrowRotation: -45deg; }
-.sideRightArrow { --sideGuideArrowRotation: 45deg; }
-
-/* Exit Only guide arrows: text and arrows share the same flexible row. */
-.guideArrows.modernExitOnly {
-  display: flex !important;
-  width: 100% !important;
-  min-width: 100% !important;
-  box-sizing: border-box;
-  margin-top: -0.3rem;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
-  background: var(--exitOnlyPanelColor) !important;
-  overflow: hidden;
-  z-index: 4;
-}
-.signContainer:has(> .guideArrows.modernExitOnly) > .sign {
-  padding-bottom: 0.12rem;
-}
-.guideArrows.modernExitOnly > .arrowContainer.modernExitLayout {
-  position: relative;
-  z-index: 1;
-  display: flex !important;
-  align-items: stretch;
-  justify-content: stretch;
-  width: 100% !important;
-  min-width: max-content;
-  box-sizing: border-box;
-  padding: 0 !important;
-  margin: 0 !important;
-  gap: 0 !important;
-}
-.modernExitOnly .modernExitColoredLane,
-.modernExitOnly .modernExitPlainLane {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-height: calc(1.65rem + 2 * var(--exitOnlyVerticalPadding));
-  padding: var(--exitOnlyVerticalPadding) var(--exitOnlyHorizontalPadding);
-  padding-bottom: max(0px, calc(var(--exitOnlyVerticalPadding) - 0.08rem));
-}
-.modernExitOnly .modernExitColoredLane {
-  flex: 1 1 auto;
-  min-width: max-content;
-  background: var(--exitOnlyBackground) !important;
-  color: var(--exitOnlyTextColor) !important;
-  border-style: solid;
-  border-color: var(--exitOnlyBorderColor) !important;
-  border-width: var(--exitOnlyTopBorder) var(--panelBorderWidth, 0.2rem) var(--panelBorderWidth, 0.2rem);
-}
-.modernExitOnly .modernExitSequence {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-width: max-content;
-  box-sizing: border-box;
-  gap: 0.18rem;
-}
-.modernExitOnly .modernExitArrowFrame {
-  display: inline-block;
-  position: relative;
-  flex: none;
-  box-sizing: border-box;
-  min-width: 0.3rem;
-  min-height: 0.3rem;
-  z-index: 3;
-}
-.modernExitOnly .modernExitArrowImage {
-  position: absolute;
-  top: calc(50% - 0.09rem); left: 50%;
-  width: auto; max-width: none;
-  object-fit: contain;
-  transform-origin: center center;
-}
-.modernExitOnly .modernExitArrowShape {
-  display: block;
-  mask-size: 100% 100%;
-  -webkit-mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
-}
-.modernExitOnly .modernExitArrowGap {
-  flex: 0 0 var(--exitOnlyArrowGap);
-  min-width: var(--exitOnlyArrowGap);
-}
-.modernExitOnly .modernExitTextSlot {
-  display: inline-flex;
-  flex: 1 0 auto;
-  min-width: 4.7ch;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-.modernExitOnly .modernExitText {
-  display: inline-block;
-  min-width: 0;
-  width: max-content;
-  max-width: none;
-  padding: 0;
-  margin: 0;
-  color: var(--exitOnlyTextColor);
-  line-height: 1.05;
-  text-align: center;
-  white-space: pre;
-}
-.modernExitOnly .modernExitText.modernExitMultiline {
-  line-height: 0.84;
-}
-.modernExitOnly-standard .modernExitSequence,
-.modernExitOnly-laneSplit .modernExitSequence {
-  width: max-content;
-  margin-inline: auto;
-  justify-content: center;
-  gap: 0;
-}
-.modernExitOnly-standard .modernExitSequence:is([data-arrow-count="0"], [data-arrow-count="1"]),
-.modernExitOnly-laneSplit .modernExitSequence:is([data-arrow-count="0"], [data-arrow-count="1"]) {
-  width: 100%;
-  justify-content: space-evenly;
-}
-.modernExitOnly-standard .modernExitSequence[data-arrow-count="1"],
-.modernExitOnly-laneSplit .modernExitSequence[data-arrow-count="1"] {
-  width: calc(100% - 4rem);
-  gap: 0.3rem;
-}
-.modernExitOnly-standard .modernExitTextSlot,
-.modernExitOnly-laneSplit .modernExitTextSlot {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-.modernExitOnly .modernExitSequence[data-alignment="center"]:is([data-arrow-count="2"], [data-arrow-count="4"], [data-arrow-count="6"]) {
-  justify-content: center;
-  gap: 0;
-}
-.modernExitOnly .modernExitSequence[data-alignment="center"]:is([data-arrow-count="2"], [data-arrow-count="4"], [data-arrow-count="6"]) > .modernExitTextSlot {
-  flex: 0 0 auto;
-  min-width: var(--exitOnlyArrowGap);
-}
-.modernExitOnly .modernExitSequence[data-alignment="center"]:is([data-arrow-count="3"], [data-arrow-count="5"]) > .modernExitTextSlot {
-  flex: 0 0 auto;
-  min-width: var(--exitOnlyArrowGap);
-}
-.modernExitOnly-standard .modernExitColoredLane {
-  padding-left: var(--exitOnlyHorizontalPadding);
-  padding-right: var(--exitOnlyHorizontalPadding);
-  border-bottom-left-radius: var(--exitOnlyEdgeRadius);
-  border-bottom-right-radius: var(--exitOnlyEdgeRadius);
-}
-.guideArrows.modernExitOnly-standard.modernExitOnlyColoredEdges {
-  background: var(--exitOnlyBackground) !important;
-}
-.modernExitOnly-laneSplit .modernExitColoredLane {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: max-content;
-  padding-left: var(--exitOnlyHorizontalPadding);
-  padding-right: var(--exitOnlyHorizontalPadding);
-}
-.modernExitOnly-laneSplit .modernExitSequence:is([data-arrow-count="0"], [data-arrow-count="1"]) {
-  width: max-content;
-}
-.modernExitOnly-laneSplit .modernExitSequence[data-arrow-count="1"] {
-  gap: 0.7rem;
-}
-.modernExitOnly-laneSplit .modernExitPlainLane {
-  flex: 1 1 7rem;
-  min-width: 7rem;
-  padding-left: var(--exitOnlyPlainOuterPadding);
-  padding-right: var(--exitOnlyPlainOuterPadding);
-  background: var(--exitOnlyPanelColor);
-  border-style: solid;
-  border-color: var(--exitOnlyPanelBorderColor);
-  border-width: 0 0 var(--panelBorderWidth, 0.2rem);
-}
-.modernExitOnly-laneSplit .modernExitPlainLane > .modernExitArrowFrame {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: grab;
-  touch-action: none;
-}
-.modernExitOnly-laneSplit .modernExitPlainLane > .modernExitArrowFrame:active { cursor: grabbing; }
-.modernExitOnly-laneSplit .modernExitPlainLane:first-child {
-  border-left-width: var(--panelBorderWidth, 0.2rem);
-  border-bottom-left-radius: var(--exitOnlyEdgeRadius);
-  justify-content: flex-start;
-  padding-right: 0;
-}
-.modernExitOnly-laneSplit .modernExitPlainLane:last-child {
-  border-right-width: var(--panelBorderWidth, 0.2rem);
-  border-bottom-right-radius: var(--exitOnlyEdgeRadius);
-  justify-content: flex-end;
-  padding-left: 0;
-}
-.modernExitOnly-laneSplit .modernExitColoredLane.onLeft {
-  border-bottom-left-radius: var(--exitOnlyEdgeRadius);
-  border-right-width: 0;
-}
-.modernExitOnly-laneSplit .modernExitColoredLane.onRight {
-  border-bottom-right-radius: var(--exitOnlyEdgeRadius);
-  border-left-width: 0;
-}
-.modernExitOnly-laneSplit.modernExitOnlyTopBorder .modernExitColoredLane.onLeft {
-  border-right-width: var(--panelBorderWidth, 0.2rem);
-}
-.modernExitOnly-laneSplit.modernExitOnlyTopBorder .modernExitColoredLane.onRight {
-  border-left-width: var(--panelBorderWidth, 0.2rem);
-}
-.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges:has(.onLeft)::before,
-.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges:has(.onRight)::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  width: var(--exitOnlyEdgeRadius);
-  height: var(--exitOnlyEdgeRadius);
-  background: var(--exitOnlyBackground);
-  pointer-events: none;
-  z-index: 0;
-}
-.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges:has(.onLeft)::before {
-  left: 0;
-}
-.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges:has(.onRight)::after {
-  right: 0;
-}
-/* Inset Exit Only band with the panel's border around the bottom edge. */
-.guideArrows.modernExitOnly.modernExitOnlyTexasBorder {
-  background: var(--exitOnlyPanelColor) !important;
-  border: var(--panelBorderWidth, 0.2rem) solid var(--exitOnlyPanelBorderColor) !important;
-  border-top: 0 !important;
-  padding: 0 0.16rem 0.16rem !important;
-}
-.modernExitOnly.modernExitOnlyTexasBorder .modernExitColoredLane {
-  border-bottom-width: 0;
-  border-left-width: 0;
-  border-right-width: 0;
-}
-.modernExitOnly.modernExitOnlyTexasBorder .modernExitPlainLane {
-  border-bottom-width: 0;
-  border-left-width: 0;
-  border-right-width: 0;
-}
-.modernExitOnlyTexasBorder .modernExitColoredLane:first-child {
-  border-bottom-left-radius: max(0px, calc(var(--signBorderRadius, 0.75rem) - 0.2rem));
-}
-.modernExitOnlyTexasBorder .modernExitColoredLane:last-child {
-  border-bottom-right-radius: max(0px, calc(var(--signBorderRadius, 0.75rem) - 0.2rem));
-}
-.modernExitOnly-laneSplit.modernExitOnlyTexasBorder.modernExitOnlyTopBorder .modernExitColoredLane.onLeft {
-  border-right-width: var(--panelBorderWidth, 0.2rem);
-}
-.modernExitOnly-laneSplit.modernExitOnlyTexasBorder.modernExitOnlyTopBorder .modernExitColoredLane.onRight {
-  border-left-width: var(--panelBorderWidth, 0.2rem);
-}
-.guideArrows.modernExitOnly-boxed {
-  border: var(--panelBorderWidth, 0.2rem) solid var(--exitOnlyPanelBorderColor) !important;
-  border-top-width: 0 !important;
-  background: var(--exitOnlyPanelColor) !important;
-}
-.modernExitOnly-boxed .modernExitColoredLane {
-  border: 0 !important;
-  background: var(--exitOnlyPanelColor) !important;
-  min-height: calc(1.72rem + 1.2 * var(--exitOnlyVerticalPadding));
-  padding-top: calc(0.6 * var(--exitOnlyVerticalPadding));
-  padding-bottom: calc(0.6 * var(--exitOnlyVerticalPadding));
-  padding-left: var(--exitOnlyHorizontalPadding);
-  padding-right: var(--exitOnlyHorizontalPadding);
-}
-.modernExitOnly-boxed .modernExitSequence {
-  width: max-content;
-  min-width: max-content;
-  margin-inline: auto;
-  justify-content: center !important;
-  gap: 0;
-}
-.modernExitOnly-boxed .modernExitSequence[data-arrow-count="1"],
-.modernExitOnly-boxed .modernExitSequence[data-arrow-count="0"] {
-  width: 100%;
-  justify-content: space-between !important;
-  gap: 0.45rem;
-}
-.modernExitOnly-boxed .modernExitSequence[data-arrow-count="0"] {
-  justify-content: center !important;
-}
-.modernExitOnly-boxed .modernExitTextSlot {
-  flex: 0 0 auto;
-}
-.modernExitOnly-boxed .modernExitText {
-  background: var(--exitOnlyBackground);
-  color: var(--exitOnlyTextColor);
-  border-radius: 0;
-  min-width: 0;
-  padding: 0.1rem 0.2rem;
-}
-.modernExitOnly-boxed .modernExitText.modernExitNoDescender {
-  line-height: 0.94;
-  padding-bottom: 0;
-}
-.modernExitOnly-boxed .modernExitText.modernExitNoDescender.modernExitMultiline {
-  line-height: 0.752;
-}
-.modernExitOnly-boxed .modernExitText.modernExitHasDescender {
-  padding-bottom: 0.13rem;
-}
-.signContainer:has(> .guideArrows.modernExitOnly)::before,
-.signContainer:has(> .guideArrows.modernExitOnly)::after {
-  content: none !important;
-}
-.signContainer:has(> .guideArrows.modernExitOnly-standard.modernExitOnlyColoredEdges)::before,
-.signContainer:has(> .guideArrows.modernExitOnly-standard.modernExitOnlyColoredEdges)::after,
-.signContainer:has(> .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges .modernExitColoredLane.onLeft)::before,
-.signContainer:has(> .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges .modernExitColoredLane.onRight)::after {
-  content: "" !important;
-  background: var(--exitOnlyBackground) !important;
-}
-.signContainer:has(> .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges .modernExitColoredLane.onLeft)::before,
-.signContainer:has(> .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges .modernExitColoredLane.onRight)::after {
-  position: absolute;
-  bottom: 0;
-  width: var(--signBorderRadius, 0.75rem);
-  height: var(--signBorderRadius, 0.75rem);
-  z-index: 1;
-  pointer-events: none;
-}
-.signContainer:has(> .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges .modernExitColoredLane.onLeft)::before {
-  left: 0;
-}
-.signContainer:has(> .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges .modernExitColoredLane.onRight)::after {
-  right: 0;
 }
 
 /* A VMS keeps its original sign border inside a separate, square metal housing. */
@@ -4619,19 +2485,612 @@ img.exitOnlyArrow:last-child {
   display: none;
 }
 
-/* Remove the outer rim without changing borders inside the sign. */
-.panel.panelBorderHidden > .signContainer > .sign,
-.panel.panelBorderHidden > .signContainer > .guideArrows,
-.panel.panelBorderHidden > .signContainer > .aplArrows {
-  border-width: 0 !important;
+/* v2.19 guide arrows: Standard Arrow rows, side arrows and the Exit Only editor's rows. */
+.signContainer.smHasModernExitOnly > .sign {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.signHolder.hasStandardGuideArrowWidthReserve {
+  width: var(--standardGuideArrowMinWidth) !important;
+  min-width: var(--standardGuideArrowMinWidth) !important;
+  max-width: none !important;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* Subpanels share the reserved width so full-width rows (headers and
+   footers) span the widened sign. */
+.signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve) {
+  flex: 1 0 auto !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+.signHolder.hasStandardGuideArrowWidthReserve > .subPanelDisplay:not(.hasAplWidthReserve) > .signContentContainer {
+  width: auto !important;
+  min-width: max-content !important;
+  box-sizing: border-box;
+}
+
+.signHolder.hasStandardGuideArrowWidthReserve > .subDivider {
+  flex: 0 0 auto;
+}
+
+.signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow {
+  background-color: transparent !important;
+  position: relative;
+  overflow: visible;
+}
+
+.signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: var(--standardGuideArrowDividerStopOffset, 1.15rem);
+  left: 0;
+  width: 100%;
+  background-color: var(--white);
+}
+
+.panel.white .signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow::before, .panel.yellow .signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow::before, .panel.orange .signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow::before, .panel.fluorescent.yellow-green .signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow::before, .panel.fluorescent.pink .signHolder:not(.smHasAplArrows) > .subDivider.hasStandardGuideArrowBelow::before {
+  background-color: var(--black);
+}
+
+.signHolder.hasSideGuideArrow {
+  width: max-content;
+  min-width: max-content;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.signHolder.hasSideGuideArrow > .subPanelDisplay {
+  flex: 0 0 auto;
+}
+
+.sign.hasSideGuideArrow {
+  --sideGuideArrowReserve: 2.65rem;
+  --sideGuideArrowInset: 0.42rem;
+
+  position: relative !important;
+  overflow: hidden !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  box-sizing: content-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.sign.hasSideLeftGuideArrow {
+  padding-left: var(--sideGuideArrowReserve) !important;
+}
+
+.sign.hasSideRightGuideArrow {
+  padding-right: var(--sideGuideArrowReserve) !important;
+}
+
+.sign.hasSideGuideArrow .signHolder {
+  position: static !important;
+  overflow: visible !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.sign.hasSideGuideArrow .sideLeftArrow, .sign.hasSideGuideArrow .sideRightArrow {
+  position: absolute !important;
+  top: 50% !important;
+  display: none !important;
+
+  height: 2.15rem !important;
+  width: auto !important;
+  max-width: none !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  flex: 0 0 auto !important;
+  object-fit: contain !important;
+  transform: translateY(-50%) rotate(var(--sideGuideArrowRotation, 0deg)) !important;
+  z-index: 50;
+  box-sizing: content-box;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.sign.hasSideLeftGuideArrow .sideLeftArrow {
+  display: block !important;
+  left: var(--sideGuideArrowInset) !important;
+}
+
+.sign.hasSideRightGuideArrow .sideRightArrow {
+  display: block !important;
+  right: var(--sideGuideArrowInset) !important;
+}
+
+.sign.hasSideLeftGuideArrow .sideRightArrow, .sign.hasSideRightGuideArrow .sideLeftArrow {
+  display: none !important;
+}
+
+.sign.hasSideGuideArrow .subPanelDisplay {
+  flex: 0 0 auto !important;
+}
+
+.exportStaticCaptureWrapper .sign.hasSideGuideArrow {
+  box-sizing: border-box !important;
+}
+
+.signHolder.forceWidenedSubpanels, .signHolder.aplContentHolder, .signHolder.aplBottomRow {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  justify-content: center !important;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.signHolder.forceWidenedSubpanels > .subPanelDisplay, .signHolder.aplContentHolder > .subPanelDisplay, .signHolder.aplBottomRow > .subPanelDisplay {
+  flex: 0 0 auto !important;
+  width: var(--linkedSubpanelWidth, max-content) !important;
+  min-width: var(--linkedSubpanelWidth, max-content) !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+.signHolder.forceWidenedSubpanels > .subPanelDisplay.hasAplWidthReserve, .signHolder.aplContentHolder > .subPanelDisplay.hasAplWidthReserve, .signHolder.aplBottomRow > .subPanelDisplay.hasAplWidthReserve {
+  min-width: var(--linkedSubpanelWidth, var(--aplSubpanelMinWidth, max-content)) !important;
+}
+
+.signHolder.forceWidenedSubpanels > .subPanelDisplay > .signContentContainer, .signHolder.aplContentHolder > .subPanelDisplay > .signContentContainer {
+  width: max-content !important;
+  min-width: max-content !important;
+  box-sizing: border-box;
+}
+
+.signHolder.forceWidenedSubpanels > .subDivider, .signHolder.aplContentHolder > .subDivider, .signHolder.aplBottomRow > .subDivider {
+  flex: 0 0 auto;
+}
+
+.guideArrows.standardGuideArrowBand {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: -0.3rem;
+  z-index: 4 !important;
+}
+
+.standardGuideArrowBand .arrowContainer {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: none;
+  min-height: 0;
+}
+
+.standardGuideArrowFrame {
+  display: inline-block;
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+}
+
+.standardGuideArrowBand .standardGuideArrowFrame:first-child { margin-left: 1rem; }
+
+.standardGuideArrowBand .standardGuideArrowFrame:last-child { margin-right: 1rem; }
+
+.standardGuideArrowImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  transform-origin: center center;
+}
+
+.sign.hasSideGuideArrow .standardSideGuideArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  cursor: pointer;
+}
+
+.standardSideLeft { left: var(--standardSideInset, 0.35rem); }
+
+.standardSideRight { right: var(--standardSideInset, 0.35rem); }
+
+.panel.white .standardGuideArrowImage, .panel.yellow .standardGuideArrowImage, .panel.orange .standardGuideArrowImage, .panel.fluorescent.yellow-green .standardGuideArrowImage, .panel.fluorescent.pink .standardGuideArrowImage {
+  filter: invert(1);
+}
+
+.guideArrows.modernExitOnly {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  box-sizing: border-box;
+  margin-top: -0.3rem;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
+  background: var(--exitOnlyPanelColor) !important;
+  overflow: hidden;
+  z-index: 4;
+}
+
+.signContainer.smHasModernExitOnly > .sign {
+  padding-bottom: 0.12rem;
+}
+
+.guideArrows.modernExitOnly > .arrowContainer.modernExitLayout {
+  position: relative;
+  z-index: 1;
+  display: flex !important;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 100% !important;
+  min-width: max-content;
+  box-sizing: border-box;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+}
+
+.modernExitOnly .modernExitColoredLane, .modernExitOnly .modernExitPlainLane {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: calc(1.65rem + 2 * var(--exitOnlyVerticalPadding));
+  padding: var(--exitOnlyVerticalPadding) var(--exitOnlyHorizontalPadding);
+  padding-bottom: max(0px, calc(var(--exitOnlyVerticalPadding) - 0.08rem));
+}
+
+.modernExitOnly .modernExitColoredLane {
+  flex: 1 1 auto;
+  min-width: max-content;
+  background: var(--exitOnlyBackground) !important;
+  color: var(--exitOnlyTextColor) !important;
+  border-style: solid;
+  border-color: var(--exitOnlyBorderColor) !important;
+  border-width: var(--exitOnlyTopBorder) var(--panelBorderWidth, 0.2rem) var(--panelBorderWidth, 0.2rem);
+}
+
+.modernExitOnly .modernExitSequence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: max-content;
+  box-sizing: border-box;
+  gap: 0.18rem;
+}
+
+.modernExitOnly .modernExitArrowFrame {
+  display: inline-block;
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  min-width: 0.3rem;
+  min-height: 0.3rem;
+  z-index: 3;
+}
+
+.modernExitOnly .modernExitArrowImage {
+  position: absolute;
+  top: calc(50% - 0.09rem); left: 50%;
+  width: auto; max-width: none;
+  object-fit: contain;
+  transform-origin: center center;
+}
+
+.modernExitOnly .modernExitArrowShape {
+  display: block;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.modernExitOnly .modernExitArrowGap {
+  flex: 0 0 var(--exitOnlyArrowGap);
+  min-width: var(--exitOnlyArrowGap);
+}
+
+.modernExitOnly .modernExitTextSlot {
+  display: inline-flex;
+  flex: 1 0 auto;
+  min-width: 4.7ch;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.modernExitOnly .modernExitText {
+  display: inline-block;
+  min-width: 0;
+  width: max-content;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  color: var(--exitOnlyTextColor);
+  line-height: 1.05;
+  text-align: center;
+  white-space: pre;
+}
+
+.modernExitOnly .modernExitText.modernExitMultiline {
+  line-height: 0.84;
+}
+
+.modernExitOnly-standard .modernExitSequence, .modernExitOnly-laneSplit .modernExitSequence {
+  width: max-content;
+  margin-inline: auto;
+  justify-content: center;
+  gap: 0;
+}
+
+.modernExitOnly-standard .modernExitSequence:is([data-arrow-count="0"], [data-arrow-count="1"]), .modernExitOnly-laneSplit .modernExitSequence:is([data-arrow-count="0"], [data-arrow-count="1"]) {
+  width: 100%;
+  justify-content: space-evenly;
+}
+
+.modernExitOnly-standard .modernExitSequence[data-arrow-count="1"], .modernExitOnly-laneSplit .modernExitSequence[data-arrow-count="1"] {
+  width: calc(100% - 4rem);
+  gap: 0.3rem;
+}
+
+.modernExitOnly-standard .modernExitTextSlot, .modernExitOnly-laneSplit .modernExitTextSlot {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.modernExitOnly .modernExitSequence[data-alignment="center"]:is([data-arrow-count="2"], [data-arrow-count="4"], [data-arrow-count="6"]) {
+  justify-content: center;
+  gap: 0;
+}
+
+.modernExitOnly .modernExitSequence[data-alignment="center"]:is([data-arrow-count="2"], [data-arrow-count="4"], [data-arrow-count="6"]) > .modernExitTextSlot {
+  flex: 0 0 auto;
+  min-width: var(--exitOnlyArrowGap);
+}
+
+.modernExitOnly .modernExitSequence[data-alignment="center"]:is([data-arrow-count="3"], [data-arrow-count="5"]) > .modernExitTextSlot {
+  flex: 0 0 auto;
+  min-width: var(--exitOnlyArrowGap);
+}
+
+.modernExitOnly-standard .modernExitColoredLane {
+  padding-left: var(--exitOnlyHorizontalPadding);
+  padding-right: var(--exitOnlyHorizontalPadding);
+  border-bottom-left-radius: var(--exitOnlyEdgeRadius);
+  border-bottom-right-radius: var(--exitOnlyEdgeRadius);
+}
+
+.guideArrows.modernExitOnly-standard.modernExitOnlyColoredEdges {
+  background: var(--exitOnlyBackground) !important;
+}
+
+.modernExitOnly-laneSplit .modernExitColoredLane {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
+  padding-left: var(--exitOnlyHorizontalPadding);
+  padding-right: var(--exitOnlyHorizontalPadding);
+}
+
+.modernExitOnly-laneSplit .modernExitSequence:is([data-arrow-count="0"], [data-arrow-count="1"]) {
+  width: max-content;
+}
+
+.modernExitOnly-laneSplit .modernExitSequence[data-arrow-count="1"] {
+  gap: 0.7rem;
+}
+
+.modernExitOnly-laneSplit .modernExitPlainLane {
+  flex: 1 1 7rem;
+  min-width: 7rem;
+  padding-left: var(--exitOnlyPlainOuterPadding);
+  padding-right: var(--exitOnlyPlainOuterPadding);
+  background: var(--exitOnlyPanelColor);
+  border-style: solid;
+  border-color: var(--exitOnlyPanelBorderColor);
+  border-width: 0 0 var(--panelBorderWidth, 0.2rem);
+}
+
+.modernExitOnly-laneSplit .modernExitPlainLane > .modernExitArrowFrame {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: grab;
+  touch-action: none;
+}
+
+.modernExitOnly-laneSplit .modernExitPlainLane > .modernExitArrowFrame:active { cursor: grabbing; }
+
+.modernExitOnly-laneSplit .modernExitPlainLane:first-child {
+  border-left-width: var(--panelBorderWidth, 0.2rem);
+  border-bottom-left-radius: var(--exitOnlyEdgeRadius);
+  justify-content: flex-start;
+  padding-right: 0;
+}
+
+.modernExitOnly-laneSplit .modernExitPlainLane:last-child {
+  border-right-width: var(--panelBorderWidth, 0.2rem);
+  border-bottom-right-radius: var(--exitOnlyEdgeRadius);
+  justify-content: flex-end;
+  padding-left: 0;
+}
+
+.modernExitOnly-laneSplit .modernExitColoredLane.onLeft {
+  border-bottom-left-radius: var(--exitOnlyEdgeRadius);
+  border-right-width: 0;
+}
+
+.modernExitOnly-laneSplit .modernExitColoredLane.onRight {
+  border-bottom-right-radius: var(--exitOnlyEdgeRadius);
+  border-left-width: 0;
+}
+
+.modernExitOnly-laneSplit.modernExitOnlyTopBorder .modernExitColoredLane.onLeft {
+  border-right-width: var(--panelBorderWidth, 0.2rem);
+}
+
+.modernExitOnly-laneSplit.modernExitOnlyTopBorder .modernExitColoredLane.onRight {
+  border-left-width: var(--panelBorderWidth, 0.2rem);
+}
+
+.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges.smHasOnLeft::before, .guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges.smHasOnRight::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: var(--exitOnlyEdgeRadius);
+  height: var(--exitOnlyEdgeRadius);
+  background: var(--exitOnlyBackground);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges.smHasOnLeft::before {
+  left: 0;
+}
+
+.guideArrows.modernExitOnly-laneSplit.modernExitOnlyColoredEdges.smHasOnRight::after {
+  right: 0;
+}
+
+.guideArrows.modernExitOnly.modernExitOnlyTexasBorder {
+  background: var(--exitOnlyPanelColor) !important;
+  border: var(--panelBorderWidth, 0.2rem) solid var(--exitOnlyPanelBorderColor) !important;
+  border-top: 0 !important;
+  padding: 0 0.16rem 0.16rem !important;
+}
+
+.modernExitOnly.modernExitOnlyTexasBorder .modernExitColoredLane {
+  border-bottom-width: 0;
+  border-left-width: 0;
+  border-right-width: 0;
+}
+
+.modernExitOnly.modernExitOnlyTexasBorder .modernExitPlainLane {
+  border-bottom-width: 0;
+  border-left-width: 0;
+  border-right-width: 0;
+}
+
+.modernExitOnlyTexasBorder .modernExitColoredLane:first-child {
+  border-bottom-left-radius: max(0px, calc(var(--signBorderRadius, 0.75rem) - 0.2rem));
+}
+
+.modernExitOnlyTexasBorder .modernExitColoredLane:last-child {
+  border-bottom-right-radius: max(0px, calc(var(--signBorderRadius, 0.75rem) - 0.2rem));
+}
+
+.modernExitOnly-laneSplit.modernExitOnlyTexasBorder.modernExitOnlyTopBorder .modernExitColoredLane.onLeft {
+  border-right-width: var(--panelBorderWidth, 0.2rem);
+}
+
+.modernExitOnly-laneSplit.modernExitOnlyTexasBorder.modernExitOnlyTopBorder .modernExitColoredLane.onRight {
+  border-left-width: var(--panelBorderWidth, 0.2rem);
+}
+
+.guideArrows.modernExitOnly-boxed {
+  border: var(--panelBorderWidth, 0.2rem) solid var(--exitOnlyPanelBorderColor) !important;
+  border-top-width: 0 !important;
+  background: var(--exitOnlyPanelColor) !important;
+}
+
+.modernExitOnly-boxed .modernExitColoredLane {
+  border: 0 !important;
+  background: var(--exitOnlyPanelColor) !important;
+  min-height: calc(1.72rem + 1.2 * var(--exitOnlyVerticalPadding));
+  padding-top: calc(0.6 * var(--exitOnlyVerticalPadding));
+  padding-bottom: calc(0.6 * var(--exitOnlyVerticalPadding));
+  padding-left: var(--exitOnlyHorizontalPadding);
+  padding-right: var(--exitOnlyHorizontalPadding);
+}
+
+.modernExitOnly-boxed .modernExitSequence {
+  width: max-content;
+  min-width: max-content;
+  margin-inline: auto;
+  justify-content: center !important;
+  gap: 0;
+}
+
+.modernExitOnly-boxed .modernExitSequence[data-arrow-count="1"], .modernExitOnly-boxed .modernExitSequence[data-arrow-count="0"] {
+  width: 100%;
+  justify-content: space-between !important;
+  gap: 0.45rem;
+}
+
+.modernExitOnly-boxed .modernExitSequence[data-arrow-count="0"] {
+  justify-content: center !important;
+}
+
+.modernExitOnly-boxed .modernExitTextSlot {
+  flex: 0 0 auto;
+}
+
+.modernExitOnly-boxed .modernExitText {
+  background: var(--exitOnlyBackground);
+  color: var(--exitOnlyTextColor);
+  border-radius: 0;
+  min-width: 0;
+  padding: 0.1rem 0.2rem;
+}
+
+.modernExitOnly-boxed .modernExitText.modernExitNoDescender {
+  line-height: 0.94;
+  padding-bottom: 0;
+}
+
+.modernExitOnly-boxed .modernExitText.modernExitNoDescender.modernExitMultiline {
+  line-height: 0.752;
+}
+
+.modernExitOnly-boxed .modernExitText.modernExitHasDescender {
+  padding-bottom: 0.13rem;
+}
+
+.signContainer.smHasModernExitOnly::before, .signContainer.smHasModernExitOnly::after {
+  content: none !important;
+}
+
+.signContainer.smModernStandardColoredEdges::before, .signContainer.smModernStandardColoredEdges::after, .signContainer.smModernSplitColoredLeft::before, .signContainer.smModernSplitColoredRight::after {
+  content: "" !important;
+  background: var(--exitOnlyBackground) !important;
+}
+
+.signContainer.smModernSplitColoredLeft::before, .signContainer.smModernSplitColoredRight::after {
+  position: absolute;
+  bottom: 0;
+  width: var(--signBorderRadius, 0.75rem);
+  height: var(--signBorderRadius, 0.75rem);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.signContainer.smModernSplitColoredLeft::before {
+  left: 0;
+}
+
+.signContainer.smModernSplitColoredRight::after {
+  right: 0;
 }
 
 .panel.panelBorderHidden > .signContainer > .guideArrows.modernExitOnlyTexasBorder {
   padding: 0 !important;
 }
 
-.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitColoredLane,
-.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitPlainLane {
+.panel.panelBorderHidden > .signContainer > .guideArrows .modernExitColoredLane, .panel.panelBorderHidden > .signContainer > .guideArrows .modernExitPlainLane {
   border-bottom-width: 0 !important;
 }
 
@@ -4643,17 +3102,97 @@ img.exitOnlyArrow:last-child {
   border-right-width: 0 !important;
 }
 
-/* Capital-only messages use the cap top and baseline, with no descender allowance. */
-.bE-messageCapOnly > span {
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
+/* v2.19 Quebec exit marker, kept in the sign's flow along its bottom edge
+   so it never covers the legend. */
+.qcExitMarker {
+  position: relative;
+  z-index: 18;
+  pointer-events: none;
+  display: block;
 }
 
-.bE-messageCapOnly.bE-multilineTextElement {
-  row-gap: max(0em, calc((var(--lineHeight, 100) - 80) * 0.01em));
+.qcExitMarker.qcOnSign {
+  width: var(--qc-marker-width, 3.05rem);
+  height: var(--qc-marker-height, 1.18rem);
+  margin: 0.1rem 0.85rem 0.42rem;
 }
 
-.bE-advisoryMessage.bE-multilineTextElement > .bE-textLine:empty,
-.bE-electronicSign.bE-multilineTextElement > .bE-textLine:empty {
-  min-height: 1em;
+.qcExitMarker.qcLeft {
+  margin-right: auto;
+}
+
+.qcExitMarker.qcCenter {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.qcExitMarker.qcRight {
+  margin-left: auto;
+}
+
+.qcExitMarker.flipped .qcExitMarkerImg {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
+.qcExitMarkerImg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.qcExitMarkerNumber {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--black);
+  z-index: 2;
+  font-family: "Series E";
+  font-size: var(--qc-marker-font-size, 1rem);
+  line-height: 1;
+  font-weight: 700;
+  padding-top: 0.01rem;
+}
+
+/* v2.19 Icon exit tabs show one icon in place of the exit number. */
+.exitTab.iconExitTab {
+  padding: 0.35rem calc(0.6rem + var(--exitTabHorizontalPadding, 0rem));
+}
+
+.iconExitTab .exitTabIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exitTabIconImage {
+  width: auto;
+  height: var(--exitIconSize, 3rem);
+  object-fit: contain;
+}
+
+/* v2.19 exit tab dragging. */
+.exitTabHolder > .exitTab.draggableExitTab {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.exitTabHolder > .exitTab.draggableExitTab:active {
+  cursor: grabbing;
+}
+
+/* A tab moved away from its slot must not leave a colored rectangle behind;
+   the tab itself still paints its background. */
+.panel .exitTabContainer.hasDraggedExitTab,
+.panel .exitTabContainer.hasDraggedExitTab > .exitTabHolder {
+  background-color: transparent !important;
+}
+
+/* v2.19 Small Letters: lowercase letters as capitals at --smallLettersSize. */
+.bE-textElement .bE-smallLetters {
+  font-size: calc(var(--smallLettersSize, 75) * 1%);
+  text-transform: uppercase;
 }

@@ -7,19 +7,22 @@ class SubPanels {
 		shieldDistance = 0.8,
 		blockElements,
 		customDividerHeight = false,
-		hideDivider = false,
 	} = {}
 	) {
-		this.controlText = controlText;
-		this.actionMessage = actionMessage;
 
 		if (blockElements) {
 			this.blockElements = blockElements;
 		} else {
-			this.blockElements = new Control();
-			this.blockElements.rows[0] = [blockDefaults.create(ControlTextElement)];
-			this.blockElements.blockProperties[0] = new Block();
-		}
+            this.blockElements = new Control();
+            this.blockElements.addElement(ControlTextElement, {}, 0, 0);
+            /* this.blockElements = new Control();
+            this.blockElements.addElement(
+              ShieldElement,
+              { shieldBase: "I", routeNumber: "1" },
+              0,
+              0
+         );*/
+        }
 
 		this.shields = shields;
 		if ((parseInt(width) < 1) || (parseInt(width) == undefined)) {
@@ -48,8 +51,6 @@ class SubPanels {
 		this.height = height;
 		this.shieldDistance = shieldDistance;
 		this.customDividerHeight = !!customDividerHeight;
-		// Hides the line before this subpanel; its space and any APL arrow stay.
-		this.hideDivider = !!hideDivider;
 	}
 }
 

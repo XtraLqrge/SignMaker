@@ -1,0 +1,62 @@
+/* Keep every Settings pane inside its measured popover width. */
+#settings22Modal { min-width:0!important; box-sizing:border-box; overflow:hidden; }
+#settings22Modal .sMModalContent { width:100%!important; min-width:0!important; max-width:100%!important; box-sizing:border-box; overflow-x:hidden!important; }
+#settings22Modal #sMAppSettings,#settings22Modal #sMDefaults,#settings22Modal #defaultsFields fieldset { width:100%!important; min-width:0!important; max-width:100%!important; grid-template-columns:minmax(0,1fr) minmax(0,7.5rem)!important; box-sizing:border-box; }
+#settings22Modal #sMAppShortcuts { width:100%!important; min-width:0!important; max-width:100%!important; }
+#settings22Modal label { width:auto!important; min-width:0!important; max-width:100%!important; margin:0!important; white-space:normal!important; overflow-wrap:anywhere; font-size:0.8rem!important; line-height:1.2!important; }
+#settings22Modal #sMAppSettings>p { font-size:0.85rem; line-height:1.3; white-space:normal; }
+#settings22Modal .symbolPicker,#settings22Modal .fontPicker,#settings22Modal .colorPicker,#settings22Modal .appUiScaleControl { width:100%!important; min-width:0!important; max-width:100%!important; }
+#settings22Modal .appUiScaleControl input { width:100%; min-width:0; }
+#settings22Modal .appUiScaleControl output { flex:none; font-size:0.8rem; }
+#settings22Modal .appShortcutList { grid-template-columns:minmax(0,1fr) minmax(0,7.5rem); }
+#settings22Modal .settings22ProfileActions[hidden] { display:none!important; }
+
+/* Row actions and margins share compact, predictable columns. */
+#sMSPCreate { display:flex!important; align-items:center; justify-content:center; flex-wrap:wrap; gap:0.3rem; }
+#sMSPCreate>.symbolPicker { --sm-color-width:8.5rem; flex:0 1 8.5rem; min-width:0; max-width:8.5rem; }
+.mergeBlockTools { padding:0.2rem 0; }
+#smSPBlockProperties .sdBlockMarginControls { display:flex; flex-wrap:wrap; gap:0.5rem 0.9rem; }
+#smSPBlockProperties .sdBlockMarginControl { display:grid; grid-template-columns:max-content 6.5rem 3rem; flex:0 1 auto; gap:0.35rem; }
+#smSPBlockProperties .sdBlockMarginControl label { font-size:0.8rem; line-height:1.2; }
+#smSPBlockProperties .sdBlockMarginControl input[type="range"] { width:6.5rem!important; min-width:0!important; max-width:6.5rem!important; }
+#smSPBlockProperties .sdBlockMarginControl input[type="number"] { width:3rem!important; min-width:3rem!important; max-width:3rem!important; padding:0.2rem; font-size:0.8rem; }
+
+/* Groups use the same pill layout as the other block labels. */
+#sMSPTextList .textEditorBlock.sdGroupedBlock { display:inline-grid!important; grid-template-columns:minmax(0,max-content) 1.2rem 1.8rem!important; align-items:center!important; justify-content:center!important; justify-items:center; gap:0.25rem!important; height:1.6rem!important; min-height:1.6rem!important; max-height:1.6rem!important; padding:0.08rem 0.5rem!important; max-width:100%; border-radius:2rem!important; background:var(--purple)!important; color:white!important; }
+#sMSPTextList .sdGroupedBlock .textEditorBlockLabel { min-width:0; overflow:hidden; text-overflow:ellipsis; text-align:center; white-space:nowrap; }
+#sMSPTextList .sdGroupedBlock>.mergeEditGroup { display:inline-flex!important; align-items:center; justify-content:center; width:1.2rem; height:1.2rem; min-width:1.2rem; margin:0; padding:0; border:0; border-radius:0; background:transparent!important; color:inherit; box-shadow:none!important; }
+#sMSPTextList .sdGroupedBlock>.mergeEditGroup .material-symbols-outlined { font-size:1rem; line-height:1; }
+#sMSPTextList .sdGroupedBlock>.blockTypeInlinePicker { grid-column:3; grid-row:1; width:1.5rem!important; min-width:1.5rem!important; max-width:1.5rem!important; }
+
+/* Shield selectors have one visible control each; source selects keep the data. */
+#smSPProperties [data-property="sdShield"] select.shieldPickerNativeSource { display:none!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow { display:grid!important; grid-template-columns:minmax(8rem,1.5fr) 3rem max-content minmax(6.5rem,1fr) max-content minmax(3rem,4.5rem) 2.4rem!important; grid-auto-flow:row!important; align-items:center; gap:0.35rem!important; width:100%!important; min-width:0!important; max-width:100%!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>.sdShieldBasePickerHost { grid-column:1; grid-row:1; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>#sdShield_routeNumber { grid-column:2; grid-row:1; width:100%!important; min-width:0!important; max-width:100%!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>label[for="sdShield_shieldType"] { grid-column:3; grid-row:1; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>.sdShieldVariantPickerHost { grid-column:4; grid-row:1; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>label[for="sdShield_shieldSize"] { grid-column:5; grid-row:1; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>#sdShield_shieldSizeSlider { grid-column:6; grid-row:1; width:100%!important; min-width:0!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>#sdShield_shieldSize { grid-column:7; grid-row:1; width:100%!important; min-width:0!important; max-width:100%!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>.sdShieldBasePickerHost,
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow>.sdShieldVariantPickerHost,
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow .sdShieldBasePickerHost>.shieldPicker,
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow .sdShieldVariantPickerHost>.shieldPicker,
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow .sdShieldVariantPickerHost .shieldVariantPickerTrigger { width:100%!important; min-width:0!important; max-width:100%!important; box-sizing:border-box; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow label { font-size:0.85rem!important; margin:0!important; width:auto!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldSecondRow { display:flex!important; flex-wrap:wrap; align-items:center; gap:0.4rem!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldSecondRow>label:first-child { width:auto!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldSecondRow .sdShieldOption { display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap; }
+#smSPProperties>[data-property="sdShield"] .sdShieldSecondRow .sdShieldOption label { width:auto!important; min-width:0!important; font-size:0.8rem; }
+#smSPProperties>[data-property="sdShield"] .sdShieldBannerFontSelect+.fontPicker .fontPickerTriggerLabel,
+#smSPProperties>[data-property="sdShield"] .sdShieldRoadNameFontSelect+.fontPicker .fontPickerTriggerLabel { --sm-font-preview-size:0.78rem!important; letter-spacing:normal!important; }
+@media(max-width:650px) {
+  #smSPBlockProperties .sdBlockMarginControl { grid-template-columns:max-content minmax(3rem,6rem) 3rem; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow { grid-template-columns:minmax(6rem,1fr) 3rem!important; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow>.sdShieldBasePickerHost { grid-column:1; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow>label[for="sdShield_shieldType"] { grid-column:1; grid-row:2; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow>.sdShieldVariantPickerHost { grid-column:2; grid-row:2; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow>label[for="sdShield_shieldSize"] { grid-column:1; grid-row:3; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow>#sdShield_shieldSizeSlider { grid-column:2; grid-row:3; }
+  #smSPProperties>[data-property="sdShield"] .sdShieldTopRow>#sdShield_shieldSize { grid-column:2; grid-row:4; }
+}

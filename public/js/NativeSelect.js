@@ -11,9 +11,19 @@
   // opens the system color chooser, and remove buttons on options marked
   // data-custom-color.
   window.createNativeSelectPicker = (select, label, { colorForValue, textStyleForValue, minMenuWidth = 180, customColors } = {}) => {
+    if (pickersBySelect.has(select)) return pickersBySelect.get(select);
+    if (window.SignMakerAlignmentButtons?.matches(select)) {
+      const picker = window.SignMakerAlignmentButtons.create(select, label);
+      const destroy = picker.destroy;
+      picker.destroy = () => { destroy(); pickersBySelect.delete(select); };
+      pickersBySelect.set(select, picker);
+      return picker;
+    }
+    const headerFooter = ['mergeAddHeader', 'mergeAddFooter'].includes(select.id);
     const id = `native-select-${++sequence}`;
     const wrapper = document.createElement('div');
-    wrapper.className = 'symbolPicker dimensionInputs';
+    wrapper.className = 'symbolPicker dimensionInputs'+(colorForValue?' smColorPicker':'');
+    if (headerFooter) wrapper.classList.add('headerFooterPicker');
     const trigger = document.createElement('button');
     trigger.id = `${select.id || id}-button`;
     trigger.type = 'button';
@@ -23,7 +33,7 @@
     trigger.setAttribute('aria-controls', id);
     trigger.setAttribute('aria-expanded', 'false');
     const swatchMarkup = colorForValue ? '<span class="colorPickerSwatch" aria-hidden="true"></span>' : '';
-    trigger.innerHTML = swatchMarkup + '<span class="symbolPickerLabel"></span><svg class="symbolPickerCaret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg>';
+    trigger.innerHTML = (headerFooter ? '' : swatchMarkup) + '<span class="symbolPickerLabel"></span><svg class="symbolPickerCaret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg>';
     wrapper.append(trigger);
     select.classList.add('nativeSelectSource');
     select.insertAdjacentElement('afterend', wrapper);
@@ -52,7 +62,7 @@
     let pointer = null;
     let pointerClick = false;
     let colorInput = null;
-    const entries = () => [...select.options].filter(option => !option.hidden);
+    const entries = () => [...select.options].filter(option => !option.hidden && (!headerFooter || option.value));
     function updateLabel(element, option) {
       element.textContent = option?.textContent ?? '';
       if (textStyleForValue) Object.assign(element.style, textStyleForValue(option?.value));
@@ -78,30 +88,13 @@
       trigger.removeAttribute('aria-activedescendant');
       if (restoreFocus && trigger.isConnected && !trigger.disabled) trigger.focus({ preventScroll: true });
     }
-    function position() {
-      if (!open) return;
-      if (!trigger.isConnected || !trigger.getClientRects().length) { close(); return; }
-      const rect = trigger.getBoundingClientRect();
-      const edge = 8, gap = 3;
-      // Match the scale of the window the trigger sits in.
-      const zoom = trigger.closest('.modals')
-        ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sm-app-zoom')) || 1
-        : 1;
-      const width = Math.min(Math.max(rect.width, minMenuWidth * zoom), window.innerWidth - edge * 2);
-      const below = Math.max(0, window.innerHeight - rect.bottom - edge - gap);
-      const above = Math.max(0, rect.top - edge - gap);
-      // Heights here are on-screen pixels; the menu's own box is scaled by zoom.
-      // Read before writing any style, so opening lays the page out once.
-      const contentHeight = menu.scrollHeight * zoom;
-      if (menu.style.getPropertyValue('--menuZoom') !== String(zoom)) menu.style.setProperty('--menuZoom', zoom);
-      const upwards = below < Math.min(contentHeight, 200) && above > below;
-      const height = Math.min(contentHeight, window.innerHeight * 0.65, upwards ? above : below);
-      // A scaled box keeps its unscaled layout height, anchored by transform-origin.
-      Object.assign(menu.style, { width: `${width / zoom}px`, maxHeight: `${height / zoom}px`,
-        left: `${Math.max(edge, Math.min(rect.left, window.innerWidth - width - edge))}px`,
-        top: `${upwards ? rect.top - gap - height / zoom : rect.bottom + gap}px` });
-      menu.classList.toggle('opensUp', upwards);
-    }
+    function position(event){
+ if(!open)return;
+ if(event?.target?.nodeType&&menu?.contains(event.target))return;
+ if(!trigger.isConnected||!trigger.getClientRects().length){close();return;}
+ const rem=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;
+ window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:headerFooter?Math.max(8.5,minMenuWidth/rem):minMenuWidth/rem,maxWidth:24});
+}
     function highlight(index) {
       const options = entries();
       const count = options.length + (customColors ? 1 : 0);
@@ -121,9 +114,10 @@
       syncedState = state;
       const options = entries();
       const option = options.find(item => item.value === select.value);
-      updateLabel(trigger.querySelector('.symbolPickerLabel'), option);
-      if (colorForValue) updateSwatch(trigger.querySelector('.colorPickerSwatch'), select.value);
-      trigger.setAttribute('aria-label', `${label}: ${option?.textContent ?? ''}`);
+      if (headerFooter) trigger.querySelector('.symbolPickerLabel').textContent = select.id === 'mergeAddHeader' ? 'Add Header' : 'Add Footer';
+      else updateLabel(trigger.querySelector('.symbolPickerLabel'), option);
+      if (colorForValue && !headerFooter) updateSwatch(trigger.querySelector('.colorPickerSwatch'), select.value);
+      trigger.setAttribute('aria-label', headerFooter ? trigger.querySelector('.symbolPickerLabel').textContent : `${label}: ${option?.textContent ?? ''}`);
       trigger.disabled = select.disabled;
       if (trigger.disabled) close();
       if (open) {
@@ -147,6 +141,7 @@
       menu = document.createElement('div');
       menu.id = id;
       menu.className = 'symbolPickerMenu';
+      if (headerFooter) menu.classList.add('headerFooterMenu');
       menu.setAttribute('role', 'listbox');
       menu.setAttribute('aria-label', label);
       menu.setAttribute('aria-hidden', 'true');
@@ -213,6 +208,7 @@
       if (!open) listenWhileOpen();
       const options = entries();
       renderItems(options);
+      window.SignMakerDropdowns.prepareMenu(menu);
       open = true;
       wrapper.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
@@ -221,6 +217,8 @@
       sync();
       void menu.offsetHeight;
       menu.classList.add('open');
+      window.SignMakerDropdowns.refresh(menu);
+      position();
       highlight(Math.max(0, options.findIndex(option => option.value === select.value)));
       trigger.focus({ preventScroll: true });
     }

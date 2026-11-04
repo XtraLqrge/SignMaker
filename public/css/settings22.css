@@ -1,0 +1,182 @@
+/* Settings layout imported from v2.2. */
+.sMModal.appSettingsConfig #sMAppShortcuts {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sMModal.appSettingsConfig #sMAppSettings.tabHidden,
+.sMModal.appSettingsConfig #sMAppShortcuts.tabHidden {
+  display: none;
+}
+
+.sMModal.appSettingsConfig #sMAppShortcuts > p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.sMModal.appSettingsConfig .appShortcutList {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.sMModal.appSettingsConfig .appShortcutList label {
+  width: auto;
+  margin: 0;
+  text-align: right;
+}
+
+.sMModal.appSettingsConfig .appShortcutList input {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
+}
+
+#shortcutActionNotice {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  z-index: 5000;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#shortcutActionNotice.visible {
+  opacity: 1;
+}
+
+.sMModal.appSettingsConfig .appUiScaleControl {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.sMModal.appSettingsConfig .appUiScaleControl input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Defaults and Settings open as sidebar popovers like Panel Style. */
+.sMModal.appSettingsConfig,
+.sMModal.defaultsConfig {
+  width: 20rem;
+  min-width: 20rem;
+  max-width: 20rem;
+  box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.24);
+}
+
+.sMModal.defaultsConfig #sMDefaults.tabHidden {
+  display: none;
+}
+
+.sMModal.appSettingsConfig .sMModalTitle,
+.sMModal.defaultsConfig .sMModalTitle {
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+
+.sMModal.appSettingsConfig .sMModalContent,
+.sMModal.defaultsConfig .sMModalContent {
+  padding: 0.7rem;
+  box-sizing: border-box;
+}
+
+.sMModal.appSettingsConfig #sMAppSettings,
+.sMModal.defaultsConfig #sMDefaults,
+.sMModal.defaultsConfig #defaultsFields fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.sMModal.appSettingsConfig #sMAppSettings > p,
+.sMModal.defaultsConfig #sMDefaults > p,
+.sMModal.defaultsConfig #defaultsFields,
+.sMModal.defaultsConfig #resetBlockDefaults,
+.sMModal.defaultsConfig #defaultsFields legend {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.sMModal.defaultsConfig #sMDefaults > p {
+  font-size: 0.85rem;
+}
+
+.sMModal.defaultsConfig #defaultsFields fieldset {
+  margin: 0;
+  padding: 0.5rem;
+  border: 1px solid rgba(var(--baseColor), 0.4);
+}
+
+.sMModal.defaultsConfig #defaultsFields fieldset[hidden] {
+  display: none;
+}
+
+.sMModal.defaultsConfig br {
+  display: none;
+}
+
+.sMModal.defaultsConfig label {
+  width: auto;
+  margin: 0;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.15;
+}
+
+.sMModal.defaultsConfig select,
+.sMModal.defaultsConfig input[type="number"],
+.sMModal.defaultsConfig input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.sMModal.defaultsConfig input[type="checkbox"] {
+  justify-self: start;
+  margin: 0;
+}
+
+.sMModal.defaultsConfig #resetBlockDefaults {
+  width: 100%;
+}
+
+
+
+/* Use the normal editor modal layer, with no overlay that intercepts clicks. */
+#settings22Modal { pointer-events:auto!important; position:relative!important; inset:auto!important; width:20rem!important; min-width:20rem!important; max-width:calc((100vw - 2rem) / var(--sm-app-zoom,1))!important; }
+#settings22Modal label { pointer-events:auto; }
+#settings22Modal>.sMModalBar { display:flex!important; flex-direction:row!important; flex-wrap:wrap!important; justify-content:flex-start!important; gap:0!important; width:100%; padding:0!important; }
+#settings22Modal .sMModalTitle { flex:0 0 100%; justify-content:flex-start; }
+#settings22Modal .sMModalTab { width:auto!important; margin:0!important; padding:0.2rem 0.5rem!important; cursor:pointer; }
+#settings22Modal .sMModalTab.selected { text-decoration:underline; }
+#settings22Modal .sMModalContent { max-height:calc((100dvh - 6rem) / var(--sm-app-zoom,1)); }
+#settings22Modal #sMAppSettings { grid-template-columns:minmax(0,1fr) 8rem; }
+#settings22Modal #sMAppSettings.tabHidden,#settings22Modal #sMDefaults.tabHidden,#settings22Modal #sMAppShortcuts.tabHidden { display:none!important; }
+#settings22Modal #defaultsFields fieldset[hidden] { display:none!important; }
+#settings22Modal #defaultsFields fieldset:not([hidden]) { display:grid; }
+#settings22Modal #defaultsFields .settingsRangeControl,#settings22Modal #defaultsFields .settingsPanelSpacingControl { display:flex; width:100%; min-width:0; gap:0.35rem; align-items:center; }
+#settings22Modal #defaultsFields input[type="range"] { min-width:0; flex:1; }
+#settings22Modal #defaultsFields h3,#settings22Modal #defaultsFields button:only-child { grid-column:1/-1; }
+#settings22Modal #settingsControls { display:block; }
+#settings22Modal .settingsShortcutField { min-width:0; }
+#settings22Modal .settings22ProfileActions { grid-column:1/-1; display:flex; gap:0.3rem; }
+#settings22Modal .settings22ProfileActions button { flex:1; min-width:0; font-size:0.7rem; padding:0.3rem; }

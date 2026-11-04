@@ -1,5 +1,4 @@
-// Large embedded resources are needed for export, not for opening the editor.
-// Script tags also work when the app is opened directly from disk.
+// Embedded resources are loaded when exporting, including when opened from disk.
 window.SignMakerExportResources = (() => {
   const requests = new Map();
   const load = (file) => {
@@ -22,8 +21,12 @@ window.SignMakerExportResources = (() => {
   return {
     fonts: () => load("js/ExportFontData.js"),
     assets: async () => {
-      await load("js/ExportAssetData.js");
-      // Florida's current artwork overrides entries in the main bundle.
+      await Promise.all([
+        load("js/ExportAssetData.js"),
+        load("js/ExportAssetData-2.js"),
+        load("js/ExportAssetData-3.js"),
+      ]);
+      // Florida's current artwork overrides entries after all base images load.
       await load("js/FloridaExportAssetData.js");
     },
   };

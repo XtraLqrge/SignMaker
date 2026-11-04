@@ -1,5 +1,9 @@
 # Dev performance update, November 4, 2026
 
+This page documents the first optimization pass. The newer
+[mobile performance pass](mobile-performance.md) starts from the resulting
+deployed build and includes the latest measurements and validation.
+
 This update starts from the supplied `Merge-v2-2.zip`, which matches the dev
 deployment used in the latest reports. It retains the current editor features,
 sign models, assets, animations, import/export paths and saved-state formats.

@@ -4651,7 +4651,7 @@ const ungroupSelectedBlockElement = () => {
           window.performance?.measure?.("signmaker:sign-startup", "signmaker:init-start", "signmaker:sign-ready");
           // Give the panels a paint before the menu setup occupies the thread.
           if (document.visibilityState !== "hidden") {
-            await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
           }
         },
       });
@@ -4660,6 +4660,7 @@ const ungroupSelectedBlockElement = () => {
       window.SignMakerSettings22?.sync();
       window.SignMakerDropdowns?.init();
       finishTemplateEditorSessionUi();
+      await window.SignMakerEditorRuntime?.yieldToMain();
       formHandler.updateForm();
 
       // Font loading can change layout without rebuilding every panel or
@@ -4749,6 +4750,11 @@ const ungroupSelectedBlockElement = () => {
       bindPostViewportLayoutWatcher();
       schedulePostViewportLayoutUpdate();
       document.documentElement.dataset.appReady = "true";
+      document.querySelectorAll('[data-startup-inert]').forEach(element => {
+        element.inert = false;
+        element.removeAttribute('inert');
+        element.removeAttribute('data-startup-inert');
+      });
       window.performance?.mark?.("signmaker:editor-ready");
       window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
     };

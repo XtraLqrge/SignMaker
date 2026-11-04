@@ -5,16 +5,16 @@
 /index.html
   Cache-Control: no-cache
 
-/fonts/*
+/fonts/:font
   Cache-Control: public, max-age=86400
+
+/fonts/ui/*
+  Cache-Control: public, max-age=31536000, immutable
 
 /img/*
   Cache-Control: public, max-age=86400
 
-/js/FontLoader.bf646d121cd050e9.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/js/EditorRuntime.644793818b4408ca.js
+/js/EditorRuntime.4ad3dbcc7ab97272.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.be593d1e6a588b55.js
@@ -23,10 +23,13 @@
 /js/NativeSelect.0919610a30dc6299.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/lib.9e382539453e66f5.js
+/js/lib.aabe11e732be9d36.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Shield.7d659f3f7f8e702c.js
+/js/ShieldFallbacks.d8dbdee5e72e7609.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/Shield.f3f294f0012d5cd1.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Sign.2b50eea9709abde1.js
@@ -50,7 +53,7 @@
 /js/IconFallbacks.3d7ba0050049c46e.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Control.1a37a7a5de967ba1.js
+/js/Control.c0b2f71cf428f81d.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/SubPanels.ecca56dc67cf420d.js
@@ -59,7 +62,7 @@
 /js/IconPicker.9baca953966635e8.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.f3f69e89a04adc60.js
+/js/form.e9de1eb4a9744d9b.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.777ab62b7e28746f.js
@@ -71,7 +74,7 @@
 /js/HtmlToImage.c11e13e2a426ba5f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.71c2e6559fe37479.js
+/js/main.e3e1f32f9614943c.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MergeUI.50d349f20ad89608.js
@@ -83,5 +86,5 @@
 /js/DropdownTheme.8711b89db0fb95f2.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.7e662199744fde13.css
+/css/app.afd41f380630839b.css
   Cache-Control: public, max-age=31536000, immutable

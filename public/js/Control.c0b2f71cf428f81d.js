@@ -4990,12 +4990,14 @@ const visited = new WeakSet();
 const walk = (value) => {
 if (!value || typeof value !== "object" || visited.has(value)) return;
 visited.add(value);
-if (typeof value.icon === "string") {
+if (typeof value.icon === "string" && (!value.variant || value.variant === "Icon")) {
 const definition = IconElement.prototype.icons[value.icon];
 const source = definition?.src || definition?.asset || definition?.url;
 if (source) sources.add(source);
 }
-Object.values(value).forEach(walk);
+for (const [key, child] of Object.entries(value)) {
+if (key !== "exitTabProfiles") walk(child);
+}
 };
 walk(post);
 return Promise.all(Array.from(sources, prepareTightImageSource));

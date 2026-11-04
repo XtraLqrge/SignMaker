@@ -6,6 +6,7 @@ parentElmt.removeChild(parentElmt.firstChild);
 }
 };
 const appendOption = function(selectElmt, value, {selected = false, text} = {}) {
+if (selectElmt?.tagName === "INPUT") return;
 if (!text) {
 text = value;
 }

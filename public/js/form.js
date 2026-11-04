@@ -8669,7 +8669,8 @@ const getPostThicknessFallback = () =>
     enableSelectOptionDeduplication();
     dedupeAllSelectOptions(document);
     applyStoredPreferences();
-    await Promise.all([loadCustomIconRecords(), customShieldMakerLoadPromise]);
+    await Promise.all([loadCustomIconRecords(), customShieldMakerLoadPromise,
+      window.location?.protocol === "file:" ? window.loadSignMakerAssetFallbacks?.() : null]);
     syncCustomShieldMakerConfigs();
     // Restore and paint the sign before building the editor's option lists.
     if (typeof beforeUI === "function") {
@@ -8677,8 +8678,11 @@ const getPostThicknessFallback = () =>
       post = exposed.getPost();
     }
     await initUI();
+    await window.SignMakerEditorRuntime?.yieldToMain();
     initCustomShieldMaker();
+    await window.SignMakerEditorRuntime?.yieldToMain();
     initializeColorPickers();
+    await window.SignMakerEditorRuntime?.yieldToMain();
     dedupeAllSelectOptions(document);
     bindPanelPaddingControls();
     syncPanelPaddingControlsFromSign(exposed?.getCurrentPanel?.()?.sign);
@@ -11636,6 +11640,10 @@ const getPostThicknessFallback = () =>
       if (!image) {
         return;
       }
+
+      if (image.classList.contains("shieldPickerTriggerIcon") &&
+          window.SignMakerEditorRuntime?.defer(image, "shield-preview", () =>
+            setShieldPickerButtonIcon(image, requestedPath, finalFallback))) return;
 
       const requested = String(requestedPath || "").trim();
       const bundledFallback =

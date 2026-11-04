@@ -3896,7 +3896,7 @@ document.documentElement.removeAttribute("data-sign-loading");
 window.performance?.mark?.("signmaker:sign-ready");
 window.performance?.measure?.("signmaker:sign-startup", "signmaker:init-start", "signmaker:sign-ready");
 if (document.visibilityState !== "hidden") {
-await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
 }
 },
 });
@@ -3905,6 +3905,7 @@ window.SignMakerMergeUI?.init();
 window.SignMakerSettings22?.sync();
 window.SignMakerDropdowns?.init();
 finishTemplateEditorSessionUi();
+await window.SignMakerEditorRuntime?.yieldToMain();
 formHandler.updateForm();
 const refreshStartupLayout = () => {
 document.querySelectorAll("#panelContainer .panel[data-panel-index]").forEach((element) => {
@@ -3984,6 +3985,11 @@ selectPreviousPanel();
 bindPostViewportLayoutWatcher();
 schedulePostViewportLayoutUpdate();
 document.documentElement.dataset.appReady = "true";
+document.querySelectorAll('[data-startup-inert]').forEach(element => {
+element.inert = false;
+element.removeAttribute('inert');
+element.removeAttribute('data-startup-inert');
+});
 window.performance?.mark?.("signmaker:editor-ready");
 window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
 };

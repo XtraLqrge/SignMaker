@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const {compactJS,parse,normalize} = require('./build.cjs');
+const {compactJS,compactCSS,parse,normalize} = require('./build.cjs');
 const root=path.resolve(__dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const parsed=new Map();
@@ -88,9 +88,94 @@ test('production HTML references existing, content-addressed assets',()=>{
     let source=read('public/'+asset.source);
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
     if(asset.source==='js/Control.js')source=source.replace('IconFallbacks.js?v=773d7c4b80c1',path.basename(manifest.assets.find(a=>a.source==='js/IconFallbacks.js').output));
+    if(asset.source==='js/Shield.js')source=source.replace('"ShieldFallbacks.js"',JSON.stringify(path.basename(manifest.assets.find(a=>a.source==='js/ShieldFallbacks.js').output)));
     assert.ok(normalize(parse(source))===normalize(parse(read('public/'+asset.output))),asset.source+' is stale or changed semantics; run npm run build');
     assert.ok(read('public/_headers').includes('/'+asset.output+'\n  Cache-Control: public, max-age=31536000, immutable'));
   }
+});
+
+test('CSS compaction preserves declarations, cascade order and custom-property tokens',()=>{
+  const tree=require('./vendor/css-tree.cjs');
+  const normalizeCSS=source=>JSON.stringify(tree.toPlainObject(tree.parse(source)));
+  for(const source of ['/* comment */ :root { --gap: calc(100% - 2px); --label: "a b"; } .a .b { width: var(--gap); }',
+    '@layer appearance { .a { color: red !important; color: rgb(1, 2, 3) !important; } } @media (width < 500px) { .b {display:flex} }',
+    '@font-face { font-family: "Font Name"; src: url("../fonts/Font Name.woff2"); } .a::before { content: "A\\00003c B" }',
+    '.a /deep/ .b { color: red } @keyframes turn { from {transform:rotate(0deg)} to {transform:rotate(180deg)} }']){
+    assert.equal(normalizeCSS(compactCSS(source)),normalizeCSS(source));
+  }
+  const asset=JSON.parse(read('build-manifest.json')).assets.find(asset=>asset.sources);
+  const source=asset.sources.map(file=>read('public/'+file)).join('\n');
+  assert.equal(normalizeCSS(read('public/'+asset.output)),normalizeCSS(source));
+  assert.ok(asset.optimized.bytes<asset.original.bytes*0.9);
+});
+
+test('font hints run inline without another blocking request and cover only used fonts',async()=>{
+  const html=read('public/index.html');
+  assert.ok(!html.includes('src="js/FontLoader'));
+  const inline=html.match(/<script data-font-loader>([\s\S]*?)<\/script>/)[1];
+  assert.equal(normalize(parse(inline)),normalize(parse(read('public/js/FontLoader.js'))));
+  const preloads=[],loads=[];
+  const c=context({window:{},localStorage:{getItem(){return null;}},document:{baseURI:'https://signmaker.test/',createElement:()=>({}),head:{appendChild:node=>preloads.push(node.href)},fonts:{load:name=>{loads.push(name);return Promise.resolve([]);}}}});
+  vm.runInContext(read('public/js/FontLoader.js'),c);
+  assert.equal(preloads.length,1);assert.match(preloads[0],/SeriesEM\.woff2$/);
+  await c.window.SignMakerFonts.preparePost({panels:[{sign:{fontFamily:'Series D',guideArrow:'None',exitTextFont:'Series E'},exitTabs:[{variant:'Default',number:'',fontFamily:'Series EEM'}]}],exitTabProfiles:{unused:{fontFamily:'Series C',bannerFontFamily:'Series F'}}});
+  assert.equal(loads.length,1);assert.match(loads[0],/"Series D"/);
+  await c.window.SignMakerFonts.preparePost({panels:[{sign:{guideArrow:'Exit Only',exitTextFont:'Series E'},exitTabs:[{variant:'Default',number:'42',fontFamily:'Series EEM'}]}]});
+  assert.equal(loads.length,3);assert.match(loads[1],/"Series E"/);assert.match(loads[2],/"Series EEM"/);
+});
+
+test('image preparation ignores unused exit profiles and handles real nested icons',async()=>{
+  const sources=[];
+  const c=context({IconElement:{prototype:{icons:{AIRPORT:{src:'airport.svg'},ACTIVE:{src:'active.svg'}}}},prepareTightImageSource:source=>{sources.push(source);return Promise.resolve();}});
+  vm.runInContext(declaration('public/js/Control.js','prepareIconImagesForPost')+'this.prepare=prepareIconImagesForPost;',c);
+  await c.prepare({panels:[{sign:{exitTabs:[{variant:'Default',icon:'AIRPORT'}]}}],exitTabProfiles:{unused:{variant:'Icon',icon:'AIRPORT'}}});
+  assert.deepEqual(sources,[]);
+  const icon={icon:'ACTIVE'},post={panels:[{sign:{rows:[{elements:[icon,{blockElements:{rows:[{elements:[icon]}]}}]}],exitTabs:[{variant:'Icon',icon:'AIRPORT'}]}}]};
+  post.circular=post;await c.prepare(post);assert.deepEqual(sources,['active.svg','airport.svg']);
+});
+
+test('asset value inputs keep their value without creating invalid option children',()=>{
+  const c=context({document:{createElement:tag=>new Element('',tag.toUpperCase()),createTextNode:text=>({textContent:text})}});
+  vm.runInContext(read('public/js/lib.js')+'this.options=lib;',c);
+  const hidden=new Element('','INPUT');hidden.value='AIRPORT';
+  for(let n=0;n<321;n++)c.options.appendOption(hidden,String(n));
+  assert.equal(hidden.childElementCount,0);assert.equal(hidden.value,'AIRPORT');
+  const select=new Element('','SELECT');c.options.appendOption(select,'Blue',{selected:true,text:'Blue sign'});
+  assert.equal(select.childElementCount,1);assert.equal(select.children[0].value,'Blue');assert.equal(select.children[0].selected,true);
+});
+
+test('shield backup artwork loads only on demand, deduplicates requests and retains exact SVG bytes',async()=>{
+  const crypto=require('node:crypto'),scripts=[];
+  const document={baseURI:'https://signmaker.test/',currentScript:{src:'https://signmaker.test/js/Shield.js'},createElement:()=>({remove(){}}),head:{appendChild:node=>scripts.push(node)}};
+  const c=context({window:{},document});vm.runInContext(read('public/js/lib.js'),c);vm.runInContext(read('public/js/Shield.js'),c);
+  assert.equal(scripts.length,0);assert.equal(Object.keys(c.window.SIGNMAKER_ASSET_FALLBACKS).length,0);
+  const first=c.window.loadSignMakerAssetFallbacks(),second=c.window.loadSignMakerAssetFallbacks();assert.equal(first,second);assert.equal(scripts.length,1);
+  vm.runInContext(read('public/js/ShieldFallbacks.js'),c);scripts[0].onload();await first;
+  for(const record of JSON.parse(read('scripts/shield-artwork.json'))){
+    const bytes=fs.readFileSync(path.join(root,'public',record.path));
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),record.sha256);
+    const fallback=c.window.getSignMakerAssetFallback('https://signmaker.test/'+encodeURI(record.path));
+    assert.ok(Buffer.from(fallback.split(',')[1],'base64').equals(bytes));
+  }
+  const assetPath=JSON.parse(read('scripts/shield-artwork.json'))[0].path;
+  const image={src:assetPath,dataset:{},getAttribute(){return this.src;}};
+  c.window.applySignMakerAssetFallback(image,assetPath);const pending=image.onerror();image.src='new-choice.svg';await pending;
+  assert.equal(image.src,'new-choice.svg','An older failed request must not replace a newer selection');
+});
+
+test('startup yielding allows a browser turn with a scheduler and timer fallback',async()=>{
+  let scheduled=0;const c=context({window:{scheduler:{yield(){scheduled++;return Promise.resolve();}}},document:{}});
+  vm.runInContext(read('public/js/EditorRuntime.js'),c);await c.window.SignMakerEditorRuntime.yieldToMain();assert.equal(scheduled,1);
+  delete c.window.scheduler;let completed=false;
+  const pending=c.window.SignMakerEditorRuntime.yieldToMain().then(()=>completed=true);
+  await Promise.resolve();assert.equal(completed,false);await pending;assert.equal(completed,true);
+});
+
+test('hashed UI fonts have a separate cache rule within Cloudflare header limits',()=>{
+  const headers=read('public/_headers'),patterns=headers.split('\n').filter(line=>line.startsWith('/'));
+  assert.ok(patterns.length<=100);assert.ok(!patterns.includes('/fonts/*'));
+  assert.ok(headers.includes('/fonts/:font\n  Cache-Control: public, max-age=86400'));
+  assert.ok(headers.includes('/fonts/ui/*\n  Cache-Control: public, max-age=31536000, immutable'));
 });
 test('picker appearance adds no startup scans, inline writes or closed-menu observers',()=>{
   const before=dropdownFixture('scripts/fixtures/dropdown-before.js',100),after=dropdownFixture('public/js/DropdownTheme.js',100);
@@ -307,4 +392,15 @@ test('hidden icon previews do not request or crop their default artwork',()=>{
   const c=context({document,window:{},getSdIconDefinition:()=>({key:'A',definition:{label:'Airport',src:'airport.svg'}}),setPreparedIconImageSource:()=>prepared++});
   vm.runInContext(read('public/js/EditorRuntime.js'),c);vm.runInContext(declaration('public/js/form.js','updateSdIconPreview')+'this.update=updateSdIconPreview;',c);
   c.update();assert.equal(prepared,0);bar.dataset.currentMenu='subPanelConfig';c.window.SignMakerEditorRuntime.ensure();assert.equal(prepared,1);assert.equal(label.textContent,'Current: Airport');
+});
+
+test('closed shield triggers defer their artwork until their editor is active',()=>{
+  const modal=new Element('sMModal subPanelConfig'),image=new Element('shieldPickerTriggerIcon','IMG');modal.appendChild(image);
+  const bar={dataset:{currentMenu:''}};let requests=0,source='';
+  Object.defineProperty(image,'src',{get:()=>source,set:value=>{source=value;requests++;}});
+  const c=context({document:{getElementById:()=>bar},window:{},SHIELD_DROPDOWN_PLACEHOLDER_ICON:'placeholder'});
+  vm.runInContext(read('public/js/EditorRuntime.js'),c);
+  vm.runInContext(declaration('public/js/form.js','setShieldPickerButtonIcon')+'this.setIcon=setShieldPickerButtonIcon;',c);
+  c.setIcon(image,'shield.svg');assert.equal(requests,0);
+  bar.dataset.currentMenu='subPanelConfig';c.window.SignMakerEditorRuntime.ensure();assert.equal(source,'shield.svg');assert.equal(requests,1);
 });

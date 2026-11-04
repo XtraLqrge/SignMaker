@@ -38,6 +38,11 @@ The UI fonts are included locally, with licenses in `docs/licenses/`. Normal
 builds do not download fonts. See [performance notes](docs/performance.md) for
 the measured bottlenecks, changes and optional browser checks.
 
+The latest [mobile performance pass](docs/mobile-performance.md) reduces startup
+downloads and work, with 27 passing regression checks. The optional browser
+check supports a phone viewport with
+`npm run test:browser -- http://localhost:8765 --mobile`.
+
 While the other versions (dki-os/SignMaker) and its forks do exist, this fork attempts to recreate (most) of the existing signs inside the US. Features include:
 
 * Clearview font (some states use Clearview on their signs)

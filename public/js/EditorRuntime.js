@@ -2,6 +2,8 @@
 window.SignMakerEditorRuntime=(()=>{
   const pending=new Map();
   let initialized=false,queued=false,flushing=false;
+  const yieldToMain=()=>typeof window.scheduler?.yield==='function'
+    ? window.scheduler.yield() : new Promise(resolve=>setTimeout(resolve,0));
   const isActive=element=>{
     if(!element?.isConnected)return false;
     if(element.closest('.assetHiddenSetting'))return false;
@@ -55,5 +57,5 @@ window.SignMakerEditorRuntime=(()=>{
     },true);
     ensure();
   };
-  return {init,isActive,defer,ensureElement,ensure,schedule,pendingKind:element=>pending.get(element)?.kind,pendingCount:()=>pending.size};
+  return {init,isActive,defer,ensureElement,ensure,schedule,yieldToMain,pendingKind:element=>pending.get(element)?.kind,pendingCount:()=>pending.size};
 })();

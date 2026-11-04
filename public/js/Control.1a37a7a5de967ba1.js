@@ -1,0 +1,6782 @@
+
+const fractionMap = {
+"1/2": "½",
+"1/3": "⅓",
+"2/3": "⅔",
+"1/4": "¼",
+"3/4": "¾",
+"1/5": "⅕",
+"2/5": "⅖",
+"3/5": "⅗",
+"4/5": "⅘",
+"1/6": "⅙",
+"5/6": "⅚",
+"1/7": "⅐",
+"1/8": "⅛",
+"3/8": "⅜",
+"5/8": "⅝",
+"7/8": "⅞",
+"1/9": "⅑",
+"1/10": "⅒",
+};
+const fractionRegex = new RegExp(Object.keys(fractionMap).join("|"), "g");
+const inputFractionRegex = /^(\d+)\/(\d+)/;
+const CLEARVIEW_FONT_ALIASES = {
+"Series 1": { light: "Clearview 1B", dark: "Clearview 1W" },
+"Series 2": { light: "Clearview 2B", dark: "Clearview 2W" },
+"Series 3": { light: "Clearview 3B", dark: "Clearview 3W" },
+"Series 4": { light: "Clearview 4B", dark: "Clearview 4W" },
+"Series 5WR": { light: "Clearview 5WR", dark: "Clearview 5WR" },
+"Series 5": { light: "Clearview 5B", dark: "Clearview 5W" },
+"Series 6": { light: "Clearview 6B", dark: "Clearview 6W" },
+};
+const LEGACY_CLEARVIEW_TO_ALIAS = {
+"Clearview 1W": "Series 1",
+"Clearview 1B": "Series 1",
+"Clearview 2W": "Series 2",
+"Clearview 2B": "Series 2",
+"Clearview 3W": "Series 3",
+"Clearview 3B": "Series 3",
+"Clearview 4W": "Series 4",
+"Clearview 4B": "Series 4",
+"Clearview 5WR": "Series 5WR",
+"Clearview 5W": "Series 5",
+"Clearview 5B": "Series 5",
+"Clearview 6W": "Series 6",
+"Clearview 6B": "Series 6",
+};
+const DISPLAY_FONT_TO_RENDER_FONT = {
+"ITC Stone Sans Bold": "ITC Stone Sans Semibold",
+"Helvetica Thin": "Helvetica Neue Thin",
+"Helvetica Light": "Helvetica Neue Light",
+"Helvetica Roman": "Helvetica Neue Roman",
+"Helvetica Medium": "Helvetica Neue Medium",
+"Helvetica Bold": "Helvetica Neue Bold",
+};
+const LEGACY_FONT_TO_DISPLAY_ALIAS = {
+"ITC Stone Sans Semibold": "ITC Stone Sans Bold",
+"Helvetica Neue Thin": "Helvetica Thin",
+"Helvetica Neue Light": "Helvetica Light",
+"Helvetica Neue Roman": "Helvetica Roman",
+"Helvetica Neue Medium": "Helvetica Medium",
+"Helvetica Neue Bold": "Helvetica Bold",
+"Transport": "Transport Regular",
+"DIN 1451": "DIN 1451 Regular",
+};
+const normalizeTextFontFamilyName = (fontFamily) => {
+const raw = String(fontFamily || "").trim();
+if (!raw) return raw;
+if (raw === "Series 5R") return "Series 5WR";
+return LEGACY_CLEARVIEW_TO_ALIAS[raw] || LEGACY_FONT_TO_DISPLAY_ALIAS[raw] || raw;
+};
+const isClearviewAliasFontFamily = (fontFamily) =>
+Object.prototype.hasOwnProperty.call(CLEARVIEW_FONT_ALIASES, String(fontFamily || "").trim());
+const isClearviewTextFontFamily = (fontFamily) => {
+const normalized = normalizeTextFontFamilyName(fontFamily);
+return isClearviewAliasFontFamily(normalized) || /^Clearview\s/i.test(String(fontFamily || ""));
+};
+const getColorBrightness = (colorValue) => {
+const raw = String(colorValue || "").trim();
+if (!raw) return null;
+const lower = raw.toLowerCase();
+const darkNames = new Set(["green", "blue", "brown", "black", "red", "purple"]);
+const lightNames = new Set(["white", "yellow", "orange", "fluorescent yellow-green", "fluorescent pink", "pink", "yellow-green"]);
+if (darkNames.has(lower)) return "dark";
+if (lightNames.has(lower)) return "light";
+const namedColor = typeof lib !== "undefined" && lib.colors ? lib.colors[raw] || lib.colors[raw.charAt(0).toUpperCase() + raw.slice(1)] : null;
+const resolved = String(namedColor || raw).trim();
+const rgbMatch = resolved.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+const hexMatch = resolved.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+let r, g, b;
+if (rgbMatch) {
+r = Number(rgbMatch[1]);
+g = Number(rgbMatch[2]);
+b = Number(rgbMatch[3]);
+} else if (hexMatch) {
+let hex = hexMatch[1];
+if (hex.length === 3) {
+hex = hex.split("").map((part) => part + part).join("");
+}
+r = parseInt(hex.slice(0, 2), 16);
+g = parseInt(hex.slice(2, 4), 16);
+b = parseInt(hex.slice(4, 6), 16);
+}
+if (![r, g, b].every(Number.isFinite)) {
+return null;
+}
+const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+return luminance < 0.52 ? "dark" : "light";
+};
+const getTextElementBackgroundBrightness = (fontOwner = {}, panel = null) => {
+const bg = String(fontOwner.backgroundColor || "").trim();
+if (bg && bg !== "Inherit" && bg !== "Match BG" && bg !== "Panel Color") {
+const brightness = getColorBrightness(bg);
+if (brightness) return brightness;
+}
+const panelColor =
+panel?.color ||
+panel?.sign?.color ||
+panel?.backgroundColor ||
+panel?.panelColor ||
+"Green";
+return getColorBrightness(panelColor) || "dark";
+};
+const resolveTextFontFamilyForRender = (fontFamily, fontOwner = {}, panel = null) => {
+const normalized = normalizeTextFontFamilyName(fontFamily);
+const alias = CLEARVIEW_FONT_ALIASES[normalized];
+if (!alias) {
+return DISPLAY_FONT_TO_RENDER_FONT[normalized] || normalized;
+}
+const brightness = getTextElementBackgroundBrightness(fontOwner, panel);
+return brightness === "dark" ? alias.dark : alias.light;
+};
+const normalizeTextLetterSpacing = (value, fallback = 0) => {
+const parsed = parseFloat(value);
+if (!Number.isFinite(parsed)) {
+return fallback;
+}
+return Math.max(-0.15, Math.min(0.5, parsed));
+};
+const applyBetweenCharacterLetterSpacing = (element, value, fallback = 0) => {
+if (!element) {
+return 0;
+}
+const normalizedSpacing = normalizeTextLetterSpacing(value, fallback);
+element.style.setProperty(
+"--betweenLetterSpacing",
+normalizedSpacing + "em"
+);
+element.classList.toggle(
+"bE-betweenLetterSpacing",
+Math.abs(normalizedSpacing) > 0.0001
+);
+if (Math.abs(normalizedSpacing) <= 0.0001) {
+element.style.removeProperty("letter-spacing");
+}
+return normalizedSpacing;
+};
+const normalizeSmallLettersSize = (value, fallback = 75) => {
+const rawValue = String(value ?? "").trim();
+const parsed = rawValue === "" ? NaN : Number(rawValue);
+const fallbackValue = Number(fallback);
+const safeFallback = Number.isFinite(fallbackValue)
+? Math.round(fallbackValue)
+: 75;
+const resolved = Number.isFinite(parsed) ? Math.round(parsed) : safeFallback;
+return Math.max(25, Math.min(100, resolved));
+};
+const normalizeTextFontSizePercent = (value, min = 25, max = 150, fallback = 100) => {
+const rawValue = String(value ?? "").trim();
+const parsed = rawValue === "" ? NaN : Number(rawValue);
+const fallbackValue = Number(fallback);
+const safeFallback = Number.isFinite(fallbackValue)
+? Math.round(fallbackValue)
+: min;
+const resolved = Number.isFinite(parsed) ? Math.round(parsed) : safeFallback;
+return Math.max(min, Math.min(max, resolved));
+};
+const getMotorwayFallbackFont = (fontFamily) =>
+fontFamily === "Motorway Temporary" ? "Transport Heavy" : "Transport Regular";
+const isMotorwayFont = (fontFamily) => /^Motorway (?:Permanent|Temporary)$/.test(fontFamily);
+const normalizeMotorwayRouteText = (value) =>
+String(value ?? "").toUpperCase().replace(/[^ABEMNSW0-9 \n]/g, "");
+const encodeMotorwayRouteText = (value) => {
+const text = normalizeMotorwayRouteText(value);
+const directions = { NE: "N", SE: "E", NW: "W", SW: "S", N: "n", E: "e", W: "w", S: "s" };
+return text.match(/NE|SE|NW|SW|[ABEMNSW0-9 \n]/g)?.map((part) => directions[part] || part).join("") || "";
+};
+const applyMotorwayTextFallback = (element, fontFamily) => {
+if (!element || !/^Motorway (?:Permanent|Temporary)$/.test(fontFamily)) return;
+const fallback = getMotorwayFallbackFont(fontFamily);
+element.style.fontFamily = `"${fallback}", sans-serif`;
+const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+const textNodes = [];
+while (walker.nextNode()) textNodes.push(walker.currentNode);
+for (const textNode of textNodes) {
+const characters = Array.from(textNode.nodeValue || "");
+if (!characters.some((character) => /^[0-9ABEM&(),/]$/.test(character))) continue;
+const fragment = document.createDocumentFragment();
+let run = "";
+let motorwayRun = false;
+const flush = () => {
+if (!run) return;
+if (motorwayRun) {
+const span = document.createElement("span");
+span.className = "bE-motorwayGlyph";
+span.style.fontFamily = `"${fontFamily}", "${fallback}", sans-serif`;
+span.style.position = "relative";
+span.style.top = "0.12em";
+span.textContent = run;
+fragment.appendChild(span);
+} else {
+fragment.appendChild(document.createTextNode(run));
+}
+run = "";
+};
+for (const character of characters) {
+const supported = /^[0-9ABEM&(),/]$/.test(character);
+if (run && supported !== motorwayRun) flush();
+motorwayRun = supported;
+run += character;
+}
+flush();
+textNode.replaceWith(fragment);
+}
+};
+class TextElement {
+constructor({
+textContent = "New Sign",
+backgroundColor = "Inherit",
+fontFamily = "Series 5WR",
+fontSize = 100,
+useBannerFormatting = false,
+bannerFormattingSize = 100,
+bannerFirstLetterSize = 120,
+useNumeralFormatting = false,
+numeralFormattingSize = 150,
+alignment = "Center",
+lineHeight = null,
+letterSpacing = 0,
+smallLettersSize = 75,
+} = {}) {
+this.textContent = textContent;
+this.fontFamily = normalizeTextFontFamilyName(fontFamily);
+this.backgroundColor = backgroundColor;
+this.fontSize = fontSize;
+this.useBannerFormatting = useBannerFormatting;
+this.useNumeralFormatting = useNumeralFormatting;
+this.bannerFormattingSize = bannerFormattingSize;
+this.numeralFormattingSize = numeralFormattingSize;
+this.bannerFirstLetterSize = bannerFirstLetterSize;
+this.alignment = alignment;
+const parsedLineHeight = parseFloat(lineHeight);
+this.lineHeight = Number.isFinite(parsedLineHeight)
+? parsedLineHeight
+: isClearviewTextFontFamily(fontFamily)
+? 120
+: 100;
+this.letterSpacing = normalizeTextLetterSpacing(letterSpacing);
+this.smallLettersSize = normalizeSmallLettersSize(smallLettersSize);
+}
+splitString() {
+const escapeRegExp = (value) =>
+String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const rawText = String(this.textContent ?? "")
+.replace(/\\t/g, "\t")
+.replace(/\\n/g, "\n");
+const usesClearviewFractions =
+this.useNumeralFormatting && isClearviewTextFontFamily(this.fontFamily);
+const textWithFractions = this.useNumeralFormatting && !usesClearviewFractions
+? rawText.replace(fractionRegex, (match) => fractionMap[match])
+: rawText;
+const bannerTypes =
+typeof Shield !== "undefined" &&
+Shield.prototype &&
+Array.isArray(Shield.prototype.bannerTypes)
+? Shield.prototype.bannerTypes
+: [];
+const bannerRegex =
+this.useBannerFormatting && bannerTypes.length
+? new RegExp(
+`^(?:${bannerTypes
+.slice()
+.sort((a, b) => String(b).length - String(a).length)
+.map(escapeRegExp)
+.join("|")})\\b`,
+"i"
+)
+: null;
+const fractionChars = Object.values(fractionMap).map(escapeRegExp).join("");
+const fractionTokenRegex = new RegExp(`^[${fractionChars}]`);
+const routeNumeralRegex = /^\d+(?:[A-Za-z](?![A-Za-z]))?(?:(?:\s*-\s*[A-Za-z](?![A-Za-z]))+|\s+[A-Za-z](?![A-Za-z])(?:\s*-\s*[A-Za-z](?![A-Za-z]))*)?/;
+const tokens = [];
+let index = 0;
+const pushTextToken = (value) => {
+if (value) {
+tokens.push({ type: "text", value });
+}
+};
+while (index < textWithFractions.length) {
+const remaining = textWithFractions.slice(index);
+if (bannerRegex) {
+const bannerMatch = remaining.match(bannerRegex);
+if (bannerMatch && bannerMatch[0]) {
+tokens.push({ type: "banner", value: bannerMatch[0] });
+index += bannerMatch[0].length;
+continue;
+}
+}
+if (this.useNumeralFormatting) {
+if (usesClearviewFractions) {
+const clearviewFractionMatch = remaining.match(inputFractionRegex);
+if (clearviewFractionMatch && fractionMap[clearviewFractionMatch[0]]) {
+tokens.push({
+type: "numeral",
+value: clearviewFractionMatch[0],
+numeralKind: "clearviewFraction",
+numerator: clearviewFractionMatch[1],
+denominator: clearviewFractionMatch[2],
+});
+index += clearviewFractionMatch[0].length;
+continue;
+}
+}
+const fractionMatch = remaining.match(fractionTokenRegex);
+if (fractionMatch && fractionMatch[0]) {
+tokens.push({ type: "numeral", value: fractionMatch[0], numeralKind: "fraction" });
+index += fractionMatch[0].length;
+continue;
+}
+const routeNumeralMatch = remaining.match(routeNumeralRegex);
+if (routeNumeralMatch && routeNumeralMatch[0]) {
+tokens.push({ type: "numeral", value: routeNumeralMatch[0], numeralKind: "route" });
+index += routeNumeralMatch[0].length;
+continue;
+}
+}
+let nextSpecialIndex = remaining.length;
+if (bannerRegex) {
+for (let offset = 1; offset < remaining.length; offset++) {
+if (remaining.slice(offset).match(bannerRegex)) {
+nextSpecialIndex = Math.min(nextSpecialIndex, offset);
+break;
+}
+}
+}
+if (this.useNumeralFormatting) {
+for (let offset = 1; offset < remaining.length; offset++) {
+const slice = remaining.slice(offset);
+const clearviewFractionMatch = usesClearviewFractions
+? slice.match(inputFractionRegex)
+: null;
+const hasClearviewFraction =
+!!(clearviewFractionMatch && fractionMap[clearviewFractionMatch[0]]);
+if (
+hasClearviewFraction ||
+slice.match(fractionTokenRegex) ||
+slice.match(routeNumeralRegex)
+) {
+nextSpecialIndex = Math.min(nextSpecialIndex, offset);
+break;
+}
+}
+}
+if (nextSpecialIndex <= 0 || nextSpecialIndex === remaining.length) {
+pushTextToken(remaining.charAt(0));
+index += 1;
+} else {
+pushTextToken(remaining.slice(0, nextSpecialIndex));
+index += nextSpecialIndex;
+}
+}
+const isPlainSpaceToken = (token) =>
+token && token.type === "text" && /^[ \t]+$/.test(String(token.value || ""));
+const isNumeralToken = (token) => token && token.type === "numeral";
+const isFractionNumeralToken = (token) =>
+isNumeralToken(token) &&
+(token.numeralKind === "fraction" ||
+token.numeralKind === "clearviewFraction" ||
+/^[\u00BC-\u00BE\u2150-\u215E]+$/.test(String(token.value || "")));
+const endsWithInputNumber = (token) => /\d$/.test(String(token?.value || ""));
+const spacedTokens = tokens.map((token, tokenIndex) => {
+if (!this.useNumeralFormatting || !isPlainSpaceToken(token)) {
+return token;
+}
+const previousToken = tokens[tokenIndex - 1];
+const nextToken = tokens[tokenIndex + 1];
+if (
+endsWithInputNumber(previousToken) &&
+isFractionNumeralToken(nextToken)
+) {
+return {
+...token,
+type: "tightNumeralSpace",
+clearviewFractionSpace: nextToken?.numeralKind === "clearviewFraction",
+};
+}
+return token;
+});
+return spacedTokens.reduce((mergedTokens, token) => {
+const previousToken = mergedTokens[mergedTokens.length - 1];
+if (
+previousToken &&
+previousToken.type === "text" &&
+token.type === "text"
+) {
+previousToken.value += token.value;
+} else {
+mergedTokens.push(token);
+}
+return mergedTokens;
+}, []);
+}
+createElement(panel) {
+const newText = document.createElement("div");
+newText.className = "bE-textElement";
+const requestedFontFamily = resolveTextFontFamilyForRender(this.fontFamily, this, panel);
+const renderedFontFamily = isMotorwayFont(requestedFontFamily)
+? getMotorwayFallbackFont(requestedFontFamily) : requestedFontFamily;
+const normalizedRenderedFontFamily = String(renderedFontFamily || "")
+.replace(/["']/g, "")
+.trim();
+const usesHighwayGothic = isHighwayGothicFontFamily(renderedFontFamily);
+const usesSeriesDSpacingFix = normalizedRenderedFontFamily === "Series D";
+newText.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
+newText.style.setProperty("--fontFamily", '"' + renderedFontFamily + '"');
+const renderedFontSize = getRenderedTextFontSize(
+this.fontSize,
+renderedFontFamily
+);
+newText.style.setProperty(
+"--fontSize",
+1.75 * (renderedFontSize / 100) + "rem"
+);
+newText.style.removeProperty("font-size");
+newText.style.setProperty(
+"--blockBgColor",
+this.backgroundColor == "Inherit"
+? ""
+: (
+lib.colors[this.backgroundColor] || this.backgroundColor
+).toLowerCase()
+);
+newText.style.setProperty("--alignment", this.alignment);
+newText.style.setProperty(
+"--alignmentCss",
+String(this.alignment || "Center").toLowerCase()
+);
+newText.style.textAlign = String(this.alignment || "Center").toLowerCase();
+newText.style.setProperty("--numeralSize", this.numeralFormattingSize);
+newText.style.setProperty("--bannerSize", this.bannerFormattingSize);
+newText.style.setProperty(
+"--bannerFirstLetterSize",
+this.bannerFirstLetterSize
+);
+newText.style.setProperty(
+"--smallLettersSize",
+normalizeSmallLettersSize(this.smallLettersSize)
+);
+newText.classList.toggle("bE-smallLettersEnabled", this.smallCapitals === true);
+newText.style.fontVariant = "normal";
+const normalizedLineHeight = (() => {
+const parsedLineHeight = parseFloat(this.lineHeight);
+return Number.isFinite(parsedLineHeight) ? Math.max(0, parsedLineHeight) : 100;
+})();
+newText.style.setProperty("--lineHeight", normalizedLineHeight);
+newText.style.lineHeight = normalizedLineHeight / 100;
+const normalizedLetterSpacing = applyBetweenCharacterLetterSpacing(
+newText,
+this.letterSpacing
+);
+if (Math.abs(normalizedLetterSpacing) > 0.0001) {
+newText.style.letterSpacing = "var(--betweenLetterSpacing)";
+}
+if (usesHighwayGothic) {
+newText.style.setProperty(
+"--fhwaBaselineOffset",
+"var(--fhwaBaselineShift)"
+);
+}
+if (
+this.backgroundColor == "Orange" ||
+this.backgroundColor == "White" ||
+this.backgroundColor == "Yellow" ||
+this.backgroundColor == "Fluorescent Yellow-Green"
+) {
+newText.style.color = "black";
+} else if (this.backgroundColor != "Inherit") {
+newText.style.color = "white";
+}
+const appendTextWithSeriesDSpacingFix = (fragment, value) => {
+const characters = Array.from(String(value ?? ""));
+let pendingText = "";
+const isDigit = (character) => /^[0-9]$/.test(character || "");
+const flushPendingText = () => {
+if (!pendingText) {
+return;
+}
+fragment.appendChild(document.createTextNode(pendingText));
+pendingText = "";
+};
+characters.forEach((character, index) => {
+if (usesSeriesDSpacingFix && character === "3") {
+const previousCharacter = characters[index - 1] || "";
+const nextCharacter = characters[index + 1] || "";
+const classNames = ["bE-seriesDCharFix", "bE-seriesDCharFix-3"];
+if (isDigit(previousCharacter)) {
+classNames.push("bE-seriesDCharFix-hasPreviousDigit");
+}
+if (isDigit(nextCharacter)) {
+classNames.push("bE-seriesDCharFix-hasNextDigit");
+}
+if (previousCharacter === "3") {
+classNames.push("bE-seriesDCharFix-previous3");
+}
+if (nextCharacter === "3") {
+classNames.push("bE-seriesDCharFix-next3");
+}
+flushPendingText();
+const fixedThree = document.createElement("span");
+fixedThree.className = classNames.join(" ");
+fixedThree.textContent = character;
+fragment.appendChild(fixedThree);
+} else {
+pendingText += character;
+}
+});
+flushPendingText();
+};
+const appendTextWithRealFirstLetter = (fragment, value) => {
+const textValue = String(value ?? "");
+const firstVisibleMatch = textValue.match(/\S/);
+if (!firstVisibleMatch) {
+fragment.textContent = textValue;
+return;
+}
+fragment.classList.add("bE-realBannerFirstLetter");
+const firstIndex = firstVisibleMatch.index;
+const beforeFirst = textValue.slice(0, firstIndex);
+const firstLetter = textValue.charAt(firstIndex);
+const afterFirst = textValue.slice(firstIndex + 1);
+if (beforeFirst) {
+fragment.appendChild(document.createTextNode(beforeFirst));
+}
+const firstLetterSpan = document.createElement("span");
+firstLetterSpan.className = "bE-bannerFirstLetter";
+firstLetterSpan.textContent = firstLetter;
+fragment.appendChild(firstLetterSpan);
+if (afterFirst) {
+fragment.appendChild(document.createTextNode(afterFirst));
+}
+};
+const appendNumeralTextWithTightSpaces = (fragment, value) => {
+const textValue = String(value ?? "");
+const parts = textValue.split(/([ \t]+)/);
+for (const part of parts) {
+if (!part) {
+continue;
+}
+if (/^[ \t]+$/.test(part)) {
+const tightSpace = document.createElement("span");
+tightSpace.className = "bE-tightNumeralSpace bE-tightInternalNumeralSpace";
+tightSpace.textContent = part;
+fragment.appendChild(tightSpace);
+} else if (usesSeriesDSpacingFix) {
+appendTextWithSeriesDSpacingFix(fragment, part);
+} else {
+fragment.appendChild(document.createTextNode(part));
+}
+}
+};
+const appendClearviewFraction = (fragment, text) => {
+fragment.classList.add("bE-clearviewFractionNumeral");
+fragment.dataset.rawFraction = String(text.value || "");
+const numerator = document.createElement("span");
+numerator.className = "bE-clearviewFractionDigit bE-clearviewFractionNumerator";
+numerator.textContent = text.numerator || String(text.value || "").split("/")[0] || "";
+const slash = document.createElement("span");
+slash.className = "bE-clearviewFractionSlash";
+slash.textContent = "/";
+const denominator = document.createElement("span");
+denominator.className = "bE-clearviewFractionDigit bE-clearviewFractionDenominator";
+denominator.textContent = text.denominator || String(text.value || "").split("/")[1] || "";
+fragment.appendChild(numerator);
+fragment.appendChild(slash);
+fragment.appendChild(denominator);
+};
+const appendTextWithSmallLetters = (fragment, value) => {
+const textValue = String(value ?? "");
+let hasFirstLetterInWord = false;
+let smallLetterBuffer = "";
+const flushSmallLetters = () => {
+if (!smallLetterBuffer) {
+return;
+}
+const smallLetters = document.createElement("span");
+smallLetters.className = "bE-smallLetters";
+smallLetters.textContent = smallLetterBuffer;
+fragment.appendChild(smallLetters);
+smallLetterBuffer = "";
+};
+const isLetter = (character) =>
+/^[A-Za-z\u00C0-\u024F]$/.test(character);
+for (const character of textValue) {
+if (isLetter(character)) {
+if (!hasFirstLetterInWord) {
+flushSmallLetters();
+fragment.appendChild(document.createTextNode(character));
+hasFirstLetterInWord = true;
+} else {
+smallLetterBuffer += character;
+}
+continue;
+}
+flushSmallLetters();
+if (usesSeriesDSpacingFix && character === "3") {
+appendTextWithSeriesDSpacingFix(fragment, character);
+} else {
+fragment.appendChild(document.createTextNode(character));
+}
+if (character !== "'" && character !== "’") {
+hasFirstLetterInWord = false;
+}
+}
+flushSmallLetters();
+};
+const createTextFragment = (text) => {
+const newTextFragment = document.createElement("span");
+newTextFragment.className = "bE-" + text.type;
+if (text.type === "banner" && this.useBannerFormatting) {
+appendTextWithRealFirstLetter(newTextFragment, text.value);
+} else if (text.type === "numeral") {
+if (text.numeralKind === "clearviewFraction") {
+appendClearviewFraction(newTextFragment, text);
+} else {
+appendNumeralTextWithTightSpaces(newTextFragment, text.value);
+}
+} else if (text.type === "tightNumeralSpace") {
+newTextFragment.classList.add("bE-tightSpace");
+if (text.clearviewFractionSpace) {
+newTextFragment.classList.add("bE-tightClearviewFractionSpace");
+}
+newTextFragment.textContent = text.value || " ";
+} else if (this.smallCapitals === true) {
+appendTextWithSmallLetters(newTextFragment, text.value);
+} else if (usesSeriesDSpacingFix) {
+appendTextWithSeriesDSpacingFix(newTextFragment, text.value);
+} else {
+newTextFragment.textContent = text.value;
+}
+return newTextFragment;
+};
+const createLineElement = () => {
+const lineElement = document.createElement("span");
+lineElement.className = "bE-textLine";
+return lineElement;
+};
+let splitTextContent = this.splitString();
+if (splitTextContent.some((token) => token?.numeralKind === "clearviewFraction")) {
+newText.classList.add("bE-hasClearviewFraction");
+}
+const lineElements = [createLineElement()];
+for (let i = 0; i < splitTextContent.length; i++) {
+const text = splitTextContent[i];
+const textValue = String(text.value ?? "");
+const lineParts = textValue.split("\n");
+for (let linePartIndex = 0; linePartIndex < lineParts.length; linePartIndex++) {
+if (linePartIndex > 0) {
+lineElements.push(createLineElement());
+}
+const linePart = lineParts[linePartIndex];
+if (linePart.length === 0) {
+continue;
+}
+lineElements[lineElements.length - 1].appendChild(
+createTextFragment({ ...text, value: linePart })
+);
+}
+}
+if (lineElements.length > 1) {
+newText.classList.add("bE-multilineTextElement");
+lineElements.forEach((lineElement) => newText.appendChild(lineElement));
+} else {
+while (lineElements[0].firstChild) {
+newText.appendChild(lineElements[0].firstChild);
+}
+}
+return newText;
+}
+}
+TextElement.prototype.fontFamily = [
+"Series 1",
+"Series 2",
+"Series 3",
+"Series 4",
+"Series 5WR",
+"Series 5",
+"Series 6",
+"Series B",
+"Series C",
+"Series D",
+"Series E",
+"Series EEM",
+"Series EM",
+"Series F",
+"DIN 1451 Regular",
+"DIN 1451 Narrow",
+"Motorway Permanent",
+"Motorway Temporary",
+"Rawlinson Regular",
+"Rawlinson Bold",
+"ITC Stone Sans Regular",
+"ITC Stone Sans Bold",
+"Helvetica Thin",
+"Helvetica Light",
+"Helvetica Roman",
+"Helvetica Medium",
+"Helvetica Bold",
+"Arial",
+"Arial Bold",
+"Transport Regular",
+"Transport Heavy",
+];
+TextElement.prototype.alignment = ["Left", "Center", "Right"];
+TextElement.prototype.backgroundColor = ["Inherit"].concat(
+Object.keys(lib.colors)
+);
+const SETTINGS_DEFAULTS_STORAGE_KEY = "signMaker.settingsDefaults";
+const getStoredControlTextDefaults = () => {
+try {
+const raw = window.localStorage.getItem(SETTINGS_DEFAULTS_STORAGE_KEY);
+if (!raw) {
+return {};
+}
+const parsed = JSON.parse(raw);
+return parsed && typeof parsed === "object" ? parsed : {};
+} catch (error) {
+return {};
+}
+};
+const getStoredDefaultsOption = (options, optionKey, storedKey, fallbackValue) => {
+if (
+Object.prototype.hasOwnProperty.call(options, optionKey) &&
+options[optionKey] !== undefined &&
+options[optionKey] !== null &&
+options[optionKey] !== ""
+) {
+return options[optionKey];
+}
+const storedDefaults = getStoredControlTextDefaults();
+const storedValue = storedDefaults[storedKey];
+if (storedValue !== undefined && storedValue !== null && storedValue !== "") {
+return storedValue;
+}
+return fallbackValue;
+};
+const normalizeStoredDefaultsNumber = (value, fallback = 0) => {
+const parsed = parseFloat(value);
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const normalizeStoredDefaultsBoolean = (value) =>
+value === true ||
+value === "true" ||
+value === 1 ||
+value === "1" ||
+value === "on";
+const normalizeStoredDefaultsAlignment = (value) => {
+const alignments = Array.isArray(TextElement.prototype.alignment)
+? TextElement.prototype.alignment
+: ["Left", "Center", "Right"];
+return alignments.includes(value) ? value : "Center";
+};
+const HIGHWAY_GOTHIC_TEXT_RENDER_SCALE = 1.2;
+const isHighwayGothicFontFamily = (fontFamily) =>
+/^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(String(fontFamily || "")) ||
+String(fontFamily || "") === "Highway Gothic" ||
+String(fontFamily || "") === "Highway Gothic Wide";
+const getRenderedTextFontSize = (fontSize, fontFamily) => {
+const parsedSize = parseFloat(fontSize);
+const safeSize = Number.isFinite(parsedSize) ? parsedSize : 100;
+return isHighwayGothicFontFamily(fontFamily)
+? safeSize * HIGHWAY_GOTHIC_TEXT_RENDER_SCALE
+: safeSize;
+};
+class ControlTextElement extends TextElement {
+constructor(options = {}) {
+const resolvedOptions = { ...options };
+const availableFonts =
+TextElement && TextElement.prototype
+? TextElement.prototype.fontFamily
+: [];
+const storedOrFallbackFont = normalizeTextFontFamilyName(getStoredDefaultsOption(
+resolvedOptions,
+"fontFamily",
+"settingsDefaultsControlTextFont",
+typeof ControlTextElement.getDefaultFont === "function"
+? ControlTextElement.getDefaultFont()
+: ControlTextElement.defaultFont
+));
+const resolvedFont =
+Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
+? storedOrFallbackFont
+: (typeof ControlTextElement.getDefaultFont === "function"
+? ControlTextElement.getDefaultFont()
+: ControlTextElement.defaultFont);
+resolvedOptions.textContent = getStoredDefaultsOption(
+resolvedOptions,
+"textContent",
+"settingsDefaultsControlTextText",
+"Control"
+);
+resolvedOptions.fontFamily = resolvedFont;
+if (!Object.prototype.hasOwnProperty.call(resolvedOptions, "lineHeight")) {
+resolvedOptions.lineHeight = isClearviewTextFontFamily(resolvedFont) ? 120 : 100;
+}
+resolvedOptions.fontSize = normalizeTextFontSizePercent(
+getStoredDefaultsOption(
+resolvedOptions,
+"fontSize",
+"settingsDefaultsControlTextSize",
+100
+),
+25,
+250,
+100
+);
+resolvedOptions.backgroundColor = getStoredDefaultsOption(
+resolvedOptions,
+"backgroundColor",
+"settingsDefaultsControlTextBg",
+"Inherit"
+);
+const spacing = Object.prototype.hasOwnProperty.call(options, "spacing")
+? options.spacing
+: 0;
+const smallCapitals = Object.prototype.hasOwnProperty.call(options, "smallCapitals")
+? options.smallCapitals
+: false;
+const textColor = getStoredDefaultsOption(
+resolvedOptions,
+"textColor",
+"settingsDefaultsControlTextColor",
+ControlTextElement.defaultTextColor
+);
+super(resolvedOptions);
+this.spacing = spacing;
+this.smallCapitals = smallCapitals;
+this.textColor =
+typeof textColor === "string" && textColor.trim().length
+? textColor
+: ControlTextElement.defaultTextColor;
+}
+createElement(panel) {
+const newText = super.createElement(panel);
+newText.style.setProperty("--spacing", this.spacing + "rem");
+newText.classList.add("bE-controlTextElement");
+const shouldOverrideTextColor =
+typeof this.textColor === "string" &&
+this.textColor.trim().length > 0 &&
+this.textColor !== ControlTextElement.defaultTextColor;
+if (shouldOverrideTextColor) {
+const resolvedTextColor =
+(lib?.colors && lib.colors[this.textColor]) || this.textColor;
+if (typeof resolvedTextColor === "string") {
+newText.style.color = resolvedTextColor.toLowerCase();
+} else if (resolvedTextColor) {
+newText.style.color = resolvedTextColor;
+}
+}
+return newText;
+}
+}
+ControlTextElement.defaultFont = TextElement.prototype.fontFamily.includes(
+"Series EM"
+)
+? "Series EM"
+: TextElement.prototype.fontFamily[0];
+ControlTextElement.getDefaultFont = function () {
+const availableFonts = TextElement.prototype.fontFamily;
+const currentDefault = ControlTextElement.defaultFont || availableFonts[0];
+return availableFonts.includes(currentDefault)
+? currentDefault
+: availableFonts[0];
+};
+ControlTextElement.setDefaultFont = function (font) {
+const availableFonts = TextElement.prototype.fontFamily;
+const normalized = normalizeTextFontFamilyName(font);
+if (!normalized || !availableFonts.includes(normalized)) {
+return false;
+}
+ControlTextElement.defaultFont = normalized;
+return true;
+};
+ControlTextElement.defaultTextColor = "Match BG";
+ControlTextElement.getTextColorOptions = function () {
+const palette = Object.keys(lib.colors);
+const options = [ControlTextElement.defaultTextColor];
+for (const color of palette) {
+if (!options.includes(color)) {
+options.push(color);
+}
+}
+return options;
+};
+class ActionMessageElement extends TextElement {
+constructor(options = {}) {
+const resolvedOptions = { ...options };
+const availableFonts =
+TextElement && TextElement.prototype
+? TextElement.prototype.fontFamily
+: [];
+const storedOrFallbackFont = normalizeTextFontFamilyName(getStoredDefaultsOption(
+resolvedOptions,
+"fontFamily",
+"settingsDefaultsActionFont",
+"Series EEM"
+));
+const resolvedFont =
+Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
+? storedOrFallbackFont
+: "Series EEM";
+resolvedOptions.textContent = getStoredDefaultsOption(
+resolvedOptions,
+"textContent",
+"settingsDefaultsActionText",
+"Action"
+);
+resolvedOptions.fontFamily = resolvedFont;
+resolvedOptions.fontSize = normalizeTextFontSizePercent(
+getStoredDefaultsOption(
+resolvedOptions,
+"fontSize",
+"settingsDefaultsActionSize",
+70
+),
+25,
+150,
+70
+);
+resolvedOptions.backgroundColor = getStoredDefaultsOption(
+resolvedOptions,
+"backgroundColor",
+"settingsDefaultsActionBg",
+"Inherit"
+);
+const textColor = getStoredDefaultsOption(
+resolvedOptions,
+"textColor",
+"settingsDefaultsActionColor",
+ControlTextElement.defaultTextColor
+);
+const useNumeralFormatting = Object.prototype.hasOwnProperty.call(
+resolvedOptions,
+"useNumeralFormatting"
+)
+? resolvedOptions.useNumeralFormatting
+: true;
+const spacing = Object.prototype.hasOwnProperty.call(options, "spacing")
+? options.spacing
+: 0;
+const smallCapitals = Object.prototype.hasOwnProperty.call(options, "smallCapitals")
+? options.smallCapitals
+: false;
+super(resolvedOptions);
+this.useNumeralFormatting = useNumeralFormatting;
+this.spacing = spacing;
+this.smallCapitals = smallCapitals;
+this.textColor =
+typeof textColor === "string" && textColor.trim().length
+? textColor
+: ControlTextElement.defaultTextColor;
+}
+createElement(panel) {
+const newText = super.createElement(panel);
+newText.style.setProperty("--spacing", this.spacing + "rem");
+newText.style.marginLeft = this.spacing + "rem";
+newText.style.marginRight = this.spacing + "rem";
+newText.classList.add("bE-actionMessageElement");
+const shouldOverrideTextColor =
+typeof this.textColor === "string" &&
+this.textColor.trim().length > 0 &&
+this.textColor !== ControlTextElement.defaultTextColor;
+if (shouldOverrideTextColor) {
+const resolvedTextColor =
+(lib?.colors && lib.colors[this.textColor]) || this.textColor;
+if (typeof resolvedTextColor === "string") {
+newText.style.color = resolvedTextColor.toLowerCase();
+} else if (resolvedTextColor) {
+newText.style.color = resolvedTextColor;
+}
+}
+return newText;
+}
+}
+class AdvisoryMessageElement extends TextElement {
+constructor(options = {}) {
+const resolvedOptions = { ...options };
+const availableFonts =
+TextElement && TextElement.prototype
+? TextElement.prototype.fontFamily
+: [];
+const storedOrFallbackFont = normalizeTextFontFamilyName(getStoredDefaultsOption(
+resolvedOptions,
+"fontFamily",
+"settingsDefaultsAdvisoryFont",
+"Series EEM"
+));
+const resolvedFont =
+Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
+? storedOrFallbackFont
+: "Series EEM";
+resolvedOptions.textContent = getStoredDefaultsOption(
+resolvedOptions,
+"textContent",
+"settingsDefaultsAdvisoryText",
+"Advisory"
+);
+resolvedOptions.fontFamily = resolvedFont;
+resolvedOptions.fontSize = normalizeTextFontSizePercent(
+getStoredDefaultsOption(
+resolvedOptions,
+"fontSize",
+"settingsDefaultsAdvisorySize",
+70
+),
+25,
+150,
+70
+);
+resolvedOptions.backgroundColor = getStoredDefaultsOption(
+resolvedOptions,
+"backgroundColor",
+"settingsDefaultsAdvisoryBg",
+"Yellow"
+);
+const textColor = getStoredDefaultsOption(
+resolvedOptions,
+"textColor",
+"settingsDefaultsAdvisoryColor",
+"Black"
+);
+const borderRadius = Object.prototype.hasOwnProperty.call(resolvedOptions, "borderRadius")
+? resolvedOptions.borderRadius
+: 4;
+const useNumeralFormatting = Object.prototype.hasOwnProperty.call(
+resolvedOptions,
+"useNumeralFormatting"
+)
+? resolvedOptions.useNumeralFormatting
+: true;
+const horizPadding = Object.prototype.hasOwnProperty.call(resolvedOptions, "horizPadding")
+? resolvedOptions.horizPadding
+: 0.2;
+const vertPadding = Object.prototype.hasOwnProperty.call(resolvedOptions, "vertPadding")
+? resolvedOptions.vertPadding
+: 0.1;
+const spacing = Object.prototype.hasOwnProperty.call(options, "spacing")
+? options.spacing
+: 0;
+const smallCapitals = Object.prototype.hasOwnProperty.call(options, "smallCapitals")
+? options.smallCapitals
+: false;
+super(resolvedOptions);
+this.textColor =
+typeof textColor === "string" && textColor.trim().length
+? textColor
+: ControlTextElement.defaultTextColor;
+this.borderRadius = borderRadius;
+this.useNumeralFormatting = useNumeralFormatting;
+this.spacing = spacing;
+this.smallCapitals = smallCapitals;
+this.horizPadding = horizPadding;
+this.vertPadding = vertPadding;
+}
+createElement(panel) {
+const newText = super.createElement(panel);
+newText.style.setProperty("--borderRadius", this.borderRadius + "px");
+newText.style.setProperty("--horizPadding", this.horizPadding);
+newText.style.setProperty("--vertPadding", this.vertPadding);
+newText.style.setProperty("--spacing", this.spacing + "rem");
+newText.style.marginLeft = this.spacing + "rem";
+newText.style.marginRight = this.spacing + "rem";
+newText.classList.add("bE-advisoryMessage");
+const displayedText = String(this.textContent ?? "").replace(/\\n/g, "\n");
+newText.classList.toggle("bE-messageCapOnly", /\p{Lu}/u.test(displayedText) && !/\p{Ll}/u.test(displayedText));
+const shouldOverrideTextColor =
+typeof this.textColor === "string" &&
+this.textColor.trim().length > 0 &&
+this.textColor !== ControlTextElement.defaultTextColor;
+if (shouldOverrideTextColor) {
+const resolvedTextColor =
+(lib?.colors && lib.colors[this.textColor]) || this.textColor;
+if (typeof resolvedTextColor === "string") {
+newText.style.color = resolvedTextColor.toLowerCase();
+} else if (resolvedTextColor) {
+newText.style.color = resolvedTextColor;
+}
+}
+if (this.fontFamily.includes("Series")) {
+newText.classList.add("hgFix");
+}
+return newText;
+}
+}
+class ElectronicSignElement extends TextElement {
+constructor({
+textContent = "VARIABLE",
+fontFamily = "Modern VMS",
+textColor = "Orange",
+padding = 0.5,
+glow = true,
+setWidth = 0,
+} = {}) {
+super({ textContent, fontFamily });
+this.fontFamily = fontFamily;
+this.textColor = textColor;
+this.backgroundColor = "Black";
+this.useNumeralFormatting = false;
+this.useBannerFormatting = false;
+this.padding = padding;
+this.glow = glow;
+this.setWidth = setWidth;
+}
+createElement(panel) {
+const newText = super.createElement(panel);
+newText.classList.add("bE-electronicSign");
+const displayedText = String(this.textContent ?? "").replace(/\\n/g, "\n");
+newText.classList.toggle("bE-messageCapOnly", /\p{Lu}/u.test(displayedText) && !/\p{Ll}/u.test(displayedText));
+newText.style.setProperty(
+"--textColor",
+(lib.colors[this.textColor] || this.textColor).toLowerCase()
+);
+newText.style.setProperty("--padding", this.padding + "rem");
+newText.style.setProperty(
+"--textShadow",
+this.glow
+? "0 0 0.25rem var(--textColor), 0 0 0.25rem var(--textColor)"
+: ""
+);
+newText.style.width = this.setWidth != 0 ? this.setWidth + "rem" : "";
+if (
+this.fontFamily.includes("Series") ||
+this.fontFamily.includes("Electronic")
+) {
+newText.classList.add("hgFix");
+}
+return newText;
+}
+}
+ElectronicSignElement.prototype.fontFamily =
+TextElement.prototype.fontFamily.concat([
+"Modern VMS",
+"Electronic Highway Sign",
+]);
+ElectronicSignElement.prototype.textColors = [
+"Orange",
+"White",
+"Yellow",
+"Red",
+];
+const getCustomShieldMakerDisplayNumber = (value, fallback = 0) => {
+const parsed = parseFloat(String(value ?? "").trim());
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const getCustomShieldMakerDisplayEm = (value, fallback = 0) => {
+return getCustomShieldMakerDisplayNumber(value, fallback) / 100 + "em";
+};
+const getCustomShieldMakerCssColor = (colorNameOrValue) => {
+const rawColor = String(colorNameOrValue || "Black").trim();
+return (lib.colors && lib.colors[rawColor] ? lib.colors[rawColor] : rawColor).toLowerCase();
+};
+const applyCustomShieldMakerRouteStyle = (routeEl, config) => {
+if (!routeEl || !config?.customRouteStyle) {
+return;
+}
+const style = config.customRouteStyle || {};
+const anchor = config.customAnchor || style.anchor || {
+x: 50,
+y: 50,
+seedTop: getCustomShieldMakerDisplayNumber(style.topOffset, 0),
+seedHorizontal: getCustomShieldMakerDisplayNumber(style.horizontalOffset, 0),
+};
+const alignment = String(style.alignment || "center").toLowerCase();
+const anchorX =
+alignment === "left"
+? 0
+: alignment === "right"
+? 100
+: getCustomShieldMakerDisplayNumber(anchor.x, 50);
+const translateX =
+alignment === "left" ? "0%" : alignment === "right" ? "-100%" : "-50%";
+const topDisplay = getCustomShieldMakerDisplayNumber(style.topOffset, 0);
+const horizontalDisplay = getCustomShieldMakerDisplayNumber(
+style.horizontalOffset,
+0
+);
+const seedTop = getCustomShieldMakerDisplayNumber(anchor.seedTop, topDisplay);
+const seedHorizontal = getCustomShieldMakerDisplayNumber(
+anchor.seedHorizontal,
+horizontalDisplay
+);
+const requestedWeight = getCustomShieldMakerDisplayNumber(style.fontWeight, 10) / 10;
+const cssWeight = Math.min(1000, Math.max(1, requestedWeight));
+routeEl.style.color = getCustomShieldMakerCssColor(style.color);
+const customShieldRenderedFont = typeof resolveTextFontFamilyForRender === "function"
+? resolveTextFontFamilyForRender(style.fontFamily || "Series D", { backgroundColor: "Blue" }, { color: "Blue" })
+: (style.fontFamily || "Series D");
+if (isMotorwayFont(customShieldRenderedFont)) {
+routeEl.classList.add("motorwayRouteNumber");
+const encoded = encodeMotorwayRouteText(config.routeNumber || "");
+routeEl.replaceChildren(...Array.from(encoded, (character) => {
+const span = document.createElement("span");
+span.className = "routeChar";
+span.textContent = character;
+return span;
+}));
+}
+routeEl.style.fontFamily = `"${customShieldRenderedFont}", sans-serif`;
+routeEl.style.fontSize = getCustomShieldMakerDisplayEm(
+isMotorwayFont(customShieldRenderedFont)
+? getCustomShieldMakerDisplayNumber(style.fontSize, 220) * 0.8
+: style.fontSize, 220);
+routeEl.style.fontWeight = String(cssWeight);
+routeEl.style.fontVariationSettings = `"wght" ${requestedWeight}`;
+routeEl.style.letterSpacing = "0";
+routeEl.style.gap = "0";
+const characterSpacingDisplay =
+getCustomShieldMakerDisplayNumber(style.letterSpacing, 0);
+const characterSpacing = characterSpacingDisplay / 100 + "em";
+const routeCharacters = Array.from(routeEl.children || []);
+routeCharacters.forEach((characterSpan, index) => {
+characterSpan.style.marginLeft = index === 0 ? "0" : characterSpacing;
+});
+routeEl.style.position = "absolute";
+routeEl.style.display = "inline-flex";
+routeEl.style.alignItems = "center";
+routeEl.style.justifyContent =
+alignment === "left" ? "flex-start" : alignment === "right" ? "flex-end" : "center";
+routeEl.style.width = "max-content";
+routeEl.style.top = `calc(${getCustomShieldMakerDisplayNumber(anchor.y, 50)}% + ${
+(topDisplay - seedTop) / 100
+}em)`;
+routeEl.style.left = `calc(${anchorX}% + ${
+(horizontalDisplay - seedHorizontal) / 100
+}em)`;
+routeEl.style.right = "auto";
+routeEl.style.transform = `translate(${translateX}, -50%)`;
+routeEl.style.margin = "0";
+routeEl.style.lineHeight = "1";
+routeEl.style.whiteSpace = "nowrap";
+routeEl.style.textAlign = alignment;
+};
+class ShieldElement extends Shield {
+constructor({
+shieldBase,
+shieldType,
+routeNumber = "1",
+type,
+specialBannerType,
+to = false,
+alignment = "Center",
+bannerType = ShieldElement.prototype.defaultBannerType,
+bannerType2 = ShieldElement.prototype.defaultBannerType,
+roadName = "",
+bannerPosition = ShieldElement.prototype.defaultBannerPosition,
+bannerPosition2 = ShieldElement.prototype.defaultBannerPosition,
+indentFirstLetter = true,
+indentFirstLetter2 = undefined,
+smallCaps = true,
+smallCaps2 = undefined,
+fontSize,
+bannerFontFamily = ShieldElement.prototype.defaultBannerFontFamily,
+bannerFontFamily1,
+bannerFontFamily2,
+bannerFontSize1,
+bannerFontSize2,
+roadNameFontFamily,
+roadNameFontSize,
+bannerBackgroundColor1 = ShieldElement.prototype.defaultBannerBackgroundColor,
+bannerBackgroundColor2 = ShieldElement.prototype.defaultBannerBackgroundColor,
+bannerLetterSpacing = ShieldElement.prototype.defaultBannerLetterSpacing,
+countyText = "",
+shieldSize,
+useOfficialDimensions = true,
+scaleBannersWithShield = ShieldElement.prototype.defaultScaleBannersWithShield,
+shieldBacks = false,
+manualBanners,
+size,
+} = {}) {
+super();
+const resolvedBase = getStoredDefaultsOption(
+{ shieldBase, type },
+"shieldBase",
+"settingsDefaultsShieldType",
+ShieldElement.prototype.defaultShieldBase
+);
+const resolvedVariant =
+shieldType || specialBannerType || ShieldElement.prototype.defaultVariant;
+this.shieldBase = resolvedBase;
+this.shieldType = resolvedVariant;
+this.numberStyle = arguments[0]?.numberStyle === "legacy" ? "legacy" : "current";
+this.routeNumber = `${getStoredDefaultsOption(
+{ routeNumber },
+"routeNumber",
+"settingsDefaultsShieldRouteNumber",
+ShieldElement.prototype.defaultRouteNumber
+) ?? ""}`.trim() || ShieldElement.prototype.defaultRouteNumber;
+this.to = !!to;
+this.alignment =
+TextElement.prototype.alignment.includes(alignment) ? alignment : "Center";
+this.indentFirstLetter = indentFirstLetter !== false;
+const normalizedIndentSecond =
+indentFirstLetter2 !== undefined ? indentFirstLetter2 : indentFirstLetter;
+this.indentFirstLetter2 = normalizedIndentSecond !== false;
+this.smallCaps = smallCaps !== false;
+const normalizedSmallCapsSecond =
+smallCaps2 !== undefined ? smallCaps2 : smallCaps;
+this.smallCaps2 = normalizedSmallCapsSecond !== false;
+this.bannerType = ShieldElement.prototype.normalizeBannerType(bannerType);
+this.bannerType2 = ShieldElement.prototype.normalizeBannerType(bannerType2);
+this.roadName = typeof roadName === "string" ? roadName : "";
+const defaultBannerPosition1 = getStoredDefaultsOption(
+{ bannerPosition },
+"bannerPosition",
+"settingsDefaultsShieldBanner1",
+ShieldElement.prototype.defaultBannerPosition
+);
+const defaultBannerPosition2 = getStoredDefaultsOption(
+{ bannerPosition2 },
+"bannerPosition2",
+"settingsDefaultsShieldBanner2",
+ShieldElement.prototype.defaultBannerPosition2 ||
+ShieldElement.prototype.defaultBannerPosition
+);
+this.bannerPosition = ShieldElement.prototype.normalizeBannerPosition(
+defaultBannerPosition1
+);
+this.bannerPosition2 = ShieldElement.prototype.normalizeBannerPosition(
+defaultBannerPosition2
+);
+this.bannerFontFamily =
+ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+this.fontSize = ShieldElement.prototype.normalizeFontSize(
+fontSize,
+ShieldElement.prototype.getDefaultBannerFontSizeForFont(this.bannerFontFamily)
+);
+this.bannerFontFamily1 = ShieldElement.prototype.normalizeBannerFontFamily(
+bannerFontFamily1 || this.bannerFontFamily
+);
+this.bannerFontFamily2 = ShieldElement.prototype.normalizeBannerFontFamily(
+bannerFontFamily2 || this.bannerFontFamily
+);
+this.bannerFontSize1 = ShieldElement.prototype.normalizeFontSize(
+bannerFontSize1,
+this.fontSize
+);
+this.bannerFontSize2 = ShieldElement.prototype.normalizeFontSize(
+bannerFontSize2,
+this.fontSize
+);
+this.roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily
+);
+this.roadNameFontSize = ShieldElement.prototype.normalizeFontSize(
+roadNameFontSize,
+ShieldElement.prototype.getDefaultRoadNameFontSizeForFont(this.roadNameFontFamily)
+);
+this.bannerBackgroundColor1 = ShieldElement.prototype.normalizeBannerBackgroundColor(
+bannerBackgroundColor1
+);
+this.bannerBackgroundColor2 = ShieldElement.prototype.normalizeBannerBackgroundColor(
+bannerBackgroundColor2
+);
+this.bannerLetterSpacing = ShieldElement.prototype.normalizeBannerLetterSpacing(
+bannerLetterSpacing
+);
+this.countyText = typeof countyText === "string" ? countyText : "";
+const storedShieldSize = getStoredDefaultsOption(
+{ shieldSize, size },
+"shieldSize",
+"settingsDefaultsShieldSize",
+ShieldElement.prototype.defaultShieldSize
+);
+this.shieldSize = ShieldElement.prototype.normalizeShieldSize(storedShieldSize);
+this.useOfficialDimensions = useOfficialDimensions !== false;
+this.scaleBannersWithShield = scaleBannersWithShield !== false;
+this.shieldBacks =
+shieldBacks === true ||
+shieldBacks === "true" ||
+shieldBacks === 1 ||
+shieldBacks === "1" ||
+shieldBacks === "on";
+this.manualBanners = normalizeStoredDefaultsBoolean(
+getStoredDefaultsOption(
+{ manualBanners },
+"manualBanners",
+"settingsDefaultsShieldManualBanners",
+ShieldElement.prototype.defaultManualBanners
+)
+);
+this.type = resolvedBase;
+this.specialBannerType = "None";
+}
+createElement(panel) {
+const wrapper = document.createElement("div");
+wrapper.className = "bE-shieldElement";
+wrapper.classList.toggle("legacyRouteNumberStyle", this.numberStyle === "legacy");
+let toEl = null;
+if (this.to) {
+toEl = document.createElement("p");
+toEl.className = "to";
+toEl.textContent = "TO";
+toEl.style.display = "inline";
+toEl.style.setProperty(
+"--toBannerFontSize",
+ShieldElement.prototype.getFontSizeCss(this.bannerFontSize1)
+);
+const firstBannerFont = ShieldElement.prototype.resolveBannerFontFamilyForRender(
+ShieldElement.prototype.normalizeBannerFontFamily(this.bannerFontFamily1), panel
+);
+if (firstBannerFont) {
+toEl.style.setProperty("--toBannerFontFamily", `"${String(firstBannerFont).replace(/"/g, '\\"')}"`);
+}
+}
+const config = ShieldElement.prototype.getBlockShieldConfig(
+this.shieldBase
+);
+const normalizedRoute = `${this.routeNumber ?? ""}`.trim();
+const routeText = ShieldElement.prototype.limitRouteCharacters(
+normalizedRoute,
+config
+);
+if (routeText !== normalizedRoute) {
+this.routeNumber = routeText;
+}
+const migratedShieldType =
+ShieldElement.prototype.migrateLegacyBlockVariant(
+this.shieldType,
+routeText,
+config
+);
+if (migratedShieldType !== this.shieldType) {
+this.shieldType = migratedShieldType;
+}
+const variant = ShieldElement.prototype.resolveBlockVariant(
+migratedShieldType,
+routeText,
+config
+);
+const variantKey = ShieldElement.prototype.formatVariantKey(variant);
+const normalizedShieldCode =
+ShieldElement.prototype.normalizeShieldCode(
+this.shieldBase || config?.value || ""
+).toUpperCase();
+const supportsShieldBacks =
+ShieldElement.prototype.supportsShieldBacks(config);
+const shieldBacksEnabled =
+supportsShieldBacks && this.shieldBacks === true;
+const shieldPath =
+ShieldElement.prototype.getRenderedShieldAssetPath(
+config,
+variantKey,
+{
+shieldBase: this.shieldBase,
+shieldBacks: shieldBacksEnabled,
+}
+);
+const officialPhysicalDimensions = config?.officialDimensions
+? ShieldElement.prototype.getVariantMetadata(
+config,
+"physicalDimensionsByVariant",
+variantKey
+)
+: null;
+const routeNumberStyle =
+ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)
+? null
+: ShieldElement.prototype.getVariantMetadata(
+config,
+"routeNumberByVariant",
+variantKey
+);
+const renderedRouteText = routeNumberStyle
+? routeText.toUpperCase()
+: routeText;
+const variablePanelWidth = routeNumberStyle?.variablePanelWidth || null;
+const physicalDimensions = this.useOfficialDimensions
+? officialPhysicalDimensions
+: null;
+const normalizedShieldSize = ShieldElement.prototype.normalizeShieldSize(
+this.shieldSize
+);
+const requestedShieldScale =
+ShieldElement.prototype.getShieldScale(normalizedShieldSize);
+const basePhysicalWidthRem = physicalDimensions?.widthIn
+? ShieldElement.prototype.inchesToRem(physicalDimensions.widthIn)
+: null;
+const basePhysicalHeightRem = physicalDimensions?.heightIn
+? ShieldElement.prototype.inchesToRem(physicalDimensions.heightIn)
+: null;
+const physicalWidthRem = basePhysicalWidthRem
+? basePhysicalWidthRem * requestedShieldScale
+: null;
+const physicalHeightRem = basePhysicalHeightRem
+? basePhysicalHeightRem * requestedShieldScale
+: null;
+const isFloridaOfficialShield =
+ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config);
+const isOntarioPrimaryShield = normalizedShieldCode === "ON";
+const configuredInternalScale = Number(config?.internalScale);
+const internalScale =
+isOntarioPrimaryShield
+? 1.2
+: Number.isFinite(configuredInternalScale) && configuredInternalScale > 0
+? configuredInternalScale
+: 1;
+const renderedShieldHeight =
+physicalHeightRem || normalizedShieldSize * internalScale;
+const shieldScale =
+ShieldElement.prototype.getShieldScale(renderedShieldHeight);
+const bannerScale =
+this.scaleBannersWithShield ? requestedShieldScale : 1;
+const fontSizeCss = ShieldElement.prototype.getFontSizeCss(this.fontSize);
+const bannerLetterSpacing = ShieldElement.prototype.normalizeBannerLetterSpacing(
+this.bannerLetterSpacing
+);
+const bannerFontFamily =
+ShieldElement.prototype.normalizeBannerFontFamily(this.bannerFontFamily);
+const renderedBannerFontFamily =
+ShieldElement.prototype.resolveBannerFontFamilyForRender(
+bannerFontFamily,
+panel
+);
+const roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+this.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily
+);
+const roadNameFontSizeCss = ShieldElement.prototype.getFontSizeCss(
+this.roadNameFontSize ||
+ShieldElement.prototype.getDefaultRoadNameFontSizeForFont(roadNameFontFamily)
+);
+wrapper.style.setProperty("--shieldScale", shieldScale.toString());
+wrapper.style.setProperty(
+"--requestedShieldScale",
+requestedShieldScale.toString()
+);
+wrapper.style.setProperty(
+"--requestedShieldSize",
+normalizedShieldSize + "rem"
+);
+wrapper.style.setProperty(
+"--shieldSize",
+renderedShieldHeight + "rem"
+);
+wrapper.classList.toggle(
+"floridaOfficialShieldUserBannerScale",
+isFloridaOfficialShield
+);
+wrapper.classList.toggle(
+"ontarioPrimaryInternalScale",
+isOntarioPrimaryShield
+);
+if (physicalWidthRem && physicalHeightRem) {
+wrapper.style.setProperty("--shieldWidth", physicalWidthRem + "rem");
+wrapper.style.setProperty("--shieldHeight", physicalHeightRem + "rem");
+}
+if (officialPhysicalDimensions) {
+wrapper.dataset.widthIn = String(officialPhysicalDimensions.widthIn);
+wrapper.dataset.heightIn = String(officialPhysicalDimensions.heightIn);
+}
+wrapper.style.setProperty("--bannerScale", bannerScale.toString());
+if (renderedBannerFontFamily) {
+wrapper.style.setProperty(
+"--bannerFontFamily",
+`"${renderedBannerFontFamily}"`
+);
+}
+wrapper._mergeableAboveBanner =
+isFloridaOfficialShield || internalScale !== 1
+? null
+: ShieldElement.prototype.getMergeableAboveBanner(
+this,
+bannerScale,
+panel
+);
+const shieldContainer = document.createElement("div");
+const containerClass = config.className || config.value;
+shieldContainer.className = `bannerShieldContainer ${containerClass}`;
+shieldContainer.classList.toggle("legacyRouteNumberStyle", this.numberStyle === "legacy");
+shieldContainer.classList.toggle("oldInterstateNumberPositioning", /^I(?:-|$)/.test(String(this.shieldBase)) && ShieldElement.oldInterstateNumberPositioning === true);
+shieldContainer.classList.toggle(
+"shieldBacks",
+shieldBacksEnabled
+);
+const usesOfficialShieldRendering = Boolean(officialPhysicalDimensions);
+shieldContainer.classList.toggle(
+"officialFdotShield",
+usesOfficialShieldRendering && config?.standard === "FDOT"
+);
+shieldContainer.classList.toggle(
+"officialCfxShield",
+usesOfficialShieldRendering && config?.standard === "CFX"
+);
+shieldContainer.classList.toggle(
+"variableGuideWidth",
+Boolean(variablePanelWidth)
+);
+if (variantKey) {
+shieldContainer.classList.add(
+"variant-" + variantKey.toLowerCase().replace(/[^a-z0-9_-]/g, "-")
+);
+}
+if (toEl) {
+shieldContainer.classList.add("hasTo");
+shieldContainer.appendChild(toEl);
+}
+if (config?.customShieldMaker) {
+shieldContainer.classList.add("customShieldMakerRenderedContainer");
+}
+const containerSizeClass = ShieldElement.prototype.getContainerSizeClass(
+routeText, variant
+);
+if (containerSizeClass) {
+shieldContainer.classList.add(containerSizeClass);
+}
+const routeTextForFontCheck = String(this.routeNumber || "").trim();
+const routeCharCountForFontCheck =
+ShieldElement.prototype.getRouteCharacterCount(routeTextForFontCheck);
+const routeHasOneForFontCheck = routeTextForFontCheck.includes("1");
+const getsSeriesCWhenThreeCharsWithoutOne =
+SERIES_C_THREE_CHAR_NO_ONE_SHIELDS.some((shieldClass) =>
+shieldContainer.classList.contains(shieldClass)
+) &&
+routeCharCountForFontCheck === 3 &&
+!routeHasOneForFontCheck;
+const getsSeriesDWhenThreeCharsWithOne =
+SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS.some((shieldClass) =>
+shieldContainer.classList.contains(shieldClass)
+) &&
+routeCharCountForFontCheck === 3 &&
+routeHasOneForFontCheck;
+shieldContainer.classList.toggle(
+"threeNoOne",
+getsSeriesCWhenThreeCharsWithoutOne
+);
+shieldContainer.classList.toggle(
+"threeWithOne",
+getsSeriesDWhenThreeCharsWithOne
+);
+const isLouisianaFourCharRoute =
+shieldContainer.classList.contains("LA") &&
+routeCharCountForFontCheck === 4;
+shieldContainer.classList.toggle(
+"fourNoOne",
+isLouisianaFourCharRoute && !routeHasOneForFontCheck
+);
+shieldContainer.classList.toggle(
+"fourWithOne",
+isLouisianaFourCharRoute && routeHasOneForFontCheck
+);
+const hasBannerA = ShieldElement.prototype.hasBannerValue(this.bannerType);
+const hasBannerB = ShieldElement.prototype.hasBannerValue(this.bannerType2);
+const rawRoadName = String(this.roadName || "");
+const hasRoadName = rawRoadName.trim().length > 0;
+const roadNameIsMultiline = /\\n|\n/.test(rawRoadName);
+const normalizedBannerPosition =
+ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition);
+const normalizedBannerPosition2 =
+ShieldElement.prototype.normalizeBannerPosition(this.bannerPosition2);
+const roadNamePosition = hasBannerA
+? normalizedBannerPosition
+: hasBannerB
+? normalizedBannerPosition2
+: normalizedBannerPosition;
+const bannerItems = [];
+if (hasBannerA) {
+bannerItems.push({
+position: normalizedBannerPosition,
+bannerClass: "bannerA",
+bannerValue: this.bannerType,
+containerClass: "bannerContainer",
+indentFirstLetter: this.indentFirstLetter,
+smallCaps: this.smallCaps,
+bannerLetterSpacing,
+bannerFontFamily: this.bannerFontFamily1,
+fontSizeCss: ShieldElement.prototype.getFontSizeCss(this.bannerFontSize1),
+backgroundColor: this.bannerBackgroundColor1,
+});
+}
+if (hasBannerB) {
+bannerItems.push({
+position: normalizedBannerPosition2,
+bannerClass: "bannerB",
+bannerValue: this.bannerType2,
+containerClass: "bannerContainer2",
+indentFirstLetter: this.indentFirstLetter2,
+smallCaps: this.smallCaps2,
+bannerLetterSpacing,
+bannerFontFamily: this.bannerFontFamily2,
+fontSizeCss: ShieldElement.prototype.getFontSizeCss(this.bannerFontSize2),
+backgroundColor: this.bannerBackgroundColor2,
+});
+}
+if (hasRoadName) {
+bannerItems.push({
+position: roadNamePosition,
+bannerClass: "bannerRoadName",
+bannerValue: rawRoadName.trim(),
+containerClass: "roadNameBannerContainer",
+indentFirstLetter: false,
+smallCaps: false,
+bannerLetterSpacing,
+bannerFontFamily: roadNameFontFamily,
+fontSizeCss: roadNameFontSizeCss,
+backgroundColor: "Inherit",
+isRoadName: true,
+isMultilineRoadName: roadNameIsMultiline,
+});
+}
+const bannerPositions = [
+...new Set(bannerItems.map((item) => item.position)),
+];
+for (const position of bannerPositions) {
+const itemsForPosition = bannerItems.filter(
+(item) => item.position === position
+);
+if (!itemsForPosition.length) {
+continue;
+}
+if (
+itemsForPosition.length > 1 ||
+itemsForPosition.some((item) => item.isRoadName)
+) {
+const stackedBannerSlot =
+ShieldElement.prototype.createStackedBannerSlot(
+position,
+itemsForPosition.map(({ position, isRoadName, ...item }) => item),
+fontSizeCss,
+this.indentFirstLetter,
+bannerFontFamily,
+this.smallCaps,
+panel,
+bannerLetterSpacing
+);
+if (itemsForPosition.some((item) => item.isRoadName)) {
+stackedBannerSlot.classList.add("roadNameStackedBanner");
+}
+if (itemsForPosition.some((item) => item.isMultilineRoadName)) {
+stackedBannerSlot.classList.add("roadNameMultilineStack");
+}
+if (stackedBannerSlot.classList.contains("sideBannerStack")) {
+shieldContainer.classList.add("sideBannerStackLayout");
+}
+shieldContainer.appendChild(stackedBannerSlot);
+continue;
+}
+const item = itemsForPosition[0];
+const bannerContainerElmt = ShieldElement.prototype.createBannerContainer(
+item.containerClass,
+item.bannerClass,
+item.bannerValue,
+item.fontSizeCss || fontSizeCss,
+item.indentFirstLetter,
+item.bannerFontFamily || bannerFontFamily,
+false,
+position,
+item.smallCaps,
+panel,
+item.bannerLetterSpacing,
+item.backgroundColor
+);
+shieldContainer.appendChild(bannerContainerElmt);
+}
+const shieldEl = document.createElement("div");
+shieldEl.className = "shield";
+if (physicalWidthRem && physicalHeightRem) {
+shieldEl.style.width = physicalWidthRem + "rem";
+shieldEl.style.height = physicalHeightRem + "rem";
+} else if (internalScale !== 1) {
+shieldEl.style.height = renderedShieldHeight + "rem";
+} else if (variablePanelWidth && officialPhysicalDimensions) {
+shieldEl.style.width = `calc(var(--shieldSize) * ${
+officialPhysicalDimensions.widthIn / officialPhysicalDimensions.heightIn
+})`;
+shieldEl.style.height = "var(--shieldSize)";
+}
+const img = document.createElement("img");
+img.className = "shieldImg";
+const imageSizeClass = ShieldElement.prototype.getImageSizeClass(routeText, variant);
+if (imageSizeClass) {
+img.classList.add(imageSizeClass);
+}
+img.src = shieldPath;
+if (typeof window.applySignMakerAssetFallback === "function") {
+window.applySignMakerAssetFallback(img, shieldPath);
+}
+img.alt = `${config.label} shield`;
+const preloadedAspectRatio =
+window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS?.get?.(shieldPath);
+if (
+Number.isFinite(preloadedAspectRatio) &&
+preloadedAspectRatio > 0
+) {
+img.style.aspectRatio = String(preloadedAspectRatio);
+}
+img.loading = isFloridaOfficialShield ? "eager" : "lazy";
+img.decoding = isFloridaOfficialShield ? "sync" : "async";
+if (isFloridaOfficialShield) {
+img.fetchPriority = "high";
+}
+img.draggable = false;
+if (physicalWidthRem && physicalHeightRem) {
+img.style.width = physicalWidthRem + "rem";
+img.style.height = physicalHeightRem + "rem";
+} else if (internalScale !== 1) {
+img.style.width = "auto";
+img.style.height = renderedShieldHeight + "rem";
+} else if (variablePanelWidth && officialPhysicalDimensions) {
+const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
+img.style.width = `calc(var(--shieldSize) * ${
+assetWidthIn / officialPhysicalDimensions.heightIn
+})`;
+img.style.height = "var(--shieldSize)";
+}
+if (variablePanelWidth && officialPhysicalDimensions) {
+const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
+const assetWidthCss = this.useOfficialDimensions
+? `${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem`
+: `calc(var(--shieldSize) * ${
+assetWidthIn / officialPhysicalDimensions.heightIn
+})`;
+shieldEl.style.setProperty("--variableGuideAssetWidth", assetWidthCss);
+shieldEl.style.setProperty(
+"--variableGuideRadius",
+`calc(var(--shieldSize) * ${
+1.25 / officialPhysicalDimensions.heightIn
+})`
+);
+shieldEl.style.setProperty(
+"--variableGuideSeamCover",
+`calc(var(--shieldSize) * ${
+1.5 / officialPhysicalDimensions.heightIn
+})`
+);
+shieldEl.style.setProperty(
+"--variableGuideArtworkClip",
+`calc(var(--shieldSize) * ${
+0.25 / officialPhysicalDimensions.heightIn
+})`
+);
+}
+shieldEl.appendChild(img);
+let variableGuideContour = null;
+let variableGuideContourRect = null;
+if (
+variablePanelWidth &&
+officialPhysicalDimensions &&
+shieldContainer.classList.contains("FDOTSTATE")
+) {
+const svgNamespace = "http://www.w3.org/2000/svg";
+const initialWidthIn = Number(officialPhysicalDimensions.widthIn);
+const heightIn = Number(officialPhysicalDimensions.heightIn);
+variableGuideContour = document.createElementNS(svgNamespace, "svg");
+variableGuideContour.classList.add("variableGuideContour");
+variableGuideContour.setAttribute(
+"viewBox",
+`0 0 ${initialWidthIn} ${heightIn}`
+);
+variableGuideContour.setAttribute("preserveAspectRatio", "none");
+variableGuideContour.setAttribute("aria-hidden", "true");
+variableGuideContour.setAttribute("focusable", "false");
+variableGuideContourRect = document.createElementNS(
+svgNamespace,
+"rect"
+);
+variableGuideContourRect.setAttribute("x", "0.0625");
+variableGuideContourRect.setAttribute("y", "0.0625");
+variableGuideContourRect.setAttribute(
+"width",
+String(initialWidthIn - 0.125)
+);
+variableGuideContourRect.setAttribute("height", String(heightIn - 0.125));
+variableGuideContourRect.setAttribute("rx", "1.1875");
+variableGuideContourRect.setAttribute("fill", "none");
+variableGuideContourRect.setAttribute("stroke", "#000000");
+variableGuideContourRect.setAttribute("stroke-width", "0.125");
+variableGuideContour.appendChild(variableGuideContourRect);
+shieldEl.appendChild(variableGuideContour);
+}
+const routeEl = document.createElement("p");
+routeEl.className = "routeNumber";
+if (routeNumberStyle) {
+routeEl.classList.add("officialRouteNumber");
+if (Number.isFinite(routeNumberStyle.topIn)) {
+routeEl.style.setProperty(
+"--officialRouteCapTop",
+`${ShieldElement.prototype.inchesToRem(routeNumberStyle.topIn)}rem`
+);
+}
+const routeCharacterCount =
+ShieldElement.prototype.getRouteCharacterCount(routeText);
+const capHeightIn =
+routeNumberStyle.capHeightInByCharacterCount?.[routeCharacterCount] ||
+routeNumberStyle.capHeightIn;
+const routeFontFamily =
+routeNumberStyle.fontFamilyByCharacterCount?.[routeCharacterCount] ||
+routeNumberStyle.fontFamily;
+if (capHeightIn) {
+routeEl.style.fontSize =
+ShieldElement.prototype.cssRemFromCapHeight(capHeightIn);
+}
+if (routeFontFamily) {
+routeEl.style.fontFamily = `"${routeFontFamily}"`;
+}
+if (routeNumberStyle.color) {
+routeEl.style.color = routeNumberStyle.color;
+}
+}
+const usesV22NumberStyle =
+ShieldElement.prototype.usesV22NumberStyle(config, this);
+if (usesV22NumberStyle) {
+routeEl.textContent = renderedRouteText;
+} else {
+const routeCharacters = Array.from(String(renderedRouteText || ""));
+routeEl.innerHTML = routeCharacters
+.map((char, index) => {
+const isSpace = char === " ";
+const isDigit = /^[0-9]$/.test(char);
+const previousCharacter = routeCharacters[index - 1] || "";
+const nextCharacter = routeCharacters[index + 1] || "";
+const previousIsDigit = /^[0-9]$/.test(previousCharacter);
+const nextIsDigit = /^[0-9]$/.test(nextCharacter);
+const safeChar = isSpace
+? "&nbsp;"
+: char
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;")
+.replace(/>/g, "&gt;")
+.replace(/"/g, "&quot;");
+const classNames = ["routeChar"];
+if (/^[0-9A-Za-z]$/.test(char)) {
+classNames.push(`routeChar-${char.toUpperCase()}`);
+} else if (isSpace) {
+classNames.push("routeChar-space");
+}
+if (isDigit && previousIsDigit) {
+classNames.push("routeChar-hasPreviousDigit");
+}
+if (isDigit && nextIsDigit) {
+classNames.push("routeChar-hasNextDigit");
+}
+if (char === "3" && previousCharacter === "3") {
+classNames.push("routeChar-previous3");
+}
+if (char === "3" && nextCharacter === "3") {
+classNames.push("routeChar-next3");
+}
+return `<span class="${classNames.join(" ")}">${safeChar}</span>`;
+})
+.join("");
+}
+if (config?.customShieldMaker) {
+const customVariantKey = String(variantKey || "").match(/^(\d+)/)?.[1] || "";
+const customVariantConfig = {
+...config,
+routeNumber: renderedRouteText,
+customRouteStyle:
+(customVariantKey && config.customRouteStyleByVariant?.[customVariantKey]) ||
+config.customRouteStyle,
+customAnchor:
+(customVariantKey && config.customAnchorByVariant?.[customVariantKey]) ||
+config.customAnchor,
+};
+applyCustomShieldMakerRouteStyle(routeEl, customVariantConfig);
+}
+if (ShieldElement.prototype.isCountyShield(config)) {
+const countyLabel = document.createElement("p");
+countyLabel.className = "countyLabel";
+countyLabel.textContent = (this.countyText || "").trim().toUpperCase();
+if (countyLabel.textContent.length > 0) {
+shieldEl.appendChild(countyLabel);
+}
+}
+if (
+!config?.suppressRouteNumber &&
+!ShieldElement.prototype.isFixedRouteVariant(config, variantKey)
+) {
+shieldEl.appendChild(routeEl);
+}
+shieldContainer.appendChild(shieldEl);
+const updateSeriesDRouteSpacingFix = () => {
+if (usesV22NumberStyle) {
+shieldContainer.classList.remove("seriesDSpacingFix");
+return;
+}
+const fontFamily = window.getComputedStyle(routeEl).fontFamily || "";
+const usesSeriesD = fontFamily.toLowerCase().includes("series d");
+shieldContainer.classList.toggle("seriesDSpacingFix", usesSeriesD);
+};
+const normalizeRouteCharacterSpacing = () => {
+if (
+usesV22NumberStyle ||
+routeEl.classList.contains("officialRouteNumber") ||
+config?.customShieldMaker
+) {
+return;
+}
+const routeCharacters = Array.from(routeEl.children || []).filter(
+(child) => child.classList?.contains("routeChar")
+);
+if (!routeCharacters.length) {
+return;
+}
+const computedStyle = window.getComputedStyle(routeEl);
+const spacingPixels = parseFloat(computedStyle.letterSpacing);
+if (!Number.isFinite(spacingPixels) || Math.abs(spacingPixels) < 0.001) {
+return;
+}
+const fontSizePixels = parseFloat(computedStyle.fontSize);
+const spacingCss =
+Number.isFinite(fontSizePixels) && fontSizePixels > 0
+? `${spacingPixels / fontSizePixels}em`
+: `${spacingPixels}px`;
+routeEl.style.letterSpacing = "0px";
+routeCharacters.forEach((characterSpan, index) => {
+characterSpan.style.letterSpacing = "0px";
+characterSpan.style.marginLeft = index === 0 ? "0px" : spacingCss;
+});
+};
+const updateRouteNumberTypography = () => {
+updateSeriesDRouteSpacingFix();
+normalizeRouteCharacterSpacing();
+};
+requestAnimationFrame(updateRouteNumberTypography);
+if (document.fonts && document.fonts.ready) {
+document.fonts.ready.then(updateRouteNumberTypography).catch(() => {});
+}
+if (!hasBannerA && !hasBannerB && !hasRoadName) {
+shieldContainer.classList.add("noBanners");
+}
+wrapper.appendChild(shieldContainer);
+if (
+routeEl.parentElement &&
+routeNumberStyle &&
+officialPhysicalDimensions
+) {
+ShieldElement.prototype.scheduleOfficialRouteNumberLayout({
+wrapper,
+routeEl,
+shieldEl,
+img,
+routeText: renderedRouteText,
+routeNumberStyle,
+routeCharacterCount:
+ShieldElement.prototype.getRouteCharacterCount(routeText),
+officialPhysicalDimensions,
+useOfficialDimensions: this.useOfficialDimensions,
+variableGuideContour,
+variableGuideContourRect,
+});
+}
+return wrapper;
+}
+}
+const SERIES_C_THREE_CHAR_NO_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "PR", "PR2", "PR3", "SC", "WI", "WY"];
+const SERIES_D_THREE_CHAR_WITH_ONE_SHIELDS = ["US", "USCA", "AZ", "AZLOOP", "CA", "CO", "HI", "IN", "MB", "MD", "ME", "MN", "MNBUS", "PR", "PR2", "PR3", "SC", "WI", "WY"];
+ShieldElement.prototype.defaultShieldBase = "I";
+ShieldElement.prototype.defaultVariant = "Auto";
+ShieldElement.prototype.defaultRouteNumber = "1";
+ShieldElement.prototype.defaultBannerType = "";
+ShieldElement.prototype.defaultBannerPosition = "Right";
+ShieldElement.prototype.defaultBannerPosition2 = "Above";
+ShieldElement.prototype.defaultHighwayGothicBannerFontSize = 1.6;
+ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize = 1.4;
+ShieldElement.prototype.defaultBannerFontSize =
+ShieldElement.prototype.defaultHighwayGothicBannerFontSize;
+ShieldElement.prototype.defaultBannerFontFamily = "Series E";
+ShieldElement.prototype.defaultHighwayGothicRoadNameFontSize = 1.6;
+ShieldElement.prototype.defaultNonHighwayGothicRoadNameFontSize = 1.1;
+ShieldElement.prototype.defaultRoadNameFontSize =
+ShieldElement.prototype.defaultHighwayGothicRoadNameFontSize;
+ShieldElement.prototype.defaultRoadNameFontFamily = "Series E";
+ShieldElement.prototype.defaultBannerBackgroundColor = "Inherit";
+ShieldElement.prototype.defaultBannerLetterSpacing = 0;
+ShieldElement.prototype.defaultManualBanners = true;
+ShieldElement.prototype.isHighwayGothicBannerFont = function (fontFamily) {
+return /^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(
+String(fontFamily || "")
+);
+};
+ShieldElement.prototype.getDefaultBannerFontSizeForFont = function (fontFamily) {
+return ShieldElement.prototype.isHighwayGothicBannerFont(fontFamily)
+? ShieldElement.prototype.defaultHighwayGothicBannerFontSize
+: ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize;
+};
+ShieldElement.prototype.getDefaultRoadNameFontSizeForFont = function (fontFamily) {
+return ShieldElement.prototype.isHighwayGothicBannerFont(fontFamily)
+? ShieldElement.prototype.defaultHighwayGothicRoadNameFontSize
+: ShieldElement.prototype.defaultNonHighwayGothicRoadNameFontSize;
+};
+ShieldElement.prototype.normalizeBannerLetterSpacing = function (value) {
+return normalizeTextLetterSpacing(
+value,
+ShieldElement.prototype.defaultBannerLetterSpacing || 0
+);
+};
+ShieldElement.prototype.normalizeBannerBackgroundColor = function (value) {
+const raw = String(value ?? "").trim();
+if (!raw || /^none$/i.test(raw) || /^inherit$/i.test(raw)) {
+return ShieldElement.prototype.defaultBannerBackgroundColor || "Inherit";
+}
+if (typeof lib !== "undefined" && lib.colors && lib.colors[raw]) {
+return raw;
+}
+if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw) || /^rgba?\(/i.test(raw)) {
+return raw;
+}
+if (/^panel color$/i.test(raw) || /^match bg$/i.test(raw)) {
+return raw;
+}
+return raw;
+};
+ShieldElement.prototype.resolveBannerBackgroundColor = function (value, panel = null) {
+const raw = ShieldElement.prototype.normalizeBannerBackgroundColor(value);
+if (!raw || /^inherit$/i.test(raw) || /^none$/i.test(raw)) {
+return "";
+}
+if (/^panel color$/i.test(raw) || /^match bg$/i.test(raw)) {
+const panelColor = panel?.color || panel?.sign?.color || panel?.backgroundColor || panel?.panelColor || "Green";
+return (typeof lib !== "undefined" && lib.colors && lib.colors[panelColor]) || panelColor;
+}
+if (typeof lib !== "undefined" && lib.colors && lib.colors[raw]) {
+return lib.colors[raw];
+}
+return raw;
+};
+ShieldElement.prototype.applyBannerBackgroundColor = function (bannerEl, value, panel = null) {
+if (!bannerEl) {
+return;
+}
+const resolvedColor = ShieldElement.prototype.resolveBannerBackgroundColor(value, panel);
+if (!resolvedColor) {
+return;
+}
+bannerEl.classList.add("customBannerBackground");
+bannerEl.style.setProperty("background-color", resolvedColor, "important");
+const brightness = typeof getColorBrightness === "function"
+? getColorBrightness(resolvedColor)
+: null;
+if (brightness) {
+bannerEl.classList.toggle("lightBannerBackground", brightness === "light");
+bannerEl.classList.toggle("darkBannerBackground", brightness === "dark");
+bannerEl.style.setProperty(
+"color",
+brightness === "light" ? "var(--black)" : "var(--white)",
+"important"
+);
+}
+};
+ShieldElement.prototype.defaultCountyText = "";
+ShieldElement.prototype.defaultShieldSize = 3;
+ShieldElement.prototype.defaultScaleBannersWithShield = true;
+const OFFICIAL_ROADGEEK_METRICS = {
+"Series D": {
+"0": [0.909, 0.1, 0.809],
+"1": [0.473, 0.1, 0.353],
+"2": [0.881, 0.1, 0.781],
+"3": [0.956, 0.18, 0.856],
+"4": [0.888, 0.02, 0.768],
+"5": [0.881, 0.1, 0.781],
+"6": [0.881, 0.1, 0.781],
+"7": [0.817, 0.07, 0.747],
+"8": [0.881, 0.1, 0.781],
+"9": [0.881, 0.1, 0.781],
+A: [0.906, 0.03, 0.876],
+B: [0.85, 0.12, 0.8],
+C: [0.881, 0.099987, 0.781],
+D: [0.9, 0.12, 0.8],
+E: [0.79, 0.12, 0.74],
+F: [0.77, 0.12, 0.74],
+G: [0.881, 0.099985, 0.781],
+H: [0.92, 0.12, 0.8],
+I: [0.401, 0.12, 0.281],
+J: [0.789, 0.03, 0.669],
+K: [0.867, 0.12, 0.817],
+L: [0.77, 0.12, 0.74],
+M: [1.018, 0.12, 0.898],
+N: [0.92, 0.12, 0.8],
+O: [0.909, 0.1, 0.809],
+P: [0.83, 0.12, 0.8],
+Q: [0.909, 0.1, 0.809],
+R: [0.85, 0.12, 0.8],
+S: [0.78, 0.05, 0.73],
+T: [0.678, 0.03, 0.648],
+U: [0.92, 0.119978, 0.8],
+V: [0.819, 0.03, 0.789],
+W: [0.949, 0.03, 0.919],
+X: [0.78, 0.05, 0.73],
+Y: [0.914, 0.03, 0.884],
+Z: [0.78, 0.05, 0.73],
+" ": [0.599, 0, 0],
+"-": [0.411, 0.03, 0.381],
+},
+};
+ShieldElement.prototype.inchesPerRem = 12;
+ShieldElement.prototype.roadgeekCapHeightRatio = 4 / 7;
+ShieldElement.prototype.inchesToRem = function (inches) {
+const value = Number(inches);
+return Number.isFinite(value)
+? value / ShieldElement.prototype.inchesPerRem
+: 0;
+};
+ShieldElement.prototype.cssRemFromCapHeight = function (inches) {
+const capHeightRem = ShieldElement.prototype.inchesToRem(inches);
+const fontSizeRem =
+capHeightRem / ShieldElement.prototype.roadgeekCapHeightRatio;
+return `${fontSizeRem.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")}rem`;
+};
+ShieldElement.prototype.measureOfficialRouteInk = function ({
+routeText,
+routeFontFamily,
+capHeightPixels,
+letterSpacingPixels = 0,
+context,
+}) {
+const characters = Array.from(routeText);
+const familyMetrics = OFFICIAL_ROADGEEK_METRICS[routeFontFamily];
+let cursor = 0;
+let inkLeft = Number.POSITIVE_INFINITY;
+let inkRight = Number.NEGATIVE_INFINITY;
+characters.forEach((rawCharacter, index) => {
+const character = rawCharacter.toUpperCase();
+const glyphMetrics = familyMetrics?.[character];
+if (glyphMetrics) {
+const [advance, left, right] = glyphMetrics;
+if (right > left) {
+inkLeft = Math.min(inkLeft, cursor + left * capHeightPixels);
+inkRight = Math.max(inkRight, cursor + right * capHeightPixels);
+}
+cursor += advance * capHeightPixels;
+} else {
+const metrics = context.measureText(rawCharacter);
+const left = cursor - Number(metrics.actualBoundingBoxLeft || 0);
+const right =
+cursor + Number(metrics.actualBoundingBoxRight || metrics.width);
+inkLeft = Math.min(inkLeft, left);
+inkRight = Math.max(inkRight, right);
+cursor += metrics.width;
+}
+if (index < characters.length - 1) {
+cursor += letterSpacingPixels;
+}
+});
+if (!Number.isFinite(inkLeft) || !Number.isFinite(inkRight)) {
+inkLeft = 0;
+inkRight = 0;
+}
+return { inkLeft, inkRight, inkWidth: inkRight - inkLeft };
+};
+ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
+wrapper,
+routeEl,
+shieldEl,
+img,
+routeText,
+routeNumberStyle,
+routeCharacterCount,
+officialPhysicalDimensions,
+useOfficialDimensions,
+variableGuideContour,
+variableGuideContourRect,
+}) {
+const layout = () => {
+if (!routeEl.isConnected || !shieldEl.isConnected) {
+return;
+}
+const shieldBounds = shieldEl.getBoundingClientRect();
+const officialHeight = Number(officialPhysicalDimensions.heightIn);
+if (!(shieldBounds.height > 0) || !(officialHeight > 0)) {
+return;
+}
+const pixelsPerInch = shieldBounds.height / officialHeight;
+const capHeightIn = Number(
+routeNumberStyle.capHeightInByCharacterCount?.[routeCharacterCount] ||
+routeNumberStyle.capHeightIn
+);
+const routeFontFamily =
+routeNumberStyle.fontFamilyByCharacterCount?.[routeCharacterCount] ||
+routeNumberStyle.fontFamily;
+const fontSizePixels =
+(capHeightIn * pixelsPerInch) /
+ShieldElement.prototype.roadgeekCapHeightRatio;
+routeEl.style.fontSize = `${fontSizePixels}px`;
+routeEl.style.fontFamily = `"${routeFontFamily}"`;
+routeEl.style.top = `${
+Number(routeNumberStyle.topIn) * pixelsPerInch - fontSizePixels / 7
+}px`;
+routeEl.style.letterSpacing = "0px";
+const canvas = document.createElement("canvas");
+const context = canvas.getContext("2d");
+if (!context) {
+return;
+}
+context.fontKerning = "none";
+context.font = `${fontSizePixels}px "${routeFontFamily}"`;
+const capHeightPixels = capHeightIn * pixelsPerInch;
+let measuredInk = ShieldElement.prototype.measureOfficialRouteInk({
+routeText,
+routeFontFamily,
+capHeightPixels,
+context,
+});
+if (
+routeNumberStyle.allowOpticalSpacing &&
+routeCharacterCount > 1 &&
+Number(routeNumberStyle.maxWidthIn) > 0
+) {
+const maximumWidth = routeNumberStyle.maxWidthIn * pixelsPerInch;
+if (measuredInk.inkWidth > maximumWidth) {
+const spacingAdjustment =
+(maximumWidth - measuredInk.inkWidth) /
+(routeCharacterCount - 1);
+routeEl.style.letterSpacing = `${spacingAdjustment}px`;
+measuredInk = ShieldElement.prototype.measureOfficialRouteInk({
+routeText,
+routeFontFamily,
+capHeightPixels,
+letterSpacingPixels: spacingAdjustment,
+context,
+});
+}
+}
+const { inkLeft, inkRight } = measuredInk;
+const variablePanelWidth = routeNumberStyle.variablePanelWidth;
+if (variablePanelWidth) {
+const minWidthIn = Number(variablePanelWidth.minWidthIn);
+const maxWidthIn = Number(variablePanelWidth.maxWidthIn);
+const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
+const leftClearanceIn = Number(routeNumberStyle.leftIn);
+const rightClearanceIn = Number(variablePanelWidth.rightClearanceIn);
+const requiredWidthIn =
+leftClearanceIn +
+(inkRight - inkLeft) / pixelsPerInch +
+rightClearanceIn;
+const renderedWidthIn = Math.min(
+maxWidthIn,
+Math.max(minWidthIn, requiredWidthIn)
+);
+const renderedWidthCss = useOfficialDimensions
+? `calc(${ShieldElement.prototype.inchesToRem(renderedWidthIn)}rem * var(--requestedShieldScale, 1))`
+: `calc(var(--shieldSize) * ${renderedWidthIn / officialHeight})`;
+const assetWidthCss = useOfficialDimensions
+? `calc(${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem * var(--requestedShieldScale, 1))`
+: `calc(var(--shieldSize) * ${assetWidthIn / officialHeight})`;
+shieldEl.style.width = renderedWidthCss;
+img.style.width = assetWidthCss;
+shieldEl.style.setProperty("--variableGuideAssetWidth", assetWidthCss);
+wrapper.style.setProperty("--shieldWidth", renderedWidthCss);
+wrapper.dataset.widthIn = String(renderedWidthIn);
+if (variableGuideContour && variableGuideContourRect) {
+variableGuideContour.setAttribute(
+"viewBox",
+`0 0 ${renderedWidthIn} ${officialHeight}`
+);
+variableGuideContourRect.setAttribute(
+"width",
+String(renderedWidthIn - 0.125)
+);
+}
+}
+let targetPosition;
+let sourcePosition;
+if (Number.isFinite(routeNumberStyle.leftIn)) {
+targetPosition = routeNumberStyle.leftIn * pixelsPerInch;
+sourcePosition = inkLeft;
+} else if (Number.isFinite(routeNumberStyle.rightIn)) {
+targetPosition = routeNumberStyle.rightIn * pixelsPerInch;
+sourcePosition = inkRight;
+} else {
+const centerXIn = Number.isFinite(routeNumberStyle.centerXIn)
+? routeNumberStyle.centerXIn
+: officialPhysicalDimensions.widthIn / 2;
+targetPosition = centerXIn * pixelsPerInch;
+sourcePosition = (inkLeft + inkRight) / 2;
+}
+routeEl.style.transform =
+`translateX(${targetPosition - sourcePosition}px)`;
+};
+queueMicrotask(layout);
+requestAnimationFrame(layout);
+if (document.fonts?.ready) {
+document.fonts.ready.then(() => {
+layout();
+requestAnimationFrame(layout);
+});
+}
+};
+ShieldElement.prototype.normalizeShieldCode = function (code) {
+if (typeof code !== "string") {
+return "";
+}
+const normalized = code.replace(/\s+/g, "").replace(/2nd$/i, "2");
+if (/^(?:FLTURNPIKE|FL-TURNPIKE|FLTP)$/i.test(normalized)) {
+return "FLTP";
+}
+if (/^(?:FLCFXTOLL|FLCFX)$/i.test(normalized)) {
+return "FLCFX";
+}
+return normalized;
+};
+ShieldElement.prototype.supportsShieldBacks = function (configOrValue) {
+const config =
+typeof configOrValue === "object" && configOrValue
+? configOrValue
+: null;
+const rawValue = config
+? config.value || config.assetName || ""
+: configOrValue;
+const normalized = ShieldElement.prototype.normalizeShieldCode(
+rawValue || ""
+).toUpperCase();
+return (
+normalized === "US" ||
+normalized === "NJ" ||
+normalized === "C" ||
+normalized === "NVCC" ||
+config?.preserveShieldBacks === true
+);
+};
+ShieldElement.prototype.formatVariantKey = function (variant) {
+if (typeof variant !== "string") {
+return "";
+}
+return variant.replace(/\s+/g, "");
+};
+ShieldElement.prototype.getShieldClassNames = function (code) {
+const normalized = ShieldElement.prototype.normalizeShieldCode(code);
+if (!normalized) {
+return "";
+}
+if (normalized.includes("-")) {
+const [base, ...rest] = normalized.split("-");
+const modifier = rest.join("-").toLowerCase();
+return modifier ? `${base} ${modifier}` : base;
+}
+const prefixedModifiers = [
+"FL",
+"GA",
+"NE",
+"NB",
+"NS",
+"TX",
+];
+const matchedPrefix = prefixedModifiers.find(
+(prefix) => normalized.startsWith(prefix) && normalized.length > prefix.length
+);
+if (matchedPrefix && !/\d/.test(normalized.slice(matchedPrefix.length))) {
+const modifier = normalized.slice(matchedPrefix.length).toLowerCase();
+return modifier ? `${matchedPrefix} ${modifier}` : matchedPrefix;
+}
+return normalized;
+};
+ShieldElement.prototype.buildBlockShieldList = function () {
+const shields = [];
+const directory = Shield.prototype.shieldDirectory;
+const explicitShieldAssetOverrides = {
+NY: {
+"2Digit": "img/shields/United States/NY/NY-2Digit.svg",
+"3Digit": "img/shields/United States/NY/NY-3Digit.svg",
+},
+NJ: {
+"2Digit": "img/shields/United States/NJ/NJ-2Digit.svg",
+"3Digit": "img/shields/United States/NJ/NJ-3Digit.svg",
+},
+IN: {
+"2Digit": "img/shields/United States/IN/IN-2Digit.svg",
+"3Digit": "img/shields/United States/IN/IN-3Digit.svg",
+},
+KS: {
+"2Digit": "img/shields/United States/KS/KS-2Digit.svg",
+"3Digit": "img/shields/United States/KS/KS-3Digit.svg",
+},
+KY: {
+"2Digit": "img/shields/United States/KY/KY-2Digit.svg",
+"3Digit": "img/shields/United States/KY/KY-3Digit.svg",
+},
+MA: {
+"2Digit": "img/shields/United States/MA/MA-2Digit.svg",
+"3Digit": "img/shields/United States/MA/MA-3Digit.svg",
+},
+ME: {
+"2Digit": "img/shields/United States/ME/ME-2Digit.svg",
+"3Digit": "img/shields/United States/ME/ME-3Digit.svg",
+},
+MN: {
+"2Digit": "img/shields/United States/MN/MN-2Digit.svg",
+"3Digit": "img/shields/United States/MN/MN-3Digit.svg",
+},
+NE: {
+"2Digit": "img/shields/United States/NE/NE-2Digit.svg",
+"3Digit": "img/shields/United States/NE/NE-3Digit.svg",
+},
+OK: {
+"2Digit": "img/shields/United States/OK/OK-2Digit.svg",
+"3Digit": "img/shields/United States/OK/OK-3Digit.svg",
+},
+};
+const traverse = (node, pathParts = []) => {
+if (!node || typeof node !== "object") {
+return;
+}
+for (const [key, value] of Object.entries(node)) {
+if (!value || typeof value !== "object") {
+continue;
+}
+if (value.type === "category") {
+traverse(value, pathParts.concat(value.folder || key));
+} else if (value.type === "shield") {
+const normalizedCode = ShieldElement.prototype.normalizeShieldCode(key);
+const variants = Array.isArray(value.variants) ? value.variants.slice() : [];
+const shieldFolderOverrides = {
+I: "img/shields/United States/Interstate",
+AZ: "img/shields/United States/AZ",
+AZLOOP: "img/shields/United States/AZ",
+GA: "img/shields/United States/GA",
+GAALT: "img/shields/United States/GA",
+GABYP: "img/shields/United States/GA",
+GACONN: "img/shields/United States/GA",
+GALOOP: "img/shields/United States/GA",
+GASPUR: "img/shields/United States/GA",
+IN: "img/shields/United States/IN",
+INTR: "img/shields/United States/IN",
+KS: "img/shields/United States/KS",
+KSTP: "img/shields/United States/KS",
+KY: "img/shields/United States/KY",
+MA: "img/shields/United States/MA",
+MATP: "img/shields/United States/MA",
+ME: "img/shields/United States/ME",
+METP: "img/shields/United States/ME",
+MN: "img/shields/United States/MN",
+MNBUS: "img/shields/United States/MN",
+MNCo: "img/shields/United States/MN",
+NV: "img/shields/United States/NV",
+NVCC: "img/shields/United States/NV",
+NE: "img/shields/United States/NE",
+NELINK: "img/shields/United States/NE",
+NESPUR: "img/shields/United States/NE",
+NJ: "img/shields/United States/NJ",
+GSP: "img/shields/United States/NJ",
+NJTP: "img/shields/United States/NJ",
+PIP: "img/shields/United States/NJ",
+NY: "img/shields/United States/NY",
+OK: "img/shields/United States/OK",
+};
+const resolvedAssetFolder =
+shieldFolderOverrides[normalizedCode] ||
+["img/shields"].concat(pathParts).join("/");
+shields.push({
+value: normalizedCode,
+label: value.name || normalizedCode,
+variants,
+fixedRouteVariants: Array.isArray(value.fixedRouteVariants)
+? value.fixedRouteVariants.slice()
+: [],
+assetFolder: resolvedAssetFolder,
+className:
+value.className ||
+ShieldElement.prototype.getShieldClassNames(normalizedCode),
+assetName: value.assetName || normalizedCode,
+assetPath: value.assetPath || null,
+assetPathByVariant:
+value.assetPathByVariant ||
+explicitShieldAssetOverrides[normalizedCode] ||
+null,
+suppressRouteNumber: value.suppressRouteNumber === true,
+county: value.county === true,
+standard: value.standard || null,
+officialDimensions: value.officialDimensions === true,
+internalScale:
+Number.isFinite(Number(value.internalScale)) &&
+Number(value.internalScale) > 0
+? Number(value.internalScale)
+: 1,
+maxRouteCharacters: value.maxRouteCharacters || null,
+physicalDimensionsByVariant:
+value.physicalDimensionsByVariant || null,
+routeNumberByVariant: value.routeNumberByVariant || null,
+autoVariantByCharacterCount:
+value.autoVariantByCharacterCount || null,
+legacyVariantAliases: value.legacyVariantAliases || null,
+categories: pathParts.slice(),
+});
+}
+}
+};
+traverse(directory);
+const ensureShield = ({
+value,
+label,
+variants = [],
+assetFolder,
+categories = [],
+assetName,
+assetPath,
+assetPathByVariant,
+suppressRouteNumber = false,
+fixedRouteVariants = [],
+county = false,
+standard = null,
+officialDimensions = false,
+internalScale = 1,
+maxRouteCharacters = null,
+physicalDimensionsByVariant = null,
+routeNumberByVariant = null,
+autoVariantByCharacterCount = null,
+legacyVariantAliases = null,
+}) => {
+const normalizedValue = ShieldElement.prototype.normalizeShieldCode(value);
+const existing = shields.find(
+(shield) =>
+ShieldElement.prototype.normalizeShieldCode(shield.value) ===
+normalizedValue
+);
+const normalizedShield = {
+value: normalizedValue,
+label: label || normalizedValue,
+variants,
+assetFolder,
+className: ShieldElement.prototype.getShieldClassNames(normalizedValue),
+assetName: assetName || normalizedValue,
+assetPath: assetPath || null,
+assetPathByVariant: assetPathByVariant || null,
+suppressRouteNumber: !!suppressRouteNumber,
+fixedRouteVariants: Array.isArray(fixedRouteVariants)
+? fixedRouteVariants.slice()
+: [],
+county: !!county,
+standard,
+officialDimensions: officialDimensions === true,
+internalScale:
+Number.isFinite(Number(internalScale)) && Number(internalScale) > 0
+? Number(internalScale)
+: 1,
+maxRouteCharacters,
+physicalDimensionsByVariant,
+routeNumberByVariant,
+autoVariantByCharacterCount,
+legacyVariantAliases,
+categories,
+};
+if (existing) {
+Object.assign(existing, normalizedShield);
+return;
+}
+shields.push(normalizedShield);
+};
+const ensureDigitShield = (value, label, folder, variants = ["2 Digit", "3 Digit"]) => {
+ensureShield({
+value,
+label,
+variants,
+assetFolder: folder,
+categories: ["United States"],
+});
+};
+const ensureExactShield = (
+value,
+label,
+path,
+suppressRouteNumber = true
+) => {
+ensureShield({
+value,
+label,
+variants: ["Image"],
+assetFolder: path.split("/").slice(0, -1).join("/"),
+assetName: value,
+assetPath: path,
+suppressRouteNumber,
+categories: ["United States"],
+});
+};
+const ensureVariantShield = ({
+value,
+label,
+folder,
+assetName = value,
+categories = ["United States"],
+variants = ["2 Digit", "3 Digit"],
+}) => {
+const assetPathByVariant = {};
+for (const variant of variants) {
+const variantKey = ShieldElement.prototype.formatVariantKey(variant);
+assetPathByVariant[variantKey] =
+`${folder}/${assetName}-${variantKey}.svg`;
+}
+ensureShield({
+value,
+label,
+variants,
+assetFolder: folder,
+assetName,
+assetPathByVariant,
+categories,
+});
+};
+ensureDigitShield("cir", "Circle", "img/shields/United States");
+ensureDigitShield("elp", "Ellipse", "img/shields/United States");
+ensureDigitShield("rec", "Rectangle", "img/shields/United States");
+ensureDigitShield("rec2", "Rectangle (Alt)", "img/shields/United States");
+ensureVariantShield({
+value: "I",
+label: "Interstate",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "I-BUS",
+label: "Interstate Business",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "I-BL",
+label: "Interstate Business Loop",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "I-BS",
+label: "Interstate Business Spur",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "I-DL",
+label: "Interstate Downtown Loop",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "I-DS",
+label: "Interstate Downtown Spur",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "I-F",
+label: "Future Interstate",
+folder: "img/shields/United States/Interstate",
+categories: ["United States", "Interstate"],
+});
+ensureVariantShield({
+value: "US",
+label: "U.S. Route",
+folder: "img/shields/United States/US Route",
+categories: ["United States", "U.S. Route"],
+});
+ensureVariantShield({
+value: "USCA",
+label: "U.S. Route (CA style)",
+folder: "img/shields/United States/US Route",
+assetName: "US-CA",
+categories: ["United States", "U.S. Route"],
+});
+ensureVariantShield({
+value: "WI",
+label: "Wisconsin",
+folder: "img/shields/United States/WI",
+categories: ["United States", "Wisconsin"],
+});
+ensureVariantShield({
+value: "WICo",
+label: "Wisconsin County",
+folder: "img/shields/United States/WI",
+assetName: "WICo",
+categories: ["United States", "Wisconsin"],
+});
+ensureShield({
+value: "C",
+label: "County",
+variants: ["Standard", "Green"],
+assetFolder: "img/shields/United States",
+assetName: "C",
+assetPathByVariant: {
+Standard: "img/shields/United States/C-2Digit.svg",
+Green: "img/shields/United States/C2-2Digit.svg",
+},
+legacyVariantAliases: {
+Auto: "Standard",
+"2Digit": "Standard",
+"3Digit": "Standard",
+},
+categories: ["United States"],
+county: true,
+});
+ensureDigitShield("AZ", "Arizona", "img/shields/United States/AZ");
+ensureShield({
+value: "AZLOOP",
+label: "Arizona Loop",
+variants: ["3 Digit"],
+assetFolder: "img/shields/United States/AZ",
+assetName: "AZLOOP",
+categories: ["United States"],
+});
+ensureDigitShield("GA", "Georgia", "img/shields/United States/GA");
+ensureDigitShield("GAALT", "GA Alternate", "img/shields/United States/GA");
+ensureDigitShield("GABYP", "GA Bypass", "img/shields/United States/GA");
+ensureDigitShield("GACONN", "GA Connector", "img/shields/United States/GA");
+ensureDigitShield("GALOOP", "GA Loop", "img/shields/United States/GA");
+ensureDigitShield("GASPUR", "GA Spur", "img/shields/United States/GA");
+ensureDigitShield("IN", "Indiana", "img/shields/United States/IN");
+ensureExactShield("INTR", "Indiana Toll Road", "img/shields/United States/IN/INTR.png");
+ensureDigitShield("KS", "Kansas", "img/shields/United States/KS");
+ensureExactShield("KSTP", "Kansas Turnpike", "img/shields/United States/KS/KSTP.png");
+ensureDigitShield("KY", "Kentucky", "img/shields/United States/KY");
+ensureExactShield("KYAA", "AA Highway", "img/shields/United States/KY/KYAA.png");
+ensureExactShield("KYAU", "Audubon Parkway", "img/shields/United States/KY/KYAU.png");
+ensureExactShield("KYBG", "Bluegrass Parkway", "img/shields/United States/KY/KYBG.png");
+ensureExactShield("KYCM", "Cumberland Parkway", "img/shields/United States/KY/KYCM.png");
+ensureExactShield("KYHR", "Hal Rogers Parkway", "img/shields/United States/KY/KYHR.png");
+ensureExactShield("KYMT", "Mountain Parkway", "img/shields/United States/KY/KYMT.png");
+ensureExactShield("KYPR", "Pennyrile Parkway", "img/shields/United States/KY/KYPR.png");
+ensureExactShield("KYPU", "Purchase Parkway", "img/shields/United States/KY/KYPU.png");
+ensureExactShield("KYWK", "Western KY Parkway", "img/shields/United States/KY/KYWK.png");
+ensureExactShield("KYWN", "Natcher Parkway", "img/shields/United States/KY/KYWN.png");
+ensureDigitShield("MA", "Massachusetts", "img/shields/United States/MA");
+ensureExactShield("MATP", "Mass Pike", "img/shields/United States/MA/MATP.png");
+ensureDigitShield("ME", "Maine", "img/shields/United States/ME");
+ensureExactShield("METP", "Maine Turnpike", "img/shields/United States/ME/METP.png");
+ensureShield({
+value: "MN",
+label: "Minnesota",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/MN",
+assetName: "MN",
+categories: ["United States"],
+});
+ensureShield({
+value: "MNBUS",
+label: "Minnesota Business",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/MN",
+assetName: "MNBUS",
+categories: ["United States"],
+});
+ensureShield({
+value: "MNCo",
+label: "Minnesota County",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/MN",
+assetName: "MNCo",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/MN/MNCo-2Digit.svg",
+"3Digit": "img/shields/United States/MN/MNCo-3Digit.svg",
+},
+categories: ["United States", "Minnesota"],
+});
+ensureDigitShield("NE", "Nebraska", "img/shields/United States/NE");
+ensureShield({
+value: "NELINK",
+label: "Nebraska Link",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/NE",
+assetName: "NELINK",
+categories: ["United States"],
+});
+ensureShield({
+value: "NESPUR",
+label: "Nebraska Spur",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/NE",
+assetName: "NESPUR",
+categories: ["United States"],
+});
+ensureShield({
+value: "NV",
+label: "Nevada",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/NV",
+assetName: "NV",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/NV/NV-2Digit.svg",
+},
+legacyVariantAliases: {
+"3Digit": "2 Digit",
+},
+categories: ["United States", "Nevada"],
+});
+ensureShield({
+value: "NVCC",
+label: "Clark County",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/NV",
+assetName: "NVCC",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/NV/NVCC-2Digit.svg",
+},
+categories: ["United States", "Nevada"],
+});
+ensureDigitShield("NJ", "New Jersey", "img/shields/United States/NJ");
+ensureExactShield("GSP", "Garden State Parkway", "img/shields/United States/NJ/GSP.png");
+ensureExactShield("NJTP", "NJ Turnpike", "img/shields/United States/NJ/NJTP.png");
+ensureExactShield("PIP", "Palisades Interstate Parkway", "img/shields/United States/NJ/PIP.png");
+ensureDigitShield("NY", "New York", "img/shields/United States/NY");
+ensureExactShield("B", "Bethpage Parkway", "img/shields/United States/NY/B.png");
+ensureExactShield("BMP", "Bear Mountain Parkway", "img/shields/United States/NY/BMP.png");
+ensureExactShield("BP", "Belt Parkway", "img/shields/United States/NY/BP.png");
+ensureExactShield("BR", "Bronx River Parkway", "img/shields/United States/NY/BR.png");
+ensureExactShield("BRP", "Bronx River Parkway", "img/shields/United States/NY/BRP.png");
+ensureExactShield("CCP", "Cross County Parkway", "img/shields/United States/NY/CCP.png");
+ensureExactShield("CI", "Cross Island Parkway", "img/shields/United States/NY/CI.png");
+ensureExactShield("FDR", "FDR Drive", "img/shields/United States/NY/FDR.png");
+ensureExactShield("GCP", "Grand Central Parkway", "img/shields/United States/NY/GCP.png");
+ensureExactShield("H", "Heckscher Parkway", "img/shields/United States/NY/H.png");
+ensureExactShield("HH", "Henry Hudson Parkway", "img/shields/United States/NY/HH.png");
+ensureExactShield("HR", "Hutchinson River Parkway", "img/shields/United States/NY/HR.png");
+ensureExactShield("HRD", "Harlem River Drive", "img/shields/United States/NY/HRD.png");
+ensureExactShield("HRP", "Hutchinson River Parkway", "img/shields/United States/NY/HRP.png");
+ensureExactShield("JR", "Jackie Robinson Parkway", "img/shields/United States/NY/JR.png");
+ensureExactShield("KWV", "Korean War Veterans Parkway", "img/shields/United States/NY/KWV.png");
+ensureExactShield("LOSP", "Lake Ontario State Parkway", "img/shields/United States/NY/LOSP.png");
+ensureExactShield("M", "Meadowbrook Parkway", "img/shields/United States/NY/M.png");
+ensureExactShield("MP", "Mosholu Parkway", "img/shields/United States/NY/MP.png");
+ensureExactShield("N", "Northern State Parkway", "img/shields/United States/NY/N.png");
+ensureExactShield("NSP", "Niagara Scenic Parkway", "img/shields/United States/NY/NSP.png");
+ensureExactShield("NYST", "NY State Thruway", "img/shields/United States/NY/NYST.png");
+ensureExactShield("O", "Ocean Parkway", "img/shields/United States/NY/O.png");
+ensureExactShield("Pe", "Pelham Parkway", "img/shields/United States/NY/Pe.png");
+ensureExactShield("RM", "Robert Moses Causeway", "img/shields/United States/NY/RM.png");
+ensureExactShield("SA", "Sagtikos Parkway", "img/shields/United States/NY/SA.png");
+ensureExactShield("SBP", "Sprain Brook Parkway", "img/shields/United States/NY/SBP.png");
+ensureExactShield("SM", "Sunken Meadow Parkway", "img/shields/United States/NY/SM.png");
+ensureExactShield("SMP", "Saw Mill Parkway", "img/shields/United States/NY/SMP.png");
+ensureExactShield("SO", "Southern State Parkway", "img/shields/United States/NY/SO.png");
+ensureExactShield("TSP", "Taconic State Parkway", "img/shields/United States/NY/TSP.png");
+ensureExactShield("W", "Wantagh Parkway", "img/shields/United States/NY/W.png");
+ensureDigitShield("OH", "Ohio", "img/shields/United States/OH");
+ensureExactShield("OHTP", "Ohio Turnpike", "img/shields/United States/OH/OHTP.png");
+ensureDigitShield("OK", "Oklahoma", "img/shields/United States/OK");
+ensureExactShield("OKCH", "Cherokee Turnpike", "img/shields/United States/OK/OKCH.png");
+ensureExactShield("OKCR", "Creek Turnpike", "img/shields/United States/OK/OKCR.png");
+ensureExactShield("OKHB", "H.E. Bailey Turnpike", "img/shields/United States/OK/OKHB.png");
+ensureExactShield("OKIN", "Indian Nation Turnpike", "img/shields/United States/OK/OKIN.png");
+ensureExactShield("OKKC", "Kickapoo Turnpike", "img/shields/United States/OK/OKKC.png");
+ensureExactShield("OKKL", "Kilpatrick Turnpike", "img/shields/United States/OK/OKKL.png");
+ensureExactShield("OKMS", "Muskogee Turnpike", "img/shields/United States/OK/OKMS.png");
+ensureExactShield("OKTU", "Turner Turnpike", "img/shields/United States/OK/OKTU.png");
+ensureExactShield("OKWR", "Will Rogers Turnpike", "img/shields/United States/OK/OKWR.png");
+ensureShield({
+value: "PA",
+label: "Pennsylvania",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/PA",
+assetName: "PA",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/PA/PA-2Digit.svg",
+"3Digit": "img/shields/United States/PA/PA-3Digit.svg",
+},
+categories: ["United States", "Pennsylvania"],
+});
+ensureShield({
+value: "PATPLOGO",
+label: "PA Turnpike",
+variants: ["Image"],
+assetFolder: "img/shields/United States/PA",
+assetName: "PATP",
+assetPath: "img/shields/United States/PA/PATP.png",
+categories: ["United States", "Pennsylvania"],
+});
+ensureShield({
+value: "PATP",
+label: "PA Turnpike Route",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/PA",
+assetName: "PATP",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/PA/PATP-2Digit.svg",
+"3Digit": "img/shields/United States/PA/PATP-3Digit.svg",
+},
+categories: ["United States", "Pennsylvania"],
+});
+ensureShield({
+value: "PR",
+label: "PR Primary",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/PR",
+assetName: "PR",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/PR/PR-2Digit.svg",
+"3Digit": "img/shields/United States/PR/PR-3Digit.svg",
+},
+categories: ["United States", "Puerto Rico"],
+});
+ensureShield({
+value: "PR2",
+label: "PR Urban Primary",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/PR",
+assetName: "PR2",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/PR/PR2-2Digit.svg",
+"3Digit": "img/shields/United States/PR/PR2-3Digit.svg",
+},
+categories: ["United States", "Puerto Rico"],
+});
+ensureShield({
+value: "PR3",
+label: "PR Secondary",
+variants: ["2 Digit", "3 Digit", "4 Digit"],
+assetFolder: "img/shields/United States/PR",
+assetName: "PR3",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/PR/PR3-2Digit.svg",
+"3Digit": "img/shields/United States/PR/PR3-3Digit.svg",
+"4Digit": "img/shields/United States/PR/PR3-3Digit.svg",
+},
+categories: ["United States", "Puerto Rico"],
+});
+ensureShield({
+value: "PR4",
+label: "PR Tertiary",
+variants: ["2 Digit", "3 Digit", "4 Digit"],
+assetFolder: "img/shields/United States/PR",
+assetName: "PR4",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/PR/PR4-2Digit.svg",
+"3Digit": "img/shields/United States/PR/PR4-3Digit.svg",
+"4Digit": "img/shields/United States/PR/PR4-3Digit.svg",
+},
+categories: ["United States", "Puerto Rico"],
+});
+ensureDigitShield("TX", "Texas", "img/shields/United States/TX");
+ensureShield({
+value: "TXBELT",
+label: "Texas Beltway",
+variants: ["2 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXBELTWAY",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXBELTWAY-2Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXEXPRESS",
+label: "Texas Express Toll",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXEXPRESS",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXEXPRESS-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXEXPRESS-3Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXFM",
+label: "Texas FM",
+variants: ["2 Digit", "3 Digit", "4 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXFM",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXFM-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXFM-3Digit.svg",
+"4Digit": "img/shields/United States/TX/TXFM-4Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXLOOP",
+label: "Texas Loop",
+variants: ["2 Digit", "3 Digit", "4 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXLOOP",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXLOOP-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXLOOP-3Digit.svg",
+"4Digit": "img/shields/United States/TX/TXLOOP-4Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXPARK",
+label: "Texas Park Road",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXPARK",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXPARK-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXPARK-3Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXRM",
+label: "Texas RM",
+variants: ["2 Digit", "3 Digit", "4 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXRM",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXRM-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXRM-3Digit.svg",
+"4Digit": "img/shields/United States/TX/TXRM-4Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXSPUR",
+label: "Texas Spur",
+variants: ["2 Digit", "3 Digit", "4 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXSPUR",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXSPUR-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXSPUR-3Digit.svg",
+"4Digit": "img/shields/United States/TX/TXSPUR-4Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureShield({
+value: "TXTOLL",
+label: "Texas Toll",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/United States/TX",
+assetName: "TXTOLL",
+assetPathByVariant: {
+"2Digit": "img/shields/United States/TX/TXTOLL-2Digit.svg",
+"3Digit": "img/shields/United States/TX/TXTOLL-3Digit.svg",
+},
+categories: ["United States", "Texas"],
+});
+ensureExactShield("HTR", "Hardy Toll Road", "img/shields/United States/TX/HTR.png");
+ensureExactShield("SHT", "Sam Houston Tollway", "img/shields/United States/TX/SHT.png");
+ensureExactShield("TXTOLLCTRMA", "Texas Toll CTRMA", "img/shields/United States/TX/TXTollCTRMA.svg", false);
+ensureExactShield("TXTOLLNTTA", "Texas Toll NTTA", "img/shields/United States/TX/TXTollNTTA.svg", false);
+ensureExactShield("TXTOLLFBTR", "Fort Bend Toll Road", "img/shields/United States/TX/TXTollFBTR.png");
+ensureExactShield("WPT", "Westpark Tollway", "img/shields/United States/TX/WPT.png");
+ensureShield({
+value: "TCH",
+label: "Trans-Canada Highway",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada",
+assetName: "TCH",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/TCH-2Digit.svg",
+"3Digit": "img/shields/Canada/TCH-2Digit.svg",
+},
+categories: ["Canada"],
+});
+ensureShield({
+value: "TCHLeaf",
+label: "TCH Leaf",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada",
+assetName: "TCHLeaf",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/TCHLeaf-2Digit.svg",
+"3Digit": "img/shields/Canada/TCHLeaf-3Digit.svg",
+},
+categories: ["Canada"],
+});
+ensureShield({
+value: "AB",
+label: "Alberta",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/AB",
+assetName: "AB",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/AB/AB-2Digit.svg",
+"3Digit": "img/shields/Canada/AB/AB-2Digit.svg",
+},
+categories: ["Canada", "Alberta"],
+});
+ensureShield({
+value: "AB2",
+label: "Alberta Oval",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/AB",
+assetName: "AB2",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/AB/AB2-2Digit.svg",
+"3Digit": "img/shields/Canada/AB/AB2-2Digit.svg",
+},
+categories: ["Canada", "Alberta"],
+});
+ensureShield({
+value: "ABTC",
+label: "Alberta TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/AB",
+assetName: "ABTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/AB/ABTC-2Digit.svg",
+"3Digit": "img/shields/Canada/AB/ABTC-2Digit.svg",
+},
+categories: ["Canada", "Alberta"],
+});
+ensureShield({
+value: "BC",
+label: "British Columbia",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/BC",
+assetName: "BC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/BC/BC-2Digit.svg",
+"3Digit": "img/shields/Canada/BC/BC-2Digit.svg",
+},
+categories: ["Canada", "British Columbia"],
+});
+ensureShield({
+value: "BCYH",
+label: "BC Yellowhead",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/BC",
+assetName: "BCYH",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/BC/BCYH-2Digit.svg",
+"3Digit": "img/shields/Canada/BC/BCYH-2Digit.svg",
+},
+categories: ["Canada", "British Columbia"],
+});
+ensureShield({
+value: "BCTC",
+label: "BC TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/BC",
+assetName: "BCTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/BC/BCTC-2Digit.svg",
+"3Digit": "img/shields/Canada/BC/BCTC-2Digit.svg",
+},
+categories: ["Canada", "British Columbia"],
+});
+ensureShield({
+value: "MB",
+label: "Manitoba",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/MB",
+assetName: "MB",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/MB/MB-2Digit.svg",
+"3Digit": "img/shields/Canada/MB/MB-2Digit.svg",
+},
+categories: ["Canada", "Manitoba"],
+});
+ensureShield({
+value: "MB2",
+label: "Manitoba Secondary",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/MB",
+assetName: "MB2",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/MB/MB2-2Digit.svg",
+"3Digit": "img/shields/Canada/MB/MB2-2Digit.svg",
+},
+categories: ["Canada", "Manitoba"],
+});
+ensureShield({
+value: "MBTC",
+label: "Manitoba TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/MB",
+assetName: "MBTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/MB/MBTC-2Digit.svg",
+"3Digit": "img/shields/Canada/MB/MBTC-2Digit.svg",
+},
+categories: ["Canada", "Manitoba"],
+});
+ensureShield({
+value: "NB",
+label: "New Brunswick",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NB",
+assetName: "NB",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NB/NB-2Digit.svg",
+"3Digit": "img/shields/Canada/NB/NB-2Digit.svg",
+},
+categories: ["Canada", "New Brunswick"],
+});
+ensureShield({
+value: "NBCONN",
+label: "NB Connector",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NB",
+assetName: "NBCONN",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NB/NBCONN-2Digit.svg",
+"3Digit": "img/shields/Canada/NB/NBCONN-2Digit.svg",
+},
+categories: ["Canada", "New Brunswick"],
+});
+ensureShield({
+value: "NBLOCAL",
+label: "NB Local",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NB",
+assetName: "NBLOCAL",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NB/NBLOCAL-2Digit.svg",
+"3Digit": "img/shields/Canada/NB/NBLOCAL-2Digit.svg",
+},
+categories: ["Canada", "New Brunswick"],
+});
+ensureShield({
+value: "NBTC",
+label: "NB TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NB",
+assetName: "NBTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NB/NBTC-2Digit.svg",
+"3Digit": "img/shields/Canada/NB/NBTC-2Digit.svg",
+},
+categories: ["Canada", "New Brunswick"],
+});
+ensureShield({
+value: "NL",
+label: "Newfoundland and Labrador",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NL",
+assetName: "NL",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NL/NL-2Digit.svg",
+"3Digit": "img/shields/Canada/NL/NL-3Digit.svg",
+},
+categories: ["Canada", "Newfoundland and Labrador"],
+});
+ensureShield({
+value: "NLTC",
+label: "NL TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NL",
+assetName: "NLTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NL/NLTC-2Digit.svg",
+"3Digit": "img/shields/Canada/NL/NLTC-2Digit.svg",
+},
+categories: ["Canada", "Newfoundland and Labrador"],
+});
+ensureShield({
+value: "NS",
+label: "Nova Scotia",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NS",
+assetName: "NS",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NS/NS-2Digit.svg",
+"3Digit": "img/shields/Canada/NS/NS-3Digit.svg",
+},
+categories: ["Canada", "Nova Scotia"],
+});
+ensureShield({
+value: "NSCONN",
+label: "NS Connector",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NS",
+assetName: "NSCONN",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NS/NSCONN-2Digit.svg",
+"3Digit": "img/shields/Canada/NS/NSCONN-2Digit.svg",
+},
+categories: ["Canada", "Nova Scotia"],
+});
+ensureShield({
+value: "NSTC",
+label: "NS TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/NS",
+assetName: "NSTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/NS/NSTC-2Digit.svg",
+"3Digit": "img/shields/Canada/NS/NSTC-2Digit.svg",
+},
+categories: ["Canada", "Nova Scotia"],
+});
+ensureShield({
+value: "ON",
+label: "Ontario",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/ON",
+assetName: "ON",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/ON/ON-2Digit.svg",
+"3Digit": "img/shields/Canada/ON/ON-3Digit.svg",
+},
+internalScale: 1.2,
+categories: ["Canada", "Ontario"],
+});
+ensureShield({
+value: "ON2",
+label: "Ontario Secondary",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/ON",
+assetName: "ON2",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/ON/ON2-2Digit.svg",
+"3Digit": "img/shields/Canada/ON/ON2-2Digit.svg",
+},
+categories: ["Canada", "Ontario"],
+});
+ensureShield({
+value: "ON3",
+label: "ON County",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/ON",
+assetName: "ON3",
+className: "ON3",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/ON/ON3-2Digit.svg",
+"3Digit": "img/shields/Canada/ON/ON3-2Digit.svg",
+},
+categories: ["Canada", "Ontario"],
+county: false,
+});
+ensureExactShield("ONDVP", "Don Valley Parkway", "img/shields/Canada/ON/ON-DVP.png");
+ensureExactShield("ONGAR", "Gardiner Expressway", "img/shields/Canada/ON/ON-GAR.png");
+ensureShield({
+value: "ONTC",
+label: "Ontario TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/ON",
+assetName: "ONTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/ON/ONTC-2Digit.svg",
+"3Digit": "img/shields/Canada/ON/ONTC-2Digit.svg",
+},
+categories: ["Canada", "Ontario"],
+});
+ensureExactShield("ONTCCOR", "Central Ontario Route", "img/shields/Canada/ON/ONTC-COR.svg");
+ensureExactShield("ONTCGBR", "Georgian Bay Route", "img/shields/Canada/ON/ONTC-GBR.svg");
+ensureExactShield("ONTCLSR", "Lake Superior Route", "img/shields/Canada/ON/ONTC-LSR.svg");
+ensureExactShield("ONTCNOR", "Northern Ontario Route", "img/shields/Canada/ON/ONTC-NOR.svg");
+ensureExactShield("ONTCOVR", "Ottawa Valley Route", "img/shields/Canada/ON/ONTC-OVR.svg");
+ensureShield({
+value: "PEI",
+label: "Prince Edward Island",
+variants: ["2 Digit"],
+assetFolder: "img/shields/Canada/PEI",
+assetName: "PEI",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/PEI/PEI-2Digit.svg",
+},
+categories: ["Canada", "Prince Edward Island"],
+});
+ensureShield({
+value: "QC",
+label: "Quebec Autoroute",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/QC",
+assetName: "QC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/QC/QC-2Digit.svg",
+"3Digit": "img/shields/Canada/QC/QC-3Digit.svg",
+},
+categories: ["Canada", "Quebec"],
+});
+ensureShield({
+value: "QC2",
+label: "Quebec Route",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/QC",
+assetName: "QC2",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/QC/QC2-2Digit.svg",
+"3Digit": "img/shields/Canada/QC/QC2-2Digit.svg",
+},
+categories: ["Canada", "Quebec"],
+});
+ensureShield({
+value: "QCTC",
+label: "Quebec TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/QC",
+assetName: "QCTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/QC/QCTC-2Digit.svg",
+"3Digit": "img/shields/Canada/QC/QCTC-2Digit.svg",
+},
+categories: ["Canada", "Quebec"],
+});
+ensureShield({
+value: "SK",
+label: "Saskatchewan",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/SK",
+assetName: "SK",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/SK/SK-2Digit.svg",
+"3Digit": "img/shields/Canada/SK/SK-2Digit.svg",
+},
+categories: ["Canada", "Saskatchewan"],
+});
+ensureShield({
+value: "SK2",
+label: "Saskatchewan Secondary",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/SK",
+assetName: "SK2",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/SK/SK2-2Digit.svg",
+"3Digit": "img/shields/Canada/SK/SK2-2Digit.svg",
+},
+categories: ["Canada", "Saskatchewan"],
+});
+ensureShield({
+value: "SKTC",
+label: "Saskatchewan TCH",
+variants: ["2 Digit", "3 Digit"],
+assetFolder: "img/shields/Canada/SK",
+assetName: "SKTC",
+assetPathByVariant: {
+"2Digit": "img/shields/Canada/SK/SKTC-2Digit.svg",
+"3Digit": "img/shields/Canada/SK/SKTC-2Digit.svg",
+},
+categories: ["Canada", "Saskatchewan"],
+});
+return shields;
+};
+ShieldElement.prototype.buildBlockShieldVariants = function (shields) {
+const variants = new Set(["Auto"]);
+(shields || []).forEach((shield) => {
+(shield.variants || []).forEach((variant) => variants.add(variant));
+});
+return Array.from(variants).map((variant) => ({
+value: variant,
+label: variant,
+}));
+};
+(() => {
+const shields = ShieldElement.prototype.buildBlockShieldList();
+ShieldElement.prototype.blockShieldBases = shields;
+ShieldElement.prototype.blockShieldVariants =
+ShieldElement.prototype.buildBlockShieldVariants(shields);
+if (shields.length && shields[0].value) {
+ShieldElement.prototype.defaultShieldBase = shields[0].value;
+}
+})();
+ShieldElement.prototype.blockBannerPositions = [
+"Above",
+"Below",
+"Left",
+"Right",
+];
+ShieldElement.prototype.getBannerPositionOptions = function () {
+return ShieldElement.prototype.blockBannerPositions;
+};
+ShieldElement.prototype.getBannerFontOptions = function () {
+return TextElement.prototype.fontFamily.filter((font) => !isMotorwayFont(font));
+};
+ShieldElement.prototype.normalizeBannerType = function (value) {
+const options = Shield.prototype.bannerTypes || [];
+const rawValue = typeof value === "string" ? value : "";
+if (rawValue.length > 0 && rawValue.trim() === "") {
+return rawValue;
+}
+const trimmed = rawValue.trim();
+if (!trimmed) {
+return ShieldElement.prototype.defaultBannerType;
+}
+if (!options.length || options.includes(trimmed)) {
+return trimmed;
+}
+return trimmed;
+};
+ShieldElement.prototype.normalizeBannerPosition = function (value) {
+const options = ShieldElement.prototype.getBannerPositionOptions();
+if (typeof value === "string" && options.includes(value)) {
+return value;
+}
+return ShieldElement.prototype.defaultBannerPosition;
+};
+ShieldElement.prototype.normalizeBannerFontFamily = function (value) {
+const options = ShieldElement.prototype.getBannerFontOptions();
+const normalizedValue =
+typeof normalizeTextFontFamilyName === "function"
+? normalizeTextFontFamilyName(value)
+: String(value || "").trim();
+if (normalizedValue && options.includes(normalizedValue)) {
+return normalizedValue;
+}
+if (normalizedValue) {
+const caseInsensitiveMatch = options.find(
+(option) =>
+String(option).toLowerCase() === String(normalizedValue).toLowerCase()
+);
+if (caseInsensitiveMatch) {
+return caseInsensitiveMatch;
+}
+}
+return (
+ShieldElement.prototype.defaultBannerFontFamily ||
+(options.length ? options[0] : "")
+);
+};
+ShieldElement.prototype.resolveBannerFontFamilyForRender = function (
+value,
+panel = null
+) {
+const normalizedFont =
+ShieldElement.prototype.normalizeBannerFontFamily(value);
+if (typeof resolveTextFontFamilyForRender === "function") {
+return resolveTextFontFamilyForRender(normalizedFont, {}, panel);
+}
+if (
+typeof DISPLAY_FONT_TO_RENDER_FONT === "object" &&
+DISPLAY_FONT_TO_RENDER_FONT !== null &&
+DISPLAY_FONT_TO_RENDER_FONT[normalizedFont]
+) {
+return DISPLAY_FONT_TO_RENDER_FONT[normalizedFont];
+}
+return normalizedFont;
+};
+ShieldElement.prototype.normalizeFontSize = function (
+value,
+fallbackSize = ShieldElement.prototype.defaultBannerFontSize
+) {
+const parsed = parseFloat(
+typeof value === "string" ? value.replace(/rem$/i, "") : value
+);
+if (Number.isFinite(parsed)) {
+return Math.max(parsed, 0.1);
+}
+return fallbackSize;
+};
+ShieldElement.prototype.getFontSizeCss = function (value) {
+const normalized = ShieldElement.prototype.normalizeFontSize(value);
+return normalized + "rem";
+};
+ShieldElement.prototype.normalizeShieldSize = function (value) {
+if (typeof value === "string") {
+value = value.replace(/rem$/i, "");
+}
+const parsed = parseFloat(value);
+if (Number.isFinite(parsed) && parsed > 0) {
+return parsed;
+}
+return ShieldElement.prototype.defaultShieldSize;
+};
+ShieldElement.prototype.getShieldScale = function (size) {
+const base =
+ShieldElement.prototype.defaultShieldSize && ShieldElement.prototype.defaultShieldSize > 0
+? ShieldElement.prototype.defaultShieldSize
+: 3;
+const normalizedSize = ShieldElement.prototype.normalizeShieldSize(size);
+return normalizedSize / base;
+};
+ShieldElement.prototype.normalizeScaleBannersWithShield = function (value) {
+if (
+value === false ||
+value === 0 ||
+value === "0" ||
+(typeof value === "string" && value.toLowerCase() === "false")
+) {
+return false;
+}
+return true;
+};
+ShieldElement.prototype.getBannerDisplayInfo = function (value) {
+const originalValue = String(value ?? "");
+const isBlankPlaceholder =
+originalValue.length > 0 && originalValue.trim() === "";
+const rawValue = isBlankPlaceholder ? originalValue : originalValue.trim();
+let displayValue = isBlankPlaceholder ? "\u00a0" : rawValue;
+let quoted = false;
+if (!isBlankPlaceholder && rawValue.length >= 2) {
+const firstChar = rawValue.charAt(0);
+const lastChar = rawValue.charAt(rawValue.length - 1);
+const matchingQuotes =
+(firstChar === '"' && lastChar === '"') ||
+(firstChar === "'" && lastChar === "'") ||
+(firstChar === "\u201c" && lastChar === "\u201d") ||
+(firstChar === "\u2018" && lastChar === "\u2019");
+if (matchingQuotes) {
+quoted = true;
+displayValue = rawValue.slice(1, -1).trim();
+}
+}
+const normalizedValue = isBlankPlaceholder
+? ""
+: displayValue.toUpperCase().replace(/\s+/g, " ").trim();
+const yellowPlaqueValues = new Set([
+"TOLL",
+"TOLLWAY",
+"TURNPIKE",
+"TOLL ROAD",
+]);
+const whitePlaqueValues = new Set([
+"TRUCKS",
+"NO TRUCKS",
+"HAZMATS",
+"NO HAZMATS",
+]);
+const orangePlaqueValues = new Set(["DETOUR"]);
+const isTollPlaque = yellowPlaqueValues.has(normalizedValue);
+const isTruckPlaque = whitePlaqueValues.has(normalizedValue);
+const isDetourPlaque = orangePlaqueValues.has(normalizedValue);
+const isSpecialPlaque = isTollPlaque || isTruckPlaque || isDetourPlaque;
+const specialPlaqueKind = isTollPlaque
+? "yellow"
+: isTruckPlaque
+? "white"
+: isDetourPlaque
+? "orange"
+: "";
+const automaticBackgroundColor = isTollPlaque
+? "Yellow"
+: isTruckPlaque
+? "White"
+: isDetourPlaque
+? "Orange"
+: "";
+return {
+rawValue,
+displayValue,
+normalizedValue,
+quoted,
+isBlankPlaceholder,
+isTollPlaque,
+isTruckPlaque,
+isDetourPlaque,
+isSpecialPlaque,
+specialPlaqueKind,
+automaticBackgroundColor,
+};
+};
+ShieldElement.prototype.hasBannerValue = function (value) {
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(value);
+return (
+bannerInfo.isBlankPlaceholder ||
+bannerInfo.displayValue !== ""
+);
+};
+ShieldElement.prototype.getMergeableAboveBanner = function (
+shield,
+bannerScale = 1,
+panel = null
+) {
+if (!shield) {
+return null;
+}
+const bannerCandidates = [
+{
+value: shield.bannerType,
+position: shield.bannerPosition,
+bannerClass: "bannerA",
+indentFirstLetter: shield.indentFirstLetter,
+smallCaps: shield.smallCaps,
+fontSize: shield.bannerFontSize1,
+bannerFontFamily: shield.bannerFontFamily1,
+backgroundColor: shield.bannerBackgroundColor1,
+},
+{
+value: shield.bannerType2,
+position: shield.bannerPosition2,
+bannerClass: "bannerB",
+indentFirstLetter:
+shield.indentFirstLetter2 !== undefined
+? shield.indentFirstLetter2
+: shield.indentFirstLetter,
+smallCaps:
+shield.smallCaps2 !== undefined ? shield.smallCaps2 : shield.smallCaps,
+fontSize: shield.bannerFontSize2,
+bannerFontFamily: shield.bannerFontFamily2,
+backgroundColor: shield.bannerBackgroundColor2,
+},
+].filter(
+(candidate) =>
+ShieldElement.prototype.normalizeBannerPosition(candidate.position) ===
+"Above" &&
+ShieldElement.prototype.hasBannerValue(candidate.value)
+);
+const rawRoadName = String(shield.roadName || "");
+const hasRoadName = rawRoadName.trim().length > 0;
+const hasBannerA = ShieldElement.prototype.hasBannerValue(shield.bannerType);
+const hasBannerB = ShieldElement.prototype.hasBannerValue(shield.bannerType2);
+const roadNamePosition = hasBannerA
+? ShieldElement.prototype.normalizeBannerPosition(shield.bannerPosition)
+: hasBannerB
+? ShieldElement.prototype.normalizeBannerPosition(shield.bannerPosition2)
+: ShieldElement.prototype.normalizeBannerPosition(shield.bannerPosition);
+if (
+bannerCandidates.length !== 1 ||
+(hasRoadName && roadNamePosition === "Above")
+) {
+return null;
+}
+const candidate = bannerCandidates[0];
+const info = ShieldElement.prototype.getBannerDisplayInfo(candidate.value);
+if (
+info.quoted ||
+info.isBlankPlaceholder ||
+!info.displayValue
+) {
+return null;
+}
+return {
+text: info.displayValue,
+bannerClass: candidate.bannerClass,
+indentFirstLetter:
+info.isSpecialPlaque
+? false
+: candidate.indentFirstLetter !== false,
+smallCaps: candidate.smallCaps !== false,
+fontSizeCss: ShieldElement.prototype.getFontSizeCss(
+ShieldElement.prototype.normalizeFontSize(candidate.fontSize, shield.fontSize)
+),
+bannerFontFamily: ShieldElement.prototype.normalizeBannerFontFamily(
+candidate.bannerFontFamily || shield.bannerFontFamily
+),
+backgroundColor: ShieldElement.prototype.normalizeBannerBackgroundColor(
+candidate.backgroundColor
+),
+bannerLetterSpacing: ShieldElement.prototype.normalizeBannerLetterSpacing(
+shield.bannerLetterSpacing
+),
+bannerScale: Number.isFinite(Number(bannerScale)) ? Number(bannerScale) : 1,
+panelColor:
+panel?.color ||
+panel?.sign?.color ||
+panel?.backgroundColor ||
+panel?.panelColor ||
+"Green",
+plaqueKind: info.isSpecialPlaque ? info.specialPlaqueKind : "plain",
+};
+};
+ShieldElement.prototype.createBannerElement = function (
+bannerClass,
+bannerValue,
+fontSizeCss,
+indentFirstLetter,
+bannerFontFamily,
+smallCaps = true,
+panel = null,
+bannerLetterSpacing = 0,
+bannerBackgroundColor = "Inherit"
+) {
+const bannerEl = document.createElement("p");
+const shouldIndent = indentFirstLetter !== false;
+bannerEl.className =
+bannerClass + (shouldIndent ? "" : " noIndent") + (smallCaps ? "" : " noSmallCaps");
+bannerEl.style.setProperty("--fontSize", fontSizeCss);
+const normalizedFont =
+ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+const renderedFont =
+ShieldElement.prototype.resolveBannerFontFamilyForRender(
+normalizedFont,
+panel
+);
+if (renderedFont) {
+bannerEl.style.setProperty("--bannerFontFamily", `"${renderedFont}"`);
+bannerEl.style.fontFamily = `"${renderedFont}"`;
+}
+const normalizedBannerLetterSpacing = applyBetweenCharacterLetterSpacing(
+bannerEl,
+bannerLetterSpacing
+);
+if (Math.abs(normalizedBannerLetterSpacing) > 0.0001) {
+bannerEl.style.letterSpacing = "var(--betweenLetterSpacing)";
+}
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
+const normalizedBannerValue = bannerInfo.displayValue;
+if (bannerInfo.isBlankPlaceholder) {
+bannerEl.classList.add("blankBannerPlaceholder");
+}
+const isRoadNameBanner = String(bannerClass || "")
+.split(/\s+/)
+.includes("bannerRoadName");
+const isSpecialPlaqueBanner =
+!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isSpecialPlaque;
+if (isSpecialPlaqueBanner) {
+bannerEl.classList.add("specialShieldPlaque", "noIndent");
+}
+if (isSpecialPlaqueBanner && bannerInfo.isTollPlaque) {
+bannerEl.classList.add("TOLL", "yellowElmt");
+}
+if (isSpecialPlaqueBanner && bannerInfo.isTruckPlaque) {
+bannerEl.classList.add("truckPlaque", "whiteElmt");
+}
+if (isSpecialPlaqueBanner && bannerInfo.isDetourPlaque) {
+bannerEl.classList.add("detourPlaque", "orangeElmt");
+}
+ShieldElement.prototype.applyBannerBackgroundColor(
+bannerEl,
+bannerBackgroundColor,
+panel
+);
+if (isRoadNameBanner && /\\n|\n/.test(normalizedBannerValue)) {
+bannerEl.classList.add("multilineRoadName");
+}
+const displayBannerValue = isRoadNameBanner
+? normalizedBannerValue.replace(/\\n/g, "\n")
+: normalizedBannerValue;
+bannerEl.textContent = bannerInfo.isBlankPlaceholder
+? "W"
+: normalizedBannerValue
+? displayBannerValue
+: " ";
+if (/^Motorway (?:Permanent|Temporary)$/.test(renderedFont)) {
+bannerEl.style.setProperty("--bannerFontFamily", `"${getMotorwayFallbackFont(renderedFont)}"`);
+applyMotorwayTextFallback(bannerEl, renderedFont);
+}
+return bannerEl;
+};
+ShieldElement.prototype.isBilingualDirectionPair = function (firstValue, secondValue) {
+const first = String(firstValue || "").trim().toUpperCase();
+const second = String(secondValue || "").trim().toUpperCase();
+const pairs = {
+EAST: "EST",
+WEST: "OUEST",
+NORTH: "NORD",
+SOUTH: "SUD",
+};
+return pairs[first] === second;
+};
+ShieldElement.prototype.createStackedBannerSlot = function (
+position,
+banners,
+fontSizeCss,
+indentFirstLetter,
+bannerFontFamily,
+smallCaps = true,
+panel = null,
+bannerLetterSpacing = 0
+) {
+const normalizedPosition = ShieldElement.prototype.normalizeBannerPosition(
+position
+);
+const container = document.createElement("div");
+container.className = "stackedBannerSlot bannerSlot";
+container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
+const normalizedBannerFont =
+ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+const renderedBannerFont =
+ShieldElement.prototype.resolveBannerFontFamilyForRender(
+normalizedBannerFont,
+panel
+);
+const usesClearviewBannerFont =
+typeof isClearviewTextFontFamily === "function"
+? isClearviewTextFontFamily(normalizedBannerFont) ||
+isClearviewTextFontFamily(renderedBannerFont)
+: /^Clearview\s|^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(
+String(normalizedBannerFont || renderedBannerFont || "")
+);
+if (usesClearviewBannerFont) {
+container.classList.add("clearviewBannerFont");
+}
+const firstBannerValue = banners?.[0]?.bannerValue;
+const secondBannerValue = banners?.[1]?.bannerValue;
+if (
+ShieldElement.prototype.isBilingualDirectionPair(
+firstBannerValue,
+secondBannerValue
+)
+) {
+container.classList.add("bilingualDirectionBanner");
+}
+const hasTollBanner = banners.some((banner) => {
+if (banner?.isRoadName === true || String(banner?.bannerClass || "").split(/\s+/).includes("bannerRoadName")) {
+return false;
+}
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
+return !bannerInfo.quoted && bannerInfo.isTollPlaque;
+});
+const hasTruckBanner = banners.some((banner) => {
+if (banner?.isRoadName === true || String(banner?.bannerClass || "").split(/\s+/).includes("bannerRoadName")) {
+return false;
+}
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
+return !bannerInfo.quoted && bannerInfo.isTruckPlaque;
+});
+const hasDetourBanner = banners.some((banner) => {
+if (banner?.isRoadName === true || String(banner?.bannerClass || "").split(/\s+/).includes("bannerRoadName")) {
+return false;
+}
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(banner.bannerValue);
+return !bannerInfo.quoted && bannerInfo.isDetourPlaque;
+});
+if (hasTollBanner) {
+container.classList.add("tollStackedBanner");
+}
+if (hasTruckBanner) {
+container.classList.add("truckStackedBanner");
+}
+if (hasDetourBanner) {
+container.classList.add("detourStackedBanner");
+}
+const isSidePosition =
+normalizedPosition === "Left" || normalizedPosition === "Right";
+const isBilingualDirectionBanner = container.classList.contains(
+"bilingualDirectionBanner"
+);
+if (isSidePosition) {
+container.classList.add("sideBannerStack");
+}
+const hasPlainEnlargedBanner = banners.some((banner) => {
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(
+banner.bannerValue
+);
+const bannerIndent =
+typeof banner.indentFirstLetter === "boolean"
+? banner.indentFirstLetter
+: indentFirstLetter;
+const isRoadName =
+banner.isRoadName === true ||
+String(banner.bannerClass || "")
+.split(/\s+/)
+.includes("bannerRoadName");
+return (
+!isRoadName &&
+bannerIndent !== false &&
+!bannerInfo.isSpecialPlaque
+);
+});
+if (
+isSidePosition &&
+!isBilingualDirectionBanner &&
+!hasTollBanner &&
+!hasTruckBanner &&
+!hasDetourBanner &&
+hasPlainEnlargedBanner
+) {
+container.classList.add("plainEnlargedSideBannerStack");
+}
+banners.forEach(
+({
+bannerClass,
+bannerValue,
+containerClass,
+indentFirstLetter: bannerSpecificIndent,
+smallCaps: bannerSpecificSmallCaps,
+bannerLetterSpacing: bannerSpecificLetterSpacing,
+bannerFontFamily: bannerSpecificFontFamily,
+fontSizeCss: bannerSpecificFontSizeCss,
+backgroundColor: bannerSpecificBackgroundColor,
+isMultilineRoadName,
+}) => {
+if (containerClass) {
+container.classList.add(containerClass);
+}
+const bannerIndent =
+typeof bannerSpecificIndent === "boolean"
+? bannerSpecificIndent
+: indentFirstLetter;
+const bannerSmallCaps =
+typeof bannerSpecificSmallCaps === "boolean"
+? bannerSpecificSmallCaps
+: smallCaps;
+const bannerEl = ShieldElement.prototype.createBannerElement(
+bannerClass,
+bannerValue,
+bannerSpecificFontSizeCss || fontSizeCss,
+bannerIndent,
+bannerSpecificFontFamily || bannerFontFamily,
+bannerSmallCaps,
+panel,
+typeof bannerSpecificLetterSpacing === "number"
+? bannerSpecificLetterSpacing
+: bannerLetterSpacing,
+bannerSpecificBackgroundColor
+);
+if (isMultilineRoadName) {
+bannerEl.classList.add("multilineRoadName");
+}
+container.appendChild(bannerEl);
+}
+);
+return container;
+};
+ShieldElement.prototype.createBannerContainer = function (
+containerClass,
+bannerClass,
+bannerValue,
+fontSizeCss,
+indentFirstLetter,
+bannerFontFamily,
+isSecond,
+position,
+smallCaps = true,
+panel = null,
+bannerLetterSpacing = 0,
+bannerBackgroundColor = "Inherit"
+) {
+const container = document.createElement("div");
+container.className = containerClass;
+container.classList.add("bannerSlot");
+const normalizedPosition = ShieldElement.prototype.normalizeBannerPosition(
+position
+);
+container.classList.add(`bannerSlot-${normalizedPosition.toLowerCase()}`);
+const normalizedBannerFont =
+ShieldElement.prototype.normalizeBannerFontFamily(bannerFontFamily);
+const renderedBannerFont =
+ShieldElement.prototype.resolveBannerFontFamilyForRender(
+normalizedBannerFont,
+panel
+);
+const usesClearviewBannerFont =
+typeof isClearviewTextFontFamily === "function"
+? isClearviewTextFontFamily(normalizedBannerFont) ||
+isClearviewTextFontFamily(renderedBannerFont)
+: /^Clearview\s|^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(
+String(normalizedBannerFont || renderedBannerFont || "")
+);
+if (usesClearviewBannerFont) {
+container.classList.add("clearviewBannerFont");
+}
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
+const isRoadNameBanner = String(bannerClass || "")
+.split(/\s+/)
+.includes("bannerRoadName");
+if (!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isTollPlaque) {
+container.classList.add("tollBannerSlot");
+}
+if (!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isTruckPlaque) {
+container.classList.add("truckBannerSlot");
+}
+if (!isRoadNameBanner && !bannerInfo.quoted && bannerInfo.isDetourPlaque) {
+container.classList.add("detourBannerSlot");
+}
+const bannerEl = ShieldElement.prototype.createBannerElement(
+bannerClass,
+bannerValue,
+fontSizeCss,
+indentFirstLetter,
+bannerFontFamily,
+smallCaps,
+panel,
+bannerLetterSpacing,
+bannerBackgroundColor
+);
+container.appendChild(bannerEl);
+return container;
+};
+ShieldElement.prototype.getBlockShieldConfig = function (base) {
+const options = ShieldElement.prototype.blockShieldBases;
+const normalizedBase = ShieldElement.prototype.normalizeShieldCode(base);
+return (
+options.find(
+(option) =>
+ShieldElement.prototype.normalizeShieldCode(option.value) === normalizedBase
+) || options[0]
+);
+};
+ShieldElement.prototype.resolveBlockVariant = function (
+desiredVariant,
+routeNumber,
+config
+) {
+const allowed = config?.variants || [];
+if (!allowed.length) {
+return "";
+}
+const normalized = (desiredVariant || "").trim();
+if (normalized && normalized.toLowerCase() !== "auto") {
+if (allowed.includes(normalized)) {
+return normalized;
+}
+const legacyVariantKey =
+ShieldElement.prototype.formatVariantKey(normalized);
+const migratedVariant =
+ShieldElement.prototype.resolveLegacyVariantAlias(
+config?.legacyVariantAliases?.[legacyVariantKey],
+routeNumber
+);
+if (migratedVariant && allowed.includes(migratedVariant)) {
+return migratedVariant;
+}
+return allowed[0] || normalized;
+}
+const fallback = allowed[0] || ShieldElement.prototype.defaultVariant;
+const inferred = ShieldElement.prototype.getVariantFromRoute(routeNumber, config);
+return allowed.includes(inferred) ? inferred : fallback;
+};
+ShieldElement.prototype.migrateLegacyBlockVariant = function (
+desiredVariant,
+routeNumber,
+config
+) {
+if (typeof desiredVariant !== "string") {
+return desiredVariant;
+}
+const requested = desiredVariant.trim();
+const allowed = config?.variants || [];
+if (
+!requested ||
+requested.toLowerCase() === "auto" ||
+allowed.includes(requested)
+) {
+return desiredVariant;
+}
+const legacyKey = ShieldElement.prototype.formatVariantKey(requested);
+const migrated = ShieldElement.prototype.resolveLegacyVariantAlias(
+config?.legacyVariantAliases?.[legacyKey],
+routeNumber
+);
+return migrated && allowed.includes(migrated)
+? migrated
+: desiredVariant;
+};
+ShieldElement.prototype.resolveLegacyVariantAlias = function (
+alias,
+routeNumber
+) {
+if (typeof alias === "string") {
+return alias;
+}
+if (!alias || typeof alias !== "object") {
+return null;
+}
+return ShieldElement.prototype.getRouteCharacterCount(routeNumber) >= 3
+? alias.threeOrMore
+: alias.oneToTwo;
+};
+ShieldElement.prototype.getRouteCharacterCount = function (routeNumber) {
+const raw = String(routeNumber || "").trim();
+if (!raw) {
+return 0;
+}
+try {
+return (raw.match(/[\p{L}\p{N}]/gu) || []).length;
+} catch (error) {
+return (raw.match(/[A-Za-z0-9]/g) || []).length;
+}
+};
+ShieldElement.prototype.limitRouteCharacters = function (
+routeNumber,
+config
+) {
+const normalizedRoute = String(routeNumber ?? "").trim();
+const maximumCharacters = Math.trunc(Number(config?.maxRouteCharacters));
+if (!(maximumCharacters > 0)) {
+return normalizedRoute;
+}
+return Array.from(normalizedRoute).slice(0, maximumCharacters).join("");
+};
+ShieldElement.prototype.getRouteSizeClassFromCount = function (count) {
+if (!count) {
+return "";
+}
+if (count <= 1) {
+return "one";
+}
+if (count === 2) {
+return "two";
+}
+if (count === 3) {
+return "three";
+}
+if (count === 4) {
+return "four";
+}
+if (count === 5) {
+return "five";
+}
+return "six";
+};
+ShieldElement.prototype.getVariantFromRoute = function (routeNumber, config) {
+const characterCount =
+ShieldElement.prototype.getRouteCharacterCount(routeNumber);
+const officialAutoVariants = config?.autoVariantByCharacterCount;
+if (officialAutoVariants) {
+return characterCount >= 3
+? officialAutoVariants.threeOrMore
+: officialAutoVariants.oneToTwo;
+}
+const supportsFourDigit =
+Array.isArray(config?.variants) && config.variants.includes("4 Digit");
+if (supportsFourDigit && characterCount >= 4) {
+return "4 Digit";
+}
+return characterCount >= 3 ? "3 Digit" : "2 Digit";
+};
+ShieldElement.prototype.getContainerSizeClass = function (routeNumber) {
+return ShieldElement.prototype.getRouteSizeClassFromCount(
+ShieldElement.prototype.getRouteCharacterCount(routeNumber)
+);
+};
+ShieldElement.prototype.getImageSizeClass = function (routeNumber) {
+return ShieldElement.prototype.getRouteSizeClassFromCount(
+ShieldElement.prototype.getRouteCharacterCount(routeNumber)
+);
+};
+ShieldElement.prototype.getShieldArtworkVariantKey = function (
+config,
+variantKey
+) {
+const normalizedCode =
+ShieldElement.prototype.normalizeShieldCode(
+config?.value || config?.assetName || ""
+).toUpperCase();
+const sharedTwoDigitArtwork = new Set([
+"C", "AK", "AZLOOP", "CO", "CT", "DC", "HI", "MN", "MNBUS", "MT2", "NC", "NELINK", "NESPUR", "NH", "NM", "NV", "TN", "VA2", "WA", "AB", "AB2", "ABTC", "BC", "BCYH", "BCTC", "MB", "MB2", "MBTC", "NB", "NBCONN", "NBLOCAL", "NBTC", "NLTC", "NSCONN", "NSTC", "ON2", "ON3", "ONTC", "QC2", "QCTC", "SK", "SK2", "SKTC", "TCH", "TCHLEAF"
+]);
+if (
+variantKey === "3Digit" &&
+sharedTwoDigitArtwork.has(normalizedCode)
+) {
+return "2Digit";
+}
+return variantKey;
+};
+ShieldElement.prototype.getRenderedShieldAssetPath = function (
+config,
+variantKey,
+{
+shieldBase = "",
+shieldBacks = false,
+} = {}
+) {
+const normalizedShieldCode =
+ShieldElement.prototype.normalizeShieldCode(
+shieldBase || config?.value || config?.assetName || ""
+).toUpperCase();
+const supportsShieldBacks =
+ShieldElement.prototype.supportsShieldBacks(config);
+const shieldBacksEnabled =
+supportsShieldBacks && shieldBacks === true;
+const artworkVariantKey =
+ShieldElement.prototype.getShieldArtworkVariantKey(
+config,
+variantKey
+);
+if (
+normalizedShieldCode === "US" &&
+(artworkVariantKey === "2Digit" || artworkVariantKey === "3Digit")
+) {
+const usFolder = "img/shields/United States/US Route";
+return shieldBacksEnabled
+? `${usFolder}/US-back-${artworkVariantKey}.svg`
+: `${usFolder}/US-${artworkVariantKey}.svg`;
+}
+if (
+normalizedShieldCode === "NJ" &&
+(artworkVariantKey === "2Digit" || artworkVariantKey === "3Digit")
+) {
+return shieldBacksEnabled
+? `img/shields/United States/NJ/NJ-${artworkVariantKey}.svg`
+: `img/shields/United States/DE-${artworkVariantKey}.svg`;
+}
+return ShieldElement.prototype.getShieldAssetPath(
+config,
+artworkVariantKey
+);
+};
+ShieldElement.prototype.getShieldAssetPath = function (config, variantKey) {
+const artworkVariantKey =
+ShieldElement.prototype.getShieldArtworkVariantKey
+? ShieldElement.prototype.getShieldArtworkVariantKey(config, variantKey)
+: variantKey;
+let path = "";
+if (
+config?.assetPathByVariant &&
+config.assetPathByVariant[artworkVariantKey]
+) {
+path = config.assetPathByVariant[artworkVariantKey];
+} else if (config?.assetPath) {
+path = config.assetPath;
+} else {
+const assetFolder = config?.assetFolder || "img/shields";
+const assetName = config?.assetName || config?.value || "I";
+const suffix = artworkVariantKey ? `-${artworkVariantKey}` : "";
+path = `${assetFolder}/${assetName}${suffix}.svg`;
+}
+return typeof window.resolveSignMakerAsset === "function"
+? window.resolveSignMakerAsset(path)
+: path;
+};
+ShieldElement.prototype.getVariantMetadata = function (
+config,
+propertyName,
+variantKey
+) {
+const values = config?.[propertyName];
+if (!values || typeof values !== "object") {
+return null;
+}
+return values[variantKey] || values.Default || null;
+};
+ShieldElement.prototype.usesPresetFloridaRouteNumberCss = function (config) {
+const normalizedCode = ShieldElement.prototype.normalizeShieldCode(
+config?.value || config?.assetName || ""
+).toUpperCase();
+return ["FL", "FLTOLL", "FLCFX", "FLTP"].includes(
+normalizedCode
+);
+};
+ShieldElement.prototype.usesV22NumberStyle = function (config, element) {
+if (element?.numberStyle === "legacy" && ["I", "I-BUS", "I-BL", "I-BS", "I-DL", "I-DS", "I-F", "US", "USCA"].includes(ShieldElement.prototype.normalizeShieldCode(config?.value || config?.assetName || ""))) return true;
+if (ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)) {
+return false;
+}
+return config?.standard === "FDOT" || config?.standard === "CFX";
+};
+ShieldElement.prototype.isFixedRouteVariant = function (config, variantKey) {
+return (
+Array.isArray(config?.fixedRouteVariants) &&
+config.fixedRouteVariants
+.map((variant) => ShieldElement.prototype.formatVariantKey(variant))
+.includes(variantKey)
+);
+};
+ShieldElement.prototype.isCountyShield = function (config) {
+const normalized = ShieldElement.prototype.normalizeShieldCode(
+config?.value || config?.assetName || ""
+);
+return normalized === "C" || config?.preserveCountyText === true;
+};
+ShieldElement.prototype.getEffectiveSizeClass = function (routeNumber, variant) {
+const normalizedVariant = ShieldElement.prototype.formatVariantKey(variant);
+if (normalizedVariant === "2Digit") {
+return "two";
+}
+if (normalizedVariant === "3Digit") {
+return "three";
+}
+if (normalizedVariant === "4Digit") {
+return "four";
+}
+return ShieldElement.prototype.getRouteSizeClassFromCount(
+ShieldElement.prototype.getRouteCharacterCount(routeNumber)
+);
+};
+class DividerElement {
+constructor({
+dividerWidth = 100,
+dividerMeasurement = "%",
+dividerHeight = 0.2,
+orientation = DividerElement.prototype.defaultOrientation,
+alignment = "Center",
+visible = true,
+dividerColor = "White",
+fullBleed = false,
+} = {}) {
+this.dividerWidth = dividerWidth;
+this.dividerMeasurement = dividerMeasurement;
+this.dividerHeight = dividerHeight;
+this.orientation =
+DividerElement.prototype.normalizeOrientation(orientation);
+this.alignment = alignment;
+this.visible = visible;
+this.dividerColor = dividerColor;
+this.fullBleed = fullBleed;
+}
+createElement(panel) {
+const newDivider = document.createElement("div");
+const isVertical =
+this.orientation === DividerElement.prototype.verticalOrientation;
+newDivider.className = "dividerElement" + (isVertical ? " vertical" : "");
+newDivider.style.visibility = this.visible ? "visible" : "hidden";
+const lengthValue = this.dividerWidth + this.dividerMeasurement;
+const thicknessValue = this.dividerHeight + "rem";
+newDivider.style.setProperty(
+"--dividerWidth",
+lengthValue
+);
+newDivider.style.setProperty("--dividerHeight", thicknessValue);
+newDivider.style.setProperty("--dividerLength", lengthValue);
+newDivider.style.setProperty("--dividerThickness", thicknessValue);
+newDivider.style.marginTop = "0";
+newDivider.style.marginBottom = "0";
+if (this.dividerColor && this.dividerColor !== "Default") {
+const resolvedColor =
+lib.colors[this.dividerColor] || this.dividerColor || "";
+if (resolvedColor) {
+newDivider.style.backgroundColor = resolvedColor;
+}
+}
+if (this.fullBleed) {
+newDivider.classList.add("fullBleed");
+const paddingString = panel?.sign?.padding || "";
+const paddingValues = paddingString.trim().split(/\s+/).filter(Boolean);
+let top = "0rem",
+right = "0rem",
+bottom = "0rem",
+left = "0rem";
+if (paddingValues.length === 1) {
+top = right = bottom = left = paddingValues[0];
+} else if (paddingValues.length === 2) {
+top = bottom = paddingValues[0];
+right = left = paddingValues[1];
+} else if (paddingValues.length === 3) {
+[top, right, bottom] = paddingValues;
+left = right;
+} else if (paddingValues.length >= 4) {
+[top, right, bottom, left] = paddingValues;
+}
+newDivider.style.setProperty(
+"--dividerBleedLeft",
+!isVertical ? left || "0rem" : "0rem"
+);
+newDivider.style.setProperty(
+"--dividerBleedRight",
+!isVertical ? right || "0rem" : "0rem"
+);
+newDivider.style.setProperty(
+"--dividerBleedTop",
+isVertical ? top || "0rem" : "0rem"
+);
+newDivider.style.setProperty(
+"--dividerBleedBottom",
+isVertical ? bottom || "0rem" : "0rem"
+);
+} else {
+newDivider.classList.remove("fullBleed");
+newDivider.style.setProperty("--dividerBleedLeft", "0rem");
+newDivider.style.setProperty("--dividerBleedRight", "0rem");
+newDivider.style.setProperty("--dividerBleedTop", "0rem");
+newDivider.style.setProperty("--dividerBleedBottom", "0rem");
+}
+return newDivider;
+}
+}
+DividerElement.prototype.dividerMeasurement = ["%", "rem"];
+DividerElement.prototype.orientations = ["Horizontal", "Vertical"];
+DividerElement.prototype.defaultOrientation = "Horizontal";
+DividerElement.prototype.verticalOrientation = "Vertical";
+DividerElement.prototype.normalizeOrientation = function (value) {
+const options = DividerElement.prototype.orientations || [];
+return options.includes(value)
+? value
+: DividerElement.prototype.defaultOrientation;
+};
+DividerElement.prototype.dividerColors = [{ value: "Default", label: "Default" }].concat(
+Object.keys(lib.colors || {}).map((colorName) => ({
+value: colorName,
+label: colorName,
+}))
+);
+const isProbablySvgImageSource = (source = "") => {
+const normalizedSource = String(source || "").trim().toLowerCase();
+return (
+normalizedSource.startsWith("data:image/svg+xml") ||
+normalizedSource.includes(".svg") ||
+normalizedSource.includes("image/svg+xml")
+);
+};
+const getSvgTextFromImageSource = async (source = "") => {
+const rawSource = String(source || "").trim();
+if (!rawSource) {
+return "";
+}
+if (rawSource.toLowerCase().startsWith("data:image/svg+xml")) {
+const commaIndex = rawSource.indexOf(",");
+if (commaIndex < 0) {
+return "";
+}
+const metadata = rawSource.slice(0, commaIndex).toLowerCase();
+const payload = rawSource.slice(commaIndex + 1);
+try {
+return metadata.includes(";base64")
+? atob(payload)
+: decodeURIComponent(payload);
+} catch (error) {
+try {
+return decodeURIComponent(escape(atob(payload)));
+} catch (fallbackError) {
+return "";
+}
+}
+}
+if (typeof fetch !== "function") {
+return "";
+}
+try {
+const response = await fetch(rawSource, { cache: "force-cache" });
+if (!response.ok) {
+return "";
+}
+return await response.text();
+} catch (error) {
+return "";
+}
+};
+const isTransparentSvgPaintValue = (value = "") => {
+const normalizedValue = String(value || "").trim().toLowerCase();
+return (
+!normalizedValue ||
+normalizedValue === "none" ||
+normalizedValue === "transparent" ||
+/^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(normalizedValue) ||
+/^hsla\([^)]*,\s*0(?:\.0+)?\)$/.test(normalizedValue)
+);
+};
+const getSvgNumericStyle = (value = "", fallback = 1) => {
+const parsed = parseFloat(String(value || ""));
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const hasVisibleSvgPaint = (element) => {
+if (!element || typeof window === "undefined") {
+return false;
+}
+const tagName = String(element.tagName || "").toLowerCase();
+if (["image", "use"].includes(tagName)) {
+return true;
+}
+let computedStyle = null;
+try {
+computedStyle = window.getComputedStyle(element);
+} catch (error) {
+computedStyle = null;
+}
+const display = computedStyle?.display || element.getAttribute("display") || "";
+const visibility = computedStyle?.visibility || element.getAttribute("visibility") || "";
+const opacity = computedStyle?.opacity || element.getAttribute("opacity") || "1";
+if (
+String(display).toLowerCase() === "none" ||
+String(visibility).toLowerCase() === "hidden" ||
+getSvgNumericStyle(opacity, 1) <= 0
+) {
+return false;
+}
+const fill = computedStyle?.fill || element.getAttribute("fill") || "";
+const stroke = computedStyle?.stroke || element.getAttribute("stroke") || "";
+const fillOpacity =
+computedStyle?.fillOpacity || element.getAttribute("fill-opacity") || "1";
+const strokeOpacity =
+computedStyle?.strokeOpacity || element.getAttribute("stroke-opacity") || "1";
+const strokeWidth =
+computedStyle?.strokeWidth || element.getAttribute("stroke-width") || "1";
+const hasVisibleFill =
+!isTransparentSvgPaintValue(fill) &&
+getSvgNumericStyle(fillOpacity, 1) > 0;
+const hasVisibleStroke =
+!isTransparentSvgPaintValue(stroke) &&
+getSvgNumericStyle(strokeOpacity, 1) > 0 &&
+getSvgNumericStyle(strokeWidth, 1) > 0;
+return hasVisibleFill || hasVisibleStroke;
+};
+const getVisibleSvgBounds = (svgElement) => {
+if (!svgElement || typeof svgElement.querySelectorAll !== "function") {
+return null;
+}
+const graphicSelector = [
+"path",
+"rect",
+"circle",
+"ellipse",
+"polygon",
+"polyline",
+"line",
+"text",
+"tspan",
+"image",
+"use",
+].join(",");
+const graphicElements = Array.from(svgElement.querySelectorAll(graphicSelector));
+let minX = Infinity;
+let minY = Infinity;
+let maxX = -Infinity;
+let maxY = -Infinity;
+for (const element of graphicElements) {
+if (!hasVisibleSvgPaint(element)) {
+continue;
+}
+try {
+const bounds = element.getBBox();
+if (
+!bounds ||
+!Number.isFinite(bounds.x) ||
+!Number.isFinite(bounds.y) ||
+!Number.isFinite(bounds.width) ||
+!Number.isFinite(bounds.height) ||
+bounds.width <= 0 ||
+bounds.height <= 0
+) {
+continue;
+}
+minX = Math.min(minX, bounds.x);
+minY = Math.min(minY, bounds.y);
+maxX = Math.max(maxX, bounds.x + bounds.width);
+maxY = Math.max(maxY, bounds.y + bounds.height);
+} catch (error) {
+continue;
+}
+}
+if (
+!Number.isFinite(minX) ||
+!Number.isFinite(minY) ||
+!Number.isFinite(maxX) ||
+!Number.isFinite(maxY) ||
+maxX <= minX ||
+maxY <= minY
+) {
+try {
+const fallbackBounds = svgElement.getBBox();
+if (
+fallbackBounds &&
+Number.isFinite(fallbackBounds.x) &&
+Number.isFinite(fallbackBounds.y) &&
+Number.isFinite(fallbackBounds.width) &&
+Number.isFinite(fallbackBounds.height) &&
+fallbackBounds.width > 0 &&
+fallbackBounds.height > 0
+) {
+return fallbackBounds;
+}
+} catch (error) {
+return null;
+}
+return null;
+}
+return {
+x: minX,
+y: minY,
+width: maxX - minX,
+height: maxY - minY,
+};
+};
+const cropSvgImageToVisibleBounds = async (img, source) => {
+if (!img || img.dataset.tightIconBoundsApplied === "true") {
+return false;
+}
+const svgText = await getSvgTextFromImageSource(source);
+if (!svgText || !svgText.trim()) {
+return false;
+}
+try {
+const parser = new DOMParser();
+const parsedDocument = parser.parseFromString(svgText, "image/svg+xml");
+const parserError = parsedDocument.querySelector("parsererror");
+if (parserError) {
+return false;
+}
+const parsedSvg = parsedDocument.documentElement;
+if (!parsedSvg || String(parsedSvg.tagName || "").toLowerCase() !== "svg") {
+return false;
+}
+const measuringSvg = document.importNode(parsedSvg, true);
+measuringSvg.style.position = "absolute";
+measuringSvg.style.left = "-100000px";
+measuringSvg.style.top = "-100000px";
+measuringSvg.style.visibility = "hidden";
+measuringSvg.style.pointerEvents = "none";
+measuringSvg.style.width = "auto";
+measuringSvg.style.height = "auto";
+measuringSvg.setAttribute("aria-hidden", "true");
+document.body.appendChild(measuringSvg);
+await new Promise((resolve) => {
+requestAnimationFrame(() => requestAnimationFrame(resolve));
+});
+const bounds = getVisibleSvgBounds(measuringSvg);
+measuringSvg.remove();
+if (
+!bounds ||
+!Number.isFinite(bounds.x) ||
+!Number.isFinite(bounds.y) ||
+!Number.isFinite(bounds.width) ||
+!Number.isFinite(bounds.height) ||
+bounds.width <= 0 ||
+bounds.height <= 0
+) {
+return false;
+}
+const cropPadding = 0;
+const x = bounds.x - cropPadding;
+const y = bounds.y - cropPadding;
+const width = bounds.width + cropPadding * 2;
+const height = bounds.height + cropPadding * 2;
+parsedSvg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+parsedSvg.style.removeProperty("width");
+parsedSvg.style.removeProperty("height");
+parsedSvg.setAttribute("width", String(width));
+parsedSvg.setAttribute("height", String(height));
+parsedSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+const serializedSvg = new XMLSerializer().serializeToString(parsedSvg);
+img.dataset.tightIconBoundsApplied = "true";
+img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(serializedSvg);
+return true;
+} catch (error) {
+return false;
+}
+};
+const cropRasterImageToVisibleBounds = (img) => {
+if (
+!img ||
+img.dataset.tightIconBoundsApplied === "true" ||
+!img.naturalWidth ||
+!img.naturalHeight
+) {
+return false;
+}
+const width = img.naturalWidth;
+const height = img.naturalHeight;
+const pixelCount = width * height;
+if (pixelCount <= 0 || pixelCount > 12000000) {
+return false;
+}
+try {
+const canvas = document.createElement("canvas");
+canvas.width = width;
+canvas.height = height;
+const context = canvas.getContext("2d", { willReadFrequently: true });
+if (!context) {
+return false;
+}
+context.drawImage(img, 0, 0, width, height);
+const pixels = context.getImageData(0, 0, width, height).data;
+let minX = width;
+let minY = height;
+let maxX = -1;
+let maxY = -1;
+for (let y = 0; y < height; y++) {
+for (let x = 0; x < width; x++) {
+const alpha = pixels[(y * width + x) * 4 + 3];
+if (alpha > 2) {
+minX = Math.min(minX, x);
+minY = Math.min(minY, y);
+maxX = Math.max(maxX, x);
+maxY = Math.max(maxY, y);
+}
+}
+}
+if (maxX < minX || maxY < minY) {
+return false;
+}
+const cropPadding = 1;
+minX = Math.max(0, minX - cropPadding);
+minY = Math.max(0, minY - cropPadding);
+maxX = Math.min(width - 1, maxX + cropPadding);
+maxY = Math.min(height - 1, maxY + cropPadding);
+const croppedWidth = maxX - minX + 1;
+const croppedHeight = maxY - minY + 1;
+if (croppedWidth === width && croppedHeight === height) {
+return false;
+}
+const croppedCanvas = document.createElement("canvas");
+croppedCanvas.width = croppedWidth;
+croppedCanvas.height = croppedHeight;
+const croppedContext = croppedCanvas.getContext("2d");
+if (!croppedContext) {
+return false;
+}
+croppedContext.drawImage(
+canvas,
+minX,
+minY,
+croppedWidth,
+croppedHeight,
+0,
+0,
+croppedWidth,
+croppedHeight
+);
+img.dataset.tightIconBoundsApplied = "true";
+img.src = croppedCanvas.toDataURL("image/png");
+return true;
+} catch (error) {
+img.dataset.tightIconBoundsFailed = "true";
+return false;
+}
+};
+const tightImageAssetCache = new Map();
+const tightImageElementRequests = new WeakMap();
+const iconFallbackScriptUrl = new URL(
+"IconFallbacks.3d7ba0050049c46e.js",
+document.currentScript?.src || new URL("js/Control.js", document.baseURI)
+).href;
+let iconFallbackScriptPromise = null;
+const loadSignMakerIconFallback = async (source) => {
+let path;
+try {
+const url = new URL(String(source || ""), document.baseURI);
+if (url.origin !== new URL(document.baseURI).origin) return null;
+path = decodeURIComponent(url.pathname);
+}
+catch (error) { return null; }
+const definition = Object.values(IconElement.prototype.icons).find((icon) =>
+icon.fileSrc && (path === icon.fileSrc || path.endsWith("/" + icon.fileSrc))
+);
+if (!definition) return null;
+if (!window.SIGNMAKER_ICON_FALLBACKS && !iconFallbackScriptPromise) {
+iconFallbackScriptPromise = new Promise((resolve) => {
+const script = document.createElement("script");
+let timer;
+const finish = () => {
+clearTimeout(timer);
+script.onload = script.onerror = null;
+script.remove();
+resolve(window.SIGNMAKER_ICON_FALLBACKS || null);
+};
+script.src = iconFallbackScriptUrl;
+script.async = true;
+script.onload = script.onerror = finish;
+timer = setTimeout(finish, 8000);
+document.head.appendChild(script);
+});
+}
+const fallbacks = window.SIGNMAKER_ICON_FALLBACKS || await iconFallbackScriptPromise;
+if (!fallbacks) iconFallbackScriptPromise = null;
+return fallbacks?.[definition.fileSrc] || null;
+};
+const waitForIconImageLoad = (image) => {
+if (image.complete) return Promise.resolve(image.naturalWidth > 0);
+return new Promise((resolve) => {
+const finish = () => {
+clearTimeout(timer);
+image.removeEventListener("load", finish);
+image.removeEventListener("error", finish);
+resolve(image.naturalWidth > 0);
+};
+const timer = setTimeout(finish, 2500);
+image.addEventListener("load", finish, { once: true });
+image.addEventListener("error", finish, { once: true });
+});
+};
+const prepareTightImageSource = (source = "") => {
+const originalSource = String(source || "");
+if (!originalSource) return Promise.resolve(null);
+const previous = tightImageAssetCache.get(originalSource);
+if (previous) return previous.promise;
+const image = document.createElement("img");
+image.loading = "eager";
+image.decoding = "sync";
+const asset = { image, source: originalSource, width: 0, height: 0, ready: false, promise: null };
+tightImageAssetCache.set(originalSource, asset);
+asset.promise = (async () => {
+let usableSource = originalSource;
+if (window.location?.protocol === "file:") {
+usableSource = await loadSignMakerIconFallback(originalSource) || originalSource;
+}
+image.src = usableSource;
+if (!await waitForIconImageLoad(image)) {
+const fallback = await loadSignMakerIconFallback(originalSource);
+if (!fallback) return asset;
+image.src = usableSource = fallback;
+if (!await waitForIconImageLoad(image)) return asset;
+}
+const rasterCropped = cropRasterImageToVisibleBounds(image);
+if (!rasterCropped && isProbablySvgImageSource(usableSource)) {
+await cropSvgImageToVisibleBounds(image, usableSource);
+}
+await waitForIconImageLoad(image);
+if (typeof image.decode === "function") {
+try { await image.decode(); } catch (error) {}
+}
+asset.source = image.getAttribute("src") || image.src || originalSource;
+asset.width = image.naturalWidth;
+asset.height = image.naturalHeight;
+asset.ready = asset.width > 0 && asset.height > 0;
+return asset;
+})().catch(() => asset);
+return asset.promise;
+};
+const setPreparedIconImageSource = (image, source = "") => {
+if (!image) return Promise.resolve(null);
+const originalSource = String(source || "");
+const previous = tightImageElementRequests.get(image);
+if (previous?.source === originalSource) return previous.promise;
+const request = { source: originalSource, promise: null };
+tightImageElementRequests.set(image, request);
+image.loading = "eager";
+image.decoding = "sync";
+if (!originalSource) {
+image.removeAttribute("src");
+request.promise = Promise.resolve(null);
+return request.promise;
+}
+const apply = (asset) => {
+if (tightImageElementRequests.get(image) !== request || !asset) return asset;
+if (image.getAttribute("src") !== asset.source) image.src = asset.source;
+if (asset.ready) {
+image.width = asset.width;
+image.height = asset.height;
+image.style.aspectRatio = `${asset.width} / ${asset.height}`;
+}
+image.dataset.tightIconBoundsAttached = "true";
+image.dataset.tightIconBoundsApplied = "true";
+return asset;
+};
+const cached = tightImageAssetCache.get(originalSource);
+if (cached?.ready) {
+apply(cached);
+request.promise = cached.promise;
+} else {
+request.promise = prepareTightImageSource(originalSource).then(apply);
+}
+return request.promise;
+};
+const createPreparedIconImage = (source = "") => {
+const cached = tightImageAssetCache.get(String(source || ""));
+const image = cached?.ready ? cached.image.cloneNode(false) : document.createElement("img");
+setPreparedIconImageSource(image, source);
+return image;
+};
+const prepareIconImagesForPost = (post) => {
+const sources = new Set();
+const visited = new WeakSet();
+const walk = (value) => {
+if (!value || typeof value !== "object" || visited.has(value)) return;
+visited.add(value);
+if (typeof value.icon === "string") {
+const definition = IconElement.prototype.icons[value.icon];
+const source = definition?.src || definition?.asset || definition?.url;
+if (source) sources.add(source);
+}
+Object.values(value).forEach(walk);
+};
+walk(post);
+return Promise.all(Array.from(sources, prepareTightImageSource));
+};
+const applyTightImageBounds = (image) =>
+setPreparedIconImageSource(image, image?.getAttribute("src") || image?.src || "");
+if (typeof window !== "undefined") {
+window.applyTightImageBounds = applyTightImageBounds;
+window.prepareTightImageSource = prepareTightImageSource;
+window.setPreparedIconImageSource = setPreparedIconImageSource;
+window.createPreparedIconImage = createPreparedIconImage;
+window.prepareIconImagesForPost = prepareIconImagesForPost;
+window.loadSignMakerIconFallback = loadSignMakerIconFallback;
+}
+class IconElement {
+constructor(options = {}) {
+const icon = getStoredDefaultsOption(
+options,
+"icon",
+"settingsDefaultsIconValue",
+IconElement.prototype.defaultIcon
+);
+const iconSize = getStoredDefaultsOption(
+options,
+"iconSize",
+"settingsDefaultsIconSize",
+3
+);
+const backgroundColor = getStoredDefaultsOption(
+options,
+"backgroundColor",
+"settingsDefaultsIconBgColor",
+"Inherit"
+);
+const border = getStoredDefaultsOption(
+options,
+"border",
+"settingsDefaultsIconBorder",
+false
+);
+const borderRadius = Object.prototype.hasOwnProperty.call(options, "borderRadius")
+? options.borderRadius
+: 4;
+const borderColor = Object.prototype.hasOwnProperty.call(options, "borderColor")
+? options.borderColor
+: "White";
+const spacing = getStoredDefaultsOption(
+options,
+"spacing",
+"settingsDefaultsIconSpacing",
+0
+);
+const paddingHorizontal = Object.prototype.hasOwnProperty.call(options, "paddingHorizontal")
+? options.paddingHorizontal
+: spacing;
+const paddingVertical = Object.prototype.hasOwnProperty.call(options, "paddingVertical")
+? options.paddingVertical
+: 0;
+const alignment = getStoredDefaultsOption(
+options,
+"alignment",
+"settingsDefaultsIconAlignment",
+"Center"
+);
+const invertColors = Object.prototype.hasOwnProperty.call(options, "invertColors")
+? options.invertColors
+: false;
+this.icon = (IconElement.prototype.icons[icon] ||
+(typeof icon === "string" && icon.startsWith("CUSTOMICON-")))
+? icon
+: IconElement.prototype.defaultIcon;
+this.iconSize = normalizeStoredDefaultsNumber(iconSize, 3);
+this.backgroundColor = backgroundColor;
+this.border = normalizeStoredDefaultsBoolean(border);
+this.borderRadius = normalizeStoredDefaultsNumber(borderRadius, 4);
+this.borderColor = borderColor;
+this.spacing = 0;
+this.paddingHorizontal = normalizeStoredDefaultsNumber(paddingHorizontal, 0);
+this.paddingVertical = normalizeStoredDefaultsNumber(paddingVertical, 0);
+this.alignment = normalizeStoredDefaultsAlignment(alignment);
+this.invertColors = normalizeStoredDefaultsBoolean(invertColors);
+}
+createElement() {
+const container = document.createElement("div");
+container.className = "bE-iconElement";
+container.style.display = "inline-grid";
+container.style.gridTemplateColumns = "auto";
+container.style.gridTemplateRows = "auto";
+container.style.placeItems = "center";
+container.style.width = "max-content";
+container.style.height = "max-content";
+container.style.minWidth = "0";
+container.style.minHeight = "0";
+container.style.boxSizing = "border-box";
+container.style.fontSize = "0";
+container.style.lineHeight = "0";
+container.style.setProperty("padding", "0", "important");
+container.style.setProperty("background", "transparent", "important");
+container.style.setProperty("border", "0", "important");
+const parsedSpacing = parseFloat(this.spacing);
+const spacing = Number.isFinite(parsedSpacing) ? parsedSpacing : 0;
+const parsedHorizontalPadding = parseFloat(this.paddingHorizontal);
+const horizontalPadding = Number.isFinite(parsedHorizontalPadding)
+? parsedHorizontalPadding
+: 0;
+const parsedVerticalPadding = parseFloat(this.paddingVertical);
+const verticalPadding = Number.isFinite(parsedVerticalPadding)
+? parsedVerticalPadding
+: 0;
+const horizontalMargin = spacing + Math.min(horizontalPadding, 0);
+const verticalMargin = Math.min(verticalPadding, 0);
+const positiveHorizontalPadding = Math.max(horizontalPadding, 0);
+const positiveVerticalPadding = Math.max(verticalPadding, 0);
+container.style.setProperty("--iconHorizontalMargin", horizontalMargin + "rem");
+container.style.setProperty("--iconVerticalMargin", verticalMargin + "rem");
+container.style.setProperty("--iconPaddingHorizontal", positiveHorizontalPadding + "rem");
+container.style.setProperty("--iconPaddingVertical", positiveVerticalPadding + "rem");
+container.style.setProperty("margin-top", "var(--iconVerticalMargin, 0rem)", "important");
+container.style.setProperty("margin-bottom", "var(--iconVerticalMargin, 0rem)", "important");
+container.style.setProperty("margin-left", "var(--iconHorizontalMargin, 0rem)", "important");
+container.style.setProperty("margin-right", "var(--iconHorizontalMargin, 0rem)", "important");
+const resolvedBgColor =
+lib.colors[this.backgroundColor] || this.backgroundColor.toLowerCase();
+const resolvedBorderColor =
+lib.colors[this.borderColor] || this.borderColor.toLowerCase();
+const parsedSize = parseFloat(this.iconSize);
+const size = Number.isFinite(parsedSize) ? parsedSize : 3;
+container.style.setProperty("--iconSize", size + "rem");
+const iconBox = document.createElement("span");
+iconBox.className = "bE-iconBox";
+iconBox.style.display = "inline-grid";
+iconBox.style.gridTemplateColumns =
+"var(--iconPaddingHorizontal, 0rem) auto var(--iconPaddingHorizontal, 0rem)";
+iconBox.style.gridTemplateRows =
+"var(--iconPaddingVertical, 0rem) auto var(--iconPaddingVertical, 0rem)";
+iconBox.style.alignItems = "center";
+iconBox.style.justifyItems = "center";
+iconBox.style.width = "max-content";
+iconBox.style.height = "max-content";
+iconBox.style.minWidth = "0";
+iconBox.style.minHeight = "0";
+iconBox.style.boxSizing = "border-box";
+iconBox.style.fontSize = "0";
+iconBox.style.lineHeight = "0";
+iconBox.style.setProperty("padding", "0", "important");
+if (this.backgroundColor !== "Inherit") {
+iconBox.classList.add("hasBackground");
+iconBox.style.backgroundColor = resolvedBgColor;
+}
+if (this.border) {
+iconBox.classList.add("hasBorder");
+iconBox.style.border = "0.12rem solid " + resolvedBorderColor;
+iconBox.style.borderRadius = this.borderRadius + "px";
+}
+if (this.invertColors) {
+iconBox.classList.add("invertColors");
+}
+const iconDefinition =
+IconElement.prototype.icons[this.icon] ||
+IconElement.prototype.icons[IconElement.prototype.defaultIcon];
+if (iconDefinition) {
+const img = createPreparedIconImage(iconDefinition.src);
+img.alt = iconDefinition.label;
+img.loading = "eager";
+img.decoding = "sync";
+img.draggable = false;
+img.style.display = "block";
+img.style.gridColumn = "2";
+img.style.gridRow = "2";
+img.style.setProperty("height", "var(--iconSize, 3rem)", "important");
+img.style.setProperty("width", "auto", "important");
+img.style.setProperty("max-width", "none", "important");
+img.style.setProperty("max-height", "none", "important");
+img.style.objectFit = "contain";
+img.style.lineHeight = "0";
+iconBox.appendChild(img);
+} else {
+iconBox.textContent = "Icon unavailable";
+}
+container.appendChild(iconBox);
+return container;
+}
+}
+IconElement.prototype.defaultIcon = "AIRPORT";
+IconElement.prototype.icons = {
+"511": {"label": "511", "fileSrc": "img/icons/511.svg", "src": "img/icons/511.svg?v=cb66b9a8c966"},
+"AIRPORT": {"label": "Airport", "fileSrc": "img/icons/AIRPORT.svg", "src": "img/icons/AIRPORT.svg?v=ac6d93e8cd25", "searchTerms": ["airport"]},
+"ALLTERRAIN_TRAIL": {"label": "All-Terrain Trail", "fileSrc": "img/icons/ALLTERRAIN_TRAIL.svg", "src": "img/icons/ALLTERRAIN_TRAIL.svg?v=732f6c3124c3", "searchTerms": ["all terrain trail"]},
+"ALTERNATIVE_FUEL_COMPRESSED_NATURAL_GAS": {"label": "Alternative Fuel (Compressed Natural Gas)", "fileSrc": "img/icons/ALTERNATIVE_FUEL_COMPRESSED_NATURAL_GAS.png", "src": "img/icons/ALTERNATIVE_FUEL_COMPRESSED_NATURAL_GAS.png?v=8d041426ec51", "searchTerms": ["CNG"]},
+"ALTERNATIVE_FUEL_ETHANOL": {"label": "Alternative Fuel (Ethanol)", "fileSrc": "img/icons/ALTERNATIVE_FUEL_ETHANOL.png", "src": "img/icons/ALTERNATIVE_FUEL_ETHANOL.png?v=ee64098ddca0", "searchTerms": ["ethanol", "E85"]},
+"ARCHERY": {"label": "Archery", "fileSrc": "img/icons/ARCHERY.svg", "src": "img/icons/ARCHERY.svg?v=466ba0f88a12", "searchTerms": ["archery"]},
+"BASEBALL": {"label": "Baseball", "fileSrc": "img/icons/BASEBALL.svg", "src": "img/icons/BASEBALL.svg?v=ba6d9e4505ec", "searchTerms": ["baseball"]},
+"BEACH": {"label": "Beach", "fileSrc": "img/icons/BEACH.svg", "src": "img/icons/BEACH.svg?v=ed59df5cf1ef", "searchTerms": ["beach access"]},
+"BEAR_VIEWING_AREA": {"label": "Bear Viewing Area", "fileSrc": "img/icons/BEAR_VIEWING_AREA.svg", "src": "img/icons/BEAR_VIEWING_AREA.svg?v=49bb5d71885d", "searchTerms": ["bear viewing"]},
+"BIKE": {"label": "Bike", "fileSrc": "img/icons/BIKE.svg", "src": "img/icons/BIKE.svg?v=71cded87f6d1", "searchTerms": ["bicycle trail"]},
+"BIOFUEL": {"label": "Biofuel", "fileSrc": "img/icons/BIOFUEL.png", "src": "img/icons/BIOFUEL.png?v=7bf8fa3f59e7"},
+"BOAT_RAMP": {"label": "Boat Ramp", "fileSrc": "img/icons/BOAT_RAMP.svg", "src": "img/icons/BOAT_RAMP.svg?v=75bcf6c15cf3", "searchTerms": ["boat launch"]},
+"BUS_STATION": {"label": "Bus Station", "fileSrc": "img/icons/BUS_STATION.svg", "src": "img/icons/BUS_STATION.svg?v=cfe97ea42259"},
+"BUS_STOP": {"label": "Bus Stop", "fileSrc": "img/icons/BUS_STOP.svg", "src": "img/icons/BUS_STOP.svg?v=cb1df9869982", "searchTerms": ["bus stop"]},
+"CAMPFIRES": {"label": "Campfires", "fileSrc": "img/icons/CAMPFIRES.svg", "src": "img/icons/CAMPFIRES.svg?v=104e301a38cd", "searchTerms": ["campfire"]},
+"CAMPING": {"label": "Camping", "fileSrc": "img/icons/CAMPING.svg", "src": "img/icons/CAMPING.svg?v=ebbf1f7fa710", "searchTerms": ["campsite"]},
+"CANOEING": {"label": "Canoeing", "fileSrc": "img/icons/CANOEING.svg", "src": "img/icons/CANOEING.svg?v=6d290b8c8e29", "searchTerms": ["canoe access"]},
+"CHAIR_LIFTSKI_LIFT": {"label": "Chair Lift/Ski Lift", "fileSrc": "img/icons/CHAIR_LIFTSKI_LIFT.svg", "src": "img/icons/CHAIR_LIFTSKI_LIFT.svg?v=5103923b4624", "searchTerms": ["chair lift ski lift"]},
+"CLIMBING": {"label": "Climbing", "fileSrc": "img/icons/CLIMBING.svg", "src": "img/icons/CLIMBING.svg?v=385c7dfdda98", "searchTerms": ["climbing"]},
+"CROSS_COUNTRY_SKIING": {"label": "Cross Country Skiing", "fileSrc": "img/icons/CROSS_COUNTRY_SKIING.svg", "src": "img/icons/CROSS_COUNTRY_SKIING.svg?v=8589ede74af7", "searchTerms": ["cross country ski trail"]},
+"DEER_VIEWING_AREA": {"label": "Deer Viewing Area", "fileSrc": "img/icons/DEER_VIEWING_AREA.svg", "src": "img/icons/DEER_VIEWING_AREA.svg?v=74422c85f36d", "searchTerms": ["deer viewing"]},
+"DIESEL_FUEL": {"label": "Diesel Fuel", "fileSrc": "img/icons/DIESEL_FUEL.svg", "src": "img/icons/DIESEL_FUEL.svg?v=626e839ee311", "searchTerms": ["gasoline diesel"]},
+"DOG_SLEDDING": {"label": "Dog Sledding", "fileSrc": "img/icons/DOG_SLEDDING.svg", "src": "img/icons/DOG_SLEDDING.svg?v=706a25754036", "searchTerms": ["dog sledding"]},
+"DONT_WALK": {"label": "Don't Walk", "fileSrc": "img/icons/DONT_WALK.svg", "src": "img/icons/DONT_WALK.svg?v=f479aa433f95"},
+"ELECTRICAL_HOOKUP": {"label": "Electrical Hookup", "fileSrc": "img/icons/ELECTRICAL_HOOKUP.svg", "src": "img/icons/ELECTRICAL_HOOKUP.svg?v=da1de8b6d4b2", "searchTerms": ["electrical hookup"]},
+"ELECTRIC_VEHICLE_CHARGING": {"label": "Electric Vehicle Charging", "fileSrc": "img/icons/ELECTRIC_VEHICLE_CHARGING.svg", "src": "img/icons/ELECTRIC_VEHICLE_CHARGING.svg?v=54091d2596fc", "searchTerms": ["EV Charging", "electric car charging"]},
+"EMERGENCY_MEDICAL_SERVICES": {"label": "Emergency Medical Services", "fileSrc": "img/icons/EMERGENCY_MEDICAL_SERVICES.png", "src": "img/icons/EMERGENCY_MEDICAL_SERVICES.png?v=efeb444fb1aa", "searchTerms": ["EMS"]},
+"EXIT_INSERT": {"label": "Exit Insert", "fileSrc": "img/icons/EXIT_INSERT.png", "src": "img/icons/EXIT_INSERT.png?v=34d7de5c9f72"},
+"FIRE_EXTINGUISHER": {"label": "Fire Extinguisher", "fileSrc": "img/icons/FIRE_EXTINGUISHER.svg", "src": "img/icons/FIRE_EXTINGUISHER.svg?v=278898802791", "searchTerms": ["fire extinguisher"]},
+"FIRST_AID": {"label": "First Aid", "fileSrc": "img/icons/FIRST_AID.svg", "src": "img/icons/FIRST_AID.svg?v=822ea6d005a7", "searchTerms": ["first aid"]},
+"FISHING_AREA": {"label": "Fishing Area", "fileSrc": "img/icons/FISHING_AREA.svg", "src": "img/icons/FISHING_AREA.svg?v=5873b5b51ddf", "searchTerms": ["fishing"]},
+"FOOD": {"label": "Food", "fileSrc": "img/icons/FOOD.svg", "src": "img/icons/FOOD.svg?v=fdcb35a64d01", "searchTerms": ["food service"]},
+"GAS": {"label": "Gas", "fileSrc": "img/icons/GAS.svg", "src": "img/icons/GAS.svg?v=6572bfd61741", "searchTerms": ["gas station"]},
+"GOLFING": {"label": "Golfing", "fileSrc": "img/icons/GOLFING.svg", "src": "img/icons/GOLFING.svg?v=cafa6e867bbe", "searchTerms": ["golfing"]},
+"HAND_LAUNCHSMALL_BOAT_LAUNCH": {"label": "Hand Launch/Small Boat Launch", "fileSrc": "img/icons/HAND_LAUNCHSMALL_BOAT_LAUNCH.svg", "src": "img/icons/HAND_LAUNCHSMALL_BOAT_LAUNCH.svg?v=fa30849201a8", "searchTerms": ["hand launch small boat launch"]},
+"HIKING_TRAIL": {"label": "Hiking Trail", "fileSrc": "img/icons/HIKING_TRAIL.svg", "src": "img/icons/HIKING_TRAIL.svg?v=ec8d5390f1a9", "searchTerms": ["trailhead"]},
+"HM": {"label": "HM", "fileSrc": "img/icons/HM.png", "src": "img/icons/HM.png?v=4de2d32a76aa"},
+"HORSE_TRAIL": {"label": "Horse Trail", "fileSrc": "img/icons/HORSE_TRAIL.svg", "src": "img/icons/HORSE_TRAIL.svg?v=80dd33eb9bad", "searchTerms": ["horseback riding"]},
+"HOSPITAL": {"label": "Hospital", "fileSrc": "img/icons/HOSPITAL.svg", "src": "img/icons/HOSPITAL.svg?v=473842d57a7a", "searchTerms": ["hospital"]},
+"HOV": {"label": "HOV", "fileSrc": "img/icons/HOV.png", "src": "img/icons/HOV.png?v=8dffb9ced0ee"},
+"HYDROGEN_FUEL": {"label": "Hydrogen Fuel", "fileSrc": "img/icons/HYDROGEN_FUEL.png", "src": "img/icons/HYDROGEN_FUEL.png?v=a336a8f61b4d"},
+"INLINE_SKATING": {"label": "Inline Skating", "fileSrc": "img/icons/INLINE_SKATING.svg", "src": "img/icons/INLINE_SKATING.svg?v=45c9ab80c5e8", "searchTerms": ["in line skating"]},
+"INTERNATIONAL_SYMBOL_OF_ACCESSIBILITY": {"label": "International Symbol of Accessibility", "fileSrc": "img/icons/INTERNATIONAL_SYMBOL_OF_ACCESSIBILITY.svg", "src": "img/icons/INTERNATIONAL_SYMBOL_OF_ACCESSIBILITY.svg?v=d41a1c5b382b", "searchTerms": ["Accessibility", "wheelchair accessible"]},
+"JET_SKIPERSONAL_WATERCRAFT": {"label": "Jet Ski/Personal Watercraft", "fileSrc": "img/icons/JET_SKIPERSONAL_WATERCRAFT.svg", "src": "img/icons/JET_SKIPERSONAL_WATERCRAFT.svg?v=50b4a2a34258", "searchTerms": ["Jet Ski", "personal watercraft"]},
+"LAUNDROMAT": {"label": "Laundromat", "fileSrc": "img/icons/LAUNDROMAT.svg", "src": "img/icons/LAUNDROMAT.svg?v=104f9a6e6b90", "searchTerms": ["laundry"]},
+"LIBRARY": {"label": "Library", "fileSrc": "img/icons/LIBRARY.svg", "src": "img/icons/LIBRARY.svg?v=7dd1422a5792", "searchTerms": ["library"]},
+"LIGHTHOUSE": {"label": "Lighthouse", "fileSrc": "img/icons/LIGHTHOUSE.svg", "src": "img/icons/LIGHTHOUSE.svg?v=7e482106e0c9", "searchTerms": ["lighthouse"]},
+"LIGHT_RAIL_TRANSIT_STATION": {"label": "Light Rail Transit Station", "fileSrc": "img/icons/LIGHT_RAIL_TRANSIT_STATION.svg", "src": "img/icons/LIGHT_RAIL_TRANSIT_STATION.svg?v=223eeda5c9c3", "searchTerms": ["Light Rail Station"]},
+"LIQUEFIED_NATURAL_GAS": {"label": "Liquefied Natural Gas", "fileSrc": "img/icons/LIQUEFIED_NATURAL_GAS.png", "src": "img/icons/LIQUEFIED_NATURAL_GAS.png?v=660533fa3f5f"},
+"LIQUEFIED_PETROLEUM_GAS": {"label": "Liquefied Petroleum Gas", "fileSrc": "img/icons/LIQUEFIED_PETROLEUM_GAS.png", "src": "img/icons/LIQUEFIED_PETROLEUM_GAS.png?v=4003370ba204"},
+"LITTER_CONTAINER": {"label": "Litter Container", "fileSrc": "img/icons/LITTER_CONTAINER.svg", "src": "img/icons/LITTER_CONTAINER.svg?v=5fe3d9bfd24d", "searchTerms": ["litter receptacle"]},
+"LODGING": {"label": "Lodging", "fileSrc": "img/icons/LODGING.svg", "src": "img/icons/LODGING.svg?v=e2b7e863392e", "searchTerms": ["lodging"]},
+"LOOKOUT_TOWER": {"label": "Lookout Tower", "fileSrc": "img/icons/LOOKOUT_TOWER.svg", "src": "img/icons/LOOKOUT_TOWER.svg?v=0f27670f170f", "searchTerms": ["lookout tower"]},
+"MARINA": {"label": "Marina", "fileSrc": "img/icons/MARINA.svg", "src": "img/icons/MARINA.svg?v=c55917b87bbc", "searchTerms": ["marina"]},
+"MENS_RESTROOM": {"label": "Men's Restroom", "fileSrc": "img/icons/MENS_RESTROOM.svg", "src": "img/icons/MENS_RESTROOM.svg?v=1374dcd7fcdf", "searchTerms": ["mens restroom"]},
+"MOTORBOATING": {"label": "Motorboating", "fileSrc": "img/icons/MOTORBOATING.svg", "src": "img/icons/MOTORBOATING.svg?v=ffc978ea2357", "searchTerms": ["motorboating"]},
+"NATURE_STUDY_AREA": {"label": "Nature Study Area", "fileSrc": "img/icons/NATURE_STUDY_AREA.png", "src": "img/icons/NATURE_STUDY_AREA.png?v=738e9598d6c8"},
+"NO-HM": {"label": "No HM", "fileSrc": "img/icons/NO-HM.png", "src": "img/icons/NO-HM.png?v=58f68fad2a68"},
+"PARKING": {"label": "Parking", "fileSrc": "img/icons/PARKING.svg", "src": "img/icons/PARKING.svg?v=274f875dc583", "searchTerms": ["parking"]},
+"PASSENGERS_ONLY_FERRY_TERMINAL": {"label": "Passengers Only Ferry Terminal", "fileSrc": "img/icons/PASSENGERS_ONLY_FERRY_TERMINAL.svg", "src": "img/icons/PASSENGERS_ONLY_FERRY_TERMINAL.svg?v=c62445de14a1"},
+"PEDESTRIAN": {"label": "Pedestrian", "fileSrc": "img/icons/PEDESTRIAN.svg", "src": "img/icons/PEDESTRIAN.svg?v=72148b9c4851", "searchTerms": ["walking"]},
+"PHARMACY": {"label": "Pharmacy", "fileSrc": "img/icons/PHARMACY.png", "src": "img/icons/PHARMACY.png?v=ae15fa73dbd0"},
+"PICKUP_TRUCKS": {"label": "Pickup Trucks", "fileSrc": "img/icons/PICKUP_TRUCKS.png", "src": "img/icons/PICKUP_TRUCKS.png?v=8abd207a02fd"},
+"PICNIC_SHELTER": {"label": "Picnic Shelter", "fileSrc": "img/icons/PICNIC_SHELTER.svg", "src": "img/icons/PICNIC_SHELTER.svg?v=8748c4a2f1b2", "searchTerms": ["picnic shelter"]},
+"PICNIC_SITE": {"label": "Picnic Site", "fileSrc": "img/icons/PICNIC_SITE.svg", "src": "img/icons/PICNIC_SITE.svg?v=43ee59b08520", "searchTerms": ["picnic area"]},
+"POLICE": {"label": "Police", "fileSrc": "img/icons/POLICE.png", "src": "img/icons/POLICE.png?v=0de1d4aac827"},
+"POST_OFFICE": {"label": "Post Office", "fileSrc": "img/icons/POST_OFFICE.svg", "src": "img/icons/POST_OFFICE.svg?v=9bd94c8f26e6", "searchTerms": ["post office"]},
+"RECREATIONAL_VEHICLE_SITE": {"label": "Recreational Vehicle Site", "fileSrc": "img/icons/RECREATIONAL_VEHICLE_SITE.svg", "src": "img/icons/RECREATIONAL_VEHICLE_SITE.svg?v=86fa83c0777e", "searchTerms": ["RV Site", "rv campground"]},
+"RECYCLING": {"label": "Recycling", "fileSrc": "img/icons/RECYCLING.svg", "src": "img/icons/RECYCLING.svg?v=9bae3e6f8533", "searchTerms": ["recycling"]},
+"RESTROOMS": {"label": "Restrooms", "fileSrc": "img/icons/RESTROOMS.svg", "src": "img/icons/RESTROOMS.svg?v=b0828dfbeadd", "searchTerms": ["restrooms"]},
+"RV_SANITARY_STATION": {"label": "RV Sanitary Station", "fileSrc": "img/icons/RV_SANITARY_STATION.svg", "src": "img/icons/RV_SANITARY_STATION.svg?v=ba21e5740cc3", "searchTerms": ["sanitary disposal station"]},
+"SCHOOL_BUS": {"label": "School Bus", "fileSrc": "img/icons/SCHOOL_BUS.png", "src": "img/icons/SCHOOL_BUS.png?v=c3cbd02090a9"},
+"SCHOOL_CROSSING": {"label": "School Crossing", "fileSrc": "img/icons/SCHOOL_CROSSING.png", "src": "img/icons/SCHOOL_CROSSING.png?v=e64bab9cf3e6"},
+"SCUBA_DIVING": {"label": "Scuba Diving", "fileSrc": "img/icons/SCUBA_DIVING.svg", "src": "img/icons/SCUBA_DIVING.svg?v=994197767777", "searchTerms": ["scuba diving"]},
+"SEAL_VIEWING": {"label": "Seal Viewing", "fileSrc": "img/icons/SEAL_VIEWING.svg", "src": "img/icons/SEAL_VIEWING.svg?v=7234a94b0a9a", "searchTerms": ["sea lion viewing"]},
+"SEA_PLANE": {"label": "Sea Plane", "fileSrc": "img/icons/SEA_PLANE.svg", "src": "img/icons/SEA_PLANE.svg?v=778c885611a5", "searchTerms": ["sea plane"]},
+"SHOWERS": {"label": "Showers", "fileSrc": "img/icons/SHOWERS.svg", "src": "img/icons/SHOWERS.svg?v=0bf16bf3c92b", "searchTerms": ["showers"]},
+"SKATEBOARDING": {"label": "Skateboarding", "fileSrc": "img/icons/SKATEBOARDING.svg", "src": "img/icons/SKATEBOARDING.svg?v=3d8b5902a20e", "searchTerms": ["skateboarding"]},
+"SLEDDING": {"label": "Sledding", "fileSrc": "img/icons/SLEDDING.svg", "src": "img/icons/SLEDDING.svg?v=5465e71af390", "searchTerms": ["sledding"]},
+"SLEEPING_SHELTER": {"label": "Sleeping Shelter", "fileSrc": "img/icons/SLEEPING_SHELTER.svg", "src": "img/icons/SLEEPING_SHELTER.svg?v=ddb8115ee991", "searchTerms": ["sleeping shelter"]},
+"SMOKING": {"label": "Smoking", "fileSrc": "img/icons/SMOKING.svg", "src": "img/icons/SMOKING.svg?v=30eba1b016f6", "searchTerms": ["smoking area"]},
+"SNOWSHOEING": {"label": "Snowshoeing", "fileSrc": "img/icons/SNOWSHOEING.svg", "src": "img/icons/SNOWSHOEING.svg?v=348b37777aba", "searchTerms": ["snow shoeing"]},
+"SNOW_TUBING": {"label": "Snow Tubing", "fileSrc": "img/icons/SNOW_TUBING.png", "src": "img/icons/SNOW_TUBING.png?v=74b64db301c6"},
+"SPELUNKINGCAVES": {"label": "Spelunking/Caves", "fileSrc": "img/icons/SPELUNKINGCAVES.svg", "src": "img/icons/SPELUNKINGCAVES.svg?v=71526c6cfbd1", "searchTerms": ["caving"]},
+"STOP": {"label": "Stop", "fileSrc": "img/icons/STOP.svg", "src": "img/icons/STOP.svg?v=8da60424c5df"},
+"SWIMMING": {"label": "Swimming", "fileSrc": "img/icons/SWIMMING.svg", "src": "img/icons/SWIMMING.svg?v=bc6ebe14a5c1", "searchTerms": ["swimming"]},
+"TECHNICAL_ROCK_CLIMBING": {"label": "Technical Rock Climbing", "fileSrc": "img/icons/TECHNICAL_ROCK_CLIMBING.svg", "src": "img/icons/TECHNICAL_ROCK_CLIMBING.svg?v=4234e60bad52", "searchTerms": ["technical rock climb"]},
+"TELECOMMUNICATIONS_DEVICE_FOR_THE_DEAF": {"label": "Telecommunications Device for the Deaf", "fileSrc": "img/icons/TELECOMMUNICATIONS_DEVICE_FOR_THE_DEAF.svg", "src": "img/icons/TELECOMMUNICATIONS_DEVICE_FOR_THE_DEAF.svg?v=ef87b2349948", "searchTerms": ["text telephone service"]},
+"TELEPHONE": {"label": "Telephone", "fileSrc": "img/icons/TELEPHONE.svg", "src": "img/icons/TELEPHONE.svg?v=b05686149772", "searchTerms": ["telephone"]},
+"TENNIS": {"label": "Tennis", "fileSrc": "img/icons/TENNIS.svg", "src": "img/icons/TENNIS.svg?v=e2088b03e2ac", "searchTerms": ["tennis"]},
+"TOURIST_INFORMATION": {"label": "Tourist Information", "fileSrc": "img/icons/TOURIST_INFORMATION.svg", "src": "img/icons/TOURIST_INFORMATION.svg?v=bf9a3c29892e", "searchTerms": ["information"]},
+"TRAILER_SITE": {"label": "Trailer Site", "fileSrc": "img/icons/TRAILER_SITE.svg", "src": "img/icons/TRAILER_SITE.svg?v=9d0952607d2e", "searchTerms": ["trailer site"]},
+"TRAIN_STATION": {"label": "Train Station", "fileSrc": "img/icons/TRAIN_STATION.svg", "src": "img/icons/TRAIN_STATION.svg?v=7d88e887c216", "searchTerms": ["rail station"]},
+"TRAMWAY": {"label": "Tramway", "fileSrc": "img/icons/TRAMWAY.svg", "src": "img/icons/TRAMWAY.svg?v=90e1d18d17a0", "searchTerms": ["tramway"]},
+"TRASH_DUMPSTER": {"label": "Trash Dumpster", "fileSrc": "img/icons/TRASH_DUMPSTER.svg", "src": "img/icons/TRASH_DUMPSTER.svg?v=497704328aca", "searchTerms": ["trash dumpster"]},
+"TRUCK_EXTERNAL_POWER": {"label": "Truck External Power", "fileSrc": "img/icons/TRUCK_EXTERNAL_POWER.png", "src": "img/icons/TRUCK_EXTERNAL_POWER.png?v=045008fa75d5"},
+"TRUCK_PARKING": {"label": "Truck Parking", "fileSrc": "img/icons/TRUCK_PARKING.png", "src": "img/icons/TRUCK_PARKING.png?v=4043fc6584dc"},
+"TUNNEL": {"label": "Tunnel", "fileSrc": "img/icons/TUNNEL.svg", "src": "img/icons/TUNNEL.svg?v=86ea279d80eb", "searchTerms": ["tunnel"]},
+"VEHICLE_FERRY_STATION": {"label": "Vehicle Ferry Station", "fileSrc": "img/icons/VEHICLE_FERRY_STATION.svg", "src": "img/icons/VEHICLE_FERRY_STATION.svg?v=81971a0d20aa", "searchTerms": ["Vehicle Ferry", "vehicle ferry"]},
+"VIEWING_AREA": {"label": "Viewing Area", "fileSrc": "img/icons/VIEWING_AREA.svg", "src": "img/icons/VIEWING_AREA.svg?v=a0e32ba5b645", "searchTerms": ["viewing area"]},
+"WATERSKIING": {"label": "Waterskiing", "fileSrc": "img/icons/WATERSKIING.svg", "src": "img/icons/WATERSKIING.svg?v=b1226a443f1d", "searchTerms": ["waterskiing"]},
+"WHALE_VIEWING": {"label": "Whale Viewing", "fileSrc": "img/icons/WHALE_VIEWING.svg", "src": "img/icons/WHALE_VIEWING.svg?v=5150effc3e86", "searchTerms": ["whale viewing"]},
+"WILDLIFE_VIEWING": {"label": "Wildlife Viewing", "fileSrc": "img/icons/WILDLIFE_VIEWING.svg", "src": "img/icons/WILDLIFE_VIEWING.svg?v=7b59daf22533", "searchTerms": ["birding wildlife viewing"]},
+"WINTER_RECREATIONAL_AREA": {"label": "Winter Recreational Area", "fileSrc": "img/icons/WINTER_RECREATIONAL_AREA.svg", "src": "img/icons/WINTER_RECREATIONAL_AREA.svg?v=f41be0d98e41", "searchTerms": ["Winter Rec Area", "winter recreation area"]},
+"WIRELESS_INTERNET": {"label": "Wireless Internet", "fileSrc": "img/icons/WIRELESS_INTERNET.svg", "src": "img/icons/WIRELESS_INTERNET.svg?v=11898eb9250d", "searchTerms": ["WiFi", "wi fi", "wifi", "wi-fi", "wireless internet"]},
+"WOMENS_RESTROOM": {"label": "Women's Restroom", "fileSrc": "img/icons/WOMENS_RESTROOM.svg", "src": "img/icons/WOMENS_RESTROOM.svg?v=3049bdc5c03b", "searchTerms": ["womens restroom"]},
+"YIELD": {"label": "Yield", "fileSrc": "img/icons/YIELD.png", "src": "img/icons/YIELD.png?v=dcd3c1030ae8"},
+"AED": {"label": "AED", "fileSrc": "img/icons/AED.svg", "src": "img/icons/AED.svg?v=05a0ccd7c503", "searchTerms": ["aed"]},
+"AIRBOAT": {"label": "Airboat", "fileSrc": "img/icons/AIRBOAT.svg", "src": "img/icons/AIRBOAT.svg?v=b4345aa45cbe", "searchTerms": ["airboat"]},
+"AIRFIELD": {"label": "Airfield", "fileSrc": "img/icons/AIRFIELD.svg", "src": "img/icons/AIRFIELD.svg?v=58d8a503bdd2", "searchTerms": ["airfield"]},
+"ALCOHOL": {"label": "Alcohol", "fileSrc": "img/icons/ALCOHOL.svg", "src": "img/icons/ALCOHOL.svg?v=16312b97d90d", "searchTerms": ["alcohol"]},
+"AMPHITHEATER": {"label": "Amphitheater", "fileSrc": "img/icons/AMPHITHEATER.svg", "src": "img/icons/AMPHITHEATER.svg?v=e023f0141642", "searchTerms": ["amphitheater"]},
+"AQUATIC_INVASIVE_SPECIES_DECONTAMINATION_STATION": {"label": "Aquatic Invasive Species Decontamination Station", "fileSrc": "img/icons/AQUATIC_INVASIVE_SPECIES_DECONTAMINATION_STATION.svg", "src": "img/icons/AQUATIC_INVASIVE_SPECIES_DECONTAMINATION_STATION.svg?v=8af3c0e1b035", "searchTerms": ["aquatic invasive species decontamination station"]},
+"AQUATIC_INVASIVE_SPECIES_INSPECTION_STICKER": {"label": "Aquatic Invasive Species Inspection Sticker", "fileSrc": "img/icons/AQUATIC_INVASIVE_SPECIES_INSPECTION_STICKER.svg", "src": "img/icons/AQUATIC_INVASIVE_SPECIES_INSPECTION_STICKER.svg?v=d38dd3584be9", "searchTerms": ["aquatic invasive species inspection sticker"]},
+"ART": {"label": "Art", "fileSrc": "img/icons/ART.svg", "src": "img/icons/ART.svg?v=888a46fa9a0b", "searchTerms": ["art"]},
+"ASH_DISPOSAL": {"label": "Ash Disposal", "fileSrc": "img/icons/ASH_DISPOSAL.svg", "src": "img/icons/ASH_DISPOSAL.svg?v=fd57520f9862", "searchTerms": ["ash disposal"]},
+"ASSISTIVE_LISTENING_SYSTEMS": {"label": "Assistive Listening Systems", "fileSrc": "img/icons/ASSISTIVE_LISTENING_SYSTEMS.svg", "src": "img/icons/ASSISTIVE_LISTENING_SYSTEMS.svg?v=d6df69b2a520", "searchTerms": ["assistive listening systems"]},
+"ASSISTIVE_LISTENING_SYSTEMS_T_COIL_COMPATIBLE": {"label": "Assistive Listening Systems (T-Coil Compatible)", "fileSrc": "img/icons/ASSISTIVE_LISTENING_SYSTEMS_T_COIL_COMPATIBLE.svg", "src": "img/icons/ASSISTIVE_LISTENING_SYSTEMS_T_COIL_COMPATIBLE.svg?v=9852e3de9947", "searchTerms": ["assistive listening systems t coil compatible"]},
+"ATM": {"label": "ATM", "fileSrc": "img/icons/ATM.svg", "src": "img/icons/ATM.svg?v=aa00c528f078", "searchTerms": ["atm"]},
+"AUDIO_DESCRIPTION": {"label": "Audio Description", "fileSrc": "img/icons/AUDIO_DESCRIPTION.svg", "src": "img/icons/AUDIO_DESCRIPTION.svg?v=51e1a4c47a44", "searchTerms": ["audio description"]},
+"AUDIO_TOUR": {"label": "Audio Tour", "fileSrc": "img/icons/AUDIO_TOUR.svg", "src": "img/icons/AUDIO_TOUR.svg?v=f419c14c70f1", "searchTerms": ["audio tour"]},
+"AUTOMATED_ENTRANCE": {"label": "Automated Entrance", "fileSrc": "img/icons/AUTOMATED_ENTRANCE.svg", "src": "img/icons/AUTOMATED_ENTRANCE.svg?v=fa8c4cd48b4e", "searchTerms": ["automated entrance"]},
+"AUTOMOBILES": {"label": "Automobiles", "fileSrc": "img/icons/AUTOMOBILES.svg", "src": "img/icons/AUTOMOBILES.svg?v=f28cf893fbfd", "searchTerms": ["automobiles"]},
+"BABY_CHANGING_STATION": {"label": "Baby Changing Station", "fileSrc": "img/icons/BABY_CHANGING_STATION.svg", "src": "img/icons/BABY_CHANGING_STATION.svg?v=b6af979512e6", "searchTerms": ["baby changing station"]},
+"BACKCOUNTRY_CAMPING_PERMIT": {"label": "Backcountry Camping Permit", "fileSrc": "img/icons/BACKCOUNTRY_CAMPING_PERMIT.svg", "src": "img/icons/BACKCOUNTRY_CAMPING_PERMIT.svg?v=133a598e2364", "searchTerms": ["backcountry camping permit"]},
+"BEAR_BOX": {"label": "Bear Box", "fileSrc": "img/icons/BEAR_BOX.svg", "src": "img/icons/BEAR_BOX.svg?v=30b7078e6e88", "searchTerms": ["bear box"]},
+"BEAR_CANISTER_RENTALS": {"label": "Bear Canister Rentals", "fileSrc": "img/icons/BEAR_CANISTER_RENTALS.svg", "src": "img/icons/BEAR_CANISTER_RENTALS.svg?v=d09630803c89", "searchTerms": ["bear canister rentals"]},
+"BEAR_SPRAY": {"label": "Bear Spray", "fileSrc": "img/icons/BEAR_SPRAY.svg", "src": "img/icons/BEAR_SPRAY.svg?v=72ac1fff8015", "searchTerms": ["bear spray"]},
+"BEAR_SPRAY_PURCHASE": {"label": "Bear Spray Purchase", "fileSrc": "img/icons/BEAR_SPRAY_PURCHASE.svg", "src": "img/icons/BEAR_SPRAY_PURCHASE.svg?v=cf81366b9500", "searchTerms": ["bear spray purchase"]},
+"BEAR_SPRAY_RENTAL": {"label": "Bear Spray Rental", "fileSrc": "img/icons/BEAR_SPRAY_RENTAL.svg", "src": "img/icons/BEAR_SPRAY_RENTAL.svg?v=78647fe41019", "searchTerms": ["bear spray rental"]},
+"BEAR_SPRAY_RETURN_RECYCLING": {"label": "Bear Spray Return Recycling", "fileSrc": "img/icons/BEAR_SPRAY_RETURN_RECYCLING.svg", "src": "img/icons/BEAR_SPRAY_RETURN_RECYCLING.svg?v=3fc849581958", "searchTerms": ["bear spray return recycling"]},
+"BENCHES_SEATING": {"label": "Benches Seating", "fileSrc": "img/icons/BENCHES_SEATING.svg", "src": "img/icons/BENCHES_SEATING.svg?v=4d5baaffe5f8", "searchTerms": ["benches seating"]},
+"BIKE_RACK": {"label": "Bike Rack", "fileSrc": "img/icons/BIKE_RACK.svg", "src": "img/icons/BIKE_RACK.svg?v=80ffa29c3cb2", "searchTerms": ["bike rack"]},
+"BIKE_RENTAL": {"label": "Bike Rental", "fileSrc": "img/icons/BIKE_RENTAL.svg", "src": "img/icons/BIKE_RENTAL.svg?v=f11d551c611f", "searchTerms": ["bike rental"]},
+"BIKE_REPAIRS": {"label": "Bike Repairs", "fileSrc": "img/icons/BIKE_REPAIRS.svg", "src": "img/icons/BIKE_REPAIRS.svg?v=ccf4016ef70a", "searchTerms": ["bike repairs"]},
+"BOAT_TOUR": {"label": "Boat Tour", "fileSrc": "img/icons/BOAT_TOUR.svg", "src": "img/icons/BOAT_TOUR.svg?v=ac448b2dbe12", "searchTerms": ["boat tour"]},
+"BOAT_TRAILER_PARKING": {"label": "Boat Trailer Parking", "fileSrc": "img/icons/BOAT_TRAILER_PARKING.svg", "src": "img/icons/BOAT_TRAILER_PARKING.svg?v=c5b99cca5d53", "searchTerms": ["boat trailer parking"]},
+"BOATING": {"label": "Boating", "fileSrc": "img/icons/BOATING.svg", "src": "img/icons/BOATING.svg?v=4f123d50ea88", "searchTerms": ["boating"]},
+"BOATING_PERMIT": {"label": "Boating Permit", "fileSrc": "img/icons/BOATING_PERMIT.svg", "src": "img/icons/BOATING_PERMIT.svg?v=2299a2b2d2eb", "searchTerms": ["boating permit"]},
+"BOOK_AND_SOUVENIR_SHOP": {"label": "Book And Souvenir Shop", "fileSrc": "img/icons/BOOK_AND_SOUVENIR_SHOP.svg", "src": "img/icons/BOOK_AND_SOUVENIR_SHOP.svg?v=9e5a872665f5", "searchTerms": ["book and souvenir shop"]},
+"BOOKSTORE": {"label": "Bookstore", "fileSrc": "img/icons/BOOKSTORE.svg", "src": "img/icons/BOOKSTORE.svg?v=ae5ad27aa312", "searchTerms": ["bookstore"]},
+"BOTTLE_FILLING_STATION": {"label": "Bottle Filling Station", "fileSrc": "img/icons/BOTTLE_FILLING_STATION.svg", "src": "img/icons/BOTTLE_FILLING_STATION.svg?v=7567f2f0e502", "searchTerms": ["bottle filling station"]},
+"BOTTLES": {"label": "Bottles", "fileSrc": "img/icons/BOTTLES.svg", "src": "img/icons/BOTTLES.svg?v=734a03ce597d", "searchTerms": ["bottles"]},
+"BRAILLE": {"label": "Braille", "fileSrc": "img/icons/BRAILLE.svg", "src": "img/icons/BRAILLE.svg?v=411a11f51846", "searchTerms": ["braille"]},
+"BREASTFEEDING_STATION": {"label": "Breastfeeding Station", "fileSrc": "img/icons/BREASTFEEDING_STATION.svg", "src": "img/icons/BREASTFEEDING_STATION.svg?v=b2d804100721", "searchTerms": ["breastfeeding station"]},
+"BRIDGE": {"label": "Bridge", "fileSrc": "img/icons/BRIDGE.svg", "src": "img/icons/BRIDGE.svg?v=d496e1d5eb4c", "searchTerms": ["bridge"]},
+"BROCHURE": {"label": "Brochure", "fileSrc": "img/icons/BROCHURE.svg", "src": "img/icons/BROCHURE.svg?v=92fd44b116e7", "searchTerms": ["brochure"]},
+"CABIN": {"label": "Cabin", "fileSrc": "img/icons/CABIN.svg", "src": "img/icons/CABIN.svg?v=02ee7af97498", "searchTerms": ["cabin"]},
+"CALENDAR_EVENTS": {"label": "Calendar Events", "fileSrc": "img/icons/CALENDAR_EVENTS.svg", "src": "img/icons/CALENDAR_EVENTS.svg?v=a45e42be1070", "searchTerms": ["calendar events"]},
+"CAMPGROUND": {"label": "Campground", "fileSrc": "img/icons/CAMPGROUND.svg", "src": "img/icons/CAMPGROUND.svg?v=fc1607f5e1df", "searchTerms": ["campground"]},
+"CANNON": {"label": "Cannon", "fileSrc": "img/icons/CANNON.svg", "src": "img/icons/CANNON.svg?v=fa35c285116b", "searchTerms": ["cannon"]},
+"CANOE_PORTAGING": {"label": "Canoe Portaging", "fileSrc": "img/icons/CANOE_PORTAGING.svg", "src": "img/icons/CANOE_PORTAGING.svg?v=3ccd941dd74f", "searchTerms": ["canoe portaging"]},
+"CANS_OR_BOTTLES": {"label": "Cans Or Bottles", "fileSrc": "img/icons/CANS_OR_BOTTLES.svg", "src": "img/icons/CANS_OR_BOTTLES.svg?v=578f85b83d2c", "searchTerms": ["cans or bottles"]},
+"CELLULAR_SIGNAL": {"label": "Cellular Signal", "fileSrc": "img/icons/CELLULAR_SIGNAL.svg", "src": "img/icons/CELLULAR_SIGNAL.svg?v=18d495e4ad7a", "searchTerms": ["cellular signal"]},
+"CHAPEL": {"label": "Chapel", "fileSrc": "img/icons/CHAPEL.svg", "src": "img/icons/CHAPEL.svg?v=ae11cd41f78a", "searchTerms": ["chapel"]},
+"CLOSED_CAPTIONING": {"label": "Closed Captioning", "fileSrc": "img/icons/CLOSED_CAPTIONING.svg", "src": "img/icons/CLOSED_CAPTIONING.svg?v=5e18760f5099", "searchTerms": ["closed captioning"]},
+"COFFEE": {"label": "Coffee", "fileSrc": "img/icons/COFFEE.svg", "src": "img/icons/COFFEE.svg?v=e502a3daf5d1", "searchTerms": ["coffee"]},
+"COMMUNITY_GARDEN": {"label": "Community Garden", "fileSrc": "img/icons/COMMUNITY_GARDEN.svg", "src": "img/icons/COMMUNITY_GARDEN.svg?v=fc1ed3c8f991", "searchTerms": ["community garden"]},
+"CONSTRUCTION": {"label": "Construction", "fileSrc": "img/icons/CONSTRUCTION.svg", "src": "img/icons/CONSTRUCTION.svg?v=22dcb3136dc0", "searchTerms": ["construction"]},
+"CUSTOMS": {"label": "Customs", "fileSrc": "img/icons/CUSTOMS.svg", "src": "img/icons/CUSTOMS.svg?v=a89d211a1d00", "searchTerms": ["customs"]},
+"DAM": {"label": "Dam", "fileSrc": "img/icons/DAM.svg", "src": "img/icons/DAM.svg?v=9debb810595b", "searchTerms": ["dam"]},
+"DIRECTIONS": {"label": "Directions", "fileSrc": "img/icons/DIRECTIONS.svg", "src": "img/icons/DIRECTIONS.svg?v=a271180629c8", "searchTerms": ["directions"]},
+"DIVING": {"label": "Diving", "fileSrc": "img/icons/DIVING.svg", "src": "img/icons/DIVING.svg?v=9d92c525fa1c", "searchTerms": ["diving"]},
+"DOT": {"label": "Dot", "fileSrc": "img/icons/DOT.svg", "src": "img/icons/DOT.svg?v=629621e0b5c0", "searchTerms": ["dot"]},
+"DOWNHILL_SKIING": {"label": "Downhill Skiing", "fileSrc": "img/icons/DOWNHILL_SKIING.svg", "src": "img/icons/DOWNHILL_SKIING.svg?v=ab6a9cf2468a", "searchTerms": ["downhill skiing"]},
+"DRINKING_WATER": {"label": "Drinking Water", "fileSrc": "img/icons/DRINKING_WATER.svg", "src": "img/icons/DRINKING_WATER.svg?v=992983e201f9", "searchTerms": ["drinking water"]},
+"DRIVING_TOUR": {"label": "Driving Tour", "fileSrc": "img/icons/DRIVING_TOUR.svg", "src": "img/icons/DRIVING_TOUR.svg?v=7d11ab16c2b6", "searchTerms": ["driving tour"]},
+"ELEVATOR": {"label": "Elevator", "fileSrc": "img/icons/ELEVATOR.svg", "src": "img/icons/ELEVATOR.svg?v=4b04102e9b69", "searchTerms": ["elevator"]},
+"EMERGENCIES": {"label": "Emergencies", "fileSrc": "img/icons/EMERGENCIES.svg", "src": "img/icons/EMERGENCIES.svg?v=0e847c450319", "searchTerms": ["emergencies"]},
+"EMERGENCY_TELEPHONE": {"label": "Emergency Telephone", "fileSrc": "img/icons/EMERGENCY_TELEPHONE.svg", "src": "img/icons/EMERGENCY_TELEPHONE.svg?v=5f72c69aba2b", "searchTerms": ["emergency telephone"]},
+"ENTRANCE": {"label": "Entrance", "fileSrc": "img/icons/ENTRANCE.svg", "src": "img/icons/ENTRANCE.svg?v=6cff350e3a3f", "searchTerms": ["entrance"]},
+"ENTRANCE_STATION": {"label": "Entrance Station", "fileSrc": "img/icons/ENTRANCE_STATION.svg", "src": "img/icons/ENTRANCE_STATION.svg?v=2ac628e8ab2d", "searchTerms": ["entrance station"]},
+"EVENT_FACILITY": {"label": "Event Facility", "fileSrc": "img/icons/EVENT_FACILITY.svg", "src": "img/icons/EVENT_FACILITY.svg?v=7643c55758fb", "searchTerms": ["event facility"]},
+"EXERCISE_FITNESS": {"label": "Exercise Fitness", "fileSrc": "img/icons/EXERCISE_FITNESS.svg", "src": "img/icons/EXERCISE_FITNESS.svg?v=f39b72c54444", "searchTerms": ["exercise fitness"]},
+"FALLING_ROCKS": {"label": "Falling Rocks", "fileSrc": "img/icons/FALLING_ROCKS.svg", "src": "img/icons/FALLING_ROCKS.svg?v=d4b2f2a6e3c8", "searchTerms": ["falling rocks"]},
+"FAMILY_RESTROOM": {"label": "Family Restroom", "fileSrc": "img/icons/FAMILY_RESTROOM.svg", "src": "img/icons/FAMILY_RESTROOM.svg?v=8ecfb53bc862", "searchTerms": ["family restroom"]},
+"FIRE_GRATE": {"label": "Fire Grate", "fileSrc": "img/icons/FIRE_GRATE.svg", "src": "img/icons/FIRE_GRATE.svg?v=df700dcac6d7", "searchTerms": ["fire grate"]},
+"FIREWOOD": {"label": "Firewood", "fileSrc": "img/icons/FIREWOOD.svg", "src": "img/icons/FIREWOOD.svg?v=78d3ab352e66", "searchTerms": ["firewood"]},
+"FIREWOOD_CUTTING": {"label": "Firewood Cutting", "fileSrc": "img/icons/FIREWOOD_CUTTING.svg", "src": "img/icons/FIREWOOD_CUTTING.svg?v=64d911c73489", "searchTerms": ["firewood cutting"]},
+"FIRST_COME_FIRST_SERVED": {"label": "First Come First Served", "fileSrc": "img/icons/FIRST_COME_FIRST_SERVED.svg", "src": "img/icons/FIRST_COME_FIRST_SERVED.svg?v=6b6df63332bc", "searchTerms": ["first come first served"]},
+"FISH_CLEANING": {"label": "Fish Cleaning", "fileSrc": "img/icons/FISH_CLEANING.svg", "src": "img/icons/FISH_CLEANING.svg?v=9d469a29f068", "searchTerms": ["fish cleaning"]},
+"FISH_HATCHERY": {"label": "Fish Hatchery", "fileSrc": "img/icons/FISH_HATCHERY.svg", "src": "img/icons/FISH_HATCHERY.svg?v=c9760c8e7fa9", "searchTerms": ["fish hatchery"]},
+"FISH_LADDER": {"label": "Fish Ladder", "fileSrc": "img/icons/FISH_LADDER.svg", "src": "img/icons/FISH_LADDER.svg?v=b4beb42b8f71", "searchTerms": ["fish ladder"]},
+"FISHING_LICENSE": {"label": "Fishing License", "fileSrc": "img/icons/FISHING_LICENSE.svg", "src": "img/icons/FISHING_LICENSE.svg?v=41853b20fe33", "searchTerms": ["fishing license"]},
+"FISHING_PIER": {"label": "Fishing Pier", "fileSrc": "img/icons/FISHING_PIER.svg", "src": "img/icons/FISHING_PIER.svg?v=0adb6f6237ad", "searchTerms": ["fishing pier"]},
+"FLAGPOLE": {"label": "Flagpole", "fileSrc": "img/icons/FLAGPOLE.svg", "src": "img/icons/FLAGPOLE.svg?v=c17bd4d76673", "searchTerms": ["flagpole"]},
+"FLOATING_DUMP_STATION": {"label": "Floating Dump Station", "fileSrc": "img/icons/FLOATING_DUMP_STATION.svg", "src": "img/icons/FLOATING_DUMP_STATION.svg?v=e2fb27c2db0d", "searchTerms": ["floating dump station"]},
+"FLOWER_VIEWING": {"label": "Flower Viewing", "fileSrc": "img/icons/FLOWER_VIEWING.svg", "src": "img/icons/FLOWER_VIEWING.svg?v=b3de52521b24", "searchTerms": ["flower viewing"]},
+"FLUSH_TOILETS": {"label": "Flush Toilets", "fileSrc": "img/icons/FLUSH_TOILETS.svg", "src": "img/icons/FLUSH_TOILETS.svg?v=66e6b7a05e8c", "searchTerms": ["flush toilets"]},
+"FOOD_CACHE": {"label": "Food Cache", "fileSrc": "img/icons/FOOD_CACHE.svg", "src": "img/icons/FOOD_CACHE.svg?v=d3b5bb5c484a", "searchTerms": ["food cache"]},
+"FOUR_WHEEL_DRIVE_ROAD": {"label": "Four Wheel Drive Road", "fileSrc": "img/icons/FOUR_WHEEL_DRIVE_ROAD.svg", "src": "img/icons/FOUR_WHEEL_DRIVE_ROAD.svg?v=37c4c4bf5d19", "searchTerms": ["four wheel drive road"]},
+"GENERATORS": {"label": "Generators", "fileSrc": "img/icons/GENERATORS.svg", "src": "img/icons/GENERATORS.svg?v=a1d5eac524af", "searchTerms": ["generators"]},
+"GEYSER": {"label": "Geyser", "fileSrc": "img/icons/GEYSER.svg", "src": "img/icons/GEYSER.svg?v=4046b60ee058", "searchTerms": ["geyser"]},
+"GRILL": {"label": "Grill", "fileSrc": "img/icons/GRILL.svg", "src": "img/icons/GRILL.svg?v=1ca02eff8999", "searchTerms": ["grill"]},
+"GUIDED_TOURS": {"label": "Guided Tours", "fileSrc": "img/icons/GUIDED_TOURS.svg", "src": "img/icons/GUIDED_TOURS.svg?v=12707d4a88f2", "searchTerms": ["guided tours"]},
+"HANG_GLIDING": {"label": "Hang Gliding", "fileSrc": "img/icons/HANG_GLIDING.svg", "src": "img/icons/HANG_GLIDING.svg?v=294284756d20", "searchTerms": ["hang gliding"]},
+"HISTORIC_FEATURE": {"label": "Historic Feature", "fileSrc": "img/icons/HISTORIC_FEATURE.svg", "src": "img/icons/HISTORIC_FEATURE.svg?v=8279726f5b2c", "searchTerms": ["historic feature"]},
+"HOLD_HAND_RAIL": {"label": "Hold Hand Rail", "fileSrc": "img/icons/HOLD_HAND_RAIL.svg", "src": "img/icons/HOLD_HAND_RAIL.svg?v=0adccd97fab0", "searchTerms": ["hold hand rail"]},
+"HUNTING": {"label": "Hunting", "fileSrc": "img/icons/HUNTING.svg", "src": "img/icons/HUNTING.svg?v=85a4759323d5", "searchTerms": ["hunting"]},
+"ICE": {"label": "Ice", "fileSrc": "img/icons/ICE.svg", "src": "img/icons/ICE.svg?v=4138da5d3191", "searchTerms": ["ice"]},
+"ICE_CREAM": {"label": "Ice Cream", "fileSrc": "img/icons/ICE_CREAM.svg", "src": "img/icons/ICE_CREAM.svg?v=fd61e154a827", "searchTerms": ["ice cream"]},
+"ICE_FISHING": {"label": "Ice Fishing", "fileSrc": "img/icons/ICE_FISHING.svg", "src": "img/icons/ICE_FISHING.svg?v=5f4fa3cb5dea", "searchTerms": ["ice fishing"]},
+"ICE_SKATING": {"label": "Ice Skating", "fileSrc": "img/icons/ICE_SKATING.svg", "src": "img/icons/ICE_SKATING.svg?v=af704d902bfe", "searchTerms": ["ice skating"]},
+"INCIDENT": {"label": "Incident", "fileSrc": "img/icons/INCIDENT.svg", "src": "img/icons/INCIDENT.svg?v=ebb4febfd843", "searchTerms": ["incident"]},
+"INTERPRETIVE_EXHIBIT": {"label": "Interpretive Exhibit", "fileSrc": "img/icons/INTERPRETIVE_EXHIBIT.svg", "src": "img/icons/INTERPRETIVE_EXHIBIT.svg?v=b46bf23bdf79", "searchTerms": ["interpretive exhibit"]},
+"JUNIOR_RANGER_PROGRAM": {"label": "Junior Ranger Program", "fileSrc": "img/icons/JUNIOR_RANGER_PROGRAM.svg", "src": "img/icons/JUNIOR_RANGER_PROGRAM.svg?v=6a82a014578a", "searchTerms": ["junior ranger program"]},
+"KAYAKING": {"label": "Kayaking", "fileSrc": "img/icons/KAYAKING.svg", "src": "img/icons/KAYAKING.svg?v=8afa4de4ad50", "searchTerms": ["kayaking"]},
+"KENNEL": {"label": "Kennel", "fileSrc": "img/icons/KENNEL.svg", "src": "img/icons/KENNEL.svg?v=2c347c3a1678", "searchTerms": ["kennel"]},
+"LARGE_PRINT": {"label": "Large Print", "fileSrc": "img/icons/LARGE_PRINT.svg", "src": "img/icons/LARGE_PRINT.svg?v=7dd101b8a7a2", "searchTerms": ["large print"]},
+"LIFE_JACKETS": {"label": "Life Jackets", "fileSrc": "img/icons/LIFE_JACKETS.svg", "src": "img/icons/LIFE_JACKETS.svg?v=8030b3c0c0b6", "searchTerms": ["life jackets"]},
+"LIFEGUARD": {"label": "Lifeguard", "fileSrc": "img/icons/LIFEGUARD.svg", "src": "img/icons/LIFEGUARD.svg?v=831d7438cb5e", "searchTerms": ["lifeguard"]},
+"LIVE_AUDIO_DESCRIPTION": {"label": "Live Audio Description", "fileSrc": "img/icons/LIVE_AUDIO_DESCRIPTION.svg", "src": "img/icons/LIVE_AUDIO_DESCRIPTION.svg?v=760a5cbb01df", "searchTerms": ["live audio description"]},
+"LOCK": {"label": "Lock", "fileSrc": "img/icons/LOCK.svg", "src": "img/icons/LOCK.svg?v=e7807be650d4", "searchTerms": ["lock"]},
+"LOCK_BIKES": {"label": "Lock Bikes", "fileSrc": "img/icons/LOCK_BIKES.svg", "src": "img/icons/LOCK_BIKES.svg?v=d2125abbfb58", "searchTerms": ["lock bikes"]},
+"LOCKERS_STORAGE": {"label": "Lockers Storage", "fileSrc": "img/icons/LOCKERS_STORAGE.svg", "src": "img/icons/LOCKERS_STORAGE.svg?v=64878b0c27c5", "searchTerms": ["lockers storage"]},
+"LOUNGE": {"label": "Lounge", "fileSrc": "img/icons/LOUNGE.svg", "src": "img/icons/LOUNGE.svg?v=6a24c2b50675", "searchTerms": ["lounge"]},
+"LOW_VISION_ACCESS": {"label": "Low Vision Access", "fileSrc": "img/icons/LOW_VISION_ACCESS.svg", "src": "img/icons/LOW_VISION_ACCESS.svg?v=940aae2a1a26", "searchTerms": ["low vision access"]},
+"MAPS": {"label": "Maps", "fileSrc": "img/icons/MAPS.svg", "src": "img/icons/MAPS.svg?v=67e8b0e6a688", "searchTerms": ["maps"]},
+"MECHANIC": {"label": "Mechanic", "fileSrc": "img/icons/MECHANIC.svg", "src": "img/icons/MECHANIC.svg?v=61d618353370", "searchTerms": ["mechanic"]},
+"METAL_DETECTING": {"label": "Metal Detecting", "fileSrc": "img/icons/METAL_DETECTING.svg", "src": "img/icons/METAL_DETECTING.svg?v=609c6afeed4a", "searchTerms": ["metal detecting"]},
+"METRO_STATION": {"label": "Metro Station", "fileSrc": "img/icons/METRO_STATION.svg", "src": "img/icons/METRO_STATION.svg?v=65f25e3a5c45", "searchTerms": ["metro station"]},
+"MOBILE_DEVICE_CHARGING": {"label": "Mobile Device Charging", "fileSrc": "img/icons/MOBILE_DEVICE_CHARGING.svg", "src": "img/icons/MOBILE_DEVICE_CHARGING.svg?v=4001cfb665aa", "searchTerms": ["mobile device charging"]},
+"MONUMENT": {"label": "Monument", "fileSrc": "img/icons/MONUMENT.svg", "src": "img/icons/MONUMENT.svg?v=d194ebf39969", "searchTerms": ["monument"]},
+"MOTOR_BIKE_TRAIL": {"label": "Motor Bike Trail", "fileSrc": "img/icons/MOTOR_BIKE_TRAIL.svg", "src": "img/icons/MOTOR_BIKE_TRAIL.svg?v=9aa4544ffa33", "searchTerms": ["motor bike trail"]},
+"MUSEUM": {"label": "Museum", "fileSrc": "img/icons/MUSEUM.svg", "src": "img/icons/MUSEUM.svg?v=db693804bc7a", "searchTerms": ["museum"]},
+"NEWSPAPER": {"label": "Newspaper", "fileSrc": "img/icons/NEWSPAPER.svg", "src": "img/icons/NEWSPAPER.svg?v=73cc8ed180e8", "searchTerms": ["newspaper"]},
+"NO_MOBILE_DEVICES": {"label": "No Mobile Devices", "fileSrc": "img/icons/NO_MOBILE_DEVICES.svg", "src": "img/icons/NO_MOBILE_DEVICES.svg?v=af62c6b4b3c2", "searchTerms": ["no mobile devices"]},
+"OPEN_CAPTIONING": {"label": "Open Captioning", "fileSrc": "img/icons/OPEN_CAPTIONING.svg", "src": "img/icons/OPEN_CAPTIONING.svg?v=2fc5610a7bab", "searchTerms": ["open captioning"]},
+"OPEN_TO_THE_PUBLIC": {"label": "Open To The Public", "fileSrc": "img/icons/OPEN_TO_THE_PUBLIC.svg", "src": "img/icons/OPEN_TO_THE_PUBLIC.svg?v=482391e1f927", "searchTerms": ["open to the public"]},
+"PADDLE_BOATING": {"label": "Paddle Boating", "fileSrc": "img/icons/PADDLE_BOATING.svg", "src": "img/icons/PADDLE_BOATING.svg?v=3840e8adb147", "searchTerms": ["paddle boating"]},
+"PARK_FILM": {"label": "Park Film", "fileSrc": "img/icons/PARK_FILM.svg", "src": "img/icons/PARK_FILM.svg?v=c96b1ccbd423", "searchTerms": ["park film"]},
+"PASSES_AND_FEES": {"label": "Passes And Fees", "fileSrc": "img/icons/PASSES_AND_FEES.svg", "src": "img/icons/PASSES_AND_FEES.svg?v=9c2fada277d8", "searchTerms": ["passes and fees"]},
+"PASSPORT_STAMPS": {"label": "Passport Stamps", "fileSrc": "img/icons/PASSPORT_STAMPS.svg", "src": "img/icons/PASSPORT_STAMPS.svg?v=fe89dd5d78ac", "searchTerms": ["passport stamps"]},
+"PEDESTRIAN_CROSSING": {"label": "Pedestrian Crossing", "fileSrc": "img/icons/PEDESTRIAN_CROSSING.svg", "src": "img/icons/PEDESTRIAN_CROSSING.svg?v=d4c1827bb002", "searchTerms": ["pedestrian crossing"]},
+"PETS_OFF_LEASH": {"label": "Pets Off Leash", "fileSrc": "img/icons/PETS_OFF_LEASH.svg", "src": "img/icons/PETS_OFF_LEASH.svg?v=5e68fd565e7c", "searchTerms": ["pets off leash"]},
+"PETS_ON_LEASH": {"label": "Pets On Leash", "fileSrc": "img/icons/PETS_ON_LEASH.svg", "src": "img/icons/PETS_ON_LEASH.svg?v=a82de919a60a", "searchTerms": ["pets on leash"]},
+"PHOTOGRAPHY": {"label": "Photography", "fileSrc": "img/icons/PHOTOGRAPHY.svg", "src": "img/icons/PHOTOGRAPHY.svg?v=db38555126d9", "searchTerms": ["photography"]},
+"PIT_TOILET": {"label": "Pit Toilet", "fileSrc": "img/icons/PIT_TOILET.svg", "src": "img/icons/PIT_TOILET.svg?v=1ce00cd6c30e", "searchTerms": ["pit toilet"]},
+"PLAYGROUND": {"label": "Playground", "fileSrc": "img/icons/PLAYGROUND.svg", "src": "img/icons/PLAYGROUND.svg?v=4899d0a6f47e", "searchTerms": ["playground"]},
+"POINT_OF_INTEREST": {"label": "Point Of Interest", "fileSrc": "img/icons/POINT_OF_INTEREST.svg", "src": "img/icons/POINT_OF_INTEREST.svg?v=4ee951cd3106", "searchTerms": ["point of interest"]},
+"PROPANE": {"label": "Propane", "fileSrc": "img/icons/PROPANE.svg", "src": "img/icons/PROPANE.svg?v=c26ef7bebb75", "searchTerms": ["propane"]},
+"PROPANE_BOTTLE_RECYCLING": {"label": "Propane Bottle Recycling", "fileSrc": "img/icons/PROPANE_BOTTLE_RECYCLING.svg", "src": "img/icons/PROPANE_BOTTLE_RECYCLING.svg?v=5ace4e3ce661", "searchTerms": ["propane bottle recycling"]},
+"QUAGGA_MUSSEL_DECONTAMINATION_STATION": {"label": "Quagga Mussel Decontamination Station", "fileSrc": "img/icons/QUAGGA_MUSSEL_DECONTAMINATION_STATION.svg", "src": "img/icons/QUAGGA_MUSSEL_DECONTAMINATION_STATION.svg?v=b47b0dfc5c1a", "searchTerms": ["quagga mussel decontamination station"]},
+"QUIET": {"label": "Quiet", "fileSrc": "img/icons/QUIET.svg", "src": "img/icons/QUIET.svg?v=caf0a2b8a138", "searchTerms": ["quiet"]},
+"RADIATOR_WATER": {"label": "Radiator Water", "fileSrc": "img/icons/RADIATOR_WATER.svg", "src": "img/icons/RADIATOR_WATER.svg?v=9e88eff3609e", "searchTerms": ["radiator water"]},
+"RADIOS": {"label": "Radios", "fileSrc": "img/icons/RADIOS.svg", "src": "img/icons/RADIOS.svg?v=6a5e425b4318", "searchTerms": ["radios"]},
+"RANGER_LED_EVENTS": {"label": "Ranger Led Events", "fileSrc": "img/icons/RANGER_LED_EVENTS.svg", "src": "img/icons/RANGER_LED_EVENTS.svg?v=67952da1e242", "searchTerms": ["ranger led events"]},
+"RANGER_STATION": {"label": "Ranger Station", "fileSrc": "img/icons/RANGER_STATION.svg", "src": "img/icons/RANGER_STATION.svg?v=1e68fb1a62c8", "searchTerms": ["ranger station"]},
+"RATTLESNAKES": {"label": "Rattlesnakes", "fileSrc": "img/icons/RATTLESNAKES.svg", "src": "img/icons/RATTLESNAKES.svg?v=165d01823fd3", "searchTerms": ["rattlesnakes"]},
+"RENTALS": {"label": "Rentals", "fileSrc": "img/icons/RENTALS.svg", "src": "img/icons/RENTALS.svg?v=bbaf4b6e324a", "searchTerms": ["rentals"]},
+"RESERVATIONS": {"label": "Reservations", "fileSrc": "img/icons/RESERVATIONS.svg", "src": "img/icons/RESERVATIONS.svg?v=16a79ca426e3", "searchTerms": ["reservations"]},
+"RIVER_RAFTING": {"label": "River Rafting", "fileSrc": "img/icons/RIVER_RAFTING.svg", "src": "img/icons/RIVER_RAFTING.svg?v=c65f908f7b44", "searchTerms": ["river rafting"]},
+"ROCK_COLLECTING": {"label": "Rock Collecting", "fileSrc": "img/icons/ROCK_COLLECTING.svg", "src": "img/icons/ROCK_COLLECTING.svg?v=525ebc56910e", "searchTerms": ["rock collecting"]},
+"ROWBOATING": {"label": "Rowboating", "fileSrc": "img/icons/ROWBOATING.svg", "src": "img/icons/ROWBOATING.svg?v=d773c3e5edce", "searchTerms": ["rowboating"]},
+"RR_XING": {"label": "Railroad Crossing", "fileSrc": "img/icons/RR_XING.svg", "src": "img/icons/RR_XING.svg?v=675634b0ca32", "searchTerms": ["rr xing"]},
+"RV_TRAILER_HOOKUP": {"label": "RV/Trailer Hookup", "fileSrc": "img/icons/RV_TRAILER_HOOKUP.svg", "src": "img/icons/RV_TRAILER_HOOKUP.svg?v=5c06e1d244e5", "searchTerms": ["rv trailer hookup"]},
+"SAFETY_CAUTION_ALERTS": {"label": "Safety Caution Alerts", "fileSrc": "img/icons/SAFETY_CAUTION_ALERTS.svg", "src": "img/icons/SAFETY_CAUTION_ALERTS.svg?v=9d2c73f787f3", "searchTerms": ["safety caution alerts"]},
+"SAILING": {"label": "Sailing", "fileSrc": "img/icons/SAILING.svg", "src": "img/icons/SAILING.svg?v=46513de3da2f", "searchTerms": ["sailing"]},
+"SCENIC_VIEWPOINT": {"label": "Scenic Viewpoint", "fileSrc": "img/icons/SCENIC_VIEWPOINT.svg", "src": "img/icons/SCENIC_VIEWPOINT.svg?v=7fdb61023c85", "searchTerms": ["scenic viewpoint"]},
+"SELF_GUIDING_TRAIL": {"label": "Self Guiding Trail", "fileSrc": "img/icons/SELF_GUIDING_TRAIL.svg", "src": "img/icons/SELF_GUIDING_TRAIL.svg?v=8f4a0c1252c7", "searchTerms": ["self guiding trail"]},
+"SEWER_HOOKUP": {"label": "Sewer Hookup", "fileSrc": "img/icons/SEWER_HOOKUP.svg", "src": "img/icons/SEWER_HOOKUP.svg?v=ef459c2e4355", "searchTerms": ["sewer hookup"]},
+"SHELTER": {"label": "Shelter", "fileSrc": "img/icons/SHELTER.svg", "src": "img/icons/SHELTER.svg?v=bbf46d1a5d70", "searchTerms": ["shelter"]},
+"SHIPWRECK": {"label": "Shipwreck", "fileSrc": "img/icons/SHIPWRECK.svg", "src": "img/icons/SHIPWRECK.svg?v=945b31cea188", "searchTerms": ["shipwreck"]},
+"SHUTTLE_SERVICE": {"label": "Shuttle Service", "fileSrc": "img/icons/SHUTTLE_SERVICE.svg", "src": "img/icons/SHUTTLE_SERVICE.svg?v=b73c66aee261", "searchTerms": ["shuttle service"]},
+"SIGN": {"label": "Sign", "fileSrc": "img/icons/SIGN.svg", "src": "img/icons/SIGN.svg?v=ed9afbaa6dc1", "searchTerms": ["sign"]},
+"SIGN_LANGUAGE_INTERPRETATION": {"label": "Sign Language Interpretation", "fileSrc": "img/icons/SIGN_LANGUAGE_INTERPRETATION.svg", "src": "img/icons/SIGN_LANGUAGE_INTERPRETATION.svg?v=db310e6c1c7f", "searchTerms": ["sign language interpretation"]},
+"SILENCE_MOBILE_DEVICES": {"label": "Silence Mobile Devices", "fileSrc": "img/icons/SILENCE_MOBILE_DEVICES.svg", "src": "img/icons/SILENCE_MOBILE_DEVICES.svg?v=31997c1b95c3", "searchTerms": ["silence mobile devices"]},
+"SKI_JUMPING": {"label": "Ski Jumping", "fileSrc": "img/icons/SKI_JUMPING.svg", "src": "img/icons/SKI_JUMPING.svg?v=3843045556b7", "searchTerms": ["ski jumping"]},
+"SLIPPERY_RAMP": {"label": "Slippery Ramp", "fileSrc": "img/icons/SLIPPERY_RAMP.svg", "src": "img/icons/SLIPPERY_RAMP.svg?v=0ee3529dc9aa", "searchTerms": ["slippery ramp"]},
+"SLIPPERY_STEPS": {"label": "Slippery Steps", "fileSrc": "img/icons/SLIPPERY_STEPS.svg", "src": "img/icons/SLIPPERY_STEPS.svg?v=5dc97bce13c0", "searchTerms": ["slippery steps"]},
+"SNACK_BAR": {"label": "Snack Bar", "fileSrc": "img/icons/SNACK_BAR.svg", "src": "img/icons/SNACK_BAR.svg?v=dca083d4fe3a", "searchTerms": ["snack bar"]},
+"SNORKELING": {"label": "Snorkeling", "fileSrc": "img/icons/SNORKELING.svg", "src": "img/icons/SNORKELING.svg?v=d49155fb0628", "searchTerms": ["snorkeling"]},
+"SNOWBOARDING": {"label": "Snowboarding", "fileSrc": "img/icons/SNOWBOARDING.svg", "src": "img/icons/SNOWBOARDING.svg?v=e8a27be4a9fb", "searchTerms": ["snowboarding"]},
+"SNOWMOBILE_TRAIL": {"label": "Snowmobile Trail", "fileSrc": "img/icons/SNOWMOBILE_TRAIL.svg", "src": "img/icons/SNOWMOBILE_TRAIL.svg?v=c0b90fd0a617", "searchTerms": ["snowmobile trail"]},
+"SOUVENIR_SHOP": {"label": "Souvenir Shop", "fileSrc": "img/icons/SOUVENIR_SHOP.svg", "src": "img/icons/SOUVENIR_SHOP.svg?v=33d23bd7fdbe", "searchTerms": ["souvenir shop"]},
+"SPRING": {"label": "Spring", "fileSrc": "img/icons/SPRING.svg", "src": "img/icons/SPRING.svg?v=6fb43a90f0be", "searchTerms": ["spring"]},
+"STABLE": {"label": "Stable", "fileSrc": "img/icons/STABLE.svg", "src": "img/icons/STABLE.svg?v=f699082cf261", "searchTerms": ["stable"]},
+"STAGECOACH_RIDES": {"label": "Stagecoach Rides", "fileSrc": "img/icons/STAGECOACH_RIDES.svg", "src": "img/icons/STAGECOACH_RIDES.svg?v=5078e8f496a5", "searchTerms": ["stagecoach rides"]},
+"STAR_GAZING": {"label": "Star Gazing", "fileSrc": "img/icons/STAR_GAZING.svg", "src": "img/icons/STAR_GAZING.svg?v=3a98338d245c", "searchTerms": ["star gazing"]},
+"STATUE": {"label": "Statue", "fileSrc": "img/icons/STATUE.svg", "src": "img/icons/STATUE.svg?v=21ca9fa6be17", "searchTerms": ["statue"]},
+"STAY_BACK_FROM_EDGE_CLIFF": {"label": "Stay Back From Edge Cliff", "fileSrc": "img/icons/STAY_BACK_FROM_EDGE_CLIFF.svg", "src": "img/icons/STAY_BACK_FROM_EDGE_CLIFF.svg?v=462ea15d9647", "searchTerms": ["stay back from edge cliff"]},
+"STAY_BACK_FROM_EDGE_SHORE": {"label": "Stay Back From Edge Shore", "fileSrc": "img/icons/STAY_BACK_FROM_EDGE_SHORE.svg", "src": "img/icons/STAY_BACK_FROM_EDGE_SHORE.svg?v=cae9bff02a6e", "searchTerms": ["stay back from edge shore"]},
+"STAY_ON_TRAIL": {"label": "Stay On Trail", "fileSrc": "img/icons/STAY_ON_TRAIL.svg", "src": "img/icons/STAY_ON_TRAIL.svg?v=c7ae5a76e867", "searchTerms": ["stay on trail"]},
+"STORE": {"label": "Store", "fileSrc": "img/icons/STORE.svg", "src": "img/icons/STORE.svg?v=22be042ed4a3", "searchTerms": ["store"]},
+"STROLLERS": {"label": "Strollers", "fileSrc": "img/icons/STROLLERS.svg", "src": "img/icons/STROLLERS.svg?v=001c2af72306", "searchTerms": ["strollers"]},
+"SUNNY": {"label": "Sunny", "fileSrc": "img/icons/SUNNY.svg", "src": "img/icons/SUNNY.svg?v=9e32e42d9d41", "searchTerms": ["sunny"]},
+"SUPPLIES": {"label": "Supplies", "fileSrc": "img/icons/SUPPLIES.svg", "src": "img/icons/SUPPLIES.svg?v=b255329b234f", "searchTerms": ["supplies"]},
+"SURFING": {"label": "Surfing", "fileSrc": "img/icons/SURFING.svg", "src": "img/icons/SURFING.svg?v=c74b2da1eb73", "searchTerms": ["surfing"]},
+"TABLE_SERVICE": {"label": "Table Service", "fileSrc": "img/icons/TABLE_SERVICE.svg", "src": "img/icons/TABLE_SERVICE.svg?v=24bbb1312cf9", "searchTerms": ["table service"]},
+"TACTILE_EXHIBIT": {"label": "Tactile Exhibit", "fileSrc": "img/icons/TACTILE_EXHIBIT.svg", "src": "img/icons/TACTILE_EXHIBIT.svg?v=a1e6d1d9824a", "searchTerms": ["tactile exhibit"]},
+"THEATER": {"label": "Theater", "fileSrc": "img/icons/THEATER.svg", "src": "img/icons/THEATER.svg?v=b2ed0a15fa59", "searchTerms": ["theater"]},
+"THEATRE_ARTS": {"label": "Theatre Arts", "fileSrc": "img/icons/THEATRE_ARTS.svg", "src": "img/icons/THEATRE_ARTS.svg?v=e1be426dd828", "searchTerms": ["theatre arts"]},
+"THINGS_TO_DO": {"label": "Things To Do", "fileSrc": "img/icons/THINGS_TO_DO.svg", "src": "img/icons/THINGS_TO_DO.svg?v=198e12f1c07a", "searchTerms": ["things to do"]},
+"TICKET_SALES": {"label": "Ticket Sales", "fileSrc": "img/icons/TICKET_SALES.svg", "src": "img/icons/TICKET_SALES.svg?v=52e1bbd37b01", "searchTerms": ["ticket sales"]},
+"TIDEPOOLING": {"label": "Tidepooling", "fileSrc": "img/icons/TIDEPOOLING.svg", "src": "img/icons/TIDEPOOLING.svg?v=6d8f4c8f76b2", "searchTerms": ["tidepooling"]},
+"TORNADO_SHELTER": {"label": "Tornado Shelter", "fileSrc": "img/icons/TORNADO_SHELTER.svg", "src": "img/icons/TORNADO_SHELTER.svg?v=aa64e8ac41d3", "searchTerms": ["tornado shelter"]},
+"TOWING": {"label": "Towing", "fileSrc": "img/icons/TOWING.svg", "src": "img/icons/TOWING.svg?v=10d1dafb8343", "searchTerms": ["towing"]},
+"TRAILHEAD_INFORMATION": {"label": "Trailhead Information", "fileSrc": "img/icons/TRAILHEAD_INFORMATION.svg", "src": "img/icons/TRAILHEAD_INFORMATION.svg?v=d1643e6e003e", "searchTerms": ["trailhead information"]},
+"TRAM_TOUR": {"label": "Tram Tour", "fileSrc": "img/icons/TRAM_TOUR.svg", "src": "img/icons/TRAM_TOUR.svg?v=798afb0950ee", "searchTerms": ["tram tour"]},
+"TRUCKS": {"label": "Trucks", "fileSrc": "img/icons/TRUCKS.svg", "src": "img/icons/TRUCKS.svg?v=72627e98220a", "searchTerms": ["trucks"]},
+"TUBING": {"label": "Tubing", "fileSrc": "img/icons/TUBING.svg", "src": "img/icons/TUBING.svg?v=f6f815badb04", "searchTerms": ["tubing"]},
+"UNEVEN_WALKWAYS": {"label": "Uneven Walkways", "fileSrc": "img/icons/UNEVEN_WALKWAYS.svg", "src": "img/icons/UNEVEN_WALKWAYS.svg?v=0cecb4f6b9fc", "searchTerms": ["uneven walkways"]},
+"UTV": {"label": "UTV", "fileSrc": "img/icons/UTV.svg", "src": "img/icons/UTV.svg?v=500dd98c0dad", "searchTerms": ["utv"]},
+"VENDING_MACHINE": {"label": "Vending Machine", "fileSrc": "img/icons/VENDING_MACHINE.svg", "src": "img/icons/VENDING_MACHINE.svg?v=5ce7723707e7", "searchTerms": ["vending machine"]},
+"VIDEO_SURVEILLANCE": {"label": "Video Surveillance", "fileSrc": "img/icons/VIDEO_SURVEILLANCE.svg", "src": "img/icons/VIDEO_SURVEILLANCE.svg?v=001a12e563c7", "searchTerms": ["video surveillance"]},
+"VISITOR_CENTER": {"label": "Visitor Center", "fileSrc": "img/icons/VISITOR_CENTER.svg", "src": "img/icons/VISITOR_CENTER.svg?v=910e6c81182d", "searchTerms": ["visitor center"]},
+"VOLLEYBALL": {"label": "Volleyball", "fileSrc": "img/icons/VOLLEYBALL.svg", "src": "img/icons/VOLLEYBALL.svg?v=b879b88117ba", "searchTerms": ["volleyball"]},
+"VOLUME_CONTROL_TELEPHONE": {"label": "Volume Control Telephone", "fileSrc": "img/icons/VOLUME_CONTROL_TELEPHONE.svg", "src": "img/icons/VOLUME_CONTROL_TELEPHONE.svg?v=1af560b60c02", "searchTerms": ["volume control telephone"]},
+"WADING": {"label": "Wading", "fileSrc": "img/icons/WADING.svg", "src": "img/icons/WADING.svg?v=b361d421f248", "searchTerms": ["wading"]},
+"WALK_ON_BOARDWALK": {"label": "Walk On Boardwalk", "fileSrc": "img/icons/WALK_ON_BOARDWALK.svg", "src": "img/icons/WALK_ON_BOARDWALK.svg?v=0a24c0d2ee05", "searchTerms": ["walk on boardwalk"]},
+"WATCH_FOR_FALLING_ICE": {"label": "Watch For Falling Ice", "fileSrc": "img/icons/WATCH_FOR_FALLING_ICE.svg", "src": "img/icons/WATCH_FOR_FALLING_ICE.svg?v=ec5f26cb63d2", "searchTerms": ["watch for falling ice"]},
+"WATER_HOOKUP": {"label": "Water Hookup", "fileSrc": "img/icons/WATER_HOOKUP.svg", "src": "img/icons/WATER_HOOKUP.svg?v=ea3dc1e5599e", "searchTerms": ["water hookup"]},
+"WATERFALL": {"label": "Waterfall", "fileSrc": "img/icons/WATERFALL.svg", "src": "img/icons/WATERFALL.svg?v=5764a86c9a67", "searchTerms": ["waterfall"]},
+"WATERFOWL": {"label": "Waterfowl", "fileSrc": "img/icons/WATERFOWL.svg", "src": "img/icons/WATERFOWL.svg?v=d02f3ebcac2c", "searchTerms": ["waterfowl"]},
+"WEBCAM": {"label": "Webcam", "fileSrc": "img/icons/WEBCAM.svg", "src": "img/icons/WEBCAM.svg?v=a465416729e6", "searchTerms": ["webcam"]},
+"WILDERNESS": {"label": "Wilderness", "fileSrc": "img/icons/WILDERNESS.svg", "src": "img/icons/WILDERNESS.svg?v=7b2499c9c543", "searchTerms": ["wilderness"]},
+"WIND_SURFING": {"label": "Wind Surfing", "fileSrc": "img/icons/WIND_SURFING.svg", "src": "img/icons/WIND_SURFING.svg?v=b7630516043c", "searchTerms": ["wind surfing"]},
+"WINE": {"label": "Wine", "fileSrc": "img/icons/WINE.svg", "src": "img/icons/WINE.svg?v=ac8e71a3e09c", "searchTerms": ["wine"]},
+"WOOD_GATHERING": {"label": "Wood Gathering", "fileSrc": "img/icons/WOOD_GATHERING.svg", "src": "img/icons/WOOD_GATHERING.svg?v=1f019b79b40d", "searchTerms": ["wood gathering"]},
+"YOUNG_SCIENTIST_PROGRAM": {"label": "Young Scientist Program", "fileSrc": "img/icons/YOUNG_SCIENTIST_PROGRAM.svg", "src": "img/icons/YOUNG_SCIENTIST_PROGRAM.svg?v=d2e611c0520d", "searchTerms": ["young scientist program"]},
+"ZEBRA_MUSSEL_DECONTAMINATION_STATION": {"label": "Zebra Mussel Decontamination Station", "fileSrc": "img/icons/ZEBRA_MUSSEL_DECONTAMINATION_STATION.svg", "src": "img/icons/ZEBRA_MUSSEL_DECONTAMINATION_STATION.svg?v=84954c37e923", "searchTerms": ["zebra mussel decontamination station"]},
+};
+class BeaconElement {
+constructor({
+size = 2,
+alignment = "Center",
+flashDuration = 1,
+color = "Yellow",
+backplate = false,
+flashOpposite = false,
+} = {}) {
+const parsedSize = parseFloat(size);
+this.size = Number.isFinite(parsedSize) ? Math.max(parsedSize, 0.5) : 2;
+const parsedDuration = parseFloat(flashDuration);
+this.flashDuration =
+Number.isFinite(parsedDuration) && parsedDuration > 0
+? parsedDuration
+: 1;
+const validAlignments = Array.isArray(TextElement.prototype.alignment)
+? TextElement.prototype.alignment
+: [];
+this.alignment = validAlignments.includes(alignment) ? alignment : "Center";
+const availableColors = Array.isArray(BeaconElement.prototype.colors)
+? BeaconElement.prototype.colors
+: [];
+const normalizedColor = String(color || "").trim();
+const isCustomCssColor = (() => {
+if (!normalizedColor) {
+return false;
+}
+if (typeof lib !== "undefined" && lib.colors && lib.colors[normalizedColor]) {
+return true;
+}
+if (typeof CSS !== "undefined" && typeof CSS.supports === "function") {
+return CSS.supports("color", normalizedColor);
+}
+return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalizedColor) ||
+/^rgba?\(/i.test(normalizedColor);
+})();
+this.color = availableColors.includes(normalizedColor) || isCustomCssColor
+? normalizedColor
+: availableColors[0] || "Yellow";
+this.backplate =
+backplate === true ||
+backplate === "true" ||
+backplate === 1 ||
+backplate === "1";
+this.flashOpposite =
+flashOpposite === true ||
+flashOpposite === "true" ||
+flashOpposite === 1 ||
+flashOpposite === "1";
+}
+createElement() {
+const parsedSize = parseFloat(this.size);
+const beaconSize = Number.isFinite(parsedSize) ? parsedSize : 2;
+const parsedDuration = parseFloat(this.flashDuration);
+const flashDuration =
+Number.isFinite(parsedDuration) && parsedDuration > 0
+? parsedDuration
+: 1;
+const container = document.createElement("div");
+container.className = "bE-beaconElement";
+container.style.setProperty("--beaconSize", Math.max(beaconSize, 0.5) + "rem");
+container.style.setProperty("--beaconFlashDuration", flashDuration + "s");
+const resolvedColor =
+(lib?.colors && lib.colors[this.color]) || this.color || "Yellow";
+container.style.setProperty(
+"--beaconBulbColor",
+typeof resolvedColor === "string" ? resolvedColor : "Yellow"
+);
+container.style.setProperty(
+"--beaconBackplateThickness",
+BeaconElement.prototype.backplateThicknessRem + "rem"
+);
+container.style.setProperty(
+"--beaconBackplateRadius",
+BeaconElement.prototype.backplateCornerRadiusRem + "rem"
+);
+const backplateColorReference = BeaconElement.prototype.backplateColor;
+const resolvedBackplateColor =
+(lib?.colors && lib.colors[backplateColorReference]) ||
+BeaconElement.prototype.backplateFallbackColor ||
+backplateColorReference;
+container.style.setProperty(
+"--beaconBackplateColor",
+resolvedBackplateColor
+);
+if (this.backplate) {
+container.classList.add("hasBackplate");
+}
+if (this.flashOpposite) {
+container.classList.add("flashOpposite");
+}
+const bulb = document.createElement("div");
+bulb.className = "bE-beaconBulb";
+container.appendChild(bulb);
+return container;
+}
+}
+BeaconElement.prototype.colors = ["Yellow", "Red", "Purple"];
+BeaconElement.prototype.halfInchInRem = 0.5 / 12;
+BeaconElement.prototype.backplateThicknessRem =
+BeaconElement.prototype.halfInchInRem * 3;
+BeaconElement.prototype.backplateCornerRadiusRem = 0.15;
+BeaconElement.prototype.backplateColor = "Yellow";
+BeaconElement.prototype.backplateFallbackColor = "#ffd200";
+class ArrowElement {
+constructor(options = {}) {
+const arrow = getStoredDefaultsOption(
+options,
+"arrow",
+"settingsDefaultsArrowValue",
+ArrowElement.prototype.defaultArrow
+);
+const rotation = getStoredDefaultsOption(
+options,
+"rotation",
+"settingsDefaultsArrowRotation",
+0
+);
+const size = getStoredDefaultsOption(
+options,
+"size",
+"settingsDefaultsArrowSize",
+ArrowElement.prototype.defaultSize
+);
+const fallbackPadding =
+Object.prototype.hasOwnProperty.call(options, "padding") &&
+options.padding !== null &&
+options.padding !== undefined
+? options.padding
+: 0;
+const paddingHorizontal = getStoredDefaultsOption(
+options,
+"paddingHorizontal",
+"settingsDefaultsArrowHorizontalPadding",
+fallbackPadding
+);
+const paddingVertical = getStoredDefaultsOption(
+options,
+"paddingVertical",
+"settingsDefaultsArrowVerticalPadding",
+fallbackPadding
+);
+const flip = Object.prototype.hasOwnProperty.call(options, "flip")
+? options.flip
+: false;
+const alignment = getStoredDefaultsOption(
+options,
+"alignment",
+"settingsDefaultsArrowAlignment",
+"Center"
+);
+const resolveArrowKey = ArrowElement.prototype.arrows[arrow]
+? arrow
+: ArrowElement.prototype.defaultArrow;
+this.arrow = resolveArrowKey;
+this.rotation = normalizeStoredDefaultsNumber(rotation, 0);
+this.flip = normalizeStoredDefaultsBoolean(flip);
+const arrowDefinition = ArrowElement.prototype.arrows[this.arrow] || {};
+const defaultSize =
+typeof arrowDefinition.defaultSize === "number"
+? arrowDefinition.defaultSize
+: ArrowElement.prototype.defaultSize;
+this.size = normalizeStoredDefaultsNumber(size, defaultSize);
+this.paddingHorizontal = normalizeStoredDefaultsNumber(paddingHorizontal, 0);
+this.paddingVertical = normalizeStoredDefaultsNumber(paddingVertical, 0);
+this.alignment = normalizeStoredDefaultsAlignment(alignment);
+}
+createElement() {
+const container = document.createElement("div");
+container.className = "bE-arrowElement";
+const arrowDefinition =
+ArrowElement.prototype.arrows[this.arrow] ||
+ArrowElement.prototype.arrows[ArrowElement.prototype.defaultArrow];
+const img = document.createElement("img");
+img.src = arrowDefinition.src;
+img.alt = arrowDefinition.label;
+img.loading = "lazy";
+img.decoding = "async";
+img.draggable = false;
+container.appendChild(img);
+const parsedRotation = parseFloat(this.rotation);
+if (!isNaN(parsedRotation)) {
+container.style.setProperty("--arrowRotation", parsedRotation + "deg");
+}
+const parsedSize = parseFloat(this.size);
+if (!isNaN(parsedSize)) {
+container.style.setProperty(
+"--arrowSize",
+Math.max(parsedSize, 0) + "rem"
+);
+}
+const horizontalPadding = parseFloat(
+this.paddingHorizontal !== undefined
+? this.paddingHorizontal
+: this.padding
+);
+const verticalPadding = parseFloat(
+this.paddingVertical !== undefined ? this.paddingVertical : this.padding
+);
+container.style.setProperty(
+"--arrowPaddingHorizontal",
+Math.max(isNaN(horizontalPadding) ? 0 : horizontalPadding, 0) + "rem"
+);
+container.style.setProperty(
+"--arrowPaddingVertical",
+Math.max(isNaN(verticalPadding) ? 0 : verticalPadding, 0) + "rem"
+);
+container.style.setProperty("--arrowFlip", this.flip ? "-1" : "1");
+return container;
+}
+}
+ArrowElement.prototype.arrows = {
+TYPE_A: { label: "Type A", src: "img/arrows/TYPE_A.svg" },
+TYPE_A_EXTENDED: {
+label: "Type A Extended",
+src: "img/arrows/TYPE_A_EXTENDED.svg",
+},
+TYPE_B: { label: "Type B", src: "img/arrows/TYPE_B.svg" },
+TYPE_C_45: { label: "Type C 45", src: "img/arrows/TYPE_C_45.svg" },
+TYPE_C_45_ALT: { label: "Type C 45 (alt)", src: "img/arrows/TYPE_C_45_ALT.svg" },
+TYPE_C_90: { label: "Type C 90", src: "img/arrows/TYPE_C_90.svg" },
+TYPE_D: { label: "Type D", src: "img/arrows/TYPE_D.svg" },
+TYPE_E: { label: "Type E", src: "img/arrows/TYPE_E.svg" },
+DOWN: { label: "Down", src: "img/arrows/DOWN.svg", defaultSize: 2.75 },
+DOWN_ON: {
+label: "Down (Ontario)",
+src: "img/arrows/DOWN_ON.svg",
+defaultSize: 2.75,
+},
+DOWN_ALT: {
+label: "Down (alt)",
+src: "img/arrows/DOWN_ALT.svg",
+defaultSize: 3,
+},
+UK: { label: "UK", src: "img/arrows/UK.svg" },
+APL_UP: { label: "APL Up", src: "img/arrows/APL_UP.svg" },
+APL_UP_TURN: { label: "APL Up Turn", src: "img/arrows/APL_UP_TURN.svg" },
+APL_TURN: { label: "APL Turn", src: "img/arrows/APL_TURN.svg" },
+APL_DUAL_TURN: { label: "APL Dual Turn", src: "img/arrows/APL_DUAL_TURN.svg" },
+APL_UP_CFX: { label: "APL Up CFX", src: (typeof window.resolveSignMakerAsset === "function" ? window.resolveSignMakerAsset("img/arrows/APL_UP_CFX.svg") : "img/arrows/APL_UP_CFX.svg") },
+APL_UP_TURN_CFX: {
+label: "APL Up Turn CFX",
+src: (typeof window.resolveSignMakerAsset === "function" ? window.resolveSignMakerAsset("img/arrows/APL_UP_TURN_CFX.svg") : "img/arrows/APL_UP_TURN_CFX.svg"),
+},
+APL_TURN_CFX: {
+label: "APL Turn CFX",
+src: (typeof window.resolveSignMakerAsset === "function" ? window.resolveSignMakerAsset("img/arrows/APL_TURN_CFX.svg") : "img/arrows/APL_TURN_CFX.svg"),
+},
+};
+ArrowElement.prototype.defaultArrow = "TYPE_A";
+ArrowElement.prototype.defaultSize = 1.75;
+ArrowElement.prototype.arrowKeys = Object.keys(ArrowElement.prototype.arrows);
+window.resolveLegacyGuideArrow = function (rawCode) {
+const normalized = String(rawCode || "").trim().replace(/^E(?=[ABC]-)/i, "").toUpperCase();
+const legacyDirections = {
+"A-1": ["TYPE_A", 45], "A-2": ["TYPE_A", 135],
+"A-3": ["TYPE_A", 225], "A-4": ["TYPE_A", 315],
+"B-1": ["TYPE_B", 45], "B-2": ["TYPE_B", 135],
+"B-3": ["TYPE_B", 225], "B-4": ["TYPE_B", 315],
+"C-1": ["DOWN", 0], "C-2": ["DOWN", 180],
+"D-1": ["TYPE_D", 270], "D-2": ["TYPE_D", 90],
+"E-1": ["TYPE_C_90", 180], "E-2": ["TYPE_C_90", 0],
+};
+const [type, rotation] = legacyDirections[normalized] || [normalized, 0];
+const definition = ArrowElement.prototype.arrows[type];
+return definition ? { src: definition.src, rotation, code: normalized } : null;
+};
+class TollLogoElement {
+constructor(options = {}) {
+const logo = getStoredDefaultsOption(
+options,
+"logo",
+"settingsDefaultsTollLogoValue",
+TollLogoElement.prototype.defaultLogo
+);
+const logoHeight = getStoredDefaultsOption(
+options,
+"logoHeight",
+"settingsDefaultsTollLogoSize",
+3
+);
+const spacing = getStoredDefaultsOption(
+options,
+"spacing",
+"settingsDefaultsTollLogoSpacing",
+0
+);
+const backgroundColor = getStoredDefaultsOption(
+options,
+"backgroundColor",
+"settingsDefaultsTollLogoBgColor",
+"Inherit"
+);
+const horizontalPadding = getStoredDefaultsOption(
+options,
+"horizontalPadding",
+"settingsDefaultsTollLogoHorizontalBgPadding",
+0.2
+);
+const verticalPadding = getStoredDefaultsOption(
+options,
+"verticalPadding",
+"settingsDefaultsTollLogoVerticalBgPadding",
+0.05
+);
+const squareIcon = getStoredDefaultsOption(
+options,
+"squareIcon",
+"settingsDefaultsTollLogoSquareIcon",
+false
+);
+const borderRadius = getStoredDefaultsOption(
+options,
+"borderRadius",
+"settingsDefaultsTollLogoBorderRadius",
+0
+);
+const hasOnlyBlock = getStoredDefaultsOption(
+options,
+"hasOnlyBlock",
+"settingsDefaultsTollLogoShowOnlyBlock",
+false
+);
+const background = Object.prototype.hasOwnProperty.call(options, "background")
+? options.background
+: String(backgroundColor || "Inherit") !== "Inherit";
+const alignment = Object.prototype.hasOwnProperty.call(options, "alignment")
+? options.alignment
+: "Center";
+this.logo = TollLogoElement.prototype.logos[logo]
+? logo
+: TollLogoElement.prototype.defaultLogo;
+this.logoHeight = normalizeStoredDefaultsNumber(logoHeight, 3);
+this.spacing = normalizeStoredDefaultsNumber(spacing, 0);
+this.background = normalizeStoredDefaultsBoolean(background);
+this.squareIcon = normalizeStoredDefaultsBoolean(squareIcon);
+this.borderRadius = normalizeStoredDefaultsNumber(borderRadius, 0);
+this.backgroundColor = backgroundColor;
+this.horizontalPadding = normalizeStoredDefaultsNumber(horizontalPadding, 0.2);
+this.verticalPadding = normalizeStoredDefaultsNumber(verticalPadding, 0.05);
+this.hasOnlyBlock = normalizeStoredDefaultsBoolean(hasOnlyBlock);
+this.alignment = normalizeStoredDefaultsAlignment(alignment);
+}
+createElement() {
+const container = document.createElement("div");
+container.className = "bE-tollLogoElement";
+container.style.setProperty("display", "inline-flex", "important");
+container.style.setProperty("align-items", "center", "important");
+container.style.setProperty("justify-content", "center", "important");
+container.style.setProperty("width", "max-content", "important");
+container.style.setProperty("height", "max-content", "important");
+container.style.setProperty("min-width", "0", "important");
+container.style.setProperty("min-height", "0", "important");
+container.style.setProperty("box-sizing", "border-box", "important");
+container.style.setProperty("line-height", "0", "important");
+container.style.setProperty("font-size", "0", "important");
+const parsedSpacing = parseFloat(this.spacing);
+const spacing = isNaN(parsedSpacing) ? 0 : parsedSpacing;
+container.style.setProperty("--spacing", spacing + "rem");
+container.style.setProperty(
+"--tollBgColor",
+lib.colors[this.backgroundColor] || this.backgroundColor.toLowerCase()
+);
+container.style.setProperty("--borderRadius", this.borderRadius + "px");
+container.style.setProperty(
+"--horizPadding",
+this.horizontalPadding + "rem"
+);
+container.style.setProperty("--vertPadding", this.verticalPadding + "rem");
+container.style.setProperty("--tollLogoHeight", this.logoHeight + "rem");
+container.style.setProperty("margin-left", "var(--spacing, 0rem)", "important");
+container.style.setProperty("margin-right", "var(--spacing, 0rem)", "important");
+container.style.setProperty("padding", "var(--vertPadding, 0rem) var(--horizPadding, 0rem)", "important");
+container.style.setProperty("border-radius", "var(--borderRadius, 0px)", "important");
+container.style.setProperty("aspect-ratio", "auto", "important");
+if (this.background) {
+container.classList.add("hasBackground");
+}
+if (this.squareIcon) {
+container.classList.add("squareIcon");
+container.style.setProperty("aspect-ratio", "1 / 1", "important");
+container.style.setProperty("width", "var(--tollLogoHeight, 3rem)", "important");
+container.style.setProperty("height", "var(--tollLogoHeight, 3rem)", "important");
+}
+const logoDefinition =
+TollLogoElement.prototype.logos[this.logo] ||
+TollLogoElement.prototype.logos[TollLogoElement.prototype.defaultLogo];
+if (logoDefinition) {
+const img = document.createElement("img");
+img.src = logoDefinition.src;
+img.alt = logoDefinition.label;
+img.loading = "eager";
+img.decoding = "async";
+img.draggable = false;
+img.style.setProperty("display", "block", "important");
+img.style.setProperty("height", "var(--tollLogoHeight, 3rem)", "important");
+img.style.setProperty("width", "auto", "important");
+img.style.setProperty("max-width", "none", "important");
+img.style.setProperty("max-height", "none", "important");
+img.style.objectFit = "contain";
+img.style.lineHeight = "0";
+container.appendChild(img);
+} else {
+container.textContent = "Toll logo unavailable";
+}
+if (this.hasOnlyBlock) {
+const onlyBlock = document.createElement("div");
+onlyBlock.className = "bE-tollOnlyBlock";
+onlyBlock.textContent = "ONLY";
+container.appendChild(onlyBlock);
+container.classList.add("hasOnlyBlock");
+if (
+this.backgroundColor.toLowerCase() == "white" ||
+this.backgroundColor.toLowerCase() == "yellow" ||
+this.backgroundColor.toLowerCase() == "fluorescent yellow-green" ||
+this.backgroundColor.toLowerCase() == "orange"
+) {
+container.classList.add("inverseColor");
+}
+}
+return container;
+}
+}
+TollLogoElement.prototype.defaultLogo = "EZPass";
+TollLogoElement.prototype.logos = {
+EZPass: { label: "E-ZPass", src: "img/tolls/EZPass.png" },
+TollTag: { label: "TollTag", src: "img/tolls/NTTA.svg" },
+TxTag: { label: "TxTag", src: "img/tolls/TXTAG.svg" },
+EZTAG: { label: "EZ TAG Square", src: "img/tolls/EZTAG.svg" },
+EZTAG2: { label: "EZ TAG Wide", src: "img/tolls/EZTAG-Sign-Wide.svg" },
+EZTAG3: {
+label: "EZ TAG FHWA Wide",
+src: "img/tolls/EZTAG-Sign-Wide-Alt.svg",
+},
+FasTrak: { label: "FasTrak", src: "img/tolls/FASTrak.png" },
+FreedomPass: { label: "Freedom Pass", src: "img/tolls/FREEDOMPASS.svg" },
+PeachPass: { label: "Peach Pass", src: "img/tolls/PEACHPASS.svg" },
+PeachPassAlt: { label: "Peach Pass (alt)", src: "img/tolls/PEACHPASS_ALT.png" },
+NCQuickPass: { label: "NC Quick Pass", src: "img/tolls/NCQUICKPASS.svg" },
+EPASS: { label: "E-PASS", src: "img/tolls/EPASS.svg" },
+SunPassOld: { label: "SunPass (old)", src: "img/tolls/SUNPASS-1.svg" },
+SunPassNew: { label: "SunPass (new)", src: "img/tolls/SUNPASS-2.svg" },
+ZipCash: { label: "ZipCash", src: "img/tolls/ZIPCASH.svg" },
+LEEWAY: { label: "LeeWay", src: "img/tolls/LEEWAY.svg" },
+KTAG: { label: "K-TAG", src: "img/tolls/KTAG.svg" },
+PikePassOld: { label: "Pikepass (old)", src: "img/tolls/PIKEPASS-OLD.svg" },
+PikePassNew: { label: "Pikepass (new)", src: "img/tolls/PIKEPASS-NEW.svg" },
+PlatePay: { label: "PlatePay", src: "img/tolls/PLATEPAY.svg" },
+PayByMail: { label: "Pay By Mail", src: "img/tolls/PAY_BY_MAIL.png" },
+IPASS: { label: "I-Pass", src: "img/tolls/I-Pass.svg" },
+IPASSNew: { label: "I-PASS (new)", src: "img/tolls/IPASS-New.svg" },
+GeauxPass: { label: "GeauxPass", src: "img/tolls/GEAUXPASS.svg" },
+GoodToGo: { label: "Good To Go!", src: "img/tolls/GOODTOGO.svg" },
+ExpressToll: { label: "ExpressToll", src: "img/tolls/EXPRESSTOLL.svg" },
+DPASS: { label: "D-PASS", src: "img/tolls/DPASS.svg" },
+MUTCD: { label: "MUTCD", src: "img/tolls/MUTCD.svg" },
+};
+TollLogoElement.prototype.alignment = TextElement.prototype.alignment;
+class Block {
+constructor({
+topPadding = 0,
+bottomPadding = 0,
+backgroundColor = "Inherit",
+borderColor = "Match BG",
+backgroundFullWidth = true,
+width = 0,
+stretchLeft = true,
+stretchCenter = true,
+stretchRight = true,
+edgePlacement = "",
+} = {}) {
+this.topPadding = topPadding;
+this.bottomPadding = bottomPadding;
+this.backgroundColor = backgroundColor;
+this.borderColor = borderColor;
+this.backgroundFullWidth = backgroundFullWidth;
+this.width = width;
+this.stretchLeft = stretchLeft;
+this.stretchCenter = stretchCenter;
+this.stretchRight = stretchRight;
+this.edgePlacement = ["header", "footer"].includes(edgePlacement) ? edgePlacement : "";
+}
+}
+Block.defaultBorderColor = "Match BG";
+ShieldElement.prototype.areMergeableAboveBannersEquivalent = function (
+firstDescriptor,
+secondDescriptor
+) {
+if (!firstDescriptor || !secondDescriptor) {
+return false;
+}
+const firstIsSpecialPlaque =
+firstDescriptor.plaqueKind && firstDescriptor.plaqueKind !== "plain";
+const secondIsSpecialPlaque =
+secondDescriptor.plaqueKind && secondDescriptor.plaqueKind !== "plain";
+if (firstIsSpecialPlaque || secondIsSpecialPlaque) {
+return (
+firstIsSpecialPlaque &&
+secondIsSpecialPlaque &&
+firstDescriptor.plaqueKind === secondDescriptor.plaqueKind &&
+firstDescriptor.text === secondDescriptor.text &&
+firstDescriptor.bannerScale === secondDescriptor.bannerScale
+);
+}
+return (
+firstDescriptor.text === secondDescriptor.text &&
+firstDescriptor.indentFirstLetter === secondDescriptor.indentFirstLetter &&
+firstDescriptor.smallCaps === secondDescriptor.smallCaps &&
+firstDescriptor.fontSizeCss === secondDescriptor.fontSizeCss &&
+firstDescriptor.bannerFontFamily === secondDescriptor.bannerFontFamily &&
+firstDescriptor.backgroundColor === secondDescriptor.backgroundColor &&
+firstDescriptor.bannerLetterSpacing === secondDescriptor.bannerLetterSpacing &&
+firstDescriptor.bannerScale === secondDescriptor.bannerScale &&
+firstDescriptor.panelColor === secondDescriptor.panelColor &&
+firstDescriptor.plaqueKind === secondDescriptor.plaqueKind
+);
+};
+ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
+if (!container) {
+return;
+}
+const children = Array.from(container.children);
+const mergeRuns = [];
+let index = 0;
+while (index < children.length) {
+const first = children[index];
+const descriptor = first?._mergeableAboveBanner;
+if (!descriptor) {
+index += 1;
+continue;
+}
+const run = [first];
+let nextIndex = index + 1;
+while (nextIndex < children.length) {
+const next = children[nextIndex];
+const nextDescriptor = next?._mergeableAboveBanner;
+if (
+!ShieldElement.prototype.areMergeableAboveBannersEquivalent(
+descriptor,
+nextDescriptor
+)
+) {
+break;
+}
+run.push(next);
+nextIndex += 1;
+}
+if (run.length > 1) {
+mergeRuns.push({ run, descriptor });
+}
+index = nextIndex;
+}
+if (!mergeRuns.length) {
+return;
+}
+container.classList.add("bE-hasSharedAboveBanners");
+mergeRuns.forEach(({ run, descriptor }) => {
+const runEntries = run.map((shieldElement) => {
+const shieldDescriptor = shieldElement._mergeableAboveBanner;
+const sourceBanner = shieldElement.querySelector(
+`.bannerSlot-above .${shieldDescriptor.bannerClass}`
+);
+return {
+shieldElement,
+sourceBanner,
+};
+});
+runEntries.forEach((entry) => {
+if (entry.sourceBanner) {
+entry.sourceBanner.classList.add("bE-sharedAboveBannerSource");
+}
+});
+const sharedBanner = ShieldElement.prototype.createBannerElement(
+descriptor.bannerClass,
+descriptor.text,
+descriptor.fontSizeCss,
+descriptor.indentFirstLetter,
+descriptor.bannerFontFamily,
+descriptor.smallCaps,
+{ color: descriptor.panelColor },
+descriptor.bannerLetterSpacing,
+descriptor.backgroundColor
+);
+sharedBanner.classList.add("bE-sharedAboveBannerText");
+sharedBanner.style.setProperty(
+"--bannerScale",
+String(descriptor.bannerScale || 1)
+);
+sharedBanner.style.visibility = "hidden";
+sharedBanner.setAttribute("aria-hidden", "true");
+container.appendChild(sharedBanner);
+let positionFrame = null;
+const positionSharedBanner = () => {
+positionFrame = null;
+if (!container.isConnected || !sharedBanner.isConnected) {
+return false;
+}
+const firstShield =
+runEntries[0].shieldElement.querySelector(".shield") ||
+runEntries[0].shieldElement;
+const lastShield =
+runEntries[runEntries.length - 1].shieldElement.querySelector(".shield") ||
+runEntries[runEntries.length - 1].shieldElement;
+const sourceBanner = runEntries[0].sourceBanner;
+const firstRect = firstShield.getBoundingClientRect();
+const lastRect = lastShield.getBoundingClientRect();
+const bannerRect = sharedBanner.getBoundingClientRect();
+const containerRect = container.getBoundingClientRect();
+const sourceRect = sourceBanner?.getBoundingClientRect();
+if (
+!firstRect.width ||
+!lastRect.width ||
+!bannerRect.width ||
+!containerRect.width ||
+!sourceRect?.height
+) {
+return false;
+}
+const naturalSpan = Math.max(0, lastRect.right - firstRect.left);
+const extraWidth = Math.max(0, bannerRect.width - naturalSpan);
+const extraPerGap =
+extraWidth > 0 && runEntries.length > 1
+? extraWidth / (runEntries.length - 1)
+: 0;
+const baseMargins = runEntries.map((entry) => {
+const computedMarginRight = parseFloat(
+window.getComputedStyle(entry.shieldElement).marginRight
+);
+return Number.isFinite(computedMarginRight) ? computedMarginRight : 0;
+});
+const containerScaleX =
+container.offsetWidth > 0
+? containerRect.width / container.offsetWidth
+: 1;
+const containerScaleY =
+container.offsetHeight > 0
+? containerRect.height / container.offsetHeight
+: containerScaleX;
+const safeScaleX =
+Number.isFinite(containerScaleX) && containerScaleX > 0
+? containerScaleX
+: 1;
+const safeScaleY =
+Number.isFinite(containerScaleY) && containerScaleY > 0
+? containerScaleY
+: safeScaleX;
+const runCenter =
+((firstRect.left + lastRect.right + extraWidth) / 2 -
+containerRect.left) /
+safeScaleX;
+const bannerTop =
+(sourceRect.top - containerRect.top) / safeScaleY;
+if (extraPerGap > 0) {
+runEntries.slice(0, -1).forEach((entry, entryIndex) => {
+entry.shieldElement.style.setProperty(
+"margin-right",
+baseMargins[entryIndex] + extraPerGap + "px",
+"important"
+);
+});
+}
+sharedBanner.style.setProperty("left", runCenter + "px", "important");
+sharedBanner.style.setProperty("top", bannerTop + "px", "important");
+sharedBanner.style.removeProperty("visibility");
+return true;
+};
+const schedulePosition = () => {
+if (positionFrame !== null) {
+return;
+}
+positionFrame = requestAnimationFrame(positionSharedBanner);
+};
+const positionedImmediately = positionSharedBanner();
+if (
+document.fonts &&
+document.fonts.status === "loading" &&
+document.fonts.ready
+) {
+document.fonts.ready.then(schedulePosition).catch(schedulePosition);
+} else if (!positionedImmediately) {
+schedulePosition();
+}
+});
+};
+class Control {
+constructor({ rows = [], blockProperties = [] } = {}) {
+this.rows = rows;
+this.blockProperties = blockProperties;
+}
+addElement(element, properties, row, column) {
+let newElement = new element(properties);
+if (!this.rows[row]) {
+this.rows[row] = [];
+this.blockProperties[row] = new Block();
+}
+if (Number.isInteger(column) && column >= 0) {
+this.rows[row].splice(column, 0, newElement);
+} else {
+this.rows[row].push(newElement);
+}
+}
+removeElement(row, column) {
+if (row == null || column == null) {
+return;
+}
+this.rows[row].splice(column, 1);
+if (this.rows[row].length == 0) {
+this.rows.splice(row, 1);
+this.blockProperties.splice(row, 1);
+return true;
+}
+return false;
+}
+createBlockWithNeighborBackground(row, sourceRowIndex) {
+const newBlock = new Block();
+const neighborIndexes = [];
+if (Number.isInteger(sourceRowIndex)) {
+neighborIndexes.push(sourceRowIndex);
+}
+neighborIndexes.push(row - 1, row);
+for (const index of [...new Set(neighborIndexes)]) {
+const neighborProperties = this.blockProperties[index];
+if (
+neighborProperties &&
+typeof neighborProperties.backgroundColor === "string"
+) {
+newBlock.backgroundColor = neighborProperties.backgroundColor;
+break;
+}
+}
+return newBlock;
+}
+addRow(row, element, { sourceRowIndex } = {}) {
+const newBlockProperties = this.createBlockWithNeighborBackground(
+row,
+sourceRowIndex
+);
+if (this.rows[row] && this.rows[row].length != 0) {
+this.rows.splice(row, 0, []);
+this.blockProperties.splice(row, 0, newBlockProperties);
+} else if (!this.rows[row]) {
+this.rows[row] = [];
+this.blockProperties[row] = newBlockProperties;
+} else if (!this.blockProperties[row]) {
+this.blockProperties[row] = newBlockProperties;
+}
+this.addElement(Control.prototype.blockToClassElems[element], {}, row, 0);
+}
+duplicateRow(row) {
+let newRows = [];
+for (const e of this.rows[row]) {
+newRows.push(this.cloneElement(e));
+}
+this.rows.splice(row + 1, 0, newRows);
+this.blockProperties.splice(
+row + 1,
+0,
+this.cloneBlockProperties(this.blockProperties[row])
+);
+}
+deleteRow(row) {
+this.rows.splice(row, 1);
+this.blockProperties.splice(row, 1);
+}
+getRowEdgePlacements() {
+const placements = this.rows.map((row, index) => this.blockProperties[index]?.edgePlacement || "");
+const isDivider = index => this.rows[index]?.length > 0 && this.rows[index].every(element => element instanceof DividerElement && element.fullBleed);
+const isColoredText = index => {
+const properties = this.blockProperties[index];
+return properties?.backgroundFullWidth !== false && properties?.backgroundColor && properties.backgroundColor !== "Inherit" &&
+this.rows[index]?.some(element => element instanceof TextElement);
+};
+for (let index = 0; index + 1 < this.rows.length && isColoredText(index) && isDivider(index + 1); index += 2) {
+if (!placements[index] && !placements[index + 1]) placements[index] = placements[index + 1] = "header";
+}
+for (let index = this.rows.length - 1; index > 0 && isColoredText(index) && isDivider(index - 1); index -= 2) {
+if (!placements[index] && !placements[index - 1]) placements[index] = placements[index - 1] = "footer";
+}
+return placements;
+}
+createElement(panel, subPanel) {
+const flexBox = document.createElement("div");
+flexBox.className = "blockElementMaster";
+const edgePlacements = this.getRowEdgePlacements();
+const rowOrder = index => edgePlacements[index] === "header" ? 0 : edgePlacements[index] === "footer" ? 4 : 2;
+const visualIndices = this.rows.map((row, index) => index).sort((a, b) => rowOrder(a) - rowOrder(b));
+if (edgePlacements.some(value => value === "header" || value === "footer")) flexBox.classList.add("hasEdgeRows");
+const resolveColorValue = (colorValue) => {
+if (typeof colorValue !== "string") {
+return "";
+}
+const trimmed = colorValue.trim();
+if (!trimmed) {
+return "";
+}
+const paletteValue =
+(lib && lib.colors && lib.colors[trimmed]) || trimmed;
+if (typeof paletteValue === "string") {
+return paletteValue.toLowerCase();
+}
+return paletteValue || "";
+};
+const parsePadding = (paddingString = "") => {
+const defaultPadding = {
+top: "0rem",
+right: "0rem",
+bottom: "0rem",
+left: "0rem",
+};
+if (!paddingString || typeof paddingString !== "string") {
+return defaultPadding;
+}
+const values = paddingString.trim().split(/\s+/).filter(Boolean);
+if (values.length === 0) {
+return defaultPadding;
+}
+if (values.length === 1) {
+return {
+top: values[0],
+right: values[0],
+bottom: values[0],
+left: values[0],
+};
+}
+if (values.length === 2) {
+return {
+top: values[0],
+right: values[1],
+bottom: values[0],
+left: values[1],
+};
+}
+if (values.length === 3) {
+return {
+top: values[0],
+right: values[1],
+bottom: values[2],
+left: values[1],
+};
+}
+return {
+top: values[0],
+right: values[1],
+bottom: values[2],
+left: values[3],
+};
+};
+const signPadding = parsePadding(panel?.sign?.padding);
+const totalRows = this.rows.length;
+for (let i = 0; i < totalRows; i++) {
+const row = this.rows[i];
+const properties = this.blockProperties[i];
+const topPadding = parseFloat(properties.topPadding) || 0;
+const bottomPadding = parseFloat(properties.bottomPadding) || 0;
+const topSpacing = topPadding + "rem";
+const bottomSpacing = bottomPadding + "rem";
+const topPositiveSpacing = Math.max(0, topPadding) + "rem";
+const bottomPositiveSpacing = Math.max(0, bottomPadding) + "rem";
+const topNegativeSpacing = Math.min(0, topPadding) + "rem";
+const bottomNegativeSpacing = Math.min(0, bottomPadding) + "rem";
+const bleedTop = i === visualIndices[0] ? signPadding.top : "0rem";
+const bleedBottom = i === visualIndices[visualIndices.length - 1] ? signPadding.bottom : "0rem";
+const flexRow = document.createElement("div");
+flexRow.className = "blockElementRow";
+flexRow.dataset.edgePlacement = edgePlacements[i];
+flexRow.style.order = String(rowOrder(i));
+flexRow.style.setProperty("--marginTop", topSpacing);
+flexRow.style.setProperty("--marginBottom", bottomSpacing);
+flexRow.style.setProperty("--blockPaddingTopExtra", "0rem");
+flexRow.style.setProperty("--blockPaddingBottomExtra", "0rem");
+const resolvedBackgroundColor =
+properties.backgroundColor == "Inherit"
+? ""
+: (
+lib.colors[properties.backgroundColor] ||
+properties.backgroundColor
+).toLowerCase();
+flexRow.style.setProperty(
+"--masterBlockBgColor",
+resolvedBackgroundColor
+);
+const usesLightBleedBackground =
+properties.backgroundColor == "Orange" ||
+properties.backgroundColor == "White" ||
+properties.backgroundColor == "Yellow" ||
+properties.backgroundColor == "Fluorescent Yellow-Green" ||
+properties.backgroundColor == "Fluorescent Pink";
+let appliedFullBleedBorderColor = "";
+const rowWidthValue = parseFloat(properties.width);
+const rowWidthStyle =
+Number.isFinite(rowWidthValue) && rowWidthValue > 0
+? rowWidthValue + "rem"
+: "";
+if (properties.backgroundFullWidth) {
+flexRow.classList.add("fullBleed");
+flexRow.style.setProperty("--blockBleedLeft", signPadding.left);
+flexRow.style.setProperty("--blockBleedRight", signPadding.right);
+flexRow.style.setProperty("--blockBleedTop", bleedTop);
+flexRow.style.setProperty("--blockBleedBottom", bleedBottom);
+flexRow.style.width = rowWidthStyle;
+flexRow.style.setProperty("--marginTop", topNegativeSpacing);
+flexRow.style.setProperty("--marginBottom", bottomNegativeSpacing);
+flexRow.style.setProperty("--blockPaddingTopExtra", topPositiveSpacing);
+flexRow.style.setProperty("--blockPaddingBottomExtra", bottomPositiveSpacing);
+const chosenBorderColor =
+typeof properties.borderColor === "string" &&
+properties.borderColor.trim().length
+? properties.borderColor
+: Block.defaultBorderColor;
+const resolvedBorderColor =
+chosenBorderColor === Block.defaultBorderColor
+? usesLightBleedBackground
+? (lib.colors && lib.colors.Black) || "black"
+: (lib.colors && lib.colors.White) || "white"
+: resolveColorValue(chosenBorderColor);
+if (resolvedBorderColor) {
+flexRow.dataset.fullBleedBorderColor = resolvedBorderColor;
+appliedFullBleedBorderColor = resolvedBorderColor;
+} else {
+delete flexRow.dataset.fullBleedBorderColor;
+}
+if (resolvedBackgroundColor) {
+flexRow.dataset.fullBleedBackgroundColor = resolvedBackgroundColor;
+flexRow.style.setProperty(
+"--fullBleedInitialBackgroundColor",
+resolvedBackgroundColor
+);
+flexRow.style.setProperty(
+"--fullBleedResolvedBackgroundColor",
+resolvedBackgroundColor
+);
+} else {
+delete flexRow.dataset.fullBleedBorderColor;
+delete flexRow.dataset.fullBleedBackgroundColor;
+flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
+flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");
+}
+} else {
+flexRow.classList.remove("fullBleed");
+flexRow.style.setProperty("--blockBleedLeft", "0rem");
+flexRow.style.setProperty("--blockBleedRight", "0rem");
+flexRow.style.setProperty("--blockBleedTop", "0rem");
+flexRow.style.setProperty("--blockBleedBottom", "0rem");
+flexRow.style.setProperty("--marginTop", topSpacing);
+flexRow.style.setProperty("--marginBottom", bottomSpacing);
+flexRow.style.width = rowWidthStyle;
+delete flexRow.dataset.fullBleedBorderColor;
+delete flexRow.dataset.fullBleedBackgroundColor;
+flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
+flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");
+}
+if (usesLightBleedBackground) {
+flexRow.style.color = "black";
+if (properties.backgroundFullWidth && !appliedFullBleedBorderColor) {
+const fallbackBorderColor =
+(lib.colors && lib.colors.Black) || "rgb(0, 0, 0)";
+flexRow.dataset.fullBleedBorderColor = fallbackBorderColor;
+appliedFullBleedBorderColor = fallbackBorderColor;
+}
+}
+const createAlignmentGroup = (alignmentName = "Center") => {
+const group = document.createElement("div");
+group.className = "blockElement" + alignmentName;
+group.dataset.blockAlignment = alignmentName;
+return group;
+};
+const getNormalizedAlignment = (alignmentValue, fallback = "Center") => {
+if (
+alignmentValue === "Left" ||
+alignmentValue === "Center" ||
+alignmentValue === "Right"
+) {
+return alignmentValue;
+}
+return fallback;
+};
+const applyAlignmentGroupStretch = (group) => {
+if (!group || group.children.length === 0) {
+return;
+}
+const alignmentName = group.dataset.blockAlignment || "Center";
+const shouldStretch =
+(alignmentName === "Left" && properties.stretchLeft) ||
+(alignmentName === "Center" && properties.stretchCenter) ||
+(alignmentName === "Right" && properties.stretchRight);
+group.style.flexGrow = shouldStretch ? "1" : "0";
+};
+const alignmentGroups = [];
+let lastKnownAlignmentName = "Center";
+let activeAlignmentGroup = null;
+let dividerBorderColor = null;
+for (let blockIdx = 0; blockIdx < row.length; blockIdx++) {
+let elem = row[blockIdx];
+const nextAlignmentName = getNormalizedAlignment(
+elem.alignment,
+lastKnownAlignmentName
+);
+if (
+!activeAlignmentGroup ||
+activeAlignmentGroup.dataset.blockAlignment !== nextAlignmentName
+) {
+activeAlignmentGroup = createAlignmentGroup(nextAlignmentName);
+alignmentGroups.push(activeAlignmentGroup);
+}
+lastKnownAlignmentName = nextAlignmentName;
+if (
+elem instanceof DividerElement &&
+elem.fullBleed === true &&
+dividerBorderColor === null
+) {
+if (elem.dividerColor && elem.dividerColor !== "Default") {
+dividerBorderColor =
+lib.colors[elem.dividerColor] || elem.dividerColor;
+} else {
+dividerBorderColor = lib.colors.White || "white";
+}
+}
+const blockElmt = elem.createElement(panel, subPanel);
+if (elem instanceof ShieldElement) {
+const hasBlockBefore = blockIdx > 0 && row[blockIdx - 1];
+const hasBlockAfter = blockIdx < row.length - 1 && row[blockIdx + 1];
+if (hasBlockBefore) {
+blockElmt.classList.add("shieldAdjacentLeft");
+blockElmt.style.marginLeft = "calc(-0.16rem * var(--shieldScale, 1))";
+}
+if (hasBlockAfter) {
+blockElmt.classList.add("shieldAdjacentRight");
+blockElmt.style.marginRight = "calc(-0.16rem * var(--shieldScale, 1))";
+}
+}
+blockElmt.dataset.signRow = i;
+blockElmt.dataset.signBlock = blockIdx;
+activeAlignmentGroup.appendChild(blockElmt);
+}
+if (dividerBorderColor) {
+const normalizedDividerColor =
+typeof dividerBorderColor === "string"
+? dividerBorderColor.toLowerCase()
+: dividerBorderColor;
+flexRow.dataset.fullBleedBorderColor = normalizedDividerColor;
+appliedFullBleedBorderColor = normalizedDividerColor;
+}
+flexRow.dataset.lightBackground = usesLightBleedBackground
+? "true"
+: "false";
+for (const alignmentGroup of alignmentGroups) {
+ShieldElement.prototype.mergeConsecutiveAboveBanners(alignmentGroup);
+applyAlignmentGroupStretch(alignmentGroup);
+flexRow.appendChild(alignmentGroup);
+}
+flexBox.appendChild(flexRow);
+}
+return flexBox;
+}
+}
+class GroupedBlockElement {
+constructor({
+label = GroupedBlockElement.defaultLabel,
+alignment = "Center",
+backgroundColor = "Inherit",
+padding = 0,
+borderRadius = 0,
+border = false,
+borderColor = "Inherit",
+blockElements,
+} = {}) {
+this.label =
+typeof label === "string" && label.trim().length
+? label
+: GroupedBlockElement.defaultLabel;
+this.alignment = TextElement.prototype.alignment.includes(alignment)
+? alignment
+: "Center";
+this.backgroundColor = TextElement.prototype.backgroundColor.includes(backgroundColor)
+? backgroundColor
+: "Inherit";
+this.padding = GroupedBlockElement.normalizeLength(padding);
+this.borderRadius = GroupedBlockElement.normalizeLength(borderRadius);
+this.border = border === true;
+this.borderColor = TextElement.prototype.backgroundColor.includes(borderColor)
+? borderColor
+: "Inherit";
+if (blockElements instanceof Control) {
+this.blockElements = blockElements;
+} else if (blockElements && Array.isArray(blockElements.rows)) {
+this.blockElements = Control.fromData(blockElements);
+} else {
+this.blockElements = new Control({
+rows: [[new ControlTextElement({ textContent: "Grouped Block" })]],
+blockProperties: [new Block()],
+});
+}
+}
+createElement(panel, subPanel) {
+const wrapper = document.createElement("div");
+wrapper.className = "bE-groupedBlockElement";
+wrapper.dataset.groupLabel = this.label;
+const hasBackground = this.backgroundColor !== "Inherit";
+if (hasBackground) {
+wrapper.style.backgroundColor = (
+lib.colors[this.backgroundColor] || this.backgroundColor
+).toLowerCase();
+wrapper.style.color =
+getColorBrightness(this.backgroundColor) === "light" ? "black" : "white";
+}
+const padding = GroupedBlockElement.normalizeLength(this.padding);
+const borderRadius = GroupedBlockElement.normalizeLength(this.borderRadius);
+if (padding) wrapper.style.padding = `${padding}rem`;
+if (borderRadius) wrapper.style.borderRadius = `${borderRadius}rem`;
+if (this.border) {
+wrapper.style.border = `var(--signBorderWidth, 0.2rem) solid ${
+this.borderColor === "Inherit"
+? "currentColor"
+: (lib.colors[this.borderColor] || this.borderColor).toLowerCase()
+}`;
+}
+const nestedPanel =
+panel && panel.sign
+? {
+...panel,
+...(hasBackground ? { color: this.backgroundColor } : {}),
+sign: {
+...panel.sign,
+padding: "0rem 0rem 0rem 0rem",
+},
+}
+: panel;
+const nestedBlockElements = this.blockElements.createElement(
+nestedPanel,
+subPanel
+);
+nestedBlockElements.classList.add("bE-groupedBlockElementContent");
+wrapper.appendChild(nestedBlockElements);
+return wrapper;
+}
+}
+GroupedBlockElement.defaultLabel = "Group";
+GroupedBlockElement.normalizeLength = (value) => {
+const parsed = parseFloat(value);
+return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+GroupedBlockElement.prototype.alignment = TextElement.prototype.alignment;
+GroupedBlockElement.prototype.backgroundColor = TextElement.prototype.backgroundColor;
+GroupedBlockElement.prototype.borderColor = TextElement.prototype.backgroundColor;
+Control.prototype.cloneBlockProperties = function (properties) {
+const clonedProperties = new Block(properties || {});
+if (properties && typeof properties === "object") {
+Object.assign(clonedProperties, properties);
+}
+return clonedProperties;
+};
+Control.prototype.cloneElement = function (element) {
+if (!element || typeof element !== "object") {
+return element;
+}
+const blockElemType = Control.prototype.blockToClassElems.getElem(element);
+const Constructor = blockElemType
+? Control.prototype.blockToClassElems[blockElemType]
+: null;
+if (typeof Constructor !== "function") {
+return Object.assign({}, element);
+}
+const clonedElement = Object.assign(new Constructor(element), element);
+delete clonedElement._elementType;
+if (typeof clonedElement.fontFamily === "string") {
+clonedElement.fontFamily = normalizeTextFontFamilyName(
+clonedElement.fontFamily
+);
+}
+if (blockElemType === "ShieldElement") {
+clonedElement.bannerFontFamily =
+ShieldElement.prototype.normalizeBannerFontFamily(
+clonedElement.bannerFontFamily
+);
+clonedElement.bannerFontFamily2 =
+ShieldElement.prototype.normalizeBannerFontFamily(
+clonedElement.bannerFontFamily2 || clonedElement.bannerFontFamily
+);
+}
+if (blockElemType === "GroupedBlockElement") {
+clonedElement.blockElements =
+element.blockElements && typeof element.blockElements.clone === "function"
+? element.blockElements.clone()
+: new Control(element.blockElements || {});
+}
+return clonedElement;
+};
+Control.prototype.clone = function () {
+const rows = Array.isArray(this.rows)
+? this.rows.map((row) =>
+Array.isArray(row) ? row.map((elem) => this.cloneElement(elem)) : []
+)
+: [];
+const blockProperties = rows.map((row, index) =>
+this.cloneBlockProperties(this.blockProperties[index])
+);
+return new Control({ rows, blockProperties });
+};
+Control.prototype.blockToClassElems = {
+ControlTextElement: ControlTextElement,
+DividerElement: DividerElement,
+ShieldElement: ShieldElement,
+AdvisoryMessageElement: AdvisoryMessageElement,
+IconElement: IconElement,
+BeaconElement: BeaconElement,
+ArrowElement: ArrowElement,
+TollLogoElement: TollLogoElement,
+ActionMessageElement: ActionMessageElement,
+ElectronicSignElement: ElectronicSignElement,
+GroupedBlockElement: GroupedBlockElement,
+getElem: (elemObj) => {
+const constructor = elemObj?.constructor;
+if (!constructor || constructor === Object || constructor === Array) {
+return null;
+}
+const classes = Control.prototype.blockToClassElems;
+for (const key in classes) {
+if (classes[key] === constructor) {
+return key;
+}
+}
+for (const key in classes) {
+if (key !== "getElem" && elemObj instanceof classes[key]) {
+return key;
+}
+}
+return null;
+},
+};
+Control.prototype.blockElements = {
+ControlTextElement: "Control Text",
+ActionMessageElement: "Action Message",
+AdvisoryMessageElement: "Advisory Message",
+ShieldElement: "Shield",
+ArrowElement: "Arrow",
+DividerElement: "Divider",
+IconElement: "Icon",
+BeaconElement: "Flashing Beacon",
+TollLogoElement: "Toll Logo",
+ElectronicSignElement: "Variable Message",
+GroupedBlockElement: "Grouped Block",
+};
+Control.prototype.blockInternalElements = {
+ControlTextElement: "sdCtrlText",
+DividerElement: "sdBlocker",
+ShieldElement: "sdShield",
+AdvisoryMessageElement: "sdAdvisory",
+IconElement: "sdIcon",
+BeaconElement: "sdBeacon",
+ArrowElement: "sdArrow",
+TollLogoElement: "sdTollLogo",
+ActionMessageElement: "sdActionMessage",
+ElectronicSignElement: "sdElectronicSign",
+GroupedBlockElement: "sdGroupedBlock",
+};
+Control.fromData = function (data = {}) {
+const revive = value => {
+if (!value || typeof value !== "object") return value;
+const type = value._elementType || value.__undoType || Control.prototype.blockToClassElems.getElem(value) ||
+(value.blockElements ? "GroupedBlockElement" : value.shieldBase !== undefined ? "ShieldElement" :
+value.icon !== undefined ? "IconElement" : value.arrow !== undefined ? "ArrowElement" :
+value.logo !== undefined ? "TollLogoElement" : value.dividerWidth !== undefined ? "DividerElement" :
+value.beacon !== undefined ? "BeaconElement" : value.glow !== undefined ? "ElectronicSignElement" :
+value.horizPadding !== undefined ? "AdvisoryMessageElement" : value.spacing !== undefined ? "ControlTextElement" : "ActionMessageElement");
+const Constructor = Control.prototype.blockToClassElems[type];
+if (typeof Constructor !== "function") return value;
+const options = type === "GroupedBlockElement" ? { ...value, blockElements: new Control() } : value;
+const element = Object.assign(new Constructor(options), value);
+if (type === "GroupedBlockElement") element.blockElements = Control.fromData(value.blockElements);
+delete element._elementType; delete element.__undoType;
+return element;
+};
+const rows = (Array.isArray(data.rows) ? data.rows : []).map(row => (Array.isArray(row) ? row : []).map(revive));
+const blockProperties = rows.map((_, index) => Object.assign(new Block(data.blockProperties?.[index] || {}), data.blockProperties?.[index]));
+return new Control({ rows, blockProperties });
+};

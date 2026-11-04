@@ -5,3 +5,5 @@
 # Windows
 Thumbs.db
 .vscode/
+node_modules/
+browser-results/

@@ -1,10 +1,16 @@
 /* v2.2 Settings controls, connected directly to v2.19's saved preferences. */
 window.SignMakerSettings22=(()=>{
- let preferences=null,initialized=false;
+ let preferences=null,initialized=false,lastState='';
  const field=id=>document.getElementById(id);
- const refreshPickers=()=>window.nativeSelectPickers?.forEach(picker=>picker.sync());
+ const refreshPickers=()=>{
+  window.SignMakerEditorRuntime?.ensure();
+  window.nativeSelectPickers?.forEach(picker=>{if(window.SignMakerEditorRuntime?.isActive(picker.select))picker.sync();});
+ };
  const sync=()=>{
   if(!preferences)return;
+  const state=JSON.stringify([preferences.getTheme(),preferences.getScale(),preferences.getToolbar(),preferences.getKeybind(),preferences.getRestore(),window.SignMakerDropdowns.getAnimationsEnabled()]);
+  if(state===lastState)return;
+  lastState=state;
   field('appThemeMode').value=preferences.getTheme();
   field('appUiScale').value=String(preferences.getScale());
   field('appUiScaleValue').textContent=field('appUiScale').value+'%';
@@ -25,6 +31,7 @@ window.SignMakerSettings22=(()=>{
   modal.querySelectorAll('.sMModalContent > div').forEach(pane=>pane.classList.toggle('tabHidden',pane.id!==id));
   modal.querySelectorAll('.sMModalTab').forEach(tab=>tab.classList.toggle('selected',tab.dataset.tab===id));
   if(id==='sMDefaults')showDefaults();
+  else refreshPickers();
  };
  const init=api=>{
   preferences=api;

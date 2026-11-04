@@ -1,0 +1,345 @@
+/* Floating dropdown for a native <select>, shared with SignalMaker (GPL-3.0).*/
+
+(() => {
+const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => (
+{ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]
+));
+let sequence = 0;
+window.nativeSelectPickers = new Set();
+window.createNativeSelectPicker = (select, label, { colorForValue, textStyleForValue, minMenuWidth = 180, customColors } = {}) => {
+if (pickersBySelect.has(select)) return pickersBySelect.get(select);
+if (window.SignMakerAlignmentButtons?.matches(select)) {
+const picker = window.SignMakerAlignmentButtons.create(select, label);
+const destroy = picker.destroy;
+picker.destroy = () => { destroy(); pickersBySelect.delete(select); };
+pickersBySelect.set(select, picker);
+return picker;
+}
+const headerFooter = ['mergeAddHeader', 'mergeAddFooter'].includes(select.id);
+const id = `native-select-${++sequence}`;
+const wrapper = document.createElement('div');
+wrapper.className = 'symbolPicker dimensionInputs'+(colorForValue?' smColorPicker':'');
+if (headerFooter) wrapper.classList.add('headerFooterPicker');
+const trigger = document.createElement('button');
+trigger.id = `${select.id || id}-button`;
+trigger.type = 'button';
+trigger.className = 'nativeSelectTrigger';
+trigger.setAttribute('role', 'combobox');
+trigger.setAttribute('aria-haspopup', 'listbox');
+trigger.setAttribute('aria-controls', id);
+trigger.setAttribute('aria-expanded', 'false');
+const swatchMarkup = colorForValue ? '<span class="colorPickerSwatch" aria-hidden="true"></span>' : '';
+trigger.innerHTML = (headerFooter ? '' : swatchMarkup) + '<span class="symbolPickerLabel"></span><svg class="symbolPickerCaret" viewBox="4 4 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg>';
+wrapper.append(trigger);
+select.classList.add('nativeSelectSource');
+select.insertAdjacentElement('afterend', wrapper);
+const syncVisibility = () => {
+wrapper.hidden = select.hidden || select.classList.contains('hidden') ||
+select.style.display === 'none';
+};
+const openListeners = [];
+const listen = (target, type, handler, options) => {
+target.addEventListener(type, handler, options);
+openListeners.push([target, type, handler, options]);
+};
+const unlisten = () => {
+openListeners.splice(0).forEach(([target, type, handler, options]) =>
+target.removeEventListener(type, handler, options));
+};
+const attributeObserver = new MutationObserver(() => { syncVisibility(); sync(); });
+attributeObserver.observe(select, { attributes: true, attributeFilter: ['hidden', 'class', 'style', 'disabled'] });
+let menu = null;
+let open = false;
+let active = 0;
+let pointer = null;
+let pointerClick = false;
+let colorInput = null;
+const entries = () => [...select.options].filter(option => !option.hidden && (!headerFooter || option.value));
+function updateLabel(element, option) {
+element.textContent = option?.textContent ?? '';
+if (textStyleForValue) Object.assign(element.style, textStyleForValue(option?.value));
+}
+function updateSwatch(element, value) {
+if (!colorForValue) return;
+const color = colorForValue(value);
+element.style.background = color || '';
+element.classList.toggle('specialColorSwatch', !color);
+}
+function close(restoreFocus = false) {
+open = false;
+pointer = null;
+unlisten();
+wrapper.classList.remove('open');
+menu?.classList.remove('open');
+menu?.setAttribute('aria-hidden', 'true');
+if (menu) menu.inert = true;
+trigger.setAttribute('aria-expanded', 'false');
+trigger.removeAttribute('aria-activedescendant');
+if (restoreFocus && trigger.isConnected && !trigger.disabled) trigger.focus({ preventScroll: true });
+}
+function position(event){
+if(!open)return;
+if(event?.target?.nodeType&&menu?.contains(event.target))return;
+if(!trigger.isConnected||!trigger.getClientRects().length){close();return;}
+const rem=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;
+window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:headerFooter?Math.max(8.5,minMenuWidth/rem):minMenuWidth/rem,maxWidth:24});
+}
+function highlight(index) {
+const options = entries();
+const count = options.length + (customColors ? 1 : 0);
+active = count ? (index + count) % count : 0;
+const row = menu.children[active];
+if (!row) return;
+[...menu.children].forEach((item, itemIndex) => item.classList.toggle('active', itemIndex === active));
+trigger.setAttribute('aria-activedescendant', row.id);
+if (row.offsetTop < menu.scrollTop) menu.scrollTop = row.offsetTop;
+else if (row.offsetTop + row.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = row.offsetTop + row.offsetHeight - menu.clientHeight;
+}
+let syncedState = '';
+function sync() {
+const state = `${select.value}\u0000${select.disabled}\u0000${select.options.length}\u0000${select.selectedOptions[0]?.textContent ?? ''}`;
+if (!open && state === syncedState) return;
+syncedState = state;
+const options = entries();
+const option = options.find(item => item.value === select.value);
+if (headerFooter) trigger.querySelector('.symbolPickerLabel').textContent = select.id === 'mergeAddHeader' ? 'Add Header' : 'Add Footer';
+else updateLabel(trigger.querySelector('.symbolPickerLabel'), option);
+if (colorForValue && !headerFooter) updateSwatch(trigger.querySelector('.colorPickerSwatch'), select.value);
+trigger.setAttribute('aria-label', headerFooter ? trigger.querySelector('.symbolPickerLabel').textContent : `${label}: ${option?.textContent ?? ''}`);
+trigger.disabled = select.disabled;
+if (trigger.disabled) close();
+if (open) {
+syncRows(options);
+position();
+}
+}
+function syncRows(options) {
+[...menu.querySelectorAll('[data-native-index]')].forEach((row, index) => {
+updateLabel(row.querySelector('.symbolPickerLabel'), options[index]);
+const selected = options[index]?.value === select.value;
+row.classList.toggle('selected', selected);
+row.setAttribute('aria-selected', String(selected));
+row.querySelector('.symbolPickerCheck').textContent = selected ? '✓' : '';
+if (colorForValue) updateSwatch(row.querySelector('.colorPickerSwatch'), options[index]?.value);
+});
+}
+const hit = event => document.elementFromPoint(event.clientX, event.clientY) || event.target;
+function ensureMenu() {
+if (menu) return;
+menu = document.createElement('div');
+menu.id = id;
+menu.className = 'symbolPickerMenu';
+if (headerFooter) menu.classList.add('headerFooterMenu');
+menu.setAttribute('role', 'listbox');
+menu.setAttribute('aria-label', label);
+menu.setAttribute('aria-hidden', 'true');
+menu.inert = true;
+(select.closest('dialog') || document.body).append(menu);
+menu.addEventListener('pointerdown', event => {
+if (event.button !== 0 || event.pointerType === 'touch' || !event.target.closest('[data-native-index]')) return;
+event.preventDefault();
+pointer = event.pointerId;
+});
+menu.addEventListener('pointermove', event => {
+const row = event.target.closest('[data-native-index]');
+if (open && row && event.pointerType !== 'touch') highlight(Number(row.dataset.nativeIndex));
+});
+menu.addEventListener('click', event => {
+event.stopPropagation();
+if (open && runAction(event.target)) return;
+const row = event.target.closest('[data-native-index]');
+if (open && row) choose(Number(row.dataset.nativeIndex));
+});
+}
+function listenWhileOpen() {
+listen(document, 'pointermove', event => {
+if (pointer === null || pointer !== event.pointerId) return;
+const row = hit(event)?.closest('[data-native-index]');
+if (row && menu.contains(row)) highlight(Number(row.dataset.nativeIndex));
+}, true);
+listen(document, 'pointerup', event => {
+if (pointer === null || pointer !== event.pointerId) return;
+pointer = null;
+const target = hit(event);
+if (menu.contains(target) && (target.closest('[data-picker-remove], [data-picker-custom]'))) {
+event.preventDefault();
+runAction(target);
+return;
+}
+const row = target?.closest('[data-native-index]');
+if (row && menu.contains(row)) { event.preventDefault(); choose(Number(row.dataset.nativeIndex)); }
+else if (!trigger.contains(target)) close(true);
+}, true);
+listen(document, 'pointercancel', event => {
+if (pointer === null || pointer !== event.pointerId) return;
+pointerClick = false;
+close(true);
+}, true);
+listen(document, 'pointerdown', event => {
+if (open && !wrapper.contains(event.target) && !menu.contains(event.target)) close();
+}, true);
+listen(window, 'resize', position);
+listen(window, 'scroll', position, true);
+}
+function renderItems(options) {
+const removeMarkup = (option, index) => customColors && option.dataset.customColor
+? `<span class="symbolPickerRemove" role="button" title="Remove ${escape(option.textContent)}" data-picker-remove="${index}">×</span>`
+: '';
+menu.innerHTML = options.map((option, index) => `<button type="button" id="${id}-${index}" class="symbolPickerItem${option.value === select.value ? ' selected' : ''}" role="option" aria-selected="${option.value === select.value}" tabindex="-1" data-native-index="${index}" ${option.disabled ? 'disabled' : ''}>${swatchMarkup}<span class="symbolPickerLabel">${escape(option.textContent)}</span>${removeMarkup(option, index)}<span class="symbolPickerCheck" aria-hidden="true">${option.value === select.value ? '✓' : ''}</span></button>`).join('') +
+(customColors ? `<button type="button" id="${id}-custom" class="symbolPickerItem symbolPickerCustom" role="option" tabindex="-1" data-picker-custom>Custom…</button>` : '');
+}
+function show() {
+if (trigger.disabled) return;
+ensureMenu();
+if (!open) listenWhileOpen();
+const options = entries();
+renderItems(options);
+window.SignMakerDropdowns.prepareMenu(menu);
+open = true;
+wrapper.classList.add('open');
+trigger.setAttribute('aria-expanded', 'true');
+menu.setAttribute('aria-hidden', 'false');
+menu.inert = false;
+sync();
+void menu.offsetHeight;
+menu.classList.add('open');
+window.SignMakerDropdowns.refresh(menu);
+position();
+highlight(Math.max(0, options.findIndex(option => option.value === select.value)));
+trigger.focus({ preventScroll: true });
+}
+function runAction(target) {
+const remove = target?.closest('[data-picker-remove]');
+if (remove) {
+const option = entries()[Number(remove.dataset.pickerRemove)];
+if (option) customColors.remove(option.value);
+sync();
+show();
+return true;
+}
+if (target?.closest('[data-picker-custom]')) {
+close(true);
+const input = colorInput || document.createElement('input');
+if (!colorInput) {
+colorInput = input;
+input.type = 'color';
+input.tabIndex = -1;
+input.setAttribute('aria-label', 'Custom colour');
+Object.assign(input.style, { position: 'absolute', width: '1px', height: '1px', opacity: '0', pointerEvents: 'none' });
+wrapper.append(input);
+}
+input.value = /^#[0-9a-f]{6}$/i.test(colorForValue?.(select.value) || '') ? colorForValue(select.value) : '#000000';
+input.onchange = () => {
+customColors.add(input.value);
+select.value = input.value;
+select.dispatchEvent(new Event('change', { bubbles: true }));
+sync();
+};
+input.click();
+return true;
+}
+return false;
+}
+function choose(index) {
+const option = entries()[index];
+if (!option || option.disabled || trigger.disabled) return;
+close(true);
+if (select.value === option.value) return;
+select.value = option.value;
+sync();
+select.dispatchEvent(new Event('input', { bubbles: true }));
+select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+let prepared = false;
+const prepare = () => {
+if (prepared || menu) return;
+prepared = true;
+setTimeout(() => {
+if (menu || !trigger.isConnected) return;
+ensureMenu();
+const options = entries();
+renderItems(options);
+syncRows(options);
+}, 0);
+};
+trigger.addEventListener('pointerenter', prepare);
+trigger.addEventListener('focus', prepare);
+trigger.addEventListener('pointerdown', event => {
+if (event.button !== 0 || event.pointerType === 'touch' || trigger.disabled) return;
+event.preventDefault();
+if (open) close();
+else { show(); pointer = event.pointerId; }
+pointerClick = true;
+});
+trigger.addEventListener('click', event => {
+event.preventDefault();
+event.stopPropagation();
+if (pointerClick && event.detail !== 0) { pointerClick = false; return; }
+pointerClick = false;
+if (open) close(); else show();
+});
+trigger.addEventListener('keydown', event => {
+if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing || trigger.disabled) return;
+if (event.key === 'Tab') { close(); return; }
+if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); close(true); return; }
+if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+event.preventDefault();
+if (!open) { show(); return; }
+highlight(event.key === 'Home' ? 0 : event.key === 'End' ? entries().length - (customColors ? 0 : 1) : active + (event.key === 'ArrowDown' ? 1 : -1));
+} else if (['Enter', ' '].includes(event.key)) {
+event.preventDefault();
+if (open && customColors && active === entries().length) runAction(menu.querySelector('[data-picker-custom]'));
+else if (open) choose(active); else show();
+} else if (event.key.length === 1) {
+const index = entries().findIndex(option => option.textContent.toLowerCase().startsWith(event.key.toLowerCase()));
+if (index < 0) return;
+event.preventDefault();
+if (open) highlight(index); else choose(index);
+}
+});
+for (const element of select.labels ?? []) element.addEventListener('click', event => { event.preventDefault(); trigger.focus(); });
+select.addEventListener('change', sync);
+syncVisibility();
+sync();
+const destroy = () => {
+close();
+attributeObserver.disconnect();
+menu?.remove();
+wrapper.remove();
+select.classList.remove('nativeSelectSource');
+window.nativeSelectPickers.delete(picker);
+pickersBySelect.delete(select);
+};
+const picker = { sync, close, destroy, select, wrapper };
+window.nativeSelectPickers.add(picker);
+pickersBySelect.set(select, picker);
+return picker;
+};
+const pickersBySelect = new Map();
+window.observeNativeSelects = (convert) => {
+const tryConvert = (select) => {
+if (!pickersBySelect.has(select) && !select.classList.contains('nativeSelectSource')) convert(select);
+};
+document.querySelectorAll('select').forEach(tryConvert);
+const observer = new MutationObserver((mutations) => {
+let removed = false;
+for (const mutation of mutations) {
+if (mutation.type === 'attributes') {
+if (mutation.target.tagName === 'SELECT') tryConvert(mutation.target);
+continue;
+}
+if (mutation.removedNodes.length) removed = true;
+for (const node of mutation.addedNodes) {
+if (node.nodeType !== 1) continue;
+if (node.tagName === 'SELECT') tryConvert(node);
+else if (node.firstElementChild) node.querySelectorAll('select').forEach(tryConvert);
+}
+}
+if (removed) {
+pickersBySelect.forEach((picker, select) => { if (!select.isConnected) picker.destroy(); });
+}
+});
+const roots = [...document.querySelectorAll('.modals, #panelSelect, #sMConfigBar, dialog')];
+roots.filter(root => !roots.some(other => other !== root && other.contains(root))).forEach(root => observer.observe(root, {childList:true, subtree:true, attributes:true, attributeFilter:['hidden','class','style']}));
+};
+})();

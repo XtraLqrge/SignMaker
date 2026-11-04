@@ -1,0 +1,76 @@
+/* Important layer declarations supersede the older, unlayered picker rules. */
+@layer pickerAppearance {
+  :is(.colorPicker,.smColorPicker) {
+    width:var(--sm-color-width,10rem)!important; min-width:0!important; max-width:100%!important;
+    height:1.35rem!important; min-height:1.35rem!important; margin:0!important; box-sizing:border-box!important;
+  }
+  .settings22Window :is(.colorPicker,.smColorPicker) { width:100%!important; }
+  .headerFooterPicker { height:1.2rem!important; min-height:1.2rem!important; }
+  .sdShieldBannerBackgroundColorSelect+.colorPicker { height:1.32rem!important; min-height:1.32rem!important; }
+  .fontPicker { height:1.6rem!important; min-height:1.6rem!important; max-width:100%!important; }
+  :is(.nativeSelectTrigger,.fontPickerTrigger,.colorPickerTrigger,.shieldPickerTrigger,.profilePickerTrigger,.blockTypeInlinePickerTrigger) {
+    display:flex!important; align-items:center!important; justify-content:flex-start!important;
+    width:100%!important; min-width:0!important; max-width:100%!important;
+    height:1.35rem!important; min-height:1.35rem!important; max-height:1.35rem!important;
+    font-family:Inter,sans-serif!important; font-size:0.8rem!important; font-weight:400!important;
+    line-height:1.1!important; padding:0 0.4rem!important; gap:0.35rem!important; margin:0!important;
+    border:1px solid transparent!important; border-radius:0!important; box-sizing:border-box!important;
+    background:rgb(var(--inputColor))!important; color:var(--textColor)!important;
+    transition:none!important; animation:none!important;
+  }
+  .fontPickerTrigger { height:1.6rem!important; min-height:1.6rem!important; max-height:1.6rem!important; }
+  :is(.colorPickerTrigger,.smColorPicker>.nativeSelectTrigger) { padding:0 0.35rem!important; }
+  .sdShieldBannerBackgroundColorSelect+.colorPicker>.colorPickerTrigger { height:1.32rem!important; min-height:1.32rem!important; max-height:1.32rem!important; }
+  .headerFooterPicker>.nativeSelectTrigger { height:1.2rem!important; min-height:1.2rem!important; max-height:1.2rem!important; font-size:0.7rem!important; padding:0 0.35rem!important; }
+  .blockTypeInlinePickerTrigger { justify-content:center!important; width:1.8rem!important; padding:0!important; background:transparent!important; border:0!important; color:inherit!important; }
+  .fontPickerTriggerLabel { font-family:var(--sm-font-preview-family,Inter),sans-serif!important; font-size:var(--sm-font-preview-size,0.9rem)!important; line-height:1.1!important; transform:none!important; }
+  :is(.colorPickerTriggerLabel,.shieldPickerTriggerLabel,.profilePickerTriggerLabel,.symbolPickerLabel) { font-size:inherit!important; line-height:1.1!important; min-width:0!important; overflow:hidden!important; text-overflow:ellipsis!important; white-space:nowrap!important; }
+  :is(.nativeSelectTrigger,.fontPickerTrigger,.colorPickerTrigger,.shieldPickerTrigger,.profilePickerTrigger,.blockTypeInlinePickerTrigger):focus-visible { outline:2px solid Highlight!important; outline-offset:1px!important; }
+  :is(.symbolPickerMenu,.fontPickerMenu,.colorPickerMenu,.shieldPickerPopover,.blockTypePickerPopover,.profilePickerMenu) {
+    background:var(--sm-dropdown-background)!important; color:var(--sm-dropdown-color)!important;
+    border:1px solid var(--sm-dropdown-border)!important; border-radius:0!important;
+    box-shadow:0 0.15rem 0.4rem rgba(0,0,0,0.22)!important; padding:0.1rem 0!important;
+    font-family:Inter,sans-serif!important; font-size:0.85rem!important; line-height:1.25!important;
+    height:auto!important; overflow-x:hidden!important; box-sizing:border-box!important;
+    overscroll-behavior:contain!important; transition:none!important; animation:none!important;
+  }
+  .headerFooterMenu { font-size:0.7rem!important; }
+  :is(.symbolPickerItem,.fontPickerItem,.colorPickerItem,.shieldPickerItem,.profilePickerItem) {
+    display:flex!important; align-items:center!important; justify-content:flex-start!important;
+    gap:0.35rem!important; font-size:var(--sm-font-preview-size,0.85rem)!important; font-weight:400!important;
+    line-height:1.25!important; width:100%!important; min-width:0!important; max-width:100%!important;
+    min-height:1.55rem!important; height:auto!important; padding:0.15rem 0.4rem!important;
+    border:0!important; border-radius:0!important; margin:0!important; text-align:left!important;
+    white-space:nowrap!important; box-sizing:border-box!important; color:inherit!important;
+    transition:none!important; animation:none!important;
+  }
+  .fontPickerItem { font-family:var(--sm-font-preview-family,Inter),sans-serif!important; }
+  .shieldPickerItem { padding-left:calc(0.4rem + var(--shieldPickerDepth,0) * 1.25rem)!important; }
+  .headerFooterMenu .symbolPickerItem { font-size:0.7rem!important; line-height:1.1!important; min-height:1.2rem!important; padding:0.08rem 0.4rem!important; }
+  .blockTypePickerItem { font-size:0.8rem!important; min-height:1.4rem!important; max-height:none!important; padding:0.15rem 0.4rem!important; }
+  .blockTypePickerList { width:100%!important; min-width:0!important; max-width:100%!important; box-sizing:border-box!important; }
+  .fontPickerFamilyHeader { font-size:0.8rem!important; line-height:1.25!important; padding:0.25rem 0.4rem!important; font-weight:600!important; }
+  :is(.symbolPickerItem,.fontPickerItem,.colorPickerItem,.shieldPickerItem,.profilePickerItem).selected { background:rgba(127,127,127,0.12)!important; }
+  :is(.symbolPickerItem,.fontPickerItem,.colorPickerItem,.shieldPickerItem,.profilePickerItem):is(:hover,.active,:focus-visible) { background:Highlight!important; color:HighlightText!important; outline:none!important; }
+  :is(.symbolPickerItem,.fontPickerItem,.colorPickerItem,.shieldPickerItem,.profilePickerItem).selected:not(:has(.symbolPickerCheck,.shieldPickerItemCaret))::after { content:"✓"!important; margin-left:auto!important; padding-left:0.5rem!important; font-family:Inter,sans-serif!important; }
+  :is(.symbolPickerItem,.fontPickerItem,.colorPickerItem,.shieldPickerItem,.profilePickerItem) :is(.colorPickerItemLabel,.shieldPickerItemLabel,.symbolPickerLabel) { flex:1!important; min-width:0!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+  :is(.colorPickerSwatch,.shieldPickerTriggerIcon,.shieldPickerItemIcon,.arrowPickerIconHolder,.colorPickerAddIcon) { width:0.95rem!important; height:0.95rem!important; min-width:0.95rem!important; max-width:0.95rem!important; flex:0 0 0.95rem!important; object-fit:contain!important; margin:0!important; }
+  :is(.headerFooterPicker,.headerFooterMenu) .colorPickerSwatch { width:0.75rem!important; height:0.75rem!important; min-width:0.75rem!important; max-width:0.75rem!important; flex-basis:0.75rem!important; }
+  :is(.symbolPickerItem,.fontPickerItem,.colorPickerItem,.shieldPickerItem,.profilePickerItem,.nativeSelectTrigger,.fontPickerTrigger,.colorPickerTrigger,.shieldPickerTrigger,.profilePickerTrigger) img { object-fit:contain!important; max-height:0.95rem!important; }
+  .arrowPickerIconHolder img { max-width:100%!important; width:auto!important; height:auto!important; }
+  .colorPickerAddIcon { font-size:0.95rem!important; line-height:0.95rem!important; }
+  :is(.symbolPickerCaret,.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret) {
+    position:static!important; display:block!important; width:1.05rem!important; min-width:1.05rem!important; max-width:1.05rem!important;
+    height:1.05rem!important; min-height:1.05rem!important; max-height:1.05rem!important; flex:0 0 1.05rem!important;
+    margin:0 0 0 auto!important; padding:0!important; color:currentColor!important; background:none!important;
+    font-size:0!important; line-height:0!important; transform:rotate(0deg)!important; transition:transform 160ms ease-in-out!important;
+  }
+  .blockTypeInlinePickerTrigger>.shieldPickerTriggerCaret { width:1.35rem!important; min-width:1.35rem!important; max-width:1.35rem!important; height:1.35rem!important; min-height:1.35rem!important; max-height:1.35rem!important; flex-basis:1.35rem!important; }
+  span:is(.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret)::before { content:""!important; display:block!important; width:100%!important; height:100%!important; background:currentColor!important; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='4 4 16 16' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") center/contain no-repeat!important; }
+  .blockTypeInlinePickerTrigger>span.shieldPickerTriggerCaret::before { mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='6 6 12 12' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E")!important; }
+  span:is(.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret)::after { display:none!important; }
+  :is(.symbolPicker,.fontPicker,.colorPicker,.shieldPicker,.profilePicker).open :is(.symbolPickerCaret,.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret) { transform:rotate(180deg)!important; }
+  :root[data-dropdown-animations="false"] :is(.symbolPickerCaret,.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret) { transition:none!important; }
+}
+
+#postContainer { transform-origin:center center; transition:transform 280ms ease; }

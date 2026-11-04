@@ -42,9 +42,14 @@ window.SignMakerMergeUI = (() => {
     window.nativeSelectPickers?.forEach(picker => picker.sync());
   };
   const convertSelect = select => {
+    const runtime=window.SignMakerEditorRuntime;
+    const pendingKind=runtime?.pendingKind(select);
+    if(pendingKind&&pendingKind!=='native')return;
     if (select._shieldPickerApi || select._shieldVariantPickerApi || select.classList.contains("shieldPickerNativeSource") || select.multiple || select.hidden || select.classList.contains("hidden") ||
         select.getAttribute("aria-hidden") === "true" || select.classList.contains("blockTypeInlineSelect") ||
-        getComputedStyle(select).display === "none") return;
+        select.classList.contains('nativeSelectSource')) return;
+    if(runtime?.defer(select,'native',()=>convertSelect(select)))return;
+    if(getComputedStyle(select).display==='none')return;
     // Existing font, color, shield and asset pickers retain their own controls.
     if (select.nextElementSibling?.matches(".fontPicker, .colorPicker, .shieldPicker, .symbolPicker") ||
         select.classList.contains("fontPickerSource") || select.classList.contains("colorPickerSource")) return;

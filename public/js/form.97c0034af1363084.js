@@ -1,0 +1,21874 @@
+
+const formHandler = (function () {
+let exposed;
+let post;
+let blockDragState = null;
+let panelDragState = null;
+let showHiddenPanelsInPanelList = true;
+let exitTabDragState = null;
+let exitTabRowDragState = null;
+let nestedExitTabDragState = null;
+let rowDragState = null;
+let subPanelTabDragState = null;
+let newRowDropTargetButton = null;
+let ensureSubpanelMenuOpenPublic = () => {};
+let ensureExitTabMenuOpenPublic = () => {};
+let ensureGuideArrowMenuOpenPublic = () => {};
+let exitTabFontCheckboxChangedByUser = false;
+const syncPostReference = () => {
+if (exposed && typeof exposed.getPost === "function") {
+post = exposed.getPost();
+}
+};
+const normalizeUiFontValue = (value) => {
+const normalized = typeof normalizeTextFontFamilyName === "function"
+? normalizeTextFontFamilyName(value)
+: String(value || "").trim();
+return normalized === "Series 5R" ? "Series 5WR" : normalized;
+};
+const getUiFontDisplayName = (value) => {
+const normalized = normalizeUiFontValue(value);
+if (normalized === "ITC Stone Sans Semibold") {
+return "ITC Stone Sans Bold";
+}
+return String(normalized || "").replace(/Helvetica Neue/g, "Helvetica");
+};
+const isHighwayGothicUiFont = (fontFamily) =>
+/^Series\s(?:B|C|D|E|EEM|EM|F)\b/i.test(String(fontFamily || ""));
+const isClearviewUiFont = (fontFamily) => {
+const normalized = normalizeUiFontValue(fontFamily);
+return /^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(normalized) || /^Clearview\s/i.test(String(fontFamily || ""));
+};
+const getBannerDropdownValue = (value) =>
+String(value ?? "").toUpperCase();
+const findBannerDropdownPresetValue = (value) => {
+const normalized = String(value ?? "").trim().toLowerCase();
+if (!normalized) {
+return null;
+}
+const options =
+typeof Shield !== "undefined" &&
+Shield.prototype &&
+Array.isArray(Shield.prototype.bannerTypes)
+? Shield.prototype.bannerTypes
+: [];
+const match = options.find(
+(option) => String(option).trim().toLowerCase() === normalized
+);
+return match === undefined ? null : getBannerDropdownValue(match);
+};
+const applyToBannerEntryDefaults = ({
+input,
+positionSelect,
+indentCheckbox,
+} = {}) => {
+if (
+!input ||
+String(input.value || "").trim().toUpperCase() !== "TO"
+) {
+return false;
+}
+if (positionSelect) {
+positionSelect.value = "Left";
+}
+if (indentCheckbox) {
+indentCheckbox.checked = false;
+}
+return true;
+};
+const bindToBannerEntryDefaults = (
+input,
+positionSelect,
+indentCheckbox
+) => {
+if (!input || input.dataset.toBannerDefaultsBound === "true") {
+return;
+}
+input.dataset.toBannerDefaultsBound = "true";
+input.addEventListener("change", () => {
+applyToBannerEntryDefaults({
+input,
+positionSelect,
+indentCheckbox,
+});
+});
+};
+const runShieldUndoableCommit = (callback) => {
+if (sdShieldReadFormFrame) {
+if (typeof cancelAnimationFrame === "function") {
+cancelAnimationFrame(sdShieldReadFormFrame);
+}
+clearTimeout(sdShieldReadFormFrame);
+sdShieldReadFormFrame = 0;
+sdShieldReadFormFastPass = true;
+try {
+if (typeof readForm === "function") {
+readForm();
+}
+} finally {
+sdShieldReadFormFastPass = false;
+sdShieldLiveBannerUndoActive = false;
+}
+} else if (
+sdShieldLiveBannerUndoActive &&
+exposed &&
+typeof exposed.endUndoableChange === "function"
+) {
+exposed.endUndoableChange();
+sdShieldLiveBannerUndoActive = false;
+}
+const canUseUndo =
+exposed && typeof exposed.beginUndoableChange === "function" &&
+typeof exposed.endUndoableChange === "function";
+if (canUseUndo) {
+exposed.beginUndoableChange();
+}
+try {
+if (typeof callback === "function") {
+callback();
+}
+} finally {
+if (canUseUndo) {
+exposed.endUndoableChange();
+}
+}
+};
+let sdShieldReadFormFrame = 0;
+let sdShieldReadFormFastPass = false;
+let sdShieldLiveBannerUndoActive = false;
+const beginSdShieldLiveBannerUndo = () => {
+if (
+sdShieldLiveBannerUndoActive ||
+!exposed ||
+typeof exposed.beginUndoableChange !== "function"
+) {
+return;
+}
+exposed.beginUndoableChange();
+sdShieldLiveBannerUndoActive = true;
+};
+const scheduleSdShieldReadForm = () => {
+if (sdShieldReadFormFrame) {
+return;
+}
+const commit = () => {
+sdShieldReadFormFrame = 0;
+sdShieldReadFormFastPass = true;
+try {
+if (typeof readForm === "function") {
+readForm();
+}
+} finally {
+sdShieldReadFormFastPass = false;
+sdShieldLiveBannerUndoActive = false;
+}
+};
+if (typeof requestAnimationFrame === "function") {
+sdShieldReadFormFrame = requestAnimationFrame(commit);
+} else {
+sdShieldReadFormFrame = window.setTimeout(commit, 0);
+}
+};
+const syncGlobalBlockControls = () => {
+const globalBlockControls = document.getElementById("globalBlockControls");
+if (globalBlockControls) {
+globalBlockControls.hidden = true;
+}
+};
+const parseStoredSettingsDefaultsForForm = () => {
+try {
+const raw = getStoredItem("signMaker.settingsDefaults");
+if (!raw) {
+return {};
+}
+const parsed = JSON.parse(raw);
+return parsed && typeof parsed === "object" ? parsed : {};
+} catch (error) {
+return {};
+}
+};
+const getDefaultManualBannersSetting = () => {
+const storedDefaults = parseStoredSettingsDefaultsForForm();
+if (Object.prototype.hasOwnProperty.call(storedDefaults, "settingsDefaultsShieldManualBanners")) {
+return storedDefaults.settingsDefaultsShieldManualBanners !== false;
+}
+return true;
+};
+const syncSdShieldChoiceButtons = (root = document) => {
+if (!root || typeof root.querySelectorAll !== "function") {
+return;
+}
+root.querySelectorAll("[data-shield-select-target]").forEach((button) => {
+const target = document.getElementById(button.dataset.shieldSelectTarget || "");
+const buttonValue = button.dataset.shieldSelectValue || "";
+const isActive = !!target && String(target.value || "") === buttonValue;
+button.classList.toggle("activated", isActive);
+button.setAttribute("aria-pressed", isActive ? "true" : "false");
+});
+root.querySelectorAll("[data-shield-checkbox-target]").forEach((button) => {
+const target = document.getElementById(button.dataset.shieldCheckboxTarget || "");
+const isToggleButton = button.dataset.shieldCheckboxToggle === "true";
+const requestedValue = button.dataset.shieldCheckboxValue === "true";
+const isActive = !!target && (isToggleButton ? !!target.checked : !!target.checked === requestedValue);
+button.classList.toggle("activated", isActive);
+button.setAttribute("aria-pressed", isActive ? "true" : "false");
+});
+};
+const getSdShieldControlPropertyName = (target) => {
+const id = String(target?.id || "");
+return id.startsWith("sdShield_") ? id.slice("sdShield_".length) : "";
+};
+const commitSdShieldChoiceButtonValue = (button, root = document) => {
+const selectTargetId = button.dataset.shieldSelectTarget || "";
+const checkboxTargetId = button.dataset.shieldCheckboxTarget || "";
+const target = document.getElementById(selectTargetId || checkboxTargetId);
+if (!target) {
+return;
+}
+if (selectTargetId) {
+target.value = button.dataset.shieldSelectValue || "";
+} else if (button.dataset.shieldCheckboxToggle === "true") {
+target.checked = !target.checked;
+} else {
+target.checked = button.dataset.shieldCheckboxValue === "true";
+}
+syncSdShieldChoiceButtons(root);
+const commitDirectly = () => {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const propertyName = getSdShieldControlPropertyName(target);
+if (currentBlockElem && propertyName) {
+currentBlockElem[propertyName] =
+target.type === "checkbox" ? !!target.checked : target.value;
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+return;
+}
+}
+if (typeof readForm === "function") {
+readForm();
+}
+};
+runShieldUndoableCommit(commitDirectly);
+};
+const bindSdShieldChoiceButtons = (root = document) => {
+if (!root || typeof root.querySelectorAll !== "function") {
+return;
+}
+const bindButton = (button) => {
+if (button.dataset.sdShieldChoiceBound === "true") {
+return;
+}
+button.dataset.sdShieldChoiceBound = "true";
+button.addEventListener("pointerdown", (event) => {
+event.preventDefault();
+event.stopPropagation();
+button.dataset.sdShieldPointerCommittedAt = String(performance.now());
+commitSdShieldChoiceButtonValue(button, root);
+});
+button.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const lastPointerCommit = Number(button.dataset.sdShieldPointerCommittedAt || 0);
+if (Number.isFinite(lastPointerCommit) && performance.now() - lastPointerCommit < 650) {
+return;
+}
+commitSdShieldChoiceButtonValue(button, root);
+});
+};
+root.querySelectorAll("[data-shield-select-target]").forEach(bindButton);
+root.querySelectorAll("[data-shield-checkbox-target]").forEach(bindButton);
+};
+const applySdShieldBannerScaleToRenderedBlock = (
+blockElem,
+scaleWithShield
+) => {
+if (!blockElem || !exposed?.vars) {
+return false;
+}
+const panelIndex = exposed.vars.currentlySelectedPanelIndex;
+const subPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
+const rowIndex = exposed.vars.currentlySelectedRowIndex;
+const blockIndex = exposed.vars.currentlySelectedBlockIndex;
+const selector =
+`.blockElementMaster[data-panel-index="${panelIndex}"]` +
+`[data-subpanel="${subPanelIndex}"] ` +
+`.bE-shieldElement[data-sign-row="${rowIndex}"]` +
+`[data-sign-block="${blockIndex}"]`;
+const rendered = Array.from(document.querySelectorAll(selector));
+if (!rendered.length) {
+return false;
+}
+const requestedScale =
+ShieldElement.prototype.getShieldScale(blockElem.shieldSize);
+const nextBannerScale = scaleWithShield ? requestedScale : 1;
+rendered.forEach((element) => {
+element.style.setProperty(
+"--requestedShieldScale",
+String(requestedScale)
+);
+element.style.setProperty(
+"--bannerScale",
+String(nextBannerScale)
+);
+});
+return true;
+};
+const bindSdShieldScaleBannersCheckbox = () => {
+const checkbox = document.getElementById(
+"sdShield_scaleBannersWithShield"
+);
+if (!checkbox || checkbox.dataset.sdShieldScaleBannerBound === "true") {
+return;
+}
+checkbox.dataset.sdShieldScaleBannerBound = "true";
+checkbox.addEventListener("change", () => {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+if (!currentBlockElem) {
+scheduleSdShieldReadForm();
+return;
+}
+runShieldUndoableCommit(() => {
+currentBlockElem.scaleBannersWithShield = !!checkbox.checked;
+const updatedInPlace =
+applySdShieldBannerScaleToRenderedBlock(
+currentBlockElem,
+currentBlockElem.scaleBannersWithShield
+);
+if (!updatedInPlace && exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+});
+});
+};
+const bindSdShieldSizeSlider = () => {
+const slider = document.getElementById("sdShield_shieldSizeSlider");
+const input = document.getElementById("sdShield_shieldSize");
+if (!slider || !input) {
+return;
+}
+const clampSliderValue = (value) => {
+const parsed = parseFloat(value);
+if (!Number.isFinite(parsed)) {
+return 3;
+}
+return Math.max(1, Math.min(5, parsed));
+};
+const syncSliderFromInput = () => {
+slider.value = String(clampSliderValue(input.value));
+};
+if (slider.dataset.sdShieldSizeBound !== "true") {
+slider.dataset.sdShieldSizeBound = "true";
+slider.addEventListener("input", () => {
+input.value = slider.value;
+});
+slider.addEventListener("change", () => {
+input.value = slider.value;
+scheduleSdShieldReadForm();
+});
+input.addEventListener("change", syncSliderFromInput);
+input.addEventListener("blur", syncSliderFromInput);
+}
+syncSliderFromInput();
+};
+const setupSdShieldCompactControls = (root = document) => {
+bindSdShieldChoiceButtons(root);
+bindSdShieldSizeSlider();
+syncSdShieldChoiceButtons(root);
+};
+let sdShieldBannerPreviewFrame = 0;
+const scheduleSdShieldBannerPreviewRedraw = () => {
+if (sdShieldBannerPreviewFrame) {
+return;
+}
+const redraw = () => {
+sdShieldBannerPreviewFrame = 0;
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+};
+if (typeof requestAnimationFrame === "function") {
+sdShieldBannerPreviewFrame = requestAnimationFrame(redraw);
+} else {
+sdShieldBannerPreviewFrame = window.setTimeout(redraw, 0);
+}
+};
+const syncLiveSdShieldBannerText = (target) => {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+if (!currentBlockElem || !target) {
+return false;
+}
+const manualCheckbox = document.getElementById("sdShield_manualBanners");
+if (manualCheckbox && !manualCheckbox.checked) {
+return false;
+}
+let propertyName = "";
+if (target.id === "sdShield_bannerCustomText") {
+propertyName = "bannerType";
+} else if (target.id === "sdShield_bannerCustomText2") {
+propertyName = "bannerType2";
+}
+if (!propertyName) {
+return false;
+}
+beginSdShieldLiveBannerUndo();
+const nextValue = String(target.value ?? "");
+currentBlockElem[propertyName] =
+nextValue.length > 0
+? nextValue
+: ShieldElement.prototype.defaultBannerType;
+if (typeof syncSdShieldBannerBackgroundColorPickerVisuals === "function") {
+syncSdShieldBannerBackgroundColorPickerVisuals();
+}
+scheduleSdShieldBannerPreviewRedraw();
+return true;
+};
+const bindSdShieldEditorCommitFallback = () => {
+if (document.documentElement.dataset.sdShieldCommitFallbackBound === "true") {
+return;
+}
+document.documentElement.dataset.sdShieldCommitFallbackBound = "true";
+const commitIds = new Set([
+"sdShield_bannerType",
+"sdShield_bannerType2",
+"sdShield_bannerBackgroundColor1",
+"sdShield_bannerBackgroundColor2",
+"sdShield_bannerFontFamily1",
+"sdShield_bannerFontFamily2",
+"sdShield_roadNameFontFamily",
+"sdShield_bannerFontSize1Display",
+"sdShield_bannerFontSize2Display",
+"sdShield_roadNameFontSizeDisplay",
+"sdShield_bannerLetterSpacing",
+"sdShield_bannerLetterSpacingVal",
+"sdShield_routeNumber",
+"sdShield_shieldType",
+"sdShield_shieldSize",
+"sdShield_scaleBannersWithShield",
+"sdShield_to",
+"sdShield_roadName",
+"sdShield_countyText",
+]);
+const queueCommit = (event) => {
+const target = event.target;
+if (!(target instanceof HTMLElement)) {
+return;
+}
+if (
+target.id === "sdShield_bannerCustomText" ||
+target.id === "sdShield_bannerCustomText2" ||
+commitIds.has(target.id)
+) {
+scheduleSdShieldReadForm();
+}
+};
+document.addEventListener("change", queueCommit, true);
+document.addEventListener("blur", queueCommit, true);
+};
+let blockMarginStepperCommitting = false;
+const bindBlockMarginStepperCommit = () => {
+const marginInputs = [
+document.getElementById("sdBlock_topPaddingVal"),
+document.getElementById("sdBlock_bottomPaddingVal"),
+].filter(Boolean);
+const normalizeMarginInputValue = (value, fallback = 0) => {
+const parsed = parseFloat(value);
+return Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : fallback;
+};
+const syncSliderFromInput = (input) => {
+const controlId = String(input.id || "").replace(/Val$/, "");
+const slider = document.getElementById(controlId);
+if (!slider) {
+return;
+}
+const normalized = normalizeMarginInputValue(input.value, 0);
+slider.value = Math.max(0, Math.min(3, normalized));
+};
+const commitInput = (input) => {
+if (blockMarginStepperCommitting) {
+return;
+}
+blockMarginStepperCommitting = true;
+try {
+const normalized = normalizeMarginInputValue(input.value, 0);
+input.value = normalized;
+syncSliderFromInput(input);
+if (typeof readForm === "function") {
+readForm();
+}
+} finally {
+setTimeout(() => {
+blockMarginStepperCommitting = false;
+}, 0);
+}
+};
+marginInputs.forEach((input) => {
+input.step = "0.1";
+if (input.dataset.blockMarginStepperBound === "true") {
+return;
+}
+input.dataset.blockMarginStepperBound = "true";
+["input", "change"].forEach((eventName) => {
+input.addEventListener(
+eventName,
+(event) => {
+if (blockMarginStepperCommitting) {
+return;
+}
+event.stopImmediatePropagation();
+syncSliderFromInput(input);
+},
+true
+);
+});
+input.addEventListener(
+"keydown",
+(event) => {
+if (event.key === "Enter") {
+event.preventDefault();
+input.blur();
+}
+},
+true
+);
+input.addEventListener(
+"blur",
+(event) => {
+if (blockMarginStepperCommitting) {
+return;
+}
+event.stopImmediatePropagation();
+commitInput(input);
+},
+true
+);
+});
+};
+const isSliderPairedNumberInput = (input) => {
+if (
+!input ||
+String(input.tagName || "").toUpperCase() !== "INPUT" ||
+String(input.type || "").toLowerCase() !== "number"
+) {
+return false;
+}
+const shieldEditor = input.closest(
+'#smSPProperties > [data-property="sdShield"]'
+);
+if (!shieldEditor) {
+return false;
+}
+const rangeSiblingSelectors = [
+'input[type="range"] + input[type="number"]',
+'input[type="range"] ~ input[type="number"]',
+];
+if (rangeSiblingSelectors.some((selector) => input.matches(selector))) {
+return true;
+}
+const parent = input.parentElement;
+if (parent && parent.querySelector('input[type="range"]')) {
+return true;
+}
+const inputId = String(input.id || "");
+if (inputId.endsWith("Val")) {
+const matchingRange = document.getElementById(inputId.slice(0, -3));
+return !!matchingRange && String(matchingRange.type || "").toLowerCase() === "range";
+}
+if (inputId === "sdShield_shieldSize") {
+const matchingRange = document.getElementById("sdShield_shieldSizeSlider");
+return !!matchingRange && String(matchingRange.type || "").toLowerCase() === "range";
+}
+return false;
+};
+const disableSliderNumberInputSteppers = (root = document) => {
+if (!root || typeof root.querySelectorAll !== "function") {
+return;
+}
+root.querySelectorAll('input[type="number"]').forEach((input) => {
+if (!isSliderPairedNumberInput(input)) {
+input.classList.remove("sliderNumberInputNoStepper");
+return;
+}
+input.classList.add("sliderNumberInputNoStepper");
+input.removeAttribute("data-toolTip");
+input.removeAttribute("data-tooltip");
+input.removeAttribute("title");
+delete input.dataset.toolTip;
+delete input.dataset.tooltip;
+});
+};
+const bindSliderNumberInputStepperCleanup = () => {
+if (document.documentElement.dataset.sliderStepperCleanupBound === "true") {
+disableSliderNumberInputSteppers(document);
+return;
+}
+document.documentElement.dataset.sliderStepperCleanupBound = "true";
+disableSliderNumberInputSteppers(document);
+const observer = new MutationObserver((mutations) => {
+mutations.forEach((mutation) => {
+mutation.addedNodes.forEach((node) => {
+if (node.nodeType !== Node.ELEMENT_NODE) {
+return;
+}
+if (isSliderPairedNumberInput(node)) {
+disableSliderNumberInputSteppers(node.parentElement || document);
+} else if (typeof node.querySelectorAll === "function") {
+disableSliderNumberInputSteppers(node);
+}
+});
+});
+});
+for (const root of document.querySelectorAll('.modals, dialog')) {
+if (root.matches('dialog') && root.closest('.modals')) continue;
+observer.observe(root, {childList:true, subtree:true});
+}
+};
+const isDedupableSelectElement = (selectEl) =>
+!!(
+selectEl &&
+String(selectEl.tagName || "").toUpperCase() === "SELECT" &&
+selectEl.options
+);
+const getSelectOptionDedupeKey = (option) => {
+if (!option) {
+return "";
+}
+const value = String(option.value ?? "").trim();
+const text = String(option.textContent ?? "").trim();
+return (value || text).toLowerCase();
+};
+const dedupeSelectOptions = (selectEl) => {
+if (!isDedupableSelectElement(selectEl)) {
+return;
+}
+const currentValue = selectEl.value;
+const selectedKeys = new Set(
+Array.from(selectEl.options)
+.filter((option) => option.selected)
+.map(getSelectOptionDedupeKey)
+.filter(Boolean)
+);
+const seen = new Map();
+Array.from(selectEl.options).forEach((option) => {
+const key = getSelectOptionDedupeKey(option);
+if (!key) {
+return;
+}
+if (!seen.has(key)) {
+seen.set(key, option);
+return;
+}
+const firstOption = seen.get(key);
+if (option.selected || selectedKeys.has(key)) {
+firstOption.selected = true;
+}
+option.remove();
+});
+if (
+currentValue &&
+Array.from(selectEl.options).some((option) => option.value === currentValue)
+) {
+selectEl.value = currentValue;
+}
+};
+const dedupeAllSelectOptions = (root = document) => {
+if (!root || typeof root.querySelectorAll !== "function") {
+return;
+}
+root.querySelectorAll("select").forEach(dedupeSelectOptions);
+};
+const scheduleDedupeSelectOptions = (selectEl) => {
+if (!isDedupableSelectElement(selectEl)) {
+return;
+}
+if (selectEl.dataset.selectDedupeQueued === "true") {
+return;
+}
+selectEl.dataset.selectDedupeQueued = "true";
+const run = () => {
+delete selectEl.dataset.selectDedupeQueued;
+dedupeSelectOptions(selectEl);
+};
+if (typeof queueMicrotask === "function") {
+queueMicrotask(run);
+} else {
+setTimeout(run, 0);
+}
+};
+const enableSelectOptionDeduplication = () => {
+if (
+typeof lib !== "undefined" &&
+lib &&
+typeof lib.appendOption === "function" &&
+lib.appendOption._dedupesSelectOptions !== true
+) {
+const originalAppendOption = lib.appendOption;
+lib.appendOption = function (selectEl, value, options = {}) {
+if (!isDedupableSelectElement(selectEl)) {
+return originalAppendOption.call(this, selectEl, value, options);
+}
+const requestedValue = String(value ?? "");
+const requestedKey = requestedValue.trim().toLowerCase();
+const requestedText =
+options && Object.prototype.hasOwnProperty.call(options, "text")
+? String(options.text ?? "")
+: requestedValue;
+const existingOption = Array.from(selectEl.options).find((option) => {
+const optionKey = String(option.value ?? "").trim().toLowerCase();
+return optionKey && optionKey === requestedKey;
+});
+if (existingOption) {
+if (requestedText && existingOption.textContent !== requestedText) {
+existingOption.textContent = requestedText;
+}
+if (options && options.selected === true) {
+Array.from(selectEl.options).forEach((option) => {
+option.selected = false;
+});
+existingOption.selected = true;
+selectEl.value = existingOption.value;
+}
+scheduleDedupeSelectOptions(selectEl);
+return existingOption;
+}
+const beforeLength = selectEl.options.length;
+originalAppendOption.call(this, selectEl, value, options);
+const appendedOption =
+selectEl.options.length > beforeLength
+? selectEl.options[selectEl.options.length - 1]
+: null;
+scheduleDedupeSelectOptions(selectEl);
+return appendedOption;
+};
+lib.appendOption._dedupesSelectOptions = true;
+}
+if (document.documentElement.dataset.selectOptionDedupeBound === "true") {
+return;
+}
+document.documentElement.dataset.selectOptionDedupeBound = "true";
+const observer = new MutationObserver((mutations) => {
+const changedSelects = new Set();
+mutations.forEach((mutation) => {
+if (isDedupableSelectElement(mutation.target)) {
+changedSelects.add(mutation.target);
+}
+mutation.addedNodes.forEach((node) => {
+if (node.nodeType !== Node.ELEMENT_NODE) {
+return;
+}
+if (isDedupableSelectElement(node)) {
+changedSelects.add(node);
+}
+if (typeof node.querySelectorAll === "function") {
+node.querySelectorAll("select").forEach((selectEl) => {
+changedSelects.add(selectEl);
+});
+}
+});
+});
+changedSelects.forEach(scheduleDedupeSelectOptions);
+});
+for (const root of document.querySelectorAll('.modals, dialog')) {
+if (root.matches('dialog') && root.closest('.modals')) continue;
+observer.observe(root, {childList:true, subtree:true});
+}
+document.addEventListener(
+"change",
+(event) => {
+const selectEl =
+event.target && typeof event.target.closest === "function"
+? event.target.closest("select")
+: null;
+scheduleDedupeSelectOptions(selectEl);
+},
+true
+);
+};
+const STORAGE_KEYS = {
+postPosition: "signMaker.postPosition",
+postColor: "signMaker.postColor",
+showPost: "signMaker.showPost",
+postThickness: "signMaker.postThickness",
+defaultPanelSpacing: "signMaker.defaultPanelSpacing",
+controlTextFont: "signMaker.controlTextFont",
+bannerFontFamily: "signMaker.bannerFontFamily",
+exitTabFHWAFont: "signMaker.exitTabFHWAFont",
+exitTabFullBorder: "signMaker.exitTabFullBorder",
+exitTabSquareCorners: "signMaker.exitTabSquareCorners",
+exitTabTopOffset: "signMaker.exitTabTopOffset",
+restoreOnRefresh: "signMaker.restoreOnRefresh",
+shortcutOverrides: "signMaker.shortcutOverrides",
+keybindMode: "signMaker.keybindMode",
+configBarPosition: "signMaker.configBarPosition",
+interfaceUiScale: "signMaker.interfaceUiScale",
+interfaceThemeMode: "signMaker.interfaceThemeMode",
+oldInterstateNumberPositioning: "signMaker.oldInterstateNumberPositioning",
+defaultSignRadius: "signMaker.defaultSignRadius",
+shieldPickerScrollTop: "signMaker.shieldPickerScrollTop",
+customShieldMakerShields: "signMaker.customShieldMaker.shields.v1",
+customIconPickerIcons: "signMaker.customIconPicker.icons.v1",
+iconPickerPreferences: "signMaker.iconPicker.preferences.v1",
+customColors: "signMaker.customColors.v1",
+templateLoadWarning: "signMaker.templateLoadWarning",
+};
+let localStorageAvailable;
+let localStorageWarningLogged = false;
+const LIMON_TRIGGER_VALUE = "limon";
+const LIMON_VIDEO_URL = "https://www.youtube.com/watch?v=qA7qUG6uEbY";
+const EXIT_TAB_APL_EDGE_WIDTH = "APL Edge";
+const isAplEdgeExitTabWidth = (width) =>
+String(width || "").trim().toLowerCase() ===
+EXIT_TAB_APL_EDGE_WIDTH.toLowerCase();
+const canUseAplEdgeExitTab = () =>
+!!(exposed && typeof exposed.canUseAplEdgeExitTab === "function" && exposed.canUseAplEdgeExitTab());
+const syncExitTabWidthOptions = (exitTab = null) => {
+const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
+if (!exitTabWidthSelectElmt) {
+return false;
+}
+const shouldAllowAplEdge = canUseAplEdgeExitTab();
+Array.from(exitTabWidthSelectElmt.options)
+.filter((option) => isAplEdgeExitTabWidth(option.value))
+.forEach((option) => option.remove());
+if (shouldAllowAplEdge) {
+const option = document.createElement("option");
+option.value = EXIT_TAB_APL_EDGE_WIDTH;
+option.textContent = EXIT_TAB_APL_EDGE_WIDTH;
+exitTabWidthSelectElmt.appendChild(option);
+} else if (exitTab && isAplEdgeExitTabWidth(exitTab.width)) {
+exitTab.width = "Edge";
+}
+return shouldAllowAplEdge;
+};
+const isExitTabHighwayGothicFontFamily = (fontFamily) =>
+isHighwayGothicUiFont(fontFamily);
+const getExitTabAvailableFonts = () => {
+const textElementFonts =
+typeof TextElement !== "undefined" &&
+TextElement.prototype &&
+Array.isArray(TextElement.prototype.fontFamily)
+? TextElement.prototype.fontFamily
+: [];
+const exitTabFonts =
+typeof ExitTab !== "undefined" &&
+ExitTab.prototype &&
+Array.isArray(ExitTab.prototype.fontFamilies)
+? ExitTab.prototype.fontFamilies
+: [];
+const normalizedFonts = [...textElementFonts, ...exitTabFonts]
+.map((font) =>
+typeof normalizeTextFontFamilyName === "function"
+? normalizeTextFontFamilyName(font)
+: String(font || "").trim()
+)
+.filter(Boolean);
+return normalizedFonts.filter((font, index, fonts) => fonts.indexOf(font) === index);
+};
+const normalizeExitTabFontFamily = (value, fallback = null) => {
+const availableFonts = getExitTabAvailableFonts();
+const requested = normalizeUiFontValue(value);
+const fallbackFont =
+fallback ||
+ExitTab.prototype.defaultFontFamily ||
+ExitTab.prototype.defaultFHWAFontFamily ||
+(availableFonts.length ? availableFonts[0] : "Series EEM");
+if (requested) {
+if (availableFonts.includes(requested)) {
+return requested;
+}
+const caseInsensitiveMatch = availableFonts.find(
+(font) => String(font).toLowerCase() === requested.toLowerCase()
+);
+if (caseInsensitiveMatch) {
+return caseInsensitiveMatch;
+}
+return requested;
+}
+return availableFonts.includes(fallbackFont)
+? fallbackFont
+: (availableFonts[0] || fallbackFont || "Series EEM");
+};
+const normalizeExitTabCharacterSpacing = (value) => {
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+return Number.isFinite(parsed)
+? Math.max(-0.15, Math.min(0.25, parsed))
+: ExitTab.prototype.defaultCharacterSpacing || 0;
+};
+const isExitTabAssetVariantValue = (variant) =>
+variant === "Toll Logo" || variant === "Icon";
+const normalizeExitTabAssetSizeValue = (value, fallback = 3) => {
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 3;
+return Number.isFinite(parsed)
+? Math.max(1, Math.min(6, parsed))
+: Math.max(1, Math.min(6, resolvedFallback));
+};
+const normalizeExitTabNormalFontSizeValue = (value, fallback = null) => {
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+if (Number.isFinite(parsed) && parsed >= 10) {
+return Math.max(10, Math.min(40, parsed));
+}
+const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+if (Number.isFinite(fallbackParsed) && fallbackParsed >= 10) {
+return Math.max(10, Math.min(40, fallbackParsed));
+}
+const prototypeParsed = parseFloat(ExitTab.prototype.defaultFontSize);
+return Number.isFinite(prototypeParsed) && prototypeParsed >= 10
+? Math.max(10, Math.min(40, prototypeParsed))
+: 18;
+};
+const getCurrentExitTabDefaultFontSize = (variant = null) => {
+try {
+const settings = getExitTabProfileContextSettings(variant);
+return normalizeExitTabNormalFontSizeValue(
+settings?.fontSize,
+ExitTab.prototype.defaultFontSize
+);
+} catch (error) {
+return normalizeExitTabNormalFontSizeValue(
+ExitTab.prototype.defaultFontSize,
+18
+);
+}
+};
+const getCurrentExitTabDefaultMinHeight = (variant = null) => {
+try {
+const settings = getExitTabProfileContextSettings(variant);
+const configuredMinHeight = parseFloat(settings?.minHeight);
+if (Number.isFinite(configuredMinHeight) && configuredMinHeight >= 0) {
+return configuredMinHeight;
+}
+} catch (error) {
+}
+const prototypeMinHeight = parseFloat(ExitTab.prototype.defaultMinHeight);
+return Number.isFinite(prototypeMinHeight) && prototypeMinHeight >= 0
+? prototypeMinHeight
+: 2;
+};
+const rememberExitTabNormalFontSize = (exitTab = {}) => {
+if (!exitTab || typeof exitTab !== "object") {
+return getCurrentExitTabDefaultFontSize();
+}
+const remembered = normalizeExitTabNormalFontSizeValue(
+exitTab.normalFontSizeBeforeAsset,
+null
+);
+const currentNormal = normalizeExitTabNormalFontSizeValue(
+exitTab.fontSize,
+null
+);
+const fallback = getCurrentExitTabDefaultFontSize();
+const resolved = currentNormal || remembered || fallback;
+exitTab.normalFontSizeBeforeAsset = resolved;
+return resolved;
+};
+const normalizeExitTabAssetPaddingValue = (value, fallback = 0) => {
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 0;
+return Number.isFinite(parsed)
+? Math.max(-3, Math.min(3, parsed))
+: Math.max(-3, Math.min(3, resolvedFallback));
+};
+const formatExitTabDecimalValue = (value) => {
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+return Number.isFinite(parsed) ? parsed.toFixed(1) : "0.0";
+};
+const EXIT_TAB_DECIMAL_VALUE_IDS = new Set([
+"borderValue",
+"minValue",
+"nestedSpacingValue",
+"exitTabHorizontalPaddingValue",
+]);
+const formatExitTabSliderDisplayValue = (valueId, value) =>
+valueId === "exitTabCornerRadiusValue"
+? Number(value).toFixed(2)
+: EXIT_TAB_DECIMAL_VALUE_IDS.has(valueId)
+? formatExitTabDecimalValue(value)
+: String(value);
+const getSelectedPanelCornerRadius = () => {
+const panelIndex = exposed?.vars?.currentlySelectedPanelIndex ?? 0;
+const radius = parseFloat(post?.panels?.[panelIndex]?.borderRadius);
+return Number.isFinite(radius) ? Math.max(0, radius) : Panel.prototype.defaultBorderRadius;
+};
+const readExitTabCornerRadiusFromForm = () => {
+const slider = document.getElementById("exitTabCornerRadius");
+const inherit = document.getElementById("exitTabUsePanelCornerRadius")?.checked !== false;
+if (slider) {
+if (!inherit && slider.disabled && slider.dataset.customRadius !== undefined) {
+slider.value = slider.dataset.customRadius;
+}
+slider.disabled = inherit || document.getElementById("squareCorners")?.checked === true;
+if (!inherit) slider.dataset.customRadius = slider.value;
+const label = document.getElementById("exitTabCornerRadiusValue");
+if (label) label.textContent = formatExitTabSliderDisplayValue(
+"exitTabCornerRadiusValue", inherit ? getSelectedPanelCornerRadius() : slider.value
+);
+}
+return inherit ? "panel" : Number(slider?.value ?? getSelectedPanelCornerRadius());
+};
+const setExitTabRangeControlValue = (input, value) => {
+if (!input) {
+return value;
+}
+const isActivelyEditing =
+document.activeElement === input ||
+input.dataset.exitTabSliderDragging === "true";
+if (
+isActivelyEditing &&
+input.dataset.exitTabPendingValue !== undefined
+) {
+return input.dataset.exitTabPendingValue;
+}
+input.value = String(value);
+return value;
+};
+const bindExitTabSliderDragProtection = () => {
+[
+"borderThickness",
+"minHeight",
+"fontSize",
+"exitTabCornerRadius",
+"nestedTabSpacing",
+"exitTabHorizontalPadding",
+"exitTabTextSizePercent",
+].forEach((id) => {
+const input = document.getElementById(id);
+if (!input || input.dataset.exitTabDragProtected === "true") {
+return;
+}
+input.dataset.exitTabDragProtected = "true";
+input.addEventListener("pointerdown", () => {
+input.dataset.exitTabSliderDragging = "true";
+input.dataset.exitTabPendingValue = input.value;
+});
+input.addEventListener("input", () => {
+input.dataset.exitTabPendingValue = input.value;
+});
+const finish = () => {
+window.setTimeout(() => {
+delete input.dataset.exitTabSliderDragging;
+delete input.dataset.exitTabPendingValue;
+}, 0);
+};
+input.addEventListener("pointerup", finish);
+input.addEventListener("pointercancel", finish);
+input.addEventListener("change", finish);
+input.addEventListener("blur", finish);
+});
+};
+let exitTabEditorMode = "current";
+let selectedExitTabProfileId = "default";
+let currentPanelExitTabProfileId = "default";
+let selectedExitTabProfileVariant = "Default";
+const EXIT_TAB_DEFAULT_PROFILE_ID = "default";
+const EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION = 1;
+const normalizeExitTabProfileVariant = (value) => {
+const requested = String(value || "Default").trim();
+const normalized = requested === "Standard" ? "Default" : requested;
+const variants =
+typeof ExitTab !== "undefined" &&
+ExitTab.prototype &&
+Array.isArray(ExitTab.prototype.variants)
+? ExitTab.prototype.variants
+: ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+return variants.includes(normalized) ? normalized : "Default";
+};
+const getExitTabVariantDisplayName = (value) =>
+normalizeExitTabProfileVariant(value) === "Default"
+? "Standard"
+: normalizeExitTabProfileVariant(value);
+const getExitTabProfileVariantValues = () => {
+const variants =
+typeof ExitTab !== "undefined" &&
+ExitTab.prototype &&
+Array.isArray(ExitTab.prototype.variants)
+? ExitTab.prototype.variants
+: ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+return variants
+.map(normalizeExitTabProfileVariant)
+.filter((variant, index, list) => list.indexOf(variant) === index);
+};
+const getExitTabProfileFormattingKeys = () =>
+typeof ExitTab !== "undefined" &&
+ExitTab.prototype &&
+Array.isArray(ExitTab.prototype.profileFormattingKeys)
+? ExitTab.prototype.profileFormattingKeys
+: [
+"variant",
+"position",
+"width",
+"color",
+"borderThickness",
+"minHeight",
+"fontSize",
+"fontFamily",
+"characterSpacing",
+"horizontalPadding",
+"exitTextSizePercent",
+"exitTextSizePercentVersion",
+"textColor",
+"FHWAFont",
+"showLeft",
+"fullBorder",
+"squareCorners",
+"cornerRadius",
+"topOffset",
+"verticalArrangement",
+"caStyle",
+"bilingual",
+"bilingualBottomText",
+"icon",
+"useTextBasedIcon",
+"tollLogoOnly",
+"tollLogoSize",
+"tollLogoSquare",
+"assetHorizontalPadding",
+"assetVerticalPadding",
+"transparent",
+"nestedTabSpacing",
+];
+const cloneExitTabValue = (value) => {
+try {
+return JSON.parse(JSON.stringify(value));
+} catch (error) {
+return value;
+}
+};
+const getExitTabPrototypeDefaultSettings = (variant = "Default") => {
+const resolvedVariant = normalizeExitTabProfileVariant(variant);
+if (
+typeof ExitTab !== "undefined" &&
+ExitTab.prototype &&
+typeof ExitTab.prototype.getDefaultProfileSettings === "function"
+) {
+return ExitTab.prototype.getDefaultProfileSettings(resolvedVariant);
+}
+const isTollLogo = resolvedVariant === "Toll Logo";
+const isIcon = resolvedVariant === "Icon";
+return {
+number: "",
+variant: resolvedVariant,
+position: "Right",
+width: "Edge",
+color: "Panel Color",
+borderThickness: 0.2,
+minHeight: 2,
+fontSize: 18,
+fontFamily: "Series EEM",
+characterSpacing: 0,
+horizontalPadding: 0,
+exitTextSizePercent: 70,
+exitTextSizePercentVersion: ExitTab.prototype.exitTextSizePercentVersion,
+textColor: "Panel Color",
+FHWAFont: true,
+showLeft: false,
+fullBorder: true,
+squareCorners: true,
+cornerRadius: "panel",
+topOffset: false,
+verticalArrangement: false,
+caStyle: false,
+bilingual: false,
+bilingualBottomText: "SORTIE",
+icon: isTollLogo ? "TxTag" : isIcon ? "AIRPORT" : null,
+useTextBasedIcon: false,
+tollLogoOnly: isTollLogo,
+tollLogoSize: 3,
+tollLogoSquare: false,
+assetHorizontalPadding: 0,
+assetVerticalPadding: 0,
+transparent: false,
+nestedTabSpacing: 0,
+};
+};
+const getFiniteExitTabNumber = (value, fallback) => {
+const parsed = typeof value === "number" ? value : parseFloat(value);
+const fallbackParsed = typeof fallback === "number" ? fallback : parseFloat(fallback);
+return Number.isFinite(parsed)
+? parsed
+: Number.isFinite(fallbackParsed)
+? fallbackParsed
+: 0;
+};
+const normalizeExitTabProfileSettings = (settings = {}, variant = null) => {
+const resolvedVariant = normalizeExitTabProfileVariant(
+variant || settings?.variant || "Default"
+);
+const fallback = getExitTabPrototypeDefaultSettings(resolvedVariant);
+const normalized = {
+...fallback,
+...(settings && typeof settings === "object" ? settings : {}),
+variant: resolvedVariant,
+};
+normalized.fontFamily = normalizeExitTabFontFamily(
+normalized.fontFamily,
+fallback.fontFamily || "Series EEM"
+);
+normalized.FHWAFont = isExitTabHighwayGothicFontFamily(normalized.fontFamily);
+normalized.characterSpacing = normalizeExitTabCharacterSpacing(
+normalized.characterSpacing
+);
+normalized.borderThickness = Math.max(
+0,
+getFiniteExitTabNumber(normalized.borderThickness, fallback.borderThickness)
+);
+normalized.minHeight = Math.max(
+0,
+getFiniteExitTabNumber(normalized.minHeight, fallback.minHeight)
+);
+normalized.fontSize = Math.max(
+1,
+getFiniteExitTabNumber(normalized.fontSize, fallback.fontSize)
+);
+normalized.tollLogoSize = normalizeExitTabAssetSizeValue(
+normalized.tollLogoSize,
+fallback.tollLogoSize || 3
+);
+normalized.horizontalPadding = Math.max(
+-1,
+Math.min(
+3,
+getFiniteExitTabNumber(normalized.horizontalPadding, fallback.horizontalPadding)
+)
+);
+normalized.exitTextSizePercent = Math.max(
+25,
+Math.min(
+100,
+getFiniteExitTabNumber(
+normalized.exitTextSizePercent,
+fallback.exitTextSizePercent
+)
+)
+);
+normalized.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+normalized.nestedTabSpacing = Math.max(
+0,
+getFiniteExitTabNumber(normalized.nestedTabSpacing, fallback.nestedTabSpacing)
+);
+normalized.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(
+normalized.assetHorizontalPadding,
+fallback.assetHorizontalPadding || 0
+);
+normalized.assetVerticalPadding = normalizeExitTabAssetPaddingValue(
+normalized.assetVerticalPadding,
+fallback.assetVerticalPadding || 0
+);
+normalized.textColor =
+normalized.textColor || ExitTab.prototype.defaultTextColor || "Panel Color";
+normalized.color =
+normalized.color || ExitTab.prototype.defaultColor || "Panel Color";
+normalized.position = normalized.position || "Right";
+normalized.width = normalized.width || "Edge";
+normalized.number = String(normalized.number ?? "");
+normalized.bilingualBottomText = normalized.bilingualBottomText || "SORTIE";
+normalized.showLeft = normalized.showLeft === true;
+normalized.fullBorder = normalized.fullBorder === true;
+normalized.squareCorners = normalized.squareCorners === true;
+normalized.cornerRadius = normalized.cornerRadius === "panel" || normalized.cornerRadius == null
+? "panel"
+: Number.isFinite(Number(normalized.cornerRadius))
+? Math.max(0, Math.min(2, Number(normalized.cornerRadius)))
+: "panel";
+normalized.topOffset = normalized.topOffset === true;
+normalized.verticalArrangement = normalized.verticalArrangement === true;
+normalized.caStyle = normalized.caStyle === true;
+normalized.bilingual = normalized.bilingual === true;
+normalized.useTextBasedIcon = normalized.useTextBasedIcon === true;
+normalized.tollLogoOnly = normalized.tollLogoOnly === true;
+normalized.tollLogoSquare = normalized.tollLogoSquare === true;
+normalized.transparent =
+normalized.transparent === true || normalized.transparent === "true";
+if (resolvedVariant === "Toll Logo" && !normalized.icon) {
+normalized.icon = "TxTag";
+} else if (resolvedVariant === "Icon" && !normalized.icon) {
+normalized.icon = "AIRPORT";
+}
+delete normalized.number;
+return normalized;
+};
+const createExitTabSettingsByVariant = (sourceProfile = null) => {
+const sourceMap =
+sourceProfile?.settingsByVariant &&
+typeof sourceProfile.settingsByVariant === "object"
+? sourceProfile.settingsByVariant
+: {};
+const legacySettings =
+sourceProfile?.settings && typeof sourceProfile.settings === "object"
+? sourceProfile.settings
+: null;
+const legacyVariant = normalizeExitTabProfileVariant(
+legacySettings?.variant || "Default"
+);
+const settingsByVariant = {};
+getExitTabProfileVariantValues().forEach((variant) => {
+const source =
+sourceMap[variant] ||
+sourceMap[getExitTabVariantDisplayName(variant)] ||
+(legacySettings && legacyVariant === variant ? legacySettings : null);
+settingsByVariant[variant] = normalizeExitTabProfileSettings(source || {}, variant);
+});
+if (
+sourceProfile?.id === EXIT_TAB_DEFAULT_PROFILE_ID &&
+sourceProfile?.typeSettingsVersion !== EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION &&
+getFiniteExitTabNumber(settingsByVariant.Default?.minHeight, 2) === 2.7
+) {
+settingsByVariant.Default.minHeight = 2;
+}
+return settingsByVariant;
+};
+const getNextExitTabProfileName = (profiles = []) => {
+const used = new Set(profiles.map((profile) => String(profile.name || "")));
+let index = Math.max(
+1,
+profiles.filter(
+(profile) => profile && profile.id !== EXIT_TAB_DEFAULT_PROFILE_ID
+).length + 1
+);
+while (used.has(`Profile ${index}`)) {
+index += 1;
+}
+return `Profile ${index}`;
+};
+const normalizeExitTabProfiles = () => {
+syncPostReference();
+if (!post || typeof post !== "object") {
+return {
+profiles: [],
+selectedId: EXIT_TAB_DEFAULT_PROFILE_ID,
+selectedVariant: "Default",
+};
+}
+if (!post.exitTabProfiles || typeof post.exitTabProfiles !== "object") {
+post.exitTabProfiles = {
+selectedId: EXIT_TAB_DEFAULT_PROFILE_ID,
+selectedVariant: "Default",
+profiles: [
+{
+id: EXIT_TAB_DEFAULT_PROFILE_ID,
+name: "Default Profile",
+locked: true,
+typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+settingsByVariant: createExitTabSettingsByVariant(),
+},
+],
+};
+}
+if (!Array.isArray(post.exitTabProfiles.profiles)) {
+post.exitTabProfiles.profiles = [];
+}
+if (
+!post.exitTabProfiles.profiles.some(
+(profile) => profile && profile.id === EXIT_TAB_DEFAULT_PROFILE_ID
+)
+) {
+post.exitTabProfiles.profiles.unshift({
+id: EXIT_TAB_DEFAULT_PROFILE_ID,
+name: "Default Profile",
+locked: true,
+typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+settingsByVariant: createExitTabSettingsByVariant(),
+});
+}
+const seenNames = new Set();
+post.exitTabProfiles.profiles = post.exitTabProfiles.profiles
+.filter((profile) => profile && typeof profile === "object")
+.map((profile, index) => {
+const normalizedId =
+typeof profile.id === "string" && profile.id.trim().length
+? profile.id
+: `profile_${Date.now().toString(36)}_${index}`;
+const originalName =
+typeof profile.name === "string" && profile.name.trim().length
+? profile.name.trim()
+: getNextExitTabProfileName(post.exitTabProfiles.profiles);
+const normalizedSettingsByVariant = createExitTabSettingsByVariant(profile);
+profile.id = normalizedId;
+profile.name = originalName;
+profile.locked =
+normalizedId === EXIT_TAB_DEFAULT_PROFILE_ID || profile.locked === true;
+profile.typeSettingsVersion = EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION;
+profile.settingsByVariant = normalizedSettingsByVariant;
+profile.settings = profile.settingsByVariant.Default;
+if (profile.id === EXIT_TAB_DEFAULT_PROFILE_ID) {
+profile.name = "Default Profile";
+profile.locked = true;
+}
+let uniqueName = profile.name;
+if (profile.id !== EXIT_TAB_DEFAULT_PROFILE_ID) {
+let suffix = 2;
+while (seenNames.has(uniqueName)) {
+uniqueName = `${profile.name} ${suffix}`;
+suffix += 1;
+}
+}
+profile.name = uniqueName;
+seenNames.add(uniqueName);
+return profile;
+});
+if (
+!post.exitTabProfiles.profiles.some(
+(profile) => profile.id === post.exitTabProfiles.selectedId
+)
+) {
+post.exitTabProfiles.selectedId = EXIT_TAB_DEFAULT_PROFILE_ID;
+}
+post.exitTabProfiles.selectedVariant = normalizeExitTabProfileVariant(
+post.exitTabProfiles.selectedVariant || selectedExitTabProfileVariant
+);
+selectedExitTabProfileId =
+post.exitTabProfiles.selectedId || EXIT_TAB_DEFAULT_PROFILE_ID;
+selectedExitTabProfileVariant = post.exitTabProfiles.selectedVariant;
+return post.exitTabProfiles;
+};
+const getExitTabProfileById = (profileId = selectedExitTabProfileId) => {
+const store = normalizeExitTabProfiles();
+return (
+store.profiles.find((profile) => profile.id === profileId) ||
+store.profiles.find(
+(profile) => profile.id === EXIT_TAB_DEFAULT_PROFILE_ID
+) ||
+store.profiles[0]
+);
+};
+const getExitTabProfileSettings = (
+profileOrId = selectedExitTabProfileId,
+variant = selectedExitTabProfileVariant
+) => {
+const profile =
+typeof profileOrId === "string"
+? getExitTabProfileById(profileOrId)
+: profileOrId;
+if (!profile) {
+return normalizeExitTabProfileSettings({}, variant);
+}
+const resolvedVariant = normalizeExitTabProfileVariant(variant);
+if (!profile.settingsByVariant || typeof profile.settingsByVariant !== "object") {
+profile.settingsByVariant = createExitTabSettingsByVariant(profile);
+}
+profile.settingsByVariant[resolvedVariant] = normalizeExitTabProfileSettings(
+profile.settingsByVariant[resolvedVariant] || {},
+resolvedVariant
+);
+profile.settings = profile.settingsByVariant.Default;
+return profile.settingsByVariant[resolvedVariant];
+};
+const forEachExitTabInPost = (callback) => {
+syncPostReference();
+if (!post || !Array.isArray(post.panels) || typeof callback !== "function") {
+return;
+}
+post.panels.forEach((panel, panelIndex) => {
+if (!panel || !Array.isArray(panel.exitTabs)) {
+return;
+}
+panel.exitTabs.forEach((exitTab, exitTabIndex) => {
+if (!exitTab || typeof exitTab !== "object") {
+return;
+}
+callback(exitTab, {
+panel,
+panelIndex,
+exitTabIndex,
+nestedExitTabIndex: -1,
+parentExitTab: null,
+});
+if (Array.isArray(exitTab.nestedExitTabs)) {
+exitTab.nestedExitTabs.forEach((nestedExitTab, nestedExitTabIndex) => {
+if (!nestedExitTab || typeof nestedExitTab !== "object") {
+return;
+}
+callback(nestedExitTab, {
+panel,
+panelIndex,
+exitTabIndex,
+nestedExitTabIndex,
+parentExitTab: exitTab,
+});
+});
+}
+});
+});
+};
+const resolveExitTabProfileId = (profileId) => {
+const requested =
+typeof profileId === "string" && profileId.trim().length
+? profileId.trim()
+: EXIT_TAB_DEFAULT_PROFILE_ID;
+const store = normalizeExitTabProfiles();
+return store.profiles.some((profile) => profile.id === requested)
+? requested
+: EXIT_TAB_DEFAULT_PROFILE_ID;
+};
+const getExitTabProfileIdFromTab = (exitTab) =>
+resolveExitTabProfileId(exitTab?.profileId || EXIT_TAB_DEFAULT_PROFILE_ID);
+const setExitTabProfileIdOnTab = (exitTab, profileId) => {
+if (!exitTab || typeof exitTab !== "object") {
+return EXIT_TAB_DEFAULT_PROFILE_ID;
+}
+const resolvedProfileId = resolveExitTabProfileId(profileId);
+exitTab.profileId = resolvedProfileId;
+return resolvedProfileId;
+};
+const syncCurrentExitTabProfileSelectionFromTab = (exitTab = null) => {
+if (exitTabEditorMode === "default") {
+return currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID;
+}
+const currentTab = exitTab || getCurrentExitTabForProfileApply();
+const resolvedProfileId = getExitTabProfileIdFromTab(currentTab);
+const store = normalizeExitTabProfiles();
+store.selectedId = resolvedProfileId;
+currentPanelExitTabProfileId = resolvedProfileId;
+selectedExitTabProfileId = resolvedProfileId;
+return resolvedProfileId;
+};
+const applyExitTabProfileToLinkedTabs = (profileId, options = {}) => {
+const resolvedProfileId = resolveExitTabProfileId(profileId);
+const profile = getExitTabProfileById(resolvedProfileId);
+if (!profile) {
+return false;
+}
+const limitVariant = options.variant
+? normalizeExitTabProfileVariant(options.variant)
+: null;
+const preserveWidth = options.preserveWidth === true;
+let changed = false;
+forEachExitTabInPost((exitTab) => {
+const tabProfileId = getExitTabProfileIdFromTab(exitTab);
+if (tabProfileId !== resolvedProfileId) {
+return;
+}
+const tabVariant = normalizeExitTabProfileVariant(exitTab.variant || "Default");
+if (limitVariant && tabVariant !== limitVariant) {
+return;
+}
+const existingWidth = exitTab.width;
+copyExitTabProfileSettingsToTarget(
+getExitTabProfileSettings(profile, tabVariant),
+exitTab,
+{ preserveText: true }
+);
+if (preserveWidth && existingWidth) exitTab.width = existingWidth;
+exitTab.variant = tabVariant;
+exitTab.profileId = resolvedProfileId;
+changed = true;
+});
+return changed;
+};
+const resetLinkedExitTabsToDefaultProfile = (profileId) => {
+const resolvedProfileId = resolveExitTabProfileId(profileId);
+if (resolvedProfileId === EXIT_TAB_DEFAULT_PROFILE_ID) {
+return false;
+}
+let changed = false;
+forEachExitTabInPost((exitTab) => {
+if (getExitTabProfileIdFromTab(exitTab) !== resolvedProfileId) {
+return;
+}
+const tabVariant = normalizeExitTabProfileVariant(exitTab.variant || "Default");
+copyExitTabProfileSettingsToTarget(
+getExitTabProfileSettings(EXIT_TAB_DEFAULT_PROFILE_ID, tabVariant),
+exitTab,
+{ preserveText: true }
+);
+exitTab.variant = tabVariant;
+exitTab.profileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+changed = true;
+});
+return changed;
+};
+const getExitTabProfileContextSettings = (variant = null) => {
+const currentTab = getCurrentExitTabForProfileApply();
+const resolvedVariant = normalizeExitTabProfileVariant(
+variant ||
+(exitTabEditorMode === "default"
+? selectedExitTabProfileVariant
+: currentTab?.variant || "Default")
+);
+const profileId =
+exitTabEditorMode === "default"
+? selectedExitTabProfileId
+: currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID;
+return getExitTabProfileSettings(profileId, resolvedVariant);
+};
+const applyExitTabSettingsToPrototype = (settings = {}) => {
+if (typeof ExitTab === "undefined" || !ExitTab.prototype) {
+return;
+}
+const normalized = normalizeExitTabProfileSettings(settings, "Default");
+ExitTab.prototype.defaultVariant = "Default";
+ExitTab.prototype.defaultPosition = normalized.position;
+ExitTab.prototype.defaultWidth = normalized.width;
+ExitTab.prototype.defaultColor = normalized.color;
+ExitTab.prototype.defaultBorderThickness = normalized.borderThickness;
+ExitTab.prototype.defaultMinHeight = normalized.minHeight;
+ExitTab.prototype.defaultFontSize = normalized.fontSize;
+ExitTab.prototype.defaultFontFamily = normalized.fontFamily || "Series EEM";
+ExitTab.prototype.defaultFHWAFont = isExitTabHighwayGothicFontFamily(
+normalized.fontFamily
+);
+if (ExitTab.prototype.defaultFHWAFont) {
+ExitTab.prototype.defaultFHWAFontFamily = ExitTab.prototype.defaultFontFamily;
+} else if (isClearviewUiFont(ExitTab.prototype.defaultFontFamily || "")) {
+ExitTab.prototype.defaultClearviewFontFamily = ExitTab.prototype.defaultFontFamily;
+}
+ExitTab.prototype.defaultCharacterSpacing = normalized.characterSpacing;
+ExitTab.prototype.defaultHorizontalPadding = normalized.horizontalPadding;
+ExitTab.prototype.defaultExitTextSizePercent = normalized.exitTextSizePercent;
+ExitTab.prototype.defaultTextColor = normalized.textColor;
+ExitTab.prototype.defaultShowLeft = normalized.showLeft === true;
+ExitTab.prototype.defaultFullBorder = normalized.fullBorder === true;
+ExitTab.prototype.defaultSquareCorners = normalized.squareCorners === true;
+ExitTab.prototype.defaultCornerRadius = normalized.cornerRadius;
+ExitTab.prototype.defaultTopOffset = normalized.topOffset === true;
+ExitTab.prototype.defaultVerticalArrangement =
+normalized.verticalArrangement === true;
+ExitTab.prototype.defaultCAStyle = normalized.caStyle === true;
+ExitTab.prototype.defaultNestedTabSpacing = normalized.nestedTabSpacing;
+ExitTab.prototype.defaultTransparent = false;
+};
+const applyExitTabDefaultProfileToPrototype = () => {
+const defaultSettings = getExitTabProfileSettings(
+EXIT_TAB_DEFAULT_PROFILE_ID,
+"Default"
+);
+applyExitTabSettingsToPrototype(defaultSettings);
+};
+const copyExitTabProfileSettingsToTarget = (
+sourceSettings = {},
+target = {},
+{ preserveText = true } = {}
+) => {
+if (!target) {
+return target;
+}
+const normalized = normalizeExitTabProfileSettings(
+sourceSettings,
+sourceSettings?.variant || target.variant || "Default"
+);
+const preserved = {
+number: target.number,
+bilingualTopText: target.bilingualTopText,
+bilingualBottomText: target.bilingualBottomText,
+bilingual: target.bilingual,
+};
+getExitTabProfileFormattingKeys().forEach((key) => {
+if (Object.prototype.hasOwnProperty.call(normalized, key)) {
+target[key] = cloneExitTabValue(normalized[key]);
+}
+});
+if (!preserveText) {
+target.number = String(target.number || "");
+target.bilingual = normalized.bilingual === true;
+target.bilingualBottomText = normalized.bilingualBottomText || "SORTIE";
+} else {
+target.number = preserved.number;
+target.bilingualTopText = preserved.bilingualTopText || "EXIT";
+target.bilingualBottomText = preserved.bilingualBottomText || "SORTIE";
+target.bilingual = preserved.bilingual === true;
+}
+target.fontFamily = normalizeExitTabFontFamily(
+target.fontFamily,
+normalized.fontFamily
+);
+target.FHWAFont = isExitTabHighwayGothicFontFamily(target.fontFamily);
+target.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+target.transparent = target.transparent === true;
+return target;
+};
+const getExitTabEditorTarget = (currentExitTab) => {
+if (exitTabEditorMode === "default") {
+return getExitTabProfileSettings(
+selectedExitTabProfileId,
+selectedExitTabProfileVariant
+);
+}
+return currentExitTab;
+};
+const setExitTabEditorMode = (mode = "current") => {
+exitTabEditorMode = mode === "default" ? "default" : "current";
+const store = normalizeExitTabProfiles();
+if (exitTabEditorMode === "default") {
+const currentProfileStillExists = store.profiles.some(
+(profile) => profile.id === currentPanelExitTabProfileId
+);
+selectedExitTabProfileId = currentProfileStillExists
+? currentPanelExitTabProfileId
+: store.selectedId || EXIT_TAB_DEFAULT_PROFILE_ID;
+selectedExitTabProfileVariant = normalizeExitTabProfileVariant(
+store.selectedVariant || selectedExitTabProfileVariant
+);
+store.selectedId = selectedExitTabProfileId;
+store.selectedVariant = selectedExitTabProfileVariant;
+} else if (
+!store.profiles.some(
+(profile) => profile.id === currentPanelExitTabProfileId
+)
+) {
+currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+}
+updateForm();
+};
+const setExitTabProfileSelected = (profileId) => {
+const profile = getExitTabProfileById(profileId);
+if (!profile) {
+return;
+}
+selectedExitTabProfileId = profile.id;
+const store = normalizeExitTabProfiles();
+store.selectedId = profile.id;
+store.selectedVariant = selectedExitTabProfileVariant;
+updateForm();
+};
+const resetExitTabCurrentProfileSelection = () => {
+const exitTab = getCurrentExitTabForProfileApply();
+if (exitTab) {
+setExitTabProfileIdOnTab(exitTab, EXIT_TAB_DEFAULT_PROFILE_ID);
+}
+currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+selectedExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+updateExitTabProfilePickerUi();
+};
+const getCurrentExitTabForProfileApply = () => {
+const panel = exposed?.getCurrentPanel?.();
+if (!panel || !Array.isArray(panel.exitTabs)) {
+return null;
+}
+const selectedIndex = exposed?.vars?.currentlySelectedExitTabIndex || 0;
+const selectedNestedIndex =
+exposed?.vars?.currentlySelectedNestedExitTabIndex ?? -1;
+const parent = panel.exitTabs[selectedIndex];
+return selectedNestedIndex > -1
+? parent?.nestedExitTabs?.[selectedNestedIndex] || null
+: parent || null;
+};
+const applyExitTabProfileToCurrentTab = (profileId) => {
+const profile = getExitTabProfileById(profileId);
+const exitTab = getCurrentExitTabForProfileApply();
+if (!profile || !exitTab) {
+return;
+}
+if (exposed && typeof exposed.beginUndoableChange === "function") {
+exposed.beginUndoableChange();
+}
+try {
+const variant = normalizeExitTabProfileVariant(exitTab.variant);
+copyExitTabProfileSettingsToTarget(
+getExitTabProfileSettings(profile, variant),
+exitTab,
+{ preserveText: true }
+);
+exitTab.variant = variant;
+setExitTabProfileIdOnTab(exitTab, profile.id);
+currentPanelExitTabProfileId = profile.id;
+selectedExitTabProfileId = profile.id;
+const store = normalizeExitTabProfiles();
+store.selectedId = profile.id;
+if (typeof exposed?.redraw === "function") {
+exposed.redraw();
+}
+updateForm();
+} finally {
+if (exposed && typeof exposed.endUndoableChange === "function") {
+exposed.endUndoableChange();
+}
+}
+};
+const shouldSaveCurrentExitTabEditsToProfile = () =>
+exitTabEditorMode === "current" &&
+currentPanelExitTabProfileId &&
+currentPanelExitTabProfileId !== EXIT_TAB_DEFAULT_PROFILE_ID;
+const saveCurrentExitTabEditsToSelectedProfile = (exitTab = null) => {
+if (!exitTab || !shouldSaveCurrentExitTabEditsToProfile()) {
+return false;
+}
+const profile = getExitTabProfileById(currentPanelExitTabProfileId);
+if (!profile) {
+return false;
+}
+const variant = normalizeExitTabProfileVariant(exitTab.variant || "Default");
+const settings = getExitTabProfileSettings(profile, variant);
+getExitTabProfileFormattingKeys().forEach((key) => {
+if (key === "number") {
+return;
+}
+if (Object.prototype.hasOwnProperty.call(exitTab, key)) {
+settings[key] = cloneExitTabValue(exitTab[key]);
+}
+});
+settings.variant = variant;
+profile.settingsByVariant[variant] = normalizeExitTabProfileSettings(
+settings,
+variant
+);
+profile.settings = profile.settingsByVariant.Default;
+setExitTabProfileIdOnTab(exitTab, profile.id);
+applyExitTabProfileToLinkedTabs(profile.id, {
+variant,
+preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+});
+return true;
+};
+const applyDefaultExitTabProfileToTab = (exitTab) => {
+if (!exitTab) {
+return false;
+}
+const variant = normalizeExitTabProfileVariant(exitTab.variant);
+copyExitTabProfileSettingsToTarget(
+getExitTabProfileSettings(EXIT_TAB_DEFAULT_PROFILE_ID, variant),
+exitTab,
+{ preserveText: false }
+);
+exitTab.variant = variant;
+setExitTabProfileIdOnTab(exitTab, EXIT_TAB_DEFAULT_PROFILE_ID);
+return true;
+};
+const makeUniqueExitTabProfileName = (
+requestedName,
+excludeId = "",
+existingProfiles = null
+) => {
+const profiles = Array.isArray(existingProfiles)
+? existingProfiles
+: normalizeExitTabProfiles().profiles;
+const base =
+String(requestedName || "").trim() ||
+getNextExitTabProfileName(profiles);
+let candidate = base;
+let index = 2;
+const nameTaken = (name) =>
+profiles.some(
+(profile) =>
+profile.id !== excludeId &&
+String(profile.name || "").toLowerCase() === name.toLowerCase()
+);
+while (nameTaken(candidate)) {
+candidate = `${base} ${index}`;
+index += 1;
+}
+return candidate;
+};
+const addExitTabProfile = (requestedName = "") => {
+const store = normalizeExitTabProfiles();
+const nextName = makeUniqueExitTabProfileName(
+String(requestedName || "").trim() ||
+getNextExitTabProfileName(store.profiles),
+"",
+store.profiles
+);
+if (exposed && typeof exposed.beginUndoableChange === "function") {
+exposed.beginUndoableChange();
+}
+try {
+const defaultProfile = getExitTabProfileById(
+EXIT_TAB_DEFAULT_PROFILE_ID
+);
+const profile = {
+id: `profile_${Date.now().toString(36)}_${Math.random()
+.toString(36)
+.slice(2, 7)}`,
+name: nextName,
+locked: false,
+typeSettingsVersion: EXIT_TAB_PROFILE_TYPE_SETTINGS_VERSION,
+settingsByVariant: cloneExitTabValue(
+defaultProfile?.settingsByVariant || createExitTabSettingsByVariant()
+),
+};
+profile.settings = profile.settingsByVariant.Default;
+store.profiles.push(profile);
+store.selectedId = profile.id;
+selectedExitTabProfileId = profile.id;
+updateForm();
+} finally {
+if (exposed && typeof exposed.endUndoableChange === "function") {
+exposed.endUndoableChange();
+}
+}
+};
+const renameExitTabProfile = (profileId, requestedName = null) => {
+const store = normalizeExitTabProfiles();
+const profile = store.profiles.find((item) => item.id === profileId);
+if (!profile) {
+return false;
+}
+const rawName =
+requestedName === null
+? profile.name
+: String(requestedName || "").trim();
+if (!rawName) {
+return false;
+}
+const nextName = makeUniqueExitTabProfileName(rawName, profile.id, store.profiles);
+if (nextName === profile.name) {
+return true;
+}
+if (exposed && typeof exposed.beginUndoableChange === "function") {
+exposed.beginUndoableChange();
+}
+try {
+profile.name = nextName;
+updateForm();
+return true;
+} finally {
+if (exposed && typeof exposed.endUndoableChange === "function") {
+exposed.endUndoableChange();
+}
+}
+};
+const deleteExitTabProfile = (profileId) => {
+const store = normalizeExitTabProfiles();
+if (
+store.profiles.length <= 1 ||
+profileId === EXIT_TAB_DEFAULT_PROFILE_ID
+) {
+return;
+}
+const index = store.profiles.findIndex(
+(profile) => profile.id === profileId
+);
+if (index < 0) {
+return;
+}
+if (exposed && typeof exposed.beginUndoableChange === "function") {
+exposed.beginUndoableChange();
+}
+try {
+resetLinkedExitTabsToDefaultProfile(profileId);
+store.profiles.splice(index, 1);
+if (
+!store.profiles.some(
+(profile) => profile.id === selectedExitTabProfileId
+)
+) {
+selectedExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+store.selectedId = selectedExitTabProfileId;
+}
+if (currentPanelExitTabProfileId === profileId) {
+currentPanelExitTabProfileId = EXIT_TAB_DEFAULT_PROFILE_ID;
+}
+updateForm();
+} finally {
+if (exposed && typeof exposed.endUndoableChange === "function") {
+exposed.endUndoableChange();
+}
+}
+};
+const readExitTabProfileSettingsFromForm = (settings, variant) => {
+const form = document.forms[0];
+const resolvedVariant = normalizeExitTabProfileVariant(variant);
+const isAssetVariant = isExitTabAssetVariantValue(resolvedVariant);
+const updated = normalizeExitTabProfileSettings(settings, resolvedVariant);
+delete updated.number;
+updated.variant = resolvedVariant;
+updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
+if (form["exitTabWidth"] && document.activeElement === form["exitTabWidth"]) {
+updated.width = form["exitTabWidth"].value || updated.width;
+}
+updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
+updated.textColor =
+form["exitTabTextColor"]?.value || updated.textColor || "Panel Color";
+updated.borderThickness = Math.max(
+0,
+getFiniteExitTabNumber(
+form["borderThickness"]?.value,
+updated.borderThickness
+)
+);
+updated.minHeight = Math.max(
+0,
+getFiniteExitTabNumber(form["minHeight"]?.value, updated.minHeight)
+);
+updated.nestedTabSpacing = Math.max(
+0,
+getFiniteExitTabNumber(
+form["nestedTabSpacing"]?.value,
+updated.nestedTabSpacing
+)
+);
+updated.fullBorder = form["fullBorder"]?.checked === true;
+updated.squareCorners = form["squareCorners"]?.checked === true;
+updated.cornerRadius = readExitTabCornerRadiusFromForm();
+updated.showLeft = form["showLeft"]?.checked === true;
+updated.topOffset = form["topOffset"]?.checked === true;
+updated.verticalArrangement =
+form["verticalArrangement"]?.checked === true;
+updated.caStyle = form["caStyle"]?.checked === true;
+updated.bilingual = form["exitTabBilingual"]?.checked === true;
+updated.bilingualBottomText =
+form["exitTabBilingualBottomText"]?.value || "SORTIE";
+updated.transparent = isAssetVariant
+? form["exitTabTransparent"]?.checked === true
+: false;
+if (isAssetVariant) {
+updated.tollLogoSize = normalizeExitTabAssetSizeValue(
+form["fontSize"]?.value,
+updated.tollLogoSize || 3
+);
+updated.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(
+form["exitTabHorizontalPadding"]?.value,
+updated.assetHorizontalPadding || 0
+);
+updated.assetVerticalPadding = normalizeExitTabAssetPaddingValue(
+form["exitTabTextSizePercent"]?.value,
+updated.assetVerticalPadding || 0
+);
+updated.useTextBasedIcon = false;
+updated.tollLogoOnly = resolvedVariant === "Toll Logo";
+updated.tollLogoSquare = false;
+if (resolvedVariant === "Toll Logo") {
+updated.icon =
+document.getElementById("exitTollLogoPickerValue")?.value ||
+updated.icon ||
+"TxTag";
+} else {
+updated.icon =
+document.getElementById("exitIconPickerValue")?.value ||
+updated.icon ||
+"AIRPORT";
+}
+} else {
+updated.fontFamily = normalizeExitTabFontFamily(
+form["exitTabFontFamily"]?.value || updated.fontFamily,
+updated.fontFamily || "Series EEM"
+);
+updated.FHWAFont = isExitTabHighwayGothicFontFamily(updated.fontFamily);
+updated.characterSpacing = normalizeExitTabCharacterSpacing(
+form["exitTabCharacterSpacing"]?.value
+);
+updated.fontSize = Math.max(
+1,
+getFiniteExitTabNumber(form["fontSize"]?.value, updated.fontSize)
+);
+updated.horizontalPadding = Math.max(
+-1,
+Math.min(
+3,
+getFiniteExitTabNumber(
+form["exitTabHorizontalPadding"]?.value,
+updated.horizontalPadding
+)
+)
+);
+updated.exitTextSizePercent = Math.max(
+25,
+Math.min(
+100,
+getFiniteExitTabNumber(
+form["exitTabTextSizePercent"]?.value,
+updated.exitTextSizePercent
+)
+)
+);
+updated.exitTextSizePercentVersion =
+ExitTab.prototype.exitTextSizePercentVersion;
+}
+return normalizeExitTabProfileSettings(updated, resolvedVariant);
+};
+const readExitTabProfileForm = () => {
+const store = normalizeExitTabProfiles();
+const profile =
+store.profiles.find((item) => item.id === selectedExitTabProfileId) ||
+store.profiles.find((item) => item.id === EXIT_TAB_DEFAULT_PROFILE_ID) ||
+store.profiles[0];
+if (!profile) {
+return false;
+}
+selectedExitTabProfileId = profile.id;
+const activeVariant = normalizeExitTabProfileVariant(
+selectedExitTabProfileVariant
+);
+const requestedVariant = normalizeExitTabProfileVariant(
+document.forms[0]["exitVariant"]?.value || activeVariant
+);
+profile.settingsByVariant[activeVariant] =
+readExitTabProfileSettingsFromForm(
+getExitTabProfileSettings(profile, activeVariant),
+activeVariant
+);
+profile.settings = profile.settingsByVariant.Default;
+store.selectedId = profile.id;
+applyExitTabProfileToLinkedTabs(profile.id, {
+variant: activeVariant,
+preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+});
+if (
+profile.id === EXIT_TAB_DEFAULT_PROFILE_ID &&
+activeVariant === "Default"
+) {
+applyExitTabSettingsToPrototype(profile.settingsByVariant.Default);
+}
+if (requestedVariant !== activeVariant) {
+selectedExitTabProfileVariant = requestedVariant;
+store.selectedVariant = requestedVariant;
+return true;
+}
+store.selectedVariant = activeVariant;
+return false;
+};
+const closeAllProfilePickers = (except = null) => {
+document.querySelectorAll(".profilePicker.open").forEach((picker) => {
+if (picker !== except) {
+picker.classList.remove("open");
+}
+});
+};
+const createExitTabProfilePicker = (selectEl) => {
+if (!selectEl) {
+return null;
+}
+if (!selectEl._profilePickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'profile', () => createExitTabProfilePicker(selectEl))) return null;
+if (selectEl._profilePickerApi) {
+selectEl._profilePickerApi.sync();
+return selectEl._profilePickerApi;
+}
+const wrapper = document.createElement("div");
+wrapper.className = "profilePicker";
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "profilePickerTrigger";
+const label = document.createElement("span");
+label.className = "profilePickerTriggerLabel";
+const caret = document.createElement("span");
+caret.className = "profilePickerTriggerCaret material-symbols-outlined";
+caret.textContent = "keyboard_arrow_down";
+const menu = document.createElement("div");
+menu.className = "profilePickerMenu";
+trigger.appendChild(label);
+trigger.appendChild(caret);
+wrapper.appendChild(trigger);
+wrapper.appendChild(menu);
+selectEl.classList.add("exitTabProfileNativeSelect");
+selectEl.insertAdjacentElement("afterend", wrapper);
+const render = () => {
+menu.innerHTML = "";
+const selectedOption = Array.from(selectEl.options).find((option) => option.value === selectEl.value);
+label.textContent = selectedOption?.textContent || "Default Profile";
+Array.from(selectEl.options).forEach((option) => {
+const button = document.createElement("button");
+button.type = "button";
+button.className = "profilePickerItem";
+button.textContent = option.textContent;
+button.dataset.profileId = option.value;
+if (option.value === selectEl.value) {
+button.classList.add("selected");
+}
+button.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+selectEl.value = option.value;
+selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+wrapper.classList.remove("open");
+});
+menu.appendChild(button);
+});
+};
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const open = !wrapper.classList.contains("open");
+closeAllProfilePickers(wrapper);
+render();
+if (open) window.SignMakerDropdowns.prepareMenu(menu);
+wrapper.classList.toggle("open", open);
+if(open)window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:12,maxWidth:24});
+});
+document.addEventListener("click", (event) => {
+if (!wrapper.contains(event.target) && !menu.contains(event.target)) {
+wrapper.classList.remove("open");
+}
+});
+selectEl.addEventListener("change", render);
+const api = { sync: render, wrapper };
+selectEl._profilePickerApi = api;
+render();
+return api;
+};
+const updateExitTabProfilePickerUi = () => {
+const select = document.getElementById("exitTabProfileSelect");
+if (!select) {
+return;
+}
+if (exitTabEditorMode !== "default") {
+syncCurrentExitTabProfileSelectionFromTab();
+}
+const store = normalizeExitTabProfiles();
+select.innerHTML = "";
+store.profiles.forEach((profile) => {
+const option = document.createElement("option");
+option.value = profile.id;
+option.textContent = profile.name;
+select.appendChild(option);
+});
+select.value = currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID;
+createExitTabProfilePicker(select)?.sync();
+};
+const commitExitTabProfileInputName = (input, profile) => {
+const previousName = profile?.name || "Default Profile";
+const nextName = String(input?.value || "").trim();
+if (!nextName) {
+input.value = previousName;
+return false;
+}
+const renamed = renameExitTabProfile(profile.id, nextName);
+if (!renamed) {
+input.value = previousName;
+}
+return renamed;
+};
+const showExitTabProfileNewInput = (container) => {
+if (!container || container.querySelector(".profileManagerNewInput")) {
+return;
+}
+const button = container.querySelector(".profileManagerAddButton");
+if (button) {
+button.hidden = true;
+}
+const input = document.createElement("input");
+input.type = "text";
+input.className = "profileManagerNewInput";
+input.placeholder = getNextExitTabProfileName(normalizeExitTabProfiles().profiles);
+const cancel = () => {
+input.remove();
+if (button) {
+button.hidden = false;
+}
+};
+let committed = false;
+const commit = () => {
+if (committed) {
+return;
+}
+const nextName = String(input.value || "").trim();
+if (!nextName) {
+committed = true;
+cancel();
+return;
+}
+committed = true;
+addExitTabProfile(nextName);
+};
+input.addEventListener("keydown", (event) => {
+if (event.key === "Enter") {
+event.preventDefault();
+commit();
+} else if (event.key === "Escape") {
+event.preventDefault();
+cancel();
+}
+});
+input.addEventListener("blur", commit);
+container.insertBefore(input, button || null);
+input.focus();
+input.select();
+};
+const renderExitTabProfileManager = () => {
+const list = document.getElementById("exitTabProfileList");
+const triggerLabel = document.getElementById("exitTabProfileManagerTriggerLabel");
+if (!list) {
+return;
+}
+const store = normalizeExitTabProfiles();
+const selectedProfile = getExitTabProfileById(selectedExitTabProfileId);
+if (triggerLabel) {
+triggerLabel.textContent = selectedProfile?.name || "Default Profile";
+}
+list.innerHTML = "";
+store.profiles.forEach((profile) => {
+const row = document.createElement("div");
+row.className = "profileManagerItem" + (profile.id === selectedExitTabProfileId ? " selected" : "");
+row.dataset.profileId = profile.id;
+row.addEventListener("click", (event) => {
+if (event.target.closest("input, button")) {
+return;
+}
+setExitTabProfileSelected(profile.id);
+closeExitTabProfileManager();
+});
+const nameLabel = document.createElement("span");
+nameLabel.className = "profileManagerNameLabel";
+nameLabel.textContent = profile.name;
+row.appendChild(nameLabel);
+const startRenamingProfile = () => {
+if (profile.locked === true) {
+return;
+}
+const nameInput = document.createElement("input");
+nameInput.type = "text";
+nameInput.className = "profileManagerNameInput";
+nameInput.value = profile.name;
+nameInput.dataset.originalName = profile.name;
+const finishRename = () => {
+if (nameInput.dataset.committing === "true") {
+return;
+}
+nameInput.dataset.committing = "true";
+commitExitTabProfileInputName(nameInput, profile);
+renderExitTabProfileManager();
+};
+nameInput.addEventListener("click", (event) => event.stopPropagation());
+nameInput.addEventListener("keydown", (event) => {
+if (event.key === "Enter") {
+event.preventDefault();
+finishRename();
+} else if (event.key === "Escape") {
+event.preventDefault();
+nameInput.value = nameInput.dataset.originalName || profile.name;
+nameInput.blur();
+}
+});
+nameInput.addEventListener("blur", finishRename);
+nameLabel.replaceWith(nameInput);
+nameInput.focus();
+nameInput.select();
+};
+const renameButton = document.createElement("button");
+renameButton.type = "button";
+renameButton.className = "profileManagerIconButton";
+renameButton.title = "Rename profile";
+renameButton.disabled = profile.locked === true;
+renameButton.innerHTML = '<span class="material-symbols-outlined">edit</span>';
+renameButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+startRenamingProfile();
+});
+row.appendChild(renameButton);
+const deleteButton = document.createElement("button");
+deleteButton.type = "button";
+deleteButton.className = "profileManagerIconButton";
+deleteButton.title = "Delete profile";
+deleteButton.disabled = profile.id === EXIT_TAB_DEFAULT_PROFILE_ID || store.profiles.length <= 1;
+deleteButton.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+deleteButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+deleteExitTabProfile(profile.id);
+});
+row.appendChild(deleteButton);
+list.appendChild(row);
+});
+const addButton = document.createElement("button");
+addButton.type = "button";
+addButton.className = "profileManagerAddButton";
+addButton.textContent = "Add New Profile";
+addButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+showExitTabProfileNewInput(list);
+});
+list.appendChild(addButton);
+};
+const updateExitTabModeUi = () => {
+const modal = document.querySelector(".sMModal.exitTabConfig");
+const currentButton = document.getElementById("exitTabCurrentModeButton");
+const defaultButton = document.getElementById("exitTabDefaultsModeButton");
+const profileControls = document.getElementById("exitTabDefaultProfileControls");
+const profileRow = document.getElementById("exitTabCurrentProfileRow");
+modal?.classList.toggle("defaultConfigMode", exitTabEditorMode === "default");
+currentButton?.classList.toggle("active", exitTabEditorMode === "current");
+defaultButton?.classList.toggle("active", exitTabEditorMode === "default");
+if (profileControls) profileControls.hidden = exitTabEditorMode !== "default";
+if (profileRow) {
+const tab = getCurrentExitTabForProfileApply();
+profileRow.hidden = exitTabEditorMode !== "current" || !tab;
+}
+renderExitTabProfileManager();
+updateExitTabProfilePickerUi();
+};
+const closeExitTabProfileManager = () => {
+const picker = document.getElementById("exitTabProfileManagerPicker");
+const trigger = document.getElementById("exitTabProfileManagerTrigger");
+if (picker) {
+const activeRenameInput = picker.querySelector(".profileManagerNameInput");
+if (activeRenameInput) {
+activeRenameInput.blur();
+}
+picker.classList.remove("open");
+}
+if (trigger) {
+trigger.setAttribute("aria-expanded", "false");
+}
+};
+const commitExitTabProfileEditorControlChange = (event) => {
+if (exitTabEditorMode !== "default") {
+return;
+}
+const target = event?.target;
+if (!target || target.id === "exitNumber") {
+return;
+}
+if (target.closest && !target.closest(".sMModal.exitTabConfig")) {
+return;
+}
+if (target.closest && target.closest("#exitTabProfileManagerPicker")) {
+return;
+}
+readForm();
+};
+const bindExitTabProfileEditorLiveControls = () => {
+const modal = document.querySelector(".sMModal.exitTabConfig");
+if (!modal || modal.dataset.exitTabProfileLiveBound === "true") {
+return;
+}
+modal.dataset.exitTabProfileLiveBound = "true";
+modal.addEventListener("input", (event) => {
+const target = event.target;
+if (
+target instanceof HTMLInputElement &&
+(target.type === "range" || target.type === "number" || target.type === "text")
+) {
+commitExitTabProfileEditorControlChange(event);
+}
+});
+modal.addEventListener("change", (event) => {
+const target = event.target;
+if (
+target instanceof HTMLSelectElement ||
+target instanceof HTMLInputElement
+) {
+commitExitTabProfileEditorControlChange(event);
+}
+});
+};
+const setupExitTabProfileControls = () => {
+const trigger = document.getElementById("exitTabProfileManagerTrigger");
+const picker = document.getElementById("exitTabProfileManagerPicker");
+bindExitTabProfileEditorLiveControls();
+if (trigger && picker && trigger.dataset.exitTabProfileBound !== "true") {
+trigger.dataset.exitTabProfileBound = "true";
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+renderExitTabProfileManager();
+const willOpen = !picker.classList.contains("open");
+picker.classList.toggle("open", willOpen);
+trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+});
+document.addEventListener("click", (event) => {
+if (!picker.contains(event.target)) {
+closeExitTabProfileManager();
+}
+});
+}
+updateExitTabModeUi();
+};
+const getNestedExitTabLimit = () => null;
+const getPostThicknessFallback = () =>
+typeof Post.prototype.defaultThickness === "number"
+? Post.prototype.defaultThickness
+: 1;
+const normalizeStoredPostThickness = (value) => {
+const parsed =
+typeof value === "string" ? parseFloat(value) : Number(value);
+if (Number.isFinite(parsed)) {
+return Math.max(0, parsed);
+}
+return getPostThicknessFallback();
+};
+const logStorageWarning = (message, error) => {
+if (!localStorageWarningLogged) {
+console.warn(message, error);
+localStorageWarningLogged = true;
+}
+};
+const hasLocalStorage = () => {
+localStorageAvailable = true;
+return true;
+};
+const getStoredItem = (key) => {
+if (!hasLocalStorage()) {
+return null;
+}
+try {
+return window.localStorage.getItem(key);
+} catch (error) {
+logStorageWarning("Unable to read from localStorage", error);
+localStorageAvailable = false;
+return null;
+}
+};
+const setStoredItem = (key, value) => {
+if (!hasLocalStorage()) {
+return false;
+}
+try {
+window.localStorage.setItem(key, value);
+return true;
+} catch (error) {
+logStorageWarning("Unable to write to localStorage", error);
+localStorageAvailable = false;
+return false;
+}
+};
+const normalizePanelSpacingPreference = (value, fallback = 1) => {
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
+const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1;
+return Number.isFinite(parsed) && parsed >= 0
+? Math.min(parsed, 8)
+: Math.max(0, Math.min(resolvedFallback, 8));
+};
+const getDefaultPanelSpacingPreference = () =>
+normalizePanelSpacingPreference(getStoredItem(STORAGE_KEYS.defaultPanelSpacing), 1);
+const setDefaultPanelSpacingPreference = (value) => {
+const normalized = normalizePanelSpacingPreference(value, 1);
+setStoredItem(STORAGE_KEYS.defaultPanelSpacing, String(normalized));
+return normalized;
+};
+const FORM_PERSISTENCE_DB_NAME = "signMaker.formPersistence.v1";
+const FORM_PERSISTENCE_DB_STORE = "keyValue";
+let formPersistenceDbPromise = null;
+const openFormPersistenceDB = () => {
+if (formPersistenceDbPromise) {
+return formPersistenceDbPromise;
+}
+formPersistenceDbPromise = new Promise((resolve, reject) => {
+if (typeof window === "undefined" || !window.indexedDB) {
+reject(new Error("IndexedDB is not available."));
+return;
+}
+const request = window.indexedDB.open(FORM_PERSISTENCE_DB_NAME, 1);
+request.onupgradeneeded = () => {
+const db = request.result;
+if (!db.objectStoreNames.contains(FORM_PERSISTENCE_DB_STORE)) {
+db.createObjectStore(FORM_PERSISTENCE_DB_STORE, { keyPath: "key" });
+}
+};
+request.onsuccess = () => resolve(request.result);
+request.onerror = () => reject(request.error || new Error("Unable to open form persistence database."));
+request.onblocked = () => reject(new Error("Form persistence database open was blocked."));
+});
+formPersistenceDbPromise.catch(() => {
+formPersistenceDbPromise = null;
+});
+return formPersistenceDbPromise;
+};
+const setPersistentFormValue = async (key, value) => {
+const db = await openFormPersistenceDB();
+return new Promise((resolve, reject) => {
+const transaction = db.transaction(FORM_PERSISTENCE_DB_STORE, "readwrite");
+const store = transaction.objectStore(FORM_PERSISTENCE_DB_STORE);
+store.put({ key, value, dateModified: new Date().toISOString() });
+transaction.oncomplete = () => resolve(true);
+transaction.onerror = () => reject(transaction.error || new Error("Unable to save persistent form value."));
+transaction.onabort = () => reject(transaction.error || new Error("Persistent form value save was aborted."));
+});
+};
+const getPersistentFormValue = async (key) => {
+const db = await openFormPersistenceDB();
+return new Promise((resolve, reject) => {
+const transaction = db.transaction(FORM_PERSISTENCE_DB_STORE, "readonly");
+const store = transaction.objectStore(FORM_PERSISTENCE_DB_STORE);
+const request = store.get(key);
+request.onsuccess = () => resolve(request.result ? request.result.value : null);
+request.onerror = () => reject(request.error || new Error("Unable to read persistent form value."));
+});
+};
+const parseStoredRecordArray = (raw) => {
+if (!raw) {
+return [];
+}
+try {
+const parsed = JSON.parse(raw);
+return Array.isArray(parsed) ? parsed : [];
+} catch (error) {
+console.warn("Unable to parse stored record array", error);
+return [];
+}
+};
+const subpanelClipboardSelection = {
+contextKey: "",
+selectedBlocks: new Set(),
+selectedRows: new Set(),
+anchor: null,
+multiActive: false,
+lastAppSelectionKey: "",
+};
+const getSubpanelSelectionContextKey = () => {
+if (!exposed || !exposed.vars) {
+return "";
+}
+return [
+exposed.vars.currentlySelectedPanelIndex,
+exposed.vars.currentlySelectedSubPanelIndex,
+JSON.stringify(exposed.getGroupEditingPath?.() || []),
+].join(":");
+};
+const getSubpanelAppSelectionKey = () => {
+if (!exposed || !exposed.vars) {
+return "";
+}
+return [
+exposed.vars.currentlySelectedRowIndex,
+exposed.vars.currentlySelectedBlockIndex,
+].join(":");
+};
+const getSubpanelBlockSelectionKey = (rowIndex, blockIndex) =>
+`${Number(rowIndex)}:${Number(blockIndex)}`;
+const parseSubpanelBlockSelectionKey = (key) => {
+const parts = String(key || "").split(":");
+return {
+rowIndex: Number(parts[0]),
+blockIndex: Number(parts[1]),
+};
+};
+const isSubpanelClipboardSelectionAllowed = () => {
+if (!exposed || !exposed.vars || typeof exposed.getCurrentSubPanel !== "function") {
+return false;
+}
+const currentTarget = exposed.getCurrentSubPanel();
+const rows = currentTarget?.blockElements?.rows;
+return Array.isArray(rows);
+};
+const showSubpanelClipboardNotice = (message) => {
+if (!message) {
+return;
+}
+let notice = document.getElementById("shortcutActionNotice");
+if (!notice) {
+notice = document.createElement("div");
+notice.id = "shortcutActionNotice";
+notice.style.position = "fixed";
+notice.style.top = "1rem";
+notice.style.left = "50%";
+notice.style.transform = "translateX(-50%)";
+notice.style.zIndex = "5000";
+notice.style.padding = "0.4rem 0.8rem";
+notice.style.background = "rgba(0, 0, 0, 0.75)";
+notice.style.color = "#fff";
+notice.style.borderRadius = "0.35rem";
+notice.style.fontFamily = "Inter, sans-serif";
+notice.style.fontSize = "0.95rem";
+notice.style.opacity = "0";
+notice.style.pointerEvents = "none";
+notice.style.transition = "opacity 0.2s ease";
+document.body.appendChild(notice);
+}
+notice.textContent = message;
+notice.style.opacity = "1";
+clearTimeout(notice._hideTimer);
+notice._hideTimer = setTimeout(() => {
+notice.style.opacity = "0";
+}, 900);
+};
+const resetSubpanelClipboardSelectionToStandard = (rows = []) => {
+subpanelClipboardSelection.contextKey = getSubpanelSelectionContextKey();
+subpanelClipboardSelection.selectedBlocks.clear();
+subpanelClipboardSelection.selectedRows.clear();
+subpanelClipboardSelection.multiActive = false;
+subpanelClipboardSelection.anchor = null;
+subpanelClipboardSelection.lastAppSelectionKey = getSubpanelAppSelectionKey();
+if (!isSubpanelClipboardSelectionAllowed()) {
+return;
+}
+const rowIndex = Number(exposed?.vars?.currentlySelectedRowIndex);
+const blockIndex = Number(exposed?.vars?.currentlySelectedBlockIndex);
+const row = rows[rowIndex];
+if (
+Array.isArray(row) &&
+row.length > 0 &&
+Number.isInteger(blockIndex) &&
+blockIndex >= 0 &&
+blockIndex < row.length
+) {
+subpanelClipboardSelection.selectedBlocks.add(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+);
+subpanelClipboardSelection.anchor = {
+kind: "block",
+rowIndex,
+blockIndex,
+};
+}
+};
+const pruneSubpanelClipboardSelection = (rows = []) => {
+if (!Array.isArray(rows) || !rows.length || !isSubpanelClipboardSelectionAllowed()) {
+subpanelClipboardSelection.selectedBlocks.clear();
+subpanelClipboardSelection.selectedRows.clear();
+subpanelClipboardSelection.anchor = null;
+return;
+}
+for (const key of Array.from(subpanelClipboardSelection.selectedBlocks)) {
+const { rowIndex, blockIndex } = parseSubpanelBlockSelectionKey(key);
+const row = rows[rowIndex];
+if (
+!Array.isArray(row) ||
+!Number.isInteger(blockIndex) ||
+blockIndex < 0 ||
+blockIndex >= row.length
+) {
+subpanelClipboardSelection.selectedBlocks.delete(key);
+}
+}
+for (const rowIndex of Array.from(subpanelClipboardSelection.selectedRows)) {
+const row = rows[rowIndex];
+if (!Array.isArray(row) || row.length === 0) {
+subpanelClipboardSelection.selectedRows.delete(rowIndex);
+continue;
+}
+for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+subpanelClipboardSelection.selectedBlocks.add(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+);
+}
+}
+if (subpanelClipboardSelection.multiActive) {
+for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+const row = rows[rowIndex];
+if (!Array.isArray(row) || row.length === 0) {
+subpanelClipboardSelection.selectedRows.delete(rowIndex);
+continue;
+}
+const entireRowSelected = row.every((_, blockIndex) =>
+subpanelClipboardSelection.selectedBlocks.has(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+)
+);
+if (entireRowSelected) {
+subpanelClipboardSelection.selectedRows.add(rowIndex);
+} else {
+subpanelClipboardSelection.selectedRows.delete(rowIndex);
+}
+}
+}
+};
+const ensureSubpanelClipboardSelectionForRows = (rows = []) => {
+const contextKey = getSubpanelSelectionContextKey();
+const appSelectionKey = getSubpanelAppSelectionKey();
+if (
+subpanelClipboardSelection.contextKey !== contextKey ||
+subpanelClipboardSelection.lastAppSelectionKey !== appSelectionKey
+) {
+resetSubpanelClipboardSelectionToStandard(rows);
+return;
+}
+pruneSubpanelClipboardSelection(rows);
+};
+const getSubpanelClipboardSelectedBlockCount = () =>
+subpanelClipboardSelection.selectedBlocks.size;
+const getSubpanelClipboardSelectionPayload = (rows = []) => {
+ensureSubpanelClipboardSelectionForRows(rows);
+if (!isSubpanelClipboardSelectionAllowed()) {
+return {
+panelIndex: exposed?.vars?.currentlySelectedPanelIndex ?? -1,
+subPanelIndex: exposed?.vars?.currentlySelectedSubPanelIndex ?? -1,
+rows: [],
+selectedBlockCount: 0,
+selectedRowCount: 0,
+standardOnly: false,
+allowEmpty: true,
+};
+}
+const rowEntries = [];
+let selectedBlockCount = 0;
+for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+const row = rows[rowIndex];
+if (!Array.isArray(row) || row.length === 0) {
+continue;
+}
+const selectedBlockIndices = [];
+for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+if (
+subpanelClipboardSelection.selectedBlocks.has(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+)
+) {
+selectedBlockIndices.push(blockIndex);
+}
+}
+if (!selectedBlockIndices.length) {
+continue;
+}
+const fullRow =
+subpanelClipboardSelection.selectedRows.has(rowIndex) &&
+selectedBlockIndices.length === row.length;
+selectedBlockCount += selectedBlockIndices.length;
+rowEntries.push({
+rowIndex,
+selectedBlockIndices,
+fullRow,
+});
+}
+return {
+panelIndex: exposed?.vars?.currentlySelectedPanelIndex ?? -1,
+subPanelIndex: exposed?.vars?.currentlySelectedSubPanelIndex ?? -1,
+rows: rowEntries,
+selectedBlockCount,
+selectedRowCount: rowEntries.length,
+standardOnly:
+!subpanelClipboardSelection.multiActive &&
+selectedBlockCount === 1 &&
+rowEntries.length === 1 &&
+subpanelClipboardSelection.selectedRows.size === 0,
+allowEmpty: subpanelClipboardSelection.multiActive,
+};
+};
+const getSubpanelSelectionLinearPositions = (rows = []) => {
+const positions = [];
+rows.forEach((row, rowIndex) => {
+if (!Array.isArray(row)) {
+return;
+}
+row.forEach((_, blockIndex) => {
+positions.push({ rowIndex, blockIndex });
+});
+});
+return positions;
+};
+const getSubpanelSelectionRangeIndexes = (point, rows = []) => {
+const positions = getSubpanelSelectionLinearPositions(rows);
+if (!positions.length || !point) {
+return null;
+}
+const indexesForRow = positions
+.map((position, index) => ({ position, index }))
+.filter(({ position }) => position.rowIndex === point.rowIndex)
+.map(({ index }) => index);
+if (point.kind === "row") {
+if (!indexesForRow.length) {
+return null;
+}
+return {
+start: indexesForRow[0],
+end: indexesForRow[indexesForRow.length - 1],
+positions,
+};
+}
+const foundIndex = positions.findIndex(
+(position) =>
+position.rowIndex === point.rowIndex &&
+position.blockIndex === point.blockIndex
+);
+if (foundIndex < 0) {
+return null;
+}
+return {
+start: foundIndex,
+end: foundIndex,
+positions,
+};
+};
+const addSubpanelSelectionRange = (targetPoint, rows = []) => {
+const anchorPoint = subpanelClipboardSelection.anchor || targetPoint;
+const positions = getSubpanelSelectionLinearPositions(rows);
+if (!positions.length) {
+return;
+}
+const getRangeForPoint = (point) => {
+if (!point) {
+return null;
+}
+const rowIndexes = positions
+.map((position, index) => ({ position, index }))
+.filter(({ position }) => position.rowIndex === point.rowIndex)
+.map(({ index }) => index);
+if (point.kind === "row") {
+if (!rowIndexes.length) {
+return null;
+}
+return {
+start: rowIndexes[0],
+end: rowIndexes[rowIndexes.length - 1],
+};
+}
+const foundIndex = positions.findIndex(
+(position) =>
+position.rowIndex === point.rowIndex &&
+position.blockIndex === point.blockIndex
+);
+if (foundIndex < 0) {
+return null;
+}
+return { start: foundIndex, end: foundIndex };
+};
+const anchorRange = getRangeForPoint(anchorPoint);
+const targetRange = getRangeForPoint(targetPoint);
+if (!anchorRange || !targetRange) {
+return;
+}
+const start = Math.min(anchorRange.start, targetRange.start);
+const end = Math.max(anchorRange.end, targetRange.end);
+for (let index = start; index <= end; index++) {
+const position = positions[index];
+if (!position) {
+continue;
+}
+subpanelClipboardSelection.selectedBlocks.add(
+getSubpanelBlockSelectionKey(position.rowIndex, position.blockIndex)
+);
+}
+};
+const setSubpanelClipboardRowSelected = (rowIndex, rows = [], selected = true) => {
+const row = rows[rowIndex];
+if (!Array.isArray(row) || row.length === 0) {
+return;
+}
+if (selected) {
+subpanelClipboardSelection.selectedRows.add(rowIndex);
+for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+subpanelClipboardSelection.selectedBlocks.add(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+);
+}
+} else {
+subpanelClipboardSelection.selectedRows.delete(rowIndex);
+for (let blockIndex = 0; blockIndex < row.length; blockIndex++) {
+subpanelClipboardSelection.selectedBlocks.delete(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+);
+}
+}
+};
+const rowIsFullySelectedForSubpanelClipboard = (rowIndex, rows = []) => {
+const row = rows[rowIndex];
+if (!Array.isArray(row) || row.length === 0) {
+return false;
+}
+return row.every((_, blockIndex) =>
+subpanelClipboardSelection.selectedBlocks.has(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+)
+);
+};
+const refreshSubpanelClipboardSelectionDisplay = () => {
+const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+const root = document.getElementById("sMSPTextList");
+if (!root) {
+return;
+}
+pruneSubpanelClipboardSelection(rows);
+root.querySelectorAll(".textEditorBlock").forEach((block) => {
+const rowIndex = Number(block.dataset.row);
+const blockIndex = Number(block.dataset.block);
+const selected = subpanelClipboardSelection.selectedBlocks.has(
+getSubpanelBlockSelectionKey(rowIndex, blockIndex)
+);
+block.classList.toggle("clipboardSelected", selected);
+});
+root.querySelectorAll(".sMControlRow").forEach((rowElement) => {
+const rowIndex = Number(rowElement.dataset.dataRow);
+rowElement.classList.toggle(
+"clipboardRowSelected",
+rowIsFullySelectedForSubpanelClipboard(rowIndex, rows)
+);
+});
+};
+const announceSubpanelClipboardSelectionCount = () => {
+const count = getSubpanelClipboardSelectedBlockCount();
+showSubpanelClipboardNotice(
+`${count} element${count === 1 ? "" : "s"} selected`
+);
+};
+const handleSubpanelBlockSelectionClick = (rowIndex, blockIndex, event, rows = []) => {
+ensureSubpanelClipboardSelectionForRows(rows);
+subpanelClipboardSelection.contextKey = getSubpanelSelectionContextKey();
+subpanelClipboardSelection.multiActive = true;
+if (event.shiftKey) {
+addSubpanelSelectionRange(
+{ kind: "block", rowIndex, blockIndex },
+rows
+);
+} else {
+const key = getSubpanelBlockSelectionKey(rowIndex, blockIndex);
+if (subpanelClipboardSelection.selectedBlocks.has(key)) {
+subpanelClipboardSelection.selectedBlocks.delete(key);
+subpanelClipboardSelection.selectedRows.delete(rowIndex);
+} else {
+subpanelClipboardSelection.selectedBlocks.add(key);
+}
+}
+subpanelClipboardSelection.anchor = {
+kind: "block",
+rowIndex,
+blockIndex,
+};
+pruneSubpanelClipboardSelection(rows);
+refreshSubpanelClipboardSelectionDisplay();
+announceSubpanelClipboardSelectionCount();
+};
+const handleSubpanelRowSelectionClick = (rowIndex, event, rows = []) => {
+ensureSubpanelClipboardSelectionForRows(rows);
+subpanelClipboardSelection.contextKey = getSubpanelSelectionContextKey();
+subpanelClipboardSelection.multiActive = true;
+if (event.shiftKey) {
+addSubpanelSelectionRange({ kind: "row", rowIndex }, rows);
+} else {
+const selected = rowIsFullySelectedForSubpanelClipboard(rowIndex, rows);
+setSubpanelClipboardRowSelected(rowIndex, rows, !selected);
+}
+subpanelClipboardSelection.anchor = {
+kind: "row",
+rowIndex,
+};
+pruneSubpanelClipboardSelection(rows);
+refreshSubpanelClipboardSelectionDisplay();
+announceSubpanelClipboardSelectionCount();
+};
+const copyCurrentSubpanelClipboardSelection = () => {
+const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+const result =
+exposed && typeof exposed.copySubpanelClipboard === "function"
+? exposed.copySubpanelClipboard(getSubpanelClipboardSelectionPayload(rows))
+: { copied: false, copiedBlockCount: 0, reason: "Copy is not available." };
+if (result?.copied) {
+const count = result.copiedBlockCount || 0;
+showSubpanelClipboardNotice(
+`${count} element${count === 1 ? "" : "s"} copied`
+);
+if (typeof updateForm === "function") {
+updateForm();
+}
+} else {
+showSubpanelClipboardNotice(result?.reason || "No elements selected");
+}
+};
+const cutCurrentSubpanelClipboardSelection = () => {
+const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+const result =
+exposed && typeof exposed.cutSubpanelClipboard === "function"
+? exposed.cutSubpanelClipboard(getSubpanelClipboardSelectionPayload(rows))
+: { cut: false, copiedBlockCount: 0, reason: "Cut is not available." };
+if (result?.cut) {
+const count = result.copiedBlockCount || 0;
+showSubpanelClipboardNotice(
+`${count} element${count === 1 ? "" : "s"} cut`
+);
+if (typeof updateForm === "function") {
+updateForm();
+}
+} else {
+showSubpanelClipboardNotice(result?.reason || "No elements selected");
+}
+};
+const pasteCurrentSubpanelClipboardSelection = (
+targetRowIndex = null,
+{ pasteAfter = false } = {}
+) => {
+if (!exposed || typeof exposed.pasteSubpanelClipboard !== "function") {
+showSubpanelClipboardNotice("Paste is not available.");
+return;
+}
+const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+const result = exposed.pasteSubpanelClipboard({
+targetRowIndex,
+selection: getSubpanelClipboardSelectionPayload(rows),
+pasteAfter,
+});
+if (result?.pasted) {
+const count = result.pastedBlockCount || 0;
+const suffix = pasteAfter ? " pasted after" : " pasted";
+showSubpanelClipboardNotice(
+`${count} element${count === 1 ? "" : "s"}${suffix}`
+);
+} else {
+showSubpanelClipboardNotice(result?.reason || "Nothing to paste");
+}
+};
+const subpanelMenuIsOpen = () => {
+const configBar = document.getElementById("sMConfigBar");
+return !!configBar && configBar.dataset.currentMenu === "subPanelConfig";
+};
+let subpanelHeightSyncFrame = 0;
+const syncSubpanelModalHeight = () => {
+if (!subpanelMenuIsOpen()) {
+return;
+}
+const modal = document.querySelector(".sMModal.subPanelConfig");
+const content = modal?.querySelector(":scope > .sMModalContent");
+if (!modal || !content || window.getComputedStyle(modal).display === "none") {
+return;
+}
+const activeHolder = Array.from(content.children).find((holder) => {
+const style = window.getComputedStyle(holder);
+return (
+!holder.classList.contains("tabHidden") &&
+style.display !== "none" &&
+style.visibility !== "hidden"
+);
+});
+if (!activeHolder) {
+return;
+}
+content.style.removeProperty("height");
+content.style.removeProperty("overflow-y");
+const rootStyle = window.getComputedStyle(document.documentElement);
+const zoom = Math.max(0.01, parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1);
+const contentRect = content.getBoundingClientRect();
+const contentStyle = window.getComputedStyle(content);
+const paddingBottom = (parseFloat(contentStyle.paddingBottom) || 0) * zoom;
+let visibleBottom = contentRect.top;
+const candidates = [activeHolder, ...activeHolder.querySelectorAll("*")];
+candidates.forEach((element) => {
+const style = window.getComputedStyle(element);
+if (
+style.display === "none" ||
+style.visibility === "hidden" ||
+style.position === "fixed" ||
+element.closest(
+".fontPickerMenu, .colorPickerMenu, .colorPickerCustomPanel, .shieldPickerPopover, .profilePickerMenu, dialog"
+)
+) {
+return;
+}
+const rect = element.getBoundingClientRect();
+if (rect.width === 0 && rect.height === 0) {
+return;
+}
+if (rect.bottom > visibleBottom) {
+visibleBottom = rect.bottom;
+}
+});
+const desiredScreenHeight = Math.max(0, visibleBottom - contentRect.top + paddingBottom);
+const availableScreenHeight = Math.max(0, window.innerHeight - contentRect.top - 12);
+const desiredCssHeight = desiredScreenHeight / zoom;
+const availableCssHeight = availableScreenHeight / zoom;
+const needsScroll = desiredCssHeight > availableCssHeight + 1;
+const targetHeight = Math.max(0, Math.min(desiredCssHeight, availableCssHeight));
+content.style.setProperty("height", `${targetHeight}px`, "important");
+content.style.setProperty("max-height", `${availableCssHeight}px`, "important");
+content.style.setProperty("overflow-y", needsScroll ? "auto" : "hidden", "important");
+content.style.setProperty("overflow-x", "hidden", "important");
+};
+const scheduleSubpanelModalHeightSync = () => {
+if (subpanelHeightSyncFrame) {
+cancelAnimationFrame(subpanelHeightSyncFrame);
+}
+subpanelHeightSyncFrame = requestAnimationFrame(() => {
+subpanelHeightSyncFrame = requestAnimationFrame(() => {
+subpanelHeightSyncFrame = 0;
+syncSubpanelModalHeight();
+});
+});
+};
+const CUSTOM_ICON_VALUE_PREFIX = "CUSTOMICON-";
+let customIconRecords = [];
+let iconPickerController = null;
+const createCustomIconId = () =>
+"cicon_" +
+Date.now().toString(36) +
+"_" +
+Math.random().toString(36).slice(2, 8);
+const getCustomIconValue = (id) =>
+CUSTOM_ICON_VALUE_PREFIX + String(id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+const isCustomIconValue = (value) =>
+typeof value === "string" && value.startsWith(CUSTOM_ICON_VALUE_PREFIX);
+const normalizeCustomIconLabel = (label, fallback = "Custom Icon") => {
+const normalized = String(label || "")
+.replace(/\.[a-z0-9]+$/i, "")
+.replace(/[_-]+/g, " ")
+.replace(/\s+/g, " ")
+.trim();
+return normalized || fallback;
+};
+const normalizeCustomIconRecord = (record = {}, index = 0) => {
+const id = String(record.id || createCustomIconId());
+const src = String(record.src || record.data || record.imageData || "").trim();
+return {
+id,
+value: getCustomIconValue(id),
+label: normalizeCustomIconLabel(record.label || record.name, `Custom Icon ${index + 1}`),
+src,
+dateCreated: record.dateCreated || new Date().toISOString(),
+dateModified: record.dateModified || record.dateCreated || new Date().toISOString(),
+};
+};
+const syncCustomIconRegistry = () => {
+if (typeof IconElement === "undefined" || !IconElement.prototype.icons) {
+return;
+}
+const icons = IconElement.prototype.icons;
+for (const key of Object.keys(icons)) {
+if (icons[key]?.customIconPicker) {
+delete icons[key];
+}
+}
+customIconRecords.forEach((record, index) => {
+if (!record.src) {
+return;
+}
+icons[record.value] = {
+label: record.label,
+src: record.src,
+customIconPicker: true,
+customIconId: record.id,
+customIconOrder: index,
+dateCreated: record.dateCreated,
+};
+});
+iconPickerController?.applyLabels();
+};
+const loadCustomIconRecords = async () => {
+let records = [];
+try {
+records = parseStoredRecordArray(getStoredItem(STORAGE_KEYS.customIconPickerIcons));
+} catch (error) {
+console.warn("Unable to load custom icon records from localStorage", error);
+}
+try {
+const indexedValue = await getPersistentFormValue(STORAGE_KEYS.customIconPickerIcons);
+const indexedRecords = parseStoredRecordArray(indexedValue);
+if (indexedRecords.length || !records.length) {
+records = indexedRecords;
+}
+} catch (error) {
+if (!records.length) {
+console.warn("Unable to load custom icon records from IndexedDB", error);
+}
+}
+customIconRecords = records.map(normalizeCustomIconRecord).filter((record) => record.src);
+syncCustomIconRegistry();
+return customIconRecords;
+};
+const saveCustomIconRecords = () => {
+const serializedRecords = JSON.stringify(customIconRecords);
+const savedToLocalStorage = setStoredItem(
+STORAGE_KEYS.customIconPickerIcons,
+serializedRecords
+);
+setPersistentFormValue(STORAGE_KEYS.customIconPickerIcons, serializedRecords).catch((error) => {
+console.warn("Unable to save custom icon records to IndexedDB", error);
+});
+return savedToLocalStorage;
+};
+const upsertCustomIconRecord = (record) => {
+const normalizedRecord = normalizeCustomIconRecord(
+record,
+customIconRecords.length
+);
+if (!normalizedRecord.src) {
+return null;
+}
+const existingIndex = customIconRecords.findIndex(
+(existing) => existing.id === normalizedRecord.id
+);
+if (existingIndex >= 0) {
+normalizedRecord.dateCreated = customIconRecords[existingIndex].dateCreated;
+customIconRecords[existingIndex] = normalizedRecord;
+} else {
+customIconRecords.push(normalizedRecord);
+}
+saveCustomIconRecords();
+syncCustomIconRegistry();
+return normalizedRecord;
+};
+const deleteCustomIconRecord = (id) => {
+const record = customIconRecords.find((existing) => existing.id === id) || null;
+if (!record) {
+return null;
+}
+customIconRecords = customIconRecords.filter(
+(existing) => existing.id !== id
+);
+saveCustomIconRecords();
+syncCustomIconRegistry();
+return record;
+};
+const traverseControlIconElements = (control, callback) => {
+if (!control || !Array.isArray(control.rows)) {
+return;
+}
+for (const row of control.rows) {
+if (!Array.isArray(row)) {
+continue;
+}
+for (const blockElement of row) {
+if (
+blockElement &&
+(blockElement instanceof IconElement ||
+Object.prototype.hasOwnProperty.call(blockElement, "icon"))
+) {
+callback(blockElement);
+}
+}
+}
+};
+const revertCustomIconUsageToDefault = (value) => {
+const targetValue = String(value || "");
+const currentPost = exposed && typeof exposed.getPost === "function"
+? exposed.getPost()
+: post;
+if (!targetValue || !currentPost || !Array.isArray(currentPost.panels)) {
+return;
+}
+for (const panel of currentPost.panels) {
+for (const tab of panel.exitTabs || []) {
+for (const item of [tab, ...(tab.nestedExitTabs || [])]) {
+if (item.icon === targetValue) item.icon = IconElement.prototype.defaultIcon;
+}
+}
+const sign = panel?.sign;
+if (!sign) {
+continue;
+}
+[sign.blockElements, sign.globalTopBlockElements, sign.globalBottomBlockElements].forEach(
+(control) => traverseControlIconElements(control, (iconElement) => {
+if (iconElement.icon === targetValue) {
+iconElement.icon = IconElement.prototype.defaultIcon;
+}
+})
+);
+if (Array.isArray(sign.subPanels)) {
+for (const subPanel of sign.subPanels) {
+traverseControlIconElements(subPanel.blockElements, (iconElement) => {
+if (iconElement.icon === targetValue) {
+iconElement.icon = IconElement.prototype.defaultIcon;
+}
+});
+}
+}
+}
+};
+const getIconPickerController = () => {
+if (!iconPickerController) {
+iconPickerController = new IconPickerController({
+icons: IconElement.prototype.icons,
+loadPreferences: async () => {
+const stored = getStoredItem(STORAGE_KEYS.iconPickerPreferences) ||
+await getPersistentFormValue(STORAGE_KEYS.iconPickerPreferences);
+return stored ? JSON.parse(stored) : null;
+},
+savePreferences: (preferences) => {
+const serialized = JSON.stringify(preferences);
+setStoredItem(STORAGE_KEYS.iconPickerPreferences, serialized);
+setPersistentFormValue(STORAGE_KEYS.iconPickerPreferences, serialized).catch((error) => {
+console.warn("Unable to save icon picker preferences", error);
+});
+},
+uploadIcon: upsertCustomIconRecord,
+prepareIcon: (key) => {
+const definition = IconElement.prototype.icons[key];
+const source = definition?.src || definition?.asset || definition?.url || "";
+return prepareTightImageSource(source);
+},
+onLabelsChanged: () => {
+for (const [inputId, labelId, prefix] of [
+["sdIcon_icon", "sdIcon_selectedLabel", "Current: "],
+["exitIconPickerValue", "exitIconCurrent", ""],
+["settingsDefaultsIconValue", "settingsDefaultsIconCurrent", ""],
+]) {
+const input = document.getElementById(inputId);
+const label = document.getElementById(labelId);
+const definition = IconElement.prototype.icons[input?.value];
+if (label && definition) label.textContent = prefix + definition.label;
+}
+},
+deleteIcon: (definition, key) => {
+if (!deleteCustomIconRecord(definition.customIconId)) return false;
+exposed?.beginUndoableChange?.();
+try {
+const fallback = IconElement.prototype.defaultIcon;
+for (const id of ["sdIcon_icon", "exitIconPickerValue", "settingsDefaultsIconValue"]) {
+const input = document.getElementById(id);
+if (input?.value !== key) continue;
+input.value = fallback;
+if (id === "settingsDefaultsIconValue") saveSettingsDefaultsField(id, fallback);
+}
+revertCustomIconUsageToDefault(key);
+updateForm();
+exposed?.redraw?.();
+} finally {
+exposed?.endUndoableChange?.();
+}
+return true;
+},
+});
+}
+return iconPickerController;
+};
+const CUSTOM_SHIELD_MAKER_VALUE_PREFIX = "CUSTOMSHIELD-";
+const CUSTOM_SHIELD_MAKER_VARIANT_KEYS = ["1", "2", "3", "4"];
+let customShieldMakerRecords = [];
+const getCustomShieldMakerVariantLabel = (variantKey) =>
+`${variantKey} Digit`;
+const getCustomShieldMakerVariantAssetKey = (variantKey) =>
+`${variantKey}Digit`;
+const getCustomShieldMakerVariantFallbackOrder = (variantKey) => {
+const normalized = normalizeCustomShieldMakerVariantKey(variantKey, "2");
+const fallbackOrders = {
+"1": ["1", "2", "3", "4"],
+"2": ["2", "1", "3", "4"],
+"3": ["3", "2", "4", "1"],
+"4": ["4", "3", "2", "1"],
+};
+return fallbackOrders[normalized] || fallbackOrders["2"];
+};
+const getCustomShieldMakerImageVariantKeys = (imageDataByVariant = {}) =>
+CUSTOM_SHIELD_MAKER_VARIANT_KEYS.filter((variantKey) => {
+const imageData = imageDataByVariant?.[variantKey];
+return typeof imageData === "string" && imageData.trim().length > 0;
+});
+const normalizeCustomShieldMakerVariantKey = (variantKey, fallback = "2") => {
+const normalized = String(variantKey || "").trim().replace(/\D+/g, "");
+return CUSTOM_SHIELD_MAKER_VARIANT_KEYS.includes(normalized)
+? normalized
+: fallback;
+};
+const getCustomShieldMakerVariantKeyFromRoute = (routeNumber) => {
+const rawRoute = String(routeNumber || "").trim();
+let count = 0;
+if (typeof ShieldElement !== "undefined" && ShieldElement.prototype.getRouteCharacterCount) {
+count = ShieldElement.prototype.getRouteCharacterCount(rawRoute);
+} else {
+try {
+count = (rawRoute.match(/[\p{L}\p{N}]/gu) || []).length;
+} catch (error) {
+count = (rawRoute.match(/[A-Za-z0-9]/g) || []).length;
+}
+}
+if (count <= 1) {
+return "1";
+}
+if (count === 2) {
+return "2";
+}
+if (count === 3) {
+return "3";
+}
+return "4";
+};
+const normalizeCustomShieldMakerVariantList = (variants, fallback = ["2"]) => {
+const source = Array.isArray(variants) && variants.length ? variants : fallback;
+const normalized = [];
+for (const variant of source) {
+const variantKey = normalizeCustomShieldMakerVariantKey(variant, "");
+if (variantKey && !normalized.includes(variantKey)) {
+normalized.push(variantKey);
+}
+}
+return normalized.length ? normalized : ["2"];
+};
+const getCustomShieldMakerValue = (id) =>
+CUSTOM_SHIELD_MAKER_VALUE_PREFIX + String(id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+const createCustomShieldMakerId = () =>
+"csm_" +
+Date.now().toString(36) +
+"_" +
+Math.random().toString(36).slice(2, 8);
+const getCustomShieldMakerDisplayNumber = (value, fallback = 0) => {
+const parsed = parseFloat(String(value ?? "").trim());
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const normalizeCustomShieldMakerRouteStyle = (routeStyle = {}) => ({
+color: routeStyle.color || "Black",
+fontFamily: routeStyle.fontFamily || "Series D",
+fontSize: getCustomShieldMakerDisplayNumber(routeStyle.fontSize, 220),
+fontWeight: getCustomShieldMakerDisplayNumber(routeStyle.fontWeight, 10),
+letterSpacing: getCustomShieldMakerDisplayNumber(routeStyle.letterSpacing, 0),
+topOffset: getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0),
+horizontalOffset: getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0),
+alignment: ["left", "center", "right"].includes(String(routeStyle.alignment || "").toLowerCase())
+? String(routeStyle.alignment).toLowerCase()
+: "center",
+});
+const normalizeCustomShieldMakerAnchor = (anchor = {}, routeStyle = {}) => ({
+x: getCustomShieldMakerDisplayNumber(anchor.x, 50),
+y: getCustomShieldMakerDisplayNumber(anchor.y, 50),
+seedTop: getCustomShieldMakerDisplayNumber(
+anchor.seedTop,
+getCustomShieldMakerDisplayNumber(routeStyle.topOffset, 0)
+),
+seedHorizontal: getCustomShieldMakerDisplayNumber(
+anchor.seedHorizontal,
+getCustomShieldMakerDisplayNumber(routeStyle.horizontalOffset, 0)
+),
+});
+const normalizeCustomShieldMakerRecord = (record = {}, index = 0) => {
+const id = String(record.id || createCustomShieldMakerId());
+const value = getCustomShieldMakerValue(id);
+const legacyVariantKey = getCustomShieldMakerVariantKeyFromRoute(
+record.routeNumber || "12"
+);
+const rawImageDataByVariant =
+record.imageDataByVariant && typeof record.imageDataByVariant === "object"
+? record.imageDataByVariant
+: {};
+const rawStyleByVariant =
+record.routeStyleByVariant && typeof record.routeStyleByVariant === "object"
+? record.routeStyleByVariant
+: {};
+const rawAnchorByVariant =
+record.anchorByVariant && typeof record.anchorByVariant === "object"
+? record.anchorByVariant
+: {};
+const enabledVariants = normalizeCustomShieldMakerVariantList(
+record.enabledVariants || record.selectedVariants || record.variants,
+Object.keys(rawImageDataByVariant).length
+? Object.keys(rawImageDataByVariant)
+: [legacyVariantKey]
+);
+const imageDataByVariant = {};
+for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
+const imageData = rawImageDataByVariant[variantKey];
+if (typeof imageData === "string" && imageData.trim()) {
+imageDataByVariant[variantKey] = imageData;
+}
+}
+if (!Object.keys(imageDataByVariant).length && record.imageData) {
+imageDataByVariant[legacyVariantKey] = String(record.imageData || "");
+}
+const routeStyleByVariant = {};
+const anchorByVariant = {};
+const legacyRouteStyle = normalizeCustomShieldMakerRouteStyle(record.routeStyle || {});
+const legacyAnchor = normalizeCustomShieldMakerAnchor(
+record.anchor || record.routeStyle?.anchor || {},
+legacyRouteStyle
+);
+for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
+const style = normalizeCustomShieldMakerRouteStyle(
+rawStyleByVariant[variantKey] ||
+(variantKey === legacyVariantKey ? record.routeStyle : null) ||
+legacyRouteStyle
+);
+routeStyleByVariant[variantKey] = style;
+anchorByVariant[variantKey] = normalizeCustomShieldMakerAnchor(
+rawAnchorByVariant[variantKey] ||
+(variantKey === legacyVariantKey ? record.anchor : null) ||
+legacyAnchor,
+style
+);
+}
+const activeVariant = normalizeCustomShieldMakerVariantKey(
+record.activeVariant || legacyVariantKey,
+legacyVariantKey
+);
+const imageData =
+imageDataByVariant[activeVariant] ||
+Object.values(imageDataByVariant).find(Boolean) ||
+String(record.imageData || "");
+const sourceShieldBase = String(record.sourceShieldBase || "").trim();
+const usesUploadedImage = record.usesUploadedImage === true;
+const preserveCountyText =
+record.preserveCountyText === true &&
+!usesUploadedImage &&
+(typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+? ShieldElement.prototype.normalizeShieldCode(sourceShieldBase).toUpperCase() === "C"
+: sourceShieldBase.toUpperCase() === "C");
+const preserveShieldBacks =
+!usesUploadedImage &&
+(typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+? ShieldElement.prototype.normalizeShieldCode(sourceShieldBase).toUpperCase() === "C"
+: sourceShieldBase.toUpperCase() === "C");
+return {
+id,
+value,
+name: String(record.name || `Custom Shield ${index + 1}`).trim() || `Custom Shield ${index + 1}`,
+imageData,
+imageDataByVariant,
+enabledVariants: getCustomShieldMakerImageVariantKeys(imageDataByVariant),
+activeVariant,
+routeNumber: String(record.routeNumber ?? "").trim(),
+routeStyle: routeStyleByVariant[activeVariant] || legacyRouteStyle,
+routeStyleByVariant,
+anchor: anchorByVariant[activeVariant] || legacyAnchor,
+anchorByVariant,
+sourceShieldBase,
+usesUploadedImage,
+preserveCountyText,
+preserveShieldBacks,
+dateCreated: record.dateCreated || new Date().toISOString(),
+dateModified: record.dateModified || record.dateCreated || new Date().toISOString(),
+};
+};
+const loadCustomShieldMakerRecords = async () => {
+let records = [];
+try {
+records = parseStoredRecordArray(getStoredItem(STORAGE_KEYS.customShieldMakerShields));
+} catch (error) {
+console.warn("Unable to load custom shield maker records from localStorage", error);
+}
+customShieldMakerRecords = records.map(normalizeCustomShieldMakerRecord).filter((record) => record.imageData);
+try {
+const indexedValue = await getPersistentFormValue(STORAGE_KEYS.customShieldMakerShields);
+const indexedRecords = parseStoredRecordArray(indexedValue);
+if (indexedRecords.length || !records.length) {
+records = indexedRecords;
+}
+} catch (error) {
+if (!records.length) {
+console.warn("Unable to load custom shield maker records from IndexedDB", error);
+}
+}
+customShieldMakerRecords = records.map(normalizeCustomShieldMakerRecord).filter((record) => record.imageData);
+return customShieldMakerRecords;
+};
+const saveCustomShieldMakerRecords = () => {
+const serializedRecords = JSON.stringify(customShieldMakerRecords);
+const savedToLocalStorage = setStoredItem(
+STORAGE_KEYS.customShieldMakerShields,
+serializedRecords
+);
+setPersistentFormValue(STORAGE_KEYS.customShieldMakerShields, serializedRecords).catch((error) => {
+console.warn("Unable to save custom shield maker records to IndexedDB", error);
+});
+return savedToLocalStorage;
+};
+const getCustomShieldMakerRecordById = (id) =>
+customShieldMakerRecords.find((record) => record.id === id) || null;
+const getCustomShieldMakerRecordByValue = (value) =>
+customShieldMakerRecords.find((record) => record.value === value) || null;
+const getCustomShieldMakerVariantImage = (record, variantKey) => {
+const imageDataByVariant = record?.imageDataByVariant || {};
+const requestedVariant = normalizeCustomShieldMakerVariantKey(
+variantKey,
+record?.activeVariant || "2"
+);
+for (const fallbackVariant of getCustomShieldMakerVariantFallbackOrder(requestedVariant)) {
+const fallbackImage = imageDataByVariant[fallbackVariant];
+if (typeof fallbackImage === "string" && fallbackImage.trim()) {
+return fallbackImage;
+}
+}
+return record?.imageData || Object.values(imageDataByVariant).find(Boolean) || "";
+};
+const buildCustomShieldMakerConfig = (record) => {
+const imageVariantKeys = getCustomShieldMakerImageVariantKeys(
+record.imageDataByVariant
+);
+const assetPathByVariant = {};
+for (const variantKey of imageVariantKeys) {
+assetPathByVariant[getCustomShieldMakerVariantAssetKey(variantKey)] =
+record.imageDataByVariant[variantKey];
+}
+return {
+value: record.value,
+label: record.name,
+variants: CUSTOM_SHIELD_MAKER_VARIANT_KEYS.map(getCustomShieldMakerVariantLabel),
+assetPath: getCustomShieldMakerVariantImage(record, record.activeVariant || imageVariantKeys[0] || "2"),
+assetPathByVariant,
+assetName: record.value,
+assetFolder: "",
+suppressRouteNumber: false,
+categories: ["Custom"],
+className: `CUSTOMSHIELD customShieldMakerSaved customShieldMaker-${record.id}${
+record.preserveShieldBacks === true ? " customShieldMakerCountyBackSource" : ""
+}`,
+customShieldMaker: true,
+customShieldMakerId: record.id,
+sourceShieldBase: record.sourceShieldBase || "",
+preserveCountyText: record.preserveCountyText === true,
+preserveShieldBacks: record.preserveShieldBacks === true,
+customRouteStyle: record.routeStyle,
+customAnchor: record.anchor,
+customRouteStyleByVariant: record.routeStyleByVariant || {},
+customAnchorByVariant: record.anchorByVariant || {},
+};
+};
+const syncCustomShieldMakerConfigs = () => {
+if (
+typeof ShieldElement === "undefined" ||
+!Array.isArray(ShieldElement.prototype.blockShieldBases)
+) {
+return;
+}
+ShieldElement.prototype.blockShieldBases = ShieldElement.prototype.blockShieldBases.filter(
+(shield) => !shield.customShieldMaker
+);
+ShieldElement.prototype.blockShieldBases.unshift(
+...customShieldMakerRecords.map(buildCustomShieldMakerConfig)
+);
+};
+const buildCustomShieldMakerPickerNode = (record) => ({
+id: `custom-shield-${record.id}`,
+value: record.value,
+label: record.name,
+asset: getCustomShieldMakerVariantImage(record, record.activeVariant || "2"),
+customSavedShield: true,
+customShieldId: record.id,
+});
+const syncCustomShieldMakerPickerTree = () => {
+const makerIndex = SHIELD_PICKER_TREE.findIndex(
+(node) => node.value === SHIELD_PICKER_CUSTOM_MAKER_VALUE
+);
+const insertIndex = makerIndex >= 0 ? makerIndex + 1 : 0;
+for (let index = SHIELD_PICKER_TREE.length - 1; index >= 0; index--) {
+if (SHIELD_PICKER_TREE[index]?.customSavedShield) {
+SHIELD_PICKER_TREE.splice(index, 1);
+}
+}
+SHIELD_PICKER_TREE.splice(
+insertIndex,
+0,
+...customShieldMakerRecords.map(buildCustomShieldMakerPickerNode)
+);
+};
+const refreshCustomShieldMakerRegistry = () => {
+syncCustomShieldMakerConfigs();
+syncCustomShieldMakerPickerTree();
+if (typeof refreshAllShieldPickers === "function") {
+refreshAllShieldPickers();
+}
+};
+const upsertCustomShieldMakerRecord = (record) => {
+const normalizedRecord = normalizeCustomShieldMakerRecord(record, customShieldMakerRecords.length);
+const existingIndex = customShieldMakerRecords.findIndex(
+(existing) => existing.id === normalizedRecord.id
+);
+if (existingIndex >= 0) {
+normalizedRecord.dateCreated = customShieldMakerRecords[existingIndex].dateCreated;
+customShieldMakerRecords[existingIndex] = normalizedRecord;
+} else {
+customShieldMakerRecords.push(normalizedRecord);
+}
+saveCustomShieldMakerRecords();
+refreshCustomShieldMakerRegistry();
+return normalizedRecord;
+};
+const deleteCustomShieldMakerRecord = (id) => {
+const record = getCustomShieldMakerRecordById(id);
+if (!record) {
+return null;
+}
+customShieldMakerRecords = customShieldMakerRecords.filter(
+(existing) => existing.id !== id
+);
+saveCustomShieldMakerRecords();
+refreshCustomShieldMakerRegistry();
+return record;
+};
+const isCustomShieldMakerValue = (value) =>
+typeof value === "string" && value.startsWith(CUSTOM_SHIELD_MAKER_VALUE_PREFIX);
+const traverseControlShieldElements = (control, callback) => {
+if (!control || !Array.isArray(control.rows)) {
+return;
+}
+for (const row of control.rows) {
+if (!Array.isArray(row)) {
+continue;
+}
+for (const blockElement of row) {
+if (
+blockElement &&
+(blockElement instanceof ShieldElement ||
+blockElement.shieldBase !== undefined ||
+blockElement.type !== undefined)
+) {
+callback(blockElement);
+}
+}
+}
+};
+const revertCustomShieldMakerUsageToInterstate = (value) => {
+const targetValue = String(value || "");
+const currentPost = exposed && typeof exposed.getPost === "function"
+? exposed.getPost()
+: post;
+if (!currentPost || !Array.isArray(currentPost.panels)) {
+return;
+}
+for (const panel of currentPost.panels) {
+const sign = panel?.sign;
+if (!sign) {
+continue;
+}
+[sign.blockElements, sign.globalTopBlockElements, sign.globalBottomBlockElements].forEach(
+(control) => traverseControlShieldElements(control, (shield) => {
+if (shield.shieldBase === targetValue || shield.type === targetValue) {
+shield.shieldBase = "I";
+shield.type = "I";
+shield.shieldType = shield.shieldType || "Auto";
+}
+})
+);
+if (Array.isArray(sign.subPanels)) {
+for (const subPanel of sign.subPanels) {
+traverseControlShieldElements(subPanel.blockElements, (shield) => {
+if (shield.shieldBase === targetValue || shield.type === targetValue) {
+shield.shieldBase = "I";
+shield.type = "I";
+shield.shieldType = shield.shieldType || "Auto";
+}
+});
+if (Array.isArray(subPanel.shields)) {
+for (const shield of subPanel.shields) {
+if (shield.shieldBase === targetValue || shield.type === targetValue) {
+shield.shieldBase = "I";
+shield.type = "I";
+}
+}
+}
+}
+}
+if (Array.isArray(sign.shields)) {
+for (const shield of sign.shields) {
+if (shield.shieldBase === targetValue || shield.type === targetValue) {
+shield.shieldBase = "I";
+shield.type = "I";
+}
+}
+}
+}
+};
+let panelStylePopoverFrame = 0;
+let panelStylePopoverResizeObserver = null;
+const panelStylePopoverIsOpen = () => {
+const configBar = document.getElementById("sMConfigBar");
+return ["panelStyleConfig","appSettingsConfig"].includes(configBar?.dataset.currentMenu);
+};
+const clearPanelStylePopoverPosition = () => {
+const modalHolder = document.querySelector(".modals");
+if (!modalHolder) {
+return;
+}
+modalHolder.classList.remove("panelStylePopoverOpen");
+["top", "right", "bottom", "left"].forEach((property) => {
+modalHolder.style.removeProperty(property);
+});
+};
+const positionPanelStylePopover = () => {
+const modalHolder = document.querySelector(".modals");
+const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
+const panelStyleModal = document.querySelector(".sMModal."+activeMenu);
+const configBar = document.getElementById("sMConfigBar");
+const trigger = document.getElementById(activeMenu);
+if (
+!modalHolder ||
+!panelStyleModal ||
+!configBar ||
+!panelStylePopoverIsOpen()
+) {
+clearPanelStylePopoverPosition();
+return;
+}
+modalHolder.classList.add("panelStylePopoverOpen");
+const barRect = configBar.getBoundingClientRect();
+const triggerRect = trigger?.getBoundingClientRect() || barRect;
+const modalRect = panelStyleModal.getBoundingClientRect();
+const position = String(
+configBar.dataset.position ||
+document.documentElement.dataset.configPosition ||
+"right"
+).toLowerCase();
+const gap = 8;
+const edge = 8;
+let left = triggerRect.left;
+let top = triggerRect.top;
+if (position === "bottom") {
+top = barRect.top - gap - modalRect.height;
+} else if (position === "top") {
+top = barRect.bottom + gap;
+} else {
+left = barRect.left - gap - modalRect.width;
+}
+const maxLeft = Math.max(edge, window.innerWidth - modalRect.width - edge);
+const maxTop = Math.max(edge, window.innerHeight - modalRect.height - edge);
+left = Math.max(edge, Math.min(maxLeft, left));
+top = Math.max(edge, Math.min(maxTop, top));
+modalHolder.style.setProperty("left", `${left}px`, "important");
+modalHolder.style.setProperty("top", `${top}px`, "important");
+modalHolder.style.setProperty("right", "auto", "important");
+modalHolder.style.setProperty("bottom", "auto", "important");
+};
+const schedulePanelStylePopoverPosition = () => {
+window.cancelAnimationFrame(panelStylePopoverFrame);
+panelStylePopoverFrame = window.requestAnimationFrame(() => {
+window.requestAnimationFrame(positionPanelStylePopover);
+});
+};
+const bindPanelStylePopoverPositioning = () => {
+const configBar = document.getElementById("sMConfigBar");
+const panelStyleModal = document.querySelector(".sMModal.panelStyleConfig");
+if (!configBar || !panelStyleModal) {
+return;
+}
+if (configBar.dataset.panelStylePopoverBound !== "true") {
+configBar.dataset.panelStylePopoverBound = "true";
+window.addEventListener("resize", schedulePanelStylePopoverPosition);
+}
+if (
+typeof ResizeObserver === "function" &&
+!panelStylePopoverResizeObserver
+) {
+panelStylePopoverResizeObserver = new ResizeObserver(() => {
+if (panelStylePopoverIsOpen()) {
+schedulePanelStylePopoverPosition();
+}
+});
+panelStylePopoverResizeObserver.observe(configBar);
+panelStylePopoverResizeObserver.observe(panelStyleModal);
+panelStylePopoverResizeObserver.observe(document.getElementById("settings22Modal"));
+}
+};
+let panelSelectorPopoverFrame = 0;
+let panelSelectorPopoverResizeObserver = null;
+const panelSelectorPopoverIsOpen = () => {
+const configBar = document.getElementById("sMConfigBar");
+return configBar?.dataset.currentMenu === "panelSelector";
+};
+const ensurePanelSelectorPopoverPortal = () => {
+const panelSelect = document.getElementById("panelSelect");
+if (!panelSelect) {
+return null;
+}
+panelSelect.classList.add("panelSelectorFloating");
+if (panelSelect.parentElement !== document.body) {
+document.body.appendChild(panelSelect);
+}
+return panelSelect;
+};
+const clearPanelSelectorPopoverPosition = () => {
+const panelSelect = document.getElementById("panelSelect");
+if (!panelSelect) {
+return;
+}
+["top", "right", "bottom", "left"].forEach((property) => {
+panelSelect.style.removeProperty(property);
+});
+};
+const positionPanelSelectorPopover = () => {
+const panelSelect = ensurePanelSelectorPopoverPortal();
+const configBar = document.getElementById("sMConfigBar");
+const trigger = document
+.getElementById("panelSelector")
+?.closest(".sMConfigOption");
+if (
+!panelSelect ||
+!configBar ||
+!trigger ||
+!panelSelectorPopoverIsOpen()
+) {
+clearPanelSelectorPopoverPosition();
+return;
+}
+const barRect = configBar.getBoundingClientRect();
+const triggerRect = trigger.getBoundingClientRect();
+const popoverRect = panelSelect.getBoundingClientRect();
+const position = String(
+configBar.dataset.position ||
+document.documentElement.dataset.configPosition ||
+"right"
+).toLowerCase();
+const gap = 8;
+const edge = 8;
+let left = triggerRect.left;
+let top = triggerRect.top;
+if (position === "bottom") {
+top = barRect.top - gap - popoverRect.height;
+} else if (position === "top") {
+top = barRect.bottom + gap;
+} else {
+left = barRect.left - gap - popoverRect.width;
+}
+const maxLeft = Math.max(
+edge,
+window.innerWidth - popoverRect.width - edge
+);
+const maxTop = Math.max(
+edge,
+window.innerHeight - popoverRect.height - edge
+);
+left = Math.max(edge, Math.min(maxLeft, left));
+top = Math.max(edge, Math.min(maxTop, top));
+panelSelect.style.setProperty("left", `${left}px`, "important");
+panelSelect.style.setProperty("top", `${top}px`, "important");
+panelSelect.style.setProperty("right", "auto", "important");
+panelSelect.style.setProperty("bottom", "auto", "important");
+};
+const schedulePanelSelectorPopoverPosition = () => {
+window.cancelAnimationFrame(panelSelectorPopoverFrame);
+panelSelectorPopoverFrame = window.requestAnimationFrame(() => {
+window.requestAnimationFrame(positionPanelSelectorPopover);
+});
+};
+const bindPanelSelectorPopoverPositioning = () => {
+const panelSelect = ensurePanelSelectorPopoverPortal();
+const configBar = document.getElementById("sMConfigBar");
+if (!panelSelect || !configBar) {
+return;
+}
+if (panelSelect.dataset.floatingPanelSelectorBound !== "true") {
+panelSelect.dataset.floatingPanelSelectorBound = "true";
+window.addEventListener(
+"resize",
+schedulePanelSelectorPopoverPosition
+);
+}
+if (
+typeof ResizeObserver === "function" &&
+!panelSelectorPopoverResizeObserver
+) {
+panelSelectorPopoverResizeObserver = new ResizeObserver(() => {
+if (panelSelectorPopoverIsOpen()) {
+schedulePanelSelectorPopoverPosition();
+}
+});
+panelSelectorPopoverResizeObserver.observe(configBar);
+panelSelectorPopoverResizeObserver.observe(panelSelect);
+}
+};
+const normalizeConfigBarPosition = (value) => {
+if (value === "bottom" || value === "top") {
+return value;
+}
+return "right";
+};
+const updateConfigPositionButtons = (position) => {
+const normalized = normalizeConfigBarPosition(position);
+const buttons = document.querySelectorAll("[data-config-position]");
+buttons.forEach((button) => {
+const isActive =
+normalizeConfigBarPosition(button.dataset.configPosition) === normalized;
+button.classList.toggle("active", isActive);
+});
+};
+const applyConfigBarPosition = (position, { persist = false } = {}) => {
+const normalized = normalizeConfigBarPosition(position);
+const configBar = document.getElementById("sMConfigBar");
+if (configBar) {
+configBar.dataset.position = normalized;
+}
+document.documentElement.dataset.configPosition = normalized;
+updateConfigPositionButtons(normalized);
+schedulePanelStylePopoverPosition();
+schedulePanelSelectorPopoverPosition();
+if (persist) {
+setStoredItem(STORAGE_KEYS.configBarPosition, normalized);
+}
+};
+const getStoredConfigBarPosition = () =>
+normalizeConfigBarPosition(getStoredItem(STORAGE_KEYS.configBarPosition));
+const bindConfigPositionControls = (root = document) => {
+const buttons = root.querySelectorAll("[data-config-position]");
+buttons.forEach((button) => {
+if (button.dataset.configPositionBound === "true") {
+return;
+}
+button.dataset.configPositionBound = "true";
+button.addEventListener("click", () => {
+applyConfigBarPosition(button.dataset.configPosition, { persist: true });
+});
+});
+};
+const INTERFACE_UI_SCALE_MIN = 50;
+const INTERFACE_UI_SCALE_MAX = 150;
+const INTERFACE_UI_SCALE_STEP = 10;
+const INTERFACE_UI_SCALE_DEFAULT = 100;
+const normalizeInterfaceUIScale = (value) => {
+if (value === null || value === undefined || value === "") {
+return INTERFACE_UI_SCALE_DEFAULT;
+}
+const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+if (!Number.isFinite(parsed)) {
+return INTERFACE_UI_SCALE_DEFAULT;
+}
+const clamped = Math.max(
+INTERFACE_UI_SCALE_MIN,
+Math.min(INTERFACE_UI_SCALE_MAX, parsed)
+);
+return Math.round(clamped / INTERFACE_UI_SCALE_STEP) * INTERFACE_UI_SCALE_STEP;
+};
+const updateInterfaceUIScaleDisplay = (scaleValue) => {
+const slider = document.getElementById("settingsInterfaceUIScale");
+const valueLabel = document.getElementById("settingsInterfaceUIScaleValue");
+if (slider) {
+slider.min = String(INTERFACE_UI_SCALE_MIN);
+slider.max = String(INTERFACE_UI_SCALE_MAX);
+slider.step = String(INTERFACE_UI_SCALE_STEP);
+slider.value = String(scaleValue);
+}
+if (valueLabel) {
+valueLabel.textContent = `${scaleValue}%`;
+}
+};
+const getActualInterfaceUIScale = (displayScale) => {
+const normalized = normalizeInterfaceUIScale(displayScale);
+return normalized / 150;
+};
+const applyInterfaceUIScale = (value, { persist = false } = {}) => {
+const normalized = normalizeInterfaceUIScale(value);
+const cssScale = getActualInterfaceUIScale(normalized);
+document.documentElement.style.setProperty("--sm-app-zoom", String(cssScale));
+updateInterfaceUIScaleDisplay(normalized);
+schedulePanelStylePopoverPosition();
+schedulePanelSelectorPopoverPosition();
+if (persist) {
+setStoredItem(STORAGE_KEYS.interfaceUiScale, String(normalized));
+}
+return normalized;
+};
+const stepInterfaceUIScale = (direction) => {
+const currentScale = getStoredInterfaceUIScale();
+const nextScale = normalizeInterfaceUIScale(
+currentScale + direction * INTERFACE_UI_SCALE_STEP
+);
+applyInterfaceUIScale(nextScale, { persist: true });
+return nextScale;
+};
+const zoomInterfaceIn = () => {
+const nextScale = stepInterfaceUIScale(1);
+return nextScale;
+};
+const zoomInterfaceOut = () => {
+const nextScale = stepInterfaceUIScale(-1);
+return nextScale;
+};
+const getStoredInterfaceUIScale = () =>
+normalizeInterfaceUIScale(getStoredItem(STORAGE_KEYS.interfaceUiScale));
+const bindInterfaceUIScaleControl = (root = document) => {
+const slider = root.getElementById
+? root.getElementById("settingsInterfaceUIScale")
+: document.getElementById("settingsInterfaceUIScale");
+if (!slider) {
+applyInterfaceUIScale(getStoredInterfaceUIScale());
+return;
+}
+applyInterfaceUIScale(getStoredInterfaceUIScale());
+if (slider.dataset.interfaceUiScaleBound === "true") {
+return;
+}
+slider.dataset.interfaceUiScaleBound = "true";
+slider.addEventListener("input", () => {
+const normalized = normalizeInterfaceUIScale(slider.value);
+updateInterfaceUIScaleDisplay(normalized);
+});
+slider.addEventListener("change", () => {
+applyInterfaceUIScale(slider.value, { persist: true });
+});
+};
+const formatPostKindLabel = (value) => {
+if (typeof value !== "string") {
+return "";
+}
+const spaced = value.replace(/([a-z])([A-Z])/g, "$1 $2");
+return spaced.replace(/[_-]+/g, " ").trim() || value;
+};
+const normalizeRestoreOnRefreshMode = (value) => {
+const normalized = String(value || "").toLowerCase();
+if (normalized === "always" || normalized === "prompt" || normalized === "never") {
+return normalized;
+}
+return "always";
+};
+const normalizeKeybindMode = (value) => {
+const normalized = String(value || "").toLowerCase();
+if (normalized === "undo-redo" || normalized === "none") {
+return normalized;
+}
+return "all";
+};
+const getStoredKeybindMode = () =>
+normalizeKeybindMode(getStoredItem(STORAGE_KEYS.keybindMode));
+const updateKeybindModeButtons = (mode) => {
+const normalized = normalizeKeybindMode(mode);
+document.querySelectorAll("[data-keybind-mode]").forEach((button) => {
+const isActive = normalizeKeybindMode(button.dataset.keybindMode) === normalized;
+button.classList.toggle("active", isActive);
+button.setAttribute("aria-pressed", String(isActive));
+});
+};
+const applyKeybindMode = (mode, { persist = false } = {}) => {
+const normalized = normalizeKeybindMode(mode);
+updateKeybindModeButtons(normalized);
+if (persist) {
+setStoredItem(STORAGE_KEYS.keybindMode, normalized);
+}
+return normalized;
+};
+const isUndoRedoShortcutField = (fieldId) =>
+fieldId === "settingsControlUndoEdit" ||
+fieldId === "settingsControlRedoEdit";
+const isShortcutActionAllowedByMode = (fieldId) => {
+const mode = getStoredKeybindMode();
+if (mode === "none") {
+return false;
+}
+if (mode === "undo-redo") {
+return isUndoRedoShortcutField(fieldId);
+}
+return true;
+};
+const bindKeybindModeButtons = (root = document) => {
+const buttons = root.querySelectorAll("[data-keybind-mode]");
+buttons.forEach((button) => {
+if (button.dataset.keybindModeBound === "true") {
+return;
+}
+button.dataset.keybindModeBound = "true";
+button.addEventListener("click", () => {
+applyKeybindMode(button.dataset.keybindMode, { persist: true });
+});
+});
+applyKeybindMode(getStoredKeybindMode());
+};
+const getStoredShortcutOverrides = () => {
+const raw = getStoredItem(STORAGE_KEYS.shortcutOverrides);
+if (!raw) {
+return {};
+}
+try {
+const parsed = JSON.parse(raw);
+return parsed && typeof parsed === "object" ? parsed : {};
+} catch (error) {
+console.warn("Unable to parse saved shortcut overrides", error);
+return {};
+}
+};
+const saveStoredShortcutOverrides = (overrides) => {
+setStoredItem(STORAGE_KEYS.shortcutOverrides, JSON.stringify(overrides || {}));
+};
+const persistShortcutInputValue = (input) => {
+if (!input || !input.id) {
+return;
+}
+const overrides = getStoredShortcutOverrides();
+overrides[input.id] = input.dataset.shortcutInternalValue || "";
+saveStoredShortcutOverrides(overrides);
+};
+const normalizeShortcutToken = (value) =>
+String(value || "")
+.toUpperCase()
+.replace(/\s+/g, "")
+.replace(/⌘/g, "CTRL")
+.replace(/⌃/g, "CTRL")
+.replace(/⇧/g, "SHIFT")
+.replace(/⌥/g, "ALT")
+.replace(/CMD/g, "CTRL");
+const isMacOS =
+navigator.userAgentData?.platform === "macOS" ||
+/Mac|iPhone|iPad|iPod/.test(navigator.platform || "") ||
+/Mac|iPhone|iPad|iPod/.test(navigator.userAgent || "");
+const formatSingleShortcutForDisplay = (value) => {
+const normalized = normalizeShortcutToken(value);
+if (!normalized) {
+return "";
+}
+if (!isMacOS) {
+return normalized;
+}
+const parts = normalized.split("+").filter(Boolean);
+const modifierSymbols = [];
+const hasCtrl = parts.includes("CTRL");
+const hasShift = parts.includes("SHIFT");
+const hasAlt = parts.includes("ALT");
+if (hasCtrl) {
+modifierSymbols.push("⌘");
+}
+if (hasShift) {
+modifierSymbols.push("⇧");
+}
+if (hasAlt) {
+modifierSymbols.push("⌥");
+}
+const mainKeys = parts
+.filter((part) => part !== "CTRL" && part !== "SHIFT" && part !== "ALT")
+.map((part) => {
+if (part === "ESC") return "Escape";
+if (part === "BACKSPACE") return "Backspace";
+if (part === "LEFT") return "←";
+if (part === "RIGHT") return "→";
+return part;
+});
+return modifierSymbols.join("") + mainKeys.join("+");
+};
+const formatShortcutForDisplay = (value) =>
+String(value || "")
+.split("|")
+.map((part) => formatSingleShortcutForDisplay(part))
+.filter(Boolean)
+.join("|");
+const applyStoredShortcutOverrides = (root = document) => {
+const overrides = getStoredShortcutOverrides();
+const shortcutInputs = root.querySelectorAll('#settingsControls input[type="text"]');
+shortcutInputs.forEach((input) => {
+if (!input.id) {
+return;
+}
+if (Object.prototype.hasOwnProperty.call(overrides, input.id)) {
+const storedValue = overrides[input.id] || "";
+input.dataset.shortcutInternalValue = storedValue;
+input.value = formatShortcutForDisplay(storedValue);
+} else {
+input.dataset.shortcutInternalValue = input.defaultValue || "";
+input.value = formatShortcutForDisplay(input.defaultValue || "");
+}
+});
+};
+const applyStoredPreferences = () => {
+const storedPostPosition = getStoredItem(STORAGE_KEYS.postPosition);
+if (
+storedPostPosition &&
+Post.prototype.polePositions.includes(storedPostPosition)
+) {
+post.polePosition = storedPostPosition;
+}
+const storedShowPost = getStoredItem(STORAGE_KEYS.showPost);
+if (storedShowPost !== null) {
+post.showPost = storedShowPost === "true";
+}
+const storedPostColor = getStoredItem(STORAGE_KEYS.postColor);
+if (
+storedPostColor &&
+Array.isArray(Post.prototype.colors) &&
+Post.prototype.colors.includes(storedPostColor)
+) {
+post.color = storedPostColor;
+}
+const storedPostThickness = getStoredItem(STORAGE_KEYS.postThickness);
+if (storedPostThickness !== null && post) {
+const normalizedThickness =
+typeof post.normalizeThickness === "function"
+? post.normalizeThickness(storedPostThickness)
+: normalizeStoredPostThickness(storedPostThickness);
+post.thickness = normalizedThickness;
+}
+if (post) {
+post.panelSpacing = getDefaultPanelSpacingPreference();
+}
+const storedControlFont = normalizeUiFontValue(getStoredItem(STORAGE_KEYS.controlTextFont));
+const availableFonts = TextElement.prototype.fontFamily;
+if (
+storedControlFont &&
+Array.isArray(availableFonts) &&
+availableFonts.includes(storedControlFont)
+) {
+ControlTextElement.setDefaultFont(storedControlFont);
+}
+const storedBannerFont = normalizeUiFontValue(getStoredItem(STORAGE_KEYS.bannerFontFamily));
+const bannerFonts = ShieldElement.prototype.getBannerFontOptions();
+if (
+storedBannerFont &&
+Array.isArray(bannerFonts) &&
+bannerFonts.includes(storedBannerFont)
+) {
+ShieldElement.prototype.defaultBannerFontFamily = storedBannerFont;
+}
+ExitTab.prototype.defaultFHWAFont = true;
+ExitTab.prototype.defaultFullBorder = true;
+ExitTab.prototype.defaultSquareCorners = true;
+ExitTab.prototype.defaultTopOffset = false;
+};
+const toggleBlockWiggle = (isActive) => {
+const blocks = document.querySelectorAll(".textEditorBlock");
+for (const block of blocks) {
+block.classList.toggle("blockWiggle", isActive);
+if (isActive) {
+block.style.setProperty("--wiggle-delay", `${Math.random() * 0.12}s`);
+} else {
+block.style.removeProperty("--wiggle-delay");
+}
+}
+};
+const toggleExitTabWiggle = (isActive) => {
+const buttons = document.querySelectorAll(".exitTabButton, .exitTabNestedButton");
+for (const button of buttons) {
+button.classList.toggle("blockWiggle", isActive);
+if (isActive) {
+button.style.setProperty("--wiggle-delay", `${Math.random() * 0.12}s`);
+} else {
+button.style.removeProperty("--wiggle-delay");
+}
+}
+};
+const togglePanelListWiggle = (isActive) => {
+const buttons = document.querySelectorAll(".panelListButton");
+for (const button of buttons) {
+const shouldWiggle =
+isActive && !button.closest(".panelListRow.hiddenFromPost");
+button.classList.toggle("panelWiggle", shouldWiggle);
+if (shouldWiggle) {
+button.style.setProperty("--wiggle-delay", `${Math.random() * 0.12}s`);
+} else {
+button.style.removeProperty("--wiggle-delay");
+}
+}
+};
+const syncExitTabAssetSliderControls = (variantValue, exitTab = null) => {
+const normalizedVariant = String(variantValue || "Default");
+const usesAssetControls = isExitTabAssetVariantValue(normalizedVariant);
+const workingExitTab = exitTab || getCurrentExitTabForProfileApply?.() || null;
+const fontSizeInput = document.getElementById("fontSize");
+const fontSizeLabel = document.getElementById("fontSizeLabel") || document.querySelector('label[for="fontSize"]');
+const fontSizeValue = document.getElementById("fontValue");
+const horizontalPaddingInput = document.getElementById("exitTabHorizontalPadding");
+const horizontalPaddingValue = document.getElementById("exitTabHorizontalPaddingValue");
+const verticalPaddingInput = document.getElementById("exitTabTextSizePercent");
+const verticalPaddingLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
+const verticalPaddingValue = document.getElementById("exitTabTextSizePercentValue");
+if (usesAssetControls) {
+const resolvedAssetSize = normalizeExitTabAssetSizeValue(
+workingExitTab?.tollLogoSize,
+3
+);
+if (workingExitTab) {
+workingExitTab.tollLogoSize = resolvedAssetSize;
+}
+if (fontSizeInput) {
+fontSizeInput.min = "1";
+fontSizeInput.max = "6";
+fontSizeInput.step = "0.1";
+setExitTabRangeControlValue(fontSizeInput, resolvedAssetSize);
+}
+if (fontSizeLabel) {
+fontSizeLabel.textContent = normalizedVariant === "Icon"
+? "Icon Size (rem):"
+: "Logo Size (rem):";
+}
+if (fontSizeValue) {
+fontSizeValue.innerHTML = formatExitTabDecimalValue(resolvedAssetSize);
+}
+const resolvedHorizontalPadding = normalizeExitTabAssetPaddingValue(
+workingExitTab?.assetHorizontalPadding,
+0
+);
+if (workingExitTab) {
+workingExitTab.assetHorizontalPadding = resolvedHorizontalPadding;
+}
+if (horizontalPaddingInput) {
+horizontalPaddingInput.min = "-3";
+horizontalPaddingInput.max = "3";
+horizontalPaddingInput.step = "0.1";
+setExitTabRangeControlValue(horizontalPaddingInput, resolvedHorizontalPadding);
+}
+if (horizontalPaddingValue) {
+horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
+}
+const resolvedVerticalPadding = normalizeExitTabAssetPaddingValue(
+workingExitTab?.assetVerticalPadding,
+0
+);
+if (workingExitTab) {
+workingExitTab.assetVerticalPadding = resolvedVerticalPadding;
+}
+if (verticalPaddingInput) {
+verticalPaddingInput.min = "-3";
+verticalPaddingInput.max = "3";
+verticalPaddingInput.step = "0.1";
+setExitTabRangeControlValue(verticalPaddingInput, resolvedVerticalPadding);
+}
+if (verticalPaddingLabel) {
+verticalPaddingLabel.textContent = "Vertical padding:";
+}
+if (verticalPaddingValue) {
+verticalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedVerticalPadding);
+}
+return;
+}
+const resolvedNormalTextSize = normalizeExitTabNormalFontSizeValue(
+workingExitTab?.fontSize,
+workingExitTab?.normalFontSizeBeforeAsset || getCurrentExitTabDefaultFontSize()
+);
+if (fontSizeInput) {
+fontSizeInput.min = "10";
+fontSizeInput.max = "40";
+fontSizeInput.step = "1";
+setExitTabRangeControlValue(fontSizeInput, resolvedNormalTextSize);
+}
+if (fontSizeLabel) {
+fontSizeLabel.textContent = "Text Size (px):";
+}
+if (fontSizeValue) {
+fontSizeValue.innerHTML = String(resolvedNormalTextSize);
+}
+const resolvedHorizontalPadding = (() => {
+const parsed = parseFloat(workingExitTab?.horizontalPadding);
+return Number.isFinite(parsed)
+? Math.max(-1, Math.min(3, parsed))
+: ExitTab.prototype.defaultHorizontalPadding;
+})();
+if (horizontalPaddingInput) {
+horizontalPaddingInput.min = "-1";
+horizontalPaddingInput.max = "3";
+horizontalPaddingInput.step = "0.1";
+setExitTabRangeControlValue(horizontalPaddingInput, resolvedHorizontalPadding);
+}
+if (horizontalPaddingValue) {
+horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
+}
+const resolvedExitTextSize = (() => {
+const parsed = parseFloat(workingExitTab?.exitTextSizePercent);
+return Number.isFinite(parsed)
+? Math.max(25, Math.min(100, parsed))
+: ExitTab.prototype.defaultExitTextSizePercent;
+})();
+if (verticalPaddingInput) {
+verticalPaddingInput.min = "25";
+verticalPaddingInput.max = "100";
+verticalPaddingInput.step = "1";
+setExitTabRangeControlValue(verticalPaddingInput, resolvedExitTextSize);
+}
+if (verticalPaddingLabel) {
+verticalPaddingLabel.textContent = '"EXIT" text size %:';
+}
+if (verticalPaddingValue) {
+verticalPaddingValue.innerHTML = String(resolvedExitTextSize);
+}
+};
+const toggleExitTabVariantOptionsVisibility = (variantValue, options = {}) => {
+const normalizedVariant = String(variantValue || "Default");
+const isTollLogo = normalizedVariant === "Toll Logo";
+const isIcon = normalizedVariant === "Icon";
+const qcMode = normalizedVariant === "Quebec Exit Marker";
+const tollOptionsElmt = document.getElementById("exitTollLogoOptions");
+if (tollOptionsElmt) {
+tollOptionsElmt.classList.add("hidden");
+}
+const iconOptionsElmt = document.getElementById("exitIconOptions");
+if (iconOptionsElmt) {
+iconOptionsElmt.classList.add("hidden");
+}
+const tollPickerRow = document.getElementById("exitTollLogoPickerRow");
+if (tollPickerRow) {
+tollPickerRow.classList.toggle("hidden", !isTollLogo);
+}
+const iconPickerRow = document.getElementById("exitIconPickerRow");
+if (iconPickerRow) {
+iconPickerRow.classList.toggle("hidden", !isIcon);
+}
+const profileEditorMode = exitTabEditorMode === "default";
+const exitNumber = document.getElementById("exitNumber");
+if (exitNumber) {
+const hideExitNumber = profileEditorMode || isTollLogo || isIcon;
+exitNumber.classList.toggle("hidden", hideExitNumber);
+exitNumber.hidden = hideExitNumber;
+exitNumber.disabled = hideExitNumber;
+if (profileEditorMode) {
+exitNumber.value = "";
+}
+}
+const exitNumberLabel = document.getElementById("exitNumberLabel");
+if (exitNumberLabel) {
+exitNumberLabel.classList.toggle("hidden", profileEditorMode);
+exitNumberLabel.hidden = profileEditorMode;
+exitNumberLabel.textContent = qcMode
+? "Number:"
+: isTollLogo
+? "Logo:"
+: isIcon
+? "Icon:"
+: "Text:";
+}
+const isAssetVariant = isTollLogo || isIcon;
+const mainGrid = document.getElementById("exitTabMainSettingsGrid");
+if (mainGrid) {
+mainGrid.classList.toggle("qcExitMarkerMode", qcMode);
+mainGrid.classList.toggle("exitTabAssetMode", isAssetVariant);
+}
+const assetHiddenStyleControls = [
+document.getElementById("exitTabFontFamilyLabel"),
+document.getElementById("exitTabFontFamily"),
+document.getElementById("exitTabCharacterSpacingLabel"),
+document.getElementById("exitTabCharacterSpacing"),
+];
+const fontSelect = document.getElementById("exitTabFontFamily");
+const fontPickerApi = fontSelect?._fontPickerApi;
+const fontPickerWrapper =
+fontPickerApi?.wrapper ||
+(fontSelect?.nextElementSibling?.classList.contains("fontPicker")
+? fontSelect.nextElementSibling
+: null);
+if (fontPickerWrapper) {
+assetHiddenStyleControls.push(fontPickerWrapper);
+}
+const hideTextControls = isAssetVariant || qcMode;
+assetHiddenStyleControls.forEach((element) => {
+element?.classList.toggle("assetHiddenSetting", hideTextControls);
+});
+if (fontPickerApi?.menu) {
+fontPickerApi.menu.classList.toggle("assetHiddenSetting", hideTextControls);
+}
+if (hideTextControls && fontPickerWrapper) {
+fontPickerWrapper.classList.remove("open");
+fontPickerApi?.menu?.classList.remove("open");
+}
+fontPickerApi?.syncFloatingMenu?.();
+const transparentLabel = document.getElementById("exitTabTransparentLabel");
+const transparentInput = document.getElementById("exitTabTransparent");
+transparentLabel?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
+transparentInput?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
+["exitTabWidth", "exitTabPosition", "exitTabBilingualBottomTextLabel", "exitTabBilingualBottomText"].forEach((id) => {
+const element = document.getElementById(id);
+if (element) {
+element.classList.toggle("qcHiddenSetting", qcMode);
+}
+});
+document
+.querySelectorAll('[data-exit-slider="borderThickness"], [data-exit-slider="minHeight"], .exitTabCheckboxPanel')
+.forEach((element) => element.classList.toggle("qcHiddenSetting", qcMode));
+const assetHiddenIds = [
+"showLeft",
+"showLeftLabel",
+"topOffset",
+"verticalArrangement",
+"caStyle",
+"exitTabBilingual",
+"exitTabBilingualLabel",
+"exitTabBilingualBottomTextLabel",
+"exitTabBilingualBottomText",
+];
+assetHiddenIds.forEach((id) => {
+const element = document.getElementById(id);
+if (element) {
+element.classList.toggle("assetHiddenSetting", isTollLogo || isIcon || qcMode);
+}
+});
+if (options.syncAssetSliders !== false) {
+const sliderTarget =
+exitTabEditorMode === "default"
+? getExitTabProfileSettings(
+selectedExitTabProfileId,
+normalizeExitTabProfileVariant(normalizedVariant)
+)
+: getCurrentExitTabForProfileApply();
+syncExitTabAssetSliderControls(normalizedVariant, sliderTarget);
+}
+};
+const getExitTabAlphaSuffix = (index) => {
+let n = Number(index);
+if (!Number.isFinite(n) || n < 0) {
+return "";
+}
+n = Math.floor(n) + 1;
+let label = "";
+while (n > 0) {
+n--;
+label = String.fromCharCode(65 + (n % 26)) + label;
+n = Math.floor(n / 26);
+}
+return label;
+};
+const getExitTabListLabel = (exitTabIndex, nestedIndex = -1, nestedCount = 0) => {
+const baseLabel = `Tab ${exitTabIndex + 1}`;
+if (nestedIndex == null || nestedIndex < 0) {
+return nestedCount > 0 ? `${baseLabel}A` : baseLabel;
+}
+return `${baseLabel}${getExitTabAlphaSuffix(nestedIndex + 1)}`;
+};
+const clearExitTabDropIndicators = () => {
+document
+.querySelectorAll(
+".exitTabButton.dropBefore, .exitTabButton.dropAfter, .exitTabNestedButton.dropBefore, .exitTabNestedButton.dropAfter"
+)
+.forEach((button) => button.classList.remove("dropBefore", "dropAfter"));
+};
+const endNestedExitTabDrag = () => {
+clearExitTabDropIndicators();
+nestedExitTabDragState = null;
+document
+.querySelectorAll(".exitTabNestedButton.dragging")
+.forEach((button) => {
+button.classList.remove("dragging");
+delete button.dataset.dragging;
+});
+};
+const endExitTabDrag = () => {
+toggleExitTabWiggle(false);
+clearExitTabDropIndicators();
+exitTabDragState = null;
+document
+.querySelectorAll(".exitTabButton.dragging")
+.forEach((button) => {
+button.classList.remove("dragging");
+delete button.dataset.dragging;
+});
+};
+const getExitTabDropPosition = (container, clientX) => {
+const buttons = Array.from(container.querySelectorAll(".exitTabButton"));
+if (!buttons.length) {
+return { dropIndex: 0, targetButton: null, placement: null };
+}
+let dropIndex = Number(
+buttons[buttons.length - 1].dataset.exitTabIndex || buttons.length - 1
+);
+let targetButton = null;
+let placement = "after";
+let foundPosition = false;
+for (const button of buttons) {
+const rect = button.getBoundingClientRect();
+const midpoint = rect.left + rect.width / 2;
+if (clientX < midpoint) {
+dropIndex = Number(button.dataset.exitTabIndex || 0);
+placement = "before";
+foundPosition = true;
+targetButton = button.dataset.dragging === "true" ? null : button;
+break;
+}
+}
+if (!foundPosition) {
+const lastButton = buttons[buttons.length - 1];
+dropIndex = Number(lastButton.dataset.exitTabIndex || buttons.length - 1) + 1;
+if (lastButton.dataset.dragging !== "true") {
+targetButton = lastButton;
+placement = "after";
+} else {
+placement = null;
+}
+} else if (!targetButton) {
+placement = null;
+}
+return { dropIndex, targetButton, placement };
+};
+const handleExitTabDragStart = (event) => {
+const button = event.currentTarget;
+const fromIndex = Number(button.dataset.exitTabIndex);
+if (Number.isNaN(fromIndex)) {
+return;
+}
+exitTabDragState = { fromIndex, dropIndex: fromIndex };
+button.dataset.dragging = "true";
+button.classList.add("dragging");
+toggleExitTabWiggle(true);
+clearExitTabDropIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+};
+const handleExitTabDragOver = (event) => {
+if (!exitTabDragState) {
+return;
+}
+event.preventDefault();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+const container = event.currentTarget;
+const { dropIndex, targetButton, placement } = getExitTabDropPosition(
+container,
+event.clientX
+);
+exitTabDragState.dropIndex = dropIndex;
+clearExitTabDropIndicators();
+if (targetButton && placement) {
+targetButton.classList.add(
+placement === "before" ? "dropBefore" : "dropAfter"
+);
+}
+};
+const handleExitTabDrop = (event) => {
+if (!exitTabDragState) {
+return;
+}
+event.preventDefault();
+const fromIndex = exitTabDragState.fromIndex;
+const dropIndex =
+exitTabDragState.dropIndex !== undefined
+? exitTabDragState.dropIndex
+: fromIndex;
+exposed.moveExitTab(fromIndex, dropIndex);
+endExitTabDrag();
+};
+const handleExitTabDragLeave = (event) => {
+if (!exitTabDragState) {
+return;
+}
+const container = event.currentTarget;
+const related = event.relatedTarget;
+if (related && container.contains(related)) {
+return;
+}
+clearExitTabDropIndicators();
+};
+const handleExitTabDragEnd = () => {
+if (exitTabDragState) {
+endExitTabDrag();
+}
+};
+const endExitTabRowDrag = () => {
+clearExitTabDropIndicators();
+exitTabRowDragState = null;
+document
+.querySelectorAll(".exitTabButton.dragging, .exitTabNestedButton.dragging")
+.forEach((button) => {
+button.classList.remove("dragging");
+delete button.dataset.dragging;
+});
+toggleExitTabWiggle(false);
+};
+const getExitTabRowDropPosition = (container, clientX) => {
+const buttons = Array.from(
+container.querySelectorAll(".exitTabButton, .exitTabNestedButton")
+).filter((button) => button.dataset.exitTabRowParentIndex === container.dataset.exitTabIndex);
+if (!buttons.length) {
+return { dropIndex: 0, targetButton: null, placement: null };
+}
+let dropIndex = Number(buttons[buttons.length - 1].dataset.exitTabFlatIndex || 0) + 1;
+let targetButton = null;
+let placement = "after";
+let foundPosition = false;
+for (const button of buttons) {
+const rect = button.getBoundingClientRect();
+const midpoint = rect.left + rect.width / 2;
+if (clientX < midpoint) {
+dropIndex = Number(button.dataset.exitTabFlatIndex || 0);
+placement = "before";
+foundPosition = true;
+targetButton = button.dataset.dragging === "true" ? null : button;
+break;
+}
+}
+if (!foundPosition) {
+const lastButton = buttons[buttons.length - 1];
+if (lastButton.dataset.dragging !== "true") {
+targetButton = lastButton;
+placement = "after";
+} else {
+placement = null;
+}
+} else if (!targetButton) {
+placement = null;
+}
+return { dropIndex, targetButton, placement };
+};
+const handleExitTabRowDragStart = (event) => {
+const button = event.currentTarget;
+const parentIndex = Number(button.dataset.exitTabRowParentIndex);
+const fromFlatIndex = Number(button.dataset.exitTabFlatIndex);
+if (!Number.isInteger(parentIndex) || !Number.isInteger(fromFlatIndex)) {
+return;
+}
+exitTabRowDragState = { parentIndex, fromFlatIndex, dropIndex: fromFlatIndex };
+button.dataset.dragging = "true";
+button.classList.add("dragging");
+toggleExitTabWiggle(true);
+clearExitTabDropIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+event.stopPropagation();
+};
+const handleExitTabRowDragOver = (event) => {
+if (!exitTabRowDragState) {
+return;
+}
+const container = event.currentTarget;
+const parentIndex = Number(container.dataset.exitTabIndex);
+if (parentIndex !== exitTabRowDragState.parentIndex) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+const { dropIndex, targetButton, placement } = getExitTabRowDropPosition(
+container,
+event.clientX
+);
+exitTabRowDragState.dropIndex = dropIndex;
+clearExitTabDropIndicators();
+if (targetButton && placement) {
+targetButton.classList.add(
+placement === "before" ? "dropBefore" : "dropAfter"
+);
+}
+};
+const handleExitTabRowDrop = (event) => {
+if (!exitTabRowDragState) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+const { parentIndex, fromFlatIndex } = exitTabRowDragState;
+const dropIndex =
+typeof exitTabRowDragState.dropIndex === "number"
+? exitTabRowDragState.dropIndex
+: fromFlatIndex;
+if (typeof exposed.moveExitTabWithinRow === "function") {
+exposed.moveExitTabWithinRow(parentIndex, fromFlatIndex, dropIndex);
+}
+endExitTabRowDrag();
+};
+const handleExitTabRowDragLeave = (event) => {
+if (!exitTabRowDragState) {
+return;
+}
+const container = event.currentTarget;
+const related = event.relatedTarget;
+if (related && container.contains(related)) {
+return;
+}
+clearExitTabDropIndicators();
+};
+const handleExitTabRowDragEnd = () => {
+if (exitTabRowDragState) {
+endExitTabRowDrag();
+}
+};
+const getNestedExitTabDropPosition = (container, clientX) => {
+const buttons = Array.from(container.querySelectorAll(".exitTabNestedButton"));
+if (!buttons.length) {
+return { dropIndex: 0, targetButton: null, placement: null };
+}
+let dropIndex = buttons.length;
+let targetButton = null;
+let placement = "after";
+for (const button of buttons) {
+const rect = button.getBoundingClientRect();
+const midpoint = rect.left + rect.width / 2;
+if (clientX < midpoint) {
+dropIndex = Number(button.dataset.nestedExitTabIndex || 0);
+placement = "before";
+targetButton = button.dataset.dragging === "true" ? null : button;
+return { dropIndex, targetButton, placement };
+}
+}
+const lastButton = buttons[buttons.length - 1];
+dropIndex = Number(lastButton.dataset.nestedExitTabIndex || buttons.length - 1) + 1;
+targetButton = lastButton.dataset.dragging === "true" ? null : lastButton;
+placement = targetButton ? "after" : null;
+return { dropIndex, targetButton, placement };
+};
+const handleNestedExitTabDragStart = (event) => {
+const button = event.currentTarget;
+const parentIndex = Number(button.dataset.exitTabIndex);
+const fromIndex = Number(button.dataset.nestedExitTabIndex);
+if (Number.isNaN(parentIndex) || Number.isNaN(fromIndex)) {
+return;
+}
+nestedExitTabDragState = { parentIndex, fromIndex, dropIndex: fromIndex };
+button.dataset.dragging = "true";
+button.classList.add("dragging");
+clearExitTabDropIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+event.stopPropagation();
+};
+const handleNestedExitTabDragOver = (event) => {
+if (!nestedExitTabDragState) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+const container = event.currentTarget;
+const parentIndex = Number(container.dataset.exitTabIndex);
+if (Number.isNaN(parentIndex) || parentIndex !== nestedExitTabDragState.parentIndex) {
+return;
+}
+const { dropIndex, targetButton, placement } = getNestedExitTabDropPosition(
+container,
+event.clientX
+);
+nestedExitTabDragState.dropIndex = dropIndex;
+clearExitTabDropIndicators();
+if (targetButton && placement) {
+targetButton.classList.add(
+placement === "before" ? "dropBefore" : "dropAfter"
+);
+}
+};
+const handleNestedExitTabDrop = (event) => {
+if (!nestedExitTabDragState) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+const { parentIndex, fromIndex } = nestedExitTabDragState;
+const dropIndex =
+nestedExitTabDragState.dropIndex !== undefined
+? nestedExitTabDragState.dropIndex
+: fromIndex;
+if (typeof exposed.moveNestedExitTab === "function") {
+exposed.moveNestedExitTab(parentIndex, fromIndex, dropIndex);
+}
+endNestedExitTabDrag();
+};
+const handleNestedExitTabDragLeave = (event) => {
+if (!nestedExitTabDragState) {
+return;
+}
+const container = event.currentTarget;
+const related = event.relatedTarget;
+if (related && container.contains(related)) {
+return;
+}
+clearExitTabDropIndicators();
+};
+const handleNestedExitTabDragEnd = () => {
+if (nestedExitTabDragState) {
+endNestedExitTabDrag();
+}
+};
+const clearPanelDropIndicators = () => {
+document
+.querySelectorAll(
+".panelListButton.dropBefore, .panelListButton.dropAfter"
+)
+.forEach((button) => button.classList.remove("dropBefore", "dropAfter"));
+};
+const endPanelDrag = () => {
+clearPanelDropIndicators();
+document
+.querySelectorAll(".panelListButton.dragging")
+.forEach((button) => {
+button.classList.remove("dragging");
+delete button.dataset.dragging;
+});
+panelDragState = null;
+togglePanelListWiggle(false);
+};
+const getPanelListButtonPanelIndex = (button) => {
+const panelIndex = Number(button?.dataset?.panelIndex);
+return Number.isInteger(panelIndex) ? panelIndex : null;
+};
+const getPanelListGroupStartIndex = (panelIndex) => {
+if (!post || !Array.isArray(post.panels) || !Number.isInteger(panelIndex)) {
+return null;
+}
+let groupStart = Math.max(0, Math.min(panelIndex, post.panels.length - 1));
+while (groupStart > 0 && post.panels[groupStart]?.stackedWithPrevious === true) {
+groupStart--;
+}
+return groupStart;
+};
+const getPanelListGroupEndIndex = (panelIndex) => {
+if (!post || !Array.isArray(post.panels) || !Number.isInteger(panelIndex)) {
+return null;
+}
+const groupStart = getPanelListGroupStartIndex(panelIndex);
+if (groupStart === null) {
+return null;
+}
+let groupEnd = groupStart;
+while (
+groupEnd + 1 < post.panels.length &&
+post.panels[groupEnd + 1]?.stackedWithPrevious === true
+) {
+groupEnd++;
+}
+return groupEnd;
+};
+const isPanelListDragTargetVisible = (button) => {
+const panelIndex = getPanelListButtonPanelIndex(button);
+if (panelIndex === null || button.closest(".panelListRow.hiddenFromPost")) {
+return false;
+}
+if (panelDragState) {
+const draggedGroupStart = getPanelListGroupStartIndex(panelDragState.fromIndex);
+const targetGroupStart = getPanelListGroupStartIndex(panelIndex);
+if (draggedGroupStart !== null && draggedGroupStart === targetGroupStart) {
+return false;
+}
+}
+return true;
+};
+const getPanelDropPosition = (container, clientY) => {
+const buttons = Array.from(container.querySelectorAll(".panelListButton"))
+.filter(isPanelListDragTargetVisible);
+if (!buttons.length) {
+return {
+dropIndex: panelDragState?.fromIndex ?? 0,
+targetButton: null,
+placement: null,
+};
+}
+for (const button of buttons) {
+const rect = button.getBoundingClientRect();
+const midpoint = rect.top + rect.height / 2;
+if (clientY < midpoint) {
+const panelIndex = getPanelListButtonPanelIndex(button);
+const groupStart = getPanelListGroupStartIndex(panelIndex);
+return {
+dropIndex: groupStart ?? panelIndex ?? 0,
+targetButton: button,
+placement: "before",
+};
+}
+}
+const lastButton = buttons[buttons.length - 1];
+const lastPanelIndex = getPanelListButtonPanelIndex(lastButton);
+const lastGroupEnd = getPanelListGroupEndIndex(lastPanelIndex);
+return {
+dropIndex: (lastGroupEnd ?? lastPanelIndex ?? post.panels.length - 1) + 1,
+targetButton: lastButton,
+placement: "after",
+};
+};
+const handlePanelDragStart = (event) => {
+const button = event.currentTarget;
+const fromIndex = Number(button.dataset.panelIndex);
+if (Number.isNaN(fromIndex)) {
+return;
+}
+panelDragState = { fromIndex, dropIndex: fromIndex };
+button.dataset.dragging = "true";
+button.classList.add("dragging");
+togglePanelListWiggle(true);
+clearPanelDropIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+};
+const handlePanelDragOver = (event) => {
+if (!panelDragState) {
+return;
+}
+event.preventDefault();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+const container = event.currentTarget;
+const { dropIndex, targetButton, placement } = getPanelDropPosition(
+container,
+event.clientY
+);
+panelDragState.dropIndex = dropIndex;
+clearPanelDropIndicators();
+if (targetButton && placement) {
+targetButton.classList.add(
+placement === "before" ? "dropBefore" : "dropAfter"
+);
+}
+};
+const handlePanelDrop = (event) => {
+if (!panelDragState) {
+return;
+}
+event.preventDefault();
+const fromIndex = panelDragState.fromIndex;
+const dropIndex =
+panelDragState.dropIndex !== undefined
+? panelDragState.dropIndex
+: fromIndex;
+if (typeof exposed.movePanel === "function") {
+exposed.movePanel(fromIndex, dropIndex);
+}
+endPanelDrag();
+};
+const handlePanelDragLeave = (event) => {
+if (!panelDragState) {
+return;
+}
+const container = event.currentTarget;
+const related = event.relatedTarget;
+if (related && container.contains(related)) {
+return;
+}
+clearPanelDropIndicators();
+};
+const handlePanelDragEnd = () => {
+if (panelDragState) {
+endPanelDrag();
+}
+};
+const clearSubPanelTabDropIndicators = () => {
+document
+.querySelectorAll(
+".subPanelTabGroup.dropBefore, .subPanelTabGroup.dropAfter"
+)
+.forEach((tab) => tab.classList.remove("dropBefore", "dropAfter"));
+};
+const endSubPanelTabDrag = () => {
+clearSubPanelTabDropIndicators();
+document
+.querySelectorAll(".subPanelTabGroup.dragging")
+.forEach((tab) => {
+tab.classList.remove("dragging");
+delete tab.dataset.dragging;
+});
+subPanelTabDragState = null;
+};
+const getSubPanelTabDropPosition = (container, clientX) => {
+const tabs = Array.from(
+container.querySelectorAll('.subPanelTabGroup[data-draggable-subpanel="true"]')
+);
+if (!tabs.length) {
+return { dropIndex: 0, targetTab: null, placement: null };
+}
+let dropIndex = Number(tabs[tabs.length - 1].dataset.subpanelIndex || 0) + 1;
+let targetTab = null;
+let placement = "after";
+let foundPosition = false;
+for (const tab of tabs) {
+const rect = tab.getBoundingClientRect();
+const midpoint = rect.left + rect.width / 2;
+if (clientX < midpoint) {
+dropIndex = Number(tab.dataset.subpanelIndex || 0);
+placement = "before";
+foundPosition = true;
+targetTab = tab.dataset.dragging === "true" ? null : tab;
+break;
+}
+}
+if (!foundPosition) {
+const lastTab = tabs[tabs.length - 1];
+if (lastTab.dataset.dragging !== "true") {
+targetTab = lastTab;
+placement = "after";
+} else {
+placement = null;
+}
+} else if (!targetTab) {
+placement = null;
+}
+return { dropIndex, targetTab, placement };
+};
+const handleSubPanelTabDragStart = (event) => {
+const tab = event.currentTarget;
+const fromIndex = Number(tab.dataset.subpanelIndex);
+if (!Number.isInteger(fromIndex) || fromIndex < 0) {
+return;
+}
+subPanelTabDragState = { fromIndex, dropIndex: fromIndex };
+tab.dataset.dragging = "true";
+tab.classList.add("dragging");
+clearSubPanelTabDropIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+};
+const handleSubPanelTabDragOver = (event) => {
+if (!subPanelTabDragState) {
+return;
+}
+event.preventDefault();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+const container = document.getElementById("subPanelList");
+if (!container) {
+return;
+}
+const { dropIndex, targetTab, placement } = getSubPanelTabDropPosition(
+container,
+event.clientX
+);
+subPanelTabDragState.dropIndex = dropIndex;
+clearSubPanelTabDropIndicators();
+if (targetTab && placement) {
+targetTab.classList.add(placement === "before" ? "dropBefore" : "dropAfter");
+}
+};
+const handleSubPanelTabDrop = (event) => {
+if (!subPanelTabDragState) {
+return;
+}
+event.preventDefault();
+const fromIndex = subPanelTabDragState.fromIndex;
+const dropIndex =
+typeof subPanelTabDragState.dropIndex === "number"
+? subPanelTabDragState.dropIndex
+: fromIndex;
+if (exposed && typeof exposed.moveSubPanel === "function") {
+exposed.moveSubPanel(fromIndex, dropIndex);
+}
+endSubPanelTabDrag();
+};
+const handleSubPanelTabDragLeave = (event) => {
+if (!subPanelTabDragState) {
+return;
+}
+const container = document.getElementById("subPanelList");
+const related = event.relatedTarget;
+if (container && related && container.contains(related)) {
+return;
+}
+clearSubPanelTabDropIndicators();
+};
+const handleSubPanelTabDragEnd = () => {
+if (subPanelTabDragState) {
+endSubPanelTabDrag();
+}
+};
+const toggleRowWiggle = (isActive) => {
+const rows = document.querySelectorAll(".sMControlRow");
+for (const row of rows) {
+row.classList.toggle("rowWiggle", isActive);
+if (isActive) {
+row.style.setProperty("--wiggle-delay", `${Math.random() * 0.12}s`);
+} else {
+row.style.removeProperty("--wiggle-delay");
+}
+}
+};
+const clearRowDropIndicators = () => {
+document
+.querySelectorAll(".sMControlRow.dropBefore, .sMControlRow.dropAfter")
+.forEach((el) => el.classList.remove("dropBefore", "dropAfter"));
+};
+const endRowDrag = () => {
+toggleRowWiggle(false);
+clearRowDropIndicators();
+rowDragState = null;
+document
+.querySelectorAll(".sMControlRow.dragging")
+.forEach((el) => {
+el.classList.remove("dragging");
+delete el.dataset.dragging;
+});
+};
+const getRowDropPosition = (container, clientY) => {
+const rows = Array.from(container.querySelectorAll(".sMControlRow"));
+if (!rows.length) {
+return { dropIndex: 0, targetRow: null, placement: null };
+}
+let dropIndex = rows.length;
+let targetRow = null;
+let placement = "after";
+let foundPosition = false;
+for (let i = 0; i < rows.length; i++) {
+const row = rows[i];
+const rect = row.getBoundingClientRect();
+const midpoint = rect.top + rect.height / 2;
+if (clientY < midpoint) {
+dropIndex = Number(row.dataset.dataRow || i);
+placement = "before";
+foundPosition = true;
+targetRow = row.dataset.dragging === "true" ? null : row;
+break;
+}
+}
+if (!foundPosition) {
+const lastRow = rows[rows.length - 1];
+dropIndex = Number(lastRow.dataset.dataRow || rows.length - 1) + 1;
+if (lastRow.dataset.dragging !== "true") {
+targetRow = lastRow;
+placement = "after";
+} else {
+placement = null;
+}
+} else if (!targetRow) {
+placement = null;
+}
+return { dropIndex, targetRow, placement };
+};
+const handleRowDragStart = (event) => {
+const row = event.currentTarget;
+const fromIndex = Number(row.dataset.dataRow);
+if (Number.isNaN(fromIndex)) {
+return;
+}
+rowDragState = { fromIndex, dropIndex: fromIndex };
+row.dataset.dragging = "true";
+row.classList.add("dragging");
+toggleRowWiggle(true);
+clearRowDropIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+};
+const handleRowListDragOver = (event) => {
+if (!rowDragState) {
+return;
+}
+event.preventDefault();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+const container = event.currentTarget;
+const { dropIndex, targetRow, placement } = getRowDropPosition(
+container,
+event.clientY
+);
+rowDragState.dropIndex = dropIndex;
+clearRowDropIndicators();
+if (targetRow && placement) {
+targetRow.classList.add(
+placement === "before" ? "dropBefore" : "dropAfter"
+);
+}
+};
+const handleRowListDrop = (event) => {
+if (!rowDragState) {
+return;
+}
+event.preventDefault();
+const fromIndex = rowDragState.fromIndex;
+const dropIndex =
+rowDragState.dropIndex !== undefined
+? rowDragState.dropIndex
+: fromIndex;
+if (typeof exposed.moveRow === "function") {
+exposed.moveRow(fromIndex, dropIndex);
+}
+endRowDrag();
+};
+const handleRowListDragLeave = (event) => {
+if (!rowDragState) {
+return;
+}
+const container = event.currentTarget;
+const related = event.relatedTarget;
+if (related && container.contains(related)) {
+return;
+}
+clearRowDropIndicators();
+};
+const handleRowDragEnd = () => {
+if (rowDragState) {
+endRowDrag();
+}
+};
+const isTextInputElement = (element) => {
+if (!element || element.disabled || element.readOnly) {
+return false;
+}
+const tagName = element.tagName;
+if (tagName === "TEXTAREA") {
+return true;
+}
+if (tagName === "INPUT") {
+const type = (element.type || "").toLowerCase();
+return (
+type === "text" ||
+type === "search" ||
+type === "email" ||
+type === "url" ||
+type === "tel" ||
+type === "password"
+);
+}
+return false;
+};
+const checkForLimonEasterEgg = (event) => {
+const target = event.target;
+if (!isTextInputElement(target)) {
+return;
+}
+const trimmedValue = (target.value || "").trim().toLowerCase();
+if (trimmedValue === LIMON_TRIGGER_VALUE) {
+if (target.dataset.limonTriggered === "true") {
+return;
+}
+target.dataset.limonTriggered = "true";
+const newWindow = window.open(LIMON_VIDEO_URL, "_blank");
+if (newWindow) {
+newWindow.opener = null;
+}
+} else if (target.dataset.limonTriggered === "true") {
+delete target.dataset.limonTriggered;
+}
+};
+const clearBlockDragIndicators = () => {
+document
+.querySelectorAll(
+".textEditorBlock.dropBefore, .textEditorBlock.dropAfter"
+)
+.forEach((el) => el.classList.remove("dropBefore", "dropAfter"));
+document
+.querySelectorAll(".sMControlRow.dropActive")
+.forEach((el) => el.classList.remove("dropActive"));
+};
+const setNewRowDropState = (isActive) => {
+if (!newRowDropTargetButton) {
+return;
+}
+if (isActive) {
+newRowDropTargetButton.classList.add("dropActive");
+} else {
+newRowDropTargetButton.classList.remove("dropActive");
+}
+};
+const handleNewRowDragEnter = (event) => {
+if (!blockDragState || !newRowDropTargetButton) {
+return;
+}
+event.preventDefault();
+setNewRowDropState(true);
+};
+const handleNewRowDragOver = (event) => {
+if (!blockDragState || !newRowDropTargetButton) {
+return;
+}
+event.preventDefault();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "copy";
+}
+setNewRowDropState(true);
+};
+const handleNewRowDragLeave = (event) => {
+if (!blockDragState || !newRowDropTargetButton) {
+return;
+}
+const related = event.relatedTarget;
+if (related && newRowDropTargetButton.contains(related)) {
+return;
+}
+setNewRowDropState(false);
+};
+const handleNewRowDrop = (event) => {
+if (!blockDragState || !newRowDropTargetButton) {
+return;
+}
+event.preventDefault();
+setNewRowDropState(false);
+if (typeof exposed?.duplicateBlockIntoNewRow === "function") {
+exposed.duplicateBlockIntoNewRow(
+blockDragState.rowIndex,
+blockDragState.blockIndex
+);
+}
+endBlockDrag();
+};
+const endBlockDrag = () => {
+toggleBlockWiggle(false);
+clearBlockDragIndicators();
+setNewRowDropState(false);
+blockDragState = null;
+document
+.querySelectorAll(".textEditorBlock.dragging")
+.forEach((el) => el.classList.remove("dragging"));
+document
+.querySelectorAll(".textEditorBlock")
+.forEach((el) => delete el.dataset.dragging);
+};
+const getDropIndexForRow = (rowEl, clientX) => {
+const blocks = Array.from(rowEl.querySelectorAll(".textEditorBlock"));
+if (!blocks.length) {
+return 0;
+}
+let dropIndex = blocks.length;
+let indicatorTarget = null;
+let before = false;
+for (let i = 0; i < blocks.length; i++) {
+const block = blocks[i];
+const rect = block.getBoundingClientRect();
+if (clientX < rect.left + rect.width / 2) {
+dropIndex = i;
+indicatorTarget = block;
+before = true;
+break;
+}
+}
+if (!indicatorTarget) {
+indicatorTarget = blocks[blocks.length - 1];
+before = false;
+}
+blocks.forEach((block) => {
+block.classList.remove("dropBefore", "dropAfter");
+});
+indicatorTarget.classList.add(before ? "dropBefore" : "dropAfter");
+return dropIndex;
+};
+const handleBlockDragStart = (event) => {
+event.stopPropagation();
+const target = event.currentTarget;
+const rowIndex = Number(target.dataset.row);
+const blockIndex = Number(target.dataset.block);
+blockDragState = { rowIndex, blockIndex };
+target.dataset.dragging = "true";
+target.classList.add("dragging");
+toggleBlockWiggle(true);
+clearBlockDragIndicators();
+if (event.dataTransfer) {
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.dropEffect = "move";
+event.dataTransfer.setData("text/plain", "");
+}
+};
+const handleBlockDragEnd = () => {
+if (blockDragState) {
+endBlockDrag();
+}
+};
+const handleRowDragEnter = (event) => {
+if (!blockDragState) {
+return;
+}
+clearBlockDragIndicators();
+const rowEl = event.currentTarget;
+rowEl.classList.add("dropActive");
+};
+const handleRowDragOver = (event) => {
+if (!blockDragState) {
+return;
+}
+const rowEl = event.currentTarget;
+event.preventDefault();
+if (event.dataTransfer) {
+event.dataTransfer.dropEffect = "move";
+}
+rowEl.classList.add("dropActive");
+getDropIndexForRow(rowEl, event.clientX);
+};
+const handleRowDrop = (event) => {
+if (!blockDragState) {
+return;
+}
+const rowEl = event.currentTarget;
+const rowIndex = Number(rowEl.dataset.dataRow);
+event.preventDefault();
+const dropIndex = getDropIndexForRow(rowEl, event.clientX);
+exposed.moveControlElem(
+blockDragState.rowIndex,
+blockDragState.blockIndex,
+rowIndex,
+dropIndex
+);
+endBlockDrag();
+};
+const handleRowDragLeave = (event) => {
+if (!blockDragState) {
+return;
+}
+const rowEl = event.currentTarget;
+const related = event.relatedTarget;
+if (related && rowEl.contains(related)) {
+return;
+}
+rowEl.classList.remove("dropActive");
+rowEl
+.querySelectorAll(
+".textEditorBlock.dropBefore, .textEditorBlock.dropAfter"
+)
+.forEach((el) => el.classList.remove("dropBefore", "dropAfter"));
+};
+const bindUndoControls = () => {
+if (document.documentElement.dataset.undoBound === "true") {
+return;
+}
+document.documentElement.dataset.undoBound = "true";
+const tryUndo = () => {
+if (typeof app !== "undefined" && typeof app.undo === "function") {
+app.undo();
+} else if (exposed && typeof exposed.undo === "function") {
+exposed.undo();
+}
+};
+const tryRedo = () => {
+if (typeof app !== "undefined" && typeof app.redo === "function") {
+app.redo();
+} else if (exposed && typeof exposed.redo === "function") {
+exposed.redo();
+}
+};
+const undoSelectors = [
+"#undo",
+"#undoButton",
+"#undoBtn",
+"[data-action='undo']",
+"[aria-label='Undo']",
+"[title='Undo']",
+];
+for (const selector of undoSelectors) {
+const button = document.querySelector(selector);
+if (!button) {
+continue;
+}
+button.addEventListener("click", (event) => {
+event.preventDefault();
+tryUndo();
+});
+break;
+}
+const redoSelectors = [
+"#redoButton",
+"#redoBtn",
+"[data-action='redo']",
+"[aria-label='Redo']",
+"[title='Redo']",
+];
+for (const selector of redoSelectors) {
+const button = document.querySelector(selector);
+if (!button) {
+continue;
+}
+button.addEventListener("click", (event) => {
+event.preventDefault();
+tryRedo();
+});
+break;
+}
+};
+const initCustomShieldMaker = () => {
+const dialog = document.getElementById("customShieldMaker");
+if (!dialog || dialog.dataset.customShieldMakerBound === "true") {
+return;
+}
+dialog.dataset.customShieldMakerBound = "true";
+const holder = document.getElementById("modalHolder");
+const openButton = document.getElementById("openCustomShieldMaker");
+const closeButton = document.getElementById("customShieldMakerClose");
+const uploadButton = document.getElementById("customShieldMakerUploadButton");
+const fileInput = document.getElementById("customShieldMakerFile");
+const previewImg = document.getElementById("customShieldMakerPreviewImg");
+const emptyPreview = document.getElementById("customShieldMakerEmptyPreview");
+const routeNumber = document.getElementById("customShieldMakerRouteNumber");
+const routeInput = document.getElementById("customShieldMakerRouteInput");
+const colorSelect = document.getElementById("customShieldMakerRouteColor");
+const customColorControls = document.getElementById("customShieldMakerCustomColorControls");
+const customColorInput = document.getElementById("customShieldMakerRouteCustomColor");
+const customColorSwatch = document.getElementById("customShieldMakerRouteCustomColorSwatch");
+const fontSelect = document.getElementById("customShieldMakerRouteFont");
+const fontSizeInput = document.getElementById("customShieldMakerRouteFontSize");
+const fontWeightInput = document.getElementById("customShieldMakerRouteFontWeight");
+const letterSpacingInput = document.getElementById("customShieldMakerRouteLetterSpacing");
+const topOffsetInput = document.getElementById("customShieldMakerRouteTopOffset");
+const horizontalOffsetInput = document.getElementById("customShieldMakerRouteHorizontalOffset");
+const alignmentSelect = document.getElementById("customShieldMakerRouteAlignment");
+const alignmentButtons = Array.from(
+document.querySelectorAll("#customShieldMakerRouteAlignmentButtons .customShieldMakerAlignmentButton")
+);
+const normalizeCustomShieldMakerAlignment = (value) => {
+const normalized = String(value || "center").toLowerCase();
+return normalized === "left" || normalized === "right" ? normalized : "center";
+};
+const syncCustomShieldMakerAlignmentButtons = () => {
+const selectedAlignment = normalizeCustomShieldMakerAlignment(
+alignmentSelect?.value
+);
+for (const button of alignmentButtons) {
+const isSelected =
+normalizeCustomShieldMakerAlignment(button.dataset.alignment) ===
+selectedAlignment;
+button.classList.toggle("selected", isSelected);
+button.setAttribute("aria-pressed", String(isSelected));
+}
+};
+const fontSizeValueInput = document.getElementById("customShieldMakerRouteFontSizeVal");
+const letterSpacingValueInput = document.getElementById("customShieldMakerRouteLetterSpacingVal");
+const topOffsetValueInput = document.getElementById("customShieldMakerRouteTopOffsetVal");
+const horizontalOffsetValueInput = document.getElementById("customShieldMakerRouteHorizontalOffsetVal");
+const nameInput = document.getElementById("customShieldMakerNameInput");
+const saveButton = document.getElementById("customShieldMakerSaveButton");
+const deleteButton = document.getElementById("customShieldMakerDeleteButton");
+const bindCustomShieldMakerRangePair = (slider, valueInput) => {
+if (!slider || !valueInput || slider.dataset.customShieldRangePairBound === "true") {
+return;
+}
+slider.dataset.customShieldRangePairBound = "true";
+const syncValueFromSlider = () => {
+valueInput.value = slider.value;
+};
+const commitSliderFromValue = () => {
+const parsed = parseFloat(valueInput.value);
+if (!Number.isFinite(parsed)) {
+valueInput.value = slider.value;
+return;
+}
+const min = parseFloat(slider.min);
+const max = parseFloat(slider.max);
+const resolved = Math.max(
+Number.isFinite(min) ? min : parsed,
+Math.min(Number.isFinite(max) ? max : parsed, parsed)
+);
+slider.value = resolved;
+valueInput.value = resolved;
+slider.dispatchEvent(new Event("input", { bubbles: true }));
+};
+slider.addEventListener("input", syncValueFromSlider);
+valueInput.addEventListener("input", () => {});
+valueInput.addEventListener("change", commitSliderFromValue);
+valueInput.addEventListener("blur", commitSliderFromValue);
+syncValueFromSlider();
+};
+bindCustomShieldMakerRangePair(fontSizeInput, fontSizeValueInput);
+bindCustomShieldMakerRangePair(letterSpacingInput, letterSpacingValueInput);
+bindCustomShieldMakerRangePair(topOffsetInput, topOffsetValueInput);
+bindCustomShieldMakerRangePair(horizontalOffsetInput, horizontalOffsetValueInput);
+const variantButtons = Array.from(
+document.querySelectorAll("#customShieldMakerVariantButtons [data-variant-digit]")
+);
+const currentVariantLabel = document.getElementById("customShieldMakerCurrentVariantLabel");
+const variantStatus = document.getElementById("customShieldMakerVariantStatus");
+const uploadButtonText = document.getElementById("customShieldMakerUploadButtonText");
+const appendSelectOption = (select, value, selected = false) => {
+const option = document.createElement("option");
+option.value = value;
+option.textContent = value;
+option.selected = selected;
+select.appendChild(option);
+};
+const normalizeNumericInput = (value, fallback = 0) => {
+const rawValue = String(value ?? "").trim().replace(/em$/i, "");
+const parsed = parseFloat(rawValue);
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const formatCustomShieldNumber = (value, fallback = "0") => {
+const parsed = Number(value);
+if (!Number.isFinite(parsed)) {
+return fallback;
+}
+return String(Number(parsed.toFixed(4)));
+};
+const previewEmFromDisplayValue = (value, fallback = 0) => {
+const parsed = normalizeNumericInput(value, fallback);
+const adjusted = parsed / 100;
+return `${formatCustomShieldNumber(adjusted, fallback / 100)}em`;
+};
+const displayValueFromActualEm = (value, fallback = "0") => {
+const parsed = normalizeNumericInput(value, Number(fallback) / 100);
+return formatCustomShieldNumber(parsed * 100, fallback);
+};
+const displayDeltaToEm = (displayDelta) => {
+return `${formatCustomShieldNumber(displayDelta / 100, "0")}em`;
+};
+const getDisplayInputValue = (input, fallback = 0) => {
+return normalizeNumericInput(input?.value, fallback);
+};
+const normalizeCustomShieldMakerHexColor = (value, fallback = "#000000") => {
+const rawValue = String(value || "").trim();
+return /^#[0-9a-f]{6}$/i.test(rawValue) ? rawValue : fallback;
+};
+const getCustomShieldMakerRouteColorValue = () => {
+return colorSelect?.value || "Black";
+};
+const clearCustomShieldMakerTemporaryRouteColors = () => {
+if (!colorSelect) {
+return;
+}
+const temporaryOptions = Array.from(colorSelect.options || []).filter(
+(option) => option.dataset.customShieldMakerTemporaryColor === "true"
+);
+const selectedWasTemporary = temporaryOptions.some(
+(option) => option.value === colorSelect.value
+);
+temporaryOptions.forEach((option) => option.remove());
+if (selectedWasTemporary) {
+colorSelect.value = Array.from(colorSelect.options || []).some(
+(option) => option.value === "Black"
+)
+? "Black"
+: colorSelect.options?.[0]?.value || "";
+}
+if (typeof syncAllColorPickers === "function") {
+syncAllColorPickers();
+}
+};
+const ensureCustomShieldMakerTemporaryRouteColor = (value) => {
+if (!colorSelect) {
+return String(value || "").trim();
+}
+const rawValue = String(value || "").trim();
+const normalizedValue =
+typeof normalizeCustomCssColorValue === "function"
+? normalizeCustomCssColorValue(rawValue)
+: rawValue;
+const resolvedValue = normalizedValue || rawValue;
+if (!resolvedValue) {
+return "";
+}
+const comparableValue =
+typeof getCustomColorComparableValue === "function"
+? getCustomColorComparableValue(resolvedValue)
+: resolvedValue.toLowerCase();
+const existingOption = Array.from(colorSelect.options || []).find((option) => {
+if (option.value === resolvedValue || option.value === rawValue) {
+return true;
+}
+if (!comparableValue || typeof getCustomColorComparableValue !== "function") {
+return false;
+}
+return getCustomColorComparableValue(option.value) === comparableValue;
+});
+if (existingOption) {
+return existingOption.value;
+}
+if (
+typeof isValidCssColorValue === "function" &&
+!isValidCssColorValue(resolvedValue)
+) {
+return "";
+}
+const option = document.createElement("option");
+option.value = resolvedValue;
+option.textContent = resolvedValue;
+option.dataset.customShieldMakerTemporaryColor = "true";
+colorSelect.appendChild(option);
+return option.value;
+};
+const updateCustomShieldMakerCustomColorControls = () => {
+if (customColorControls) {
+customColorControls.hidden = true;
+}
+const nextColor = normalizeCustomShieldMakerHexColor(customColorInput?.value);
+if (customColorInput) {
+customColorInput.value = nextColor;
+}
+if (customColorSwatch) {
+customColorSwatch.style.backgroundColor = nextColor;
+}
+};
+const setCustomShieldMakerRouteColorControlValue = (value) => {
+const rawValue = String(value || "Black").trim() || "Black";
+const resolvedValue = ensureCustomShieldMakerTemporaryRouteColor(rawValue);
+setSelectValueSafely(colorSelect, resolvedValue || rawValue, "Black");
+if (typeof syncAllColorPickers === "function") {
+syncAllColorPickers();
+}
+updateCustomShieldMakerCustomColorControls();
+};
+const getCustomShieldMakerLastPreviewVariant = () => {
+const state = dialog._customShieldMakerVariantState;
+const lastVariant = normalizeCustomShieldMakerVariantKey(
+dialog._customShieldMakerLastRouteVariant || state?.activeVariant || "2",
+"2"
+);
+if (state?.imageDataByVariant?.[lastVariant]) {
+return lastVariant;
+}
+const firstVariantWithImage = getCustomShieldMakerImageVariantKeys(
+state?.imageDataByVariant || {}
+)[0];
+return firstVariantWithImage || lastVariant;
+};
+const getCustomShieldMakerVariantKeyForEditor = () => {
+const routeText = String(routeInput?.value || "").trim();
+if (routeText) {
+const nextVariant = getCustomShieldMakerVariantKeyFromRoute(routeText);
+dialog._customShieldMakerLastRouteVariant = nextVariant;
+return nextVariant;
+}
+return getCustomShieldMakerLastPreviewVariant();
+};
+const setCustomShieldMakerAnchor = ({
+x = 50,
+y = 50,
+seedTop,
+seedHorizontal,
+} = {}) => {
+dialog._customShieldMakerAnchor = {
+x,
+y,
+seedTop:
+seedTop !== undefined
+? seedTop
+: getDisplayInputValue(topOffsetInput, 0),
+seedHorizontal:
+seedHorizontal !== undefined
+? seedHorizontal
+: getDisplayInputValue(horizontalOffsetInput, 0),
+};
+};
+const createEmptyCustomShieldMakerVariantState = () => {
+const activeVariant = getCustomShieldMakerVariantKeyForEditor();
+return {
+enabledVariants: [],
+activeVariant,
+imageDataByVariant: {},
+routeStyleByVariant: {},
+anchorByVariant: {},
+};
+};
+const ensureCustomShieldMakerVariantState = () => {
+if (!dialog._customShieldMakerVariantState) {
+dialog._customShieldMakerVariantState = createEmptyCustomShieldMakerVariantState();
+}
+const state = dialog._customShieldMakerVariantState;
+state.imageDataByVariant = state.imageDataByVariant || {};
+state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+state.activeVariant = normalizeCustomShieldMakerVariantKey(
+state.activeVariant,
+getCustomShieldMakerVariantKeyForEditor()
+);
+state.routeStyleByVariant = state.routeStyleByVariant || {};
+state.anchorByVariant = state.anchorByVariant || {};
+return state;
+};
+const getCustomShieldMakerEditorStyle = () => ({
+color: getCustomShieldMakerRouteColorValue(),
+fontFamily: fontSelect?.value || "Series D",
+fontSize: getDisplayInputValue(fontSizeInput, 220),
+fontWeight: getDisplayInputValue(fontWeightInput, 10),
+letterSpacing: getDisplayInputValue(letterSpacingInput, 0),
+topOffset: getDisplayInputValue(topOffsetInput, 0),
+horizontalOffset: getDisplayInputValue(horizontalOffsetInput, 0),
+alignment: alignmentSelect?.value || "center",
+});
+const getCustomShieldMakerEditorAnchor = () =>
+dialog._customShieldMakerAnchor || {
+x: 50,
+y: 50,
+seedTop: getDisplayInputValue(topOffsetInput, 0),
+seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
+};
+const getFirstCustomShieldMakerVariantImage = (state) =>
+Object.values(state?.imageDataByVariant || {}).find(Boolean) ||
+(previewImg && !previewImg.hidden ? previewImg.src : "");
+const getCustomShieldMakerEditorVariantImage = (state, variantKey) => {
+const requestedVariant = normalizeCustomShieldMakerVariantKey(
+variantKey,
+state?.activeVariant || "2"
+);
+const imageDataByVariant = state?.imageDataByVariant || {};
+for (const fallbackVariant of getCustomShieldMakerVariantFallbackOrder(requestedVariant)) {
+const fallbackImage = imageDataByVariant[fallbackVariant];
+if (typeof fallbackImage === "string" && fallbackImage.trim()) {
+return fallbackImage;
+}
+}
+return getFirstCustomShieldMakerVariantImage(state) || "";
+};
+const persistCurrentCustomShieldMakerVariantState = () => {
+const state = ensureCustomShieldMakerVariantState();
+const activeVariant = normalizeCustomShieldMakerVariantKey(
+state.activeVariant,
+getCustomShieldMakerVariantKeyForEditor()
+);
+state.activeVariant = activeVariant;
+state.routeStyleByVariant[activeVariant] = getCustomShieldMakerEditorStyle();
+state.anchorByVariant[activeVariant] = getCustomShieldMakerEditorAnchor();
+state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+return state;
+};
+const setInputValueIfPresent = (input, value) => {
+if (input) {
+input.value = formatCustomShieldNumber(value, "0");
+}
+};
+const updateCustomShieldMakerVariantButtons = () => {
+const state = ensureCustomShieldMakerVariantState();
+const activeVariant = normalizeCustomShieldMakerVariantKey(
+state.activeVariant,
+getCustomShieldMakerVariantKeyForEditor()
+);
+for (const button of variantButtons) {
+const variantKey = normalizeCustomShieldMakerVariantKey(button.dataset.variantDigit, "");
+const hasDedicatedImage = !!state.imageDataByVariant[variantKey];
+const isCurrent = variantKey === activeVariant;
+button.classList.toggle("selected", hasDedicatedImage);
+button.classList.toggle("currentVariant", isCurrent);
+button.setAttribute("aria-pressed", String(hasDedicatedImage));
+button.title = isCurrent
+? "This is the variant currently being edited. Change the route number length to edit another variant."
+: hasDedicatedImage
+? "This digit-count variant has its own uploaded shield image."
+: "This digit-count variant will use the closest custom shield image fallback.";
+}
+if (currentVariantLabel) {
+currentVariantLabel.textContent = `Editing ${activeVariant} digit`;
+}
+if (uploadButtonText) {
+uploadButtonText.textContent = `Upload ${activeVariant} Digit SVG or PNG`;
+}
+const hasDedicatedImage = !!state.imageDataByVariant[activeVariant];
+const fallbackImage = getCustomShieldMakerEditorVariantImage(state, activeVariant);
+if (variantStatus) {
+variantStatus.textContent = hasDedicatedImage
+? `${activeVariant} digit has its own shield image.`
+: fallbackImage
+? `${activeVariant} digit does not have its own shield image.`
+: "Route number length selects the variant being edited.";
+}
+};
+const applyCustomShieldMakerVariantToEditor = (variantKey, { preserveRouteNumber = true } = {}) => {
+const state = ensureCustomShieldMakerVariantState();
+const normalizedVariant = normalizeCustomShieldMakerVariantKey(variantKey, state.activeVariant || "2");
+const fallbackVariant = state.activeVariant || normalizedVariant;
+const fallbackStyle =
+state.routeStyleByVariant[normalizedVariant] ||
+state.routeStyleByVariant[fallbackVariant] ||
+getCustomShieldMakerEditorStyle();
+const fallbackAnchor =
+state.anchorByVariant[normalizedVariant] ||
+state.anchorByVariant[fallbackVariant] ||
+getCustomShieldMakerEditorAnchor();
+const imageData = getCustomShieldMakerEditorVariantImage(state, normalizedVariant);
+state.activeVariant = normalizedVariant;
+state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+if (previewImg) {
+previewImg.src = imageData;
+previewImg.hidden = !imageData;
+}
+if (emptyPreview) {
+emptyPreview.hidden = !!imageData;
+}
+const style = normalizeCustomShieldMakerRouteStyle(fallbackStyle);
+setCustomShieldMakerRouteColorControlValue(style.color || "Black");
+setSelectValueSafely(fontSelect, style.fontFamily || "Series D", "Series D");
+if (fontSelect?._fontPickerApi) {
+fontSelect._fontPickerApi.sync();
+}
+setInputValueIfPresent(fontSizeInput, style.fontSize);
+setInputValueIfPresent(fontWeightInput, style.fontWeight);
+setInputValueIfPresent(letterSpacingInput, style.letterSpacing);
+setInputValueIfPresent(topOffsetInput, style.topOffset);
+setInputValueIfPresent(horizontalOffsetInput, style.horizontalOffset);
+if (alignmentSelect) {
+alignmentSelect.value = normalizeCustomShieldMakerAlignment(
+style.alignment
+);
+syncCustomShieldMakerAlignmentButtons();
+}
+setCustomShieldMakerAnchor(normalizeCustomShieldMakerAnchor(fallbackAnchor, style));
+updateCustomShieldMakerVariantButtons();
+if (!preserveRouteNumber && routeInput) {
+routeInput.value = normalizedVariant === "1" ? "1" : "1".repeat(Number(normalizedVariant));
+}
+};
+const syncCustomShieldMakerVariantFromRouteNumber = () => {
+const state = ensureCustomShieldMakerVariantState();
+const nextVariant = getCustomShieldMakerVariantKeyForEditor();
+if (nextVariant !== state.activeVariant) {
+persistCurrentCustomShieldMakerVariantState();
+applyCustomShieldMakerVariantToEditor(nextVariant);
+} else {
+state.activeVariant = nextVariant;
+state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+updateCustomShieldMakerVariantButtons();
+}
+};
+const parseCssEmValue = (value, fallback = null) => {
+const rawValue = String(value || "").trim();
+if (!rawValue || rawValue === "auto") {
+return fallback;
+}
+const emMatch = rawValue.match(/^(-?\d*\.?\d+)em$/i);
+if (emMatch) {
+return parseFloat(emMatch[1]);
+}
+return fallback;
+};
+const getMatchedRouteNumberCss = (routeElement) => {
+const matchedStyles = {};
+const matchedPriorities = {};
+const properties = [
+"color",
+"font-family",
+"font-size",
+"font-weight",
+"letter-spacing",
+"top",
+"left",
+"right",
+];
+const applyStyleRule = (rule) => {
+if (!rule.selectorText || !rule.selectorText.includes(".routeNumber")) {
+return;
+}
+try {
+if (!routeElement.matches(rule.selectorText)) {
+return;
+}
+} catch (error) {
+return;
+}
+for (const property of properties) {
+const value = rule.style.getPropertyValue(property);
+if (!value) {
+continue;
+}
+const priority = rule.style.getPropertyPriority(property);
+const existingPriority = matchedPriorities[property];
+if (existingPriority === "important" && priority !== "important") {
+continue;
+}
+matchedStyles[property] = value.trim();
+matchedPriorities[property] = priority;
+}
+};
+const walkRules = (rules) => {
+for (const rule of Array.from(rules || [])) {
+if (rule.type === CSSRule.STYLE_RULE) {
+applyStyleRule(rule);
+} else if (rule.cssRules) {
+walkRules(rule.cssRules);
+}
+}
+};
+for (const sheet of Array.from(document.styleSheets)) {
+try {
+walkRules(sheet.cssRules);
+} catch (error) {
+continue;
+}
+}
+return matchedStyles;
+};
+const getPreviewFontWeight = () => {
+const displayedWeight = normalizeNumericInput(fontWeightInput?.value, 0);
+const requestedWeight = displayedWeight / 10;
+return {
+requestedWeight,
+cssWeight: Math.min(1000, Math.max(1, requestedWeight)),
+};
+};
+const renderCustomShieldMakerRouteText = (routeText) => {
+if (!routeNumber) {
+return;
+}
+const motorway = isMotorwayFont(fontSelect?.value);
+const routeCharacters = Array.from(motorway
+? encodeMotorwayRouteText(routeText) : String(routeText || ""));
+routeNumber.classList.toggle("motorwayRouteNumber", motorway);
+const isDigit = (character) => /^[0-9]$/.test(character || "");
+routeNumber.replaceChildren();
+routeCharacters.forEach((character, index) => {
+const previousCharacter = routeCharacters[index - 1] || "";
+const nextCharacter = routeCharacters[index + 1] || "";
+const classNames = ["routeChar", "customShieldMakerRouteChar"];
+if (/^[0-9A-Za-z]$/.test(character)) {
+classNames.push(`routeChar-${character.toUpperCase()}`);
+} else if (character === " ") {
+classNames.push("routeChar-space");
+}
+if (isDigit(character) && isDigit(previousCharacter)) {
+classNames.push("routeChar-hasPreviousDigit");
+}
+if (isDigit(character) && isDigit(nextCharacter)) {
+classNames.push("routeChar-hasNextDigit");
+}
+if (character === "3" && previousCharacter === "3") {
+classNames.push("routeChar-previous3");
+}
+if (character === "3" && nextCharacter === "3") {
+classNames.push("routeChar-next3");
+}
+const characterSpan = document.createElement("span");
+characterSpan.className = classNames.join(" ");
+characterSpan.textContent = character === " " ? "\u00A0" : character;
+routeNumber.appendChild(characterSpan);
+});
+};
+const applyCustomShieldMakerLetterSpacing = (spacingValue) => {
+if (!routeNumber) {
+return;
+}
+routeNumber.style.gap = "0";
+Array.from(routeNumber.children).forEach((characterSpan, index) => {
+characterSpan.style.marginLeft = index === 0 ? "0" : spacingValue;
+});
+};
+const getResolvedCssColor = (value) => {
+const probe = document.createElement("span");
+probe.style.color = value;
+probe.style.position = "absolute";
+probe.style.left = "-9999px";
+document.body.appendChild(probe);
+const resolved = window.getComputedStyle(probe).color;
+probe.remove();
+return resolved;
+};
+const findNamedColorFromComputedColor = (computedColor) => {
+const resolvedColor = getResolvedCssColor(computedColor);
+if (typeof lib !== "undefined" && lib.colors) {
+for (const [colorName, colorValue] of Object.entries(lib.colors)) {
+if (getResolvedCssColor(colorValue) === resolvedColor) {
+return colorName;
+}
+}
+}
+if (resolvedColor === "rgb(0, 0, 0)") {
+return "Black";
+}
+if (resolvedColor === "rgb(255, 255, 255)") {
+return "White";
+}
+return null;
+};
+const getFontOptionFromComputedFamily = (computedFamily) => {
+const firstFamily = String(computedFamily || "")
+.split(",")[0]
+.replace(/["']/g, "")
+.trim()
+.toLowerCase();
+const fontOptions =
+typeof TextElement !== "undefined" &&
+TextElement.prototype &&
+Array.isArray(TextElement.prototype.fontFamily)
+? TextElement.prototype.fontFamily
+: [];
+return (
+fontOptions.find((fontName) => {
+const normalizedFont = String(fontName).toLowerCase();
+return (
+normalizedFont === firstFamily ||
+normalizedFont.includes(firstFamily) ||
+firstFamily.includes(normalizedFont)
+);
+}) || null
+);
+};
+const setSelectValueSafely = (select, value, fallbackValue) => {
+if (!select) {
+return;
+}
+const normalizedValue = value || fallbackValue;
+if (
+normalizedValue &&
+!Array.from(select.options || []).some(
+(option) => option.value === normalizedValue
+)
+) {
+appendSelectOption(select, normalizedValue);
+}
+select.value = normalizedValue || "";
+};
+const populateCustomShieldMakerSelects = () => {
+if (colorSelect && colorSelect.options.length <= 1) {
+const colorNames =
+typeof lib !== "undefined" && lib.colors
+? Object.keys(lib.colors)
+: ["Black", "White", "Yellow"];
+colorSelect.innerHTML = "";
+for (const colorName of colorNames) {
+appendSelectOption(colorSelect, colorName, colorName === "Black");
+}
+}
+updateCustomShieldMakerCustomColorControls();
+if (fontSelect && fontSelect.options.length <= 1) {
+const fontNames =
+typeof TextElement !== "undefined" &&
+TextElement.prototype &&
+Array.isArray(TextElement.prototype.fontFamily)
+? TextElement.prototype.fontFamily
+: ["Series D", "Series C", "Arial"];
+fontSelect.innerHTML = "";
+for (const fontName of fontNames) {
+appendSelectOption(fontSelect, fontName, fontName === "Series D");
+}
+}
+if (alignmentSelect && alignmentSelect.options.length === 0) {
+appendSelectOption(alignmentSelect, "left");
+appendSelectOption(alignmentSelect, "center", true);
+appendSelectOption(alignmentSelect, "right");
+}
+};
+const getCurrentShieldMakerSource = () => {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const pendingSource = dialog._customShieldMakerSource || {};
+const sdShieldBase = document.getElementById("sdShield_shieldBase");
+const sdShieldType = document.getElementById("sdShield_shieldType");
+const sdRouteInput = document.getElementById("sdShield_routeNumber");
+const sdAlignment = document.getElementById("sdShield_alignment");
+const shieldBase =
+pendingSource.shieldBase ||
+sdShieldBase?.dataset?.pickerValue ||
+sdShieldBase?.value ||
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+ShieldElement?.prototype?.defaultShieldBase ||
+"I";
+const shieldType =
+pendingSource.shieldType ||
+sdShieldType?.value ||
+currentBlockElem?.shieldType ||
+ShieldElement?.prototype?.defaultVariant ||
+"Auto";
+const routeValue =
+pendingSource.routeNumber ||
+sdRouteInput?.value ||
+currentBlockElem?.routeNumber ||
+"";
+const alignment =
+pendingSource.alignment ||
+sdAlignment?.value ||
+currentBlockElem?.alignment ||
+"Center";
+return {
+...currentBlockElem,
+...pendingSource,
+shieldBase,
+shieldType,
+routeNumber: routeValue,
+alignment,
+};
+};
+const seedCustomShieldMakerFromCurrentShield = () => {
+if (
+typeof ShieldElement === "undefined" ||
+typeof ShieldElement.prototype?.getBlockShieldConfig !== "function"
+) {
+return;
+}
+const source = getCurrentShieldMakerSource();
+const sampleShield = new ShieldElement(source);
+sampleShield.shieldBase = source.shieldBase;
+sampleShield.type = source.shieldBase;
+sampleShield.shieldType = source.shieldType;
+const sourceRouteNumber = String(source.routeNumber ?? "").trim();
+const fallbackSeedVariant = dialog._customShieldMakerLastRouteVariant || "2";
+sampleShield.routeNumber = sourceRouteNumber || "1".repeat(Number(fallbackSeedVariant));
+sampleShield.alignment = source.alignment || "Center";
+if (sourceRouteNumber) {
+dialog._customShieldMakerLastRouteVariant = getCustomShieldMakerVariantKeyFromRoute(sourceRouteNumber);
+}
+const sampleRoot = document.createElement("div");
+sampleRoot.style.position = "absolute";
+sampleRoot.style.left = "-9999px";
+sampleRoot.style.top = "-9999px";
+sampleRoot.style.visibility = "hidden";
+sampleRoot.style.pointerEvents = "none";
+const sampleElement = sampleShield.createElement();
+sampleRoot.appendChild(sampleElement);
+document.body.appendChild(sampleRoot);
+const sampleImg = sampleElement.querySelector(".shieldImg");
+const sampleRoute = sampleElement.querySelector(".routeNumber");
+if (sampleImg && previewImg) {
+const sampleImageSource =
+sampleImg.currentSrc ||
+sampleImg.getAttribute("src") ||
+sampleImg.src ||
+"";
+const sampleImageFallback =
+typeof window.getSignMakerAssetFallback === "function"
+? window.getSignMakerAssetFallback(sampleImageSource)
+: null;
+previewImg.src = sampleImageFallback || sampleImageSource;
+if (typeof window.applySignMakerAssetFallback === "function") {
+window.applySignMakerAssetFallback(
+previewImg,
+sampleImageSource
+);
+}
+previewImg.hidden = false;
+}
+if (emptyPreview) {
+emptyPreview.hidden = true;
+}
+if (routeInput) {
+routeInput.value = "";
+}
+if (alignmentSelect) {
+alignmentSelect.value = normalizeCustomShieldMakerAlignment(
+sampleShield.alignment
+);
+syncCustomShieldMakerAlignmentButtons();
+}
+if (sampleRoute) {
+const computedRoute = window.getComputedStyle(sampleRoute);
+const computedFontSizePx = parseFloat(computedRoute.fontSize) || 16;
+const parentFontSizePx =
+parseFloat(window.getComputedStyle(sampleRoute.parentElement).fontSize) ||
+computedFontSizePx;
+const matchedRouteCss = getMatchedRouteNumberCss(sampleRoute);
+const fallbackFontSizeEm = computedFontSizePx / parentFontSizePx;
+const routeFontSizeEm = parseCssEmValue(
+matchedRouteCss["font-size"],
+fallbackFontSizeEm
+);
+const fallbackTopEm =
+Number.isFinite(parseFloat(computedRoute.top)) && computedFontSizePx
+? parseFloat(computedRoute.top) / computedFontSizePx
+: 0;
+const routeTopEm = parseCssEmValue(matchedRouteCss.top, fallbackTopEm);
+const leftEm = parseCssEmValue(matchedRouteCss.left, null);
+const rightEm = parseCssEmValue(matchedRouteCss.right, null);
+let routeHorizontalEm = 0;
+if (leftEm !== null && Math.abs(leftEm) > 0) {
+routeHorizontalEm = leftEm;
+} else if (rightEm !== null && Math.abs(rightEm) > 0) {
+routeHorizontalEm = -rightEm;
+} else if (leftEm !== null) {
+routeHorizontalEm = leftEm;
+} else if (rightEm !== null) {
+routeHorizontalEm = -rightEm;
+}
+const letterSpacingPx = parseFloat(computedRoute.letterSpacing);
+const routeLetterSpacingEm =
+Number.isFinite(letterSpacingPx) && computedFontSizePx
+? letterSpacingPx / computedFontSizePx
+: 0;
+const routeFontWeight = parseFloat(computedRoute.fontWeight);
+const colorName = findNamedColorFromComputedColor(computedRoute.color);
+const computedRouteColor =
+typeof normalizeCustomCssColorValue === "function"
+? normalizeCustomCssColorValue(computedRoute.color)
+: computedRoute.color;
+const fontName = getFontOptionFromComputedFamily(computedRoute.fontFamily);
+setCustomShieldMakerRouteColorControlValue(
+colorName || computedRouteColor || computedRoute.color || "Black"
+);
+setSelectValueSafely(fontSelect, fontName, "Series D");
+if (fontSizeInput) {
+fontSizeInput.value = displayValueFromActualEm(routeFontSizeEm, "220");
+}
+if (fontWeightInput) {
+fontWeightInput.value = Number.isFinite(routeFontWeight)
+? formatCustomShieldNumber(routeFontWeight * 10, "0")
+: "0";
+}
+if (letterSpacingInput) {
+letterSpacingInput.value = displayValueFromActualEm(
+routeLetterSpacingEm,
+"0"
+);
+}
+if (topOffsetInput) {
+topOffsetInput.value = displayValueFromActualEm(routeTopEm, "0");
+}
+if (horizontalOffsetInput) {
+horizontalOffsetInput.value = displayValueFromActualEm(
+routeHorizontalEm,
+"0"
+);
+}
+const sampleImgRect = sampleImg?.getBoundingClientRect();
+const sampleRouteRect = sampleRoute.getBoundingClientRect();
+if (
+sampleImgRect &&
+sampleRouteRect &&
+sampleImgRect.width > 0 &&
+sampleImgRect.height > 0
+) {
+const routeCenterX =
+((sampleRouteRect.left +
+sampleRouteRect.width / 2 -
+sampleImgRect.left) /
+sampleImgRect.width) *
+100;
+const routeCenterY =
+((sampleRouteRect.top +
+sampleRouteRect.height / 2 -
+sampleImgRect.top) /
+sampleImgRect.height) *
+100;
+setCustomShieldMakerAnchor({
+x: routeCenterX,
+y: routeCenterY,
+seedTop: getDisplayInputValue(topOffsetInput, 0),
+seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
+});
+} else {
+setCustomShieldMakerAnchor();
+}
+}
+if (!sampleRoute) {
+setCustomShieldMakerAnchor();
+}
+const seedVariantKey = getCustomShieldMakerVariantKeyForEditor();
+dialog._customShieldMakerVariantState = {
+enabledVariants: [seedVariantKey],
+activeVariant: seedVariantKey,
+imageDataByVariant: previewImg && !previewImg.hidden && previewImg.src
+? { [seedVariantKey]: previewImg.src }
+: {},
+routeStyleByVariant: { [seedVariantKey]: getCustomShieldMakerEditorStyle() },
+anchorByVariant: { [seedVariantKey]: getCustomShieldMakerEditorAnchor() },
+};
+updateCustomShieldMakerVariantButtons();
+sampleRoot.remove();
+};
+const updateCustomShieldMakerPreview = () => {
+if (!routeNumber) {
+return;
+}
+const syncPairedValueInput = (slider, valueInput) => {
+if (slider && valueInput && document.activeElement !== valueInput) {
+valueInput.value = slider.value;
+}
+};
+syncPairedValueInput(fontSizeInput, fontSizeValueInput);
+syncPairedValueInput(letterSpacingInput, letterSpacingValueInput);
+syncPairedValueInput(topOffsetInput, topOffsetValueInput);
+syncPairedValueInput(horizontalOffsetInput, horizontalOffsetValueInput);
+const routeText = String(routeInput?.value || "").trim();
+updateCustomShieldMakerCustomColorControls();
+const selectedColor = getCustomShieldMakerRouteColorValue();
+const selectedFont = fontSelect?.value || "Series D";
+const selectedAlignment = alignmentSelect?.value || "center";
+const cssColor =
+typeof lib !== "undefined" && lib.colors && lib.colors[selectedColor]
+? lib.colors[selectedColor]
+: selectedColor;
+const anchor = dialog._customShieldMakerAnchor || {
+x: 50,
+y: 50,
+seedTop: 0,
+seedHorizontal: 0,
+};
+const anchorX =
+selectedAlignment === "left"
+? 0
+: selectedAlignment === "right"
+? 100
+: anchor.x;
+const translateX =
+selectedAlignment === "left"
+? "0%"
+: selectedAlignment === "right"
+? "-100%"
+: "-50%";
+const { requestedWeight, cssWeight } = getPreviewFontWeight();
+const letterSpacingValue = previewEmFromDisplayValue(
+letterSpacingInput?.value,
+0
+);
+renderCustomShieldMakerRouteText(routeText);
+routeNumber.hidden = routeText.length === 0;
+routeNumber.dataset.alignment = selectedAlignment;
+routeNumber.style.color = String(cssColor).toLowerCase();
+const renderedSelectedFont = typeof resolveTextFontFamilyForRender === "function"
+? resolveTextFontFamilyForRender(selectedFont, { backgroundColor: "Blue" }, { color: "Blue" })
+: selectedFont;
+const normalizedRenderedSelectedFont = String(renderedSelectedFont || "")
+.replace(/["']/g, "")
+.trim();
+const usesSeriesDSpacingFix = normalizedRenderedSelectedFont === "Series D";
+routeNumber.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
+document
+.getElementById("customShieldMakerShieldShell")
+?.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
+routeNumber.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
+routeNumber.style.fontSize = previewEmFromDisplayValue(
+isMotorwayFont(renderedSelectedFont)
+? getDisplayInputValue(fontSizeInput, 220) * 0.8
+: fontSizeInput?.value,
+220
+);
+routeNumber.style.fontWeight = String(cssWeight);
+routeNumber.style.fontVariationSettings = `"wght" ${requestedWeight}`;
+routeNumber.style.letterSpacing = "0";
+applyCustomShieldMakerLetterSpacing(letterSpacingValue);
+const topDeltaValue = displayDeltaToEm(
+getDisplayInputValue(topOffsetInput, 0) - anchor.seedTop
+);
+const horizontalDeltaValue = displayDeltaToEm(
+getDisplayInputValue(horizontalOffsetInput, 0) - anchor.seedHorizontal
+);
+routeNumber.style.top = `calc(${anchor.y}% + ${topDeltaValue})`;
+routeNumber.style.left = `calc(${anchorX}% + ${horizontalDeltaValue})`;
+routeNumber.style.right = "auto";
+routeNumber.style.transform = `translate(${translateX}, -50%)`;
+routeNumber.style.margin = "0";
+routeNumber.style.alignItems = "center";
+routeNumber.style.textAlign = selectedAlignment;
+routeNumber.style.justifyContent =
+selectedAlignment === "left"
+? "flex-start"
+: selectedAlignment === "right"
+? "flex-end"
+: "center";
+};
+const getDefaultCustomShieldMakerName = () =>
+`Custom Shield ${customShieldMakerRecords.length + 1}`;
+const setCustomShieldMakerDeleteVisibility = () => {
+if (deleteButton) {
+deleteButton.hidden = !dialog._editingCustomShieldId;
+}
+};
+let customShieldMakerUndoStack = [];
+let customShieldMakerRedoStack = [];
+let customShieldMakerLastHistoryKey = "";
+let customShieldMakerRestoringHistory = false;
+const cloneCustomShieldMakerObject = (value) => {
+try {
+return JSON.parse(JSON.stringify(value || {}));
+} catch (error) {
+return {};
+}
+};
+const getCustomShieldMakerHistorySnapshot = () => {
+const previewSrc = previewImg && !previewImg.hidden ? previewImg.src : "";
+return {
+name: nameInput?.value || "",
+routeNumber: routeInput?.value || "",
+color: colorSelect?.value || "Black",
+customColor: normalizeCustomShieldMakerHexColor(customColorInput?.value),
+fontFamily: fontSelect?.value || "Series D",
+fontSize: fontSizeInput?.value || "",
+fontWeight: fontWeightInput?.value || "",
+letterSpacing: letterSpacingInput?.value || "",
+topOffset: topOffsetInput?.value || "",
+horizontalOffset: horizontalOffsetInput?.value || "",
+alignment: alignmentSelect?.value || "center",
+previewSrc,
+previewHidden: !previewSrc,
+emptyPreviewHidden: !!emptyPreview?.hidden,
+userUploaded: dialog.dataset.customShieldMakerUserUploaded === "true",
+activeVariant: dialog._customShieldMakerVariantState?.activeVariant || "2",
+lastRouteVariant: dialog._customShieldMakerLastRouteVariant || "",
+variantState: cloneCustomShieldMakerObject(dialog._customShieldMakerVariantState),
+anchor: cloneCustomShieldMakerObject(dialog._customShieldMakerAnchor),
+};
+};
+const restoreCustomShieldMakerHistorySnapshot = (snapshot) => {
+if (!snapshot) {
+return;
+}
+customShieldMakerRestoringHistory = true;
+try {
+if (nameInput) nameInput.value = snapshot.name || "";
+if (routeInput) routeInput.value = snapshot.routeNumber || "";
+if (fontSelect) fontSelect.value = snapshot.fontFamily || "Series D";
+if (fontSizeInput) fontSizeInput.value = snapshot.fontSize || "";
+if (fontWeightInput) fontWeightInput.value = snapshot.fontWeight || "";
+if (letterSpacingInput) letterSpacingInput.value = snapshot.letterSpacing || "";
+if (topOffsetInput) topOffsetInput.value = snapshot.topOffset || "";
+if (horizontalOffsetInput) horizontalOffsetInput.value = snapshot.horizontalOffset || "";
+if (alignmentSelect) {
+alignmentSelect.value = normalizeCustomShieldMakerAlignment(
+snapshot.alignment
+);
+syncCustomShieldMakerAlignmentButtons();
+}
+if (colorSelect) {
+setCustomShieldMakerRouteColorControlValue(
+snapshot.color || "Black"
+);
+}
+if (customColorInput) {
+customColorInput.value = normalizeCustomShieldMakerHexColor(snapshot.customColor);
+}
+dialog._customShieldMakerVariantState = cloneCustomShieldMakerObject(snapshot.variantState);
+dialog._customShieldMakerAnchor = cloneCustomShieldMakerObject(snapshot.anchor);
+dialog._customShieldMakerLastRouteVariant = snapshot.lastRouteVariant || "";
+if (snapshot.userUploaded) {
+dialog.dataset.customShieldMakerUserUploaded = "true";
+} else {
+delete dialog.dataset.customShieldMakerUserUploaded;
+}
+if (previewImg) {
+previewImg.src = snapshot.previewSrc || "";
+previewImg.hidden = !!snapshot.previewHidden || !snapshot.previewSrc;
+}
+if (emptyPreview) {
+emptyPreview.hidden = !!snapshot.previewSrc;
+}
+updateCustomShieldMakerCustomColorControls();
+updateCustomShieldMakerVariantButtons();
+updateCustomShieldMakerPreview();
+} finally {
+customShieldMakerRestoringHistory = false;
+}
+};
+const resetCustomShieldMakerHistory = () => {
+const snapshot = getCustomShieldMakerHistorySnapshot();
+customShieldMakerUndoStack = [snapshot];
+customShieldMakerRedoStack = [];
+customShieldMakerLastHistoryKey = JSON.stringify(snapshot);
+};
+const recordCustomShieldMakerHistoryCheckpoint = () => {
+if (customShieldMakerRestoringHistory || !dialog.open) {
+return;
+}
+const snapshot = getCustomShieldMakerHistorySnapshot();
+const snapshotKey = JSON.stringify(snapshot);
+if (snapshotKey === customShieldMakerLastHistoryKey) {
+return;
+}
+customShieldMakerUndoStack.push(snapshot);
+if (customShieldMakerUndoStack.length > 100) {
+customShieldMakerUndoStack.shift();
+}
+customShieldMakerRedoStack = [];
+customShieldMakerLastHistoryKey = snapshotKey;
+};
+const undoCustomShieldMakerEdit = () => {
+if (customShieldMakerUndoStack.length <= 1) {
+return;
+}
+const currentSnapshot = customShieldMakerUndoStack.pop();
+customShieldMakerRedoStack.push(currentSnapshot);
+const previousSnapshot = customShieldMakerUndoStack[customShieldMakerUndoStack.length - 1];
+customShieldMakerLastHistoryKey = JSON.stringify(previousSnapshot);
+restoreCustomShieldMakerHistorySnapshot(previousSnapshot);
+};
+const redoCustomShieldMakerEdit = () => {
+if (!customShieldMakerRedoStack.length) {
+return;
+}
+const nextSnapshot = customShieldMakerRedoStack.pop();
+customShieldMakerUndoStack.push(nextSnapshot);
+customShieldMakerLastHistoryKey = JSON.stringify(nextSnapshot);
+restoreCustomShieldMakerHistorySnapshot(nextSnapshot);
+};
+const isCustomShieldMakerUndoShortcut = (event) => {
+const primaryModifier = isMacOS ? event.metaKey : event.ctrlKey;
+return primaryModifier && !event.altKey && !event.shiftKey && String(event.key).toLowerCase() === "z";
+};
+const isCustomShieldMakerRedoShortcut = (event) => {
+const primaryModifier = isMacOS ? event.metaKey : event.ctrlKey;
+const key = String(event.key).toLowerCase();
+if (primaryModifier && event.shiftKey && !event.altKey && key === "z") {
+return true;
+}
+return !isMacOS && primaryModifier && !event.shiftKey && !event.altKey && key === "y";
+};
+const isCustomShieldMakerTypingTarget = (target) => {
+if (!target || !dialog.contains(target)) {
+return false;
+}
+const tagName = target.tagName;
+const inputType = String(target.type || "").toLowerCase();
+return (
+target.isContentEditable ||
+tagName === "TEXTAREA" ||
+tagName === "SELECT" ||
+(tagName === "INPUT" &&
+![
+"button",
+"checkbox",
+"file",
+"hidden",
+"image",
+"radio",
+"range",
+"reset",
+"submit",
+].includes(inputType))
+);
+};
+document.addEventListener(
+"keydown",
+(event) => {
+if (!dialog.open) {
+return;
+}
+if (event.key === "Escape") {
+return;
+}
+if (isCustomShieldMakerUndoShortcut(event)) {
+event.preventDefault();
+event.stopImmediatePropagation();
+undoCustomShieldMakerEdit();
+return;
+}
+if (isCustomShieldMakerRedoShortcut(event)) {
+event.preventDefault();
+event.stopImmediatePropagation();
+redoCustomShieldMakerEdit();
+return;
+}
+if (isCustomShieldMakerTypingTarget(event.target)) {
+return;
+}
+event.preventDefault();
+event.stopImmediatePropagation();
+},
+true
+);
+const showCustomShieldMakerDialog = () => {
+updateCustomShieldMakerPreview();
+setCustomShieldMakerDeleteVisibility();
+if (holder) {
+holder.style.display = "flex";
+}
+dialog.style.display = "flex";
+if (!dialog.open) {
+dialog.showModal();
+}
+resetCustomShieldMakerHistory();
+};
+const applyCustomShieldMakerRecordToEditor = (record) => {
+if (!record) {
+return;
+}
+populateCustomShieldMakerSelects();
+const normalizedRecord = normalizeCustomShieldMakerRecord(record);
+const activeVariant = normalizeCustomShieldMakerVariantKey(
+normalizedRecord.activeVariant ||
+getCustomShieldMakerVariantKeyFromRoute(normalizedRecord.routeNumber || routeInput?.value || ""),
+getCustomShieldMakerVariantKeyForEditor()
+);
+const enabledVariants = getCustomShieldMakerImageVariantKeys(
+normalizedRecord.imageDataByVariant
+);
+dialog._editingCustomShieldId = normalizedRecord.id;
+if (normalizedRecord.usesUploadedImage) {
+dialog.dataset.customShieldMakerUserUploaded = "true";
+} else {
+delete dialog.dataset.customShieldMakerUserUploaded;
+}
+dialog._customShieldMakerSource = {
+shieldBase: normalizedRecord.value,
+type: normalizedRecord.value,
+sourceShieldBase: normalizedRecord.sourceShieldBase || "",
+routeNumber: normalizedRecord.routeNumber || routeInput?.value || "",
+alignment: normalizedRecord.routeStyleByVariant?.[activeVariant]?.alignment || "center",
+};
+dialog._customShieldMakerVariantState = {
+enabledVariants,
+activeVariant,
+imageDataByVariant: { ...(normalizedRecord.imageDataByVariant || {}) },
+routeStyleByVariant: { ...(normalizedRecord.routeStyleByVariant || {}) },
+anchorByVariant: { ...(normalizedRecord.anchorByVariant || {}) },
+};
+if (nameInput) {
+nameInput.value = normalizedRecord.name || getDefaultCustomShieldMakerName();
+}
+if (routeInput) {
+routeInput.value = normalizedRecord.routeNumber || "";
+}
+if (normalizedRecord.routeNumber) {
+dialog._customShieldMakerLastRouteVariant = getCustomShieldMakerVariantKeyFromRoute(
+normalizedRecord.routeNumber
+);
+} else {
+dialog._customShieldMakerLastRouteVariant = activeVariant;
+}
+applyCustomShieldMakerVariantToEditor(activeVariant);
+};
+const collectCustomShieldMakerRecordFromEditor = () => {
+const existingRecord = dialog._editingCustomShieldId
+? getCustomShieldMakerRecordById(dialog._editingCustomShieldId)
+: null;
+const state = persistCurrentCustomShieldMakerVariantState();
+const activeVariant = normalizeCustomShieldMakerVariantKey(
+state.activeVariant,
+getCustomShieldMakerVariantKeyForEditor()
+);
+const enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+const imageData =
+state.imageDataByVariant[activeVariant] ||
+getFirstCustomShieldMakerVariantImage(state) ||
+"";
+if (!imageData) {
+window.alert("Upload or select a shield image before saving.");
+return null;
+}
+const id = existingRecord?.id || createCustomShieldMakerId();
+const now = new Date().toISOString();
+const fallbackName = existingRecord?.name || getDefaultCustomShieldMakerName();
+const name = String(nameInput?.value || fallbackName).trim() || fallbackName;
+const routeStyleByVariant = {};
+const anchorByVariant = {};
+const makerSource = dialog._customShieldMakerSource || {};
+const sourceShieldBase = String(
+existingRecord?.sourceShieldBase ||
+makerSource.sourceShieldBase ||
+makerSource.shieldBase ||
+makerSource.type ||
+""
+).trim();
+const normalizedSourceShieldBase =
+typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+? ShieldElement.prototype.normalizeShieldCode(sourceShieldBase).toUpperCase()
+: sourceShieldBase.toUpperCase();
+const usesUploadedImage =
+dialog.dataset.customShieldMakerUserUploaded === "true";
+const preserveCountyText =
+normalizedSourceShieldBase === "C" && !usesUploadedImage;
+const preserveShieldBacks =
+normalizedSourceShieldBase === "C" && !usesUploadedImage;
+for (const variantKey of CUSTOM_SHIELD_MAKER_VARIANT_KEYS) {
+routeStyleByVariant[variantKey] = normalizeCustomShieldMakerRouteStyle(
+state.routeStyleByVariant[variantKey] || state.routeStyleByVariant[activeVariant] || {}
+);
+anchorByVariant[variantKey] = normalizeCustomShieldMakerAnchor(
+state.anchorByVariant[variantKey] || state.anchorByVariant[activeVariant] || {},
+routeStyleByVariant[variantKey]
+);
+}
+return {
+id,
+value: getCustomShieldMakerValue(id),
+name,
+imageData,
+imageDataByVariant: { ...(state.imageDataByVariant || {}) },
+enabledVariants,
+activeVariant,
+routeNumber: String(routeInput?.value || "").trim(),
+routeStyle: routeStyleByVariant[activeVariant],
+routeStyleByVariant,
+anchor: anchorByVariant[activeVariant],
+anchorByVariant,
+sourceShieldBase,
+usesUploadedImage,
+preserveCountyText,
+preserveShieldBacks,
+dateCreated: existingRecord?.dateCreated || now,
+dateModified: now,
+};
+};
+const refreshAfterCustomShieldMutation = () => {
+refreshCustomShieldMakerRegistry();
+if (typeof updateShieldCountyVisibility === "function") {
+updateShieldCountyVisibility();
+}
+if (typeof updateForm === "function") {
+updateForm();
+}
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+};
+const saveCustomShieldMakerRecordFromEditor = () => {
+const nextRecord = collectCustomShieldMakerRecordFromEditor();
+if (!nextRecord) {
+return;
+}
+if (exposed && typeof exposed.beginUndoableChange === "function") {
+exposed.beginUndoableChange();
+}
+try {
+const savedRecord = upsertCustomShieldMakerRecord(nextRecord);
+dialog._editingCustomShieldId = savedRecord.id;
+setCustomShieldMakerDeleteVisibility();
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+if (currentBlockElem) {
+currentBlockElem.shieldBase = savedRecord.value;
+currentBlockElem.type = savedRecord.value;
+if (routeInput && "routeNumber" in currentBlockElem) {
+currentBlockElem.routeNumber = routeInput.value;
+}
+}
+if (typeof syncShieldBasePickerValue === "function") {
+syncShieldBasePickerValue(savedRecord.value, { updateBlock: true });
+}
+applyCustomShieldMakerRecordToEditor(savedRecord);
+refreshAfterCustomShieldMutation();
+closeCustomShieldMaker();
+window.setTimeout(() => {
+if (typeof ensureSubpanelMenuOpenPublic === "function") {
+ensureSubpanelMenuOpenPublic();
+}
+}, 0);
+} finally {
+if (exposed && typeof exposed.endUndoableChange === "function") {
+exposed.endUndoableChange();
+}
+}
+};
+const deleteCurrentCustomShieldMakerRecord = () => {
+const editingId = dialog._editingCustomShieldId;
+if (!editingId) {
+return;
+}
+const record = getCustomShieldMakerRecordById(editingId);
+if (!record) {
+dialog._editingCustomShieldId = null;
+setCustomShieldMakerDeleteVisibility();
+return;
+}
+if (exposed && typeof exposed.beginUndoableChange === "function") {
+exposed.beginUndoableChange();
+}
+try {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const currentBlockUsedDeletedShield = !!(
+currentBlockElem &&
+(currentBlockElem.shieldBase === record.value || currentBlockElem.type === record.value)
+);
+deleteCustomShieldMakerRecord(editingId);
+revertCustomShieldMakerUsageToInterstate(record.value);
+dialog._editingCustomShieldId = null;
+setCustomShieldMakerDeleteVisibility();
+if (currentBlockUsedDeletedShield && typeof syncShieldBasePickerValue === "function") {
+syncShieldBasePickerValue("I", { updateBlock: true });
+}
+refreshAfterCustomShieldMutation();
+closeCustomShieldMaker();
+} finally {
+if (exposed && typeof exposed.endUndoableChange === "function") {
+exposed.endUndoableChange();
+}
+}
+};
+dialog._openSavedCustomShield = (id) => {
+const record = getCustomShieldMakerRecordById(id);
+if (!record) {
+return;
+}
+applyCustomShieldMakerRecordToEditor(record);
+showCustomShieldMakerDialog();
+};
+const openCustomShieldMaker = () => {
+populateCustomShieldMakerSelects();
+if (!dialog._editingCustomShieldId) {
+if (nameInput && !nameInput.value.trim()) {
+nameInput.value = getDefaultCustomShieldMakerName();
+}
+if (dialog.dataset.customShieldMakerUserUploaded !== "true") {
+seedCustomShieldMakerFromCurrentShield();
+}
+}
+showCustomShieldMakerDialog();
+};
+const closeCustomShieldMaker = () => {
+if (dialog.open) {
+dialog.close();
+} else {
+hideCustomShieldMaker();
+}
+};
+const hideCustomShieldMaker = () => {
+dialog.style.display = "none";
+clearCustomShieldMakerTemporaryRouteColors();
+if (holder) {
+const hasOtherOpenDialog = Array.from(holder.querySelectorAll("dialog")).some(
+(otherDialog) => otherDialog !== dialog && otherDialog.open
+);
+if (!hasOtherOpenDialog) {
+holder.style.display = "none";
+}
+}
+};
+openButton?.addEventListener("click", () => {
+dialog._editingCustomShieldId = null;
+dialog._customShieldMakerVariantState = null;
+delete dialog.dataset.customShieldMakerUserUploaded;
+if (nameInput) {
+nameInput.value = getDefaultCustomShieldMakerName();
+}
+openCustomShieldMaker();
+});
+saveButton?.addEventListener("click", saveCustomShieldMakerRecordFromEditor);
+deleteButton?.addEventListener("click", deleteCurrentCustomShieldMakerRecord);
+closeButton?.addEventListener("click", closeCustomShieldMaker);
+dialog.addEventListener("close", hideCustomShieldMaker);
+uploadButton?.addEventListener("click", () => {
+fileInput?.click();
+});
+fileInput?.addEventListener("change", (event) => {
+const file = event.target.files && event.target.files[0];
+if (!file) {
+return;
+}
+const isValidFile =
+file.type === "image/svg+xml" ||
+file.type === "image/png" ||
+/\.(svg|png)$/i.test(file.name);
+if (!isValidFile) {
+event.target.value = "";
+return;
+}
+const reader = new FileReader();
+reader.onload = (readerEvent) => {
+if (previewImg) {
+previewImg.src = readerEvent.target.result;
+previewImg.hidden = false;
+}
+if (emptyPreview) {
+emptyPreview.hidden = true;
+}
+dialog.dataset.customShieldMakerUserUploaded = "true";
+setCustomShieldMakerAnchor({
+x: 50,
+y: 50,
+seedTop: getDisplayInputValue(topOffsetInput, 0),
+seedHorizontal: getDisplayInputValue(horizontalOffsetInput, 0),
+});
+const state = ensureCustomShieldMakerVariantState();
+const activeVariant = normalizeCustomShieldMakerVariantKey(
+state.activeVariant,
+getCustomShieldMakerVariantKeyForEditor()
+);
+state.activeVariant = activeVariant;
+state.imageDataByVariant[activeVariant] = readerEvent.target.result;
+state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+state.routeStyleByVariant[activeVariant] = getCustomShieldMakerEditorStyle();
+state.anchorByVariant[activeVariant] = getCustomShieldMakerEditorAnchor();
+updateCustomShieldMakerVariantButtons();
+updateCustomShieldMakerPreview();
+recordCustomShieldMakerHistoryCheckpoint();
+};
+reader.readAsDataURL(file);
+});
+const constrainMotorwayRouteInput = () => {
+if (!routeInput || !isMotorwayFont(fontSelect?.value)) return;
+const previous = routeInput.value;
+const cursor = routeInput.selectionStart;
+routeInput.value = normalizeMotorwayRouteText(previous);
+if (cursor !== null && document.activeElement === routeInput) {
+const position = normalizeMotorwayRouteText(previous.slice(0, cursor)).length;
+routeInput.setSelectionRange(position, position);
+}
+};
+routeInput?.addEventListener("input", () => {
+constrainMotorwayRouteInput();
+syncCustomShieldMakerVariantFromRouteNumber();
+updateCustomShieldMakerPreview();
+persistCurrentCustomShieldMakerVariantState();
+recordCustomShieldMakerHistoryCheckpoint();
+});
+routeInput?.addEventListener("change", () => {
+constrainMotorwayRouteInput();
+syncCustomShieldMakerVariantFromRouteNumber();
+updateCustomShieldMakerPreview();
+persistCurrentCustomShieldMakerVariantState();
+recordCustomShieldMakerHistoryCheckpoint();
+});
+fontSelect?.addEventListener("change", constrainMotorwayRouteInput);
+const applyCustomShieldMakerAlignment = (
+value,
+{ recordHistory = true } = {}
+) => {
+if (!alignmentSelect) {
+return false;
+}
+alignmentSelect.value = normalizeCustomShieldMakerAlignment(value);
+syncCustomShieldMakerAlignmentButtons();
+updateCustomShieldMakerPreview();
+persistCurrentCustomShieldMakerVariantState();
+if (recordHistory) {
+recordCustomShieldMakerHistoryCheckpoint();
+}
+return true;
+};
+for (const button of alignmentButtons) {
+button.addEventListener("click", (event) => {
+event.preventDefault();
+applyCustomShieldMakerAlignment(button.dataset.alignment);
+});
+}
+alignmentSelect?.addEventListener(
+"input",
+syncCustomShieldMakerAlignmentButtons
+);
+alignmentSelect?.addEventListener(
+"change",
+syncCustomShieldMakerAlignmentButtons
+);
+syncCustomShieldMakerAlignmentButtons();
+[
+nameInput,
+colorSelect,
+customColorInput,
+fontSelect,
+fontSizeInput,
+fontWeightInput,
+letterSpacingInput,
+topOffsetInput,
+horizontalOffsetInput,
+alignmentSelect,
+].forEach((input) => {
+input?.addEventListener("input", () => {
+updateCustomShieldMakerCustomColorControls();
+updateCustomShieldMakerPreview();
+persistCurrentCustomShieldMakerVariantState();
+recordCustomShieldMakerHistoryCheckpoint();
+});
+input?.addEventListener("change", () => {
+updateCustomShieldMakerCustomColorControls();
+updateCustomShieldMakerPreview();
+persistCurrentCustomShieldMakerVariantState();
+recordCustomShieldMakerHistoryCheckpoint();
+});
+});
+for (const button of variantButtons) {
+button.addEventListener("click", () => {
+const state = ensureCustomShieldMakerVariantState();
+const variantKey = normalizeCustomShieldMakerVariantKey(
+button.dataset.variantDigit,
+state.activeVariant || "2"
+);
+if (state.imageDataByVariant[variantKey]) {
+delete state.imageDataByVariant[variantKey];
+delete state.enabledVariants;
+state.enabledVariants = getCustomShieldMakerImageVariantKeys(
+state.imageDataByVariant
+);
+updateCustomShieldMakerVariantButtons();
+if (variantKey === state.activeVariant) {
+applyCustomShieldMakerVariantToEditor(variantKey);
+updateCustomShieldMakerPreview();
+}
+recordCustomShieldMakerHistoryCheckpoint();
+return;
+}
+if (variantKey === state.activeVariant) {
+uploadButton?.click();
+return;
+}
+updateCustomShieldMakerVariantButtons();
+recordCustomShieldMakerHistoryCheckpoint();
+});
+}
+populateCustomShieldMakerSelects();
+syncCustomShieldMakerAlignmentButtons();
+createFontPicker({
+selectEl: fontSelect,
+mode: "allFontsGrouped",
+});
+syncAllFontPickers();
+ensureCustomShieldMakerVariantState();
+updateCustomShieldMakerVariantButtons();
+updateCustomShieldMakerPreview();
+};
+const prepareSdShieldBannerTextInputs = () => {
+[
+document.getElementById("sdShield_bannerCustomText"),
+document.getElementById("sdShield_bannerCustomText2"),
+].filter(Boolean).forEach((input) => {
+input.placeholder = "Banner Text";
+input.removeAttribute("data-toolTip");
+input.removeAttribute("data-tooltip");
+input.removeAttribute("title");
+delete input.dataset.toolTip;
+delete input.dataset.tooltip;
+});
+};
+const PANEL_PADDING_SIDES = ["Top", "Right", "Bottom", "Left"];
+const PANEL_PADDING_DEFAULTS = [0.3, 0.75, 0.3, 0.75];
+const PANEL_PADDING_SLIDER_MIN = -0.5;
+const PANEL_PADDING_SLIDER_MAX = 1.5;
+const PANEL_PADDING_SLIDER_STEP = 0.05;
+const getPanelPaddingValues = (paddingValue) => {
+const parsed = String(paddingValue || "")
+.trim()
+.split(/\s+/)
+.map((part) => parseFloat(part))
+.filter((value) => Number.isFinite(value));
+if (parsed.length === 1) {
+return [parsed[0], parsed[0], parsed[0], parsed[0]];
+}
+if (parsed.length === 2) {
+return [parsed[0], parsed[1], parsed[0], parsed[1]];
+}
+if (parsed.length === 3) {
+return [parsed[0], parsed[1], parsed[2], parsed[1]];
+}
+if (parsed.length >= 4) {
+return parsed.slice(0, 4);
+}
+return [...PANEL_PADDING_DEFAULTS];
+};
+const getPanelPaddingSliderValue = (value) => {
+const parsed = Number(value);
+const safeValue = Number.isFinite(parsed) ? parsed : 0;
+const clamped = Math.max(
+PANEL_PADDING_SLIDER_MIN,
+Math.min(PANEL_PADDING_SLIDER_MAX, safeValue)
+);
+const stepIndex = Math.round(
+(clamped - PANEL_PADDING_SLIDER_MIN) / PANEL_PADDING_SLIDER_STEP
+);
+const snapped =
+PANEL_PADDING_SLIDER_MIN + stepIndex * PANEL_PADDING_SLIDER_STEP;
+return Number(snapped.toFixed(2));
+};
+const formatPanelPaddingDisplayValue = (value) => {
+const parsed = Number(value);
+if (!Number.isFinite(parsed)) {
+return "0.00";
+}
+const numericText = String(parsed);
+if (/e/i.test(numericText)) {
+return parsed.toFixed(2);
+}
+const decimalIndex = numericText.indexOf(".");
+if (decimalIndex === -1) {
+return `${numericText}.00`;
+}
+const decimalPlaces = numericText.length - decimalIndex - 1;
+if (decimalPlaces === 1) {
+return `${numericText}0`;
+}
+return numericText;
+};
+const setPanelPaddingControlValue = (side, value) => {
+const parsed = Number(value);
+const safeValue = Number.isFinite(parsed) ? parsed : 0;
+const input = document.getElementById(`padding${side}`);
+const slider = document.getElementById(`padding${side}Slider`);
+if (input) {
+input.value = formatPanelPaddingDisplayValue(safeValue);
+}
+if (slider) {
+slider.value = getPanelPaddingSliderValue(safeValue).toFixed(2);
+}
+};
+const syncPanelPaddingControlsFromSign = (sign) => {
+const values = getPanelPaddingValues(sign?.padding);
+PANEL_PADDING_SIDES.forEach((side, index) => {
+setPanelPaddingControlValue(side, values[index]);
+});
+};
+const bindPanelPaddingControls = () => {
+PANEL_PADDING_SIDES.forEach((side) => {
+const input = document.getElementById(`padding${side}`);
+const slider = document.getElementById(`padding${side}Slider`);
+if (!input || !slider || input.dataset.panelPaddingBound === "true") {
+return;
+}
+input.dataset.panelPaddingBound = "true";
+slider.dataset.panelPaddingBound = "true";
+slider.addEventListener("input", () => {
+const value = Number(slider.value);
+if (Number.isFinite(value)) {
+input.value = formatPanelPaddingDisplayValue(value);
+readForm();
+}
+});
+input.addEventListener("input", () => {
+const value = parseFloat(input.value);
+if (Number.isFinite(value)) {
+slider.value = getPanelPaddingSliderValue(value).toFixed(2);
+}
+});
+input.addEventListener("blur", () => {
+const value = parseFloat(input.value);
+if (!Number.isFinite(value)) {
+syncPanelPaddingControlsFromSign(exposed?.getCurrentPanel?.()?.sign);
+return;
+}
+input.value = formatPanelPaddingDisplayValue(value);
+slider.value = getPanelPaddingSliderValue(value).toFixed(2);
+readForm();
+});
+});
+};
+const initialize = async (appExposed, { beforeUI } = {}) => {
+exposed = appExposed;
+post = exposed.getPost();
+prepareSdShieldBannerTextInputs();
+enableSelectOptionDeduplication();
+dedupeAllSelectOptions(document);
+applyStoredPreferences();
+await Promise.all([loadCustomIconRecords(), customShieldMakerLoadPromise]);
+syncCustomShieldMakerConfigs();
+if (typeof beforeUI === "function") {
+await beforeUI();
+post = exposed.getPost();
+}
+await initUI();
+initCustomShieldMaker();
+initializeColorPickers();
+dedupeAllSelectOptions(document);
+bindPanelPaddingControls();
+syncPanelPaddingControlsFromSign(exposed?.getCurrentPanel?.()?.sign);
+const selectionFlashElmt = document.getElementById("disableFlash");
+if (selectionFlashElmt) {
+selectionFlashElmt.checked = post?.disableFlash === true;
+}
+bindConfigPositionControls();
+bindKeybindModeButtons(document);
+applyConfigBarPosition(getStoredConfigBarPosition());
+bindUndoControls();
+applyInterfaceUIScale(getStoredInterfaceUIScale());
+bindInterfaceUIScaleControl(document);
+try {
+} catch (e) {
+console.error(e);
+}
+};
+const applyEditorInputBehavior = (root = document) => {
+const editorInputs = root.querySelectorAll(
+'input[type="text"], input[type="number"], input[type="search"], input[type="email"], input[type="url"], input[type="tel"], input[type="password"], textarea'
+);
+for (const input of editorInputs) {
+if (input.dataset.editorBehaviorBound === "true") {
+continue;
+}
+input.dataset.editorBehaviorBound = "true";
+input.setAttribute("autocomplete", "off");
+input.setAttribute("autocorrect", "off");
+input.setAttribute("autocapitalize", "off");
+input.setAttribute("spellcheck", "false");
+input.addEventListener("keydown", (event) => {
+if (event.key !== "Enter") {
+return;
+}
+if (input.tagName === "TEXTAREA" && event.shiftKey) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+if (
+typeof formHandler !== "undefined" &&
+typeof formHandler.readForm === "function"
+) {
+formHandler.readForm();
+}
+input.blur();
+input.blur();
+});
+}
+};
+const resolveFontPickerPreviewFont = (fontFamily) => {
+if (fontFamily === "Motorway" || /^Motorway (?:Permanent|Temporary)$/.test(fontFamily)) {
+return "Inter";
+}
+if (typeof resolveTextFontFamilyForRender !== "function") {
+return fontFamily || "Inter";
+}
+const pickerBackground =
+document.documentElement.dataset.theme === "light"
+? "White"
+: "Black";
+return resolveTextFontFamilyForRender(
+fontFamily || "Inter",
+{ backgroundColor: pickerBackground },
+{ color: pickerBackground }
+);
+};
+const syncSettingsDefaultsFamilyPreviewSelect = (selectEl) => {
+if (!selectEl) {
+return;
+}
+if (selectEl.value === "Clearview") {
+selectEl.style.fontFamily = '"Clearview 5WR", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Highway Gothic") {
+selectEl.style.fontFamily = '"Series EM", sans-serif';
+selectEl.style.fontSize = "1.2rem";
+} else if (selectEl.value === "Arial") {
+selectEl.style.fontFamily = 'Arial, sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Transport") {
+selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "DIN 1451") {
+selectEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Motorway") {
+selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Rawlinson") {
+selectEl.style.fontFamily = '"Rawlinson Regular", serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Helvetica") {
+selectEl.style.fontFamily = '"Helvetica Neue Roman", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else {
+selectEl.style.fontFamily = 'Inter, sans-serif';
+selectEl.style.fontSize = "1rem";
+}
+};
+const syncFontPreviewSelect = (selectEl) => {
+if (!selectEl) {
+return;
+}
+selectEl.classList.add("fontPreviewSelect");
+const id = selectEl.id || "";
+if (
+id === "settingsDefaultsControlTextFontFamily" ||
+id === "settingsDefaultsAdvisoryFontFamily" ||
+id === "settingsDefaultsActionFontFamily"
+) {
+if (selectEl.value === "Clearview") {
+selectEl.style.fontFamily = '"Clearview 5WR", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Highway Gothic") {
+selectEl.style.fontFamily = '"Series EM", sans-serif';
+selectEl.style.fontSize = "1.1rem";
+} else if (selectEl.value === "Arial") {
+selectEl.style.fontFamily = 'Arial, sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Transport") {
+selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "DIN 1451") {
+selectEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Motorway") {
+selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else {
+selectEl.style.fontFamily = 'Inter, sans-serif';
+selectEl.style.fontSize = "1rem";
+}
+return;
+}
+const selectedFont = selectEl.value || "Inter";
+const renderedSelectedFont = resolveFontPickerPreviewFont(selectedFont);
+selectEl.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
+};
+const syncFontSelectOptionLabels = (selectEl) => {
+if (!selectEl || !selectEl.options) {
+return;
+}
+Array.from(selectEl.options).forEach((option) => {
+option.textContent = getUiFontDisplayName(option.value || option.textContent);
+});
+};
+const bindAllFontPreviewSelects = (root = document) => {
+const fontSelects = Array.from(root.querySelectorAll("select")).filter(
+(selectEl) =>
+/font/i.test(selectEl.id || "") ||
+/font/i.test(selectEl.name || "") ||
+/font/i.test(selectEl.className || "")
+);
+for (const selectEl of fontSelects) {
+syncFontSelectOptionLabels(selectEl);
+syncFontPreviewSelect(selectEl);
+if (selectEl.dataset.fontPreviewBound === "true") {
+continue;
+}
+selectEl.dataset.fontPreviewBound = "true";
+selectEl.addEventListener("change", () => {
+syncFontPreviewSelect(selectEl);
+});
+}
+};
+const getFontPickerFamilies = (includeMotorway = false) => {
+const allFonts = Array.isArray(TextElement.prototype.fontFamily)
+? TextElement.prototype.fontFamily.filter(
+(font, index, fonts) => fonts.indexOf(font) === index &&
+(includeMotorway || !isMotorwayFont(font))
+)
+: [];
+const familyDefs = [
+{
+family: "Clearview",
+previewFont: "Series 5WR",
+fonts: allFonts.filter((font) =>
+/^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(String(font || ""))
+),
+},
+{
+family: "Highway Gothic",
+previewFont: "Series E",
+fonts: allFonts.filter((font) => isHighwayGothicUiFont(font)),
+},
+{
+family: "Arial",
+previewFont: "Arial",
+fonts: allFonts.filter(
+(font) => font === "Arial" || font === "Arial Bold"
+),
+},
+{
+family: "Transport",
+previewFont: "Transport Regular",
+fonts: allFonts.filter((font) => /^Transport (?:Regular|Heavy)$/.test(font)),
+},
+{
+family: "DIN 1451",
+previewFont: "DIN 1451 Regular",
+fonts: allFonts.filter((font) => /^DIN 1451 (?:Regular|Narrow)$/.test(font)),
+},
+{
+family: "Motorway",
+previewFont: "Motorway Permanent",
+fonts: allFonts.filter((font) => /^Motorway (?:Permanent|Temporary)$/.test(font)),
+},
+{
+family: "ITC Stone Sans",
+previewFont: "ITC Stone Sans Regular",
+fonts: allFonts.filter((font) => /^ITC Stone Sans/i.test(font)),
+},
+{
+family: "Rawlinson",
+previewFont: "Rawlinson Regular",
+fonts: allFonts.filter((font) => /^Rawlinson/i.test(font)),
+},
+{
+family: "Helvetica",
+previewFont: "Helvetica Roman",
+fonts: allFonts.filter((font) => /^Helvetica(?: Neue)?/i.test(font)),
+},
+];
+return familyDefs.filter((def) => def.fonts.length > 0);
+};
+const getFontsForPickerFamily = (family) => {
+const match = getFontPickerFamilies().find((def) => def.family === family);
+return match ? match.fonts : [];
+};
+const getFontPickerFamilyForFont = (font) => {
+const families = getFontPickerFamilies();
+const match = families.find((def) => def.fonts.includes(font));
+return match ? match.family : "";
+};
+const getFontPickerPreviewFontForFamily = (family) => {
+const match = getFontPickerFamilies().find((def) => def.family === family);
+if (!match) {
+return "Inter";
+}
+return match.fonts.includes(match.previewFont)
+? match.previewFont
+: match.fonts[0];
+};
+const isHighwayGothicFontValue = (value) =>
+isHighwayGothicUiFont(value) || value === "Highway Gothic";
+const getFontPickerDisplaySize=value=>isHighwayGothicFontValue(value)?'1.08rem':'0.9rem';
+const closeAllFontPickers = (except = null) => {
+document.querySelectorAll(".fontPicker.open").forEach((picker) => {
+if (picker !== except) {
+picker.classList.remove("open");
+}
+});
+document.querySelectorAll("select.fontPickerNativeSelect").forEach((selectEl) => {
+if (selectEl._fontPickerApi?.syncFloatingMenu) {
+selectEl._fontPickerApi.syncFloatingMenu();
+}
+});
+};
+const setNativeFontSelectValue = (selectEl, value, { dispatch = true } = {}) => {
+if (!selectEl || !value) {
+return;
+}
+const hasOption = Array.from(selectEl.options).some(
+(option) => option.value === value
+);
+if (!hasOption) {
+lib.appendOption(selectEl, value);
+syncFontSelectOptionLabels(selectEl);
+}
+selectEl.value = value;
+if (dispatch) {
+selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+}
+};
+const createFontPicker = ({ selectEl, mode, linkedFamilySelect = null }) => {
+if (!selectEl) {
+return null;
+}
+if(!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
+syncFontSelectOptionLabels(selectEl);
+if (selectEl._fontPickerApi) {
+selectEl._fontPickerApi.mode = mode;
+selectEl._fontPickerApi.linkedFamilySelect = linkedFamilySelect;
+selectEl._fontPickerApi.sync();
+return selectEl._fontPickerApi;
+}
+const wrapper = document.createElement("div");
+wrapper.className = `fontPicker fontPicker-${mode}`;
+wrapper.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "fontPickerTrigger";
+const triggerLabel = document.createElement("span");
+triggerLabel.className = "fontPickerTriggerLabel";
+const triggerCaret = document.createElement("span");
+triggerCaret.className = "fontPickerTriggerCaret";
+triggerCaret.textContent = "keyboard_arrow_down";
+const menu = document.createElement("div");
+menu.className = "fontPickerMenu";
+menu.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
+const isCustomShieldFontPicker = selectEl.id === "customShieldMakerRouteFont";
+wrapper.classList.toggle("customShieldFontPicker", isCustomShieldFontPicker);
+menu.classList.toggle("customShieldFontPickerMenu", isCustomShieldFontPicker);
+trigger.appendChild(triggerLabel);
+trigger.appendChild(triggerCaret);
+wrapper.appendChild(trigger);
+selectEl.classList.add("fontPickerNativeSelect");
+selectEl.insertAdjacentElement("afterend", wrapper);
+const fontPickerFloatingRoot =
+selectEl.closest("dialog") || document.body;
+fontPickerFloatingRoot.appendChild(menu);
+menu._fontPickerWrapper = wrapper;
+menu._fontPickerSelect = selectEl;
+const syncFloatingFontPickerMenuClasses = () => {
+const isLive =
+document.documentElement.contains(wrapper) &&
+document.documentElement.contains(selectEl) &&
+document.documentElement.contains(menu);
+const isOpen = isLive && wrapper.classList.contains("open");
+menu.classList.toggle("open", isOpen);
+menu.classList.toggle("hidden", !isLive || wrapper.classList.contains("hidden"));
+};
+const positionFloatingFontPickerMenu=event=>{if(event?.target?.nodeType&&menu.contains(event.target))return;if(wrapper.classList.contains('open'))window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:15,maxWidth:24});};
+const updateTrigger = () => {
+const value = selectEl.value || "";
+const display =
+mode === "family"
+? value
+: value || linkedFamilySelect?.value || "";
+triggerLabel.textContent = getUiFontDisplayName(display) || "Font";
+const previewFont =
+mode === "family"
+? getFontPickerPreviewFontForFamily(value)
+: value;
+const triggerPreviewFont = resolveFontPickerPreviewFont(
+previewFont || "Inter"
+);
+triggerLabel.style.setProperty('--sm-font-preview-family', '"'+triggerPreviewFont+'"');
+triggerLabel.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(previewFont));
+window.SignMakerDropdowns.refresh(wrapper);
+};
+const makeFontButton = (fontValue) => {
+const button = document.createElement("button");
+button.type = "button";
+button.className = "fontPickerItem fontPickerFontItem";
+button.classList.toggle(
+"fontPickerHighwayGothicItem",
+isHighwayGothicUiFont(fontValue)
+);
+button.dataset.fontValue = fontValue;
+button.textContent = getUiFontDisplayName(fontValue);
+const renderedFontValue = resolveFontPickerPreviewFont(fontValue);
+button.style.fontFamily = `"${renderedFontValue}", sans-serif`;
+button.style.setProperty('--sm-font-preview-family',`"${renderedFontValue}"`);
+button.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(fontValue));
+if (selectEl.value === fontValue) {
+button.classList.add("selected");
+}
+button.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+setNativeFontSelectValue(selectEl, fontValue);
+wrapper.classList.remove("open");
+syncAllFontPickers();
+});
+return button;
+};
+const makeFamilyButton = (family) => {
+const previewFont = getFontPickerPreviewFontForFamily(family);
+const button = document.createElement("button");
+button.type = "button";
+button.className = "fontPickerItem fontPickerFamilyItem";
+button.dataset.familyValue = family;
+button.textContent = getUiFontDisplayName(family);
+const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
+button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
+button.style.setProperty('--sm-font-preview-family',`"${renderedPreviewFont}"`);
+button.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(previewFont));
+if (selectEl.value === family) {
+button.classList.add("selected");
+}
+button.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+setNativeFontSelectValue(selectEl, family);
+wrapper.classList.remove("open");
+syncAllFontPickers();
+});
+return button;
+};
+const render = () => {
+menu.innerHTML = "";
+const families = getFontPickerFamilies(isCustomShieldFontPicker);
+if (mode === "allFontsGrouped") {
+for (const familyDef of families) {
+const familyBlock = document.createElement("div");
+familyBlock.className = "fontPickerFamilyBlock expanded";
+const familyHeader = document.createElement("div");
+familyHeader.className = "fontPickerFamilyHeader";
+familyHeader.classList.toggle(
+"fontPickerHighwayGothicHeader",
+familyDef.family === "Highway Gothic"
+);
+familyHeader.textContent = getUiFontDisplayName(familyDef.family);
+const familyHeaderPreviewFont = getFontPickerPreviewFontForFamily(familyDef.family);
+const familyHeaderRenderedFont = resolveFontPickerPreviewFont(
+familyHeaderPreviewFont
+);
+familyHeader.style.fontFamily = `"${familyHeaderRenderedFont}", sans-serif`;
+familyHeader.style.fontSize = getFontPickerDisplaySize(
+familyDef.previewFont
+);
+const children = document.createElement("div");
+children.className = "fontPickerFamilyChildren";
+for (const font of familyDef.fonts) {
+children.appendChild(makeFontButton(font));
+}
+familyBlock.appendChild(familyHeader);
+familyBlock.appendChild(children);
+menu.appendChild(familyBlock);
+}
+} else if (mode === "family") {
+for (const familyDef of families) {
+menu.appendChild(makeFamilyButton(familyDef.family));
+}
+} else if (mode === "familyFont") {
+const family = linkedFamilySelect?.value || "";
+const fonts = getFontsForPickerFamily(family);
+for (const font of fonts) {
+menu.appendChild(makeFontButton(font));
+}
+}
+updateTrigger();
+};
+const sync = () => {
+if (wrapper.classList.contains("open")) {
+render();
+syncFloatingFontPickerMenuClasses();
+positionFloatingFontPickerMenu();
+} else {
+updateTrigger();
+syncFloatingFontPickerMenuClasses();
+}
+};
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const willOpen = !wrapper.classList.contains("open");
+closeAllFontPickers(wrapper);
+if (willOpen) {
+render();
+window.SignMakerDropdowns.prepareMenu(menu);
+wrapper.classList.add("open");
+syncFloatingFontPickerMenuClasses();
+positionFloatingFontPickerMenu();
+} else {
+wrapper.classList.remove("open");
+syncFloatingFontPickerMenuClasses();
+}
+});
+menu.addEventListener("pointerdown", (event) => {
+const fontItem = event.target.closest?.(".fontPickerFontItem[data-font-value]");
+const familyItem = event.target.closest?.(".fontPickerFamilyItem[data-family-value]");
+if (!fontItem && !familyItem) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+setNativeFontSelectValue(selectEl, fontItem ? fontItem.dataset.fontValue : familyItem.dataset.familyValue);
+wrapper.classList.remove("open");
+syncAllFontPickers();
+});
+menu.addEventListener("click", (event) => {
+event.stopPropagation();
+});
+const closePickerOnOutsideClick = (event) => {
+if (!wrapper.contains(event.target) && !menu.contains(event.target)) {
+wrapper.classList.remove("open");
+syncFloatingFontPickerMenuClasses();
+}
+};
+document.addEventListener("click", closePickerOnOutsideClick);
+window.addEventListener("resize", positionFloatingFontPickerMenu);
+window.addEventListener("scroll", positionFloatingFontPickerMenu, true);
+const fontPickerClassObserver = new MutationObserver(() => {
+syncFloatingFontPickerMenuClasses();
+positionFloatingFontPickerMenu();
+});
+fontPickerClassObserver.observe(wrapper, {
+attributes: true,
+attributeFilter: ["class"],
+});
+selectEl.addEventListener("change", () => {
+sync();
+});
+const api = {
+mode,
+linkedFamilySelect,
+wrapper,
+menu,
+sync,
+position: positionFloatingFontPickerMenu,
+syncFloatingMenu: syncFloatingFontPickerMenuClasses,
+destroy: () => {
+document.removeEventListener("click", closePickerOnOutsideClick);
+window.removeEventListener("resize", positionFloatingFontPickerMenu);
+window.removeEventListener("scroll", positionFloatingFontPickerMenu, true);
+fontPickerClassObserver.disconnect();
+menu.remove();
+wrapper.remove();
+delete selectEl._fontPickerApi;
+},
+};
+selectEl._fontPickerApi = api;
+sync();
+return api;
+};
+const syncAllFontPickers = () => {
+document.querySelectorAll("select.fontPickerNativeSelect").forEach((selectEl) => {
+if (selectEl._fontPickerApi) {
+selectEl._fontPickerApi.sync();
+}
+});
+};
+const initializeFontPickers = () => {
+[
+"sdCtrlText_fontFamily",
+"sdAdvisory_fontFamily",
+"sdActionMessage_fontFamily",
+"sdShield_bannerFontFamily1",
+"sdShield_bannerFontFamily2",
+"sdShield_roadNameFontFamily",
+"exitTabFontFamily",
+"exitTextFont",
+].forEach((id) => {
+createFontPicker({
+selectEl: document.getElementById(id),
+mode: "allFontsGrouped",
+});
+});
+const defaultsPairs = [
+["settingsDefaultsControlTextFontFamily", "settingsDefaultsControlTextFont"],
+["settingsDefaultsAdvisoryFontFamily", "settingsDefaultsAdvisoryFont"],
+["settingsDefaultsActionFontFamily", "settingsDefaultsActionFont"],
+];
+defaultsPairs.forEach(([familyId, fontId]) => {
+const familySelect = document.getElementById(familyId);
+const fontSelect = document.getElementById(fontId);
+createFontPicker({
+selectEl: familySelect,
+mode: "family",
+});
+if (fontSelect) {
+fontSelect.classList.add("settingsDefaultsFontNativeSelect", "hidden");
+fontSelect.hidden = true;
+}
+if (familySelect && fontSelect && familySelect.dataset.fontPickerPairBound !== "true") {
+familySelect.dataset.fontPickerPairBound = "true";
+familySelect.addEventListener("change", () => {
+const family = familySelect.value;
+const fonts = getFontsForPickerFamily(family);
+const storedFont = fontSelect.value;
+const nextFont = fonts.includes(storedFont)
+? storedFont
+: fonts[0] || "";
+if (nextFont) {
+setNativeFontSelectValue(fontSelect, nextFont, { dispatch: true });
+}
+refreshSettingsDefaultsFontButtons(fontId, family, fonts);
+syncAllFontPickers();
+});
+}
+});
+syncAllFontPickers();
+};
+const CUSTOM_COLOR_VALUE_PREFIX = "__customColor:";
+let customColorRecords = [];
+let customColorRecordsLoaded = false;
+const normalizeCustomColorHexInput = (value = "") =>
+String(value || "")
+.replace(/#/g, "")
+.replace(/[^0-9a-f]/gi, "")
+.slice(0, 6)
+.toUpperCase();
+const clampCustomColorChannel = (value, fallback = 0) => {
+const parsed = parseInt(value, 10);
+if (!Number.isFinite(parsed)) {
+return fallback;
+}
+return Math.max(0, Math.min(255, parsed));
+};
+const clampCustomColorAlpha = (value, fallback = 1) => {
+const parsed = parseFloat(value);
+if (!Number.isFinite(parsed)) {
+return fallback;
+}
+return Math.max(0, Math.min(1, parsed));
+};
+const getCustomColorId = () =>
+"ccolor_" +
+Date.now().toString(36) +
+"_" +
+Math.random().toString(36).slice(2, 8);
+const rgbToCustomColorHex = (r, g, b) =>
+"#" +
+[r, g, b]
+.map((channel) => clampCustomColorChannel(channel).toString(16).padStart(2, "0"))
+.join("")
+.toUpperCase();
+const normalizeCustomCssColorValue = (value = "") => {
+const rawValue = String(value || "").trim();
+if (!rawValue) {
+return "";
+}
+const hexValue = normalizeCustomColorHexInput(rawValue);
+if (/^#?[0-9a-f]{6}$/i.test(rawValue) && hexValue.length === 6) {
+return "#" + hexValue;
+}
+const rgbaMatch = rawValue.match(
+/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i
+);
+if (rgbaMatch) {
+const r = clampCustomColorChannel(rgbaMatch[1]);
+const g = clampCustomColorChannel(rgbaMatch[2]);
+const b = clampCustomColorChannel(rgbaMatch[3]);
+const a = clampCustomColorAlpha(rgbaMatch[4] ?? 1);
+if (a >= 1) {
+return rgbToCustomColorHex(r, g, b);
+}
+return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
+}
+return rawValue;
+};
+const customColorValuesMatch = (a, b) =>
+normalizeCustomCssColorValue(a).toLowerCase() ===
+normalizeCustomCssColorValue(b).toLowerCase();
+let defaultColorLookupSource = null;
+let defaultColorLookup = new Map();
+const getDefaultColorNameForCustomPickerValue = (value = "") => {
+const normalizedValue = normalizeCustomCssColorValue(value).toLowerCase();
+if (!normalizedValue || typeof lib === "undefined" || !lib.colors) {
+return "";
+}
+if (defaultColorLookupSource !== lib.colors) {
+defaultColorLookupSource = lib.colors;
+defaultColorLookup = new Map();
+for (const [colorName, colorValue] of Object.entries(lib.colors)) {
+for (const key of [String(colorName).toLowerCase(), normalizeCustomCssColorValue(colorValue).toLowerCase()]) {
+if (key && !defaultColorLookup.has(key)) defaultColorLookup.set(key, colorName);
+}
+}
+}
+return defaultColorLookup.get(normalizedValue) || "";
+};
+const isDefaultColorValueForCustomPicker = (value = "") =>
+!!getDefaultColorNameForCustomPickerValue(value);
+const getCustomColorComparableValue = (value = "") => {
+const normalizedValue = normalizeCustomCssColorValue(value);
+if (!normalizedValue) {
+return "";
+}
+const defaultColorName = getDefaultColorNameForCustomPickerValue(normalizedValue);
+if (defaultColorName) {
+return normalizeCustomCssColorValue(lib.colors[defaultColorName]).toLowerCase();
+}
+return normalizedValue.toLowerCase();
+};
+const getCustomColorDisplayName = (record = {}) => {
+const value = normalizeCustomCssColorValue(record.value);
+const name = String(record.name || "").trim();
+return name || value || "Custom Color";
+};
+const normalizeCustomColorRecord = (record = {}, index = 0) => {
+const value = normalizeCustomCssColorValue(record.value || record.color || "");
+if (!value) {
+return null;
+}
+return {
+id: String(record.id || getCustomColorId()),
+value,
+name: String(record.name || "").trim() || value,
+createdAt: record.createdAt || new Date().toISOString(),
+order: Number.isFinite(Number(record.order)) ? Number(record.order) : index,
+};
+};
+const loadCustomColorRecords = () => {
+if (customColorRecordsLoaded) {
+return customColorRecords;
+}
+customColorRecordsLoaded = true;
+try {
+const parsed = JSON.parse(getStoredItem(STORAGE_KEYS.customColors) || "[]");
+const normalizedRecords = Array.isArray(parsed)
+? parsed.map(normalizeCustomColorRecord).filter(Boolean)
+: [];
+const seenValues = new Set();
+let removedDefaultColorRecords = false;
+customColorRecords = normalizedRecords.filter((record) => {
+const key = getCustomColorComparableValue(record.value);
+if (!key || seenValues.has(key)) {
+return false;
+}
+if (isDefaultColorValueForCustomPicker(record.value)) {
+removedDefaultColorRecords = true;
+return false;
+}
+seenValues.add(key);
+return true;
+});
+if (removedDefaultColorRecords) {
+setStoredItem(STORAGE_KEYS.customColors, JSON.stringify(customColorRecords));
+}
+} catch (error) {
+customColorRecords = [];
+}
+return customColorRecords;
+};
+const saveCustomColorRecords = () => {
+loadCustomColorRecords();
+setStoredItem(STORAGE_KEYS.customColors, JSON.stringify(customColorRecords));
+};
+const isStoredCustomColorValue = (value) => {
+const normalizedValue = normalizeCustomCssColorValue(value);
+if (!normalizedValue) {
+return false;
+}
+return loadCustomColorRecords().some((record) =>
+customColorValuesMatch(record.value, normalizedValue)
+);
+};
+const upsertCustomColorRecord = ({ value, name = "" } = {}) => {
+const normalizedValue = normalizeCustomCssColorValue(value);
+if (!normalizedValue) {
+return null;
+}
+const defaultColorName = getDefaultColorNameForCustomPickerValue(normalizedValue);
+if (defaultColorName) {
+return {
+id: `default_${defaultColorName}`,
+value: defaultColorName,
+name: defaultColorName,
+defaultColor: true,
+};
+}
+loadCustomColorRecords();
+const existingRecord = customColorRecords.find((record) =>
+getCustomColorComparableValue(record.value) ===
+getCustomColorComparableValue(normalizedValue)
+);
+if (existingRecord) {
+return existingRecord;
+}
+const record = {
+id: getCustomColorId(),
+value: normalizedValue,
+name: String(name || "").trim() || normalizedValue,
+createdAt: new Date().toISOString(),
+order: customColorRecords.length,
+};
+customColorRecords.push(record);
+saveCustomColorRecords();
+return record;
+};
+const deleteCustomColorRecord = (id) => {
+loadCustomColorRecords();
+const initialLength = customColorRecords.length;
+customColorRecords = customColorRecords.filter(
+(record) => String(record.id) !== String(id)
+);
+if (customColorRecords.length !== initialLength) {
+saveCustomColorRecords();
+syncAllColorPickers();
+}
+};
+const getColorSelectLabelText = (selectEl) => {
+if (!selectEl) {
+return "";
+}
+if (selectEl.labels) return selectEl.labels[0]?.textContent || "";
+if (selectEl.id) {
+const escapedId =
+typeof CSS !== "undefined" && typeof CSS.escape === "function"
+? CSS.escape(selectEl.id)
+: String(selectEl.id).replace(/\"/g, '\\"');
+const label = document.querySelector(`label[for="${escapedId}"]`);
+if (label) {
+return label.textContent || "";
+}
+}
+return "";
+};
+const isColorSelectElement = (selectEl) => {
+if (!selectEl || selectEl.tagName !== "SELECT") {
+return false;
+}
+if (selectEl.classList.contains("fontPickerNativeSelect")) {
+return false;
+}
+const descriptor = [
+selectEl.id,
+selectEl.name,
+selectEl.className,
+selectEl.dataset.tooltip,
+selectEl.getAttribute("data-toolTip"),
+getColorSelectLabelText(selectEl),
+]
+.filter(Boolean)
+.join(" ");
+if (/font|alignment|position|variant|width|corner|measurement|orientation|shield|icon|logo|arrow|lane|spacing|padding/i.test(descriptor)) {
+if (!/color|bg|background|border/i.test(descriptor)) {
+return false;
+}
+}
+return /color|bg|background|border/i.test(descriptor);
+};
+const getResolvedColorValue = (value) => {
+const rawValue = String(value || "").trim();
+if (!rawValue) {
+return "";
+}
+if (typeof lib !== "undefined" && lib.colors && lib.colors[rawValue]) {
+return lib.colors[rawValue];
+}
+return rawValue;
+};
+const isValidCssColorValue = (value) => {
+const resolvedValue = getResolvedColorValue(value);
+if (!resolvedValue) {
+return false;
+}
+if (typeof CSS !== "undefined" && CSS.supports) {
+return CSS.supports("color", resolvedValue);
+}
+const probe = document.createElement("span");
+probe.style.color = "";
+probe.style.color = resolvedValue;
+return !!probe.style.color;
+};
+const getCurrentPanelColorForPicker = () => {
+try {
+const panel = exposed && typeof exposed.getCurrentPanel === "function"
+? exposed.getCurrentPanel()
+: null;
+return panel?.color || "Green";
+} catch (error) {
+return "Green";
+}
+};
+const getSiblingColorSelectValue = (selectEl, matchers = []) => {
+if (!selectEl || !Array.isArray(matchers) || matchers.length === 0) {
+return "";
+}
+const candidates = [];
+const id = String(selectEl.id || "");
+matchers.forEach(([fromText, toText]) => {
+if (id && id.includes(fromText)) {
+candidates.push("#" + id.replace(fromText, toText));
+}
+});
+const searchRoots = [
+selectEl.closest("[data-property]"),
+selectEl.closest(".controlInputRow"),
+selectEl.closest(".settingsDefaultsColumn"),
+selectEl.closest(".sMModalContent"),
+document,
+].filter(Boolean);
+for (const selector of candidates) {
+for (const root of searchRoots) {
+try {
+const found = root.querySelector(selector);
+if (found && found !== selectEl) {
+return found.value || "";
+}
+} catch (error) {
+continue;
+}
+}
+}
+return "";
+};
+const getEffectiveSpecialColorValue = (value, selectEl = null, depth = 0) => {
+const rawValue = String(value || "").trim();
+if (!rawValue || depth > 4) {
+return "";
+}
+const lowerValue = rawValue.toLowerCase();
+if (lowerValue === "inherit" || lowerValue === "panel color" || lowerValue === "default") {
+const effectiveOverride = selectEl?.dataset?.colorPickerEffectiveColor || "";
+return effectiveOverride || getCurrentPanelColorForPicker();
+}
+if (lowerValue === "match bg" || lowerValue === "match background") {
+if (selectEl?.id === "sdBlock_borderColor") {
+const blockBackgroundSelect = document.querySelector("#sdBlock_backgroundColor");
+let blockBackgroundValue = blockBackgroundSelect?.value || "Inherit";
+if (/^(inherit|panel color|default)$/i.test(blockBackgroundValue)) {
+blockBackgroundValue = getCurrentPanelColorForPicker();
+}
+const lightBlockBackgrounds = new Set([
+"orange",
+"white",
+"yellow",
+"fluorescent yellow-green",
+"fluorescent pink",
+]);
+return lightBlockBackgrounds.has(
+String(blockBackgroundValue || "").trim().toLowerCase()
+)
+? "Black"
+: "White";
+}
+const siblingBackgroundValue = getSiblingColorSelectValue(selectEl, [
+["borderColor", "backgroundColor"],
+["border", "background"],
+["Border", "Background"],
+["Border", "BG"],
+]);
+return siblingBackgroundValue
+? getEffectiveSpecialColorValue(siblingBackgroundValue, selectEl, depth + 1)
+: getCurrentPanelColorForPicker();
+}
+return rawValue;
+};
+const getColorOptionIconValue = (value, selectEl = null) => {
+const effectiveValue = getEffectiveSpecialColorValue(value, selectEl);
+const resolvedValue = getResolvedColorValue(effectiveValue);
+return isValidCssColorValue(resolvedValue) ? resolvedValue : "";
+};
+const ensureNativeColorSelectOption = (selectEl, value, label = "") => {
+if (!selectEl || value === undefined || value === null || value === "") {
+return null;
+}
+const normalizedValue = normalizeCustomCssColorValue(value);
+const defaultColorName = getDefaultColorNameForCustomPickerValue(normalizedValue);
+const optionValue = defaultColorName || normalizedValue;
+const comparableValue = getCustomColorComparableValue(optionValue);
+let existingOption = Array.from(selectEl.options || []).find((option) => {
+if (option.value === optionValue || option.value === normalizedValue || option.value === value) {
+return true;
+}
+return (
+comparableValue &&
+getCustomColorComparableValue(option.value) === comparableValue
+);
+});
+if (existingOption) {
+return existingOption;
+}
+existingOption = document.createElement("option");
+existingOption.value = optionValue;
+existingOption.textContent = label || optionValue;
+if (!defaultColorName) {
+existingOption.dataset.customColor = "true";
+}
+selectEl.appendChild(existingOption);
+return existingOption;
+};
+const ensureDefaultColorOptionsForSelect = (selectEl) => {
+if (!selectEl || typeof lib === "undefined" || !lib.colors) {
+return;
+}
+const existingColorKeys = new Set(
+Array.from(selectEl.options || [])
+.map((option) => getCustomColorComparableValue(option.value || option.textContent))
+.filter(Boolean)
+);
+Object.keys(lib.colors).forEach((colorName) => {
+const colorKey = getCustomColorComparableValue(colorName);
+if (!colorKey || existingColorKeys.has(colorKey)) {
+return;
+}
+const option = document.createElement("option");
+option.value = colorName;
+option.textContent = colorName;
+selectEl.appendChild(option);
+existingColorKeys.add(colorKey);
+});
+};
+const ensureCustomColorOptionsForSelect = (selectEl) => {
+if (!isColorSelectElement(selectEl)) {
+return;
+}
+ensureDefaultColorOptionsForSelect(selectEl);
+loadCustomColorRecords()
+.filter((record) => !isDefaultColorValueForCustomPicker(record.value))
+.forEach((record) => {
+ensureNativeColorSelectOption(selectEl, record.value, getCustomColorDisplayName(record));
+});
+dedupeSelectOptions(selectEl);
+};
+const ensureCustomColorOptionsForAllColorSelects = (root = document) => {
+root.querySelectorAll("select").forEach((selectEl) => {
+ensureCustomColorOptionsForSelect(selectEl);
+});
+};
+const FLOATING_COLOR_PICKER_SELECTOR = ".colorPickerMenu, .colorPickerCustomPanel";
+const ACTIVE_FLOATING_COLOR_PICKER_SELECTOR = ".colorPickerMenu.open, .colorPickerCustomPanel.open";
+const getClosestColorPickerTarget = (target, selector) =>
+target && typeof target.closest === "function" ? target.closest(selector) : null;
+const colorPickerFloatingPanelIsLive = (panel) => {
+if (!panel) {
+return false;
+}
+const wrapper = panel._colorPickerWrapper;
+const sourceSelect = panel._colorPickerSelect;
+if (!wrapper || !sourceSelect) {
+return false;
+}
+if (
+!document.documentElement.contains(wrapper) ||
+!document.documentElement.contains(sourceSelect)
+) {
+return false;
+}
+const api = sourceSelect._colorPickerApi;
+return !!(
+api &&
+api.wrapper === wrapper &&
+(api.menu === panel || api.customPanel === panel)
+);
+};
+const cleanupOrphanedColorPickerPanels = () => {
+document.querySelectorAll(FLOATING_COLOR_PICKER_SELECTOR).forEach((panel) => {
+if (!colorPickerFloatingPanelIsLive(panel)) {
+panel.remove();
+}
+});
+};
+const closeAllColorPickers = (except = null) => {
+cleanupOrphanedColorPickerPanels();
+document.querySelectorAll(".colorPicker.open, .colorPicker.addingCustomColor").forEach((picker) => {
+if (picker !== except) {
+picker.classList.remove("open", "addingCustomColor");
+}
+});
+document.querySelectorAll(ACTIVE_FLOATING_COLOR_PICKER_SELECTOR).forEach((panel) => {
+if (panel._colorPickerWrapper !== except) {
+panel.classList.remove("open");
+}
+});
+};
+let colorPickerDocumentPointerGuardInstalled = false;
+const installColorPickerDocumentPointerGuard = () => {
+if (colorPickerDocumentPointerGuardInstalled) {
+return;
+}
+colorPickerDocumentPointerGuardInstalled = true;
+document.addEventListener(
+"pointerdown",
+(event) => {
+const floatingPanel = getClosestColorPickerTarget(
+event.target,
+FLOATING_COLOR_PICKER_SELECTOR
+);
+if (floatingPanel && !colorPickerFloatingPanelIsLive(floatingPanel)) {
+event.preventDefault();
+event.stopImmediatePropagation();
+floatingPanel.remove();
+closeAllColorPickers();
+return;
+}
+cleanupOrphanedColorPickerPanels();
+const clickedColorPicker = getClosestColorPickerTarget(event.target, ".colorPicker");
+const clickedActivePanel = getClosestColorPickerTarget(
+event.target,
+ACTIVE_FLOATING_COLOR_PICKER_SELECTOR
+);
+if (!clickedColorPicker && !clickedActivePanel) {
+closeAllColorPickers();
+}
+},
+true
+);
+};
+const syncAllColorPickers = () => {
+ensureCustomColorOptionsForAllColorSelects(document);
+cleanupOrphanedColorPickerPanels();
+document.querySelectorAll("select.colorPickerNativeSelect").forEach((selectEl) => {
+if (selectEl._colorPickerApi) {
+selectEl._colorPickerApi.sync();
+}
+});
+};
+const fitColorPickerTriggerLabelText=(trigger,label)=>{label.style.removeProperty('font-size');label.style.removeProperty('font-family');window.SignMakerDropdowns.refresh(trigger);};
+const createColorPicker = (selectEl) => {
+if (!isColorSelectElement(selectEl)) {
+return null;
+}
+if (!selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
+ensureCustomColorOptionsForSelect(selectEl);
+if (selectEl._colorPickerApi) {
+selectEl._colorPickerApi.sync();
+return selectEl._colorPickerApi;
+}
+const wrapper = document.createElement("div");
+wrapper.className = "colorPicker";
+wrapper.dataset.sourceSelectId = selectEl.id || "";
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "colorPickerTrigger";
+const triggerTooltip =
+selectEl.getAttribute("data-toolTip") ||
+selectEl.dataset.tooltip ||
+selectEl.getAttribute("title") ||
+"";
+if (triggerTooltip) {
+trigger.setAttribute("data-toolTip", triggerTooltip);
+trigger.dataset.tooltip = triggerTooltip;
+trigger.title = triggerTooltip;
+}
+const triggerIcon = document.createElement("span");
+triggerIcon.className = "colorPickerSwatch colorPickerTriggerSwatch";
+const triggerLabel = document.createElement("span");
+triggerLabel.className = "colorPickerTriggerLabel";
+const triggerCaret = document.createElement("span");
+triggerCaret.className = "colorPickerTriggerCaret";
+triggerCaret.textContent = "keyboard_arrow_down";
+const menu = document.createElement("div");
+menu.className = "colorPickerMenu";
+menu.dataset.ownerColorPicker = wrapper.dataset.sourceSelectId || "";
+const customPanel = document.createElement("div");
+customPanel.className = "colorPickerCustomPanel";
+customPanel.dataset.ownerColorPicker = wrapper.dataset.sourceSelectId || "";
+const nameLabel = document.createElement("label");
+nameLabel.className = "colorPickerCustomField colorPickerNameField";
+nameLabel.textContent = "Name";
+const nameInput = document.createElement("input");
+nameInput.type = "text";
+nameInput.className = "colorPickerCustomName";
+nameInput.placeholder = "Custom color";
+nameLabel.appendChild(nameInput);
+const wheelLabel = document.createElement("label");
+wheelLabel.className = "colorPickerCustomField colorPickerWheelField";
+wheelLabel.textContent = "Color";
+const wheelInput = document.createElement("input");
+wheelInput.type = "color";
+wheelInput.className = "colorPickerWheel";
+wheelInput.value = "#000000";
+wheelLabel.appendChild(wheelInput);
+const rgbaBlock = document.createElement("div");
+rgbaBlock.className = "colorPickerRgbaBlock";
+const rgbaInputs = [
+["R", "255", "0", "255", "1"],
+["G", "0", "0", "255", "1"],
+["B", "0", "0", "255", "1"],
+["A", "1", "0", "1", "0.01"],
+].map(([labelText, value, min, max, step]) => {
+const label = document.createElement("label");
+label.className = "colorPickerRgbaField";
+label.textContent = labelText;
+const input = document.createElement("input");
+input.type = "number";
+input.value = value;
+input.min = min;
+input.max = max;
+input.step = step;
+label.appendChild(input);
+rgbaBlock.appendChild(label);
+return input;
+});
+const hexLabel = document.createElement("label");
+hexLabel.className = "colorPickerCustomField colorPickerHexField";
+hexLabel.textContent = "Hex";
+const hexInput = document.createElement("input");
+hexInput.type = "text";
+hexInput.className = "colorPickerHexInput";
+hexInput.value = "#000000";
+hexInput.maxLength = 7;
+hexInput.spellcheck = false;
+hexInput.autocomplete = "off";
+hexLabel.appendChild(hexInput);
+const customActions = document.createElement("div");
+customActions.className = "colorPickerCustomActions";
+const addButton = document.createElement("button");
+addButton.type = "button";
+addButton.className = "colorPickerAddButton";
+addButton.textContent = "Add";
+const cancelButton = document.createElement("button");
+cancelButton.type = "button";
+cancelButton.className = "colorPickerCancelButton";
+cancelButton.textContent = "Cancel";
+customActions.appendChild(addButton);
+customActions.appendChild(cancelButton);
+customPanel.appendChild(nameLabel);
+customPanel.appendChild(wheelLabel);
+customPanel.appendChild(rgbaBlock);
+customPanel.appendChild(hexLabel);
+customPanel.appendChild(customActions);
+trigger.appendChild(triggerIcon);
+trigger.appendChild(triggerLabel);
+trigger.appendChild(triggerCaret);
+wrapper.appendChild(trigger);
+selectEl.insertAdjacentElement("afterend", wrapper);
+const colorPickerFloatingRoot =
+selectEl.closest("dialog") || document.body;
+colorPickerFloatingRoot.appendChild(menu);
+colorPickerFloatingRoot.appendChild(customPanel);
+selectEl.classList.add("colorPickerNativeSelect");
+wrapper.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+wrapper._colorPickerSelect = selectEl;
+menu._colorPickerWrapper = wrapper;
+menu._colorPickerSelect = selectEl;
+customPanel._colorPickerWrapper = wrapper;
+customPanel._colorPickerSelect = selectEl;
+const getOptionLabel = (option) =>
+option?.textContent?.trim() || option?.label || option?.value || "Color";
+const copySelectVisualsToTrigger=()=>window.SignMakerDropdowns.refresh(wrapper);
+const updateCustomPanelInputsFromHex = (hexValue) => {
+const sanitizedHex = normalizeCustomColorHexInput(hexValue).padEnd(6, "0").slice(0, 6);
+const fullHex = "#" + sanitizedHex.toUpperCase();
+hexInput.value = fullHex;
+wheelInput.value = fullHex;
+rgbaInputs[0].value = parseInt(sanitizedHex.slice(0, 2), 16) || 0;
+rgbaInputs[1].value = parseInt(sanitizedHex.slice(2, 4), 16) || 0;
+rgbaInputs[2].value = parseInt(sanitizedHex.slice(4, 6), 16) || 0;
+};
+const getCurrentCustomPanelColorValue = () => {
+const r = clampCustomColorChannel(rgbaInputs[0].value);
+const g = clampCustomColorChannel(rgbaInputs[1].value);
+const b = clampCustomColorChannel(rgbaInputs[2].value);
+const a = clampCustomColorAlpha(rgbaInputs[3].value);
+if (a >= 1) {
+return rgbToCustomColorHex(r, g, b);
+}
+return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
+};
+const syncHexFromRgba = () => {
+const r = clampCustomColorChannel(rgbaInputs[0].value);
+const g = clampCustomColorChannel(rgbaInputs[1].value);
+const b = clampCustomColorChannel(rgbaInputs[2].value);
+const hexValue = rgbToCustomColorHex(r, g, b);
+hexInput.value = hexValue;
+wheelInput.value = hexValue;
+rgbaInputs[0].value = r;
+rgbaInputs[1].value = g;
+rgbaInputs[2].value = b;
+rgbaInputs[3].value = clampCustomColorAlpha(rgbaInputs[3].value);
+};
+const getLastConcreteSelectedColor = () => {
+const currentColor = normalizeCustomCssColorValue(
+getColorOptionIconValue(selectEl.value, selectEl) || ""
+);
+if (currentColor) {
+return currentColor;
+}
+const storedColor = normalizeCustomCssColorValue(
+selectEl.dataset.colorPickerLastResolvedColor || ""
+);
+return storedColor || "#000000";
+};
+const showCustomPanel = () => {
+const currentColor = getLastConcreteSelectedColor();
+updateCustomPanelInputsFromHex(currentColor);
+rgbaInputs[3].value = "1";
+nameInput.value = "";
+wrapper.classList.add("addingCustomColor");
+syncFloatingColorPickerPanelClasses();
+positionFloatingColorPickerPanels();
+nameInput.focus();
+};
+const makeColorIcon = (value) => {
+const icon = document.createElement("span");
+icon.className = "colorPickerSwatch";
+const resolvedValue = getColorOptionIconValue(value, selectEl);
+if (resolvedValue) {
+icon.style.background = resolvedValue;
+} else {
+icon.classList.add("specialColorSwatch");
+}
+return icon;
+};
+const setSelectValue = (value, { dispatch = true } = {}) => {
+ensureNativeColorSelectOption(selectEl, value);
+selectEl.value = normalizeCustomCssColorValue(value) || value;
+if (dispatch) {
+selectEl.dispatchEvent(new Event("input", { bubbles: true }));
+selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+selectEl.dispatchEvent(new Event("blur"));
+}
+};
+const makeColorButton = ({ value, label, customRecord = null }) => {
+const item = document.createElement("button");
+item.type = "button";
+item.className = "colorPickerItem";
+item.dataset.colorValue = value;
+if (customRecord) {
+item.classList.add("customColorPickerItem");
+item.dataset.customColorId = customRecord.id;
+}
+if (selectEl.value === value) {
+item.classList.add("selected");
+}
+if (customRecord) {
+const deleteButton = document.createElement("span");
+deleteButton.className = "colorPickerDeleteCustom";
+deleteButton.textContent = "×";
+deleteButton.setAttribute("role", "button");
+deleteButton.setAttribute("aria-label", "Delete custom color");
+deleteButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+deleteCustomColorRecord(customRecord.id);
+});
+item.appendChild(deleteButton);
+}
+item.appendChild(makeColorIcon(value));
+const labelSpan = document.createElement("span");
+labelSpan.className = "colorPickerItemLabel";
+labelSpan.textContent = label || value;
+item.appendChild(labelSpan);
+item.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+setSelectValue(value);
+wrapper.classList.remove("open", "addingCustomColor");
+syncAllColorPickers();
+});
+return item;
+};
+const render = () => {
+ensureCustomColorOptionsForSelect(selectEl);
+menu.innerHTML = "";
+const standardOptions = Array.from(selectEl.options || []).filter(
+(option) => option.value && option.dataset.customColor !== "true"
+);
+const renderedStandardColorValues = new Set();
+const appendStandardOption = (option) => {
+if (!option) {
+return;
+}
+const comparableValue =
+getCustomColorComparableValue(option.value) ||
+String(option.value).toLowerCase();
+if (renderedStandardColorValues.has(comparableValue)) {
+return;
+}
+renderedStandardColorValues.add(comparableValue);
+menu.appendChild(
+makeColorButton({
+value: option.value,
+label: getOptionLabel(option),
+})
+);
+};
+const customColorButton = document.createElement("button");
+customColorButton.type = "button";
+customColorButton.className = "colorPickerItem colorPickerCustomColorButton";
+customColorButton.innerHTML = `<span class="colorPickerAddIcon">+</span><span class="colorPickerItemLabel">Custom color</span>`;
+customColorButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+showCustomPanel();
+});
+menu.appendChild(customColorButton);
+const isPreferredDefaultColorOption = (option) => {
+if (!option) {
+return false;
+}
+const value = String(option.value || "").trim().toLowerCase();
+const label = String(getOptionLabel(option) || "").trim().toLowerCase();
+const candidates = [value, label];
+return candidates.some((candidate) =>
+candidate === "inherit" ||
+candidate === "match bg" ||
+candidate === "match background" ||
+candidate === "panel color" ||
+candidate === "default"
+);
+};
+const preferredDefaultOptions = standardOptions.filter(
+isPreferredDefaultColorOption
+);
+preferredDefaultOptions.forEach(appendStandardOption);
+standardOptions
+.filter((option) => !isPreferredDefaultColorOption(option))
+.forEach(appendStandardOption);
+const records = loadCustomColorRecords().filter((record) => {
+if (isDefaultColorValueForCustomPicker(record.value)) {
+return false;
+}
+const comparableValue = getCustomColorComparableValue(record.value);
+return comparableValue && !renderedStandardColorValues.has(comparableValue);
+});
+if (records.length) {
+const divider = document.createElement("div");
+divider.className = "colorPickerMenuDivider";
+menu.appendChild(divider);
+}
+records.forEach((record) => {
+menu.appendChild(
+makeColorButton({
+value: record.value,
+label: getCustomColorDisplayName(record),
+customRecord: record,
+})
+);
+});
+};
+const updateTrigger = () => {
+ensureCustomColorOptionsForSelect(selectEl);
+const currentValue = selectEl.value || "";
+const currentOption = Array.from(selectEl.options || []).find(
+(option) => option.value === currentValue
+);
+triggerLabel.textContent = getOptionLabel(currentOption) || currentValue || "Color";
+fitColorPickerTriggerLabelText(trigger, triggerLabel);
+const resolvedValue = getColorOptionIconValue(currentValue, selectEl);
+triggerIcon.style.background = resolvedValue || "";
+triggerIcon.classList.toggle("specialColorSwatch", !resolvedValue);
+if (resolvedValue) {
+selectEl.dataset.colorPickerLastResolvedColor =
+normalizeCustomCssColorValue(resolvedValue) || resolvedValue;
+}
+};
+const syncFloatingColorPickerPanelClasses = () => {
+const isLive =
+document.documentElement.contains(wrapper) &&
+document.documentElement.contains(selectEl);
+const isOpen = isLive && wrapper.classList.contains("open");
+const isAddingCustomColor = isLive && wrapper.classList.contains("addingCustomColor");
+menu.classList.toggle("open", isOpen);
+customPanel.classList.toggle("open", isAddingCustomColor);
+};
+const positionFloatingColorPickerPanels=event=>{if(event?.target?.nodeType&&(menu.contains(event.target)||customPanel.contains(event.target)))return;
+if(wrapper.classList.contains('open'))window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:12.5,maxWidth:18});
+if(wrapper.classList.contains('addingCustomColor'))window.SignMakerDropdowns.positionMenu(customPanel,trigger,{minWidth:16,maxWidth:20,openClass:'addingCustomColor',beside:menu});
+};
+const syncHiddenState = () => {
+const hidden =
+selectEl.hidden ||
+selectEl.classList.contains("hidden") ||
+selectEl.closest("[hidden]");
+wrapper.classList.toggle("hidden", !!hidden);
+menu.classList.toggle("hidden", !!hidden);
+customPanel.classList.toggle("hidden", !!hidden);
+syncFloatingColorPickerPanelClasses();
+};
+const sync = () => {
+copySelectVisualsToTrigger();
+syncHiddenState();
+updateTrigger();
+if (wrapper.classList.contains("open")) {
+render();
+positionFloatingColorPickerPanels();
+}
+};
+const toggleColorPickerOpen = (event) => {
+event.preventDefault();
+event.stopPropagation();
+const willOpen = !wrapper.classList.contains("open");
+closeAllColorPickers(wrapper);
+if (willOpen) {
+render();
+window.SignMakerDropdowns.prepareMenu(menu);
+wrapper.classList.add("open");
+syncFloatingColorPickerPanelClasses();
+positionFloatingColorPickerPanels();
+} else {
+wrapper.classList.remove("open", "addingCustomColor");
+}
+};
+trigger.addEventListener("mousedown", (event) => {
+event.preventDefault();
+});
+trigger.addEventListener("click", (event) => {
+toggleColorPickerOpen(event);
+});
+menu.addEventListener("pointerdown", (event) => {
+const item = event.target.closest?.(".colorPickerItem[data-color-value]");
+if (!item || event.target.closest?.(".colorPickerDeleteCustom")) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+setSelectValue(item.dataset.colorValue);
+wrapper.classList.remove("open", "addingCustomColor");
+syncAllColorPickers();
+});
+menu.addEventListener("click", (event) => {
+event.stopPropagation();
+});
+customPanel.addEventListener("click", (event) => {
+event.stopPropagation();
+});
+document.addEventListener("click", (event) => {
+if (!wrapper.contains(event.target) && !menu.contains(event.target) && !customPanel.contains(event.target)) {
+wrapper.classList.remove("open", "addingCustomColor");
+}
+});
+window.addEventListener("resize", positionFloatingColorPickerPanels);
+window.addEventListener("scroll", positionFloatingColorPickerPanels, true);
+const wrapperClassObserver = new MutationObserver(() => {
+syncFloatingColorPickerPanelClasses();
+positionFloatingColorPickerPanels();
+});
+wrapperClassObserver.observe(wrapper, {
+attributes: true,
+attributeFilter: ["class"],
+});
+wheelInput.addEventListener("input", () => {
+updateCustomPanelInputsFromHex(wheelInput.value);
+rgbaInputs[3].value = "1";
+});
+hexInput.addEventListener("input", () => {
+const sanitized = normalizeCustomColorHexInput(hexInput.value);
+hexInput.value = "#" + sanitized;
+if (sanitized.length === 6) {
+updateCustomPanelInputsFromHex(sanitized);
+}
+});
+rgbaInputs.forEach((input) => {
+input.addEventListener("input", syncHexFromRgba);
+});
+addButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const value = getCurrentCustomPanelColorValue();
+const record = upsertCustomColorRecord({
+value,
+name: nameInput.value,
+});
+if (!record) {
+return;
+}
+document.querySelectorAll("select").forEach((otherSelect) => {
+if (isColorSelectElement(otherSelect)) {
+ensureNativeColorSelectOption(
+otherSelect,
+record.value,
+getCustomColorDisplayName(record)
+);
+}
+});
+setSelectValue(record.value);
+wrapper.classList.remove("addingCustomColor", "open");
+syncAllColorPickers();
+});
+cancelButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+wrapper.classList.remove("addingCustomColor");
+});
+selectEl.addEventListener("change", () => {
+sync();
+});
+const observer = new MutationObserver(syncHiddenState);
+observer.observe(selectEl, {
+attributes: true,
+attributeFilter: ["class", "hidden", "style"],
+});
+const api = {
+wrapper,
+trigger,
+menu,
+customPanel,
+sync,
+render,
+position: positionFloatingColorPickerPanels,
+};
+selectEl._colorPickerApi = api;
+sync();
+return api;
+};
+const initializeColorPickers = (root = document) => {
+installColorPickerDocumentPointerGuard();
+ensureCustomColorOptionsForAllColorSelects(root);
+cleanupOrphanedColorPickerPanels();
+root.querySelectorAll("select").forEach((selectEl) => {
+if (isColorSelectElement(selectEl)) {
+createColorPicker(selectEl);
+}
+});
+syncAllColorPickers();
+};
+const SHIELD_DROPDOWN_PLACEHOLDER_ICON =
+"data:image/svg+xml;utf8," +
+encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+          <rect x="4" y="4" width="40" height="40" rx="4" fill="#111" stroke="#666" stroke-width="2"/>
+          <path d="M12 32 L32 12 M24 12 H32 V20" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `);
+const SHIELD_PICKER_MANUAL_ORDER = {
+"us-florida": [
+"FL",
+"FLToll",
+"FLCFX",
+"FLTP",
+],
+"us-georgia": [
+"GA",
+"GAALT",
+"GABYP",
+"GACONN",
+"GALOOP",
+"GASPUR",
+],
+"us-massachusetts": [
+"MA",
+"MATP",
+"MA-PIKE",
+],
+"us-nevada": [
+"NV",
+"NVCC",
+],
+"us-newjersey": [
+"NJ",
+"NJTP",
+"GSP",
+"PIP",
+],
+"us-oklahoma": [
+"OK",
+"OKCH",
+"OKCR",
+"OKHB",
+"OKIN",
+"OKKC",
+"OKKL",
+"OKMS",
+"OKTU",
+"OKWR",
+],
+"us-pennsylvania": [
+"PA",
+"PATPLOGO",
+"PATP",
+],
+"us-puertorico": [
+"PR",
+"PR2",
+"PR3",
+"PR4",
+],
+"us-texas": [
+"TX",
+"TXFM",
+"TXRM",
+"TXBELT",
+"TXLOOP",
+"TXPARK",
+"TXSPUR",
+"TXEXPRESS",
+"TXTOLL",
+"TXTOLLCTRMA",
+"TXTOLLNTTA",
+"TXTOLLFBTR",
+"HTR",
+"SHT",
+"WPT",
+],
+"canada": [
+"TCHLeaf",
+"TCH",
+],
+};
+const applyManualShieldPickerOrder = (node) => {
+if (!node || !Array.isArray(node.children)) {
+return node;
+}
+node.children.forEach(applyManualShieldPickerOrder);
+const manualOrder = SHIELD_PICKER_MANUAL_ORDER[node.id];
+if (!manualOrder) {
+return node;
+}
+const orderMap = new Map(
+manualOrder.map((value, index) => [value, index])
+);
+node.children.sort((a, b) => {
+const aIndex = orderMap.has(a.value) ? orderMap.get(a.value) : 9999;
+const bIndex = orderMap.has(b.value) ? orderMap.get(b.value) : 9999;
+if (aIndex !== bIndex) {
+return aIndex - bIndex;
+}
+return (a.label || a.value || "").localeCompare(b.label || b.value || "");
+});
+return node;
+};
+const SHIELD_PICKER_CUSTOM_MAKER_VALUE = "__customShieldMaker";
+const activeShieldPickerApis = new Set();
+const refreshAllShieldPickers = () => {
+activeShieldPickerApis.forEach((pickerApi) => {
+if (!pickerApi?.element?.isConnected) { activeShieldPickerApis.delete(pickerApi); return; }
+if (pickerApi && typeof pickerApi.refresh === "function") {
+pickerApi.refresh();
+}
+});
+};
+const SHIELD_PICKER_TREE = [
+{
+id: "custom-shield-maker",
+value: SHIELD_PICKER_CUSTOM_MAKER_VALUE,
+label: "Custom Shield",
+asset: "img/other-symbols/icon.png",
+customShieldMaker: true,
+},
+{
+id: "us",
+label: "United States",
+children: [
+{
+id: "us-interstate",
+label: "Interstate",
+children: [
+{ value: "I", label: "Interstate", asset: "img/shields/United States/I-2Digit.svg" },
+{ value: "I-BUS", label: "Interstate Business", asset: "img/shields/United States/I-BUS-2Digit.svg" },
+{ value: "I-BUS-LOOP", label: "Interstate Business Loop", disabled: true },
+{ value: "I-BUS-SPUR", label: "Interstate Business Spur", disabled: true },
+{ value: "FUTURE-I", label: "Future Interstate", disabled: true },
+],
+},
+{
+id: "us-usroute",
+label: "U.S. Route",
+children: [
+{ value: "US", label: "U.S. Route", asset: "img/shields/United States/US-2Digit.svg" },
+{ value: "US-OLD", label: "U.S. Route (old style)", disabled: true },
+{ value: "US-CA", label: "U.S. Route (CA style)", disabled: true },
+],
+},
+{ value: "AL", label: "Alabama", asset: "img/shields/United States/AL-2Digit.svg" },
+{ value: "AK", label: "Alaska", asset: "img/shields/United States/AK-2Digit.svg" },
+{ value: "AZ", label: "Arizona", asset: "img/shields/United States/AZ/AZ-2Digit.svg" },
+{ value: "AR", label: "Arkansas", asset: "img/shields/United States/AR-2Digit.svg" },
+{ value: "CA", label: "California", asset: "img/shields/United States/CA-2Digit.svg" },
+{ value: "CO", label: "Colorado", asset: "img/shields/United States/CO-2Digit.svg" },
+{ value: "CT", label: "Connecticut", asset: "img/shields/United States/CT-2Digit.svg" },
+{ value: "DE", label: "Delaware", asset: "img/shields/United States/DE-2Digit.svg" },
+{ value: "DC", label: "District of Columbia", asset: "img/shields/United States/DC-2Digit.svg" },
+{
+id: "us-florida",
+label: "Florida",
+children: [
+{
+value: "FL",
+label: "Florida",
+asset: "img/shields/United States/Florida/FDOT/FL-36-2Digit.svg",
+},
+{
+value: "FLToll",
+label: "FDOT Toll",
+asset: "img/shields/United States/Florida/FDOT/TollFDOT-48.svg",
+},
+{
+value: "FLCFX",
+label: "CFX Toll",
+asset: "img/shields/United States/Florida/CFX/CFX-48.svg",
+},
+{
+value: "FLTP",
+label: "Florida's Turnpike",
+asset: "img/shields/United States/Florida/FDOT/FLTP-48.svg",
+},
+],
+},
+{
+id: "us-georgia",
+label: "Georgia",
+children: [
+{ value: "GA", label: "Georgia", asset: "img/shields/United States/GA/GA-2Digit.svg" },
+{ value: "GAALT", label: "GA Alternate", disabled: true },
+{ value: "GABYP", label: "GA Bypass", disabled: true },
+{ value: "GACONN", label: "GA Connector", disabled: true },
+{ value: "GALOOP", label: "GA Loop", disabled: true },
+{ value: "GASPUR", label: "GA Spur", disabled: true },
+],
+},
+{ value: "HI", label: "Hawaii", asset: "img/shields/United States/HI-2Digit.svg" },
+{ value: "ID", label: "Idaho", asset: "img/shields/United States/ID-2Digit.svg" },
+{ value: "IL", label: "Illinois", asset: "img/shields/United States/IL-2Digit.svg" },
+{
+id: "us-indiana",
+label: "Indiana",
+children: [
+{ value: "IN", label: "Indiana", asset: "img/shields/United States/IN/IN-2Digit.svg" },
+{ value: "IN-TOLL", label: "IN Toll Road", disabled: true },
+],
+},
+{ value: "IA", label: "Iowa", asset: "img/shields/United States/IA-2Digit.svg" },
+{
+id: "us-kansas",
+label: "Kansas",
+children: [
+{ value: "KS", label: "Kansas", asset: "img/shields/United States/KS/KS-2Digit.svg" },
+{ value: "KS-TURNPIKE", label: "KS Turnpike", disabled: true },
+],
+},
+{
+id: "us-kentucky",
+label: "Kentucky",
+children: [
+{ value: "KY", label: "Kentucky", asset: "img/shields/United States/KY/KY-2Digit.svg" },
+{
+id: "us-kentucky-parkways",
+label: "KY Parkways",
+children: [
+{ value: "KY-AA", label: "AA Highway", disabled: true },
+{ value: "KY-AUDUBON", label: "Audubon Parkway", disabled: true },
+{ value: "KY-BLUEGRASS", label: "Bluegrass Parkway", disabled: true },
+{ value: "KY-HALROGERS", label: "Hal Rogers Parkway", disabled: true },
+{ value: "KY-MOUNTAIN", label: "Mountain Parkway", disabled: true },
+{ value: "KY-NATCHER", label: "Natcher Parkway", disabled: true },
+{ value: "KY-PENNYRILE", label: "Pennyrile Parkway", disabled: true },
+{ value: "KY-PURCHASE", label: "Purchase Parkway", disabled: true },
+{ value: "KY-WESTERN", label: "Western KY Parkway", disabled: true },
+],
+},
+],
+},
+{ value: "LA", label: "Louisiana", asset: "img/shields/United States/LA/LA-2Digit.svg" },
+{ value: "ME", label: "Maine", asset: "img/shields/United States/ME/ME-2Digit.svg" },
+{ value: "MD", label: "Maryland", asset: "img/shields/United States/MD-2Digit.svg" },
+{
+id: "us-massachusetts",
+label: "Massachusetts",
+children: [
+{ value: "MA", label: "Massachusetts", asset: "img/shields/United States/MA/MA-2Digit.svg" },
+{ value: "MA-PIKE", label: "Mass Pike", disabled: true },
+],
+},
+{ value: "MI", label: "Michigan", asset: "img/shields/United States/MI-2Digit.svg" },
+{
+id: "us-minnesota",
+label: "Minnesota",
+children: [
+{ value: "MN", label: "Minnesota", asset: "img/shields/United States/MN/MN-2Digit.svg" },
+{ value: "MNBUS", label: "Minnesota Business", asset: "img/shields/United States/MN/MNBUS-2Digit.svg" },
+{ value: "MNCo", label: "Minnesota County", asset: "img/shields/United States/MN/MNCo-2Digit.svg" },
+],
+},
+{ value: "MS", label: "Mississippi", asset: "img/shields/United States/MS-2Digit.svg" },
+{ value: "MO", label: "Missouri", asset: "img/shields/United States/MO-2Digit.svg" },
+{
+id: "us-montana",
+label: "Montana",
+children: [
+{ value: "MT", label: "Montana", asset: "img/shields/United States/MT-2Digit.svg" },
+{ value: "MT2", label: "Montana (secondary)", asset: "img/shields/United States/MT2-2Digit.svg" },
+],
+},
+{
+id: "us-nebraska",
+label: "Nebraska",
+children: [
+{ value: "NE", label: "Nebraska", asset: "img/shields/United States/NE/NE-2Digit.svg" },
+{ value: "NELINK", label: "NE Link", disabled: true },
+{ value: "NESPUR", label: "NE Spur", disabled: true },
+],
+},
+{
+id: "us-nevada",
+label: "Nevada",
+children: [
+{ value: "NV", label: "Nevada", asset: "img/shields/United States/NV/NV-2Digit.svg" },
+{ value: "NVCC", label: "Clark County", asset: "img/shields/United States/NV/NVCC-2Digit.svg" },
+],
+},
+{ value: "NH", label: "New Hampshire", asset: "img/shields/United States/NH-2Digit.svg" },
+{
+id: "us-newjersey",
+label: "New Jersey",
+children: [
+{ value: "NJ", label: "New Jersey", asset: "img/shields/United States/NJ/NJ-2Digit.svg" },
+{ value: "GSP", label: "Garden State Parkway", asset: "img/shields/United States/NJ/GSP.png" },
+{ value: "NJTP", label: "NJ Turnpike", asset: "img/shields/United States/NJ/NJTP.png" },
+{ value: "PIP", label: "Palisades Interstate Parkway", asset: "img/shields/United States/NJ/PIP.png" },
+],
+},
+{ value: "NM", label: "New Mexico", asset: "img/shields/United States/NM-2Digit.svg" },
+{
+id: "us-newyork",
+label: "New York",
+children: [
+{ value: "NY", label: "New York", asset: "img/shields/United States/NY/NY-2Digit.svg" },
+{ value: "NYST", label: "NY State Thruway", asset: "img/shields/United States/NY/NYST.png" },
+{
+id: "us-newyork-parkways",
+label: "NY Parkways",
+children: [
+{ value: "B", label: "Bethpage Parkway", asset: "img/shields/United States/NY/B.png" },
+{ value: "BMP", label: "Bear Mountain Parkway", asset: "img/shields/United States/NY/BMP.png" },
+{ value: "BP", label: "Belt Parkway", asset: "img/shields/United States/NY/BP.png" },
+{ value: "BR", label: "Bronx River Parkway", asset: "img/shields/United States/NY/BR.png" },
+{ value: "BRP", label: "Bronx River Parkway", asset: "img/shields/United States/NY/BRP.png" },
+{ value: "CCP", label: "Cross County Parkway", asset: "img/shields/United States/NY/CCP.png" },
+{ value: "CI", label: "Cross Island Parkway", asset: "img/shields/United States/NY/CI.png" },
+{ value: "FDR", label: "FDR Drive", asset: "img/shields/United States/NY/FDR.png" },
+{ value: "GCP", label: "Grand Central Parkway", asset: "img/shields/United States/NY/GCP.png" },
+{ value: "H", label: "Heckscher Parkway", asset: "img/shields/United States/NY/H.png" },
+{ value: "HH", label: "Henry Hudson Parkway", asset: "img/shields/United States/NY/HH.png" },
+{ value: "HR", label: "Hutchinson River Parkway", asset: "img/shields/United States/NY/HR.png" },
+{ value: "HRD", label: "Harlem River Drive", asset: "img/shields/United States/NY/HRD.png" },
+{ value: "HRP", label: "Hutchinson River Parkway", asset: "img/shields/United States/NY/HRP.png" },
+{ value: "JR", label: "Jackie Robinson Parkway", asset: "img/shields/United States/NY/JR.png" },
+{ value: "KWV", label: "Korean War Veterans Parkway", asset: "img/shields/United States/NY/KWV.png" },
+{ value: "LOSP", label: "Lake Ontario State Parkway", asset: "img/shields/United States/NY/LOSP.png" },
+{ value: "M", label: "Meadowbrook Parkway", asset: "img/shields/United States/NY/M.png" },
+{ value: "MP", label: "Mosholu Parkway", asset: "img/shields/United States/NY/MP.png" },
+{ value: "N", label: "Northern State Parkway", asset: "img/shields/United States/NY/N.png" },
+{ value: "NSP", label: "Niagara Scenic Parkway", asset: "img/shields/United States/NY/NSP.png" },
+{ value: "O", label: "Ocean Parkway", asset: "img/shields/United States/NY/O.png" },
+{ value: "Pe", label: "Pelham Parkway", asset: "img/shields/United States/NY/Pe.png" },
+{ value: "PIP", label: "Palisades Interstate Parkway", asset: "img/shields/United States/NY/PIP.png" },
+{ value: "RM", label: "Robert Moses Causeway", asset: "img/shields/United States/NY/RM.png" },
+{ value: "SA", label: "Sagtikos Parkway", asset: "img/shields/United States/NY/SA.png" },
+{ value: "SBP", label: "Sprain Brook Parkway", asset: "img/shields/United States/NY/SBP.png" },
+{ value: "SM", label: "Sunken Meadow Parkway", asset: "img/shields/United States/NY/SM.png" },
+{ value: "SMP", label: "Saw Mill Parkway", asset: "img/shields/United States/NY/SMP.png" },
+{ value: "SO", label: "Southern State Parkway", asset: "img/shields/United States/NY/SO.png" },
+{ value: "TSP", label: "Taconic State Parkway", asset: "img/shields/United States/NY/TSP.png" },
+{ value: "W", label: "Wantagh Parkway", asset: "img/shields/United States/NY/W.png" },
+],
+},
+],
+},
+{ value: "NC", label: "North Carolina", asset: "img/shields/United States/NC-2Digit.svg" },
+{ value: "ND", label: "North Dakota", asset: "img/shields/United States/ND-2Digit.svg" },
+{
+id: "us-ohio",
+label: "Ohio",
+children: [
+{ value: "OH", label: "Ohio", asset: "img/shields/United States/OH/OH-2Digit.svg" },
+{ value: "OHTP", label: "Ohio Turnpike", asset: "img/shields/United States/OH/OHTP.png" },
+],
+},
+{
+id: "us-oklahoma",
+label: "Oklahoma",
+children: [
+{ value: "OK", label: "Oklahoma", asset: "img/shields/United States/OK/OK-2Digit.svg" },
+{ value: "OKCH", label: "Cherokee Turnpike", asset: "img/shields/United States/OK/OKCH.png" },
+{ value: "OKCR", label: "Creek Turnpike", asset: "img/shields/United States/OK/OKCR.png" },
+{ value: "OKHB", label: "H.E. Bailey Turnpike", asset: "img/shields/United States/OK/OKHB.png" },
+{ value: "OKIN", label: "Indian Nation Turnpike", asset: "img/shields/United States/OK/OKIN.png" },
+{ value: "OKKC", label: "Kickapoo Turnpike", asset: "img/shields/United States/OK/OKKC.png" },
+{ value: "OKKL", label: "Kilpatrick Turnpike", asset: "img/shields/United States/OK/OKKL.png" },
+{ value: "OKMS", label: "Muskogee Turnpike", asset: "img/shields/United States/OK/OKMS.png" },
+{ value: "OKTU", label: "Turner Turnpike", asset: "img/shields/United States/OK/OKTU.png" },
+{ value: "OKWR", label: "Will Rogers Turnpike", asset: "img/shields/United States/OK/OKWR.png" },
+],
+},
+{ value: "OR", label: "Oregon", asset: "img/shields/United States/OR-2Digit.svg" },
+{
+id: "us-pennsylvania",
+label: "Pennsylvania",
+children: [
+{
+value: "PA",
+label: "Pennsylvania",
+asset: "img/shields/United States/PA/PA-2Digit.svg"
+},
+{
+value: "PATPLOGO",
+label: "PA Turnpike",
+asset: "img/shields/United States/PA/PATP.png"
+},
+{
+value: "PATP",
+label: "PA Turnpike Route",
+asset: "img/shields/United States/PA/PATP-2Digit.svg"
+},
+],
+},
+{
+id: "us-puertorico",
+label: "Puerto Rico",
+children: [
+{ value: "PR", label: "PR Primary", asset: "img/shields/United States/PR/PR-2Digit.svg" },
+{ value: "PR2", label: "PR Urban Primary", asset: "img/shields/United States/PR/PR2-2Digit.svg" },
+{ value: "PR3", label: "PR Secondary", asset: "img/shields/United States/PR/PR3-2Digit.svg" },
+{ value: "PR4", label: "PR Tertiary", asset: "img/shields/United States/PR/PR4-2Digit.svg" },
+],
+},
+{ value: "RI", label: "Rhode Island", asset: "img/shields/United States/RI-2Digit.svg" },
+{ value: "SC", label: "South Carolina", asset: "img/shields/United States/SC-2Digit.svg" },
+{ value: "SD", label: "South Dakota", asset: "img/shields/United States/SD-2Digit.svg" },
+{
+id: "us-tennessee",
+label: "Tennessee",
+children: [
+{ value: "TN", label: "Tennessee", asset: "img/shields/United States/TN-2Digit.svg" },
+{ value: "TN2", label: "Tennessee (secondary)", asset: "img/shields/United States/TN2-2Digit.svg" },
+],
+},
+{
+id: "us-texas",
+label: "Texas",
+children: [
+{ value: "TX", label: "Texas", asset: "img/shields/United States/TX/TX-2Digit.svg" },
+{ value: "TXFM", label: "TX FM", asset: "img/shields/United States/TX/TXFM-4Digit.svg" },
+{ value: "TXRM", label: "TX RM", asset: "img/shields/United States/TX/TXRM-2Digit.svg" },
+{ value: "TXBELT", label: "TX Beltway", asset: "img/shields/United States/TX/TXBELTWAY-2Digit.svg" },
+{ value: "TXLOOP", label: "TX Loop", asset: "img/shields/United States/TX/TXLOOP-2Digit.svg" },
+{ value: "TXPARK", label: "TX Park Road", asset: "img/shields/United States/TX/TXPARK-2Digit.svg" },
+{ value: "TXSPUR", label: "TX Spur", asset: "img/shields/United States/TX/TXSPUR-2Digit.svg" },
+{ value: "TXEXPRESS", label: "TX Express Toll", asset: "img/shields/United States/TX/TXEXPRESS-2Digit.svg" },
+{ value: "TXTOLL", label: "TX Toll TxDOT", asset: "img/shields/United States/TX/TXTOLL-2Digit.svg" },
+{ value: "TXTOLLCTRMA", label: "TX Toll CTRMA", asset: "img/shields/United States/TX/TXTollCTRMA.svg" },
+{ value: "TXTOLLNTTA", label: "TX Toll NTTA", asset: "img/shields/United States/TX/TXTollNTTA.svg" },
+{ value: "TXTOLLFBTR", label: "Fort Bend Toll Road", asset: "img/shields/United States/TX/TXTollFBTR.png" },
+{ value: "HTR", label: "Hardy Toll Road", asset: "img/shields/United States/TX/HTR.png" },
+{ value: "SHT", label: "Sam Houston Tollway", asset: "img/shields/United States/TX/SHT.png" },
+{ value: "WPT", label: "Westpark Tollway", asset: "img/shields/United States/TX/WPT.png" },
+],
+},
+{ value: "UT", label: "Utah", asset: "img/shields/United States/UT-2Digit.svg" },
+{
+id: "us-vermont",
+label: "Vermont",
+children: [
+{ value: "VT", label: "Vermont", asset: "img/shields/United States/VT-2Digit.svg" },
+{ value: "VT2", label: "Vermont (secondary)", asset: "img/shields/United States/VT2-2Digit.svg" },
+],
+},
+{
+id: "us-virginia",
+label: "Virginia",
+children: [
+{ value: "VA", label: "Virginia", asset: "img/shields/United States/VA-2Digit.svg" },
+{ value: "VA2", label: "Virginia (secondary)", asset: "img/shields/United States/VA2-2Digit.svg" },
+],
+},
+{ value: "WA", label: "Washington", asset: "img/shields/United States/WA-2Digit.svg" },
+{ value: "WV", label: "West Virginia", asset: "img/shields/United States/WV-2Digit.svg" },
+{ value: "WI", label: "Wisconsin", asset: "img/shields/United States/WI-2Digit.svg" },
+{ value: "WY", label: "Wyoming", asset: "img/shields/United States/WY-2Digit.svg" },
+],
+},
+{
+id: "canada",
+label: "Canada",
+children: [
+{
+value: "TCH",
+label: "Trans-Canada Highway",
+asset: "img/shields/Canada/TCH-2Digit.svg",
+},
+{
+value: "TCHLeaf",
+label: "TCH Leaf",
+asset: "img/shields/Canada/TCHLeaf-2Digit.svg",
+},
+{
+id: "canada-alberta",
+label: "Alberta",
+children: [
+{ value: "AB", label: "Alberta", asset: "img/shields/Canada/AB/AB-2Digit.svg" },
+{ value: "AB2", label: "Alberta Secondary", asset: "img/shields/Canada/AB/AB2-2Digit.svg" },
+{ value: "ABTC", label: "Alberta TCH", asset: "img/shields/Canada/AB/ABTC-2Digit.svg" },
+],
+},
+{
+id: "canada-britishcolumbia",
+label: "British Columbia",
+children: [
+{ value: "BC", label: "British Columbia", asset: "img/shields/Canada/BC/BC-2Digit.svg" },
+{ value: "BCYH", label: "BC Yellowhead", asset: "img/shields/Canada/BC/BCYH-2Digit.svg" },
+{ value: "BCTC", label: "BC TCH", asset: "img/shields/Canada/BC/BCTC-2Digit.svg" },
+],
+},
+{
+id: "canada-manitoba",
+label: "Manitoba",
+children: [
+{ value: "MB", label: "Manitoba", asset: "img/shields/Canada/MB/MB-2Digit.svg" },
+{ value: "MB2", label: "Manitoba Secondary", asset: "img/shields/Canada/MB/MB2-2Digit.svg" },
+{ value: "MBTC", label: "Manitoba TCH", asset: "img/shields/Canada/MB/MBTC-2Digit.svg" },
+],
+},
+{
+id: "canada-newbrunswick",
+label: "New Brunswick",
+children: [
+{ value: "NB", label: "New Brunswick", asset: "img/shields/Canada/NB/NB-2Digit.svg" },
+{ value: "NBCONN", label: "NB Connector", asset: "img/shields/Canada/NB/NBCONN-2Digit.svg" },
+{ value: "NBLOCAL", label: "NB Local", asset: "img/shields/Canada/NB/NBLOCAL-2Digit.svg" },
+{ value: "NBTC", label: "NB TCH", asset: "img/shields/Canada/NB/NBTC-2Digit.svg" },
+],
+},
+{
+id: "canada-newfoundland",
+label: "Newfoundland and Labrador",
+children: [
+{ value: "NL", label: "Newfoundland and Labrador", asset: "img/shields/Canada/NL/NL-2Digit.svg" },
+{ value: "NLTC", label: "NL TCH", asset: "img/shields/Canada/NL/NLTC-2Digit.svg" },
+],
+},
+{
+id: "canada-novascotia",
+label: "Nova Scotia",
+children: [
+{ value: "NS", label: "Nova Scotia", asset: "img/shields/Canada/NS/NS-2Digit.svg" },
+{ value: "NSCONN", label: "NS Connector", asset: "img/shields/Canada/NS/NSCONN-2Digit.svg" },
+{ value: "NSTC", label: "NS TCH", asset: "img/shields/Canada/NS/NSTC-2Digit.svg" },
+],
+},
+{
+id: "canada-ontario",
+label: "Ontario",
+children: [
+{ value: "ON", label: "Ontario", asset: "img/shields/Canada/ON/ON-2Digit.svg" },
+{ value: "ON2", label: "Ontario Secondary", asset: "img/shields/Canada/ON/ON2-2Digit.svg" },
+{ value: "ON3", label: "Ontario County", asset: "img/shields/Canada/ON/ON3-2Digit.svg" },
+{ value: "ONDVP", label: "Don Valley Parkway", asset: "img/shields/Canada/ON/ON-DVP.png" },
+{ value: "ONGAR", label: "Gardiner Expressway", asset: "img/shields/Canada/ON/ON-GAR.png" },
+{ value: "ONTC", label: "Ontario TCH", asset: "img/shields/Canada/ON/ONTC-2Digit.svg" },
+{ value: "ONTCCOR", label: "Central Ontario Route", asset: "img/shields/Canada/ON/ONTC-COR.svg" },
+{ value: "ONTCGBR", label: "Georgian Bay Route", asset: "img/shields/Canada/ON/ONTC-GBR.svg" },
+{ value: "ONTCLSR", label: "Lake Superior Route", asset: "img/shields/Canada/ON/ONTC-LSR.svg" },
+{ value: "ONTCNOR", label: "Northern Ontario Route", asset: "img/shields/Canada/ON/ONTC-NOR.svg" },
+{ value: "ONTCOVR", label: "Ottawa Valley Route", asset: "img/shields/Canada/ON/ONTC-OVR.svg" },
+],
+},
+{
+value: "PEI",
+label: "Prince Edward Island",
+asset: "img/shields/Canada/PEI/PEI-2Digit.svg",
+},
+{
+id: "canada-quebec",
+label: "Quebec",
+children: [
+{ value: "QC", label: "Quebec Autoroute", asset: "img/shields/Canada/QC/QC-2Digit.svg" },
+{ value: "QC2", label: "Quebec Route", asset: "img/shields/Canada/QC/QC2-2Digit.svg" },
+{ value: "QCTC", label: "Quebec TCH", asset: "img/shields/Canada/QC/QCTC-2Digit.svg" },
+],
+},
+{
+id: "canada-saskatchewan",
+label: "Saskatchewan",
+children: [
+{ value: "SK", label: "Saskatchewan", asset: "img/shields/Canada/SK/SK-2Digit.svg" },
+{ value: "SK2", label: "SK Secondary", asset: "img/shields/Canada/SK/SK2-2Digit.svg" },
+{ value: "SKTC", label: "SK TCH", asset: "img/shields/Canada/SK/SKTC-2Digit.svg" },
+],
+},
+],
+},
+{
+id: "australia",
+label: "Australia",
+children: [
+{
+value: "ALPHANUM",
+label: "Alphanumeric",
+asset: "img/shields/Australia/THUMBS/ALPHANUM_thumb.svg",
+},
+{
+value: "NAT",
+label: "National Route",
+asset: "img/shields/Australia/NAT-1Digit.svg",
+},
+{
+value: "NR",
+label: "National Route",
+asset: "img/shields/Australia/NR-2Digit.svg",
+},
+{
+value: "SR",
+label: "State Route",
+asset: "img/shields/Australia/SR-2Digit.svg",
+},
+{
+value: "MR",
+label: "Metroad",
+asset: "img/shields/Australia/MR-2Digit.svg",
+},
+{
+value: "TOLLBLUE",
+label: "Tollway (blue)",
+asset: "img/shields/Australia/THUMBS/TOLL.svg",
+},
+{
+value: "TD",
+label: "Tourist Drive",
+asset: "img/shields/Australia/TD-3Digit.svg",
+},
+{
+value: "FNSW",
+label: "Freeway - NSW (Retired)",
+asset: "img/shields/Australia/FNSW-2Digit.svg",
+},
+],
+},
+{
+id: "nz",
+label: "New Zealand",
+children: [
+{
+value: "SH",
+label: "State Highway",
+asset: "img/shields/New Zealand/SH-1Digit.svg",
+},
+],
+},
+];
+const patchShieldPickerTreeForUploadedStateFolders = () => {
+const usRoot = SHIELD_PICKER_TREE.find((node) => node.id === "us");
+if (!usRoot || !Array.isArray(usRoot.children)) {
+return;
+}
+const replacementIds = new Set([
+"us-interstate",
+"us-usroute",
+"us-arizona",
+"us-florida",
+"us-georgia",
+"us-indiana",
+"us-kansas",
+"us-kentucky",
+"us-massachusetts",
+"us-maine",
+"us-minnesota",
+"us-nevada",
+"us-nebraska",
+"us-wisconsin",
+]);
+const replacementValues = new Set([
+"I",
+"I-BUS",
+"I-BS",
+"I-BL",
+"I-DS",
+"I-DL",
+"I-F",
+"US",
+"USCA",
+"US-CA",
+"C",
+"WI",
+"WICo",
+"WICO",
+"AZ",
+"AZLOOP",
+"AZ-LOOP",
+"FL",
+"FLToll",
+"FLCFX",
+"FLTP",
+"GA",
+"GAALT",
+"GABYP",
+"GACONN",
+"GALOOP",
+"GASPUR",
+"IN",
+"INTR",
+"IN-TOLLROAD",
+"KS",
+"KSTP",
+"KS-TURNPIKE",
+"KY",
+"KYAA",
+"KYAU",
+"KYBG",
+"KYCM",
+"KYHR",
+"KYMT",
+"KYPR",
+"KYPU",
+"KYWK",
+"KYWN",
+"KY-AA",
+"KY-AUDUBON",
+"KY-BLUEGRASS",
+"KY-HALROGERS",
+"KY-MOUNTAIN",
+"KY-NATCHER",
+"KY-PENNYRILE",
+"KY-PURCHASE",
+"KY-WESTERN",
+"MA",
+"MATP",
+"MA-PIKE",
+"ME",
+"METP",
+"ME-TURNPIKE",
+"MN",
+"MNBUS",
+"MNCo",
+"MN-BUSINESS",
+"NV",
+"NVCC",
+"NE",
+"NELINK",
+"NE-LINK",
+"NESPUR",
+"NE-SPUR",
+]);
+const shouldRemoveNode = (node) => {
+if (!node) {
+return false;
+}
+if (replacementIds.has(node.id)) {
+return true;
+}
+if (node.value && replacementValues.has(node.value)) {
+return true;
+}
+return false;
+};
+usRoot.children = usRoot.children.filter((node) => !shouldRemoveNode(node));
+const node = (value, label, asset) => ({
+value,
+label,
+asset,
+});
+const category = (id, label, children) => ({
+id,
+label,
+children,
+});
+const stateFolders = [
+category("us-interstate", "Interstate", [
+node("I", "Interstate", "img/shields/United States/Interstate/I-2Digit.svg"),
+node("I-BUS", "Interstate Business", "img/shields/United States/Interstate/I-BUS-2Digit.svg"),
+node("I-BL", "Interstate Business Loop", "img/shields/United States/Interstate/I-BL-2Digit.svg"),
+node("I-BS", "Interstate Business Spur", "img/shields/United States/Interstate/I-BS-2Digit.svg"),
+node("I-DL", "Interstate Downtown Loop", "img/shields/United States/Interstate/I-DL-2Digit.svg"),
+node("I-DS", "Interstate Downtown Spur", "img/shields/United States/Interstate/I-DS-2Digit.svg"),
+node("I-F", "Future Interstate", "img/shields/United States/Interstate/I-F-2Digit.svg"),
+]),
+category("us-usroute", "U.S. Route", [
+node("US", "U.S. Route", "img/shields/United States/US Route/US-2Digit.svg"),
+node("USCA", "U.S. Route (CA style)", "img/shields/United States/US Route/US-CA-2Digit.svg"),
+]),
+category("us-arizona", "Arizona", [
+node("AZ", "Arizona", "img/shields/United States/AZ/AZ-2Digit.svg"),
+node("AZLOOP", "Arizona Loop", "img/shields/United States/AZ/AZLOOP-2Digit.svg"),
+]),
+category("us-florida", "Florida", [
+node(
+"FL",
+"Florida",
+"img/shields/United States/Florida/FDOT/FL-36-2Digit.svg"
+),
+node(
+"FLToll",
+"FDOT Toll",
+"img/shields/United States/Florida/FDOT/TollFDOT-48.svg"
+),
+node(
+"FLCFX",
+"CFX Toll",
+"img/shields/United States/Florida/CFX/CFX-48.svg"
+),
+node(
+"FLTP",
+"Florida's Turnpike",
+"img/shields/United States/Florida/FDOT/FLTP-48.svg"
+),
+]),
+category("us-georgia", "Georgia", [
+node("GA", "Georgia", "img/shields/United States/GA/GA-2Digit.svg"),
+node("GAALT", "GA Alternate", "img/shields/United States/GA/GAALT-2Digit.svg"),
+node("GABYP", "GA Bypass", "img/shields/United States/GA/GABYP-2Digit.svg"),
+node("GACONN", "GA Connector", "img/shields/United States/GA/GACONN-2Digit.svg"),
+node("GALOOP", "GA Loop", "img/shields/United States/GA/GALOOP-2Digit.svg"),
+node("GASPUR", "GA Spur", "img/shields/United States/GA/GASPUR-2Digit.svg"),
+]),
+category("us-indiana", "Indiana", [
+node("IN", "Indiana", "img/shields/United States/IN/IN-2Digit.svg"),
+node("INTR", "Indiana Toll Road", "img/shields/United States/IN/INTR.png"),
+]),
+category("us-kansas", "Kansas", [
+node("KS", "Kansas", "img/shields/United States/KS/KS-2Digit.svg"),
+node("KSTP", "Kansas Turnpike", "img/shields/United States/KS/KSTP.png"),
+]),
+category("us-kentucky", "Kentucky", [
+node("KY", "Kentucky", "img/shields/United States/KY/KY-2Digit.svg"),
+category("us-kentucky-parkways", "KY Parkways", [
+node("KYAA", "AA Highway", "img/shields/United States/KY/KYAA.png"),
+node("KYAU", "Audubon Parkway", "img/shields/United States/KY/KYAU.png"),
+node("KYBG", "Bluegrass Parkway", "img/shields/United States/KY/KYBG.png"),
+node("KYCM", "Cumberland Parkway", "img/shields/United States/KY/KYCM.png"),
+node("KYHR", "Hal Rogers Parkway", "img/shields/United States/KY/KYHR.png"),
+node("KYMT", "Mountain Parkway", "img/shields/United States/KY/KYMT.png"),
+node("KYPR", "Pennyrile Parkway", "img/shields/United States/KY/KYPR.png"),
+node("KYPU", "Purchase Parkway", "img/shields/United States/KY/KYPU.png"),
+node("KYWK", "Western KY Parkway", "img/shields/United States/KY/KYWK.png"),
+node("KYWN", "Natcher Parkway", "img/shields/United States/KY/KYWN.png"),
+]),
+]),
+category("us-maine", "Maine", [
+node("ME", "Maine", "img/shields/United States/ME/ME-2Digit.svg"),
+node("METP", "Maine Turnpike", "img/shields/United States/ME/METP.png"),
+]),
+category("us-massachusetts", "Massachusetts", [
+node("MA", "Massachusetts", "img/shields/United States/MA/MA-2Digit.svg"),
+node("MATP", "Mass Pike", "img/shields/United States/MA/MATP.png"),
+]),
+category("us-minnesota", "Minnesota", [
+node("MN", "Minnesota", "img/shields/United States/MN/MN-2Digit.svg"),
+node("MNBUS", "Minnesota Business", "img/shields/United States/MN/MNBUS-2Digit.svg"),
+node("MNCo", "Minnesota County", "img/shields/United States/MN/MNCo-2Digit.svg"),
+]),
+category("us-nevada", "Nevada", [
+node("NV", "Nevada", "img/shields/United States/NV/NV-2Digit.svg"),
+node("NVCC", "Clark County", "img/shields/United States/NV/NVCC-2Digit.svg"),
+]),
+category("us-nebraska", "Nebraska", [
+node("NE", "Nebraska", "img/shields/United States/NE/NE-2Digit.svg"),
+node("NELINK", "Nebraska Link", "img/shields/United States/NE/NELINK-2Digit.svg"),
+node("NESPUR", "Nebraska Spur", "img/shields/United States/NE/NESPUR-2Digit.svg"),
+]),
+category("us-wisconsin", "Wisconsin", [
+node("WI", "Wisconsin", "img/shields/United States/WI/WI-2Digit.svg"),
+node("WICo", "Wisconsin County", "img/shields/United States/WI/WICo-2Digit.svg"),
+]),
+];
+const countyNode = node(
+"C",
+"County",
+"img/shields/United States/C-2Digit.svg"
+);
+const sortUnitedStatesShieldPickerChildren = () => {
+const getPriority = (entry) => {
+if (entry.id === "us-interstate" || entry.label === "Interstate") {
+return 0;
+}
+if (entry.id === "us-usroute" || entry.label === "U.S. Route") {
+return 1;
+}
+if (entry.value === "C" || entry.label === "County") {
+return 2;
+}
+return 3;
+};
+const sortNodes = (nodes) => {
+if (!Array.isArray(nodes)) {
+return;
+}
+nodes.sort((a, b) => {
+const priorityA = getPriority(a);
+const priorityB = getPriority(b);
+if (priorityA !== priorityB) {
+return priorityA - priorityB;
+}
+return String(a.label || a.value || "").localeCompare(
+String(b.label || b.value || "")
+);
+});
+nodes.forEach((node) => {
+if (Array.isArray(node.children)) {
+sortNodes(node.children);
+}
+});
+};
+sortNodes(usRoot.children);
+};
+const insertIndex = usRoot.children.findIndex((entry) => {
+const label = entry.label || "";
+return label.localeCompare("Arizona") > 0;
+});
+if (insertIndex === -1) {
+usRoot.children.push(...stateFolders);
+} else {
+usRoot.children.splice(insertIndex, 0, ...stateFolders);
+}
+if (!usRoot.children.some((entry) => entry.value === "C")) {
+usRoot.children.push(countyNode);
+}
+sortUnitedStatesShieldPickerChildren();
+};
+patchShieldPickerTreeForUploadedStateFolders();
+SHIELD_PICKER_TREE.forEach(applyManualShieldPickerOrder);
+const customShieldMakerLoadPromise = loadCustomShieldMakerRecords();
+refreshCustomShieldMakerRegistry();
+customShieldMakerLoadPromise
+.catch((error) => {
+console.warn("Unable to restore custom shield maker records before building the picker", error);
+})
+.finally(() => {
+refreshCustomShieldMakerRegistry();
+});
+const flattenShieldPickerTree = (nodes, result = []) => {
+nodes.forEach((node) => {
+if (node.value) {
+result.push(node);
+}
+if (Array.isArray(node.children)) {
+flattenShieldPickerTree(node.children, result);
+}
+});
+return result;
+};
+const findShieldPickerEntryByValue = (value, nodes = SHIELD_PICKER_TREE) => {
+for (const node of nodes) {
+if (node.value === value) {
+return node;
+}
+if (Array.isArray(node.children)) {
+const found = findShieldPickerEntryByValue(value, node.children);
+if (found) {
+return found;
+}
+}
+}
+return null;
+};
+const findFirstSelectableShieldEntry = (nodes = []) => {
+for (const node of nodes) {
+if (!node.disabled && node.value) {
+return node;
+}
+if (Array.isArray(node.children) && node.children.length) {
+const found = findFirstSelectableShieldEntry(node.children);
+if (found) {
+return found;
+}
+}
+}
+return null;
+};
+const buildShieldPickerTriggerLabel = (entry) => {
+if (!entry) {
+return "Select shield";
+}
+return entry.label;
+};
+const setShieldPickerButtonIcon = (
+image,
+requestedPath,
+finalFallback = SHIELD_DROPDOWN_PLACEHOLDER_ICON
+) => {
+if (!image) {
+return;
+}
+const requested = String(requestedPath || "").trim();
+const bundledFallback =
+requested &&
+typeof window.getSignMakerAssetFallback === "function"
+? window.getSignMakerAssetFallback(requested)
+: null;
+image.onerror = null;
+if (bundledFallback) {
+image.src = bundledFallback;
+if (requested && !requested.startsWith("data:")) {
+const probe = new Image();
+probe.onload = () => {
+image.src = requested;
+if (typeof window.applySignMakerAssetFallback === "function") {
+window.applySignMakerAssetFallback(
+image,
+requested,
+finalFallback
+);
+}
+};
+probe.src = requested;
+}
+return;
+}
+image.src = requested || finalFallback;
+if (typeof window.applySignMakerAssetFallback === "function") {
+window.applySignMakerAssetFallback(
+image,
+requested || image.src,
+finalFallback
+);
+} else {
+image.onerror = () => {
+image.onerror = null;
+image.src = finalFallback;
+};
+}
+};
+const buildShieldPickerIconSrc = (entry) => {
+const resolveAsset = (path) =>
+typeof window.resolveSignMakerAsset === "function"
+? window.resolveSignMakerAsset(path)
+: path;
+if (!entry) {
+return SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+}
+if (entry.asset) {
+return resolveAsset(entry.asset);
+}
+if (Array.isArray(entry.children) && entry.children.length) {
+const firstChildShield = findFirstSelectableShieldEntry(entry.children);
+if (firstChildShield && firstChildShield.asset) {
+return resolveAsset(firstChildShield.asset);
+}
+}
+return SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+};
+const updateShieldPickerTreeState = (container, currentValue, expandedIds) => {
+container.querySelectorAll(".shieldPickerTreeRow").forEach((row) => {
+const nodeId = row.dataset.nodeId || "";
+row.classList.toggle("expanded", !!nodeId && expandedIds.has(nodeId));
+});
+container.querySelectorAll(".shieldPickerItem").forEach((button) => {
+const nodeId = button.dataset.nodeId || "";
+const nodeValue = button.dataset.nodeValue || "";
+const hasChildren = button.dataset.hasChildren === "true";
+const isExpanded = hasChildren && expandedIds.has(nodeId);
+button.classList.toggle("expanded", isExpanded);
+button.classList.toggle(
+"selected",
+!!nodeValue && nodeValue === currentValue
+);
+});
+container.querySelectorAll(".shieldPickerTreeChildren").forEach((children) => {
+const parentId = children.dataset.parentId || "";
+children.classList.toggle("expanded", !!parentId && expandedIds.has(parentId));
+});
+};
+let activeSubpanelBlockTypePicker = null;
+let subpanelBlockTypePickerMenu = null;
+let subpanelBlockTypePickerGlobalEventsBound = false;
+const getSubpanelBlockTypeEntries = () =>
+Object.entries(Control.prototype.blockElements || {}).map(([value, label]) => ({
+value,
+label: String(label || value),
+}));
+const blockTypeLabelWidths = new Map();
+const syncSubpanelStandaloneBlockTypePickerWidth = (wrapper, trigger, label) => {
+if (!wrapper || !trigger || !label) {
+return;
+}
+const labelStyle = window.getComputedStyle(label);
+const entries = getSubpanelBlockTypeEntries();
+const cacheKey = JSON.stringify([labelStyle.fontFamily,labelStyle.fontSize,labelStyle.fontWeight,labelStyle.fontStyle,labelStyle.letterSpacing,labelStyle.lineHeight,entries.map(entry=>entry.label)]);
+let widestLabel = document.fonts?.status === "loaded" ? blockTypeLabelWidths.get(cacheKey) : undefined;
+if (widestLabel === undefined) {
+const probe = document.createElement("span");
+probe.style.position = "fixed";
+probe.style.left = "-10000px";
+probe.style.top = "-10000px";
+probe.style.display = "inline-block";
+probe.style.visibility = "hidden";
+probe.style.pointerEvents = "none";
+probe.style.width = "max-content";
+probe.style.minWidth = "max-content";
+probe.style.maxWidth = "none";
+probe.style.whiteSpace = "nowrap";
+probe.style.fontFamily = labelStyle.fontFamily;
+probe.style.fontSize = labelStyle.fontSize;
+probe.style.fontWeight = labelStyle.fontWeight;
+probe.style.fontStyle = labelStyle.fontStyle;
+probe.style.letterSpacing = labelStyle.letterSpacing;
+probe.style.lineHeight = labelStyle.lineHeight;
+document.body.appendChild(probe);
+widestLabel = 0;
+for (const entry of entries) {
+probe.textContent = entry.label;
+widestLabel = Math.max(widestLabel, probe.getBoundingClientRect().width);
+}
+probe.remove();
+if (document.fonts?.status === "loaded") blockTypeLabelWidths.set(cacheKey, widestLabel);
+}
+const triggerStyle = window.getComputedStyle(trigger);
+const paddingLeft = parseFloat(triggerStyle.paddingLeft) || 0;
+const paddingRight = parseFloat(triggerStyle.paddingRight) || 0;
+const borderLeft = parseFloat(triggerStyle.borderLeftWidth) || 0;
+const borderRight = parseFloat(triggerStyle.borderRightWidth) || 0;
+const caret = trigger.querySelector('.shieldPickerTriggerCaret');
+const caretWidth = caret ? parseFloat(window.getComputedStyle(caret).width) || 0 : 0;
+const gap = parseFloat(triggerStyle.columnGap) || 0;
+const targetWidth = Math.ceil(
+widestLabel + paddingLeft + paddingRight + borderLeft + borderRight + caretWidth + gap + 2
+);
+if (targetWidth > 0) {
+wrapper.style.setProperty("--block-type-trigger-width", `${targetWidth}px`);
+}
+};
+const getSubpanelBlockTypePickerHost = () => document.body;
+const ensureSubpanelBlockTypePickerMenu = () => {
+if (subpanelBlockTypePickerMenu && subpanelBlockTypePickerMenu.isConnected) {
+return subpanelBlockTypePickerMenu;
+}
+const popover = document.createElement("div");
+popover.id = "subpanelBlockTypePickerMenu";
+popover.className = "shieldPickerPopover blockTypePickerPopover";
+popover.setAttribute("role", "listbox");
+popover.setAttribute("aria-label", "Element type");
+const list = document.createElement("div");
+list.className = "blockTypePickerList";
+popover.appendChild(list);
+popover.addEventListener("click", (event) => {
+event.stopPropagation();
+});
+getSubpanelBlockTypePickerHost().appendChild(popover);
+subpanelBlockTypePickerMenu = popover;
+return popover;
+};
+const placeSubpanelBlockTypePicker=()=>{
+const active=activeSubpanelBlockTypePicker;
+if(active&&subpanelBlockTypePickerMenu)window.SignMakerDropdowns.positionMenu(subpanelBlockTypePickerMenu,active.trigger,{minWidth:0,maxWidth:18,anchor:active.anchor,fitContent:true});
+};
+const closeSubpanelBlockTypePicker = (restoreFocus = false) => {
+const active = activeSubpanelBlockTypePicker;
+activeSubpanelBlockTypePicker = null;
+active?.wrapper.classList.remove("open");
+active?.trigger.setAttribute("aria-expanded", "false");
+if (subpanelBlockTypePickerMenu) {
+window.SignMakerDropdowns.closeMenu(subpanelBlockTypePickerMenu);
+}
+if (restoreFocus && active?.trigger.isConnected) active.trigger.focus({ preventScroll: true });
+};
+const bindSubpanelBlockTypePickerGlobalEvents = () => {
+if (subpanelBlockTypePickerGlobalEventsBound) {
+return;
+}
+subpanelBlockTypePickerGlobalEventsBound = true;
+const closeOnOutside = (event) => {
+const active = activeSubpanelBlockTypePicker;
+if (!active) {
+return;
+}
+const clickedTrigger = active.trigger?.contains(event.target);
+const clickedMenu = subpanelBlockTypePickerMenu?.contains(event.target);
+if (!clickedTrigger && !clickedMenu) {
+closeSubpanelBlockTypePicker();
+}
+};
+document.addEventListener("pointerdown", closeOnOutside, true);
+document.addEventListener("click", closeOnOutside, true);
+document.addEventListener("keydown", (event) => {
+if (event.key === "Escape" && activeSubpanelBlockTypePicker) {
+event.preventDefault();
+event.stopPropagation();
+closeSubpanelBlockTypePicker(true);
+}
+}, true);
+window.addEventListener("resize", () => {
+if (activeSubpanelBlockTypePicker) {
+placeSubpanelBlockTypePicker();
+}
+});
+window.addEventListener(
+"scroll",
+() => {
+if (activeSubpanelBlockTypePicker) {
+placeSubpanelBlockTypePicker();
+}
+},
+true
+);
+};
+const renderSubpanelBlockTypePickerItems = (selectedValue, onSelect) => {
+const popover = ensureSubpanelBlockTypePickerMenu();
+const list = popover.querySelector(".blockTypePickerList");
+if (!list) {
+return;
+}
+list.innerHTML = "";
+for (const entry of getSubpanelBlockTypeEntries()) {
+const item = document.createElement("button");
+item.type = "button";
+item.className = "shieldPickerItem blockTypePickerItem";
+item.textContent = entry.label;
+item.dataset.blockTypeValue = entry.value;
+item.classList.toggle("selected", entry.value === selectedValue);
+item.setAttribute("role", "option");
+item.setAttribute("aria-selected", String(entry.value === selectedValue));
+item.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+closeSubpanelBlockTypePicker();
+onSelect(entry.value, entry.label);
+});
+list.appendChild(item);
+}
+};
+const openSubpanelBlockTypePicker = ({
+wrapper,
+trigger,
+anchor,
+value,
+inline = false,
+onSelect,
+}) => {
+bindSubpanelBlockTypePickerGlobalEvents();
+if (
+activeSubpanelBlockTypePicker?.wrapper === wrapper &&
+wrapper.classList.contains("open")
+) {
+closeSubpanelBlockTypePicker();
+return;
+}
+closeSubpanelBlockTypePicker();
+const popover = ensureSubpanelBlockTypePickerMenu();
+const host = getSubpanelBlockTypePickerHost();
+if (popover.parentElement !== host) {
+host.appendChild(popover);
+}
+renderSubpanelBlockTypePickerItems(value, onSelect);
+activeSubpanelBlockTypePicker = {
+wrapper,
+trigger,
+anchor: anchor || trigger,
+inline,
+};
+window.SignMakerDropdowns.prepareMenu(popover);
+trigger.setAttribute("aria-controls", popover.id);
+trigger.setAttribute("aria-expanded", "true");
+wrapper.classList.add("open");
+popover.classList.add("open");
+placeSubpanelBlockTypePicker();
+};
+const ensureSubpanelNewElementTypePicker = () => {
+const nativeSelect = document.getElementById("sMSPElementSelect");
+if (!nativeSelect) {
+return null;
+}
+let wrapper = document.getElementById("sMSPElementTypePicker");
+if (!wrapper) {
+wrapper = document.createElement("div");
+wrapper.id = "sMSPElementTypePicker";
+wrapper.className = "shieldPicker blockTypePicker blockTypeStandalonePicker";
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "shieldPickerTrigger blockTypePickerTrigger";
+trigger.setAttribute("aria-label", "Choose new block type");
+trigger.setAttribute("aria-haspopup", "listbox");
+trigger.setAttribute("aria-expanded", "false");
+const label = document.createElement("span");
+label.className = "shieldPickerTriggerLabel blockTypePickerTriggerLabel";
+trigger.appendChild(label);
+const caret = document.createElement("span");
+caret.className = "shieldPickerTriggerCaret";
+caret.textContent = "keyboard_arrow_down";
+trigger.appendChild(caret);
+wrapper.appendChild(trigger);
+nativeSelect.insertAdjacentElement("afterend", wrapper);
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+openSubpanelBlockTypePicker({
+wrapper,
+trigger,
+anchor: trigger,
+value: nativeSelect.value,
+onSelect: (nextValue) => {
+nativeSelect.value = nextValue;
+syncLabel();
+},
+});
+});
+const syncLabel = () => {
+const entry = getSubpanelBlockTypeEntries().find(
+(item) => item.value === nativeSelect.value
+);
+label.textContent = entry?.label || "Control Text";
+window.SignMakerDropdowns.refresh(wrapper);
+syncSubpanelStandaloneBlockTypePickerWidth(wrapper, trigger, label);
+};
+wrapper._syncBlockTypePickerLabel = syncLabel;
+}
+nativeSelect.classList.add("blockTypeNativeSelectHidden");
+wrapper._syncBlockTypePickerLabel?.();
+return wrapper;
+};
+const createInlineSubpanelBlockTypePicker = ({
+nativeSelect,
+row,
+item,
+currentValue,
+anchor,
+}) => {
+const wrapper = document.createElement("div");
+wrapper.className = "shieldPicker blockTypePicker blockTypeInlinePicker";
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "blockTypeInlinePickerTrigger";
+trigger.setAttribute("aria-label", "Change block type");
+trigger.setAttribute("aria-haspopup", "listbox");
+trigger.setAttribute("aria-expanded", "false");
+trigger.title = "Change block type";
+trigger.draggable = false;
+const caret = document.createElement("span");
+caret.className = "shieldPickerTriggerCaret";
+caret.textContent = "keyboard_arrow_down";
+trigger.appendChild(caret);
+wrapper.appendChild(trigger);
+wrapper.appendChild(nativeSelect);
+nativeSelect.classList.add("blockTypeNativeSelectHidden");
+trigger.addEventListener("mousedown", (event) => {
+event.stopPropagation();
+});
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+openSubpanelBlockTypePicker({
+wrapper,
+trigger,
+anchor: anchor || trigger,
+value: currentValue,
+inline: true,
+onSelect: (nextValue) => {
+nativeSelect.value = nextValue;
+if (typeof exposed.replaceControlElemTypeAt === "function") {
+exposed.replaceControlElemTypeAt(row, item, nextValue);
+}
+},
+});
+});
+trigger.addEventListener("dragstart", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+return wrapper;
+};
+const createShieldPickerRow = ({
+node,
+depth = 0,
+currentValue,
+expandedIds,
+onSelect,
+onToggle,
+onEdit,
+}) => {
+const row = document.createElement("div");
+row.className = "shieldPickerTreeRow";
+row.style.setProperty("--shieldPickerDepth", String(depth));
+row.dataset.nodeId = node.id || "";
+if (node.customSavedShield) {
+row.classList.add("customShieldPickerSavedRow");
+}
+const isExpanded =
+!!(node.children && node.children.length && expandedIds.has(node.id));
+if (isExpanded) {
+row.classList.add("expanded");
+}
+const button = document.createElement("button");
+button.type = "button";
+button.className = "shieldPickerItem";
+button.dataset.nodeId = node.id || "";
+button.dataset.nodeValue = node.value || "";
+button.dataset.hasChildren =
+node.children && node.children.length ? "true" : "false";
+if (node.value && node.value === currentValue) {
+button.classList.add("selected");
+}
+if (node.disabled) {
+button.classList.add("disabled");
+}
+if (node.children && node.children.length) {
+button.classList.add("hasChildren");
+}
+if (isExpanded) {
+button.classList.add("expanded");
+}
+const icon = document.createElement("img");
+icon.className = "shieldPickerItemIcon";
+icon.src = buildShieldPickerIconSrc(node);
+icon.alt = "";
+icon.loading = "lazy";
+icon.decoding = "async";
+icon.draggable = false;
+if (typeof window.applySignMakerAssetFallback === "function") {
+window.applySignMakerAssetFallback(
+icon,
+icon.getAttribute("src") || icon.src,
+SHIELD_DROPDOWN_PLACEHOLDER_ICON
+);
+} else {
+icon.onerror = () => {
+icon.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+};
+}
+button.appendChild(icon);
+const label = document.createElement("span");
+label.className = "shieldPickerItemLabel";
+label.textContent = node.label;
+button.appendChild(label);
+if (node.children && node.children.length) {
+const caret = document.createElement("span");
+caret.className = "shieldPickerItemCaret";
+caret.setAttribute("aria-hidden", "true");
+button.appendChild(caret);
+}
+button.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (node.children && node.children.length) {
+const wasExpanded = expandedIds.has(node.id);
+onToggle(node.id);
+if (!wasExpanded) {
+const firstChildShield = findFirstSelectableShieldEntry(node.children);
+if (firstChildShield) {
+onSelect(firstChildShield, {
+keepOpen: true,
+skipExpandPath: false,
+preserveTree: true,
+});
+}
+}
+return;
+}
+if (!node.disabled && node.value) {
+onSelect(node);
+}
+});
+row.appendChild(button);
+if (node.customSavedShield) {
+const editButton = document.createElement("button");
+editButton.type = "button";
+editButton.className = "shieldPickerEditCustomShield";
+editButton.title = "Edit custom shield";
+editButton.setAttribute("aria-label", `Edit ${node.label || "custom shield"}`);
+editButton.innerHTML = `<span class="material-symbols-outlined">edit</span>`;
+editButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (typeof onEdit === "function") {
+onEdit(node);
+}
+});
+row.appendChild(editButton);
+}
+if (isExpanded) {
+const childrenWrap = document.createElement("div");
+childrenWrap.className = "shieldPickerTreeChildren";
+childrenWrap.dataset.parentId = node.id || "";
+if (isExpanded) {
+childrenWrap.classList.add("expanded");
+}
+node.children.forEach((child) => {
+childrenWrap.appendChild(
+createShieldPickerRow({
+node: child,
+depth: depth + 1,
+currentValue,
+expandedIds,
+onSelect,
+onToggle,
+onEdit,
+})
+);
+});
+row.appendChild(childrenWrap);
+}
+return row;
+};
+const renderShieldPickerTree = ({
+container,
+nodes,
+currentValue,
+expandedIds,
+onSelect,
+onToggle,
+onEdit,
+}) => {
+container.innerHTML = "";
+nodes.forEach((node) => {
+container.appendChild(
+createShieldPickerRow({
+node,
+depth: 0,
+currentValue,
+expandedIds,
+onSelect,
+onToggle,
+onEdit,
+})
+);
+});
+};
+const fitShieldPickerTriggerLabelText=(trigger,label)=>{label.style.removeProperty('font-size');label.style.removeProperty('font-family');window.SignMakerDropdowns.refresh(trigger);};
+const createShieldPicker = ({
+mount,
+value,
+onChange,
+placeholder = "Select shield",
+rootNodes = SHIELD_PICKER_TREE,
+}) => {
+const wrapper = document.createElement("div");
+wrapper.className = "shieldPicker";
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "shieldPickerTrigger";
+const triggerIcon = document.createElement("img");
+triggerIcon.className = "shieldPickerTriggerIcon";
+triggerIcon.alt = "";
+trigger.appendChild(triggerIcon);
+const triggerLabel = document.createElement("span");
+triggerLabel.className = "shieldPickerTriggerLabel";
+trigger.appendChild(triggerLabel);
+const triggerCaret = document.createElement("span");
+triggerCaret.className = "shieldPickerTriggerCaret";
+triggerCaret.textContent = "keyboard_arrow_down";
+trigger.appendChild(triggerCaret);
+const popover = document.createElement("div");
+popover.className = "shieldPickerPopover";
+const getStoredShieldPickerScrollTop = () => {
+const raw = getStoredItem(STORAGE_KEYS.shieldPickerScrollTop);
+const parsed = parseFloat(raw);
+return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+const saveShieldPickerScrollTop = () => {
+setStoredItem(
+STORAGE_KEYS.shieldPickerScrollTop,
+String(Math.max(0, popover.scrollTop || 0))
+);
+};
+const restoreShieldPickerScrollTop = () => {
+const storedScrollTop = getStoredShieldPickerScrollTop();
+if (storedScrollTop !== null) {
+popover.scrollTop = storedScrollTop;
+return;
+}
+const selectedItem = popover.querySelector(".shieldPickerItem.selected");
+if (selectedItem) {
+selectedItem.scrollIntoView({
+block: "nearest",
+inline: "nearest",
+});
+}
+};
+const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:18,maxWidth:28});;
+const tree = document.createElement("div");
+tree.className = "shieldPickerTree";
+let treeDirty = true;
+popover.appendChild(tree);
+wrapper.appendChild(trigger);
+wrapper.appendChild(popover);
+mount.replaceWith(wrapper);
+let currentValue = value || "";
+const expandedIds = new Set(["us", "canada"]);
+const expandPathToValue = (targetValue, nodes = rootNodes, parents = []) => {
+for (const node of nodes) {
+if (node.value === targetValue) {
+parents.forEach((id) => expandedIds.add(id));
+return true;
+}
+if (Array.isArray(node.children)) {
+if (expandPathToValue(targetValue, node.children, [...parents, node.id])) {
+return true;
+}
+}
+}
+return false;
+};
+const syncTrigger = () => {
+const entry = findShieldPickerEntryByValue(currentValue, rootNodes);
+triggerLabel.textContent = entry
+? buildShieldPickerTriggerLabel(entry)
+: placeholder;
+const triggerIconPath = buildShieldPickerIconSrc(entry);
+setShieldPickerButtonIcon(
+triggerIcon,
+triggerIconPath,
+SHIELD_DROPDOWN_PLACEHOLDER_ICON
+);
+};
+const openCustomShieldMakerFromPicker = () => {
+const dialog = document.getElementById("customShieldMaker");
+const sdRouteInput = document.getElementById("sdShield_routeNumber");
+const sdShieldType = document.getElementById("sdShield_shieldType");
+const sdAlignment = document.getElementById("sdShield_alignment");
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const routeValue =
+sdRouteInput?.value ||
+currentBlockElem?.routeNumber ||
+document.querySelector(".sdShieldRouteNumberInput")?.value ||
+"";
+if (dialog) {
+dialog._editingCustomShieldId = null;
+delete dialog.dataset.customShieldMakerUserUploaded;
+dialog._customShieldMakerSource = {
+...currentBlockElem,
+shieldBase:
+currentValue ||
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+"I",
+type:
+currentValue ||
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+"I",
+shieldType:
+sdShieldType?.value ||
+currentBlockElem?.shieldType ||
+"Auto",
+routeNumber: routeValue,
+alignment:
+sdAlignment?.value ||
+currentBlockElem?.alignment ||
+"Center",
+};
+}
+const openButton = document.getElementById("openCustomShieldMaker");
+if (openButton) {
+openButton.click();
+return;
+}
+if (dialog) {
+dialog.style.display = "flex";
+if (!dialog.open) {
+dialog.showModal();
+}
+}
+};
+const rerenderTree = (forceRebuild = false) => {
+if (forceRebuild) treeDirty = true;
+if (!wrapper.classList.contains("open")) return;
+if (treeDirty || !tree.childElementCount) {
+treeDirty = false;
+const scrollTop = popover.scrollTop;
+renderShieldPickerTree({
+container: tree,
+nodes: rootNodes,
+currentValue,
+expandedIds,
+onSelect: (node, options = {}) => {
+if (
+node.customShieldMaker ||
+node.value === SHIELD_PICKER_CUSTOM_MAKER_VALUE
+) {
+saveShieldPickerScrollTop();
+wrapper.classList.remove("open");
+openCustomShieldMakerFromPicker();
+return;
+}
+currentValue = node.value;
+if (!options.skipExpandPath) {
+expandPathToValue(node.value);
+}
+syncTrigger();
+rerenderTree(true);
+if (!options.keepOpen) {
+saveShieldPickerScrollTop();
+wrapper.classList.remove("open");
+}
+if (typeof onChange === "function") {
+onChange(node.value, node);
+}
+},
+onToggle: (id) => {
+if (expandedIds.has(id)) {
+expandedIds.delete(id);
+} else {
+expandedIds.add(id);
+}
+rerenderTree(true);
+},
+onEdit: (node) => {
+saveShieldPickerScrollTop();
+wrapper.classList.remove("open");
+document
+.querySelectorAll(".shieldPicker.open")
+.forEach((picker) => picker.classList.remove("open"));
+const dialog = document.getElementById("customShieldMaker");
+if (
+dialog &&
+typeof dialog._openSavedCustomShield === "function" &&
+node.customShieldId
+) {
+dialog._openSavedCustomShield(node.customShieldId);
+}
+},
+});
+popover.scrollTop = scrollTop;
+return;
+}
+updateShieldPickerTreeState(tree, currentValue, expandedIds);
+};
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const willOpen = !wrapper.classList.contains("open");
+if (!willOpen) {
+saveShieldPickerScrollTop();
+}
+if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
+wrapper.classList.toggle("open", willOpen);
+if (willOpen) {
+rerenderTree();
+placePopover();
+requestAnimationFrame(() => {
+restoreShieldPickerScrollTop();
+});
+}
+});
+document.addEventListener("click", (event) => {
+const clickedInsideTrigger = trigger.contains(event.target);
+const clickedInsidePopover = popover.contains(event.target);
+if (!clickedInsideTrigger && !clickedInsidePopover) {
+if (wrapper.classList.contains("open")) {
+saveShieldPickerScrollTop();
+}
+wrapper.classList.remove("open");
+}
+});
+popover.addEventListener("scroll", () => {
+saveShieldPickerScrollTop();
+});
+window.addEventListener("resize", () => {
+if (wrapper.classList.contains("open")) {
+placePopover();
+}
+});
+window.addEventListener("scroll", () => {
+if (wrapper.classList.contains("open")) {
+placePopover();
+}
+}, true);
+expandPathToValue(currentValue);
+syncTrigger();
+rerenderTree(true);
+const pickerApi = {
+element: wrapper,
+getValue: () => currentValue,
+setValue: (nextValue) => {
+if (currentValue === (nextValue || "")) return;
+currentValue = nextValue || "";
+expandPathToValue(currentValue);
+syncTrigger();
+rerenderTree(true);
+},
+refresh: () => {
+expandPathToValue(currentValue);
+syncTrigger();
+rerenderTree(true);
+},
+};
+activeShieldPickerApis.add(pickerApi);
+return pickerApi;
+};
+const syncShieldBasePickerValue = (nextValue, { updateBlock = false } = {}) => {
+const normalizedValue =
+nextValue ||
+ShieldElement.prototype.defaultShieldBase ||
+"I";
+const nativeSelect = document.getElementById("sdShield_shieldBase");
+if (nativeSelect) {
+nativeSelect.dataset.pickerValue = normalizedValue;
+const hasNativeOption = Array.from(nativeSelect.options || []).some(
+(option) => option.value === normalizedValue
+);
+if (hasNativeOption) {
+nativeSelect.value = normalizedValue;
+}
+}
+const pickerApi =
+nativeSelect?._shieldPickerApi ||
+nativeSelect?.parentElement?.querySelector(".sdShieldBasePickerHost")
+?._shieldPickerApi ||
+null;
+if (pickerApi && typeof pickerApi.setValue === "function") {
+const pickerValue =
+typeof pickerApi.getValue === "function" ? pickerApi.getValue() : null;
+if (String(pickerValue || "") !== String(normalizedValue)) {
+pickerApi.setValue(normalizedValue);
+}
+}
+if (updateBlock) {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+if (currentBlockElem) {
+currentBlockElem.shieldBase = normalizedValue;
+currentBlockElem.type = normalizedValue;
+}
+}
+return normalizedValue;
+};
+const sdShieldVariantSelectionMemory = new WeakMap();
+const getSdShieldAutoVariantValue = () =>
+ShieldElement.prototype.defaultVariant || "Auto";
+const getSdShieldVariantConfig = (baseValue) =>
+ShieldElement.prototype.getBlockShieldConfig(
+baseValue || ShieldElement.prototype.defaultShieldBase || "I"
+);
+const sdShieldUsesExplicitFirstVariant = (baseValue) => {
+const normalized =
+typeof ShieldElement.prototype.normalizeShieldCode === "function"
+? ShieldElement.prototype.normalizeShieldCode(
+String(baseValue || "")
+).toUpperCase()
+: String(baseValue || "").replace(/\s+/g, "").toUpperCase();
+return (
+normalized === "FLTOLL" ||
+normalized === "FLCFX" ||
+normalized === "C"
+);
+};
+const getSdShieldDefaultVariantValue = (baseValue) => {
+const variants = getSdShieldVariantValues(baseValue);
+return sdShieldUsesExplicitFirstVariant(baseValue) && variants.length
+? variants[0]
+: getSdShieldAutoVariantValue();
+};
+const getSdShieldVariantValues = (baseValue) => {
+const config = getSdShieldVariantConfig(baseValue);
+if (!config || !Array.isArray(config.variants)) {
+return [];
+}
+const seenArtwork = new Set();
+return config.variants.filter((variant) => {
+if (!variant) {
+return false;
+}
+const variantKey =
+ShieldElement.prototype.formatVariantKey(variant);
+const artworkVariantKey =
+typeof ShieldElement.prototype.getShieldArtworkVariantKey === "function"
+? ShieldElement.prototype.getShieldArtworkVariantKey(
+config,
+variantKey
+)
+: variantKey;
+const artworkPath =
+ShieldElement.prototype.getShieldAssetPath(
+config,
+artworkVariantKey
+) || artworkVariantKey;
+if (seenArtwork.has(artworkPath)) {
+return false;
+}
+seenArtwork.add(artworkPath);
+return true;
+});
+};
+const getSdShieldVariantMemory = (blockElem, create = false) => {
+if (!blockElem || (typeof blockElem !== "object" && typeof blockElem !== "function")) {
+return null;
+}
+let memory = sdShieldVariantSelectionMemory.get(blockElem) || null;
+if (!memory && create) {
+memory = new Map();
+sdShieldVariantSelectionMemory.set(blockElem, memory);
+}
+return memory;
+};
+const rememberSdShieldVariantSelection = (blockElem, baseValue, variantValue) => {
+const normalizedBase = String(baseValue || "").trim();
+const normalizedVariant = String(variantValue || "").trim();
+if (!blockElem || !normalizedBase || !normalizedVariant) {
+return;
+}
+getSdShieldVariantMemory(blockElem, true).set(
+normalizedBase,
+normalizedVariant
+);
+};
+const getRememberedSdShieldVariantSelection = (blockElem, baseValue) => {
+const memory = getSdShieldVariantMemory(blockElem, false);
+return memory ? memory.get(String(baseValue || "").trim()) || "" : "";
+};
+const getSdShieldVariantRouteNumber = () => {
+const routeInput = document.getElementById("sdShield_routeNumber");
+if (routeInput) {
+return String(routeInput.value || "");
+}
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+return String(currentBlockElem?.routeNumber || "");
+};
+const getSdShieldVariantPreview = (baseValue, variantValue) => {
+const config = getSdShieldVariantConfig(baseValue);
+if (!config) {
+return { src: SHIELD_DROPDOWN_PLACEHOLDER_ICON, resolvedVariant: "" };
+}
+const autoValue = getSdShieldAutoVariantValue();
+const requestedVariant = String(variantValue || autoValue).trim();
+const resolvedVariant =
+requestedVariant.toLowerCase() === String(autoValue).toLowerCase()
+? ShieldElement.prototype.resolveBlockVariant(
+autoValue,
+getSdShieldVariantRouteNumber(),
+config
+)
+: requestedVariant;
+const variantKey = ShieldElement.prototype.formatVariantKey(resolvedVariant);
+const src = ShieldElement.prototype.getShieldAssetPath(config, variantKey);
+return {
+src: src || SHIELD_DROPDOWN_PLACEHOLDER_ICON,
+resolvedVariant,
+};
+};
+const sdShieldAssetPreloadPromises = new Map();
+const getSdShieldFinalAssetPath = ({
+baseValue,
+variantValue,
+shieldBacks = false,
+}) => {
+const config = getSdShieldVariantConfig(baseValue);
+if (!config) {
+return "";
+}
+const autoValue = getSdShieldAutoVariantValue();
+const requestedVariant = String(variantValue || autoValue).trim();
+const resolvedVariant =
+requestedVariant.toLowerCase() === String(autoValue).toLowerCase()
+? ShieldElement.prototype.resolveBlockVariant(
+autoValue,
+getSdShieldVariantRouteNumber(),
+config
+)
+: requestedVariant;
+const variantKey =
+ShieldElement.prototype.formatVariantKey(resolvedVariant);
+if (
+typeof ShieldElement.prototype.getRenderedShieldAssetPath === "function"
+) {
+return ShieldElement.prototype.getRenderedShieldAssetPath(
+config,
+variantKey,
+{
+shieldBase: baseValue,
+shieldBacks,
+}
+);
+}
+return ShieldElement.prototype.getShieldAssetPath(
+config,
+variantKey
+);
+};
+const preloadSdShieldAsset = ({
+baseValue,
+variantValue,
+shieldBacks = false,
+}) => {
+const src = getSdShieldFinalAssetPath({
+baseValue,
+variantValue,
+shieldBacks,
+});
+if (!src || src === SHIELD_DROPDOWN_PLACEHOLDER_ICON) {
+return Promise.resolve(false);
+}
+window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS =
+window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS || new Map();
+if (sdShieldAssetPreloadPromises.has(src)) {
+return sdShieldAssetPreloadPromises.get(src);
+}
+const promise = new Promise((resolve) => {
+const image = new Image();
+const finish = (ok) => {
+if (
+ok &&
+image.naturalWidth > 0 &&
+image.naturalHeight > 0
+) {
+window.SIGNMAKER_PRELOADED_SHIELD_ASPECTS.set(
+src,
+image.naturalWidth / image.naturalHeight
+);
+}
+resolve(ok);
+};
+image.onload = async () => {
+if (typeof image.decode === "function") {
+try {
+await image.decode();
+} catch (error) {}
+}
+finish(true);
+};
+image.onerror = () => finish(false);
+image.src = src;
+if (image.complete && image.naturalWidth > 0) {
+image.onload();
+}
+});
+sdShieldAssetPreloadPromises.set(src, promise);
+return promise;
+};
+const populateSdShieldVariantNativeOptions = (
+baseValue,
+requestedValue = null
+) => {
+const nativeSelect = document.getElementById("sdShield_shieldType");
+if (!nativeSelect) {
+return {
+baseValue,
+variants: [],
+options: [],
+value: "",
+unavailable: true,
+};
+}
+const autoValue = getSdShieldAutoVariantValue();
+const variants = getSdShieldVariantValues(baseValue);
+const allowAuto = !sdShieldUsesExplicitFirstVariant(baseValue);
+const options = allowAuto
+? [
+autoValue,
+...variants.filter((variant) => variant !== autoValue),
+]
+: variants.filter((variant) => variant !== autoValue);
+const fallbackValue =
+options[0] ||
+(allowAuto ? autoValue : "");
+const currentValue = String(
+requestedValue || nativeSelect.value || fallbackValue
+).trim();
+const nextValue = options.includes(currentValue)
+? currentValue
+: fallbackValue;
+nativeSelect.innerHTML = "";
+options.forEach((variant) => {
+lib.appendOption(nativeSelect, variant, {
+text: variant === autoValue ? "Auto" : variant,
+});
+});
+nativeSelect.value = nextValue;
+return {
+baseValue,
+variants,
+options,
+value: nextValue,
+unavailable: variants.length <= 1,
+};
+};
+const createSdShieldVariantPicker = ({ mount, onChange }) => {
+const wrapper = document.createElement("div");
+wrapper.className = "shieldPicker shieldVariantPicker";
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "shieldPickerTrigger shieldVariantPickerTrigger";
+const triggerIcon = document.createElement("img");
+triggerIcon.className =
+"shieldPickerTriggerIcon shieldVariantPickerTriggerIcon";
+triggerIcon.alt = "";
+triggerIcon.draggable = false;
+trigger.appendChild(triggerIcon);
+const triggerLabel = document.createElement("span");
+triggerLabel.className =
+"shieldPickerTriggerLabel shieldVariantPickerTriggerLabel";
+trigger.appendChild(triggerLabel);
+const triggerCaret = document.createElement("span");
+triggerCaret.className =
+"shieldPickerTriggerCaret shieldVariantPickerTriggerCaret";
+triggerCaret.textContent = "keyboard_arrow_down";
+trigger.appendChild(triggerCaret);
+const popover = document.createElement("div");
+popover.className = "shieldPickerPopover shieldVariantPickerPopover";
+const list = document.createElement("div");
+list.className = "shieldVariantPickerList";
+popover.appendChild(list);
+wrapper.appendChild(trigger);
+wrapper.appendChild(popover);
+mount.replaceWith(wrapper);
+let state = {
+baseValue: ShieldElement.prototype.defaultShieldBase || "I",
+variants: [],
+options: [],
+value: getSdShieldAutoVariantValue(),
+unavailable: true,
+};
+const close = () => {
+wrapper.classList.remove("open");
+};
+const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:0,maxWidth:12});
+const applyImageFallback = (image, requestedPath = "") => {
+if (typeof window.applySignMakerAssetFallback === "function") {
+window.applySignMakerAssetFallback(
+image,
+requestedPath || image.getAttribute("src") || image.src,
+SHIELD_DROPDOWN_PLACEHOLDER_ICON
+);
+return;
+}
+image.onerror = () => {
+image.onerror = null;
+image.src = SHIELD_DROPDOWN_PLACEHOLDER_ICON;
+};
+};
+const renderItems = () => {
+list.innerHTML = "";
+const autoValue = getSdShieldAutoVariantValue();
+for (const variant of state.options) {
+const item = document.createElement("button");
+item.type = "button";
+item.className = "shieldPickerItem shieldVariantPickerItem";
+item.dataset.variantValue = variant;
+item.classList.toggle("selected", variant === state.value);
+const icon = document.createElement("img");
+icon.className = "shieldPickerItemIcon shieldVariantPickerItemIcon";
+const preview = getSdShieldVariantPreview(state.baseValue, variant);
+icon.src = preview.src;
+icon.alt = "";
+icon.loading = "lazy";
+icon.decoding = "async";
+icon.draggable = false;
+applyImageFallback(icon, preview.src);
+item.appendChild(icon);
+const label = document.createElement("span");
+label.className = "shieldPickerItemLabel shieldVariantPickerItemLabel";
+label.textContent = variant === autoValue ? "Auto" : variant;
+item.appendChild(label);
+if (variant === autoValue && preview.resolvedVariant) {
+item.title = `Auto uses ${preview.resolvedVariant} for the current route number`;
+}
+item.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (state.unavailable) {
+return;
+}
+state.value = variant;
+close();
+syncTrigger();
+renderItems();
+if (typeof onChange === "function") {
+onChange(variant);
+}
+});
+list.appendChild(item);
+}
+};
+const syncTrigger = () => {
+const preview = getSdShieldVariantPreview(state.baseValue, state.value);
+setShieldPickerButtonIcon(
+triggerIcon,
+preview.src,
+SHIELD_DROPDOWN_PLACEHOLDER_ICON
+);
+if (state.unavailable) {
+triggerLabel.textContent = "Unavailable";
+trigger.disabled = true;
+trigger.setAttribute("aria-disabled", "true");
+wrapper.classList.add("unavailable");
+triggerCaret.hidden = true;
+trigger.title = "This shield has only one available variant";
+fitShieldPickerTriggerLabelText(trigger, triggerLabel);
+if (typeof requestAnimationFrame === "function") {
+requestAnimationFrame(() =>
+fitShieldPickerTriggerLabelText(trigger, triggerLabel)
+);
+}
+close();
+return;
+}
+trigger.disabled = false;
+trigger.removeAttribute("aria-disabled");
+wrapper.classList.remove("unavailable");
+triggerCaret.hidden = false;
+triggerLabel.textContent =
+state.value === getSdShieldAutoVariantValue() ? "Auto" : state.value;
+fitShieldPickerTriggerLabelText(trigger, triggerLabel);
+if (typeof requestAnimationFrame === "function") {
+requestAnimationFrame(() =>
+fitShieldPickerTriggerLabelText(trigger, triggerLabel)
+);
+}
+trigger.title =
+state.value === getSdShieldAutoVariantValue() && preview.resolvedVariant
+? `Auto uses ${preview.resolvedVariant} for the current route number`
+: state.value;
+};
+const setState = (nextState) => {
+state = {
+...state,
+...nextState,
+};
+syncTrigger();
+renderItems();
+};
+const refreshPreview = () => {
+syncTrigger();
+if (wrapper.classList.contains("open")) {
+renderItems();
+placePopover();
+}
+};
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (state.unavailable) {
+return;
+}
+const willOpen = !wrapper.classList.contains("open");
+document
+.querySelectorAll(".shieldVariantPicker.open")
+.forEach((picker) => {
+if (picker !== wrapper) {
+picker.classList.remove("open");
+}
+});
+if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
+wrapper.classList.toggle("open", willOpen);
+if (willOpen) {
+renderItems();
+placePopover();
+}
+});
+document.addEventListener("click", (event) => {
+if (!wrapper.contains(event.target) && !popover.contains(event.target)) {
+close();
+}
+});
+window.addEventListener("resize", () => {
+if (wrapper.classList.contains("open")) {
+placePopover();
+}
+});
+window.addEventListener(
+"scroll",
+() => {
+if (wrapper.classList.contains("open")) {
+placePopover();
+}
+},
+true
+);
+return {
+element: wrapper,
+setState,
+refreshPreview,
+getValue: () => state.value,
+};
+};
+const syncSdShieldVariantPickerForBase = (
+baseValue,
+{
+requestedValue = null,
+preferRemembered = false,
+updateBlock = false,
+} = {}
+) => {
+const nativeSelect = document.getElementById("sdShield_shieldType");
+if (!nativeSelect) {
+return null;
+}
+const normalizedBase =
+baseValue ||
+document.getElementById("sdShield_shieldBase")?.dataset?.pickerValue ||
+document.getElementById("sdShield_shieldBase")?.value ||
+ShieldElement.prototype.defaultShieldBase ||
+"I";
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const autoValue = getSdShieldAutoVariantValue();
+const variants = getSdShieldVariantValues(normalizedBase);
+const allowAuto = !sdShieldUsesExplicitFirstVariant(normalizedBase);
+const allowed = allowAuto
+? [
+autoValue,
+...variants.filter((variant) => variant !== autoValue),
+]
+: variants.filter((variant) => variant !== autoValue);
+const defaultValue =
+allowed[0] ||
+(allowAuto ? autoValue : "");
+const rememberedValue = preferRemembered
+? getRememberedSdShieldVariantSelection(currentBlockElem, normalizedBase)
+: "";
+const desiredValue =
+(rememberedValue && allowed.includes(rememberedValue) && rememberedValue) ||
+(requestedValue && allowed.includes(requestedValue) && requestedValue) ||
+defaultValue;
+const state = populateSdShieldVariantNativeOptions(
+normalizedBase,
+desiredValue
+);
+let pickerHost = nativeSelect.parentElement?.querySelector(
+".sdShieldVariantPickerHost"
+);
+if (!pickerHost) {
+pickerHost = document.createElement("div");
+pickerHost.className = "sdShieldVariantPickerHost";
+nativeSelect.insertAdjacentElement("afterend", pickerHost);
+}
+nativeSelect.style.setProperty("display","none","important");
+let pickerApi =
+nativeSelect._shieldVariantPickerApi ||
+pickerHost._shieldVariantPickerApi ||
+null;
+if (!pickerApi) {
+const placeholderSelect = document.createElement("select");
+placeholderSelect.id = "sdShield_shieldType_pickerProxy";
+pickerHost.innerHTML = "";
+pickerHost.appendChild(placeholderSelect);
+pickerApi = createSdShieldVariantPicker({
+mount: placeholderSelect,
+onChange: async (nextValue) => {
+const currentBase =
+document.getElementById("sdShield_shieldBase")?.dataset?.pickerValue ||
+document.getElementById("sdShield_shieldBase")?.value ||
+normalizedBase;
+const blockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+await preloadSdShieldAsset({
+baseValue: currentBase,
+variantValue: nextValue,
+shieldBacks: blockElem?.shieldBacks === true,
+});
+runShieldUndoableCommit(() => {
+nativeSelect.value = nextValue;
+rememberSdShieldVariantSelection(blockElem, currentBase, nextValue);
+if (blockElem) {
+blockElem.shieldType = nextValue;
+}
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+});
+},
+});
+nativeSelect._shieldVariantPickerApi = pickerApi;
+pickerHost._shieldVariantPickerApi = pickerApi;
+}
+pickerApi.setState(state);
+if (currentBlockElem) {
+rememberSdShieldVariantSelection(
+currentBlockElem,
+normalizedBase,
+state.value
+);
+if (updateBlock) {
+currentBlockElem.shieldType = state.value;
+}
+}
+const routeInput = document.getElementById("sdShield_routeNumber");
+if (routeInput && routeInput.dataset.shieldVariantPreviewBound !== "true") {
+routeInput.dataset.shieldVariantPreviewBound = "true";
+routeInput.addEventListener("input", () => {
+const currentApi =
+nativeSelect._shieldVariantPickerApi ||
+pickerHost._shieldVariantPickerApi ||
+null;
+if (currentApi && typeof currentApi.refreshPreview === "function") {
+currentApi.refreshPreview();
+}
+});
+}
+return state;
+};
+const ensureSdShieldBasePicker = () => {
+const nativeSelect = document.getElementById("sdShield_shieldBase");
+if (!nativeSelect) {
+return null;
+}
+let pickerHost = nativeSelect.parentElement?.querySelector(
+".sdShieldBasePickerHost"
+);
+if (!pickerHost) {
+pickerHost = document.createElement("div");
+pickerHost.className = "sdShieldBasePickerHost";
+nativeSelect.insertAdjacentElement("afterend", pickerHost);
+}
+nativeSelect.style.setProperty("display","none","important");
+let pickerApi =
+nativeSelect._shieldPickerApi || pickerHost._shieldPickerApi || null;
+if (!pickerApi) {
+const placeholderSelect = document.createElement("select");
+placeholderSelect.id = "sdShield_shieldBase_pickerProxy";
+pickerHost.innerHTML = "";
+pickerHost.appendChild(placeholderSelect);
+pickerApi = createShieldPicker({
+mount: placeholderSelect,
+value:
+nativeSelect.dataset.pickerValue ||
+nativeSelect.value ||
+ShieldElement.prototype.defaultShieldBase ||
+"I",
+placeholder: "Shield type",
+onChange: async (nextValue) => {
+if (!nextValue) {
+return;
+}
+const liveSelectedBase = syncShieldBasePickerValue(nextValue, {
+updateBlock: false,
+});
+updateShieldCountyVisibility(liveSelectedBase);
+let selectedBase = liveSelectedBase;
+let selectedVariant = getSdShieldDefaultVariantValue(selectedBase);
+runShieldUndoableCommit(() => {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const currentBase =
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+ShieldElement.prototype.defaultShieldBase ||
+"I";
+const nativeVariantSelect =
+document.getElementById("sdShield_shieldType");
+if (nativeVariantSelect) {
+rememberSdShieldVariantSelection(
+currentBlockElem,
+currentBase,
+nativeVariantSelect.value ||
+currentBlockElem?.shieldType ||
+getSdShieldAutoVariantValue()
+);
+}
+selectedBase = syncShieldBasePickerValue(nextValue, {
+updateBlock: true,
+});
+if (
+currentBlockElem &&
+String(selectedBase) !== String(currentBase)
+) {
+currentBlockElem.shieldBacks = false;
+const shieldBacksCheckbox =
+document.getElementById("sdShield_shieldBacks");
+if (shieldBacksCheckbox) {
+shieldBacksCheckbox.checked = false;
+}
+}
+const variantState = syncSdShieldVariantPickerForBase(
+selectedBase,
+{
+preferRemembered: true,
+updateBlock: true,
+}
+);
+if (variantState?.value) {
+selectedVariant = variantState.value;
+}
+if (currentBlockElem) {
+currentBlockElem.shieldBase = selectedBase;
+currentBlockElem.type = selectedBase;
+if (variantState?.value) {
+currentBlockElem.shieldType = variantState.value;
+}
+}
+updateShieldCountyVisibility(selectedBase);
+});
+updateShieldCountyVisibility(selectedBase);
+await preloadSdShieldAsset({
+baseValue: selectedBase,
+variantValue: selectedVariant,
+shieldBacks: false,
+});
+updateShieldCountyVisibility(selectedBase);
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+},
+});
+nativeSelect._shieldPickerApi = pickerApi;
+pickerHost._shieldPickerApi = pickerApi;
+}
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const selectedShieldBase =
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+nativeSelect.dataset.pickerValue ||
+nativeSelect.value ||
+ShieldElement.prototype.defaultShieldBase ||
+"I";
+syncShieldBasePickerValue(selectedShieldBase);
+return pickerApi;
+};
+const ensureGuideArrowPicker = () => {
+const nativeSelect = document.getElementById("guideArrow");
+if (!nativeSelect) {
+return null;
+}
+let pickerHost = nativeSelect.parentElement?.querySelector(".guideArrowPickerHost");
+let pickerApi = nativeSelect._arrowPickerApi || null;
+if (!pickerHost) {
+pickerHost = document.createElement("div");
+pickerHost.className = "guideArrowPickerHost";
+nativeSelect.insertAdjacentElement("afterend", pickerHost);
+}
+nativeSelect.style.display = "none";
+if (!pickerApi) {
+const placeholderSelect = document.createElement("select");
+placeholderSelect.id = "guideArrow_pickerProxy";
+pickerHost.innerHTML = "";
+pickerHost.appendChild(placeholderSelect);
+pickerApi = createFlatArrowPicker({
+mount: placeholderSelect,
+value: String(nativeSelect.value || "None").split(":")[0].trim(), placeholder: "Arrows",
+items: EXIT_ONLY_TYPE_ITEMS,
+previewOptions: { exitDirection: false },
+onChange: (nextValue) => {
+nativeSelect.value = nextValue;
+if (typeof readForm === "function") {
+readForm();
+}
+},
+});
+nativeSelect._arrowPickerApi = pickerApi;
+}
+if (pickerApi && typeof pickerApi.setValue === "function") {
+pickerApi.setValue(String(nativeSelect.value || "None").split(":")[0].trim());
+}
+return pickerApi;
+};
+const ensureExitOnlyDirectionPicker = () => {
+const nativeSelect = document.getElementById("exitOnlyDirection");
+if (!nativeSelect) {
+return null;
+}
+let pickerHost = nativeSelect.parentElement?.querySelector(".exitOnlyDirectionPickerHost");
+let pickerApi = nativeSelect._arrowPickerApi || null;
+if (!pickerHost) {
+pickerHost = document.createElement("div");
+pickerHost.className = "exitOnlyDirectionPickerHost";
+nativeSelect.insertAdjacentElement("afterend", pickerHost);
+}
+nativeSelect.style.display = "none";
+if (!pickerApi) {
+const placeholderSelect = document.createElement("select");
+placeholderSelect.id = "exitOnlyDirection_pickerProxy";
+pickerHost.innerHTML = "";
+pickerHost.appendChild(placeholderSelect);
+pickerApi = createFlatArrowPicker({
+mount: placeholderSelect,
+value: String(nativeSelect.value || "Down Arrow").split(":")[0].trim(),
+placeholder: "Direction",
+items: EXIT_ONLY_DIRECTION_ITEMS,
+previewOptions: { exitDirection: true },
+onChange: (nextValue) => {
+nativeSelect.value = nextValue;
+if (typeof readForm === "function") {
+readForm();
+}
+},
+});
+nativeSelect._arrowPickerApi = pickerApi;
+}
+if (pickerApi && typeof pickerApi.setValue === "function") {
+pickerApi.setValue(String(nativeSelect.value || "Down Arrow").split(":")[0].trim());
+}
+return pickerApi;
+};
+const getArrowDisplayLabel = (value) => String(value || "").split(":")[0].trim();
+const getGuideArrowEntryByLabel = (label) =>
+Sign.prototype.guideArrows.find(
+(entry) => getArrowDisplayLabel(entry) === label
+) || label;
+const getExitArrowEntryByLabel = (label) =>
+Sign.prototype.exitguideArrows.find(
+(entry) => getArrowDisplayLabel(entry) === label
+) || label;
+const normalizeArrowAssetCode = (rawCode) => {
+let code = String(rawCode || "").trim();
+if (!code) {
+return "";
+}
+if (code.includes("/")) {
+code = code.split("/")[0].trim();
+}
+if (/^E[A-C]-/i.test(code)) {
+const parts = code.split("-");
+code = `${code.charAt(1)}-${parts[1]}`;
+}
+return code;
+};
+const getArrowIconPathFromValue = (value, { exitDirection = false } = {}) => {
+const label = getArrowDisplayLabel(value);
+if (!label || label === "None") {
+return null;
+}
+const directArrowMap = {
+"Down (Ontario)": "DOWN_ON",
+"Down (alt)": "DOWN_ALT",
+};
+if (directArrowMap[label]) {
+return window.resolveLegacyGuideArrow(directArrowMap[label]);
+}
+const hardMap = {
+"Side Left": "A-4",
+"Side Right": "A-1",
+"Exit Only": "C-1",
+"Split Exit Only": "C-1",
+"Half Exit Only": "C-1",
+};
+let code = hardMap[label] || "";
+if (!code) {
+const entry = exitDirection
+? getExitArrowEntryByLabel(label)
+: getGuideArrowEntryByLabel(label);
+const afterColon = String(entry).split(":")[1] || "";
+code = normalizeArrowAssetCode(afterColon);
+}
+if (!code) {
+return null;
+}
+return window.resolveLegacyGuideArrow(code);
+};
+const createArrowPreviewNode = (value, options = {}) => {
+const label = getArrowDisplayLabel(value);
+const makeArrowImg = (src, extraClass = "", invert = false) => {
+const img = document.createElement("img");
+img.className = `arrowPickerIconImage ${extraClass}`.trim();
+img.alt = "";
+img.src = src;
+img.loading = "lazy";
+img.decoding = "async";
+if (invert) {
+img.style.filter = "invert(1)";
+}
+img.onerror = () => {
+img.style.display = "none";
+};
+return img;
+};
+const makeSpecialBox = (theme, invertArrow = false) => {
+const box = document.createElement("span");
+box.className = `arrowPickerSpecialSvgBox ${theme}`;
+box.appendChild(makeArrowImg(ArrowElement.prototype.arrows.DOWN.src, "", invertArrow));
+return box;
+};
+if (label === "Exit Only") {
+const wrap = document.createElement("span");
+wrap.className = "arrowPickerSpecialSvg";
+wrap.appendChild(makeSpecialBox("yellow", true));
+return wrap;
+}
+if (label === "Split Exit Only") {
+const wrap = document.createElement("span");
+wrap.className = "arrowPickerSpecialSvg";
+wrap.appendChild(makeSpecialBox("green", false));
+return wrap;
+}
+if (label === "Half Exit Only") {
+const wrap = document.createElement("span");
+wrap.className = "arrowPickerSpecialSvg dual";
+wrap.appendChild(makeSpecialBox("green", false));
+wrap.appendChild(makeSpecialBox("yellow", true));
+return wrap;
+}
+const arrowAsset = getArrowIconPathFromValue(value, options);
+if (!arrowAsset) {
+return null;
+}
+const img = document.createElement("img");
+img.className = "arrowPickerIconImage";
+img.alt = "";
+img.src = arrowAsset.src;
+img.loading = "lazy";
+img.decoding = "async";
+img.style.transform = `rotate(${arrowAsset.rotation}deg)`;
+img.onerror = () => {
+img.style.display = "none";
+};
+return img;
+};
+const ARROW_PICKER_ITEMS = Sign.prototype.guideArrows.map((entry) => {
+const label = getArrowDisplayLabel(entry);
+return {
+value: label,
+label,
+rawValue: entry,
+};
+});
+const STANDARD_ARROW_KEYS = [
+"DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B",
+"TYPE_C_45", "TYPE_C_45_ALT", "TYPE_C_90", "TYPE_D", "TYPE_E",
+"APL_UP", "APL_TURN", "APL_UP_TURN", "APL_DUAL_TURN",
+"APL_UP_CFX", "APL_TURN_CFX", "APL_UP_TURN_CFX", "DOWN_ON", "UK"
+];
+const STANDARD_ARROW_LABELS = {
+TYPE_C_45: "Type C 45°",
+TYPE_C_45_ALT: "Type C 45° (alt)", TYPE_C_90: "Type C 90°",
+APL_UP_CFX: "CFX APL Up", APL_TURN_CFX: "CFX APL Turn",
+APL_UP_TURN_CFX: "CFX APL Up Turn"
+};
+const STANDARD_ARROW_ITEMS = STANDARD_ARROW_KEYS.map((key) => ({
+value: key,
+label: STANDARD_ARROW_LABELS[key] || ArrowElement.prototype.arrows[key]?.label || key
+}));
+const EXIT_ONLY_TYPE_ITEMS = ARROW_PICKER_ITEMS.filter((item) =>
+["None", "Exit Only", "Split Exit Only", "Half Exit Only"].includes(item.label)
+);
+const EXIT_ONLY_DIRECTION_ITEMS = Sign.prototype.exitguideArrows.map((entry) => {
+const label = getArrowDisplayLabel(entry);
+return {
+value: label,
+label,
+rawValue: entry,
+};
+});
+const APL_ARROW_PICKER_ALL_ITEMS = [
+{ value: "UP", label: "Up", arrowType: "APL_UP", flip: false },
+{ value: "UP_LEFT", label: "Up Left Turn", arrowType: "APL_UP_TURN", flip: true },
+{ value: "UP_RIGHT", label: "Up Right Turn", arrowType: "APL_UP_TURN", flip: false },
+{ value: "DUAL_TURN", label: "Dual Turn", arrowType: "APL_DUAL_TURN", flip: false },
+{ value: "LEFT_TURN", label: "Left Turn", arrowType: "APL_TURN", flip: true },
+{ value: "RIGHT_TURN", label: "Right Turn", arrowType: "APL_TURN", flip: false },
+{ value: "UP_CFX", label: "CFX Up", arrowType: "APL_UP_CFX", flip: false },
+{ value: "UP_LEFT_CFX", label: "CFX Up Left Turn", arrowType: "APL_UP_TURN_CFX", flip: true },
+{ value: "UP_RIGHT_CFX", label: "CFX Up Right Turn", arrowType: "APL_UP_TURN_CFX", flip: false },
+{ value: "LEFT_TURN_CFX", label: "CFX Left Turn", arrowType: "APL_TURN_CFX", flip: true },
+{ value: "RIGHT_TURN_CFX", label: "CFX Right Turn", arrowType: "APL_TURN_CFX", flip: false },
+];
+const APL_ARROW_PICKER_ITEMS = APL_ARROW_PICKER_ALL_ITEMS.filter(
+(item) => !item.value.includes("CFX")
+);
+const createAPLArrowPreviewNode = (value) => {
+const item = APL_ARROW_PICKER_ALL_ITEMS.find((entry) => entry.value === value);
+if (!item) {
+return null;
+}
+const arrowDef = ArrowElement.prototype.arrows[item.arrowType];
+if (!arrowDef || !arrowDef.src) {
+return null;
+}
+const img = document.createElement("img");
+img.className = "arrowPickerIconImage aplArrowPickerIconImage";
+img.alt = "";
+img.src = arrowDef.src;
+img.loading = "lazy";
+img.decoding = "async";
+if (item.flip) {
+img.style.transform = "scaleX(-1)";
+}
+img.onerror = () => {
+img.style.display = "none";
+};
+return img;
+};
+const findArrowPickerEntryByValue = (value, items) =>
+items.find((item) => item.value === value) || null;
+const createFlatArrowPicker = ({
+mount,
+value,
+onChange,
+placeholder = "Select arrow",
+items = ARROW_PICKER_ITEMS,
+previewOptions = {},
+createPreviewNode = createArrowPreviewNode,
+}) => {
+const pickerListeners = new AbortController();
+const wrapper = document.createElement("div");
+wrapper.className = "shieldPicker arrowPicker";
+const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:12,maxWidth:24});
+const trigger = document.createElement("button");
+trigger.type = "button";
+trigger.className = "shieldPickerTrigger";
+const triggerIconHolder = document.createElement("span");
+triggerIconHolder.className = "shieldPickerTriggerIcon arrowPickerIconHolder";
+trigger.appendChild(triggerIconHolder);
+const triggerLabel = document.createElement("span");
+triggerLabel.className = "shieldPickerTriggerLabel";
+trigger.appendChild(triggerLabel);
+const triggerCaret = document.createElement("span");
+triggerCaret.className = "shieldPickerTriggerCaret";
+triggerCaret.textContent = "keyboard_arrow_down";
+trigger.appendChild(triggerCaret);
+const popover = document.createElement("div");
+popover.className = "shieldPickerPopover";
+const list = document.createElement("div");
+list.className = "shieldPickerTree arrowPickerList";
+popover.appendChild(list);
+wrapper.appendChild(trigger);
+wrapper.appendChild(popover);
+mount.replaceWith(wrapper);
+let currentValue = value || "";
+const syncTrigger = () => {
+const entry = findArrowPickerEntryByValue(currentValue, items);
+triggerLabel.textContent = entry ? entry.label : placeholder;
+triggerIconHolder.innerHTML = "";
+const triggerIcon = createPreviewNode(entry ? entry.value : "", previewOptions);
+if (triggerIcon) {
+triggerIconHolder.appendChild(triggerIcon);
+triggerIconHolder.style.display = "";
+} else {
+triggerIconHolder.style.display = "none";
+}
+};
+const renderList = () => {
+list.innerHTML = "";
+items.forEach((item) => {
+const row = document.createElement("button");
+row.type = "button";
+row.className = "shieldPickerItem";
+if (item.value === currentValue) {
+row.classList.add("selected");
+}
+const iconNode = createPreviewNode(item.value, previewOptions);
+if (iconNode) {
+const iconHolder = document.createElement("span");
+iconHolder.className = "arrowPickerIconHolder";
+iconHolder.appendChild(iconNode);
+row.appendChild(iconHolder);
+}
+const label = document.createElement("span");
+label.className = "shieldPickerItemLabel";
+label.textContent = item.label;
+row.appendChild(label);
+row.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+currentValue = item.value;
+syncTrigger();
+renderList();
+wrapper.classList.remove("open");
+if (typeof onChange === "function") {
+onChange(item.value, item);
+}
+});
+list.appendChild(row);
+});
+};
+trigger.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const willOpen = !wrapper.classList.contains("open");
+wrapper.classList.toggle("open", willOpen);
+if (willOpen) {
+placePopover();
+}
+});
+document.addEventListener("click", (event) => {
+const clickedInsideTrigger = trigger.contains(event.target);
+const clickedInsidePopover = popover.contains(event.target);
+if (!clickedInsideTrigger && !clickedInsidePopover) {
+wrapper.classList.remove("open");
+}
+}, { signal: pickerListeners.signal });
+window.addEventListener("resize", () => {
+if (wrapper.classList.contains("open")) {
+placePopover();
+}
+}, { signal: pickerListeners.signal });
+window.addEventListener("scroll", () => {
+if (wrapper.classList.contains("open")) {
+placePopover();
+}
+}, { capture: true, signal: pickerListeners.signal });
+syncTrigger();
+renderList();
+return {
+element: wrapper,
+destroy: () => pickerListeners.abort(),
+getValue: () => currentValue,
+setValue: (nextValue) => {
+currentValue = nextValue || "";
+syncTrigger();
+renderList();
+},
+};
+};
+const standardArrowField = (name) => document.getElementById(`standardArrow${name}`);
+const clampStandardValue = (value, min, max, precision, fallback) => {
+const parsed = Number(value);
+return Number.isFinite(parsed)
+? Math.min(max, Math.max(min, Math.round(parsed * precision) / precision))
+: fallback;
+};
+const normalizeStandardAngle = (value) => {
+const parsed = Number(value);
+return Number.isFinite(parsed) ? ((Math.round(parsed) % 360) + 360) % 360 : 0;
+};
+const normalizeExitTextSpacing = (value) => {
+const parsed = Number(value);
+return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
+};
+const standardDefaultSide = (sign) =>
+sign?.standardArrowAlignment === "Left" || sign?.standardArrowPosition === "Left" ? "Left" : "Center";
+const exitDefaultSide = (sign) => sign?.exitArrowAlignment === "Left" ? "Left" : "Center";
+const splitDefaultSide = (sign, panel, angleValue = sign?.exitArrowAngle) => {
+const angle = normalizeStandardAngle(angleValue);
+const pointsLeft = Math.sin(angle * Math.PI / 180) < -0.001 ||
+(isFixedDirectionArrow(sign?.exitArrowType) && sign?.exitArrowFlip === true);
+const leftExitTab = panel?.exitTabs?.some((tab) => tab?.position === "Left");
+return pointsLeft || leftExitTab ? "Left" : "Right";
+};
+const replaceDefaultAngle = (field, key, oldSide, newSide) => {
+const value = field("AngleValue");
+if (normalizeStandardAngle(value.value) !== getDefaultGuideArrowAngle(key, oldSide)) return;
+const angle = getDefaultGuideArrowAngle(key, newSide);
+field("Angle").value = String(angle);
+value.value = String(angle);
+};
+const isFixedDirectionArrow = (key) => key?.startsWith("TYPE_C_") || key === "TYPE_E";
+const standardArrowPreview = (key) => {
+const src = ArrowElement.prototype.arrows[key]?.src;
+if (!src) return null;
+const image = document.createElement("img");
+image.src = src;
+image.alt = "";
+image.className = "arrowPickerIconImage";
+return image;
+};
+const guideArrowAssetLoads = new Map();
+const waitForGuideArrowAsset = (key) => {
+const src = ArrowElement.prototype.arrows[key]?.src;
+if (!src) return Promise.resolve();
+if (!guideArrowAssetLoads.has(src)) {
+const image = new Image();
+image.src = src;
+const ready = typeof image.decode === "function"
+? image.decode().catch(() => {})
+: new Promise((resolve) => {
+if (image.complete) return resolve();
+image.addEventListener("load", resolve, { once: true });
+image.addEventListener("error", resolve, { once: true });
+});
+guideArrowAssetLoads.set(src, ready);
+}
+return guideArrowAssetLoads.get(src);
+};
+let standardArrowSelection = 0;
+let selectedStandardArrowIndex = -1;
+let individualArrowPickers = [];
+const syncIndividualArrowControls = (sign) => {
+const host = document.getElementById("standardArrowIndividualRows");
+if (!host || !sign) return;
+for (const picker of individualArrowPickers) picker.destroy();
+individualArrowPickers = [];
+host.replaceChildren();
+const count = Math.max(0, Math.min(6, Math.round(Number(sign.guideArrowLanes) || 0)));
+const section = document.getElementById("standardArrowIndividual");
+const disabled = count < 2 || ["Left", "Right"].includes(sign.standardArrowPosition);
+section.dataset.disabled = String(disabled);
+section.inert = disabled;
+section.querySelector("summary").setAttribute("aria-disabled", String(disabled));
+if (disabled) {
+section.open = false;
+host.textContent = count < 2 ? "Add at least two arrows to edit them individually." : "Individual arrows are available in the down position.";
+return;
+}
+const details = Array.isArray(sign.standardArrowIndividuals) ? sign.standardArrowIndividuals : [];
+const headings = document.createElement("div");
+headings.className = "individualArrowRow individualArrowHeadings";
+for (const title of ["Arrow", "Type", "Angle"]) {
+const heading = document.createElement("span");
+heading.textContent = title;
+headings.append(heading);
+}
+host.append(headings);
+for (let i = 0; i < count; i++) {
+const item = details[i] || {};
+const row = document.createElement("div");
+row.className = "individualArrowRow";
+row.classList.toggle("selected", i === selectedStandardArrowIndex);
+const label = document.createElement("span");
+label.textContent = `Arrow ${i + 1}`;
+const typeHost = document.createElement("div");
+typeHost.className = "standardArrowPickerHost individualArrowPickerHost";
+const proxy = document.createElement("select");
+typeHost.append(proxy);
+const typeValue = STANDARD_ARROW_KEYS.includes(item.type) ? item.type : "";
+const angle = document.createElement("input");
+angle.type = "number";
+angle.step = "1";
+angle.value = String(item.angle == null ? normalizeStandardAngle(sign.standardArrowAngle) : normalizeStandardAngle(item.angle));
+angle.setAttribute("aria-label", `Arrow ${i + 1} angle in degrees`);
+angle.disabled = isFixedDirectionArrow(typeValue || sign.standardArrowType);
+const mutate = (key, value, { deferHistoryEnd = false, refresh = true } = {}) => {
+exposed.beginUndoableChange();
+sign.standardArrowIndividuals ||= [];
+sign.standardArrowIndividuals[i] ||= {};
+sign.standardArrowIndividuals[i][key] = value;
+selectedStandardArrowIndex = i;
+exposed.redraw();
+if (!deferHistoryEnd) exposed.endUndoableChange();
+if (refresh) syncIndividualArrowControls(sign);
+};
+let typeSelection = 0;
+const picker = createFlatArrowPicker({
+mount: proxy,
+value: typeValue,
+items: [
+{ value: "", label: `Default (${STANDARD_ARROW_ITEMS.find((entry) => entry.value === sign.standardArrowType)?.label || "Down"})` },
+...STANDARD_ARROW_ITEMS
+],
+createPreviewNode: standardArrowPreview,
+onChange: async (previous) => {
+const selection = ++typeSelection;
+await waitForGuideArrowAsset(previous);
+if (selection !== typeSelection || exposed.getCurrentPanel()?.sign !== sign) return;
+const defaultAngle = getDefaultGuideArrowAngle(previous || sign.standardArrowType, standardDefaultSide(sign));
+exposed.beginUndoableChange();
+sign.standardArrowIndividuals ||= [];
+sign.standardArrowIndividuals[i] = { ...(sign.standardArrowIndividuals[i] || {}), type: previous || null, angle: previous ? defaultAngle : null };
+selectedStandardArrowIndex = i;
+exposed.endUndoableChange();
+exposed.redraw();
+syncIndividualArrowControls(sign);
+}
+});
+individualArrowPickers.push(picker);
+angle.addEventListener("change", () => mutate("angle", normalizeStandardAngle(angle.value)));
+angle.addEventListener("keydown", (event) => { if (event.key === "Enter") angle.blur(); });
+row.append(label, typeHost, angle);
+host.append(row);
+if (i < count - 1) {
+const spacingRow = document.createElement("div");
+spacingRow.className = "individualArrowSpacingRow";
+const spacingLabel = document.createElement("label");
+spacingLabel.textContent = `Spacing ${i + 1}–${i + 2}`;
+const slider = document.createElement("input");
+slider.type = "range";
+slider.min = "4";
+slider.max = "12";
+slider.step = "0.1";
+const number = document.createElement("input");
+number.type = "number";
+number.min = "0";
+number.max = "25";
+number.step = "0.01";
+const spacing = clampStandardValue(item.spacingAfter ?? sign.standardArrowSpacing, 0, 25, 100, 8.5);
+slider.value = String(Math.min(12, Math.max(4, spacing)));
+number.value = spacing.toFixed(2);
+spacingLabel.htmlFor = `individualArrowSpacing${i}`;
+slider.id = spacingLabel.htmlFor;
+number.setAttribute("aria-label", `Spacing between arrows ${i + 1} and ${i + 2}`);
+slider.addEventListener("input", () => {
+number.value = Number(slider.value).toFixed(2);
+mutate("spacingAfter", Number(slider.value), { deferHistoryEnd: true, refresh: false });
+});
+const finish = () => exposed.endUndoableChange();
+for (const eventName of ["change", "pointerup", "pointercancel", "blur"]) slider.addEventListener(eventName, finish);
+number.addEventListener("change", () => {
+const value = clampStandardValue(number.value, 0, 25, 100, 8.5);
+number.value = value.toFixed(2);
+slider.value = String(Math.min(12, Math.max(4, value)));
+mutate("spacingAfter", value, { refresh: false });
+});
+number.addEventListener("keydown", (event) => { if (event.key === "Enter") number.blur(); });
+spacingRow.append(spacingLabel, slider, number);
+host.append(spacingRow);
+}
+}
+};
+const selectStandardArrowIndividual = (index) => {
+const sign = exposed.getCurrentPanel()?.sign;
+if (Number(sign?.guideArrowLanes) < 2 || ["Left", "Right"].includes(sign?.standardArrowPosition)) return;
+selectedStandardArrowIndex = index;
+document.getElementById("standardArrowIndividual").open = true;
+syncIndividualArrowControls(exposed.getCurrentPanel()?.sign);
+};
+const ensureStandardArrowPicker = () => {
+const select = standardArrowField("Type");
+if (!select) return;
+if (!select._arrowPickerApi) {
+for (const item of STANDARD_ARROW_ITEMS) {
+select.add(new Option(item.label, item.value));
+}
+select.style.display = "none";
+const proxy = document.createElement("select");
+select.parentElement.appendChild(proxy);
+select._arrowPickerApi = createFlatArrowPicker({
+mount: proxy,
+value: select.value || "DOWN",
+items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
+createPreviewNode: standardArrowPreview,
+onChange: async (key) => {
+if (key === "None") {
+standardArrowField("Type")._arrowPickerApi.setValue(select.value || "DOWN");
+document.getElementById("guideArrowLanes").value = "0";
+document.getElementById("guideArrow").value = "Standard Arrow";
+readForm();
+return;
+}
+const selection = ++standardArrowSelection;
+await waitForGuideArrowAsset(key);
+if (selection !== standardArrowSelection) return;
+const angle = getDefaultGuideArrowAngle(key, standardDefaultSide(exposed.getCurrentPanel()?.sign));
+select.value = key;
+if (Number(document.getElementById("guideArrowLanes").value) === 0) {
+document.getElementById("guideArrowLanes").value = "1";
+}
+standardArrowField("Angle").value = String(angle);
+standardArrowField("AngleValue").value = String(angle);
+document.getElementById("guideArrow").value = "Standard Arrow";
+readForm();
+}
+});
+}
+return select._arrowPickerApi;
+};
+const syncStandardArrowControls = (sign) => {
+if (!sign) return;
+const type = STANDARD_ARROW_KEYS.includes(sign.standardArrowType) ? sign.standardArrowType : "DOWN";
+const typeSelect = standardArrowField("Type");
+typeSelect.value = type;
+ensureStandardArrowPicker()?.setValue(type);
+const fixedDirection = isFixedDirectionArrow(type);
+const angleSlider = standardArrowField("Angle");
+const angleInput = standardArrowField("AngleValue");
+const flipButton = standardArrowField("Flip");
+angleSlider.disabled = fixedDirection;
+angleInput.hidden = fixedDirection;
+flipButton.hidden = !fixedDirection;
+document.querySelector('[data-standard-reset="Angle"]').disabled = fixedDirection;
+flipButton.setAttribute("aria-pressed", String(sign.standardArrowFlip === true));
+flipButton.classList.toggle("selected", sign.standardArrowFlip === true);
+for (const [name, value, digits] of [
+["Angle", normalizeStandardAngle(sign.standardArrowAngle), 0],
+["Size", clampStandardValue(sign.standardArrowSize, 1, 5, 10, 3), 1],
+["Padding", clampStandardValue(sign.standardArrowPadding ?? sign.exitOnlyPadding, 0, 5, 100, 0.2), 2],
+["Spacing", clampStandardValue(sign.standardArrowSpacing, 0, 25, 100, 8.5), 2]
+]) {
+standardArrowField(name).value = Math.min(Number(standardArrowField(name).max), value);
+standardArrowField(`${name}Value`).value = value.toFixed(digits);
+}
+for (const button of document.querySelectorAll("[data-standard-alignment], [data-standard-position]")) {
+const selected = button.dataset.standardAlignment
+? button.dataset.standardAlignment === (sign.standardArrowAlignment || "Center")
+: button.dataset.standardPosition === (sign.standardArrowPosition || "Down");
+button.classList.toggle("selected", selected);
+button.setAttribute("aria-pressed", String(selected));
+}
+const side = ["Left", "Right"].includes(sign.standardArrowPosition);
+standardArrowField("Spacing").disabled = side || Number(sign.guideArrowLanes) < 2;
+standardArrowField("SpacingValue").disabled = side || Number(sign.guideArrowLanes) < 2;
+document.querySelector('[data-standard-reset="Spacing"]').disabled = side || Number(sign.guideArrowLanes) < 2;
+document.getElementById("exitGuideArrowLanes").value = sign.guideArrowLanes ?? 1;
+syncIndividualArrowControls(sign);
+};
+const bindStandardArrowControls = () => {
+ensureStandardArrowPicker();
+document.getElementById("standardArrowIndividualReset").addEventListener("click", () => {
+const sign = exposed.getCurrentPanel()?.sign;
+if (!sign) return;
+exposed.beginUndoableChange();
+sign.standardArrowIndividuals = [];
+exposed.endUndoableChange();
+selectedStandardArrowIndex = -1;
+document.getElementById("standardArrowIndividual").open = false;
+syncIndividualArrowControls(sign);
+exposed.redraw();
+});
+document.addEventListener("pointerdown", (event) => {
+const active = document.activeElement;
+if (active?.matches?.('.standardArrowRow input[type="number"]') &&
+event.target !== active) {
+active.blur();
+}
+}, true);
+for (const field of document.querySelectorAll('.standardArrowRow input[type="number"]')) {
+field.addEventListener("keydown", (event) => {
+if (event.key === "Enter") field.blur();
+});
+}
+const commit = (options) => {
+document.getElementById("guideArrow").value = "Standard Arrow";
+readForm(options);
+};
+const count = document.getElementById("guideArrowLanes");
+count.addEventListener("change", () => {
+count.value = String(clampStandardValue(count.value, 0, 6, 1, 0));
+commit();
+});
+for (const [name, min, max, precision, digits, fallback] of [
+["Angle", 0, 359, 1, 0, 0],
+["Size", 1, 5, 10, 1, 3],
+["Padding", 0, 5, 100, 2, 0.2],
+["Spacing", 0, 25, 100, 2, 8.5]
+]) {
+const slider = standardArrowField(name);
+const number = standardArrowField(`${name}Value`);
+slider.addEventListener("input", () => {
+number.value = Number(slider.value).toFixed(digits);
+commit({ deferHistoryEnd: true });
+});
+const finishSlider = () => exposed?.endUndoableChange?.();
+slider.addEventListener("change", finishSlider);
+slider.addEventListener("pointerup", finishSlider);
+slider.addEventListener("pointercancel", finishSlider);
+slider.addEventListener("blur", finishSlider);
+number.addEventListener("change", () => {
+const value = name === "Angle"
+? normalizeStandardAngle(number.value)
+: clampStandardValue(number.value, min, max, precision, fallback);
+number.value = value.toFixed(digits);
+slider.value = String(Math.min(Number(slider.max), value));
+commit();
+});
+}
+standardArrowField("Flip").addEventListener("click", () => {
+const button = standardArrowField("Flip");
+button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
+commit();
+});
+for (const button of document.querySelectorAll("[data-standard-reset]")) {
+button.addEventListener("click", () => {
+const name = button.dataset.standardReset;
+const defaults = { Angle: getDefaultGuideArrowAngle(standardArrowField("Type").value,
+standardDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+const digits = name === "Angle" ? 0 : name === "Size" ? 1 : 2;
+standardArrowField(name).value = String(defaults[name]);
+standardArrowField(`${name}Value`).value = defaults[name].toFixed(digits);
+commit();
+});
+}
+for (const button of document.querySelectorAll("[data-standard-alignment], [data-standard-position]")) {
+button.addEventListener("click", () => {
+const property = button.dataset.standardAlignment ? "standardArrowAlignment" : "standardArrowPosition";
+const sign = exposed.getCurrentPanel()?.sign;
+if (!sign) return;
+const oldSide = standardDefaultSide(sign);
+sign[property] = button.dataset.standardAlignment || button.dataset.standardPosition;
+replaceDefaultAngle(standardArrowField, standardArrowField("Type").value, oldSide, standardDefaultSide(sign));
+commit();
+});
+}
+document.getElementById("exitGuideArrowLanes").addEventListener("change", (event) => {
+count.value = String(clampStandardValue(event.target.value, 0, 6, 1, 0));
+event.target.value = count.value;
+readForm();
+});
+};
+const exitArrowField = (name) => document.getElementById(`exitArrow${name}`);
+const exitTextField = (name) => document.getElementById(`exitText${name}`);
+let exitArrowSelection = 0;
+const ensureExitArrowPicker = () => {
+const select = exitArrowField("Type");
+if (!select || select._arrowPickerApi) return select?._arrowPickerApi;
+STANDARD_ARROW_ITEMS.forEach((item) => select.add(new Option(item.label, item.value)));
+select.style.display = "none";
+const proxy = document.createElement("select");
+select.parentElement.appendChild(proxy);
+select._arrowPickerApi = createFlatArrowPicker({
+mount: proxy, value: select.value || "DOWN", items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
+createPreviewNode: standardArrowPreview,
+onChange: async (key) => {
+if (key === "None") {
+exitArrowField("Type")._arrowPickerApi.setValue(select.value || "DOWN");
+exitArrowField("Count").value = "0";
+document.getElementById("guideArrowLanes").value = "0";
+readForm();
+return;
+}
+const selection = ++exitArrowSelection;
+await waitForGuideArrowAsset(key);
+if (selection !== exitArrowSelection) return;
+const angle = getDefaultGuideArrowAngle(key, exitDefaultSide(exposed.getCurrentPanel()?.sign));
+select.value = key;
+if (Number(exitArrowField("Count").value) === 0) {
+exitArrowField("Count").value = "1";
+}
+exitArrowField("Angle").value = String(angle);
+exitArrowField("AngleValue").value = String(angle);
+if (!["Exit Only", "Half Exit Only", "Split Exit Only"].includes(document.getElementById("guideArrow").value)) {
+document.getElementById("guideArrow").value = "Exit Only";
+}
+readForm();
+}
+});
+return select._arrowPickerApi;
+};
+const syncExitOnlyEditor = (sign, panel) => {
+if (!sign) return;
+const mode = ["Exit Only", "Half Exit Only", "Split Exit Only"].includes(sign.guideArrow)
+? sign.guideArrow : "Exit Only";
+if (mode === "Half Exit Only" && !["Left", "Right"].includes(sign.exitArrowAlignment)) {
+sign.exitArrowAlignment = splitDefaultSide(sign, panel);
+}
+document.querySelectorAll("[data-exit-mode]").forEach((button) => {
+const selected = button.dataset.exitMode === mode;
+button.classList.toggle("selected", selected);
+button.setAttribute("aria-pressed", String(selected));
+});
+const type = STANDARD_ARROW_KEYS.includes(sign.exitArrowType) ? sign.exitArrowType : "DOWN";
+exitArrowField("Type").value = type;
+ensureExitArrowPicker()?.setValue(type);
+const fixed = isFixedDirectionArrow(type);
+exitArrowField("Angle").disabled = fixed;
+exitArrowField("AngleValue").hidden = fixed;
+exitArrowField("Flip").hidden = !fixed;
+document.querySelector('[data-exit-reset="Angle"]').disabled = fixed;
+exitArrowField("Flip").classList.toggle("selected", sign.exitArrowFlip === true);
+exitArrowField("Flip").setAttribute("aria-pressed", String(sign.exitArrowFlip === true));
+exitArrowField("Count").value = sign.guideArrowLanes ?? 1;
+for (const [name, value, digits] of [
+["Angle", normalizeStandardAngle(sign.exitArrowAngle), 0],
+["Size", clampStandardValue(sign.exitArrowSize, 1, 5, 10, 3), 1],
+["Padding", clampStandardValue(sign.exitArrowPadding, 0, 5, 100, 0.2), 2],
+["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2]
+]) {
+exitArrowField(name).value = Math.min(Number(exitArrowField(name).max), value);
+exitArrowField(`${name}Value`).value = value.toFixed(digits);
+}
+exitArrowField("Spacing").disabled = Number(sign.guideArrowLanes) < 2;
+exitArrowField("SpacingValue").disabled = Number(sign.guideArrowLanes) < 2;
+document.querySelector('[data-exit-reset="Spacing"]').disabled = Number(sign.guideArrowLanes) < 2;
+const alignmentDisabled = mode !== "Half Exit Only" && Number(sign.guideArrowLanes) > 1;
+document.querySelectorAll("[data-exit-alignment]").forEach((button) => {
+const split = mode === "Half Exit Only";
+button.hidden = split && !["Left", "Right"].includes(button.dataset.exitAlignment);
+const selected = button.dataset.exitAlignment === (alignmentDisabled ? "Center" : sign.exitArrowAlignment || "Center");
+button.classList.toggle("selected", selected);
+button.setAttribute("aria-pressed", String(selected));
+button.disabled = alignmentDisabled || !button.dataset.exitAlignment || button.hidden;
+});
+exitTextField("Left").value = String(sign.exitOnlyLeftText ?? "EXIT").replace(/\r\n?|\n/g, "\\n");
+exitTextField("Right").value = String(sign.exitOnlyRightText ?? "ONLY").replace(/\r\n?|\n/g, "\\n");
+exitTextField("Font").value = sign.exitTextFont || "Series E";
+exitTextField("Font")._fontPickerApi?.sync();
+for (const [name, value, digits] of [
+["Size", clampStandardValue(sign.exitTextSize, 50, 100, 1, 70), 0],
+["Spacing", normalizeExitTextSpacing(sign.exitTextSpacing), 2]
+]) {
+exitTextField(name).value = Math.max(Number(exitTextField(name).min), Math.min(Number(exitTextField(name).max), value));
+exitTextField(`${name}Value`).value = value.toFixed(digits);
+}
+const bg = getResolvedColorValue(sign.exitBackgroundColor || "Yellow");
+let rgb = String(bg).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+if (!rgb && /^#[0-9a-f]{6}$/i.test(bg)) {
+rgb = [bg, parseInt(bg.slice(1, 3), 16), parseInt(bg.slice(3, 5), 16), parseInt(bg.slice(5, 7), 16)];
+}
+const linear = (channel) => {
+const fraction = Number(channel) / 255;
+return fraction <= 0.04045 ? fraction / 12.92 : ((fraction + 0.055) / 1.055) ** 2.4;
+};
+const luminance = rgb && (0.2126 * linear(rgb[1]) + 0.7152 * linear(rgb[2]) + 0.0722 * linear(rgb[3]));
+const inheritedColor = luminance !== null && luminance > 0.179
+? "Black" : "White";
+for (const id of ["exitTextColor", "exitBorderColor"]) {
+document.getElementById(id).dataset.colorPickerEffectiveColor = inheritedColor;
+}
+for (const [id, value] of [
+["exitTextColor", sign.exitTextColor || "Inherit"],
+["exitBackgroundColor", sign.exitBackgroundColor || "Yellow"],
+["exitBorderColor", sign.exitBorderColor || "Inherit"]
+]) {
+const select = document.getElementById(id);
+select.value = value;
+select._colorPickerApi?.sync();
+}
+document.getElementById("exitTopBorder").checked = !!sign.exitTopBorder;
+document.getElementById("exitColorEdges").checked = !!sign.exitColorEdges;
+const texasBorder = document.getElementById("exitTexasBorder");
+texasBorder.checked = sign.exitTexasBorder !== false;
+texasBorder.closest(".exitOnlyTexasRow").hidden = !!sign.exitColorEdges || mode === "Split Exit Only";
+texasBorder.disabled = !!sign.exitColorEdges || mode === "Split Exit Only";
+const forceWidth = document.getElementById("exitForceSubpanelWidth");
+forceWidth.checked = !!sign.exitForceSubpanelWidth;
+forceWidth.closest(".exitOnlyForceWidthRow").hidden = mode !== "Half Exit Only" ||
+sign.subPanels?.length !== 2;
+document.getElementById("exitBorderColor").disabled = mode === "Split Exit Only";
+document.getElementById("exitTopBorder").disabled = mode === "Split Exit Only";
+document.getElementById("exitColorEdges").disabled = mode === "Split Exit Only" || panel?.corner !== "Sharp";
+const borderTrigger = document.querySelector('.colorPicker[data-source-select-id="exitBorderColor"] .colorPickerTrigger');
+if (borderTrigger) borderTrigger.disabled = mode === "Split Exit Only";
+};
+const bindExitOnlyEditor = () => {
+ensureExitArrowPicker();
+const splitAlignmentHistory = new WeakMap();
+const fontSelect = exitTextField("Font");
+getExitTabAvailableFonts().forEach((font) => fontSelect.add(new Option(font, font)));
+if (![...fontSelect.options].some((option) => option.value === "Series E")) {
+fontSelect.add(new Option("Series E", "Series E"));
+}
+fontSelect.value = "Series E";
+for (const id of ["exitTextColor", "exitBackgroundColor", "exitBorderColor"]) {
+const select = document.getElementById(id);
+Object.keys(lib.colors).forEach((color) => select.add(new Option(color, color)));
+select.value = id === "exitBackgroundColor" ? "Yellow" : "Inherit";
+}
+const commit = (options) => {
+if (!["Exit Only", "Half Exit Only", "Split Exit Only"].includes(document.getElementById("guideArrow").value)) {
+document.getElementById("guideArrow").value = "Exit Only";
+}
+document.getElementById("guideArrowLanes").value = exitArrowField("Count").value;
+document.getElementById("exitOnlyLeftText").value = exitTextField("Left").value;
+document.getElementById("exitOnlyRightText").value = exitTextField("Right").value;
+readForm(options);
+};
+document.querySelectorAll("[data-exit-mode]").forEach((button) => button.addEventListener("click", () => {
+const sign = exposed.getCurrentPanel()?.sign;
+if (sign && button.dataset.exitMode === "Half Exit Only" && sign.guideArrow !== "Half Exit Only") {
+splitAlignmentHistory.set(sign, {
+previous: sign.exitArrowAlignment || "Center",
+changed: false
+});
+const oldSide = exitDefaultSide(sign);
+const nextSide = splitDefaultSide(sign, exposed.getCurrentPanel(), exitArrowField("AngleValue").value);
+sign.exitArrowAlignment = nextSide;
+replaceDefaultAngle(exitArrowField, exitArrowField("Type").value, oldSide, nextSide);
+}
+if (sign && sign.guideArrow === "Half Exit Only" && button.dataset.exitMode !== "Half Exit Only") {
+const history = splitAlignmentHistory.get(sign);
+if (history?.previous === "Center" && !history.changed) {
+sign.exitArrowAlignment = "Center";
+}
+splitAlignmentHistory.delete(sign);
+}
+document.getElementById("guideArrow").value = button.dataset.exitMode;
+commit();
+}));
+exitArrowField("Count").addEventListener("change", () => {
+exitArrowField("Count").value = clampStandardValue(exitArrowField("Count").value, 0, 6, 1, 1);
+commit();
+});
+for (const [field, name, min, max, precision, digits, fallback] of [
+[exitArrowField, "Angle", 0, 359, 1, 0, 0],
+[exitArrowField, "Size", 1, 5, 10, 1, 3],
+[exitArrowField, "Padding", 0, 5, 100, 2, 0.2],
+[exitArrowField, "Spacing", 0, 25, 100, 2, 8.5],
+[exitTextField, "Size", 50, 100, 1, 0, 70],
+[exitTextField, "Spacing", -0.15, 0.5, 100, 2, 0]
+]) {
+const slider = field(name);
+const number = field(`${name}Value`);
+slider.addEventListener("input", () => {
+number.value = Number(slider.value).toFixed(digits);
+commit({ deferHistoryEnd: true });
+});
+const finish = () => exposed?.endUndoableChange?.();
+["change", "pointerup", "pointercancel", "blur"].forEach((event) => slider.addEventListener(event, finish));
+number.addEventListener("change", () => {
+let value = field === exitArrowField && name === "Angle"
+? normalizeStandardAngle(number.value)
+: field === exitTextField && name === "Spacing"
+? normalizeExitTextSpacing(number.value)
+: clampStandardValue(number.value, min, max, precision, fallback);
+if (field === exitTextField && name === "Size") value = Math.round(value / 5) * 5;
+number.value = value.toFixed(digits);
+slider.value = Math.max(Number(slider.min), Math.min(Number(slider.max), value));
+commit();
+});
+number.addEventListener("keydown", (event) => { if (event.key === "Enter") number.blur(); });
+}
+document.addEventListener("pointerdown", (event) => {
+const active = document.activeElement;
+if (active?.matches?.('.exitOnlyRow input[type="number"]') && event.target !== active) active.blur();
+}, true);
+exitArrowField("Flip").addEventListener("click", () => {
+const button = exitArrowField("Flip");
+button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
+commit();
+});
+for (const button of document.querySelectorAll("[data-exit-reset]")) {
+button.addEventListener("click", () => {
+const reset = button.dataset.exitReset;
+const isText = reset.startsWith("Text");
+const name = isText ? reset.slice(4) : reset;
+const field = isText ? exitTextField : exitArrowField;
+const defaults = isText
+? { Size: 70, Spacing: 0 }
+: { Angle: getDefaultGuideArrowAngle(exitArrowField("Type").value,
+exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+const digits = name === "Angle" || (isText && name === "Size") ? 0 : name === "Size" ? 1 : 2;
+field(name).value = String(defaults[name]);
+field(`${name}Value`).value = defaults[name].toFixed(digits);
+commit();
+});
+}
+document.querySelectorAll("[data-exit-alignment]").forEach((button) => button.addEventListener("click", () => {
+const sign = exposed.getCurrentPanel()?.sign;
+if (sign) {
+if (sign.guideArrow === "Half Exit Only") {
+const history = splitAlignmentHistory.get(sign);
+if (history) history.changed = true;
+}
+const oldSide = exitDefaultSide(sign);
+sign.exitArrowAlignment = button.dataset.exitAlignment;
+replaceDefaultAngle(exitArrowField, exitArrowField("Type").value, oldSide, exitDefaultSide(sign));
+}
+commit();
+}));
+["Left", "Right"].forEach((name) => {
+const input = exitTextField(name);
+input.addEventListener("keydown", (event) => {
+if (event.key === "Enter") input.blur();
+});
+input.addEventListener("paste", (event) => {
+const pasted = event.clipboardData?.getData("text/plain");
+if (!pasted || !/[\r\n]/.test(pasted)) return;
+event.preventDefault();
+input.setRangeText(pasted.replace(/\r\n?|\n/g, "\\n"), input.selectionStart, input.selectionEnd, "end");
+});
+input.addEventListener("blur", () => {
+const stored = exposed.getCurrentPanel()?.sign?.[`exitOnly${name}Text`];
+if (input.value !== String(stored ?? (name === "Left" ? "EXIT" : "ONLY")).replace(/\r\n?|\n/g, "\\n")) {
+commit();
+}
+});
+});
+document.addEventListener("pointerdown", (event) => {
+const active = document.activeElement;
+if (active?.matches?.('.exitOnlyTextRow input[type="text"]') && event.target !== active) active.blur();
+}, true);
+["exitTextFont", "exitTextColor", "exitBackgroundColor", "exitBorderColor", "exitTopBorder", "exitColorEdges", "exitTexasBorder", "exitForceSubpanelWidth"]
+.forEach((id) => document.getElementById(id).addEventListener("change", () => commit()));
+};
+const initUI = async () => {
+const sMConfigBar = document.querySelector("#sMConfigBar");
+const htmlElement = document.documentElement;
+const nightModeButton = document.querySelector("#nightMode");
+const prefersDarkScheme =
+typeof window.matchMedia === "function"
+? window.matchMedia("(prefers-color-scheme: dark)")
+: null;
+bindPanelStylePopoverPositioning();
+bindPanelSelectorPopoverPositioning();
+const normalizeInterfaceThemeMode = (value) => {
+const normalized = String(value || "").toLowerCase();
+if (
+normalized === "light" ||
+normalized === "dark" ||
+normalized === "system"
+) {
+return normalized;
+}
+return "dark";
+};
+const getSystemTheme = () =>
+prefersDarkScheme && prefersDarkScheme.matches ? "dark" : "light";
+const getResolvedThemeForMode = (themeMode) => {
+const normalized = normalizeInterfaceThemeMode(themeMode);
+return normalized === "system" ? getSystemTheme() : normalized;
+};
+const applyTheme = (theme) => {
+if (!theme) {
+return;
+}
+htmlElement.dataset.theme = theme;
+if (typeof syncAllFontPickers === "function") {
+syncAllFontPickers();
+}
+if (typeof bindAllFontPreviewSelects === "function") {
+bindAllFontPreviewSelects(document);
+}
+};
+const updateInterfaceThemeControl = (themeMode) => {
+const normalized = normalizeInterfaceThemeMode(themeMode);
+const themeModeButtons = document.querySelectorAll("[data-interface-theme-mode]");
+htmlElement.dataset.themeMode = normalized;
+themeModeButtons.forEach((button) => {
+const buttonMode = normalizeInterfaceThemeMode(
+button.dataset.interfaceThemeMode
+);
+button.classList.toggle("active", buttonMode === normalized);
+});
+};
+const applyInterfaceThemeMode = (themeMode, { persist = false } = {}) => {
+const normalized = normalizeInterfaceThemeMode(themeMode);
+const resolvedTheme = getResolvedThemeForMode(normalized);
+applyTheme(resolvedTheme);
+updateInterfaceThemeControl(normalized);
+if (persist) {
+setStoredItem(STORAGE_KEYS.interfaceThemeMode, normalized);
+}
+return normalized;
+};
+const getStoredInterfaceThemeMode = () =>
+normalizeInterfaceThemeMode(getStoredItem(STORAGE_KEYS.interfaceThemeMode));
+const toggleInterfaceThemeMode = () => {
+const nextThemeMode = htmlElement.dataset.theme === "dark" ? "light" : "dark";
+return applyInterfaceThemeMode(nextThemeMode, { persist: true });
+};
+const bindInterfaceThemeModeControl = () => {
+const themeModeButtons = document.querySelectorAll("[data-interface-theme-mode]");
+themeModeButtons.forEach((button) => {
+if (button.dataset.interfaceThemeModeBound === "true") {
+return;
+}
+button.dataset.interfaceThemeModeBound = "true";
+button.addEventListener("click", () => {
+applyInterfaceThemeMode(button.dataset.interfaceThemeMode, {
+persist: true,
+});
+updateUtilityButtonLabels();
+});
+});
+};
+const handleSystemThemeChange = () => {
+if (normalizeInterfaceThemeMode(htmlElement.dataset.themeMode) !== "system") {
+return;
+}
+applyInterfaceThemeMode("system");
+updateUtilityButtonLabels();
+};
+const settingsRestoreOnRefresh = document.getElementById("settingsSaveOnRefresh");
+if (settingsRestoreOnRefresh) {
+const storedRestoreMode = normalizeRestoreOnRefreshMode(
+getStoredItem(STORAGE_KEYS.restoreOnRefresh)
+);
+settingsRestoreOnRefresh.value = storedRestoreMode;
+if (settingsRestoreOnRefresh.dataset.restoreOnRefreshBound !== "true") {
+settingsRestoreOnRefresh.dataset.restoreOnRefreshBound = "true";
+settingsRestoreOnRefresh.addEventListener("change", () => {
+const selectedMode = normalizeRestoreOnRefreshMode(
+settingsRestoreOnRefresh.value
+);
+settingsRestoreOnRefresh.value = selectedMode;
+setStoredItem(STORAGE_KEYS.restoreOnRefresh, selectedMode);
+});
+}
+}
+const settingsTemplateLoadWarning = document.getElementById("settingsTemplateLoadWarning");
+if (settingsTemplateLoadWarning) {
+settingsTemplateLoadWarning.checked =
+getStoredItem(STORAGE_KEYS.templateLoadWarning) === "true";
+if (settingsTemplateLoadWarning.dataset.templateLoadWarningBound !== "true") {
+settingsTemplateLoadWarning.dataset.templateLoadWarningBound = "true";
+settingsTemplateLoadWarning.addEventListener("change", () => {
+setStoredItem(
+STORAGE_KEYS.templateLoadWarning,
+settingsTemplateLoadWarning.checked ? "true" : "false"
+);
+if (
+typeof app !== "undefined" &&
+typeof app.setTemplateLoadWarningEnabled === "function"
+) {
+app.setTemplateLoadWarningEnabled(settingsTemplateLoadWarning.checked);
+}
+});
+}
+}
+bindKeybindModeButtons(document);
+const updateUtilityButtonLabels = () => {
+const exportButton = document.getElementById("export");
+const nightModeButton = document.getElementById("nightMode");
+const settingsButton = document.getElementById("settingsMenuButton");
+if (settingsButton) {
+const settingsLabel = settingsButton.querySelector(".buttonLabel");
+if (settingsLabel) {
+settingsLabel.textContent = "Settings";
+}
+}
+const hideConfigButton = document.getElementById("hideConfig");
+if (exportButton) {
+const exportLabel = exportButton.querySelector(".buttonLabel");
+if (exportLabel) {
+exportLabel.textContent = "Export";
+}
+}
+if (nightModeButton) {
+const nightModeLabel = nightModeButton.querySelector(".buttonLabel");
+const nextThemeLabel =
+htmlElement.dataset.theme === "dark" ? "Light Mode" : "Dark Mode";
+if (nightModeLabel) {
+nightModeLabel.textContent = nextThemeLabel;
+}
+}
+if (hideConfigButton) {
+const hideConfigLabel = hideConfigButton.querySelector(".buttonLabel");
+const isCollapsed = sMConfigBar.classList.contains("invisible");
+const menuLabel = isCollapsed ? "Show Menu" : "Hide Menu";
+const icon = hideConfigButton.querySelector(".material-symbols-outlined");
+if (hideConfigLabel) {
+hideConfigLabel.textContent = menuLabel;
+document.getElementById("hideConfig").setAttribute("aria-label", menuLabel);
+}
+if (icon) {
+icon.textContent = isCollapsed ? "menu_open" : "open_in_full";
+}
+}
+try {
+ensureGuideArrowPicker();
+} catch (error) {
+console.error("Failed to initialize guide arrow picker", error);
+}
+try {
+ensureExitOnlyDirectionPicker();
+} catch (error) {
+console.error("Failed to initialize exit-only direction picker", error);
+}
+};
+applyInterfaceThemeMode(getStoredInterfaceThemeMode());
+bindInterfaceThemeModeControl();
+if (prefersDarkScheme) {
+if (typeof prefersDarkScheme.addEventListener === "function") {
+prefersDarkScheme.addEventListener("change", handleSystemThemeChange);
+} else if (typeof prefersDarkScheme.addListener === "function") {
+prefersDarkScheme.addListener(handleSystemThemeChange);
+}
+}
+updateUtilityButtonLabels();
+window.SignMakerSettings22.init({
+getTheme:getStoredInterfaceThemeMode,
+setTheme:value=>{applyInterfaceThemeMode(value,{persist:true});updateUtilityButtonLabels();},
+getScale:getStoredInterfaceUIScale,
+setScale:value=>applyInterfaceUIScale(value,{persist:true}),
+getToolbar:getStoredConfigBarPosition,
+setToolbar:value=>applyConfigBarPosition(value,{persist:true}),
+getKeybind:getStoredKeybindMode,
+setKeybind:value=>applyKeybindMode(value,{persist:true}),
+getRestore:()=>normalizeRestoreOnRefreshMode(getStoredItem(STORAGE_KEYS.restoreOnRefresh)),
+setRestore:value=>setStoredItem(STORAGE_KEYS.restoreOnRefresh,normalizeRestoreOnRefreshMode(value)),
+});
+const exportButton = document.getElementById("export");
+const downloadDialog = document.getElementById("downloadContent");
+const cancelDownloadButton = document.getElementById("cancelDownload");
+const modalHolder = document.getElementById("modalHolder");
+if (exportButton && downloadDialog && modalHolder) {
+exportButton.type = "button";
+exportButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+modalHolder.style.display = "flex";
+downloadDialog.style.display = "flex";
+requestAnimationFrame(() => {
+if (typeof app !== "undefined" && typeof app.updatePreview === "function") {
+app.updatePreview().catch((error) => {
+console.error("Failed to update download preview", error);
+});
+}
+});
+});
+}
+if (cancelDownloadButton && downloadDialog && modalHolder) {
+cancelDownloadButton.type = "button";
+cancelDownloadButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+downloadDialog.style.display = "none";
+modalHolder.style.display = "none";
+});
+}
+if (modalHolder && downloadDialog) {
+modalHolder.addEventListener("click", (event) => {
+if (event.target === modalHolder) {
+downloadDialog.style.display = "none";
+modalHolder.style.display = "none";
+}
+});
+}
+if (downloadDialog) {
+downloadDialog.addEventListener("click", (event) => {
+const rect = downloadDialog.getBoundingClientRect();
+const clickedInside =
+event.clientX >= rect.left &&
+event.clientX <= rect.right &&
+event.clientY >= rect.top &&
+event.clientY <= rect.bottom;
+if (!clickedInside && downloadDialog.open) {
+downloadDialog.close();
+}
+});
+}
+const isSettingsOpen=()=>sMConfigBar.dataset.currentMenu==='appSettingsConfig';
+const settingsSideTabs = document.querySelectorAll(".settingsSideTab");
+const settingsPages = document.querySelectorAll(".settingsPage");
+let currentSettingsPageId = "settingsGeneral";
+const showSettingsPage = pageId => { currentSettingsPageId=pageId; window.SignMakerSettings22.showLegacyPage(pageId); };
+settingsSideTabs.forEach((tab) => {
+tab.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+showSettingsPage(tab.dataset.settingsPage);
+});
+});
+showSettingsPage("settingsGeneral");
+const applyShortcutDisplayFormatting = (root = document) => {
+const shortcutInputs = root.querySelectorAll('#settingsControls input[type="text"]');
+shortcutInputs.forEach((input) => {
+if (!input.value) {
+return;
+}
+input.value = formatShortcutForDisplay(input.value);
+});
+};
+const formatShortcutKeyName = (key) => {
+const normalized = String(key || "");
+const specialKeyMap = {
+" ": "SPACE",
+Escape: "Escape",
+Esc: "Escape",
+Control: "CTRL",
+Meta: "CMD",
+Alt: "ALT",
+Shift: "SHIFT",
+ArrowUp: "↑",
+ArrowDown: "↓",
+ArrowLeft: "←",
+ArrowRight: "→",
+PageUp: "PGUP",
+PageDown: "PGDN",
+Delete: "Delete",
+Backspace: "Backspace",
+Enter: "Enter",
+Tab: "Tab",
+Home: "Home",
+End: "End",
+Insert: "Insert",
+};
+if (specialKeyMap[normalized]) {
+return specialKeyMap[normalized];
+}
+if (/^F\d{1,2}$/i.test(normalized)) {
+return normalized.toUpperCase();
+}
+if (/^Numpad\d$/i.test(normalized)) {
+return normalized.replace(/^Numpad/i, "NUMPAD");
+}
+if (/^Key[A-Z]$/i.test(normalized)) {
+return normalized.slice(-1).toUpperCase();
+}
+if (/^Digit\d$/i.test(normalized)) {
+return normalized.slice(-1);
+}
+if (normalized.length === 1) {
+return normalized.toUpperCase();
+}
+return normalized.toUpperCase();
+};
+const buildShortcutString = (event) => {
+const parts = [];
+if (event.ctrlKey) {
+parts.push("CTRL");
+}
+if (event.metaKey) {
+parts.push(isMacOS ? "CTRL" : "CMD");
+}
+if (event.altKey) {
+parts.push("ALT");
+}
+if (event.shiftKey) {
+parts.push("SHIFT");
+}
+const keyName = normalizeEventKeyForShortcut(event);
+if (!["CTRL", "CMD", "ALT", "SHIFT"].includes(keyName)) {
+parts.push(keyName);
+}
+return parts.join("+");
+};
+const bindShortcutCaptureInputs = (root = document) => {
+const shortcutInputs = root.querySelectorAll(
+'#settingsControls input[type="text"]'
+);
+shortcutInputs.forEach((input) => {
+if (input.dataset.shortcutCaptureBound === "true") {
+return;
+}
+input.dataset.shortcutCaptureBound = "true";
+input.setAttribute("autocomplete", "off");
+input.setAttribute("autocorrect", "off");
+input.setAttribute("autocapitalize", "off");
+input.setAttribute("spellcheck", "false");
+input.addEventListener("keydown", (event) => {
+if (event.key === "Escape") {
+event.preventDefault();
+event.stopPropagation();
+input.blur();
+return;
+}
+if (event.key === "Backspace") {
+event.preventDefault();
+event.stopPropagation();
+input.value = "";
+persistShortcutInputValue(input);
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+const shortcutValue = buildShortcutString(event);
+if (!shortcutValue) {
+return;
+}
+input.dataset.shortcutInternalValue = shortcutValue;
+input.value = formatShortcutForDisplay(shortcutValue);
+persistShortcutInputValue(input);
+});
+input.addEventListener("focus", () => {
+input.select();
+});
+});
+};
+bindShortcutCaptureInputs(document);
+const panelBorderSlider = document.getElementById("panelBorderThickness");
+if (panelBorderSlider && panelBorderSlider.dataset.boundPanelBorder !== "true") {
+panelBorderSlider.dataset.boundPanelBorder = "true";
+panelBorderSlider.addEventListener("input", () => readForm({ deferHistoryEnd: true }));
+const finishPanelBorderChange = () => exposed?.endUndoableChange?.();
+["change", "pointerup", "pointercancel", "blur"].forEach((event) =>
+panelBorderSlider.addEventListener(event, finishPanelBorderChange));
+}
+const bindExitTabSliderReset = (buttonId, inputId, valueId, getResetValue) => {
+const button = document.getElementById(buttonId);
+const input = document.getElementById(inputId);
+const valueLabel = document.getElementById(valueId);
+if (!button || !input || button.dataset.boundReset === "true") {
+return;
+}
+button.dataset.boundReset = "true";
+button.addEventListener("click", () => {
+const resetValue =
+typeof getResetValue === "function" ? getResetValue() : getResetValue;
+input.value = String(resetValue);
+if (valueLabel) {
+valueLabel.innerHTML = formatExitTabSliderDisplayValue(valueId, resetValue);
+}
+formHandler.readForm();
+});
+};
+bindExitTabSliderReset(
+"borderReset",
+"borderThickness",
+"borderValue",
+() => getExitTabProfileContextSettings()?.borderThickness ?? 0.2
+);
+bindExitTabSliderReset(
+"minimumReset",
+"minHeight",
+"minValue",
+() => getCurrentExitTabDefaultMinHeight()
+);
+bindExitTabSliderReset(
+"sizeReset",
+"fontSize",
+"fontValue",
+() => {
+const settings = getExitTabProfileContextSettings();
+return isExitTabAssetVariantValue(settings?.variant)
+? settings.tollLogoSize
+: settings.fontSize;
+}
+);
+const radiusReset = document.getElementById("exitTabCornerRadiusReset");
+if (radiusReset && radiusReset.dataset.boundReset !== "true") {
+radiusReset.dataset.boundReset = "true";
+radiusReset.addEventListener("click", () => {
+const setting = getExitTabProfileContextSettings()?.cornerRadius;
+const inherit = setting === "panel" || setting == null;
+const slider = document.getElementById("exitTabCornerRadius");
+const checkbox = document.getElementById("exitTabUsePanelCornerRadius");
+checkbox.checked = inherit;
+slider.value = String(inherit
+? Math.min(2, getSelectedPanelCornerRadius())
+: Math.max(0, Math.min(2, Number(setting) || 0)));
+slider.disabled = false;
+if (!inherit) slider.dataset.customRadius = slider.value;
+formHandler.readForm();
+});
+}
+bindExitTabSliderReset(
+"nestedSpacingReset",
+"nestedTabSpacing",
+"nestedSpacingValue",
+() => getExitTabProfileContextSettings()?.nestedTabSpacing ?? 0
+);
+bindExitTabSliderReset(
+"exitTabHorizontalPaddingReset",
+"exitTabHorizontalPadding",
+"exitTabHorizontalPaddingValue",
+() => {
+const settings = getExitTabProfileContextSettings();
+return isExitTabAssetVariantValue(settings?.variant)
+? settings.assetHorizontalPadding
+: settings.horizontalPadding;
+}
+);
+bindExitTabSliderReset(
+"exitTabTextSizePercentReset",
+"exitTabTextSizePercent",
+"exitTabTextSizePercentValue",
+() => {
+const settings = getExitTabProfileContextSettings();
+return isExitTabAssetVariantValue(settings?.variant)
+? settings.assetVerticalPadding
+: settings.exitTextSizePercent;
+}
+);
+bindExitTabSliderDragProtection();
+const bindShortcutResetButtons = (root = document) => {
+const shortcutInputs = root.querySelectorAll(
+'#settingsControls input[type="text"]'
+);
+shortcutInputs.forEach((input) => {
+if (!input.dataset.defaultShortcutCaptured) {
+input.dataset.defaultShortcutCaptured = "true";
+input.dataset.defaultShortcutValue = input.defaultValue || "";
+}
+if (input.dataset.shortcutResetWrapped === "true") {
+return;
+}
+const wrapper = document.createElement("div");
+wrapper.className = "settingsShortcutField";
+input.parentNode.insertBefore(wrapper, input);
+wrapper.appendChild(input);
+const resetButton = document.createElement("button");
+resetButton.type = "button";
+resetButton.tabIndex = -1;
+resetButton.className = "settingsShortcutResetButton";
+resetButton.setAttribute("aria-label", `Reset ${input.id} to default`);
+resetButton.setAttribute("title", "Reset to default");
+resetButton.innerHTML =
+'<span class="material-symbols-outlined">restart_alt</span>';
+resetButton.addEventListener("mousedown", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+resetButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const parentField = resetButton.closest(".settingsShortcutField");
+const targetInput = parentField
+? parentField.querySelector('input[type="text"]')
+: null;
+if (!targetInput) {
+return;
+}
+targetInput.dataset.shortcutInternalValue =
+targetInput.dataset.defaultShortcutValue || "";
+targetInput.value = formatShortcutForDisplay(
+targetInput.dataset.shortcutInternalValue
+);
+persistShortcutInputValue(targetInput);
+targetInput.blur();
+resetButton.blur();
+targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+targetInput.dispatchEvent(new Event("change", { bubbles: true }));
+});
+const deleteButton = document.createElement("button");
+deleteButton.type = "button";
+deleteButton.tabIndex = -1;
+deleteButton.className = "settingsShortcutDeleteButton";
+deleteButton.setAttribute("aria-label", `Clear ${input.id}`);
+deleteButton.setAttribute("title", "Clear shortcut");
+deleteButton.innerHTML =
+'<span class="material-symbols-outlined">close</span>';
+deleteButton.addEventListener("mousedown", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+deleteButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const parentField = deleteButton.closest(".settingsShortcutField");
+const targetInput = parentField
+? parentField.querySelector('input[type="text"]')
+: null;
+if (!targetInput) {
+return;
+}
+targetInput.dataset.shortcutInternalValue = "";
+targetInput.value = "";
+persistShortcutInputValue(targetInput);
+targetInput.blur();
+deleteButton.blur();
+targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+targetInput.dispatchEvent(new Event("change", { bubbles: true }));
+});
+wrapper.appendChild(resetButton);
+wrapper.appendChild(deleteButton);
+input.dataset.shortcutResetWrapped = "true";
+});
+};
+bindShortcutCaptureInputs(document);
+bindShortcutResetButtons(document);
+applyStoredShortcutOverrides(document);
+const settingsResetControlsDefaults = document.getElementById("settingsResetControlsDefaults");
+if (settingsResetControlsDefaults) {
+settingsResetControlsDefaults.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+const shortcutInputs = document.querySelectorAll(
+'#settingsControls input[type="text"]'
+);
+shortcutInputs.forEach((input) => {
+const defaultValue = input.dataset.defaultShortcutValue || input.defaultValue || "";
+input.dataset.shortcutInternalValue = defaultValue;
+input.value = formatShortcutForDisplay(defaultValue);
+persistShortcutInputValue(input);
+input.blur();
+});
+});
+}
+function reDisplay() {
+window.SignMakerEditorRuntime?.ensure();
+const openingPanelStylePopover = panelStylePopoverIsOpen();
+const modalHolder = document.querySelector(".modals");
+const previousModalVisibility = modalHolder?.style.visibility || "";
+if (openingPanelStylePopover && modalHolder) {
+modalHolder.style.visibility = "hidden";
+modalHolder.classList.add("panelStylePopoverOpen");
+}
+for (const holder of document.querySelectorAll(".sMModal")) {
+if (holder.classList.contains(sMConfigBar.dataset.currentMenu)) {
+holder.style.display = "block";
+} else {
+holder.style.display = "";
+}
+}
+if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
+scheduleSubpanelModalHeightSync();
+}
+if (sMConfigBar.dataset.currentMenu == "panelSelector") {
+const panelSelect = ensurePanelSelectorPopoverPortal();
+if (panelSelect) {
+const previousPanelSelectVisibility = panelSelect.style.visibility || "";
+panelSelect.style.visibility = "hidden";
+panelSelect.style.display = "flex";
+positionPanelSelectorPopover();
+panelSelect.style.visibility = previousPanelSelectVisibility;
+schedulePanelSelectorPopoverPosition();
+}
+document.querySelectorAll(
+".sMConfigOption:has(#panelSelector)"
+)[0].classList.add("selected");
+} else {
+const panelSelect = document.querySelector("#panelSelect");
+if (panelSelect) {
+panelSelect.style.display = "";
+panelSelect.style.removeProperty("visibility");
+}
+clearPanelSelectorPopoverPosition();
+document.querySelectorAll(
+".sMConfigOption:has(#panelSelector)"
+)[0].classList.remove("selected");
+}
+for (const button of document.querySelectorAll(".sMConfigOption")) {
+if (!button.id || button.id == "nightMode") {
+continue;
+}
+if (button.id == sMConfigBar.dataset.currentMenu) {
+button.classList.add("selected");
+} else {
+button.classList.remove("selected");
+}
+}
+if (sMConfigBar.dataset.currentMenu === "templates") {
+const templatesModal = document.querySelector(".sMModal.templates");
+if (templatesModal) {
+const templateTab = document.getElementById("templateEditingNotice")?.hidden === false
+? "sMTemplateEditor" : ["sMTemplatesSaved","sMTemplatesPreset"].includes(templatesModal.dataset.currentMenu)
+? templatesModal.dataset.currentMenu : "sMTemplatesSaved";
+templatesModal.dataset.currentMenu = templateTab;
+for (const holder of templatesModal.querySelectorAll(".sMModalContent > *")) {
+holder.classList.toggle("tabHidden", holder.id !== templateTab);
+}
+for (const tab of templatesModal.querySelectorAll(".sMModalTab")) {
+tab.classList.toggle("selected", tab.dataset.tab === templateTab);
+}
+if (
+typeof app !== "undefined" &&
+typeof app.refreshTemplatesList === "function"
+) {
+app.refreshTemplatesList();
+}
+}
+}
+if (openingPanelStylePopover) {
+if (modalHolder) {
+modalHolder.classList.add("panelStylePopoverOpen");
+positionPanelStylePopover();
+modalHolder.style.visibility = previousModalVisibility;
+}
+schedulePanelStylePopoverPosition();
+} else {
+clearPanelStylePopoverPosition();
+}
+}
+for (const button of document.querySelectorAll(".sMConfigOption")) {
+button.onclick = function () {
+if (
+!button.id ||
+button.id === "nightMode" ||
+button.id === "export" ||
+button.id === "copySign" ||
+button.id === "hideConfig" ||
+button.id === "undoButton" ||
+button.id === "settingsMenuButton"
+) {
+return;
+}
+if (button.id === "guideArrowConfig") {
+if (sMConfigBar.dataset.currentMenu === button.id) {
+sMConfigBar.dataset.currentMenu = "";
+reDisplay();
+} else {
+ensureGuideArrowMenuOpen();
+}
+return;
+}
+if (sMConfigBar.dataset.currentMenu == button.id) {
+sMConfigBar.dataset.currentMenu = "";
+} else {
+sMConfigBar.dataset.currentMenu = button.id;
+}
+reDisplay();
+};
+}
+const getShortcutTokensForField = (fieldId) => {
+const field = document.getElementById(fieldId);
+if (!field) {
+return [];
+}
+const rawValue = field.dataset.shortcutInternalValue || "";
+return String(rawValue)
+.split("|")
+.map((part) => normalizeShortcutToken(part))
+.filter(Boolean);
+};
+const normalizeEventKeyForShortcut = (event) => {
+const key = event.key;
+const code = event.code || "";
+const specialMap = {
+Escape: "ESC",
+Esc: "ESC",
+ArrowUp: "↑",
+ArrowDown: "↓",
+ArrowLeft: "←",
+ArrowRight: "→",
+PageUp: "PGUP",
+PageDown: "PGDN",
+Backspace: "BACKSPACE",
+Delete: "DELETE",
+Enter: "ENTER",
+Tab: "TAB",
+Home: "HOME",
+End: "END",
+Insert: "INSERT",
+" ": "SPACE",
+};
+if (specialMap[key]) {
+return specialMap[key];
+}
+if (/^Key[A-Z]$/i.test(code)) {
+return code.slice(-1).toUpperCase();
+}
+if (/^Digit\d$/i.test(code)) {
+return code.slice(-1);
+}
+if (/^Numpad\d$/i.test(code)) {
+return code.replace(/^Numpad/i, "NUMPAD");
+}
+if (/^F\d{1,2}$/i.test(key)) {
+return key.toUpperCase();
+}
+if (key && key.length === 1) {
+return key.toUpperCase();
+}
+return String(key || "").toUpperCase();
+};
+const getEventShortcutToken = (event) => {
+const parts = [];
+if (event.ctrlKey) {
+parts.push("CTRL");
+}
+if (event.metaKey) {
+parts.push(isMacOS ? "CTRL" : "CMD");
+}
+if (event.altKey) {
+parts.push("ALT");
+}
+if (event.shiftKey) {
+parts.push("SHIFT");
+}
+const normalizedKey = normalizeEventKeyForShortcut(event);
+if (
+normalizedKey &&
+!["CTRL", "CMD", "ALT", "SHIFT"].includes(normalizedKey)
+) {
+parts.push(normalizedKey);
+}
+return normalizeShortcutToken(parts.join("+"));
+};
+const shortcutFieldMatchesEvent = (fieldId, event) => {
+const eventToken = getEventShortcutToken(event);
+if (!eventToken) {
+return false;
+}
+const configuredTokens = getShortcutTokensForField(fieldId);
+if (!configuredTokens.length) {
+return false;
+}
+return configuredTokens.includes(eventToken);
+};
+const shouldSuppressAllAppShortcuts = (event) => {
+const activeEl = document.activeElement;
+if (!activeEl) {
+return false;
+}
+const tagName = activeEl.tagName;
+const inputType = (activeEl.type || "").toLowerCase();
+const isTypingField =
+activeEl.isContentEditable ||
+tagName === "TEXTAREA" ||
+tagName === "SELECT" ||
+(tagName === "INPUT" &&
+![
+"button",
+"checkbox",
+"color",
+"file",
+"hidden",
+"image",
+"radio",
+"range",
+"reset",
+"submit",
+].includes(inputType));
+const isInsideCustomShieldPicker =
+!!activeEl.closest?.(".shieldPicker") ||
+!!document.querySelector(".shieldPicker.open");
+if (!isTypingField && !isInsideCustomShieldPicker) {
+return false;
+}
+const eventToken = event ? getEventShortcutToken(event) : "";
+const isEscape = eventToken === "ESC";
+const isUndo =
+eventToken === normalizeShortcutToken("CTRL+Z") ||
+eventToken === normalizeShortcutToken("CMD+Z");
+const isRedo =
+eventToken === normalizeShortcutToken("CTRL+SHIFT+Z") ||
+eventToken === normalizeShortcutToken("CMD+SHIFT+Z") ||
+eventToken === normalizeShortcutToken("CTRL+Y") ||
+eventToken === normalizeShortcutToken("CMD+Y");
+return !(isEscape || isUndo || isRedo);
+};
+const closeCurrentSidebarMenu = () => {
+if (!sMConfigBar) {
+return;
+}
+sMConfigBar.dataset.currentMenu = "";
+reDisplay();
+};
+const openConfigMenuById = (menuId) => {
+if (!sMConfigBar) {
+return;
+}
+sMConfigBar.dataset.currentMenu = menuId || "";
+reDisplay();
+};
+const toggleConfigMenuById = (menuId) => {
+if (!sMConfigBar) {
+return;
+}
+if (sMConfigBar.dataset.currentMenu === menuId) {
+sMConfigBar.dataset.currentMenu = "";
+} else {
+sMConfigBar.dataset.currentMenu = menuId;
+}
+reDisplay();
+};
+const closeTopmostUI = () => {
+const downloadDialog = document.getElementById("downloadContent");
+const welcomeDialog = document.getElementById("welcomeToSignMaker");
+const shieldDialog = document.getElementById("shieldImgSelector");
+const iconDialog = document.getElementById("iconSelectorModal");
+const tollDialog = document.getElementById("tollLogoSelectorModal");
+const arrowDialog = document.getElementById("arrowSelectorModal");
+if (isSettingsOpen()) {
+sMConfigBar.dataset.currentMenu="";reDisplay();
+return true;
+}
+if (
+downloadDialog &&
+downloadDialog.style.display !== "none" &&
+downloadDialog.style.display !== ""
+) {
+downloadDialog.style.display = "none";
+const modalHolder = document.getElementById("modalHolder");
+if (modalHolder) {
+modalHolder.style.display = "none";
+}
+return true;
+}
+if (welcomeDialog && welcomeDialog.open) {
+welcomeDialog.close();
+return true;
+}
+if (shieldDialog && shieldDialog.open) {
+shieldDialog.close();
+return true;
+}
+if (iconDialog && iconDialog.open) {
+iconDialog.close();
+return true;
+}
+if (tollDialog && tollDialog.open) {
+tollDialog.close();
+return true;
+}
+if (arrowDialog && arrowDialog.open) {
+arrowDialog.close();
+return true;
+}
+if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
+const currentMenuId = sMConfigBar.dataset.currentMenu;
+const currentMenuRoot =
+currentMenuId === "panelSelector"
+? document.getElementById("panelSelect")
+: document.querySelector(`.sMModal.${currentMenuId}`);
+const openNestedPicker = currentMenuRoot?.querySelector(
+".colorPicker.open, .shieldPicker.open, .fontPicker.open, .profilePicker.open"
+);
+if (openNestedPicker) {
+openNestedPicker.classList.remove("open");
+document.activeElement?.blur?.();
+return true;
+}
+const activeEl = document.activeElement;
+const activeEditorControl =
+activeEl &&
+currentMenuRoot?.contains(activeEl) &&
+activeEl.matches?.("input, textarea, select, [contenteditable='true']");
+if (activeEditorControl) {
+activeEl.blur();
+return true;
+}
+closeCurrentSidebarMenu();
+return true;
+}
+return false;
+};
+const isDownloadMenuOpen = () =>
+!!downloadDialog &&
+downloadDialog.style.display !== "" &&
+downloadDialog.style.display !== "none";
+const isShortcutBlockingOverlayOpen = () =>
+isSettingsOpen() || isDownloadMenuOpen();
+const ensureSubpanelMenuOpen = () => {
+if (!sMConfigBar) {
+return;
+}
+if (sMConfigBar.dataset.currentMenu !== "subPanelConfig") {
+sMConfigBar.dataset.currentMenu = "subPanelConfig";
+reDisplay();
+}
+};
+const ensureExitTabMenuOpen = () => {
+if (!sMConfigBar) {
+return;
+}
+if (sMConfigBar.dataset.currentMenu !== "exitTabConfig") {
+sMConfigBar.dataset.currentMenu = "exitTabConfig";
+reDisplay();
+}
+};
+const getPreferredGuideArrowMenuMode = () => {
+syncPostReference();
+const panel = post?.panels?.[exposed?.vars?.currentlySelectedPanelIndex];
+const sign = panel?.sign;
+if (!sign) {
+return "standard";
+}
+const hasAPLArrows =
+Array.isArray(sign.aplArrows) && sign.aplArrows.length > 0;
+const hasStandardArrows =
+String(sign.guideArrow || "None") !== "None";
+if (sign.arrowMode === "apl" && hasAPLArrows) {
+return "apl";
+}
+if (sign.arrowMode === "standard" || hasStandardArrows) {
+return "standard";
+}
+return hasAPLArrows ? "apl" : "standard";
+};
+const ensureGuideArrowMenuOpen = (mode = null) => {
+if (!sMConfigBar) {
+return;
+}
+const resolvedMode = mode || getPreferredGuideArrowMenuMode();
+if (sMConfigBar.dataset.currentMenu !== "guideArrowConfig") {
+sMConfigBar.dataset.currentMenu = "guideArrowConfig";
+reDisplay();
+}
+const activeGuideArrow = exposed.getCurrentPanel()?.sign?.guideArrow || "None";
+const targetTab = resolvedMode === "apl"
+? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
+: activeGuideArrow.includes("Exit Only")
+? '.guideArrowConfig .sMModalTab[data-tab="sMExitOnlyArrows"]'
+: '.guideArrowConfig .sMModalTab[data-tab="sMStandardArrows"]';
+const tabButton = document.querySelector(targetTab);
+if (tabButton) {
+tabButton.click();
+}
+};
+ensureSubpanelMenuOpenPublic = ensureSubpanelMenuOpen;
+ensureExitTabMenuOpenPublic = ensureExitTabMenuOpen;
+ensureGuideArrowMenuOpenPublic = ensureGuideArrowMenuOpen;
+const showShortcutNotice = (message) => {
+if (!message) {
+return;
+}
+let notice = document.getElementById("shortcutActionNotice");
+if (!notice) {
+notice = document.createElement("div");
+notice.id = "shortcutActionNotice";
+notice.style.position = "fixed";
+notice.style.top = "1rem";
+notice.style.left = "50%";
+notice.style.transform = "translateX(-50%)";
+notice.style.zIndex = "5000";
+notice.style.padding = "0.4rem 0.8rem";
+notice.style.background = "rgba(0, 0, 0, 0.75)";
+notice.style.color = "#fff";
+notice.style.borderRadius = "0.35rem";
+notice.style.fontFamily = "Inter, sans-serif";
+notice.style.fontSize = "0.95rem";
+notice.style.opacity = "0";
+notice.style.pointerEvents = "none";
+notice.style.transition = "opacity 0.2s ease";
+document.body.appendChild(notice);
+}
+notice.textContent = message;
+notice.style.opacity = "1";
+clearTimeout(notice._hideTimer);
+notice._hideTimer = setTimeout(() => {
+notice.style.opacity = "0";
+}, 900);
+};
+const secondaryShortcutActions = [
+{
+fieldId: "settingsControlCloseMenu",
+run: () => {
+closeTopmostUI();
+},
+},
+{
+fieldId: "settingsControlShowHideMenus",
+run: () => {
+const hideConfigButton = document.getElementById("hideConfig");
+if (hideConfigButton) {
+hideConfigButton.click();
+}
+},
+},
+{
+fieldId: "settingsControlUndoEdit",
+run: () => {
+if (typeof app !== "undefined" && typeof app.undo === "function") {
+app.undo();
+} else if (exposed && typeof exposed.undo === "function") {
+exposed.undo();
+}
+},
+},
+{
+fieldId: "settingsControlRedoEdit",
+run: () => {
+if (typeof app !== "undefined" && typeof app.redo === "function") {
+app.redo();
+} else if (exposed && typeof exposed.redo === "function") {
+exposed.redo();
+}
+},
+},
+{
+fieldId: "settingsControlCopyElements",
+run: () => {
+if (!subpanelMenuIsOpen()) {
+return;
+}
+copyCurrentSubpanelClipboardSelection();
+},
+},
+{
+fieldId: "settingsControlCutElements",
+run: () => {
+if (!subpanelMenuIsOpen()) {
+return;
+}
+cutCurrentSubpanelClipboardSelection();
+},
+},
+{
+fieldId: "settingsControlPasteElements",
+run: () => {
+if (!subpanelMenuIsOpen()) {
+return;
+}
+pasteCurrentSubpanelClipboardSelection();
+},
+},
+{
+fieldId: "settingsControlPasteElementsAfter",
+run: () => {
+if (!subpanelMenuIsOpen()) {
+return;
+}
+pasteCurrentSubpanelClipboardSelection(null, {
+pasteAfter: true,
+});
+},
+},
+{
+fieldId: "settingsControlClearAll",
+run: () => {
+if (typeof app !== "undefined" && typeof app.clearAll === "function") {
+app.clearAll();
+} else if (exposed && typeof exposed.clearAll === "function") {
+exposed.clearAll();
+}
+},
+},
+{
+fieldId: "settingsControlPostSettings",
+run: () => toggleConfigMenuById("postConfig"),
+},
+{
+fieldId: "settingsControlPanelMenu",
+run: () => toggleConfigMenuById("panelSelector"),
+},
+{
+fieldId: "settingsControlPanelStyle",
+run: () => toggleConfigMenuById("panelStyleConfig"),
+},
+{
+fieldId: "settingsControlExitTabs",
+run: () => toggleConfigMenuById("exitTabConfig"),
+},
+{
+fieldId: "settingsControlSubpanels",
+run: () => toggleConfigMenuById("subPanelConfig"),
+},
+{
+fieldId: "settingsControlGuideArrows",
+run: () => ensureGuideArrowMenuOpen(),
+},
+{
+fieldId: "settingsControlTemplates",
+run: () => toggleConfigMenuById("templates"),
+},
+{
+fieldId: "settingsControlDownload",
+run: () => {
+const downloadButton = document.getElementById("export");
+if (downloadButton) {
+downloadButton.click();
+}
+},
+},
+{
+fieldId: "settingsControlDarkMode",
+run: () => {
+const darkModeButton = document.getElementById("nightMode");
+if (darkModeButton) {
+darkModeButton.click();
+}
+},
+},
+{
+fieldId: "settingsControlZoomIn",
+run: () => {
+const nextScale = zoomInterfaceIn();
+showShortcutNotice(`UI Scale: ${nextScale}%`);
+},
+},
+{
+fieldId: "settingsControlZoomOut",
+run: () => {
+const nextScale = zoomInterfaceOut();
+showShortcutNotice(`UI Scale: ${nextScale}%`);
+},
+},
+];
+const firstColumnShortcutActions = [
+{
+fieldId: "settingsControlNewPanel",
+run: () => {
+if (typeof app !== "undefined" && typeof app.createPanelRightOfSelected === "function") {
+app.createPanelRightOfSelected();
+showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNewPanelLeft",
+run: () => {
+if (typeof app !== "undefined" && typeof app.createPanelLeftOfSelected === "function") {
+app.createPanelLeftOfSelected();
+showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNewSubpanel",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.createSubPanelRightOfSelected === "function") {
+app.createSubPanelRightOfSelected();
+showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNewSubpanelLeft",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.createSubPanelLeftOfSelected === "function") {
+app.createSubPanelLeftOfSelected();
+showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNewRow",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.createRowBelowSelected === "function") {
+app.createRowBelowSelected();
+showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNewRowTop",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.createRowAboveSelected === "function") {
+app.createRowAboveSelected();
+showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNextPanel",
+run: () => {
+if (typeof app !== "undefined" && typeof app.selectNextPanel === "function") {
+app.selectNextPanel();
+showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlPreviousPanel",
+run: () => {
+if (typeof app !== "undefined" && typeof app.selectPreviousPanel === "function") {
+app.selectPreviousPanel();
+showShortcutNotice(`Selected: Panel ${exposed.vars.currentlySelectedPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNextSubpanel",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.selectNextSubPanel === "function") {
+app.selectNextSubPanel();
+showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlPreviousSubpanel",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.selectPreviousSubPanel === "function") {
+app.selectPreviousSubPanel();
+showShortcutNotice(`Selected: Subpanel ${exposed.vars.currentlySelectedSubPanelIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlNextRow",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.selectNextRow === "function") {
+app.selectNextRow();
+showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlPreviousRow",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.selectPreviousRow === "function") {
+app.selectPreviousRow();
+showShortcutNotice(`Selected: Row ${exposed.vars.currentlySelectedRowIndex + 1}`);
+}
+},
+},
+{
+fieldId: "settingsControlDeletePanel",
+run: () => {
+if (typeof app !== "undefined" && typeof app.deleteCurrentPanelShortcut === "function") {
+const deletedIndex = app.deleteCurrentPanelShortcut();
+if (deletedIndex !== null && deletedIndex !== undefined) {
+showShortcutNotice(`Deleted Panel ${deletedIndex + 1}`);
+}
+}
+},
+},
+{
+fieldId: "settingsControlDeleteSubpanel",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.deleteCurrentSubPanelShortcut === "function") {
+const deletedIndex = app.deleteCurrentSubPanelShortcut();
+if (deletedIndex !== null && deletedIndex !== undefined) {
+showShortcutNotice(`Deleted Subpanel ${deletedIndex + 1}`);
+}
+}
+},
+},
+{
+fieldId: "settingsControlDeleteRow",
+run: () => {
+ensureSubpanelMenuOpen();
+if (typeof app !== "undefined" && typeof app.deleteCurrentRowShortcut === "function") {
+const deletedIndex = app.deleteCurrentRowShortcut();
+if (deletedIndex !== null && deletedIndex !== undefined) {
+showShortcutNotice(`Deleted Row ${deletedIndex + 1}`);
+}
+}
+},
+},
+];
+document.addEventListener("keydown", (event) => {
+if (event.defaultPrevented) {
+return;
+}
+if (event.key !== "Escape" && isShortcutBlockingOverlayOpen()) {
+return;
+}
+if (shouldSuppressAllAppShortcuts(event)) {
+return;
+}
+const allShortcutActions = [
+...firstColumnShortcutActions,
+...secondaryShortcutActions,
+];
+for (const action of allShortcutActions) {
+if (!shortcutFieldMatchesEvent(action.fieldId, event)) {
+continue;
+}
+if (!isShortcutActionAllowedByMode(action.fieldId)) {
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+action.run();
+return;
+}
+});
+for (const button of document.querySelectorAll(".sMModalTab")) {
+button.onclick = function () {
+if (!button.dataset.tab) {
+return;
+}
+if (button.dataset.tab === "sMAPL") {
+const panel = post?.panels?.[exposed.vars.currentlySelectedPanelIndex];
+const subPanelCount = panel?.sign?.subPanels?.length || 0;
+if (subPanelCount <= 1) {
+const promptOverlay = document.createElement("div");
+promptOverlay.className = "aplSubpanelPromptOverlay";
+promptOverlay.innerHTML = `
+                <div class="aplSubpanelPrompt">
+                  <h3>APL arrows need at least two subpanels.</h3>
+                  <p>Add a new subpanel before opening the APL arrows menu?</p>
+                  <div class="aplSubpanelPromptActions">
+                    <button type="button" data-apl-subpanel-choice="left">Add to left</button>
+                    <button type="button" data-apl-subpanel-choice="right">Add to right</button>
+                    <button type="button" data-apl-subpanel-choice="cancel">Cancel</button>
+                  </div>
+                </div>
+              `;
+document.body.appendChild(promptOverlay);
+promptOverlay.addEventListener("click", (event) => {
+const choiceButton = event.target.closest("[data-apl-subpanel-choice]");
+if (!choiceButton) {
+return;
+}
+const choice = choiceButton.dataset.aplSubpanelChoice;
+promptOverlay.remove();
+if (choice === "left") {
+exposed.addAPLSubPanelLeftAndOpen();
+} else if (choice === "right") {
+exposed.addAPLSubPanelRightAndOpen();
+} else {
+return;
+}
+const aplTabButton = document.querySelector(
+'.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
+);
+if (aplTabButton) {
+setTimeout(() => aplTabButton.click(), 0);
+}
+});
+return;
+}
+if (
+exposed &&
+typeof exposed.initializeAPLArrowsForCurrentPanel === "function"
+) {
+const guideArrowSelect = document.getElementById("guideArrow");
+if (guideArrowSelect) {
+guideArrowSelect.value = "None";
+}
+exposed.initializeAPLArrowsForCurrentPanel();
+}
+}
+if (button.dataset.tab === "sMStandardArrows" ||
+button.dataset.tab === "sMExitOnlyArrows") {
+const guideArrowSelect = document.getElementById("guideArrow");
+if (guideArrowSelect) {
+const sign = exposed.getCurrentPanel()?.sign;
+const current = guideArrowSelect.value;
+const next = button.dataset.tab === "sMStandardArrows"
+? "Standard Arrow"
+: ["Exit Only", "Half Exit Only", "Split Exit Only"].includes(current)
+? current : "Exit Only";
+if (current !== next || exposed.getCurrentPanel()?.sign?.arrowMode !== "standard") {
+if (sign?.standardArrowPosition === "Down" &&
+(current === "Standard Arrow" || ["Exit Only", "Half Exit Only", "Split Exit Only"].includes(current))) {
+const fromStandard = current === "Standard Arrow";
+const type = fromStandard ? sign.standardArrowType : sign.exitArrowType;
+const target = fromStandard ? exitArrowField("Type") : standardArrowField("Type");
+if (STANDARD_ARROW_KEYS.includes(type) && target) {
+target.value = type;
+target._arrowPickerApi?.setValue(type);
+}
+}
+guideArrowSelect.value = next;
+readForm();
+}
+}
+}
+const modal = document.querySelectorAll(
+'.sMModal:has(.sMModalTab[data-tab="' + button.dataset.tab + '"])'
+)[0];
+if (modal.dataset.currentMenu != button.dataset.tab) {
+modal.dataset.currentMenu = button.dataset.tab;
+}
+for (const holder of modal.querySelectorAll(".sMModalContent > *")) {
+if (holder.id != modal.dataset.currentMenu) {
+holder.classList.add("tabHidden");
+} else {
+holder.classList.remove("tabHidden");
+}
+}
+for (const btn of modal.querySelectorAll(".sMModalTab")) {
+if (btn.dataset.tab == button.dataset.tab) {
+btn.className = "sMModalTab selected";
+} else {
+btn.className = "sMModalTab";
+}
+}
+if ((button.dataset.tab === "sMTemplatesSaved" || button.dataset.tab === "sMTemplatesPreset") && typeof app !== "undefined" && typeof app.refreshTemplatesList === "function") {
+app.refreshTemplatesList();
+}
+};
+}
+document.addEventListener("keydown", (event) => {
+if (event.key !== "Escape" || event.defaultPrevented) {
+return;
+}
+const settingsModal = document.getElementById("settings22Modal");
+if (settingsModal && isSettingsOpen()) {
+const activeEl = document.activeElement;
+const activeIsControlsShortcut =
+activeEl &&
+activeEl.matches &&
+activeEl.matches('#settingsControls input[type="text"]');
+if (activeIsControlsShortcut) {
+event.preventDefault();
+event.stopPropagation();
+activeEl.blur();
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+sMConfigBar.dataset.currentMenu="";reDisplay();
+return;
+}
+const openDialogs = [
+document.getElementById("downloadContent"),
+document.getElementById("welcomeToSignMaker"),
+document.getElementById("shieldImgSelector"),
+document.getElementById("customShieldMaker"),
+].filter((dialog) => dialog && dialog.open);
+if (!openDialogs.length) {
+if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
+event.preventDefault();
+event.stopPropagation();
+closeTopmostUI();
+}
+return;
+}
+event.preventDefault();
+event.stopPropagation();
+openDialogs[openDialogs.length - 1].close();
+});
+document.querySelector("#panelSelector").onclick = function () {
+if (sMConfigBar.dataset.currentMenu == this.id) {
+sMConfigBar.dataset.currentMenu = "";
+} else {
+sMConfigBar.dataset.currentMenu = this.id;
+}
+reDisplay();
+};
+document.getElementsByName("signMaker")[0].onsubmit = function (e) {
+e.preventDefault();
+applyEditorInputBehavior(document);
+};
+const registerPanelButton = (selector, actionName) => {
+const button = document.querySelector(selector);
+const action =
+exposed && actionName && typeof exposed[actionName] === "function"
+? exposed[actionName]
+: null;
+if (!button || !action) {
+return;
+}
+button.type = "button";
+button.addEventListener("click", (event) => {
+event.preventDefault();
+action();
+});
+};
+registerPanelButton("#newPanel", "newPanel");
+registerPanelButton("#duplicatePanel", "duplicatePanel");
+registerPanelButton("#deletePanel", "deletePanel");
+const panelSpacingSliders = Array.from(
+document.querySelectorAll("#panelSpacing, #settingsPanelSpacing")
+);
+const panelSpacingValueInputs = Array.from(
+document.querySelectorAll("#panelSpacingValue, #settingsPanelSpacingValue")
+);
+const defaultPanelSpacingSliders = Array.from(
+document.querySelectorAll("#settingsDefaultPanelSpacing")
+);
+const defaultPanelSpacingValueInputs = Array.from(
+document.querySelectorAll("#settingsDefaultPanelSpacingValue")
+);
+const syncPanelSpacingInputs = (value) => {
+const normalizedValue = String(value);
+panelSpacingSliders.forEach((slider) => {
+slider.value = normalizedValue;
+});
+panelSpacingValueInputs.forEach((input) => {
+input.value = normalizedValue;
+});
+};
+const syncDefaultPanelSpacingInputs = (value) => {
+const normalizedValue = String(value);
+defaultPanelSpacingSliders.forEach((slider) => {
+slider.value = normalizedValue;
+});
+defaultPanelSpacingValueInputs.forEach((input) => {
+input.value = normalizedValue;
+});
+};
+const commitPanelSpacingChange = (value) => {
+const parsedValue = parseFloat(value);
+const normalized =
+Number.isFinite(parsedValue) && parsedValue >= 0
+? Math.min(parsedValue, 8)
+: 4;
+syncPanelSpacingInputs(normalized);
+if (exposed && typeof exposed.setPanelSpacing === "function") {
+exposed.setPanelSpacing(normalized);
+} else if (post) {
+post.panelSpacing = normalized;
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+}
+};
+const commitDefaultPanelSpacingChange = (value) => {
+const normalized = setDefaultPanelSpacingPreference(value);
+syncDefaultPanelSpacingInputs(normalized);
+};
+panelSpacingSliders.forEach((slider) => {
+if (slider.dataset.panelSpacingBound === "true") {
+return;
+}
+slider.dataset.panelSpacingBound = "true";
+slider.addEventListener("input", () => {
+syncPanelSpacingInputs(slider.value);
+});
+slider.addEventListener("change", () => {
+commitPanelSpacingChange(slider.value);
+});
+});
+panelSpacingValueInputs.forEach((input) => {
+if (input.dataset.panelSpacingBound === "true") {
+return;
+}
+input.dataset.panelSpacingBound = "true";
+input.addEventListener("input", () => {
+syncPanelSpacingInputs(input.value);
+});
+input.addEventListener("change", () => {
+commitPanelSpacingChange(input.value);
+});
+});
+defaultPanelSpacingSliders.forEach((slider) => {
+if (slider.dataset.defaultPanelSpacingBound === "true") {
+return;
+}
+slider.dataset.defaultPanelSpacingBound = "true";
+slider.addEventListener("input", () => {
+syncDefaultPanelSpacingInputs(slider.value);
+});
+slider.addEventListener("change", () => {
+commitDefaultPanelSpacingChange(slider.value);
+});
+});
+defaultPanelSpacingValueInputs.forEach((input) => {
+if (input.dataset.defaultPanelSpacingBound === "true") {
+return;
+}
+input.dataset.defaultPanelSpacingBound = "true";
+input.addEventListener("input", () => {
+syncDefaultPanelSpacingInputs(input.value);
+});
+input.addEventListener("change", () => {
+commitDefaultPanelSpacingChange(input.value);
+});
+});
+const postThicknessValueInput =
+document.getElementById("postThicknessValue");
+const commitPostThicknessChange = (value) => {
+const normalizedThickness =
+post && typeof post.normalizeThickness === "function"
+? post.normalizeThickness(value)
+: normalizeStoredPostThickness(value);
+if (post) {
+post.thickness = normalizedThickness;
+}
+if (postThicknessValueInput) {
+postThicknessValueInput.value = normalizedThickness;
+}
+setStoredItem(STORAGE_KEYS.postThickness, normalizedThickness);
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+};
+if (postThicknessValueInput) {
+postThicknessValueInput.addEventListener("input", () => {
+commitPostThicknessChange(postThicknessValueInput.value);
+});
+postThicknessValueInput.addEventListener("change", () => {
+commitPostThicknessChange(postThicknessValueInput.value);
+});
+}
+document.addEventListener("input", checkForLimonEasterEgg, true);
+window.addEventListener("resize", scheduleSubpanelModalHeightSync);
+document.addEventListener("click", (event) => {
+if (event.ctrlKey || event.metaKey || event.shiftKey) {
+return;
+}
+if (!subpanelMenuIsOpen()) {
+return;
+}
+const subpanelModal = document.querySelector(".sMModal.subPanelConfig");
+if (!subpanelModal || !subpanelModal.contains(event.target)) {
+return;
+}
+if (event.target.closest("#sMSPTextList")) {
+return;
+}
+const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
+resetSubpanelClipboardSelectionToStandard(rows);
+refreshSubpanelClipboardSelectionDisplay();
+});
+document.getElementById("cancelDownload").onclick = function (event) {
+event.preventDefault();
+const dialog = document.querySelector("#downloadContent");
+if (dialog && dialog.open) {
+dialog.close();
+}
+};
+document.getElementById("hideConfig").onclick = function () {
+if (sMConfigBar.classList.contains("invisible")) {
+sMConfigBar.classList.remove("invisible");
+} else {
+sMConfigBar.classList.add("invisible");
+}
+updateUtilityButtonLabels();
+};
+const closeWelcomeButton = document.querySelector("#closeWelcome");
+if (closeWelcomeButton) {
+closeWelcomeButton.onclick = function () {
+const modalHolder = document.querySelector("#modalHolder");
+const welcomeDialog = document.querySelector("#welcomeToSignMaker");
+localStorage.setItem("closedWelcome", "true");
+if (welcomeDialog && typeof welcomeDialog.close === "function") {
+try {
+welcomeDialog.close();
+} catch (error) {}
+}
+if (welcomeDialog) {
+welcomeDialog.style.display = "none";
+}
+if (modalHolder) {
+modalHolder.style.display = "none";
+}
+};
+}
+newRowDropTargetButton = document.getElementById("sMSPCreateRow");
+if (newRowDropTargetButton) {
+newRowDropTargetButton.addEventListener("dragenter", handleNewRowDragEnter);
+newRowDropTargetButton.addEventListener("dragover", handleNewRowDragOver);
+newRowDropTargetButton.addEventListener("dragleave", handleNewRowDragLeave);
+newRowDropTargetButton.addEventListener("drop", handleNewRowDrop);
+}
+bindSliderNumberInputStepperCleanup();
+const toolTip = document.createElement("span");
+toolTip.className = "toolTip";
+toolTip.style.opacity = 0;
+document.body.appendChild(toolTip);
+for (const element of document.querySelectorAll("[data-toolTip]")) {
+if (element.classList && element.classList.contains("sliderNumberInputNoStepper")) {
+continue;
+}
+element.addEventListener("mouseover", () => {
+const boundingRect = element.getBoundingClientRect();
+toolTip.textContent = element.dataset.tooltip;
+toolTip.style.left =
+boundingRect.left +
+(boundingRect.right - boundingRect.left) / 2 +
+"px";
+toolTip.style.top = boundingRect.top - toolTip.offsetHeight - 10 + "px";
+toolTip.style.opacity = 1;
+toolTip.style.transform = "translateX(-50%)";
+if (sMConfigBar.contains(element)) {
+toolTip.style.fontFamily = "Overpass";
+} else {
+toolTip.style.fontFamily = "Inter";
+}
+});
+element.addEventListener("mouseout", () => {
+toolTip.style.opacity = 0;
+toolTip.style.left = "-100px";
+toolTip.style.top = 0;
+toolTip.textContent = "";
+toolTip.style.transform = "";
+});
+}
+if (nightModeButton) {
+nightModeButton.addEventListener("click", () => {
+toggleInterfaceThemeMode();
+updateUtilityButtonLabels();
+});
+}
+document
+.querySelector("#smSPShieldAdvanced")
+.addEventListener("click", () => {
+if (
+document.querySelector("#advancedMenu").classList.contains("hidden")
+) {
+document.querySelector("#advancedMenu").classList.remove("hidden");
+} else {
+document.querySelector("#advancedMenu").classList.add("hidden");
+}
+});
+const horizontalScrollOnWheel = document.querySelectorAll(
+".horizontal-scroll-on-wheel"
+);
+horizontalScrollOnWheel.forEach((scrollableElement) => {
+scrollableElement.addEventListener("wheel", (event) => {
+if (scrollCooldown) {
+return;
+}
+event.preventDefault();
+scrollableElement.scrollBy({
+left: event.deltaY,
+behavior: "smooth",
+});
+});
+});
+const welcomeDialog = document.querySelector("#welcomeToSignMaker");
+if (!localStorage.getItem("closedWelcome") && welcomeDialog) {
+const modalHolder = document.querySelector("#modalHolder");
+if (modalHolder) {
+modalHolder.style.display = "flex";
+}
+welcomeDialog.style.display = "flex";
+}
+const postPositionSelectElmt = document.getElementById("postPosition");
+for (const polePosition of Post.prototype.polePositions) {
+const displayLabel = formatPostKindLabel(polePosition);
+lib.appendOption(postPositionSelectElmt, polePosition, {
+selected: polePosition == post.polePosition,
+text: displayLabel,
+});
+}
+const postColorSelectElmt = document.getElementById("postColor");
+if (postColorSelectElmt) {
+for (const colorOption of Post.prototype.colors) {
+lib.appendOption(postColorSelectElmt, colorOption, {
+selected: colorOption === post.color,
+});
+}
+}
+const colorSelectElmt = document.getElementById("panelColor");
+for (const color in lib.colors) {
+lib.appendOption(colorSelectElmt, color, {
+text: color,
+});
+}
+const cornerTypeSelectElmt = document.getElementById("panelCorner");
+for (const corner of Panel.prototype.cornerType) {
+lib.appendOption(cornerTypeSelectElmt, corner, {
+selected: corner == "Sharp",
+});
+}
+const exitTabPositionSelectElmt =
+document.getElementById("exitTabPosition");
+for (const position of ExitTab.prototype.positions) {
+lib.appendOption(exitTabPositionSelectElmt, position, {
+selected: position == "Right",
+});
+}
+const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
+for (const width of ExitTab.prototype.widths) {
+lib.appendOption(exitTabWidthSelectElmt, width, {
+selected: width == "Full",
+});
+}
+syncExitTabWidthOptions();
+const exitTabFontSelectElement = document.getElementById("exitTabFontFamily");
+if (exitTabFontSelectElement) {
+exitTabFontSelectElement.innerHTML = "";
+const exitFonts = getExitTabAvailableFonts();
+for (const fontName of exitFonts) {
+lib.appendOption(exitTabFontSelectElement, fontName, {
+selected: fontName === ExitTab.prototype.defaultFontFamily,
+});
+}
+}
+const exitColorSelectElement = document.getElementById("exitColor");
+for (const exitColor of ExitTab.prototype.colors) {
+lib.appendOption(exitColorSelectElement, exitColor);
+}
+const exitTextColorSelectElement = document.getElementById("exitTabTextColor");
+if (exitTextColorSelectElement) {
+const exitTextColors = Array.isArray(ExitTab.prototype.textColors)
+? ExitTab.prototype.textColors
+: ExitTab.prototype.colors;
+for (const exitTextColor of exitTextColors) {
+lib.appendOption(exitTextColorSelectElement, exitTextColor);
+}
+}
+const exitVariantSelectElmt = document.getElementById("exitVariant");
+if (exitVariantSelectElmt) {
+const hiddenExitVariants = new Set(["HOV 1", "HOV 2", "Quebec Exit Marker"]);
+for (const exitVariant of ExitTab.prototype.variants) {
+if (!hiddenExitVariants.has(exitVariant)) {
+lib.appendOption(exitVariantSelectElmt, exitVariant, {
+text: getExitTabVariantDisplayName(exitVariant),
+});
+}
+}
+lib.appendOption(exitVariantSelectElmt, "Quebec Exit Marker");
+toggleExitTabVariantOptionsVisibility(exitVariantSelectElmt.value);
+}
+const exitTollLogoSelectElmt =
+document.getElementById("exitTollLogoSelect");
+if (exitTollLogoSelectElmt) {
+for (const [logoKey, logoDef] of Object.entries(
+TollLogoElement.prototype.logos
+)) {
+lib.appendOption(exitTollLogoSelectElmt, logoKey, {
+text: logoDef.label,
+selected: logoKey == TollLogoElement.prototype.defaultLogo,
+});
+}
+}
+const iconSelectSelectElmt = document.getElementById("iconSelect");
+if (iconSelectSelectElmt) {
+for (const icons of ExitTab.prototype.icons) {
+lib.appendOption(iconSelectSelectElmt, icons.split(":")[0]);
+}
+}
+const shieldPositionsSelectElmt =
+document.getElementById("shieldsPosition");
+for (const position of Sign.prototype.shieldPositions) {
+lib.appendOption(shieldPositionsSelectElmt, position, {
+selected: position == "Above",
+});
+}
+const globalPosition = document.getElementById("globalPosition");
+for (const position of Sign.prototype.globalPositioning) {
+lib.appendOption(globalPosition, position, {
+selected: position == "Top",
+});
+}
+const sMSPElementSelect = document.getElementById("sMSPElementSelect");
+for (const element in Control.prototype.blockElements) {
+lib.appendOption(sMSPElementSelect, element, {
+selected: element == "ControlTextElement",
+text: Control.prototype.blockElements[element],
+});
+}
+ensureSubpanelNewElementTypePicker();
+const guideArrowSelectElmt = document.getElementById("guideArrow");
+for (const guideArrow of Sign.prototype.guideArrows) {
+const display = guideArrow.split(":")[0];
+lib.appendOption(guideArrowSelectElmt, display);
+}
+bindStandardArrowControls();
+bindExitOnlyEditor();
+const exitOnlyDirectionElmt = document.getElementById("exitOnlyDirection");
+for (const exitguideArrows of Sign.prototype.exitguideArrows) {
+const display = exitguideArrows.split(":")[0];
+lib.appendOption(exitOnlyDirectionElmt, display);
+}
+const arrowDirectionElmt = document.getElementById("arrowLocations");
+for (const arrowDirection of Sign.prototype.arrowPositions) {
+lib.appendOption(arrowDirectionElmt, arrowDirection);
+}
+const otherSymbolSelectElement = document.getElementById("otherSymbol");
+for (const otherSymbol of Sign.prototype.otherSymbols) {
+lib.appendOption(otherSymbolSelectElement, otherSymbol);
+}
+let textElem_fontFamilySelects = [
+document.querySelector("#sdCtrlText_fontFamily"),
+document.querySelector("#sdAdvisory_fontFamily"),
+document.querySelector("#sdActionMessage_fontFamily"),
+];
+let textElem_alignmentSelects = [
+document.querySelector("#sdCtrlText_alignment"),
+document.querySelector("#sdAdvisory_alignment"),
+document.querySelector("#sdActionMessage_alignment"),
+document.querySelector("#sdBlocker_alignment"),
+document.querySelector("#sdElectronicSign_alignment"),
+document.querySelector("#sdTollLogo_alignment"),
+document.querySelector("#sdBeacon_alignment"),
+document.querySelector("#sdIcon_alignment"),
+document.querySelector("#sdShield_alignment"),
+document.querySelector("#sdArrow_alignment"),
+];
+let textElem_bgColorSelects = [
+document.querySelector("#sdCtrlText_backgroundColor"),
+document.querySelector("#sdAdvisory_backgroundColor"),
+document.querySelector("#sdActionMessage_backgroundColor"),
+document.querySelector("#sdIcon_borderColor"),
+document.querySelector("#sdIcon_backgroundColor"),
+document.querySelector("#sdBlock_backgroundColor"),
+document.querySelector("#sdTollLogo_backgroundColor"),
+];
+let divider_widthMeasurement = document.querySelector(
+"#sdBlocker_dividerMeasurement"
+);
+let divider_orientationSelect = document.querySelector(
+"#sdBlocker_orientation"
+);
+let divider_colorSelect = document.querySelector("#sdBlocker_dividerColor");
+let shield_shieldBase = document.querySelector("#sdShield_shieldBase");
+let iconElem_iconsSelect = document.querySelector("#sdIcon_icon");
+const beaconColorSelect = document.querySelector("#sdBeacon_color");
+const controlTextColorSelects = [
+document.querySelector("#sdCtrlText_textColor"),
+document.querySelector("#sdAdvisory_textColor"),
+document.querySelector("#sdActionMessage_textColor"),
+].filter(Boolean);
+const blockBorderColorSelect = document.querySelector(
+"#sdBlock_borderColor"
+);
+for (const elem of textElem_fontFamilySelects) {
+for (const fontFamily of TextElement.prototype.fontFamily) {
+if (isMotorwayFont(fontFamily)) continue;
+lib.appendOption(elem, fontFamily);
+}
+}
+if (beaconColorSelect) {
+for (const color of BeaconElement.prototype.colors) {
+lib.appendOption(beaconColorSelect, color);
+}
+}
+if (controlTextColorSelects.length) {
+const textColorOptions = ControlTextElement.getTextColorOptions();
+const defaultTextColor =
+ControlTextElement.defaultTextColor ||
+(textColorOptions.length ? textColorOptions[0] : "");
+controlTextColorSelects.forEach((textColorSelect) => {
+for (const optionValue of textColorOptions) {
+if (optionValue) {
+lib.appendOption(textColorSelect, optionValue);
+}
+}
+if (defaultTextColor) {
+textColorSelect.value = defaultTextColor;
+}
+});
+}
+if (blockBorderColorSelect) {
+const defaultBorderColor = Block.defaultBorderColor || "Match BG";
+const borderColorOptions = [defaultBorderColor].concat(
+Object.keys(lib.colors || {})
+);
+const seenBorderColors = new Set();
+for (const optionValue of borderColorOptions) {
+if (!optionValue || seenBorderColors.has(optionValue)) {
+continue;
+}
+lib.appendOption(blockBorderColorSelect, optionValue);
+seenBorderColors.add(optionValue);
+}
+blockBorderColorSelect.value = defaultBorderColor;
+}
+const controlTextFontSelect = document.querySelector(
+"#sdCtrlText_fontFamily"
+);
+if (controlTextFontSelect) {
+let defaultControlFont = null;
+defaultControlFont = ControlTextElement.getDefaultFont();
+if (defaultControlFont) {
+controlTextFontSelect.value = defaultControlFont;
+}
+controlTextFontSelect.addEventListener("change", () => {
+const selectedFont = controlTextFontSelect.value;
+const availableFonts = TextElement.prototype.fontFamily;
+if (!selectedFont || !availableFonts.includes(selectedFont)) {
+return;
+}
+ControlTextElement.setDefaultFont(selectedFont);
+setStoredItem(STORAGE_KEYS.controlTextFont, selectedFont);
+});
+}
+const clampPercentValue = (value, inputEl) => {
+const parsed = parseFloat(value);
+const min = inputEl && inputEl.min !== "" ? parseFloat(inputEl.min) : 0;
+const max = inputEl && inputEl.max !== "" ? parseFloat(inputEl.max) : 300;
+if (!Number.isFinite(parsed)) {
+return min;
+}
+return Math.max(min, Math.min(max, parsed));
+};
+const syncPercentValueDisplay = (inputId) => {
+const inputEl = document.getElementById(inputId);
+const valueEl = document.getElementById(inputId + "Val");
+if (!inputEl || !valueEl) {
+return;
+}
+if (valueEl.tagName === "INPUT") {
+valueEl.value = inputEl.value;
+} else {
+valueEl.textContent = `${inputEl.value}%`;
+}
+};
+const settingsDefaultsFontFamilyIds = [
+"settingsDefaultsControlTextFontFamily",
+"settingsDefaultsAdvisoryFontFamily",
+"settingsDefaultsActionFontFamily",
+];
+const settingsDefaultsFontIds = {
+settingsDefaultsControlTextFontFamily: "settingsDefaultsControlTextFont",
+settingsDefaultsAdvisoryFontFamily: "settingsDefaultsAdvisoryFont",
+settingsDefaultsActionFontFamily: "settingsDefaultsActionFont",
+};
+const clearviewFonts = TextElement.prototype.fontFamily.filter((font) =>
+/^Series\s(?:1|2|3|4|5WR|5|6)\b/i.test(String(font || ""))
+);
+const highwayGothicFonts = TextElement.prototype.fontFamily.filter((font) =>
+isHighwayGothicUiFont(font)
+);
+const arialFonts = TextElement.prototype.fontFamily.filter(
+(font) => font === "Arial" || font === "Arial Bold"
+);
+const transportFonts = TextElement.prototype.fontFamily.filter(
+(font) => /^Transport (?:Regular|Heavy)$/.test(font)
+);
+const din1451Fonts = TextElement.prototype.fontFamily.filter(
+(font) => /^DIN 1451 (?:Regular|Narrow)$/.test(font)
+);
+const rawlinsonFonts = TextElement.prototype.fontFamily.filter((font) =>
+/^Rawlinson/i.test(font)
+);
+const itcStoneSansFonts = TextElement.prototype.fontFamily.filter((font) =>
+/^ITC Stone Sans/i.test(font)
+);
+const helveticaNeueFonts = TextElement.prototype.fontFamily.filter((font) =>
+/^Helvetica(?: Neue)?/i.test(font)
+);
+const settingsDefaultsFontFamilies = {
+Clearview: clearviewFonts,
+"Highway Gothic": highwayGothicFonts,
+Arial: arialFonts,
+Transport: transportFonts,
+"DIN 1451": din1451Fonts,
+Rawlinson: rawlinsonFonts,
+"ITC Stone Sans": itcStoneSansFonts,
+"Helvetica": helveticaNeueFonts,
+};
+const settingsDefaultsFontDefaults = {
+Clearview: clearviewFonts.includes("Series 5WR")
+? "Series 5WR"
+: (clearviewFonts[0] || ""),
+"Highway Gothic": highwayGothicFonts.includes("Series EM")
+? "Series EM"
+: (highwayGothicFonts[0] || ""),
+Arial: arialFonts.includes("Arial")
+? "Arial"
+: (arialFonts[0] || ""),
+Transport: transportFonts.includes("Transport Regular") ? "Transport Regular" : transportFonts[0] || "",
+"DIN 1451": din1451Fonts.includes("DIN 1451 Regular") ? "DIN 1451 Regular" : din1451Fonts[0] || "",
+Rawlinson: rawlinsonFonts.includes("Rawlinson Regular")
+? "Rawlinson Regular"
+: (rawlinsonFonts[0] || ""),
+"ITC Stone Sans": itcStoneSansFonts.includes("ITC Stone Sans Regular")
+? "ITC Stone Sans Regular"
+: (itcStoneSansFonts[0] || ""),
+"Helvetica": helveticaNeueFonts.includes("Helvetica Roman")
+? "Helvetica Roman"
+: (helveticaNeueFonts.includes("Helvetica Neue Roman")
+? "Helvetica Neue Roman"
+: (helveticaNeueFonts[0] || "")),
+};
+const settingsDefaultsClearviewFontOrder = [
+"1",
+"2",
+"3",
+"4",
+"5WR",
+"5",
+"6",
+];
+const settingsDefaultsHighwayGothicFontOrder = [
+"A",
+"B",
+"C",
+"D",
+"E",
+"EEM",
+"EM",
+"F",
+];
+const settingsDefaultsFontButtonGroupIds = {
+settingsDefaultsControlTextFont: "settingsDefaultsControlTextFontButtons",
+settingsDefaultsAdvisoryFont: "settingsDefaultsAdvisoryFontButtons",
+settingsDefaultsActionFont: "settingsDefaultsActionFontButtons",
+};
+const shouldUseSettingsDefaultsFontButtons = (family) =>
+["Clearview", "Highway Gothic", "Transport", "DIN 1451"].includes(family);
+const getSettingsDefaultsFontSuffix = (font, family) => {
+if (family === "Clearview") {
+return String(font || "").replace(/^Series\s*/i, "").trim();
+}
+if (family === "Highway Gothic") {
+return String(font || "").replace(/^Series\s*/i, "").trim();
+}
+return String(font || "").replace(`${family} `, "").trim();
+};
+const sortSettingsDefaultsFontsForButtons = (family, fonts) => {
+if (family !== "Clearview" && family !== "Highway Gothic") {
+return [...fonts];
+}
+const order =
+family === "Highway Gothic"
+? settingsDefaultsHighwayGothicFontOrder
+: settingsDefaultsClearviewFontOrder;
+return [...fonts].sort((a, b) => {
+const aSuffix = getSettingsDefaultsFontSuffix(a, family);
+const bSuffix = getSettingsDefaultsFontSuffix(b, family);
+const aIndex = order.indexOf(aSuffix);
+const bIndex = order.indexOf(bSuffix);
+if (aIndex === -1 && bIndex === -1) {
+return aSuffix.localeCompare(bSuffix, undefined, {
+numeric: true,
+sensitivity: "base",
+});
+}
+if (aIndex === -1) {
+return 1;
+}
+if (bIndex === -1) {
+return -1;
+}
+return aIndex - bIndex;
+});
+};
+const refreshSettingsDefaultsFontButtons = (
+fontId,
+selectedFamily,
+matchingFonts
+) => {
+const fontSelect = document.getElementById(fontId);
+const buttonGroupId = settingsDefaultsFontButtonGroupIds[fontId];
+const buttonGroup = buttonGroupId
+? document.getElementById(buttonGroupId)
+: null;
+if (!fontSelect || !buttonGroup) {
+return;
+}
+const shouldShowButtons =
+shouldUseSettingsDefaultsFontButtons(selectedFamily) &&
+Array.isArray(matchingFonts) &&
+matchingFonts.length > 0;
+buttonGroup.hidden = !shouldShowButtons;
+buttonGroup.innerHTML = "";
+if (!shouldShowButtons) {
+return;
+}
+const orderedFonts = sortSettingsDefaultsFontsForButtons(
+selectedFamily,
+matchingFonts
+);
+buttonGroup.style.setProperty(
+"--settingsDefaultsFontButtonCount",
+String(orderedFonts.length || 1)
+);
+for (const font of orderedFonts) {
+const button = document.createElement("button");
+button.type = "button";
+button.className = "settingsDefaultsFontButton";
+button.dataset.fontValue = font;
+button.textContent = getSettingsDefaultsFontSuffix(font, selectedFamily);
+button.title = font;
+button.classList.toggle("active", fontSelect.value === font);
+button.style.fontFamily = `"${resolveFontPickerPreviewFont(font)}", sans-serif`;
+button.style.fontSize =
+selectedFamily === "Highway Gothic" ? "0.9rem" : "0.8rem";
+button.addEventListener("click", () => {
+setNativeFontSelectValue(fontSelect, font, { dispatch: true });
+refreshSettingsDefaultsFontButtons(
+fontId,
+selectedFamily,
+matchingFonts
+);
+});
+buttonGroup.appendChild(button);
+}
+};
+const refreshAllSettingsDefaultsFontButtons = () => {
+Object.entries(settingsDefaultsFontIds).forEach(
+([fontFamilyId, fontId]) => {
+const familySelect = document.getElementById(fontFamilyId);
+const selectedFamily = familySelect?.value || "";
+const matchingFonts =
+settingsDefaultsFontFamilies[selectedFamily] || [];
+refreshSettingsDefaultsFontButtons(
+fontId,
+selectedFamily,
+matchingFonts
+);
+}
+);
+};
+const SETTINGS_DEFAULTS_STORAGE_KEY = "signMaker.settingsDefaults";
+const settingsDefaultsFieldDefaults = {
+settingsDefaultsControlTextText: "Control",
+settingsDefaultsControlTextFontFamily: "Clearview",
+settingsDefaultsControlTextFont: "Series 5WR",
+settingsDefaultsControlTextSize: "100",
+settingsDefaultsControlTextColor: ControlTextElement.defaultTextColor,
+settingsDefaultsControlTextBg: "Inherit",
+settingsDefaultsShieldType: ShieldElement.prototype.defaultShieldBase,
+settingsDefaultsShieldRouteNumber: "",
+settingsDefaultsShieldSize: "2.7",
+settingsDefaultsShieldBanner1: "Right",
+settingsDefaultsShieldBanner2: "Above",
+settingsDefaultsShieldManualBanners: true,
+settingsDefaultsAdvisoryText: "Advisory",
+settingsDefaultsAdvisoryFontFamily: "Highway Gothic",
+settingsDefaultsAdvisoryFont: "Series E",
+settingsDefaultsAdvisorySize: "70",
+settingsDefaultsAdvisoryColor: "Black",
+settingsDefaultsAdvisoryBg: "Yellow",
+settingsDefaultsActionText: "Action",
+settingsDefaultsActionFontFamily: "Clearview",
+settingsDefaultsActionFont: "Series 5WR",
+settingsDefaultsActionSize: "70",
+settingsDefaultsActionColor: ControlTextElement.defaultTextColor,
+settingsDefaultsActionBg: "Inherit",
+settingsDefaultsExitTabText: "",
+settingsDefaultsExitTabType: "Default",
+settingsDefaultsExitTabAlignment: "Right",
+settingsDefaultsExitTabPosition: "Edge",
+settingsDefaultsExitTabPanelColor: "Panel Color",
+settingsDefaultsExitTabBorderThickness: 0.2,
+settingsDefaultsExitTabMinHeight: 2,
+settingsDefaultsExitTabTextSize: 18,
+settingsDefaultsExitTabNestedSpacing: 0,
+settingsDefaultsExitTabFHWAStyle: true,
+settingsDefaultsExitTabLeft: false,
+settingsDefaultsExitTabFullBorder: true,
+settingsDefaultsExitTabSquareCorners: true,
+settingsDefaultsExitTabTopOffset: false,
+settingsDefaultsExitTabVerticalArrangement: false,
+settingsDefaultsExitTabCAStyle: false,
+settingsDefaultsArrowValue: ArrowElement.prototype.defaultArrow,
+settingsDefaultsArrowRotation: "0",
+settingsDefaultsArrowSize: "1.75",
+settingsDefaultsArrowHorizontalPadding: "0",
+settingsDefaultsArrowVerticalPadding: "0",
+settingsDefaultsArrowAlignment: "Center",
+settingsDefaultsIconValue: IconElement.prototype.defaultIcon,
+settingsDefaultsIconSize: "3",
+settingsDefaultsIconBgColor: "Inherit",
+settingsDefaultsIconSpacing: "0",
+settingsDefaultsIconAlignment: "Center",
+settingsDefaultsIconBorder: false,
+settingsDefaultsTollLogoValue: TollLogoElement.prototype.defaultLogo,
+settingsDefaultsTollLogoSize: "3",
+settingsDefaultsTollLogoSpacing: "0",
+settingsDefaultsTollLogoBorderRadius: "0",
+settingsDefaultsTollLogoBgColor: "Inherit",
+settingsDefaultsTollLogoHorizontalBgPadding: "0.2",
+settingsDefaultsTollLogoVerticalBgPadding: "0.05",
+settingsDefaultsTollLogoSquareIcon: false,
+settingsDefaultsTollLogoShowOnlyBlock: false,
+};
+const getStoredSettingsDefaults = () => {
+try {
+const raw = localStorage.getItem(SETTINGS_DEFAULTS_STORAGE_KEY);
+if (!raw) return {};
+const parsed = JSON.parse(raw);
+return parsed && typeof parsed === "object" ? parsed : {};
+} catch (error) {
+return {};
+}
+};
+const setStoredSettingsDefaults = (values) => {
+try {
+localStorage.setItem(
+SETTINGS_DEFAULTS_STORAGE_KEY,
+JSON.stringify(values || {})
+);
+} catch (error) {
+}
+};
+const saveSettingsDefaultsField = (id, value) => {
+const stored = getStoredSettingsDefaults();
+stored[id] = value;
+setStoredSettingsDefaults(stored);
+};
+const storedSettingsDefaults = getStoredSettingsDefaults();
+if (
+!Object.prototype.hasOwnProperty.call(
+storedSettingsDefaults,
+"__blankShieldRouteNumberDefaultMigrated"
+)
+) {
+if (storedSettingsDefaults.settingsDefaultsShieldRouteNumber === "1") {
+storedSettingsDefaults.settingsDefaultsShieldRouteNumber = "";
+}
+storedSettingsDefaults.__blankShieldRouteNumberDefaultMigrated = true;
+setStoredSettingsDefaults(storedSettingsDefaults);
+}
+const getMergedSettingsDefaults = () => ({
+...settingsDefaultsFieldDefaults,
+...getStoredSettingsDefaults(),
+});
+const mapSettingsDefaultsExitTabTypeToVariant = (value) => {
+switch (value) {
+case "Standard":
+return "Default";
+case "Full Left":
+return "Full Left";
+case "Toll Pass":
+return "Toll Logo";
+default:
+return "Default";
+}
+};
+const applyExitTabSettingsDefaults = () => {
+return;
+const defaults = getMergedSettingsDefaults();
+const parseNumberOrFallback = (value, fallback) => {
+const parsed = typeof value === "number" ? value : parseFloat(value);
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+ExitTab.prototype.defaultText =
+String(defaults.settingsDefaultsExitTabText ?? "");
+ExitTab.prototype.defaultVariant =
+mapSettingsDefaultsExitTabTypeToVariant(
+defaults.settingsDefaultsExitTabType
+);
+ExitTab.prototype.defaultPosition =
+ExitTab.prototype.positions.includes(defaults.settingsDefaultsExitTabAlignment)
+? defaults.settingsDefaultsExitTabAlignment
+: "Right";
+ExitTab.prototype.defaultWidth =
+ExitTab.prototype.widths.includes(defaults.settingsDefaultsExitTabPosition)
+? defaults.settingsDefaultsExitTabPosition
+: "Edge";
+ExitTab.prototype.defaultColor =
+ExitTab.prototype.colors.includes(defaults.settingsDefaultsExitTabPanelColor)
+? defaults.settingsDefaultsExitTabPanelColor
+: "Panel Color";
+ExitTab.prototype.defaultBorderThickness = Math.max(
+0,
+parseNumberOrFallback(defaults.settingsDefaultsExitTabBorderThickness, 0.2)
+);
+ExitTab.prototype.defaultMinHeight = Math.max(
+0,
+parseNumberOrFallback(defaults.settingsDefaultsExitTabMinHeight, 2)
+);
+ExitTab.prototype.defaultFontSize = Math.max(
+10,
+parseNumberOrFallback(defaults.settingsDefaultsExitTabTextSize, 20)
+);
+ExitTab.prototype.defaultNestedTabSpacing = Math.max(
+0,
+parseNumberOrFallback(defaults.settingsDefaultsExitTabNestedSpacing, 0)
+);
+ExitTab.prototype.defaultFHWAFont = true;
+ExitTab.prototype.defaultShowLeft = !!defaults.settingsDefaultsExitTabLeft;
+ExitTab.prototype.defaultFullBorder = !!defaults.settingsDefaultsExitTabFullBorder;
+ExitTab.prototype.defaultSquareCorners = !!defaults.settingsDefaultsExitTabSquareCorners;
+ExitTab.prototype.defaultTopOffset = !!defaults.settingsDefaultsExitTabTopOffset;
+ExitTab.prototype.defaultVerticalArrangement =
+!!defaults.settingsDefaultsExitTabVerticalArrangement;
+ExitTab.prototype.defaultCAStyle = !!defaults.settingsDefaultsExitTabCAStyle;
+};
+applyExitTabSettingsDefaults();
+applyExitTabDefaultProfileToPrototype();
+const bindExitTabSettingsDefaultsPersistence = (id, { checkbox = false } = {}) => {
+const el = document.getElementById(id);
+if (!el || el.dataset.exitTabDefaultsBound === "true") {
+return;
+}
+el.dataset.exitTabDefaultsBound = "true";
+const persist = () => {
+const value = checkbox ? !!el.checked : el.value;
+saveSettingsDefaultsField(id, value);
+applyExitTabSettingsDefaults();
+};
+el.addEventListener("change", persist);
+if (!checkbox) {
+el.addEventListener("input", persist);
+}
+};
+[
+"settingsDefaultsExitTabText",
+"settingsDefaultsExitTabType",
+"settingsDefaultsExitTabAlignment",
+"settingsDefaultsExitTabPosition",
+"settingsDefaultsExitTabPanelColor",
+"settingsDefaultsExitTabBorderThickness",
+"settingsDefaultsExitTabMinHeight",
+"settingsDefaultsExitTabTextSize",
+"settingsDefaultsExitTabNestedSpacing",
+].forEach((id) => bindExitTabSettingsDefaultsPersistence(id));
+[
+"settingsDefaultsExitTabFHWAStyle",
+"settingsDefaultsExitTabLeft",
+"settingsDefaultsExitTabFullBorder",
+"settingsDefaultsExitTabSquareCorners",
+"settingsDefaultsExitTabTopOffset",
+"settingsDefaultsExitTabVerticalArrangement",
+"settingsDefaultsExitTabCAStyle",
+].forEach((id) => bindExitTabSettingsDefaultsPersistence(id, { checkbox: true }));
+const getSettingsDefaultsFamilyPreviewFont = (family) => {
+if (family === "Clearview") return '"Clearview 5WR", "Transport Regular", sans-serif';
+if (family === "Highway Gothic") return '"Series EM", "Highway Gothic", sans-serif';
+if (family === "Arial") return 'Arial, sans-serif';
+if (family === "Transport") return '"Transport Regular", sans-serif';
+if (family === "DIN 1451") return '"DIN 1451 Regular", sans-serif';
+if (family === "Motorway") return '"Transport Regular", sans-serif';
+return 'Inter, sans-serif';
+};
+const populateSimpleSelect = (selectEl, options, selectedValue = "") => {
+if (!selectEl) {
+return;
+}
+selectEl.innerHTML = "";
+for (const option of options) {
+if (typeof option === "string") {
+lib.appendOption(selectEl, option, {
+selected: option === selectedValue,
+});
+} else if (option && typeof option === "object") {
+lib.appendOption(selectEl, option.value, {
+text: option.label ?? option.value,
+selected: option.value === selectedValue,
+});
+}
+}
+};
+const updateSettingsDefaultsFontSelect = (fontFamilySelectId) => {
+const fontFamilySelect = document.getElementById(fontFamilySelectId);
+const fontSelect = document.getElementById(
+settingsDefaultsFontIds[fontFamilySelectId]
+);
+if (!fontFamilySelect || !fontSelect) {
+return;
+}
+const selectedFamily = fontFamilySelect.value;
+const matchingFonts = settingsDefaultsFontFamilies[selectedFamily] || [];
+const fontId = settingsDefaultsFontIds[fontFamilySelectId];
+const preferredStoredFont = Object.prototype.hasOwnProperty.call(
+storedSettingsDefaults,
+fontId
+)
+? storedSettingsDefaults[fontId]
+: settingsDefaultsFieldDefaults[fontId];
+const defaultFontForFamily =
+matchingFonts.includes(preferredStoredFont)
+? preferredStoredFont
+: settingsDefaultsFontDefaults[selectedFamily] || matchingFonts[0] || "";
+populateSimpleSelect(fontSelect, matchingFonts, defaultFontForFamily);
+fontSelect.value = defaultFontForFamily;
+fontSelect.classList.add("settingsDefaultsFontNativeSelect", "hidden");
+fontSelect.hidden = true;
+const shouldShowFontButtons =
+shouldUseSettingsDefaultsFontButtons(selectedFamily);
+const fontLabel = document.querySelector(`label[for="${fontSelect.id}"]`);
+if (fontLabel) {
+fontLabel.classList.toggle("hidden", !shouldShowFontButtons);
+}
+refreshSettingsDefaultsFontButtons(
+fontId,
+selectedFamily,
+matchingFonts
+);
+fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
+fontSelect.style.fontSize =
+selectedFamily === "Highway Gothic" ? "1.2rem" : "1rem";
+};
+settingsDefaultsFontFamilyIds.forEach((id) => {
+const selectEl = document.getElementById(id);
+if (!selectEl) {
+return;
+}
+const selectedFamily =
+Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+? storedSettingsDefaults[id]
+: settingsDefaultsFieldDefaults[id];
+populateSimpleSelect(
+selectEl,
+Object.keys(settingsDefaultsFontFamilies),
+selectedFamily
+);
+const syncFamilyPreview = () => {
+syncSettingsDefaultsFamilyPreviewSelect(selectEl);
+};
+if (selectEl.dataset.defaultsFontFamilyBound !== "true") {
+selectEl.dataset.defaultsFontFamilyBound = "true";
+selectEl.addEventListener("change", () => {
+updateSettingsDefaultsFontSelect(id);
+syncFamilyPreview();
+saveSettingsDefaultsField(id, selectEl.value);
+storedSettingsDefaults[id] = selectEl.value;
+const fontId = settingsDefaultsFontIds[id];
+const fontSelect = document.getElementById(fontId);
+if (fontSelect) {
+saveSettingsDefaultsField(fontId, fontSelect.value);
+storedSettingsDefaults[fontId] = fontSelect.value;
+}
+if (typeof syncAllFontPickers === "function") {
+syncAllFontPickers();
+}
+});
+}
+updateSettingsDefaultsFontSelect(id);
+syncFamilyPreview();
+});
+Object.entries(settingsDefaultsFontIds).forEach(([fontFamilyId, fontId]) => {
+const fontSelect = document.getElementById(fontId);
+if (!fontSelect) {
+return;
+}
+const syncDefaultsFontPreview = () => {
+fontSelect.style.fontFamily = `"${fontSelect.value || "Inter"}", sans-serif`;
+let familySelectId = null;
+if (fontId === "settingsDefaultsControlTextFont") {
+familySelectId = "settingsDefaultsControlTextFontFamily";
+} else if (fontId === "settingsDefaultsAdvisoryFont") {
+familySelectId = "settingsDefaultsAdvisoryFontFamily";
+} else if (fontId === "settingsDefaultsActionFont") {
+familySelectId = "settingsDefaultsActionFontFamily";
+}
+const familySelect = familySelectId
+? document.getElementById(familySelectId)
+: null;
+const selectedFamily = familySelect?.value || "";
+const matchingFonts = settingsDefaultsFontFamilies[selectedFamily] || [];
+fontSelect.style.fontSize =
+selectedFamily === "Highway Gothic" ? "1.2rem" : "1rem";
+refreshSettingsDefaultsFontButtons(
+fontId,
+selectedFamily,
+matchingFonts
+);
+};
+syncDefaultsFontPreview();
+if (fontSelect.dataset.defaultsFontPreviewBound !== "true") {
+fontSelect.dataset.defaultsFontPreviewBound = "true";
+fontSelect.addEventListener("change", () => {
+syncDefaultsFontPreview();
+saveSettingsDefaultsField(fontId, fontSelect.value);
+storedSettingsDefaults[fontId] = fontSelect.value;
+});
+}
+});
+const settingsDefaultsTextColorSelects = [
+document.getElementById("settingsDefaultsControlTextColor"),
+document.getElementById("settingsDefaultsAdvisoryColor"),
+document.getElementById("settingsDefaultsActionColor"),
+];
+const settingsDefaultsBgColorSelects = [
+document.getElementById("settingsDefaultsControlTextBg"),
+document.getElementById("settingsDefaultsAdvisoryBg"),
+document.getElementById("settingsDefaultsActionBg"),
+document.getElementById("settingsDefaultsExitTabPanelColor"),
+];
+const settingsDefaultsTextColors = ControlTextElement.getTextColorOptions();
+const settingsDefaultsBackgroundColors = TextElement.prototype.backgroundColor;
+settingsDefaultsTextColorSelects.forEach((selectEl) => {
+populateSimpleSelect(selectEl, settingsDefaultsTextColors, ControlTextElement.defaultTextColor);
+});
+settingsDefaultsBgColorSelects.forEach((selectEl) => {
+if (selectEl?.id === "settingsDefaultsExitTabPanelColor") {
+populateSimpleSelect(selectEl, settingsDefaultsBackgroundColors, "Panel Color");
+} else {
+populateSimpleSelect(selectEl, settingsDefaultsBackgroundColors, "Inherit");
+}
+});
+const settingsDefaultsShieldType = document.getElementById("settingsDefaultsShieldType");
+let settingsDefaultsShieldPicker = null;
+if (settingsDefaultsShieldType) {
+const existingShieldValue =
+settingsDefaultsShieldType.value ||
+getStoredItem("signMaker.settingsDefaults")
+? (() => {
+try {
+const parsed = JSON.parse(
+getStoredItem("signMaker.settingsDefaults") || "{}"
+);
+return parsed.settingsDefaultsShieldType || "I";
+} catch (error) {
+return "I";
+}
+})()
+: "I";
+settingsDefaultsShieldPicker = createShieldPicker({
+mount: settingsDefaultsShieldType,
+value: existingShieldValue,
+placeholder: "Shield type",
+onChange: (nextValue) => {
+const settingsDefaultsShieldRouteNumber = document.getElementById("settingsDefaultsShieldRouteNumber");
+const storedRaw = getStoredItem("signMaker.settingsDefaults");
+let storedDefaults = {};
+try {
+storedDefaults = storedRaw ? JSON.parse(storedRaw) : {};
+} catch (error) {
+storedDefaults = {};
+}
+storedDefaults.settingsDefaultsShieldType = nextValue;
+setStoredItem("signMaker.settingsDefaults", JSON.stringify(storedDefaults));
+if (typeof readForm === "function") {
+readForm();
+}
+},
+});
+}
+if (settingsDefaultsShieldType) {
+settingsDefaultsShieldType.innerHTML = "";
+for (const shield of ShieldElement.prototype.blockShieldBases) {
+lib.appendOption(settingsDefaultsShieldType, shield.value, {
+text: shield.label,
+selected:
+shield.value === ShieldElement.prototype.defaultShieldBase,
+});
+}
+}
+const settingsDefaultsShieldBanner1 = document.getElementById("settingsDefaultsShieldBanner1");
+const settingsDefaultsShieldBanner2 = document.getElementById("settingsDefaultsShieldBanner2");
+const shieldBannerPositions = ShieldElement.prototype.getBannerPositionOptions();
+populateSimpleSelect(
+settingsDefaultsShieldBanner1,
+shieldBannerPositions,
+settingsDefaultsFieldDefaults.settingsDefaultsShieldBanner1
+);
+populateSimpleSelect(
+settingsDefaultsShieldBanner2,
+shieldBannerPositions,
+settingsDefaultsFieldDefaults.settingsDefaultsShieldBanner2
+);
+const settingsDefaultsControlTextText = document.getElementById("settingsDefaultsControlTextText");
+const settingsDefaultsAdvisoryText = document.getElementById("settingsDefaultsAdvisoryText");
+const settingsDefaultsActionText = document.getElementById("settingsDefaultsActionText");
+const settingsDefaultsShieldRouteNumber = document.getElementById("settingsDefaultsShieldRouteNumber");
+Object.entries(settingsDefaultsFieldDefaults).forEach(([id, fallbackValue]) => {
+const el = document.getElementById(id);
+if (!el) {
+return;
+}
+const storedValue = Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+? storedSettingsDefaults[id]
+: fallbackValue;
+if (el.type === "checkbox") {
+el.checked = !!storedValue;
+} else if (el.tagName === "SELECT") {
+if (isColorSelectElement(el)) {
+ensureCustomColorOptionsForSelect(el);
+if (storedValue) {
+ensureNativeColorSelectOption(el, storedValue);
+}
+}
+const hasMatchingOption = Array.from(el.options).some(
+(option) => option.value === storedValue
+);
+const safeValue = hasMatchingOption ? storedValue : fallbackValue;
+el.value = safeValue;
+storedSettingsDefaults[id] = safeValue;
+} else {
+el.value = storedValue;
+}
+});
+setStoredSettingsDefaults(storedSettingsDefaults);
+updateSettingsDefaultsFontSelect("settingsDefaultsControlTextFontFamily");
+updateSettingsDefaultsFontSelect("settingsDefaultsAdvisoryFontFamily");
+updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
+initializeFontPickers();
+setupExitTabProfileControls();
+[
+"settingsDefaultsControlTextFontFamily",
+"settingsDefaultsAdvisoryFontFamily",
+"settingsDefaultsActionFontFamily",
+].forEach((id) => {
+const selectEl = document.getElementById(id);
+if (!selectEl) {
+return;
+}
+if (selectEl.value === "Clearview") {
+selectEl.style.fontFamily = "Clearview 5WR";
+} else if (selectEl.value === "Highway Gothic") {
+selectEl.style.fontFamily = "Series EM";
+} else if (selectEl.value === "Arial") {
+selectEl.style.fontFamily = "Arial";
+} else if (selectEl.value === "Transport") {
+selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+} else if (selectEl.value === "DIN 1451") {
+selectEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Motorway") {
+selectEl.style.fontFamily = '"Transport Regular", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Rawlinson") {
+selectEl.style.fontFamily = '"Rawlinson Regular", serif';
+selectEl.style.fontSize = "1rem";
+} else if (selectEl.value === "Helvetica") {
+selectEl.style.fontFamily = '"Helvetica Neue Roman", sans-serif';
+selectEl.style.fontSize = "1rem";
+} else {
+selectEl.style.fontFamily = "Inter";
+}
+});
+[
+"settingsDefaultsControlTextFontFamily",
+"settingsDefaultsAdvisoryFontFamily",
+"settingsDefaultsActionFontFamily",
+].forEach((id) => {
+const selectEl = document.getElementById(id);
+if (selectEl && !selectEl.value) {
+selectEl.value = settingsDefaultsFieldDefaults[id];
+}
+});
+updateSettingsDefaultsFontSelect("settingsDefaultsControlTextFontFamily");
+updateSettingsDefaultsFontSelect("settingsDefaultsAdvisoryFontFamily");
+updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
+const bindSettingsDefaultsSlider = (sliderId, valueId, formatter = (value) => value) => {
+const slider = document.getElementById(sliderId);
+const valueEl = document.getElementById(valueId);
+if (!slider || !valueEl) {
+return;
+}
+const syncValue = () => {
+valueEl.textContent = formatter(slider.value);
+};
+syncValue();
+if (slider.dataset.defaultsSliderBound !== "true") {
+slider.dataset.defaultsSliderBound = "true";
+slider.addEventListener("input", syncValue);
+slider.addEventListener("change", syncValue);
+}
+};
+bindSettingsDefaultsSlider(
+"settingsDefaultsControlTextSize",
+"settingsDefaultsControlTextSizeValue",
+(value) => `${value}%`
+);
+bindSettingsDefaultsSlider(
+"settingsDefaultsAdvisorySize",
+"settingsDefaultsAdvisorySizeValue",
+(value) => `${value}%`
+);
+bindSettingsDefaultsSlider(
+"settingsDefaultsActionSize",
+"settingsDefaultsActionSizeValue",
+(value) => `${value}%`
+);
+const shieldSizeSlider = document.getElementById("settingsDefaultsShieldSize");
+const shieldSizeInput = document.getElementById("settingsDefaultsShieldSizeValue");
+if (shieldSizeSlider && shieldSizeInput) {
+const syncShieldSizeInput = () => {
+shieldSizeInput.value = shieldSizeSlider.value;
+};
+syncShieldSizeInput();
+if (shieldSizeInput.dataset.defaultsInputBound !== "true") {
+shieldSizeInput.dataset.defaultsInputBound = "true";
+shieldSizeSlider.addEventListener("input", syncShieldSizeInput);
+shieldSizeSlider.addEventListener("change", syncShieldSizeInput);
+shieldSizeInput.addEventListener("change", () => {
+const entered = Number(shieldSizeInput.value);
+if (Number.isFinite(entered) && shieldSizeInput.value.trim() !== "") {
+shieldSizeSlider.value = String(
+Math.round(Math.max(2, Math.min(4, entered)) * 10) / 10
+);
+shieldSizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
+shieldSizeSlider.dispatchEvent(new Event("change", { bubbles: true }));
+}
+syncShieldSizeInput();
+});
+}
+}
+bindSettingsDefaultsSlider(
+"settingsDefaultsExitTabBorderThickness",
+"settingsDefaultsExitTabBorderThicknessValue",
+(value) => value
+);
+bindSettingsDefaultsSlider(
+"settingsDefaultsExitTabMinHeight",
+"settingsDefaultsExitTabMinHeightValue",
+(value) => value
+);
+bindSettingsDefaultsSlider(
+"settingsDefaultsExitTabTextSize",
+"settingsDefaultsExitTabTextSizeValue",
+(value) => value
+);
+bindSettingsDefaultsSlider(
+"settingsDefaultsExitTabNestedSpacing",
+"settingsDefaultsExitTabNestedSpacingValue",
+(value) => value
+);
+const settingsDefaultsBlockElementSliderIds = [
+["settingsDefaultsArrowSize", "settingsDefaultsArrowSizeValue"],
+["settingsDefaultsArrowHorizontalPadding", "settingsDefaultsArrowHorizontalPaddingValue"],
+["settingsDefaultsArrowVerticalPadding", "settingsDefaultsArrowVerticalPaddingValue"],
+["settingsDefaultsIconSize", "settingsDefaultsIconSizeValue"],
+["settingsDefaultsIconSpacing", "settingsDefaultsIconSpacingValue"],
+["settingsDefaultsTollLogoSize", "settingsDefaultsTollLogoSizeValue"],
+["settingsDefaultsTollLogoSpacing", "settingsDefaultsTollLogoSpacingValue"],
+["settingsDefaultsTollLogoBorderRadius", "settingsDefaultsTollLogoBorderRadiusValue"],
+["settingsDefaultsTollLogoHorizontalBgPadding", "settingsDefaultsTollLogoHorizontalBgPaddingValue"],
+["settingsDefaultsTollLogoVerticalBgPadding", "settingsDefaultsTollLogoVerticalBgPaddingValue"],
+];
+settingsDefaultsBlockElementSliderIds.forEach(([sliderId, valueId]) => {
+bindSettingsDefaultsSlider(sliderId, valueId, (value) => value);
+});
+const dispatchSettingsDefaultsInputAndChange = (el) => {
+if (!el) {
+return;
+}
+el.dispatchEvent(new Event("input", { bubbles: true }));
+el.dispatchEvent(new Event("change", { bubbles: true }));
+};
+const resetSettingsDefaultsField = (id) => {
+const el = document.getElementById(id);
+if (!el || !Object.prototype.hasOwnProperty.call(settingsDefaultsFieldDefaults, id)) {
+return;
+}
+const value = settingsDefaultsFieldDefaults[id];
+if (el.type === "checkbox") {
+el.checked = !!value;
+} else {
+el.value = value == null ? "" : String(value);
+}
+dispatchSettingsDefaultsInputAndChange(el);
+};
+const updateSettingsDefaultsSegmentedButtons = (pageId, valueInputId) => {
+const valueInput = document.getElementById(valueInputId);
+const page = document.getElementById(pageId);
+if (!valueInput || !page) {
+return;
+}
+page
+.querySelectorAll(".settingsDefaultsSegmentedButton")
+.forEach((button) => {
+button.classList.toggle(
+"active",
+(button.dataset.alignmentValue || button.textContent.trim()) === valueInput.value
+);
+});
+};
+const bindSettingsDefaultsSegmentedButtons = (pageId, valueInputId) => {
+const valueInput = document.getElementById(valueInputId);
+const page = document.getElementById(pageId);
+if (!valueInput || !page) {
+return;
+}
+page
+.querySelectorAll(".settingsDefaultsSegmentedButton")
+.forEach((button) => {
+if (button.dataset.defaultsSegmentBound === "true") {
+return;
+}
+button.dataset.defaultsSegmentBound = "true";
+button.addEventListener("click", (event) => {
+event.preventDefault();
+valueInput.value = button.dataset.alignmentValue || button.textContent.trim();
+dispatchSettingsDefaultsInputAndChange(valueInput);
+updateSettingsDefaultsSegmentedButtons(pageId, valueInputId);
+});
+});
+updateSettingsDefaultsSegmentedButtons(pageId, valueInputId);
+};
+bindSettingsDefaultsSegmentedButtons(
+"settingsDefaultArrow",
+"settingsDefaultsArrowAlignment"
+);
+bindSettingsDefaultsSegmentedButtons(
+"settingsDefaultIcon",
+"settingsDefaultsIconAlignment"
+);
+const arrowRotationInput = document.getElementById("settingsDefaultsArrowRotation");
+if (arrowRotationInput) {
+document
+.querySelectorAll(
+"#settingsDefaultArrow .settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton"
+)
+.forEach((button) => {
+if (button.dataset.defaultsRotationBound === "true") {
+return;
+}
+button.dataset.defaultsRotationBound = "true";
+button.addEventListener("click", (event) => {
+event.preventDefault();
+arrowRotationInput.value = button.textContent.trim();
+dispatchSettingsDefaultsInputAndChange(arrowRotationInput);
+document
+.querySelectorAll(
+"#settingsDefaultArrow .settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton"
+)
+.forEach((rotationButton) => {
+rotationButton.classList.toggle(
+"active",
+rotationButton.textContent.trim() === arrowRotationInput.value
+);
+});
+});
+});
+}
+const settingsDefaultsInlineResetTargets = {
+"Reset arrow rotation": "settingsDefaultsArrowRotation",
+"Reset arrow size": "settingsDefaultsArrowSize",
+"Reset horizontal padding": "settingsDefaultsArrowHorizontalPadding",
+"Reset vertical padding": "settingsDefaultsArrowVerticalPadding",
+"Reset icon size": "settingsDefaultsIconSize",
+"Reset icon spacing": "settingsDefaultsIconSpacing",
+"Reset toll logo size": "settingsDefaultsTollLogoSize",
+"Reset toll logo spacing": "settingsDefaultsTollLogoSpacing",
+"Reset toll logo border radius": "settingsDefaultsTollLogoBorderRadius",
+"Reset horizontal background padding": "settingsDefaultsTollLogoHorizontalBgPadding",
+"Reset vertical background padding": "settingsDefaultsTollLogoVerticalBgPadding",
+};
+document.querySelectorAll(".settingsDefaultsInlineReset").forEach((button) => {
+if (button.dataset.defaultsInlineResetBound === "true") {
+return;
+}
+const targetId = settingsDefaultsInlineResetTargets[button.getAttribute("aria-label")];
+if (!targetId) {
+return;
+}
+button.dataset.defaultsInlineResetBound = "true";
+button.addEventListener("click", (event) => {
+event.preventDefault();
+resetSettingsDefaultsField(targetId);
+});
+});
+const refreshSettingsDefaultsAssetLabels = () => {
+const configs = [
+{
+inputId: "settingsDefaultsArrowValue",
+labelId: "settingsDefaultsArrowCurrent",
+sourceObject: ArrowElement.prototype.arrows,
+defaultKey: ArrowElement.prototype.defaultArrow,
+},
+{
+inputId: "settingsDefaultsIconValue",
+labelId: "settingsDefaultsIconCurrent",
+sourceObject: IconElement.prototype.icons,
+defaultKey: IconElement.prototype.defaultIcon,
+},
+{
+inputId: "settingsDefaultsTollLogoValue",
+labelId: "settingsDefaultsTollLogoCurrent",
+sourceObject: TollLogoElement.prototype.logos,
+defaultKey: TollLogoElement.prototype.defaultLogo,
+},
+];
+configs.forEach(({ inputId, labelId, sourceObject, defaultKey }) => {
+const input = document.getElementById(inputId);
+const label = document.getElementById(labelId);
+if (!input || !label || !sourceObject) {
+return;
+}
+const key = sourceObject[input.value] ? input.value : defaultKey;
+const definition = sourceObject[key];
+if (definition) {
+label.textContent = String(definition.label || definition.name || key);
+}
+});
+};
+refreshSettingsDefaultsAssetLabels();
+const settingsDefaultsSimpleFieldIds = [
+"settingsDefaultsControlTextText",
+"settingsDefaultsControlTextColor",
+"settingsDefaultsControlTextBg",
+"settingsDefaultsShieldType",
+"settingsDefaultsShieldRouteNumber",
+"settingsDefaultsShieldBanner1",
+"settingsDefaultsShieldBanner2",
+"settingsDefaultsShieldManualBanners",
+"settingsDefaultsAdvisoryText",
+"settingsDefaultsAdvisoryColor",
+"settingsDefaultsAdvisoryBg",
+"settingsDefaultsActionText",
+"settingsDefaultsActionColor",
+"settingsDefaultsActionBg",
+"settingsDefaultsExitTabText",
+"settingsDefaultsExitTabType",
+"settingsDefaultsExitTabAlignment",
+"settingsDefaultsExitTabPosition",
+"settingsDefaultsExitTabPanelColor",
+"settingsDefaultsArrowValue",
+"settingsDefaultsArrowRotation",
+"settingsDefaultsArrowAlignment",
+"settingsDefaultsIconValue",
+"settingsDefaultsIconBgColor",
+"settingsDefaultsIconAlignment",
+"settingsDefaultsTollLogoValue",
+"settingsDefaultsTollLogoBgColor",
+];
+settingsDefaultsSimpleFieldIds.forEach((id) => {
+const el = document.getElementById(id);
+if (!el) {
+return;
+}
+const value = Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
+? storedSettingsDefaults[id]
+: settingsDefaultsFieldDefaults[id];
+if (el.type === "checkbox") {
+el.checked = !!value;
+} else {
+el.value = value;
+}
+});
+settingsDefaultsSimpleFieldIds.forEach((id) => {
+const el = document.getElementById(id);
+if (!el || el.dataset.defaultsPersistBound === "true") {
+return;
+}
+el.dataset.defaultsPersistBound = "true";
+const persist = () => {
+const value = el.type === "checkbox" ? !!el.checked : el.value;
+saveSettingsDefaultsField(id, value);
+storedSettingsDefaults[id] = value;
+};
+el.addEventListener("change", persist);
+if (el.tagName !== "SELECT") {
+el.addEventListener("input", persist);
+}
+});
+[
+"settingsDefaultsExitTabFHWAStyle",
+"settingsDefaultsExitTabLeft",
+"settingsDefaultsExitTabFullBorder",
+"settingsDefaultsExitTabSquareCorners",
+"settingsDefaultsExitTabTopOffset",
+"settingsDefaultsExitTabVerticalArrangement",
+"settingsDefaultsExitTabCAStyle",
+"settingsDefaultsIconBorder",
+"settingsDefaultsTollLogoSquareIcon",
+"settingsDefaultsTollLogoShowOnlyBlock",
+].forEach((id) => {
+const el = document.getElementById(id);
+if (!el || el.dataset.defaultsPersistBound === "true") {
+return;
+}
+el.dataset.defaultsPersistBound = "true";
+const persist = () => saveSettingsDefaultsField(id, el.checked);
+el.addEventListener("change", persist);
+});
+[
+"settingsDefaultsControlTextSize",
+"settingsDefaultsAdvisorySize",
+"settingsDefaultsActionSize",
+"settingsDefaultsShieldSize",
+"settingsDefaultsExitTabBorderThickness",
+"settingsDefaultsExitTabMinHeight",
+"settingsDefaultsExitTabTextSize",
+"settingsDefaultsExitTabNestedSpacing",
+"settingsDefaultsArrowSize",
+"settingsDefaultsArrowHorizontalPadding",
+"settingsDefaultsArrowVerticalPadding",
+"settingsDefaultsIconSize",
+"settingsDefaultsIconSpacing",
+"settingsDefaultsTollLogoSize",
+"settingsDefaultsTollLogoSpacing",
+"settingsDefaultsTollLogoBorderRadius",
+"settingsDefaultsTollLogoHorizontalBgPadding",
+"settingsDefaultsTollLogoVerticalBgPadding",
+].forEach((id) => {
+const el = document.getElementById(id);
+if (!el || el.dataset.defaultsPersistBound === "true") {
+return;
+}
+el.dataset.defaultsPersistBound = "true";
+const persist = () => saveSettingsDefaultsField(id, el.value);
+el.addEventListener("change", persist);
+el.addEventListener("input", persist);
+});
+const settingsResetDefaultsButton = document.getElementById("settingsResetDefaultsButton");
+applyExitTabSettingsDefaults();
+if (settingsResetDefaultsButton && settingsResetDefaultsButton.dataset.bound !== "true") {
+settingsResetDefaultsButton.dataset.bound = "true";
+settingsResetDefaultsButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+Object.entries(settingsDefaultsFieldDefaults).forEach(([id, value]) => {
+const el = document.getElementById(id);
+if (!el) {
+return;
+}
+if (el.type === "checkbox") {
+el.checked = !!value;
+} else {
+el.value = value;
+}
+});
+updateSettingsDefaultsFontSelect("settingsDefaultsControlTextFontFamily");
+updateSettingsDefaultsFontSelect("settingsDefaultsAdvisoryFontFamily");
+updateSettingsDefaultsFontSelect("settingsDefaultsActionFontFamily");
+[
+"settingsDefaultsControlTextFontFamily",
+"settingsDefaultsAdvisoryFontFamily",
+"settingsDefaultsActionFontFamily",
+].forEach((id) => {
+syncSettingsDefaultsFamilyPreviewSelect(document.getElementById(id));
+});
+document.getElementById("settingsDefaultsControlTextFont").value =
+settingsDefaultsFieldDefaults.settingsDefaultsControlTextFont;
+document.getElementById("settingsDefaultsAdvisoryFont").value =
+settingsDefaultsFieldDefaults.settingsDefaultsAdvisoryFont;
+document.getElementById("settingsDefaultsActionFont").value =
+settingsDefaultsFieldDefaults.settingsDefaultsActionFont;
+[
+"settingsDefaultsControlTextFont",
+"settingsDefaultsAdvisoryFont",
+"settingsDefaultsActionFont",
+].forEach((id) => {
+syncFontPreviewSelect(document.getElementById(id));
+});
+refreshAllSettingsDefaultsFontButtons();
+Object.entries(settingsDefaultsFieldDefaults).forEach(([id, value]) => {
+saveSettingsDefaultsField(id, value);
+});
+Object.assign(storedSettingsDefaults, settingsDefaultsFieldDefaults);
+const syncEvent = new Event("input", { bubbles: true });
+const changeEvent = new Event("change", { bubbles: true });
+[
+"settingsDefaultsControlTextSize",
+"settingsDefaultsAdvisorySize",
+"settingsDefaultsActionSize",
+"settingsDefaultsShieldSize",
+"settingsDefaultsExitTabBorderThickness",
+"settingsDefaultsExitTabMinHeight",
+"settingsDefaultsExitTabTextSize",
+"settingsDefaultsExitTabNestedSpacing",
+"settingsDefaultsArrowSize",
+"settingsDefaultsArrowHorizontalPadding",
+"settingsDefaultsArrowVerticalPadding",
+"settingsDefaultsIconSize",
+"settingsDefaultsIconSpacing",
+"settingsDefaultsTollLogoSize",
+"settingsDefaultsTollLogoSpacing",
+"settingsDefaultsTollLogoBorderRadius",
+"settingsDefaultsTollLogoHorizontalBgPadding",
+"settingsDefaultsTollLogoVerticalBgPadding",
+].forEach((id) => {
+const slider = document.getElementById(id);
+if (slider) {
+slider.dispatchEvent(syncEvent);
+slider.dispatchEvent(changeEvent);
+}
+});
+const settingsDefaultsExitTabFHWAStyle = document.getElementById("settingsDefaultsExitTabFHWAStyle");
+const settingsDefaultsExitTabTextSize = document.getElementById("settingsDefaultsExitTabTextSize");
+if (
+settingsDefaultsExitTabFHWAStyle &&
+settingsDefaultsExitTabTextSize &&
+settingsDefaultsExitTabFHWAStyle.dataset.exitTabTextSizeBound !== "true"
+) {
+settingsDefaultsExitTabFHWAStyle.dataset.exitTabTextSizeBound = "true";
+settingsDefaultsExitTabFHWAStyle.addEventListener("change", () => {
+const nextValue = settingsDefaultsExitTabFHWAStyle.checked ? "18" : "20";
+settingsDefaultsExitTabTextSize.value = nextValue;
+saveSettingsDefaultsField("settingsDefaultsExitTabTextSize", nextValue);
+settingsDefaultsExitTabTextSize.dispatchEvent(new Event("input", { bubbles: true }));
+settingsDefaultsExitTabTextSize.dispatchEvent(new Event("change", { bubbles: true }));
+});
+}
+document.getElementById("settingsDefaultsControlTextSizeValue").textContent =
+`${document.getElementById("settingsDefaultsControlTextSize").value}%`;
+document.getElementById("settingsDefaultsAdvisorySizeValue").textContent =
+`${document.getElementById("settingsDefaultsAdvisorySize").value}%`;
+document.getElementById("settingsDefaultsActionSizeValue").textContent =
+`${document.getElementById("settingsDefaultsActionSize").value}%`;
+document.getElementById("settingsDefaultsShieldSizeValue").value =
+document.getElementById("settingsDefaultsShieldSize").value;
+settingsDefaultsFontFamilyIds.forEach((id) => {
+const familyEl = document.getElementById(id);
+if (!familyEl) {
+return;
+}
+if (familyEl.value === "Clearview") {
+familyEl.style.fontFamily = '"Clearview 5WR", sans-serif';
+familyEl.style.fontSize = "1rem";
+} else if (familyEl.value === "Highway Gothic") {
+familyEl.style.fontFamily = '"Series EM", sans-serif';
+familyEl.style.fontSize = "1.1rem";
+} else if (familyEl.value === "Arial") {
+familyEl.style.fontFamily = "Arial, sans-serif";
+familyEl.style.fontSize = "1rem";
+} else if (familyEl.value === "Transport") {
+familyEl.style.fontFamily = '"Transport Regular", sans-serif';
+familyEl.style.fontSize = "1rem";
+} else if (familyEl.value === "DIN 1451") {
+familyEl.style.fontFamily = '"DIN 1451 Regular", sans-serif';
+familyEl.style.fontSize = "1rem";
+} else if (familyEl.value === "Motorway") {
+familyEl.style.fontFamily = '"Transport Regular", sans-serif';
+familyEl.style.fontSize = "1rem";
+} else {
+familyEl.style.fontFamily = "Inter, sans-serif";
+familyEl.style.fontSize = "1rem";
+}
+});
+Object.values(settingsDefaultsFontIds).forEach((id) => {
+const fontEl = document.getElementById(id);
+if (fontEl) {
+fontEl.style.fontFamily = fontEl.value || "Inter";
+}
+});
+updateSettingsDefaultsSegmentedButtons(
+"settingsDefaultArrow",
+"settingsDefaultsArrowAlignment"
+);
+updateSettingsDefaultsSegmentedButtons(
+"settingsDefaultIcon",
+"settingsDefaultsIconAlignment"
+);
+document
+.querySelectorAll(
+"#settingsDefaultArrow .settingsDefaultsRotationButtonGroup .settingsDefaultsPresetButton"
+)
+.forEach((button) => {
+const rotationInput = document.getElementById("settingsDefaultsArrowRotation");
+button.classList.toggle(
+"active",
+rotationInput && button.textContent.trim() === rotationInput.value
+);
+});
+refreshSettingsDefaultsAssetLabels();
+});
+}
+for (const elem of textElem_alignmentSelects) {
+for (const alignment of TextElement.prototype.alignment) {
+lib.appendOption(elem, alignment);
+}
+}
+for (const elem of textElem_bgColorSelects) {
+for (const backgroundColor of TextElement.prototype.backgroundColor) {
+lib.appendOption(elem, backgroundColor);
+}
+}
+for (const fontFamily of ElectronicSignElement.prototype.fontFamily) {
+lib.appendOption(
+document.querySelector("#sdElectronicSign_fontFamily"),
+fontFamily
+);
+}
+for (const textColor of ElectronicSignElement.prototype.textColors) {
+lib.appendOption(
+document.querySelector("#sdElectronicSign_textColor"),
+textColor
+);
+}
+for (const measurement of DividerElement.prototype.dividerMeasurement) {
+lib.appendOption(divider_widthMeasurement, measurement);
+}
+for (const orientation of DividerElement.prototype.orientations || []) {
+lib.appendOption(divider_orientationSelect, orientation);
+}
+for (const { value, label } of DividerElement.prototype.dividerColors) {
+lib.appendOption(divider_colorSelect, value, { text: label });
+}
+if (shield_shieldBase && ShieldElement.prototype.blockShieldBases) {
+const shields = ShieldElement.prototype.blockShieldBases || [];
+const currentValue =
+shield_shieldBase.value || ShieldElement.prototype.defaultShieldBase;
+shield_shieldBase.innerHTML = "";
+const groupMap = new Map();
+for (const shield of shields) {
+const categories = Array.isArray(shield.categories)
+? shield.categories
+: [];
+const groupLabel = categories.length ? categories.join(" / ") : "Other";
+if (!groupMap.has(groupLabel)) {
+groupMap.set(groupLabel, []);
+}
+groupMap.get(groupLabel).push(shield);
+}
+let firstOptionValue = "";
+const sortedGroups = Array.from(groupMap.entries()).sort((a, b) =>
+a[0].localeCompare(b[0])
+);
+for (const [groupLabel, groupShields] of sortedGroups) {
+const optgroup = document.createElement("optgroup");
+optgroup.label = groupLabel;
+groupShields
+.slice()
+.sort((a, b) =>
+(a.label || a.value).localeCompare(b.label || b.value)
+)
+.forEach(({ value, label }) => {
+const option = document.createElement("option");
+option.value = value;
+option.text = label || value;
+if (!firstOptionValue) {
+firstOptionValue = value;
+}
+if (currentValue && value === currentValue) {
+option.selected = true;
+}
+optgroup.appendChild(option);
+});
+shield_shieldBase.appendChild(optgroup);
+}
+if (!shield_shieldBase.value && firstOptionValue) {
+shield_shieldBase.value = firstOptionValue;
+}
+}
+if (shield_shieldBase) {
+shield_shieldBase.addEventListener("change", () => {
+updateShieldCountyVisibility(
+shield_shieldBase.dataset?.pickerValue || shield_shieldBase.value
+);
+});
+updateShieldCountyVisibility();
+}
+const shieldVariantSelect = document.querySelector("#sdShield_shieldType");
+if (shieldVariantSelect && ShieldElement.prototype.blockShieldVariants) {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const currentBase =
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+shield_shieldBase?.dataset?.pickerValue ||
+shield_shieldBase?.value ||
+ShieldElement.prototype.defaultShieldBase ||
+"I";
+const currentVariant =
+currentBlockElem?.shieldType ||
+shieldVariantSelect.value ||
+getSdShieldAutoVariantValue();
+syncSdShieldVariantPickerForBase(currentBase, {
+requestedValue: currentVariant,
+updateBlock: !!currentBlockElem,
+});
+if (shield_shieldBase && shield_shieldBase.dataset.variantPickerBaseBound !== "true") {
+shield_shieldBase.dataset.variantPickerBaseBound = "true";
+shield_shieldBase.addEventListener("change", () => {
+const blockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+const nextBase =
+shield_shieldBase.dataset?.pickerValue ||
+shield_shieldBase.value ||
+blockElem?.shieldBase ||
+blockElem?.type ||
+ShieldElement.prototype.defaultShieldBase ||
+"I";
+syncSdShieldVariantPickerForBase(nextBase, {
+requestedValue: blockElem?.shieldType || getSdShieldAutoVariantValue(),
+preferRemembered: true,
+updateBlock: !!blockElem,
+});
+scheduleSdShieldReadForm();
+});
+}
+}
+const manualBannerCheckbox = document.getElementById("sdShield_manualBanners");
+if (manualBannerCheckbox) {
+manualBannerCheckbox.addEventListener("change", () => {
+syncManualBannerInputMode({ convert: true });
+scheduleSdShieldReadForm();
+});
+}
+const bindShieldUndoField = (fieldId, eventNames = ["change"]) => {
+const field = document.getElementById(fieldId);
+if (!field || field.dataset.shieldUndoBound === "true") {
+return;
+}
+field.dataset.shieldUndoBound = "true";
+for (const eventName of eventNames) {
+field.addEventListener(eventName, scheduleSdShieldReadForm);
+}
+};
+const bindSdShieldBacksCheckbox = () => {
+const checkbox = document.getElementById("sdShield_shieldBacks");
+if (!checkbox || checkbox.dataset.sdShieldBacksBound === "true") {
+return;
+}
+checkbox.dataset.sdShieldBacksBound = "true";
+checkbox.addEventListener("change", async () => {
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+if (!currentBlockElem) {
+return;
+}
+const normalizedShieldValue =
+typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+? ShieldElement.prototype
+.normalizeShieldCode(
+currentBlockElem.shieldBase ||
+currentBlockElem.type ||
+""
+)
+.toUpperCase()
+: String(
+currentBlockElem.shieldBase ||
+currentBlockElem.type ||
+""
+).toUpperCase();
+const selectedShieldConfig =
+typeof ShieldElement?.prototype?.getBlockShieldConfig === "function"
+? ShieldElement.prototype.getBlockShieldConfig(
+currentBlockElem.shieldBase ||
+currentBlockElem.type ||
+normalizedShieldValue
+)
+: null;
+const supportsShieldBacks =
+typeof ShieldElement?.prototype?.supportsShieldBacks === "function"
+? ShieldElement.prototype.supportsShieldBacks(
+selectedShieldConfig || normalizedShieldValue
+)
+: normalizedShieldValue === "US" ||
+normalizedShieldValue === "NJ" ||
+normalizedShieldValue === "C" ||
+normalizedShieldValue === "NVCC";
+if (!supportsShieldBacks) {
+checkbox.checked = false;
+return;
+}
+await preloadSdShieldAsset({
+baseValue:
+currentBlockElem.shieldBase ||
+currentBlockElem.type ||
+"",
+variantValue:
+currentBlockElem.shieldType ||
+getSdShieldAutoVariantValue(),
+shieldBacks: !!checkbox.checked,
+});
+runShieldUndoableCommit(() => {
+currentBlockElem.shieldBacks = !!checkbox.checked;
+if (exposed && typeof exposed.redraw === "function") {
+exposed.redraw();
+}
+});
+updateShieldCountyVisibility();
+});
+};
+const bindShieldLetterSpacingControls = () => {
+const range = document.getElementById("sdShield_bannerLetterSpacing");
+const value = document.getElementById("sdShield_bannerLetterSpacingVal");
+if (!range || !value || range.dataset.shieldLetterSpacingBound === "true") {
+return;
+}
+range.dataset.shieldLetterSpacingBound = "true";
+const syncFromRange = () => {
+value.value = range.value;
+};
+const syncFromValue = () => {
+const nextValue = normalizeShieldBannerLetterSpacing(value.value);
+range.value = String(nextValue);
+value.value = String(nextValue);
+};
+range.addEventListener("input", syncFromRange);
+value.addEventListener("input", () => {
+range.value = value.value;
+});
+value.addEventListener("change", () => {
+syncFromValue();
+scheduleSdShieldReadForm();
+});
+value.addEventListener("blur", syncFromValue);
+};
+bindShieldUndoField("sdShield_routeNumber", ["change", "blur"]);
+bindShieldUndoField("sdShield_shieldType", ["change"]);
+bindShieldUndoField("sdShield_shieldSize", ["change", "blur"]);
+bindShieldUndoField("sdShield_bannerLetterSpacing", ["change"]);
+bindShieldUndoField("sdShield_bannerFontSize1Display", ["change", "blur"]);
+bindShieldUndoField("sdShield_bannerFontSize2Display", ["change", "blur"]);
+bindShieldUndoField("sdShield_roadNameFontSizeDisplay", ["change", "blur"]);
+bindShieldUndoField("sdShield_bannerBackgroundColor1", ["change"]);
+bindShieldUndoField("sdShield_bannerBackgroundColor2", ["change"]);
+bindShieldUndoField("sdShield_bannerType", ["change"]);
+bindShieldUndoField("sdShield_bannerType2", ["change"]);
+bindShieldUndoField("sdShield_bannerCustomText", ["blur"]);
+bindShieldUndoField("sdShield_bannerCustomText2", ["blur"]);
+bindShieldUndoField("sdShield_roadName", ["blur"]);
+bindShieldUndoField("sdShield_countyText", ["blur"]);
+bindSdShieldScaleBannersCheckbox();
+bindSdShieldBacksCheckbox();
+bindShieldUndoField("sdShield_to", ["change"]);
+bindShieldLetterSpacingControls();
+setupSdShieldCompactControls();
+bindSdShieldEditorCommitFallback();
+const blockShieldBannerSelects = [
+document.querySelector("#sdShield_bannerType"),
+document.querySelector("#sdShield_bannerType2"),
+];
+const bannerTypeOptions = Shield.prototype.bannerTypes || [];
+for (const select of blockShieldBannerSelects) {
+if (!select) {
+continue;
+}
+select.innerHTML = "";
+const blankOption = document.createElement("option");
+blankOption.value = "";
+blankOption.textContent = "";
+select.appendChild(blankOption);
+for (const bannerType of bannerTypeOptions) {
+const optionValue = getBannerDropdownValue(bannerType);
+lib.appendOption(select, optionValue, {
+text: optionValue,
+});
+}
+}
+bindToBannerEntryDefaults(
+document.getElementById("sdShield_bannerCustomText"),
+document.getElementById("sdShield_bannerPosition"),
+document.getElementById("sdShield_indentFirstLetter")
+);
+bindToBannerEntryDefaults(
+document.getElementById("sdShield_bannerCustomText2"),
+document.getElementById("sdShield_bannerPosition2"),
+document.getElementById("sdShield_indentFirstLetter2")
+);
+const shieldFontRow = document.querySelector(
+'#smSPProperties > [data-property="sdShield"] .sdShieldFontRow'
+);
+if (shieldFontRow && !shieldFontRow.dataset.blankBlurListener) {
+shieldFontRow.addEventListener("mousedown", (event) => {
+const clickedControl = event.target.closest(
+"input, select, button, label, option"
+);
+if (!clickedControl && document.activeElement) {
+document.activeElement.blur();
+}
+});
+shieldFontRow.dataset.blankBlurListener = "true";
+}
+const blockBannerPositionSelects = [
+document.querySelector("#sdShield_bannerPosition"),
+document.querySelector("#sdShield_bannerPosition2"),
+];
+const bannerPositionOptions = ShieldElement.prototype.blockBannerPositions;
+for (const select of blockBannerPositionSelects) {
+if (!select || !bannerPositionOptions.length) {
+continue;
+}
+for (const bannerPosition of bannerPositionOptions) {
+lib.appendOption(select, bannerPosition);
+}
+}
+setupSdShieldCompactControls();
+const populateShieldBannerFontSelect = (select) => {
+if (!select) {
+return;
+}
+const bannerFontOptions = ShieldElement.prototype.getBannerFontOptions();
+select.innerHTML = "";
+if (
+(!bannerFontOptions || !bannerFontOptions.length) &&
+ShieldElement.prototype.defaultBannerFontFamily
+) {
+lib.appendOption(select, ShieldElement.prototype.defaultBannerFontFamily);
+} else {
+for (const font of bannerFontOptions) {
+lib.appendOption(select, font);
+}
+}
+const defaultBannerFont =
+select.id === "sdShield_roadNameFontFamily"
+? (ShieldElement.prototype.defaultRoadNameFontFamily || "Series E")
+: (ShieldElement.prototype.defaultBannerFontFamily ||
+(bannerFontOptions.length ? bannerFontOptions[0] : ""));
+if (defaultBannerFont && !select.value) {
+select.value = defaultBannerFont;
+}
+};
+const shieldBannerFontSelects = [
+document.querySelector("#sdShield_bannerFontFamily1"),
+document.querySelector("#sdShield_bannerFontFamily2"),
+document.querySelector("#sdShield_roadNameFontFamily"),
+].filter(Boolean);
+shieldBannerFontSelects.forEach((select) => {
+populateShieldBannerFontSelect(select);
+});
+const setupInlineShieldBannerFontSelect = (select, displayInputId) => {
+if (!select || select.dataset.inlineShieldBannerFontBound === "true") {
+return;
+}
+select.dataset.inlineShieldBannerFontBound = "true";
+select.addEventListener("change", () => {
+select.dataset.shieldBannerFontUserChanged = "true";
+const sizeInput = document.getElementById(displayInputId);
+if (sizeInput && (!sizeInput.value || sizeInput.value === "14" || sizeInput.value === "16")) {
+sizeInput.value = getShieldBannerFontSizeDisplayValue(
+ShieldElement.prototype.getDefaultBannerFontSizeForFont(select.value)
+);
+}
+scheduleSdShieldReadForm();
+});
+if (!select._fontPickerApi && typeof createFontPicker === "function") {
+createFontPicker({
+selectEl: select,
+mode: "allFontsGrouped",
+});
+}
+};
+setupInlineShieldBannerFontSelect(
+document.querySelector("#sdShield_bannerFontFamily1"),
+"sdShield_bannerFontSize1Display"
+);
+setupInlineShieldBannerFontSelect(
+document.querySelector("#sdShield_bannerFontFamily2"),
+"sdShield_bannerFontSize2Display"
+);
+const setupInlineShieldRoadNameFontSelect = (select, displayInputId) => {
+if (!select || select.dataset.inlineShieldRoadNameFontBound === "true") {
+return;
+}
+select.dataset.inlineShieldRoadNameFontBound = "true";
+select.dataset.previousFontValue = select.value || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E";
+select.addEventListener("change", () => {
+const sizeInput = document.getElementById(displayInputId);
+const previousFont = select.dataset.previousFontValue || "";
+const previousWasHighway = ShieldElement.prototype.isHighwayGothicBannerFont(previousFont);
+const previousWasClearview = isClearviewUiFont(previousFont);
+const nextIsHighway = ShieldElement.prototype.isHighwayGothicBannerFont(select.value);
+const nextIsClearview = isClearviewUiFont(select.value);
+const currentDisplaySize = String(sizeInput?.value || "").trim();
+if (sizeInput) {
+if (previousWasHighway && nextIsClearview && currentDisplaySize === "12") {
+sizeInput.value = "11";
+} else if (previousWasClearview && nextIsHighway && currentDisplaySize === "11") {
+sizeInput.value = "12";
+} else if (!currentDisplaySize) {
+sizeInput.value = getShieldRoadNameFontSizeDisplayValue(
+getShieldRoadNameDefaultFontSize(select.value)
+);
+}
+}
+select.dataset.previousFontValue = select.value || "";
+scheduleSdShieldReadForm();
+});
+if (!select._fontPickerApi && typeof createFontPicker === "function") {
+createFontPicker({
+selectEl: select,
+mode: "allFontsGrouped",
+});
+}
+};
+setupInlineShieldRoadNameFontSelect(
+document.querySelector("#sdShield_roadNameFontFamily"),
+"sdShield_roadNameFontSizeDisplay"
+);
+const blockBannerFontSelect = document.querySelector(
+"#sdShield_bannerFontFamily"
+);
+if (blockBannerFontSelect && blockBannerFontSelect.dataset.globalShieldBannerFontBound !== "true") {
+blockBannerFontSelect.dataset.globalShieldBannerFontBound = "true";
+blockBannerFontSelect.addEventListener("change", () => {
+const selectedFont = blockBannerFontSelect.value;
+const bannerFontSizeInput = document.getElementById("sdShield_fontSize");
+if (selectedFont) {
+ShieldElement.prototype.defaultBannerFontFamily = selectedFont;
+setStoredItem(STORAGE_KEYS.bannerFontFamily, selectedFont);
+}
+if (bannerFontSizeInput) {
+const selectedDefault =
+ShieldElement.prototype.getDefaultBannerFontSizeForFont(selectedFont);
+const oppositeDefault =
+ShieldElement.prototype.isHighwayGothicBannerFont(selectedFont)
+? ShieldElement.prototype.defaultNonHighwayGothicBannerFontSize
+: ShieldElement.prototype.defaultHighwayGothicBannerFontSize;
+const currentSize = parseFloat(bannerFontSizeInput.value);
+if (
+!Number.isFinite(currentSize) ||
+Math.abs(currentSize - oppositeDefault) < 0.001
+) {
+bannerFontSizeInput.value = selectedDefault;
+}
+}
+scheduleSdShieldReadForm();
+});
+}
+[
+document.getElementById("sdShield_bannerBackgroundColor1"),
+document.getElementById("sdShield_bannerBackgroundColor2"),
+].forEach((select) => {
+if (!select) {
+return;
+}
+select.innerHTML = "";
+(TextElement.prototype.backgroundColor || ["Inherit"]).forEach((color) => {
+lib.appendOption(select, color);
+});
+if (!select.value) {
+select.value = ShieldElement.prototype.defaultBannerBackgroundColor || "Inherit";
+}
+});
+bindSdShieldBannerBackgroundColorVisualSync();
+if (typeof syncAllFontPickers === "function") {
+syncAllFontPickers();
+}
+const arrowElemSelect = document.querySelector("#sdArrow_arrow");
+const arrowSizeInput = document.querySelector("#sdArrow_size");
+if (arrowElemSelect) {
+const arrowKeys =
+ArrowElement.prototype.arrowKeys ||
+Object.keys(ArrowElement.prototype.arrows || {});
+for (const arrowKey of arrowKeys) {
+const arrowDefinition = ArrowElement.prototype.arrows[arrowKey] || {};
+lib.appendOption(arrowElemSelect, arrowKey, {
+text: arrowDefinition.label || arrowKey,
+selected: arrowKey === ArrowElement.prototype.defaultArrow,
+});
+}
+}
+if (arrowElemSelect && arrowSizeInput) {
+arrowElemSelect.addEventListener("change", () => {
+const arrowDefinition =
+ArrowElement.prototype.arrows[arrowElemSelect.value] || null;
+const defaultSize =
+arrowDefinition &&
+typeof arrowDefinition.defaultSize === "number" &&
+!isNaN(arrowDefinition.defaultSize)
+? arrowDefinition.defaultSize
+: ArrowElement.prototype.defaultSize;
+arrowSizeInput.value = defaultSize;
+readForm();
+});
+}
+const arrowRotationSlider = document.getElementById("sdArrow_rotation");
+const arrowRotationVal = document.getElementById("sdArrow_rotationVal");
+if (arrowRotationSlider && arrowRotationVal) {
+arrowRotationSlider.addEventListener("input", () => {
+arrowRotationVal.value = arrowRotationSlider.value;
+});
+}
+const arrowRotationButtons = document.querySelectorAll(
+".sdArrow_rotationPreset"
+);
+for (const button of arrowRotationButtons) {
+button.addEventListener("click", () => {
+if (!arrowRotationSlider || !arrowRotationVal) {
+return;
+}
+const degrees = parseFloat(button.dataset.degrees || "0") || 0;
+arrowRotationSlider.value = degrees.toString();
+arrowRotationVal.value = degrees.toString();
+arrowRotationButtons.forEach((presetButton) => {
+presetButton.classList.toggle("activated", presetButton === button);
+});
+readForm();
+});
+}
+const arrowFlipInput = document.getElementById("sdArrow_flip");
+const arrowFlipButton = document.getElementById("sdArrow_flipButton");
+if (arrowFlipButton && arrowFlipInput) {
+arrowFlipButton.addEventListener("click", () => {
+const newValue = arrowFlipInput.value === "true" ? "false" : "true";
+arrowFlipInput.value = newValue;
+const isFlipped = newValue === "true";
+arrowFlipButton.classList.toggle("activated", isFlipped);
+arrowFlipButton.setAttribute(
+"aria-pressed",
+isFlipped ? "true" : "false"
+);
+arrowFlipButton.textContent = isFlipped ? "Unflip" : "Flip";
+readForm();
+});
+}
+["sdBlock_topPadding", "sdBlock_bottomPadding"].forEach((controlId) => {
+const slider = document.getElementById(controlId);
+const valueInput = document.getElementById(controlId + "Val");
+if (slider && valueInput && slider.dataset.blockMarginSliderBound !== "true") {
+slider.dataset.blockMarginSliderBound = "true";
+slider.addEventListener("input", () => {
+valueInput.value = slider.value;
+});
+}
+});
+document.querySelectorAll(".smallVal").forEach((valEl) => {
+const onChange = (e) => {
+const id = valEl.id || "";
+if (id.endsWith("Val")) {
+const controlId = id.slice(0, -3);
+const control = document.getElementById(controlId);
+if (control) {
+if (controlId === "sdBlock_topPadding" || controlId === "sdBlock_bottomPadding") {
+const parsed = parseFloat(valEl.value);
+const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
+valEl.value = normalized;
+control.value = Math.max(0, Math.min(3, normalized));
+} else if (
+control.type === "range" ||
+control.type === "number" ||
+control.tagName === "INPUT" ||
+control.tagName === "SELECT"
+) {
+control.value = valEl.value;
+}
+}
+}
+readForm();
+};
+valEl.addEventListener("change", onChange);
+});
+const tollLogoSelectElmt = document.getElementById("sdTollLogo_logo");
+if (tollLogoSelectElmt) {
+for (const logoKey in TollLogoElement.prototype.logos) {
+const logoDef = TollLogoElement.prototype.logos[logoKey];
+lib.appendOption(tollLogoSelectElmt, logoKey, {
+text: logoDef.label,
+selected: logoKey == TollLogoElement.prototype.defaultLogo,
+});
+}
+}
+const iconSelectElmt = document.getElementById("sdIcon_icon");
+if (iconSelectElmt) {
+for (const iconKey in IconElement.prototype.icons) {
+const iconDef = IconElement.prototype.icons[iconKey];
+lib.appendOption(iconSelectElmt, iconKey, {
+text: iconDef.label,
+selected: iconKey == IconElement.prototype.defaultIcon,
+});
+}
+}
+const presetShieldList = document.querySelector("#presetShieldList");
+const createShieldRow = (name, properties) => {
+const shieldCategoryType = document.createElement("div");
+const shieldCategoryImg = document.createElement("img");
+const shieldItemName = document.createElement("span");
+const shieldItemSeleted = document.createElement("span");
+shieldCategoryType.className = "shieldCategoryType";
+shieldCategoryImg.className = "shieldItemImg";
+shieldItemName.className = "shieldItemName";
+shieldItemSeleted.className =
+"shieldItemSelected material-symbols-outlined";
+shieldCategoryImg.src = Shield.prototype.getDirectoryFromShield(
+name,
+properties.variants[0] || ""
+);
+shieldItemName.textContent = properties.name;
+shieldItemSeleted.textContent = "radio_button_unchecked";
+shieldCategoryType.appendChild(shieldCategoryImg);
+shieldCategoryType.appendChild(shieldItemName);
+shieldCategoryType.appendChild(shieldItemSeleted);
+shieldCategoryType.dataset.name = name;
+return shieldCategoryType;
+};
+const createShieldCategory = (name) => {
+const shieldCategory = document.createElement("div");
+const shieldCategoryHead = document.createElement("div");
+const dropdownArrow = document.createElement("span");
+const shieldCategoryName = document.createElement("span");
+shieldCategory.className = "shieldCategory";
+shieldCategoryHead.className = "shieldCategoryHead";
+dropdownArrow.className = "material-symbols-outlined";
+dropdownArrow.textContent = "keyboard_arrow_down";
+shieldCategoryName.className = "shieldCategoryName";
+shieldCategoryName.textContent = name + " (Expand)";
+shieldCategoryHead.addEventListener("click", () => {
+shieldCategory.classList.toggle("open");
+dropdownArrow.textContent = shieldCategory.classList.contains("open")
+? "arrow_drop_up"
+: "keyboard_arrow_down";
+shieldCategoryName.textContent =
+name +
+(shieldCategory.classList.contains("open")
+? " (Collapse)"
+: " (Expand)");
+});
+shieldCategoryHead.appendChild(dropdownArrow);
+shieldCategoryHead.appendChild(shieldCategoryName);
+shieldCategory.append(shieldCategoryHead);
+shieldCategory.dataset.category = name;
+return shieldCategory;
+};
+const createFromDir = (dir, parentElem) => {
+for (const category in dir) {
+if (category == "type") {
+continue;
+}
+const cat = dir[category];
+if (cat.type == "category") {
+const holder = createShieldCategory(category);
+createFromDir(cat, holder);
+parentElem.appendChild(holder);
+} else if (cat.type == "shield") {
+parentElem.appendChild(createShieldRow(category, cat));
+}
+}
+};
+createFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+document.querySelector("#presetShields").addEventListener("click", () => {
+document.querySelector(".shieldLibrary").dataset.tab = "presetShieldList";
+document.querySelector("#presetShields").className = "selected";
+document.querySelector("#customShields").className = "";
+});
+document.querySelector("#customShields").addEventListener("click", () => {
+document.querySelector(".shieldLibrary").dataset.tab = "uploadShield";
+document.querySelector("#customShields").className = "selected";
+document.querySelector("#presetShields").className = "";
+});
+document
+.querySelector("#presetShieldSearch")
+.addEventListener("input", () => {
+const query = document
+.querySelector("#presetShieldSearch")
+.value.toLowerCase();
+const searchFromDir = (dir, parentElem) => {
+let hasAnything = false;
+for (const category in dir) {
+const cat = dir[category];
+if (category == "type") {
+continue;
+}
+if (cat.type == "category") {
+const childElem = parentElem.querySelector(
+'.shieldCategory[data-category="' + category + '"]'
+);
+if (searchFromDir(cat, childElem)) {
+hasAnything = true;
+childElem.classList.remove("hidden");
+if (query != "") {
+console.log(query);
+childElem.classList.remove("open");
+childElem.querySelector(".shieldCategoryHead").click();
+}
+} else {
+childElem.classList.add("hidden");
+childElem.classList.add("open");
+childElem.querySelector(".shieldCategoryHead").click();
+}
+} else if (
+cat.type == "shield" &&
+cat.name.toLowerCase().includes(query)
+) {
+hasAnything = true;
+parentElem.querySelector(
+'.shieldCategoryType[data-name="' + category + '"]'
+).style.display = "";
+} else {
+parentElem.querySelector(
+'.shieldCategoryType[data-name="' + category + '"]'
+).style.display = "none";
+}
+}
+return hasAnything;
+};
+searchFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+bindAllFontPreviewSelects(document);
+});
+};
+const setDependentVisibility = (block) => {
+const el = (id) => document.getElementById(id);
+const toggleTargets = (checkboxId, targetIds) => {
+const chk = el(checkboxId);
+if (!chk) return;
+for (const tid of targetIds) {
+const target = el(tid);
+if (!target) continue;
+if (chk.checked) target.classList.remove("hidden");
+else target.classList.add("hidden");
+const labels = document.querySelectorAll(`label[for="${tid}"]`);
+labels.forEach((label) => {
+if (chk.checked) label.classList.remove("hidden");
+else label.classList.add("hidden");
+});
+}
+};
+toggleTargets(`${block}_useNumeralFormatting`, [
+`${block}_numeralFormattingSize`,
+]);
+toggleTargets(`${block}_useBannerFormatting`, [
+`${block}_bannerFormattingSize`,
+`${block}_bannerFirstLetterSize`,
+]);
+toggleTargets(`${block}_smallCapitals`, [`${block}_smallLettersSize`]);
+toggleTargets(`${block}_border`, [
+`${block}_borderColor`,
+`${block}_borderRadius`,
+]);
+toggleTargets(`${block}_background`, [
+`${block}_backgroundColor`,
+`${block}_borderRadius`,
+`${block}_horizontalPadding`,
+`${block}_verticalPadding`,
+`${block}_hasOnlyBlock`,
+]);
+};
+const normalizeTextEditorWholeNumber = (value, min, max, fallback) => {
+const rawValue = String(value ?? "").trim();
+const parsed = rawValue === "" ? NaN : Number(rawValue);
+const fallbackNumber = Number(fallback);
+const safeFallback = Number.isFinite(fallbackNumber)
+? Math.round(fallbackNumber)
+: min;
+const resolved = Number.isFinite(parsed) ? Math.round(parsed) : safeFallback;
+return Math.max(min, Math.min(max, resolved));
+};
+const normalizeTextBlockEditorValues = (blockElemType, blockElem) => {
+if (!blockElem || !["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+return;
+}
+const fontSizeMax = blockElemType === "sdCtrlText" ? 250 : 150;
+blockElem.fontSize = normalizeTextEditorWholeNumber(
+blockElem.fontSize,
+25,
+fontSizeMax,
+blockElemType === "sdCtrlText" ? 100 : 70
+);
+blockElem.smallLettersSize = normalizeTextEditorWholeNumber(
+blockElem.smallLettersSize,
+25,
+100,
+75
+);
+if (blockElem.smallLettersSize === 100) {
+blockElem.smallCapitals = false;
+}
+};
+const bindTextFormattingControls = (block) => {
+const smallLettersCheckbox = document.getElementById(`${block}_smallCapitals`);
+const smallLettersSize = document.getElementById(`${block}_smallLettersSize`);
+const enlargeBannersCheckbox = document.getElementById(`${block}_useBannerFormatting`);
+if (
+!smallLettersCheckbox ||
+!smallLettersSize ||
+!enlargeBannersCheckbox ||
+smallLettersCheckbox.dataset.smallLettersBehaviorBound === "true"
+) {
+return;
+}
+smallLettersCheckbox.dataset.smallLettersBehaviorBound = "true";
+smallLettersCheckbox.addEventListener(
+"change",
+() => {
+if (smallLettersCheckbox.checked) {
+enlargeBannersCheckbox.checked = false;
+const normalizedSize = normalizeTextEditorWholeNumber(
+smallLettersSize.value,
+25,
+100,
+75
+);
+smallLettersSize.value = normalizedSize === 100 ? "75" : String(normalizedSize);
+}
+setDependentVisibility(block);
+},
+true
+);
+enlargeBannersCheckbox.addEventListener(
+"change",
+() => {
+if (enlargeBannersCheckbox.checked) {
+smallLettersCheckbox.checked = false;
+}
+setDependentVisibility(block);
+},
+true
+);
+smallLettersSize.addEventListener(
+"change",
+() => {
+const normalizedSize = normalizeTextEditorWholeNumber(
+smallLettersSize.value,
+25,
+100,
+75
+);
+smallLettersSize.value = String(normalizedSize);
+if (normalizedSize === 100) {
+smallLettersCheckbox.checked = false;
+}
+setDependentVisibility(block);
+},
+true
+);
+};
+const updateShieldCountyVisibility = (shieldBaseOverride = null) => {
+const shieldBaseEl = document.getElementById("sdShield_shieldBase");
+const countyRow = document.querySelector(
+'#smSPProperties > [data-property="sdShield"] .sdShieldCountyRow'
+);
+const countyLabel = document.getElementById("sdShield_countyTextLabel");
+const countyInput = document.getElementById("sdShield_countyText");
+const shieldBacksLabel = document.querySelector(
+'label[for="sdShield_shieldBacks"]'
+);
+const shieldBacksCheckbox =
+document.getElementById("sdShield_shieldBacks");
+const currentBlockElem =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+if (!shieldBaseEl) {
+return;
+}
+const pickerApi =
+shieldBaseEl._shieldPickerApi ||
+shieldBaseEl.parentElement?.querySelector(".sdShieldBasePickerHost")
+?._shieldPickerApi ||
+null;
+const pickerValue =
+pickerApi && typeof pickerApi.getValue === "function"
+? pickerApi.getValue()
+: "";
+const selectedRawValue =
+shieldBaseOverride ||
+pickerValue ||
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+shieldBaseEl.dataset?.pickerValue ||
+shieldBaseEl.value ||
+"";
+const selectedValue = String(selectedRawValue).trim();
+const normalizedShieldValue =
+typeof ShieldElement?.prototype?.normalizeShieldCode === "function"
+? ShieldElement.prototype
+.normalizeShieldCode(selectedValue)
+.toUpperCase()
+: selectedValue.toUpperCase();
+const selectedShieldConfig =
+typeof ShieldElement?.prototype?.getBlockShieldConfig === "function"
+? ShieldElement.prototype.getBlockShieldConfig(selectedValue)
+: null;
+const isCountyShield =
+typeof ShieldElement?.prototype?.isCountyShield === "function"
+? ShieldElement.prototype.isCountyShield(
+selectedShieldConfig || { value: selectedValue }
+)
+: normalizedShieldValue === "C";
+if (countyRow) {
+countyRow.hidden = !isCountyShield;
+countyRow.style.setProperty(
+"display",
+isCountyShield ? "" : "none",
+isCountyShield ? "" : "important"
+);
+countyRow.setAttribute(
+"aria-hidden",
+isCountyShield ? "false" : "true"
+);
+}
+if (countyLabel) {
+countyLabel.classList.toggle("sdShieldCountyHidden", !isCountyShield);
+}
+if (countyInput) {
+countyInput.classList.toggle("sdShieldCountyHidden", !isCountyShield);
+countyInput.disabled = !isCountyShield;
+}
+const supportsShieldBacks =
+typeof ShieldElement?.prototype?.supportsShieldBacks === "function"
+? ShieldElement.prototype.supportsShieldBacks(
+selectedShieldConfig || normalizedShieldValue
+)
+: normalizedShieldValue === "US" ||
+normalizedShieldValue === "NJ" ||
+normalizedShieldValue === "C" ||
+normalizedShieldValue === "NVCC";
+if (shieldBacksLabel) {
+shieldBacksLabel.hidden = !supportsShieldBacks;
+shieldBacksLabel.style.setProperty(
+"display",
+supportsShieldBacks ? "" : "none",
+supportsShieldBacks ? "" : "important"
+);
+shieldBacksLabel.setAttribute(
+"aria-hidden",
+supportsShieldBacks ? "false" : "true"
+);
+}
+if (shieldBacksCheckbox) {
+shieldBacksCheckbox.hidden = !supportsShieldBacks;
+shieldBacksCheckbox.style.setProperty(
+"display",
+supportsShieldBacks ? "" : "none",
+supportsShieldBacks ? "" : "important"
+);
+shieldBacksCheckbox.disabled = !supportsShieldBacks;
+if (supportsShieldBacks && currentBlockElem) {
+shieldBacksCheckbox.checked =
+currentBlockElem.shieldBacks === true;
+} else if (!supportsShieldBacks) {
+shieldBacksCheckbox.checked = false;
+}
+}
+};
+const applyExitOnlyArrowVisibility = () => {
+const currentPanel = post?.panels?.[exposed?.vars?.currentlySelectedPanelIndex];
+if (!currentPanel || !currentPanel.sign) {
+return;
+}
+const exitOnlyDirectionLabel = document.getElementById("exitOnlyDirectionLabel");
+const showExitOnlyLabel = document.getElementById("showExitOnlyLabel");
+const hideExitArrowLabel = document.getElementById("hideExitArrowLabel");
+const exitOnlyDirection = document.getElementById("exitOnlyDirection");
+const showExitOnly = document.getElementById("showExitOnly");
+const hideExitArrow = document.getElementById("hideExitArrow");
+const exitOnlyDirectionHost = document.querySelector(".exitOnlyDirectionPickerHost");
+const exitOnlyBorderModeLabel = document.getElementById("exitOnlyBorderModeLabel");
+const exitOnlyBorderModeSelect = document.getElementById("exitOnlyBorderMode");
+const exitOnlyLeftTextLabel = document.getElementById("exitOnlyLeftTextLabel");
+const exitOnlyLeftTextInput = document.getElementById("exitOnlyLeftText");
+const exitOnlyRightTextLabel = document.getElementById("exitOnlyRightTextLabel");
+const exitOnlyRightTextInput = document.getElementById("exitOnlyRightText");
+const isExitOnlyMode =
+currentPanel.sign.guideArrow === "Exit Only" ||
+currentPanel.sign.guideArrow === "Split Exit Only" ||
+currentPanel.sign.guideArrow === "Half Exit Only";
+const setVisible = (el, visible) => {
+if (!el) return;
+el.classList.toggle("invisible", !visible);
+el.style.visibility = visible ? "visible" : "hidden";
+};
+setVisible(exitOnlyDirectionLabel, isExitOnlyMode);
+setVisible(showExitOnlyLabel, isExitOnlyMode);
+setVisible(exitOnlyDirection, isExitOnlyMode);
+setVisible(exitOnlyDirectionHost, isExitOnlyMode);
+setVisible(showExitOnly, isExitOnlyMode);
+setVisible(hideExitArrowLabel, isExitOnlyMode);
+setVisible(hideExitArrow, isExitOnlyMode);
+setVisible(exitOnlyLeftTextLabel, isExitOnlyMode);
+setVisible(exitOnlyLeftTextInput, isExitOnlyMode);
+setVisible(exitOnlyRightTextLabel, isExitOnlyMode);
+setVisible(exitOnlyRightTextInput, isExitOnlyMode);
+const shouldShowBorderMode =
+isExitOnlyMode &&
+!currentPanel.sign.secondExitOnly &&
+(currentPanel.sign.guideArrow === "Half Exit Only" ||
+currentPanel.sign.guideArrow === "Exit Only");
+setVisible(exitOnlyBorderModeLabel, shouldShowBorderMode);
+setVisible(exitOnlyBorderModeSelect, shouldShowBorderMode);
+};
+const getDefaultBannerType = () =>
+getBannerDropdownValue(
+ShieldElement.prototype.defaultBannerType ?? ""
+);
+const normalizeManualBannerText = (value) =>
+String(value || "").trim();
+const normalizeShieldBannerLetterSpacing = (value) => {
+if (
+typeof ShieldElement !== "undefined" &&
+ShieldElement.prototype &&
+typeof ShieldElement.prototype.normalizeBannerLetterSpacing === "function"
+) {
+return ShieldElement.prototype.normalizeBannerLetterSpacing(value);
+}
+if (typeof normalizeTextLetterSpacing === "function") {
+return normalizeTextLetterSpacing(value, 0);
+}
+const parsed = parseFloat(value);
+return Number.isFinite(parsed) ? Math.max(-0.15, Math.min(0.5, parsed)) : 0;
+};
+const normalizeShieldBannerFontSize = (value, fallback = null) => {
+if (
+typeof ShieldElement !== "undefined" &&
+ShieldElement.prototype &&
+typeof ShieldElement.prototype.normalizeFontSize === "function"
+) {
+return ShieldElement.prototype.normalizeFontSize(
+value,
+fallback ?? ShieldElement.prototype.defaultBannerFontSize ?? 1.6
+);
+}
+const parsed = parseFloat(value);
+const fallbackParsed = parseFloat(fallback);
+const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1.6;
+return Number.isFinite(parsed) ? Math.max(0.5, Math.min(3, parsed)) : resolvedFallback;
+};
+const getShieldBannerFontSizeDisplayValue = (value, fallback = null) => {
+const normalized = normalizeShieldBannerFontSize(value, fallback);
+return String(Math.round(normalized * 10));
+};
+const getShieldBannerFontSizeFromDisplayValue = (value, fallback = null) => {
+const parsed = parseFloat(value);
+const fallbackParsed = parseFloat(fallback);
+const resolvedFallback = Number.isFinite(fallbackParsed)
+? fallbackParsed
+: ShieldElement.prototype.defaultBannerFontSize || 1.6;
+return normalizeShieldBannerFontSize(
+Number.isFinite(parsed) ? parsed / 10 : resolvedFallback,
+resolvedFallback
+);
+};
+const getShieldRoadNameDefaultFontSize = (fontFamily) => {
+if (
+typeof ShieldElement !== "undefined" &&
+ShieldElement.prototype &&
+typeof ShieldElement.prototype.getDefaultRoadNameFontSizeForFont === "function"
+) {
+return ShieldElement.prototype.getDefaultRoadNameFontSizeForFont(fontFamily);
+}
+return isHighwayGothicUiFont(fontFamily) ? 1.6 : 1.1;
+};
+const getShieldRoadNameFontSizeDisplayValue = (value, fallback = null) => {
+const normalized = normalizeShieldBannerFontSize(value, fallback ?? 1.6);
+return String(Math.round(normalized * 10));
+};
+const getShieldRoadNameFontSizeFromDisplayValue = (value, fallback = null) => {
+const parsed = parseFloat(value);
+const fallbackParsed = parseFloat(fallback);
+const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1.6;
+return normalizeShieldBannerFontSize(
+Number.isFinite(parsed) ? parsed / 10 : resolvedFallback,
+resolvedFallback
+);
+};
+const normalizeShieldBannerBackgroundColor = (value) => {
+if (
+typeof ShieldElement !== "undefined" &&
+ShieldElement.prototype &&
+typeof ShieldElement.prototype.normalizeBannerBackgroundColor === "function"
+) {
+return ShieldElement.prototype.normalizeBannerBackgroundColor(value);
+}
+const raw = String(value ?? "").trim();
+return raw || "Inherit";
+};
+const getSdShieldAutomaticBannerBackgroundColor = (bannerValue) => {
+if (
+typeof ShieldElement === "undefined" ||
+!ShieldElement.prototype ||
+typeof ShieldElement.prototype.getBannerDisplayInfo !== "function"
+) {
+const normalized = String(bannerValue || "")
+.trim()
+.toUpperCase()
+.replace(/\s+/g, " ");
+if (["TOLL", "TOLLWAY", "TURNPIKE", "TOLL ROAD"].includes(normalized)) {
+return "Yellow";
+}
+if (["TRUCKS", "NO TRUCKS", "HAZMATS", "NO HAZMATS"].includes(normalized)) {
+return "White";
+}
+if (normalized === "DETOUR") {
+return "Orange";
+}
+return "";
+}
+const bannerInfo = ShieldElement.prototype.getBannerDisplayInfo(bannerValue);
+if (bannerInfo.quoted) {
+return "";
+}
+return bannerInfo.automaticBackgroundColor || "";
+};
+const syncSdShieldBannerBackgroundColorPickerVisuals = () => {
+const pairs = [
+{
+bannerInput: document.getElementById("sdShield_bannerCustomText"),
+bannerSelect: document.getElementById("sdShield_bannerType"),
+colorSelect: document.getElementById("sdShield_bannerBackgroundColor1"),
+},
+{
+bannerInput: document.getElementById("sdShield_bannerCustomText2"),
+bannerSelect: document.getElementById("sdShield_bannerType2"),
+colorSelect: document.getElementById("sdShield_bannerBackgroundColor2"),
+},
+];
+pairs.forEach(({ bannerInput, bannerSelect, colorSelect }) => {
+if (!colorSelect) {
+return;
+}
+const manualCheckbox = document.getElementById("sdShield_manualBanners");
+const manualBanners = !manualCheckbox || manualCheckbox.checked;
+const bannerValue = manualBanners
+? bannerInput?.value || ""
+: bannerSelect?.value || "";
+const currentColor = normalizeShieldBannerBackgroundColor(colorSelect.value);
+const usesInheritedBackground =
+!currentColor || /^(inherit|none|default)$/i.test(currentColor);
+const automaticBackgroundColor = getSdShieldAutomaticBannerBackgroundColor(bannerValue);
+const previousEffectiveColor =
+colorSelect.dataset.colorPickerEffectiveColor || "";
+const nextEffectiveColor =
+usesInheritedBackground && automaticBackgroundColor
+? automaticBackgroundColor
+: "";
+if (nextEffectiveColor) {
+colorSelect.dataset.colorPickerEffectiveColor = nextEffectiveColor;
+} else {
+delete colorSelect.dataset.colorPickerEffectiveColor;
+}
+if (
+previousEffectiveColor !== nextEffectiveColor &&
+colorSelect._colorPickerApi &&
+typeof colorSelect._colorPickerApi.sync === "function"
+) {
+colorSelect._colorPickerApi.sync();
+}
+});
+};
+const bindSdShieldBannerBackgroundColorVisualSync = () => {
+if (document.documentElement.dataset.sdShieldBannerColorVisualSyncBound === "true") {
+syncSdShieldBannerBackgroundColorPickerVisuals();
+return;
+}
+document.documentElement.dataset.sdShieldBannerColorVisualSyncBound = "true";
+[
+"sdShield_bannerCustomText",
+"sdShield_bannerCustomText2",
+"sdShield_bannerType",
+"sdShield_bannerType2",
+"sdShield_bannerBackgroundColor1",
+"sdShield_bannerBackgroundColor2",
+"sdShield_manualBanners",
+].forEach((id) => {
+const element = document.getElementById(id);
+if (!element) {
+return;
+}
+["input", "change", "blur"].forEach((eventName) => {
+element.addEventListener(eventName, syncSdShieldBannerBackgroundColorPickerVisuals);
+});
+});
+syncSdShieldBannerBackgroundColorPickerVisuals();
+};
+const normalizeSdShieldBannerStyleFields = (shield) => {
+if (!shield || typeof shield !== "object") {
+return;
+}
+shield.bannerFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+shield.bannerFontFamily
+);
+shield.fontSize = normalizeShieldBannerFontSize(shield.fontSize);
+shield.bannerFontFamily1 = ShieldElement.prototype.normalizeBannerFontFamily(
+shield.bannerFontFamily1 || shield.bannerFontFamily
+);
+shield.bannerFontFamily2 = ShieldElement.prototype.normalizeBannerFontFamily(
+shield.bannerFontFamily2 || shield.bannerFontFamily
+);
+shield.bannerFontSize1 = normalizeShieldBannerFontSize(
+shield.bannerFontSize1,
+shield.fontSize
+);
+shield.bannerFontSize2 = normalizeShieldBannerFontSize(
+shield.bannerFontSize2,
+shield.fontSize
+);
+shield.bannerBackgroundColor1 = normalizeShieldBannerBackgroundColor(
+shield.bannerBackgroundColor1
+);
+shield.bannerBackgroundColor2 = normalizeShieldBannerBackgroundColor(
+shield.bannerBackgroundColor2
+);
+shield.roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+shield.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E"
+);
+shield.roadNameFontSize = normalizeShieldBannerFontSize(
+shield.roadNameFontSize,
+getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+);
+};
+const readSdShieldBannerFontSizeDisplayFields = (shield) => {
+if (!shield || typeof shield !== "object") {
+return;
+}
+const firstInput = document.getElementById("sdShield_bannerFontSize1Display");
+const secondInput = document.getElementById("sdShield_bannerFontSize2Display");
+const roadNameInput = document.getElementById("sdShield_roadNameFontSizeDisplay");
+const roadNameFontSelect = document.getElementById("sdShield_roadNameFontFamily");
+shield.bannerFontSize1 = getShieldBannerFontSizeFromDisplayValue(
+firstInput?.value,
+shield.bannerFontSize1 || shield.fontSize
+);
+shield.bannerFontSize2 = getShieldBannerFontSizeFromDisplayValue(
+secondInput?.value,
+shield.bannerFontSize2 || shield.fontSize
+);
+if (roadNameFontSelect) {
+shield.roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+roadNameFontSelect.value || shield.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E"
+);
+}
+shield.roadNameFontSize = getShieldRoadNameFontSizeFromDisplayValue(
+roadNameInput?.value,
+shield.roadNameFontSize || getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+);
+if (firstInput) {
+firstInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize1, shield.fontSize);
+}
+if (secondInput) {
+secondInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize2, shield.fontSize);
+}
+if (roadNameInput) {
+roadNameInput.value = getShieldRoadNameFontSizeDisplayValue(
+shield.roadNameFontSize,
+getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+);
+}
+};
+const writeSdShieldBannerFontSizeDisplayFields = (shield) => {
+if (!shield || typeof shield !== "object") {
+return;
+}
+const firstInput = document.getElementById("sdShield_bannerFontSize1Display");
+const secondInput = document.getElementById("sdShield_bannerFontSize2Display");
+const roadNameInput = document.getElementById("sdShield_roadNameFontSizeDisplay");
+const roadNameFontSelect = document.getElementById("sdShield_roadNameFontFamily");
+if (roadNameFontSelect) {
+const roadNameFontFamily = ShieldElement.prototype.normalizeBannerFontFamily(
+shield.roadNameFontFamily || ShieldElement.prototype.defaultRoadNameFontFamily || "Series E"
+);
+roadNameFontSelect.value = roadNameFontFamily;
+roadNameFontSelect.dataset.previousFontValue = roadNameFontFamily;
+}
+if (firstInput) {
+firstInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize1, shield.fontSize);
+}
+if (secondInput) {
+secondInput.value = getShieldBannerFontSizeDisplayValue(shield.bannerFontSize2, shield.fontSize);
+}
+if (roadNameInput) {
+roadNameInput.value = getShieldRoadNameFontSizeDisplayValue(
+shield.roadNameFontSize,
+getShieldRoadNameDefaultFontSize(shield.roadNameFontFamily)
+);
+}
+};
+const findManualBannerOptionCaseInsensitive = (value) => {
+const normalized = normalizeManualBannerText(value).toLowerCase();
+if (!normalized) {
+return getDefaultBannerType();
+}
+return findBannerDropdownPresetValue(normalized);
+};
+const syncManualBannerInputMode = ({ convert = false } = {}) => {
+const manualCheckbox = document.getElementById("sdShield_manualBanners");
+const bannerPairs = [
+{
+select: document.getElementById("sdShield_bannerType"),
+input: document.getElementById("sdShield_bannerCustomText"),
+},
+{
+select: document.getElementById("sdShield_bannerType2"),
+input: document.getElementById("sdShield_bannerCustomText2"),
+},
+];
+const manual = !manualCheckbox || manualCheckbox.checked;
+bannerPairs.forEach(({ select, input }) => {
+if (!select || !input) {
+return;
+}
+if (convert) {
+if (manual) {
+input.value = select.value || getDefaultBannerType();
+} else {
+const matchedOption = findManualBannerOptionCaseInsensitive(input.value);
+select.value = matchedOption || getDefaultBannerType();
+input.value = "";
+}
+}
+select.hidden = manual;
+input.hidden = !manual;
+});
+};
+const updateExitTabLeftControlVisibility = (exitNumberValue) => {
+const hasExitNumber = String(exitNumberValue || "").trim() !== "";
+const showLeftLabel = document.getElementById("showLeftLabel");
+const showLeft = document.getElementById("showLeft");
+if (showLeftLabel) {
+showLeftLabel.style.display = "";
+}
+if (showLeft) {
+showLeft.style.display = "";
+}
+return hasExitNumber;
+};
+const updateExitTabBilingualControls = (exitTab = {}) => {
+const isBilingual = exitTab.bilingual === true;
+const mainSettingsGrid = document.getElementById("exitTabMainSettingsGrid");
+const exitNumberLabel = document.getElementById("exitNumberLabel");
+const bilingualCheckbox = document.getElementById("exitTabBilingual");
+const bottomTextLabel = document.getElementById("exitTabBilingualBottomTextLabel");
+const bottomTextInput = document.getElementById("exitTabBilingualBottomText");
+if (mainSettingsGrid) {
+mainSettingsGrid.classList.toggle("bilingualMode", isBilingual);
+}
+if (exitNumberLabel) {
+exitNumberLabel.textContent = isBilingual ? "Top:" : "Text:";
+}
+if (bilingualCheckbox) {
+bilingualCheckbox.checked = isBilingual;
+}
+if (bottomTextLabel) {
+bottomTextLabel.hidden = !isBilingual;
+}
+if (bottomTextInput) {
+bottomTextInput.hidden = !isBilingual;
+if (isBilingual && !bottomTextInput.value.trim()) {
+bottomTextInput.value = exitTab.bilingualBottomText || "SORTIE";
+}
+}
+};
+const getSdIconDefinition = () => {
+const iconInput = document.getElementById("sdIcon_icon");
+const iconKey = iconInput && IconElement.prototype.icons[iconInput.value]
+? iconInput.value
+: IconElement.prototype.defaultIcon;
+return {
+key: iconKey,
+definition:
+IconElement.prototype.icons[iconKey] ||
+IconElement.prototype.icons[IconElement.prototype.defaultIcon],
+};
+};
+const updateSdIconPreview = () => {
+const previewImage = document.getElementById("sdIcon_previewImage");
+const label = document.getElementById("sdIcon_selectedLabel");
+const { key, definition } = getSdIconDefinition();
+const displayName = String(definition?.label || definition?.name || key);
+if (label) {
+label.textContent = "Current: " + displayName;
+}
+if (previewImage) {
+const src = String(definition?.src || definition?.asset || definition?.url || "");
+const invertInput = document.getElementById("sdIcon_invertColors");
+setPreparedIconImageSource(previewImage, src);
+previewImage.alt = displayName;
+previewImage.hidden = !src;
+previewImage.classList.toggle(
+"sdIconPreviewInvert",
+!!invertInput && invertInput.checked
+);
+}
+};
+const updateSdIconAlignmentButtons = () => {
+const alignmentInput = document.getElementById("sdIcon_alignment");
+const currentAlignment = String(alignmentInput?.value || "Center").toLowerCase();
+document.querySelectorAll("[data-sd-icon-align]").forEach((button) => {
+const isActive =
+String(button.dataset.sdIconAlign || "").toLowerCase() === currentAlignment;
+button.classList.toggle("active", isActive);
+button.setAttribute("aria-pressed", isActive ? "true" : "false");
+});
+};
+const syncSdIconControlPair = (controlId, valueId, value) => {
+const control = document.getElementById(controlId);
+const valueInput = document.getElementById(valueId);
+const normalizedValue = String(value ?? "");
+if (control) {
+control.value = normalizedValue;
+}
+if (valueInput) {
+valueInput.value = normalizedValue;
+}
+};
+const updateSdIconExtraControls = (iconElement = null) => {
+const currentIconElement = iconElement ||
+(exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null);
+if (!currentIconElement) {
+return;
+}
+const size = Number.isFinite(parseFloat(currentIconElement.iconSize))
+? parseFloat(currentIconElement.iconSize)
+: 3;
+const paddingHorizontal = Number.isFinite(parseFloat(currentIconElement.paddingHorizontal))
+? parseFloat(currentIconElement.paddingHorizontal)
+: 0;
+const paddingVertical = Number.isFinite(parseFloat(currentIconElement.paddingVertical))
+? parseFloat(currentIconElement.paddingVertical)
+: 0;
+syncSdIconControlPair("sdIcon_iconSizeSlider", "sdIcon_iconSize", size);
+syncSdIconControlPair("sdIcon_paddingHorizontal", "sdIcon_paddingHorizontalVal", paddingHorizontal);
+syncSdIconControlPair("sdIcon_paddingVertical", "sdIcon_paddingVerticalVal", paddingVertical);
+updateSdIconPreview();
+updateSdIconAlignmentButtons();
+};
+const setupSdIconEditorControls = () => {
+const bindSliderPair = ({ sliderId, inputId, fallback, commitOnInput = false }) => {
+const slider = document.getElementById(sliderId);
+const input = document.getElementById(inputId);
+if (!slider || !input || slider.dataset.sdIconPairBound === "true") {
+return;
+}
+slider.dataset.sdIconPairBound = "true";
+const syncToInput = () => {
+input.value = slider.value;
+};
+const syncToSlider = () => {
+const parsed = parseFloat(input.value);
+slider.value = Number.isFinite(parsed) ? String(parsed) : String(fallback);
+};
+slider.addEventListener("input", () => {
+syncToInput();
+if (commitOnInput) {
+readForm();
+}
+});
+slider.addEventListener("change", () => {
+syncToInput();
+readForm();
+});
+input.addEventListener("input", () => {
+syncToSlider();
+if (commitOnInput) {
+readForm();
+}
+});
+input.addEventListener("change", () => {
+syncToSlider();
+readForm();
+});
+};
+bindSliderPair({
+sliderId: "sdIcon_iconSizeSlider",
+inputId: "sdIcon_iconSize",
+fallback: 3,
+});
+bindSliderPair({
+sliderId: "sdIcon_paddingHorizontal",
+inputId: "sdIcon_paddingHorizontalVal",
+fallback: 0,
+});
+bindSliderPair({
+sliderId: "sdIcon_paddingVertical",
+inputId: "sdIcon_paddingVerticalVal",
+fallback: 0,
+});
+const bindResetButton = (buttonId, values) => {
+const button = document.getElementById(buttonId);
+if (!button || button.dataset.sdIconResetBound === "true") {
+return;
+}
+button.dataset.sdIconResetBound = "true";
+button.addEventListener("click", (event) => {
+event.preventDefault();
+Object.entries(values).forEach(([id, value]) => {
+const element = document.getElementById(id);
+if (element) {
+element.value = String(value);
+}
+});
+readForm();
+});
+};
+bindResetButton("sdIcon_sizeReset", {
+sdIcon_iconSizeSlider: 3,
+sdIcon_iconSize: 3,
+});
+bindResetButton("sdIcon_paddingHorizontalReset", {
+sdIcon_paddingHorizontal: 0,
+sdIcon_paddingHorizontalVal: 0,
+});
+bindResetButton("sdIcon_paddingVerticalReset", {
+sdIcon_paddingVertical: 0,
+sdIcon_paddingVerticalVal: 0,
+});
+const iconInput = document.getElementById("sdIcon_icon");
+if (iconInput && iconInput.dataset.sdIconPreviewBound !== "true") {
+iconInput.dataset.sdIconPreviewBound = "true";
+iconInput.addEventListener("input", updateSdIconPreview);
+iconInput.addEventListener("change", updateSdIconPreview);
+}
+const invertInput = document.getElementById("sdIcon_invertColors");
+if (invertInput && invertInput.dataset.sdIconPreviewBound !== "true") {
+invertInput.dataset.sdIconPreviewBound = "true";
+invertInput.addEventListener("input", updateSdIconPreview);
+invertInput.addEventListener("change", updateSdIconPreview);
+}
+document.querySelectorAll("[data-sd-icon-align]").forEach((button) => {
+if (button.dataset.sdIconAlignBound === "true") {
+return;
+}
+button.dataset.sdIconAlignBound = "true";
+button.addEventListener("click", (event) => {
+event.preventDefault();
+const alignmentInput = document.getElementById("sdIcon_alignment");
+if (alignmentInput) {
+alignmentInput.value = button.dataset.sdIconAlign || "Center";
+}
+updateSdIconAlignmentButtons();
+readForm();
+});
+});
+};
+const readForm = function (options = {}) {
+const deferHistoryEnd = options?.deferHistoryEnd === true;
+syncPostReference();
+if (
+exposed &&
+typeof exposed.beginUndoableChange === "function"
+) {
+exposed.beginUndoableChange();
+}
+try {
+const form = document.forms[0];
+readExitTabCornerRadiusFromForm();
+if (exitTabEditorMode === "default") {
+const profileVariantChanged = readExitTabProfileForm();
+applyExitTabDefaultProfileToPrototype();
+if (profileVariantChanged) {
+updateForm();
+} else {
+updateExitTabModeUi();
+toggleExitTabVariantOptionsVisibility(selectedExitTabProfileVariant, {
+syncAssetSliders: false,
+});
+}
+if (typeof exposed?.redraw === "function") {
+exposed.redraw();
+}
+return;
+}
+const currentPanel = exposed.getCurrentPanel();
+if (!currentPanel || !currentPanel.sign) {
+updateForm();
+return;
+}
+const redrawAfterExitTabEdit = () => {
+const keepOtherPanels =
+document.getElementById("sMConfigBar")?.dataset.currentMenu === "exitTabConfig" &&
+currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID;
+exposed.redraw(keepOtherPanels
+? { preserveOtherPanels: true, changedPanelIndex: exposed.vars.currentlySelectedPanelIndex }
+: undefined);
+};
+const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
+const subPanel = exposed.getCurrentSubPanel();
+if (!subPanel) {
+updateForm();
+return;
+}
+const exitTab = getCurrentExitTabForProfileApply();
+if (exitTab) {
+syncCurrentExitTabProfileSelectionFromTab(exitTab);
+}
+post.polePosition = form["postPosition"].value;
+const requestedPostColor = form["postColor"] ? form["postColor"].value : null;
+if (requestedPostColor) {
+post.color = requestedPostColor;
+}
+post.showPost = form["showPost"].checked;
+delete post.secondExitOnly;
+currentPanel.sign.secondExitOnly = form["secondExitOnly"]?.checked === true;
+setStoredItem(STORAGE_KEYS.postPosition, post.polePosition);
+setStoredItem(STORAGE_KEYS.showPost, String(!!post.showPost));
+setStoredItem(STORAGE_KEYS.postColor, post.color);
+currentPanel.color = form["panelColor"].value;
+currentPanel.corner = form["panelCorner"].value;
+const nextPanelBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelBorderThickness"].value });
+if (nextPanelBorderThickness !== Panel.getBorderThickness(currentPanel)) {
+Panel.setBorderThickness(currentPanel, nextPanelBorderThickness);
+if (form["borderThickness"]) form["borderThickness"].value = String(nextPanelBorderThickness);
+}
+const panelBorderRadiusInput = parseFloat(form["panelBorderRadius"].value);
+currentPanel.borderRadius = Number.isFinite(panelBorderRadiusInput)
+? Math.max(0, panelBorderRadiusInput)
+: Panel.prototype.defaultBorderRadius;
+currentPanel.isVms = form["vmsPanel"].checked;
+if (currentPanel.isVms === true) {
+Object.assign(currentPanel, VmsPanel.settings({
+vmsResolution: form["vmsResolution"].value,
+vmsResolutionVersion: 5,
+vmsAntialias: form["vmsAntialias"].checked,
+vmsFrameColor: form["vmsFrameColor"].value,
+}));
+}
+post.disableFlash = form["disableFlash"].checked;
+post.showBlockBoundingBoxes = form["showBlockBoundingBoxes"].checked;
+post.showAlignmentGuides = form["showAlignmentGuides"].checked;
+post.alignmentGuideSpacing = post.normalizeAlignmentGuideSpacing(form["alignmentGuideSpacing"].value);
+post.alignmentGuidePhase = post.normalizeAlignmentGuidePhase(form["alignmentGuidePhase"].value,post.alignmentGuideSpacing);
+if (exitTab) {
+const previousExitVariant = normalizeExitTabProfileVariant(
+exitTab.variant || "Default"
+);
+const requestedExitVariant = normalizeExitTabProfileVariant(
+form["exitVariant"]?.value || previousExitVariant || "Default"
+);
+const isAssetExitTabVariant = isExitTabAssetVariantValue(requestedExitVariant);
+if (requestedExitVariant !== previousExitVariant) {
+const savedWidth = exitTab.width;
+const profile = getExitTabProfileById(
+currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID
+);
+copyExitTabProfileSettingsToTarget(
+getExitTabProfileSettings(profile, requestedExitVariant),
+exitTab,
+{ preserveText: true }
+);
+exitTab.variant = requestedExitVariant;
+if (currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID && savedWidth) {
+exitTab.width = savedWidth;
+}
+setExitTabProfileIdOnTab(exitTab, currentPanelExitTabProfileId || EXIT_TAB_DEFAULT_PROFILE_ID);
+toggleExitTabVariantOptionsVisibility(exitTab.variant);
+updateForm();
+if (typeof exposed?.redraw === "function") {
+redrawAfterExitTabEdit();
+}
+return;
+}
+if (!isAssetExitTabVariant) {
+rememberExitTabNormalFontSize(exitTab);
+}
+exitTab.number = isAssetExitTabVariant
+? (exitTab.number || "")
+: (form["exitNumber"]?.value || "");
+const exitTabBilingualField = form["exitTabBilingual"];
+const exitTabBilingualBottomTextField = form["exitTabBilingualBottomText"];
+exitTab.bilingual =
+exitTabBilingualField && typeof exitTabBilingualField.checked === "boolean"
+? exitTabBilingualField.checked
+: false;
+exitTab.bilingualTopText = "EXIT";
+exitTab.bilingualBottomText =
+exitTabBilingualBottomTextField &&
+typeof exitTabBilingualBottomTextField.value === "string" &&
+exitTabBilingualBottomTextField.value.trim().length
+? exitTabBilingualBottomTextField.value
+: "SORTIE";
+updateExitTabBilingualControls(exitTab);
+const aplEdgeAllowed = syncExitTabWidthOptions(exitTab);
+const previousExitTabWidth = exitTab.width || "Edge";
+const requestedExitTabWidth = form["exitTabWidth"] &&
+document.activeElement === form["exitTabWidth"]
+? form["exitTabWidth"].value
+: exitTab.width || "Full";
+const shouldForceEmptyCurrentExitTabToEdge = false;
+exitTab.width = shouldForceEmptyCurrentExitTabToEdge
+? "Edge"
+: isAplEdgeExitTabWidth(requestedExitTabWidth) && !aplEdgeAllowed
+? "Edge"
+: requestedExitTabWidth;
+const exitTabPositionField = form["exitTabPosition"];
+const showLeftField = form["showLeft"];
+const hasExitNumberText = updateExitTabLeftControlVisibility(exitTab.number);
+const previousPosition = exitTab.position || "Right";
+const previousShowLeft = exitTab.showLeft === true;
+let nextExitTabPosition = exitTabPositionField
+? exitTabPositionField.value || previousPosition
+: previousPosition;
+let nextShowLeft = showLeftField
+? showLeftField.checked
+: previousShowLeft;
+const activeElement = document.activeElement;
+const changedLeftCheckbox = showLeftField && activeElement === showLeftField;
+const changedPositionDropdown =
+exitTabPositionField && activeElement === exitTabPositionField;
+if (changedLeftCheckbox) {
+if (nextShowLeft) {
+nextExitTabPosition = "Left";
+}
+}
+if (changedPositionDropdown) {
+nextShowLeft = nextExitTabPosition === "Left";
+}
+exitTab.position = nextExitTabPosition;
+exitTab.showLeft = nextShowLeft;
+if (exitTabPositionField) {
+exitTabPositionField.value = exitTab.position;
+}
+if (showLeftField) {
+showLeftField.checked = exitTab.showLeft;
+}
+exitTab.color = form["exitColor"].value;
+exitTab.textColor = form["exitTabTextColor"]?.value || ExitTab.prototype.defaultTextColor;
+exitTab.variant = requestedExitVariant;
+exitTab.transparent = isAssetExitTabVariant
+? form["exitTabTransparent"]?.checked === true
+: false;
+toggleExitTabVariantOptionsVisibility(exitTab.variant, { syncAssetSliders: false });
+const exitTabAssetSizeInput = form["fontSize"];
+const exitTabAssetSizeControlIsActive =
+exitTabAssetSizeInput && parseFloat(exitTabAssetSizeInput.max) <= 6;
+if (isExitTabAssetVariantValue(exitTab.variant)) {
+const parsedAssetSize = exitTabAssetSizeControlIsActive
+? parseFloat(exitTabAssetSizeInput?.value)
+: NaN;
+exitTab.tollLogoSize = exitTabAssetSizeControlIsActive
+? normalizeExitTabAssetSizeValue(parsedAssetSize, exitTab.tollLogoSize || 3)
+: normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3);
+}
+const currentSign = currentPanel?.sign;
+if (currentSign) {
+const qcEnabled = document.getElementById("qcExitMarkerEnabled");
+const qcNumber = document.getElementById("qcExitMarkerNumber");
+const qcPosition = document.getElementById("qcExitMarkerPosition");
+const qcFlipped = document.getElementById("qcExitMarkerFlipped");
+const qcSize = document.getElementById("qcExitMarkerSize");
+const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
+if (qcEnabled) {
+currentSign.quebecExitMarkerEnabled = !!qcEnabled.checked;
+}
+if (qcNumber) {
+currentSign.quebecExitMarkerNumber = qcNumber.value || "1";
+}
+if (qcPosition) {
+currentSign.quebecExitMarkerPosition = String(qcPosition.value || "Center")
+.replace(/^Bottom\s+/i, "")
+.trim();
+}
+if (qcFlipped) {
+currentSign.quebecExitMarkerFlipped = !!qcFlipped.checked;
+}
+if (qcSize) {
+const parsedSize = parseFloat(qcSize.value);
+const resolvedSize =
+Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 3.05;
+currentSign.quebecExitMarkerSizeRem = resolvedSize;
+if (qcSizeValue) {
+qcSizeValue.textContent = resolvedSize.toString();
+}
+}
+}
+if (exitTab.variant == "Toll Logo") {
+const tollLogoOptions = TollLogoElement.prototype.logos || {};
+const pickerValue = document.getElementById("exitTollLogoPickerValue")?.value;
+let selectedLogo = tollLogoOptions[pickerValue]
+? pickerValue
+: (tollLogoOptions.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo);
+exitTab.icon = selectedLogo;
+exitTab.useTextBasedIcon = false;
+const tollLogoOnlyField = form["exitTollLogoOnly"];
+exitTab.tollLogoOnly =
+tollLogoOnlyField && typeof tollLogoOnlyField.checked === "boolean"
+? tollLogoOnlyField.checked
+: true;
+const tollLogoSquareField = form["exitTollLogoSquare"];
+exitTab.tollLogoSquare =
+tollLogoSquareField && typeof tollLogoSquareField.checked === "boolean"
+? tollLogoSquareField.checked
+: false;
+} else if (exitTab.variant == "Icon") {
+const iconOptions = IconElement.prototype.icons || {};
+const pickerValue = document.getElementById("exitIconPickerValue")?.value;
+exitTab.icon = iconOptions[pickerValue]
+? pickerValue
+: (iconOptions.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon);
+exitTab.useTextBasedIcon = false;
+exitTab.tollLogoOnly = false;
+exitTab.tollLogoSquare = false;
+} else {
+exitTab.icon = null;
+exitTab.useTextBasedIcon = false;
+exitTab.tollLogoOnly =
+typeof exitTab.tollLogoOnly === "boolean" ? exitTab.tollLogoOnly : true;
+exitTab.tollLogoSquare = !!exitTab.tollLogoSquare;
+}
+if (exitTab.variant === "Quebec Exit Marker" && currentSign) {
+const qcNumber = String(exitTab.number || "").trim();
+currentSign.quebecExitMarkerEnabled = qcNumber.length > 0;
+currentSign.quebecExitMarkerNumber = qcNumber;
+currentSign.quebecExitMarkerPosition = exitTab.position || "Right";
+currentSign.quebecExitMarkerSizeRem = Math.max(2, Math.min(6, (parseFloat(exitTab.fontSize) || 18) / 5));
+} else if (currentSign && currentSign.quebecExitMarkerEnabled) {
+const hasActiveQcExitTab = Array.isArray(currentPanel.exitTabs) && currentPanel.exitTabs.some(
+(tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
+);
+if (!hasActiveQcExitTab) {
+currentSign.quebecExitMarkerEnabled = false;
+}
+}
+const exitTabFontSelect = form["exitTabFontFamily"];
+const exitTabCharacterSpacingInput = form["exitTabCharacterSpacing"];
+const fontSizeInput = form["fontSize"];
+const minHeightInput = form["minHeight"];
+const previousFontFamily = normalizeExitTabFontFamily(
+exitTab.fontFamily,
+exitTab.FHWAFont === true
+? ExitTab.prototype.defaultFHWAFontFamily
+: (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
+);
+const nextFontFamily = normalizeExitTabFontFamily(
+exitTabFontSelect?.value || previousFontFamily,
+previousFontFamily
+);
+const previousUsesHighwayGothic = isExitTabHighwayGothicFontFamily(previousFontFamily);
+const nextUsesHighwayGothic = isExitTabHighwayGothicFontFamily(nextFontFamily);
+const changedExitTabFontDropdown =
+exitTabFontSelect && document.activeElement === exitTabFontSelect;
+if (!isAssetExitTabVariant) {
+exitTab.fontFamily = nextFontFamily;
+exitTab.FHWAFont = nextUsesHighwayGothic;
+exitTab.characterSpacing = normalizeExitTabCharacterSpacing(
+exitTabCharacterSpacingInput?.value
+);
+if (exitTabFontSelect) {
+exitTabFontSelect.value = nextFontFamily;
+}
+if (exitTabCharacterSpacingInput) {
+exitTabCharacterSpacingInput.value = String(exitTab.characterSpacing);
+}
+}
+const setExitTabSliderValue = (input, valueId, value) => {
+if (input) {
+setExitTabRangeControlValue(input, value);
+}
+const valueEl = document.getElementById(valueId);
+if (valueEl) {
+valueEl.innerHTML = formatExitTabSliderDisplayValue(valueId, value);
+}
+};
+const isFullExitTabWidth = (value) =>
+String(value || "").trim().toLowerCase() === "full";
+const normalizeExitTabNumber = (value, fallback = 0) => {
+const parsed = parseFloat(value);
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const getFullExitTabDefaults = (usesHighwayGothic) =>
+usesHighwayGothic
+? { minHeight: 2, fontSize: 18, fullBorder: false, squareCorners: false }
+: { minHeight: 2.8, fontSize: 22, fullBorder: false, squareCorners: false };
+const setExitTabFullFormatControls = (config) => {
+if (!config || typeof config !== "object") {
+return;
+}
+setExitTabSliderValue(minHeightInput, "minValue", config.minHeight);
+setExitTabSliderValue(fontSizeInput, "fontValue", config.fontSize);
+if (form["fullBorder"]) {
+form["fullBorder"].checked = config.fullBorder === true;
+}
+if (form["squareCorners"]) {
+form["squareCorners"].checked = config.squareCorners === true;
+}
+};
+if (!isAssetExitTabVariant && isFullExitTabWidth(exitTab.width) && !isFullExitTabWidth(previousExitTabWidth)) {
+exitTab.fullWidthRestoreConfig = {
+width: previousExitTabWidth,
+minHeight: normalizeExitTabNumber(exitTab.minHeight, getCurrentExitTabDefaultMinHeight()),
+fontSize: normalizeExitTabNumber(exitTab.fontSize, ExitTab.prototype.defaultFontSize),
+fullBorder: exitTab.fullBorder === true,
+squareCorners: exitTab.squareCorners === true,
+};
+setExitTabFullFormatControls(getFullExitTabDefaults(nextUsesHighwayGothic));
+} else if (!isAssetExitTabVariant && !isFullExitTabWidth(exitTab.width) && isFullExitTabWidth(previousExitTabWidth)) {
+if (exitTab.fullWidthRestoreConfig) {
+setExitTabFullFormatControls(exitTab.fullWidthRestoreConfig);
+}
+exitTab.fullWidthRestoreConfig = null;
+} else if (
+!isAssetExitTabVariant &&
+isFullExitTabWidth(exitTab.width) &&
+changedExitTabFontDropdown &&
+previousUsesHighwayGothic !== nextUsesHighwayGothic
+) {
+setExitTabFullFormatControls(getFullExitTabDefaults(nextUsesHighwayGothic));
+}
+exitTabFontCheckboxChangedByUser = false;
+const previousCaStyleState = exitTab.caStyle === true;
+const nextCaStyleState = form["caStyle"].checked === true;
+if (nextCaStyleState && !previousCaStyleState && !form["fullBorder"].checked) {
+form["fullBorder"].checked = true;
+}
+exitTab.fullBorder = form["fullBorder"].checked;
+exitTab.squareCorners = form["squareCorners"].checked;
+exitTab.cornerRadius = readExitTabCornerRadiusFromForm();
+exitTab.topOffset = form["topOffset"].checked;
+exitTab.verticalArrangement = form["verticalArrangement"].checked;
+exitTab.caStyle = nextCaStyleState;
+setStoredItem(STORAGE_KEYS.exitTabFHWAFont, String(!!exitTab.FHWAFont));
+setStoredItem(STORAGE_KEYS.exitTabFullBorder, String(!!exitTab.fullBorder));
+setStoredItem(STORAGE_KEYS.exitTabSquareCorners, String(!!exitTab.squareCorners));
+setStoredItem(STORAGE_KEYS.exitTabTopOffset, String(!!exitTab.topOffset));
+const borderThicknessInput = parseFloat(form["borderThickness"].value);
+exitTab.borderThickness = Number.isFinite(borderThicknessInput)
+? Math.max(0, borderThicknessInput)
+: ExitTab.prototype.defaultBorderThickness;
+exitTab.minHeight = form["minHeight"].value;
+const isAssetExitTabForPadding = isExitTabAssetVariantValue(exitTab.variant);
+if (isAssetExitTabForPadding) {
+const assetSizeInput = form["fontSize"];
+const assetSizeControlIsActive = assetSizeInput && parseFloat(assetSizeInput.max) <= 6;
+const parsedAssetSize = assetSizeControlIsActive ? parseFloat(assetSizeInput?.value) : NaN;
+exitTab.tollLogoSize = assetSizeControlIsActive
+? normalizeExitTabAssetSizeValue(parsedAssetSize, exitTab.tollLogoSize || 3)
+: normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3);
+} else {
+const textSizeInput = form["fontSize"];
+const textSizeControlIsActive = textSizeInput && parseFloat(textSizeInput.max) > 6;
+exitTab.fontSize = textSizeControlIsActive
+? normalizeExitTabNormalFontSizeValue(textSizeInput?.value, getCurrentExitTabDefaultFontSize())
+: normalizeExitTabNormalFontSizeValue(exitTab.fontSize, getCurrentExitTabDefaultFontSize());
+exitTab.normalFontSizeBeforeAsset = exitTab.fontSize;
+}
+const horizontalPaddingInput = parseFloat(form["exitTabHorizontalPadding"]?.value);
+if (isAssetExitTabForPadding) {
+exitTab.assetHorizontalPadding = normalizeExitTabAssetPaddingValue(horizontalPaddingInput, exitTab.assetHorizontalPadding);
+} else {
+exitTab.horizontalPadding = Number.isFinite(horizontalPaddingInput)
+? Math.max(-1, Math.min(3, horizontalPaddingInput))
+: ExitTab.prototype.defaultHorizontalPadding;
+}
+const exitTextSizePercentInput = parseFloat(form["exitTabTextSizePercent"]?.value);
+if (isAssetExitTabForPadding) {
+exitTab.assetVerticalPadding = normalizeExitTabAssetPaddingValue(exitTextSizePercentInput, exitTab.assetVerticalPadding);
+} else {
+exitTab.exitTextSizePercent = Number.isFinite(exitTextSizePercentInput)
+? Math.max(25, Math.min(100, exitTextSizePercentInput))
+: ExitTab.prototype.defaultExitTextSizePercent;
+exitTab.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+}
+const parentExitTab = currentPanel.exitTabs[exposed.vars.currentlySelectedExitTabIndex];
+const nestedTabSpacingInput = parseFloat(form["nestedTabSpacing"]?.value);
+if (parentExitTab) {
+parentExitTab.nestedTabSpacing = Number.isFinite(nestedTabSpacingInput)
+? Math.max(0, nestedTabSpacingInput)
+: 0;
+}
+saveCurrentExitTabEditsToSelectedProfile(exitTab);
+}
+currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
+const existingPanelPadding = getPanelPaddingValues(currentPanel.sign.padding);
+const nextPanelPadding = PANEL_PADDING_SIDES.map((side, index) => {
+const value = parseFloat(form[`padding${side}`]?.value);
+return Number.isFinite(value) ? value : existingPanelPadding[index];
+});
+currentPanel.sign.padding = nextPanelPadding
+.map((value) => `${value}rem`)
+.join(" ");
+if (form["globalPosition"]) {
+currentPanel.sign.globalPositioning = form["globalPosition"].value;
+}
+for (
+let shieldIndex = 0, length = subPanel.shields.length;
+shieldIndex < length;
+shieldIndex++
+) {
+let shield = subPanel.shields[shieldIndex];
+shield.type = document.getElementById(`shield${shieldIndex}_type`).value;
+shield.routeNumber = document.getElementById(
+`shield${shieldIndex}_routeNumber`
+).value;
+shield.to = document.getElementById(`shield${shieldIndex}_to`).checked;
+shield.bannerType = document.getElementById(
+`shield${shieldIndex}_bannerType`
+).value;
+const customBannerInput = document.getElementById(
+`shield${shieldIndex}_bannerCustomText`
+);
+const customBannerText =
+customBannerInput && typeof customBannerInput.value === "string"
+? customBannerInput.value
+: "";
+shield.bannerType =
+customBannerText.length > 0 ? customBannerText : shield.bannerType;
+shield.bannerPosition = document.getElementById(
+`shield${shieldIndex}_bannerPosition`
+).value;
+shield.bannerType2 = document.getElementById(
+`shield${shieldIndex}_bannerType2`
+).value;
+const customBannerInput2 = document.getElementById(
+`shield${shieldIndex}_bannerCustomText2`
+);
+const customBannerText2 =
+customBannerInput2 && typeof customBannerInput2.value === "string"
+? customBannerInput2.value
+: "";
+shield.bannerType2 =
+customBannerText2.length > 0 ? customBannerText2 : shield.bannerType2;
+shield.specialBannerType =
+document.getElementById(`shield${shieldIndex}_specialBannerType`)
+.value || "None";
+shield.indentFirstLetter = document.getElementById(
+`shield${shieldIndex}_indentFirstLetter`
+).checked;
+const indentSecondElmt = document.getElementById(
+`shield${shieldIndex}_indentFirstLetter2`
+);
+shield.indentFirstLetter2 =
+indentSecondElmt && typeof indentSecondElmt.checked === "boolean"
+? indentSecondElmt.checked
+: shield.indentFirstLetter;
+shield.fontSize =
+String(document.getElementById(`shield${shieldIndex}_fontSize`).value) +
+"rem";
+const specialBannerTypeSelectElmt = document.getElementById(
+`shield${shieldIndex}_specialBannerType`
+);
+if (Shield.prototype.specialBannerTypes[shield.type] != undefined) {
+while (specialBannerTypeSelectElmt.firstChild) {
+specialBannerTypeSelectElmt.removeChild(
+specialBannerTypeSelectElmt.firstChild
+);
+}
+for (const specialBannerType of Object.keys(
+Shield.prototype.specialBannerTypes[shield.type]
+)) {
+if (exposed.checkSpecialShield(shieldIndex, specialBannerType)) {
+const optionElmt = document.createElement("option");
+optionElmt.value = specialBannerType;
+optionElmt.selected =
+shield.specialBannerType == specialBannerType || false;
+optionElmt.appendChild(document.createTextNode(specialBannerType));
+specialBannerTypeSelectElmt.appendChild(optionElmt);
+} else {
+if (shield.specialBannerType == specialBannerType) {
+shield.specialBannerType = "None";
+}
+}
+}
+let optionElmt = document.createElement("option");
+optionElmt.value = "None";
+optionElmt.selected = "None" == shield.specialBannerType || false;
+optionElmt.appendChild(document.createTextNode("None"));
+specialBannerTypeSelectElmt.appendChild(optionElmt);
+specialBannerTypeSelectElmt.style.visibility = "";
+} else {
+shield.specialBannerType = "None";
+specialBannerTypeSelectElmt.style.visibility = "hidden";
+}
+}
+const currentBlockElem = exposed.getCurrentBlockElem();
+const blockElemType =
+Control.prototype.blockInternalElements[
+Control.prototype.blockToClassElems.getElem(currentBlockElem)
+];
+if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
+if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
+normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+currentBlockElem.smallCapitals = false;
+}
+if (currentBlockElem.textColor === undefined) {
+currentBlockElem.textColor =
+blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+}
+}
+if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+const fontFamilyInput = document.getElementById(`${blockElemType}_fontFamily`);
+const lineHeightInput = document.getElementById(`${blockElemType}_lineHeight`);
+const lineHeightValueInput = document.getElementById(`${blockElemType}_lineHeightVal`);
+if (fontFamilyInput && lineHeightInput) {
+const wasClearview = isClearviewUiFont(currentBlockElem.fontFamily);
+const willBeClearview = isClearviewUiFont(fontFamilyInput.value);
+const currentLineHeight = parseFloat(
+lineHeightInput.value || currentBlockElem.lineHeight
+);
+let nextLineHeight = null;
+if (!wasClearview && willBeClearview && currentLineHeight === 100) {
+nextLineHeight = 120;
+} else if (wasClearview && !willBeClearview && currentLineHeight === 120) {
+nextLineHeight = 100;
+}
+if (nextLineHeight !== null) {
+lineHeightInput.value = String(nextLineHeight);
+if (lineHeightValueInput) {
+lineHeightValueInput.value = String(nextLineHeight);
+}
+}
+}
+}
+if (blockElemType === "sdShield") {
+normalizeSdShieldBannerStyleFields(currentBlockElem);
+}
+for (const propertyName in currentBlockElem) {
+const elementId = `${blockElemType}_${propertyName}`;
+const element = document.getElementById(elementId);
+if (element) {
+if (blockElemType === "sdShield" && propertyName === "shieldBase") {
+const selectedShieldBase = syncShieldBasePickerValue(
+currentBlockElem.shieldBase ||
+currentBlockElem.type ||
+element.dataset?.pickerValue ||
+element.value ||
+ShieldElement.prototype.defaultShieldBase ||
+"I",
+{ updateBlock: true }
+);
+currentBlockElem.shieldBase = selectedShieldBase;
+currentBlockElem.type = selectedShieldBase;
+continue;
+}
+const handleCustomBanner =
+blockElemType === "sdShield" &&
+(propertyName === "bannerType" || propertyName === "bannerType2");
+if (handleCustomBanner) {
+const manualCheckbox = document.getElementById("sdShield_manualBanners");
+const manualBanners = !manualCheckbox || manualCheckbox.checked;
+const customInputId =
+propertyName === "bannerType"
+? "sdShield_bannerCustomText"
+: "sdShield_bannerCustomText2";
+const customInput = document.getElementById(customInputId);
+if (manualBanners) {
+const customValue =
+customInput && typeof customInput.value === "string"
+? customInput.value
+: "";
+currentBlockElem[propertyName] =
+customValue.length > 0
+? customValue
+: ShieldElement.prototype.defaultBannerType;
+} else {
+const selectedValue = element.tagName === "SELECT"
+? element.value
+: ShieldElement.prototype.defaultBannerType;
+currentBlockElem[propertyName] =
+selectedValue || ShieldElement.prototype.defaultBannerType || "";
+}
+continue;
+}
+if (
+blockElemType === "sdShield" &&
+propertyName === "shieldBacks"
+) {
+continue;
+}
+if (blockElemType === "sdShield" && propertyName === "numberStyle") {
+currentBlockElem.numberStyle=element.checked?'legacy':'current';
+} else if (element.type === "checkbox") {
+currentBlockElem[propertyName] = element.checked;
+} else if (element.type === "radio") {
+if (element.checked) {
+currentBlockElem[propertyName] = element.value;
+}
+} else if (element.tagName === "SELECT") {
+const isShieldBannerFontProperty =
+blockElemType === "sdShield" &&
+(propertyName === "bannerFontFamily1" ||
+propertyName === "bannerFontFamily2");
+if (isShieldBannerFontProperty) {
+const currentFont = ShieldElement.prototype.normalizeBannerFontFamily(
+currentBlockElem[propertyName] || currentBlockElem.bannerFontFamily
+);
+const selectedFont = ShieldElement.prototype.normalizeBannerFontFamily(
+element.value
+);
+const userChangedFont =
+element.dataset.shieldBannerFontUserChanged === "true";
+currentBlockElem[propertyName] =
+!userChangedFont &&
+selectedFont === "Series 1" &&
+currentFont &&
+currentFont !== "Series 1"
+? currentFont
+: selectedFont;
+element.dataset.shieldBannerFontUserChanged = "false";
+} else {
+currentBlockElem[propertyName] = element.value;
+}
+} else {
+currentBlockElem[propertyName] = element.value;
+}
+}
+}
+if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+const parsedSpacing = parseFloat(currentBlockElem.spacing);
+currentBlockElem.spacing = Number.isFinite(parsedSpacing)
+? Math.max(-10, Math.min(10, parsedSpacing))
+: 0;
+const parsedLetterSpacing = parseFloat(currentBlockElem.letterSpacing);
+currentBlockElem.letterSpacing = Number.isFinite(parsedLetterSpacing)
+? Math.max(-0.15, Math.min(0.5, parsedLetterSpacing))
+: 0;
+normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+const activeControlId = String(document.activeElement?.id || "");
+const smallLettersWasChanged =
+activeControlId === `${blockElemType}_smallCapitals` ||
+activeControlId === `${blockElemType}_smallLettersSize`;
+if (smallLettersWasChanged) {
+currentBlockElem.useBannerFormatting = false;
+} else {
+currentBlockElem.smallCapitals = false;
+}
+}
+}
+if (blockElemType === "sdShield") {
+ensureSdShieldBasePicker();
+const manualCheckbox = document.getElementById("sdShield_manualBanners");
+if (manualCheckbox) {
+currentBlockElem.manualBanners = manualCheckbox.checked;
+} else if (currentBlockElem.manualBanners === undefined) {
+currentBlockElem.manualBanners = getDefaultManualBannersSetting();
+}
+const roadNameInput = document.getElementById("sdShield_roadName");
+currentBlockElem.roadName = roadNameInput
+? String(roadNameInput.value || "").trim()
+: "";
+const bannerLetterSpacingInput = document.getElementById(
+"sdShield_bannerLetterSpacing"
+);
+const bannerLetterSpacingValueInput = document.getElementById(
+"sdShield_bannerLetterSpacingVal"
+);
+currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
+bannerLetterSpacingInput
+? bannerLetterSpacingInput.value
+: currentBlockElem.bannerLetterSpacing
+);
+if (bannerLetterSpacingInput) {
+bannerLetterSpacingInput.value = String(currentBlockElem.bannerLetterSpacing);
+}
+if (bannerLetterSpacingValueInput) {
+bannerLetterSpacingValueInput.value = String(currentBlockElem.bannerLetterSpacing);
+}
+readSdShieldBannerFontSizeDisplayFields(currentBlockElem);
+normalizeSdShieldBannerStyleFields(currentBlockElem);
+syncManualBannerInputMode();
+syncSdShieldBannerBackgroundColorPickerVisuals();
+}
+if (blockElemType === "sdShield") {
+currentBlockElem.shieldSize =
+ShieldElement.prototype.normalizeShieldSize(
+currentBlockElem.shieldSize
+);
+currentBlockElem.scaleBannersWithShield =
+ShieldElement.prototype.normalizeScaleBannersWithShield(
+currentBlockElem.scaleBannersWithShield
+);
+}
+updateShieldCountyVisibility();
+if (blockElemType === "sdIcon") {
+const normalizeIconNumber = (value, fallback = 0) => {
+const parsed = parseFloat(
+value !== null && value !== undefined ? value : fallback
+);
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const legacyIconSpacing = normalizeIconNumber(currentBlockElem.spacing, 0);
+currentBlockElem.paddingHorizontal = normalizeIconNumber(
+currentBlockElem.paddingHorizontal,
+legacyIconSpacing
+);
+currentBlockElem.paddingVertical = normalizeIconNumber(
+currentBlockElem.paddingVertical,
+0
+);
+currentBlockElem.spacing = 0;
+currentBlockElem.invertColors =
+currentBlockElem.invertColors === true ||
+currentBlockElem.invertColors === "true" ||
+currentBlockElem.invertColors === 1 ||
+currentBlockElem.invertColors === "1" ||
+currentBlockElem.invertColors === "on";
+updateSdIconExtraControls(currentBlockElem);
+}
+if (blockElemType === "sdArrow") {
+currentBlockElem.flip =
+currentBlockElem.flip === true ||
+currentBlockElem.flip === "true" ||
+currentBlockElem.flip === 1 ||
+currentBlockElem.flip === "1" ||
+currentBlockElem.flip === "on";
+const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
+? TextElement.prototype.alignment
+: ["Left", "Center", "Right"];
+currentBlockElem.alignment = validArrowAlignments.includes(
+currentBlockElem.alignment
+)
+? currentBlockElem.alignment
+: "Center";
+}
+const normalizeBlockMarginInputValue = (value, fallback = 0) => {
+const parsed = parseFloat(value);
+if (!Number.isFinite(parsed)) {
+return fallback;
+}
+return Math.max(-5, Math.min(10, parsed));
+};
+const topMarginManualEl = document.querySelector("#sdBlock_topPaddingVal");
+const bottomMarginManualEl = document.querySelector("#sdBlock_bottomPaddingVal");
+const topMarginValue = normalizeBlockMarginInputValue(
+topMarginManualEl?.value ?? document.querySelector("#sdBlock_topPadding")?.value,
+0
+);
+const bottomMarginValue = normalizeBlockMarginInputValue(
+bottomMarginManualEl?.value ?? document.querySelector("#sdBlock_bottomPadding")?.value,
+0
+);
+if (topMarginManualEl) topMarginManualEl.value = topMarginValue;
+if (bottomMarginManualEl) bottomMarginManualEl.value = bottomMarginValue;
+const topMarginSliderEl = document.querySelector("#sdBlock_topPadding");
+const bottomMarginSliderEl = document.querySelector("#sdBlock_bottomPadding");
+if (topMarginSliderEl) topMarginSliderEl.value = Math.max(0, Math.min(3, topMarginValue));
+if (bottomMarginSliderEl) bottomMarginSliderEl.value = Math.max(0, Math.min(3, bottomMarginValue));
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].topPadding = topMarginValue;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].bottomPadding = bottomMarginValue;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].backgroundColor = document.querySelector(
+"#sdBlock_backgroundColor"
+).value;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].borderColor = document.querySelector("#sdBlock_borderColor").value;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].backgroundFullWidth = document.querySelector(
+"#sdBlock_backgroundFullWidth"
+).checked;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].width = document.querySelector("#sdBlock_width").value;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].stretchLeft = document.querySelector("#sdBlock_stretchLeft").checked;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].stretchCenter = document.querySelector("#sdBlock_stretchCenter").checked;
+subPanel.blockElements.blockProperties[
+exposed.vars.currentlySelectedRowIndex
+].stretchRight = document.querySelector("#sdBlock_stretchRight").checked;
+if (
+currentPanel.sign.subPanels.length > 1 &&
+exposed.vars.currentlySelectedSubPanelIndex == 0
+) {
+subPanel.width = parseInt(form["subPanelLength"].value);
+} else if (exposed.vars.currentlySelectedSubPanelIndex != 0) {
+const subPanelHeightField = form["subPanelHeight"];
+const rawHeightValue =
+subPanelHeightField && typeof subPanelHeightField.value === "string"
+? subPanelHeightField.value.trim()
+: "";
+const hasCustomHeight = !!rawHeightValue;
+subPanel.customDividerHeight = hasCustomHeight;
+subPanel.height = SubPanels.normalizeHeight(
+hasCustomHeight ? rawHeightValue : undefined
+);
+subPanel.width = parseInt(form["subPanelLength"].value);
+}
+currentPanel.sign.shieldPosition = form["shieldsPosition"].value;
+var guideArrow_result = form["guideArrow"].value;
+for (const guideArrow_value of Sign.prototype.guideArrows) {
+if (guideArrow_result == guideArrow_value.split(":")[0]) {
+guideArrow_result = guideArrow_value;
+break;
+}
+}
+currentPanel.sign.guideArrow = guideArrow_result;
+if (guideArrow_result !== "None") {
+currentPanel.sign.arrowMode = "standard";
+} else if (currentPanel.sign.arrowMode !== "apl") {
+currentPanel.sign.arrowMode = "standard";
+}
+currentPanel.sign.guideArrowLanes = form["guideArrowLanes"].value;
+currentPanel.sign.arrowPosition = form["arrowLocations"].value;
+if (guideArrow_result === "Standard Arrow") {
+currentPanel.sign.standardArrowType = standardArrowField("Type").value;
+currentPanel.sign.standardArrowAngle = normalizeStandardAngle(standardArrowField("AngleValue").value);
+currentPanel.sign.standardArrowFlip = standardArrowField("Flip").getAttribute("aria-pressed") === "true";
+currentPanel.sign.standardArrowSize = clampStandardValue(standardArrowField("SizeValue").value, 1, 5, 10, 3);
+currentPanel.sign.standardArrowPadding = clampStandardValue(standardArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+currentPanel.sign.standardArrowSpacing = clampStandardValue(standardArrowField("SpacingValue").value, 0, 25, 100, 8.5);
+}
+if (["Exit Only", "Half Exit Only", "Split Exit Only"].includes(guideArrow_result)) {
+const sign = currentPanel.sign;
+sign.exitOnlyEditorVersion = 2;
+sign.exitArrowType = exitArrowField("Type").value;
+sign.exitArrowAngle = normalizeStandardAngle(exitArrowField("AngleValue").value);
+sign.exitArrowFlip = exitArrowField("Flip").getAttribute("aria-pressed") === "true";
+sign.exitArrowSize = clampStandardValue(exitArrowField("SizeValue").value, 1, 5, 10, 3);
+sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+sign.exitArrowSpacing = clampStandardValue(exitArrowField("SpacingValue").value, 0, 25, 100, 8.5);
+sign.exitTextFont = exitTextField("Font").value || "Series E";
+sign.exitTextSize = clampStandardValue(exitTextField("SizeValue").value, 50, 100, 1, 70);
+sign.exitTextSpacing = normalizeExitTextSpacing(exitTextField("SpacingValue").value);
+sign.exitTextColor = exitTextField("Color").value || "Inherit";
+sign.exitBackgroundColor = document.getElementById("exitBackgroundColor").value || "Yellow";
+sign.exitBorderColor = document.getElementById("exitBorderColor").value || "Inherit";
+sign.exitTopBorder = document.getElementById("exitTopBorder").checked;
+sign.exitColorEdges = document.getElementById("exitColorEdges").checked;
+sign.exitTexasBorder = document.getElementById("exitTexasBorder").checked;
+sign.exitForceSubpanelWidth = document.getElementById("exitForceSubpanelWidth").checked;
+sign.exitArrowAlignment = sign.exitArrowAlignment || "Center";
+}
+var exitOnlyDirection_result = form["exitOnlyDirection"].value;
+for (const exitOnlyDirection_value of Sign.prototype.exitguideArrows) {
+if (exitOnlyDirection_result == exitOnlyDirection_value.split(":")[0]) {
+exitOnlyDirection_result = exitOnlyDirection_value;
+break;
+}
+}
+if (currentPanel.sign.guideArrow == "Half Exit Only") {
+currentPanel.sign.arrowPosition = form["arrowLocations"].value;
+for (const arrowPosition of Sign.prototype.arrowPositions) {
+if (
+!form["arrowLocations"].querySelector(
+`option[value="${arrowPosition}"]`
+)
+) {
+lib.appendOption(form["arrowLocations"], arrowPosition);
+}
+}
+} else if (
+currentPanel.sign.guideArrow == "Exit Only" &&
+(currentPanel.sign.guideArrowLanes == 1 ||
+currentPanel.sign.guideArrowLanes == 2)
+) {
+currentPanel.sign.arrowPosition = form["arrowLocations"].value;
+for (const arrowPosition of Sign.prototype.arrowPositions) {
+if (
+!form["arrowLocations"].querySelector(
+`option[value="${arrowPosition}"]`
+)
+) {
+lib.appendOption(form["arrowLocations"], arrowPosition);
+}
+}
+} else {
+currentPanel.sign.arrowPosition = form["arrowLocations"].value;
+if (!form["arrowLocations"].querySelector("option[value=Middle]")) {
+lib.appendOption(form["arrowLocations"], "Middle");
+}
+}
+const useCanadianDownArrowField = form["useCanadianDownArrows"];
+currentPanel.sign.useCanadianDownArrows = !!(
+useCanadianDownArrowField && useCanadianDownArrowField.checked
+);
+currentPanel.sign.exitguideArrows = exitOnlyDirection_result;
+currentPanel.sign.showExitOnly = form["showExitOnly"].checked;
+currentPanel.sign.hideExitArrow = form["hideExitArrow"]
+? form["hideExitArrow"].checked
+: false;
+const borderModeField = form["exitOnlyBorderMode"];
+if (borderModeField) {
+const selectedMode = borderModeField.value;
+currentPanel.sign.exitOnlyBorderMode = Sign.prototype.exitOnlyBorderModes.includes(
+selectedMode
+)
+? selectedMode
+: Sign.prototype.exitOnlyBorderModes[0];
+} else {
+currentPanel.sign.exitOnlyBorderMode = Sign.prototype.exitOnlyBorderModes[0];
+}
+currentPanel.sign.exitOnlyLeftText = form["exitOnlyLeftText"]
+? form["exitOnlyLeftText"].value || ""
+: "";
+currentPanel.sign.exitOnlyRightText = form["exitOnlyRightText"]
+? form["exitOnlyRightText"].value || ""
+: "";
+currentPanel.sign.exitOnlyLabelPreset = [
+currentPanel.sign.exitOnlyLeftText,
+currentPanel.sign.exitOnlyRightText,
+]
+.filter((part) => part && part.trim().length > 0)
+.join(" ")
+.trim();
+const rawExitOnlyPadding = parseFloat(form["exitOnlyPadding"].value);
+currentPanel.sign.exitOnlyPadding = Number.isFinite(rawExitOnlyPadding)
+? rawExitOnlyPadding
+: 0.25;
+currentPanel.sign.otherSymbol = form["otherSymbol"].value;
+currentPanel.sign.oSNum = form["oSNum"].value;
+if (currentPanel.sign.otherSymbol != "None") {
+form["oSNum"].style.display = "block";
+} else {
+form["oSNum"].style.display = "none";
+}
+applyExitOnlyArrowVisibility();
+syncPanelPaddingControlsFromSign(currentPanel.sign);
+if (!(sdShieldReadFormFastPass && blockElemType === "sdShield")) {
+updateForm();
+}
+redrawAfterExitTabEdit();
+} finally {
+if (!deferHistoryEnd &&
+exposed &&
+typeof exposed.endUndoableChange === "function"
+) {
+exposed.endUndoableChange();
+}
+}
+};
+let mergeLiveInputActive = false;
+let mergePendingFormRefresh = false;
+let mergeSliderDisplaysBefore = [];
+let mergeLiveResetTimer = 0;
+document.addEventListener("input", event => {
+const field = event.target;
+mergeLiveInputActive = ["range", "number", "text", "search"].includes(field?.type) || field?.tagName === "TEXTAREA";
+mergeSliderDisplaysBefore = field?.type === "range" && field.id
+? [document.getElementById(field.id + "Val"), document.getElementById(field.id + "Value"), ...document.querySelectorAll('output[for="' + field.id + '"]')]
+.filter(Boolean).map(display => [display, display.value ?? display.textContent]) : [];
+clearTimeout(mergeLiveResetTimer);
+mergeLiveResetTimer = setTimeout(() => { mergeLiveInputActive = false; }, 0);
+}, true);
+window.addEventListener("input", event => {
+mergeLiveInputActive = false;
+clearTimeout(mergeLiveResetTimer);
+for (const [display, before] of mergeSliderDisplaysBefore) {
+if ((display.value ?? display.textContent) !== before || display === document.activeElement) continue;
+if (display.tagName === "INPUT" || display.tagName === "OUTPUT") display.value = event.target.value;
+else display.textContent = event.target.value;
+}
+mergeSliderDisplaysBefore = [];
+});
+document.addEventListener("change", () => {
+if (!mergePendingFormRefresh) return;
+requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(); });
+}, true);
+const updateForm = function () {
+if (mergeLiveInputActive) { mergePendingFormRefresh = true; return; }
+mergePendingFormRefresh = false;
+syncPostReference();
+normalizeExitTabProfiles();
+const currentPanelLabel = document.getElementById("currentlySelectedPanel");
+if (currentPanelLabel && post && Array.isArray(post.panels)) {
+const selectedPanel =
+exposed && typeof exposed.getCurrentPanel === "function"
+? exposed.getCurrentPanel()
+: null;
+const selectedPanelIndex = selectedPanel
+? post.panels.indexOf(selectedPanel)
+: -1;
+let panelNumber = 0;
+let additionalOrderIndex = -1;
+const selectedIsAdditional =
+selectedPanelIndex >= 0 && post.panels[selectedPanelIndex]?.stackedWithPrevious === true;
+for (let index = 0; index <= Math.max(0, selectedPanelIndex); index++) {
+if (post.panels[index]?.stackedWithPrevious !== true) {
+panelNumber++;
+}
+}
+if (selectedIsAdditional) {
+let mainIndex = selectedPanelIndex;
+while (mainIndex > 0 && post.panels[mainIndex]?.stackedWithPrevious === true) {
+mainIndex--;
+}
+const groupAdditional = [];
+for (let index = mainIndex + 1; index < post.panels.length; index++) {
+if (post.panels[index]?.stackedWithPrevious !== true) {
+break;
+}
+groupAdditional.push(index);
+}
+const above = groupAdditional.filter(
+(index) => String(post.panels[index]?.stackedPanelPlacement || "below").toLowerCase() === "above"
+);
+const below = groupAdditional.filter(
+(index) => String(post.panels[index]?.stackedPanelPlacement || "below").toLowerCase() !== "above"
+);
+additionalOrderIndex = [...above, ...below].indexOf(selectedPanelIndex);
+}
+const getPanelLetter = (orderIndex) => {
+let n = orderIndex + 1;
+let label = "";
+while (n > 0) {
+n--;
+label = String.fromCharCode(65 + (n % 26)) + label;
+n = Math.floor(n / 26);
+}
+return label || "A";
+};
+currentPanelLabel.textContent =
+"Panel " +
+Math.max(1, panelNumber) +
+(selectedIsAdditional ? getPanelLetter(Math.max(0, additionalOrderIndex)) : "");
+}
+const currentPanel =
+exposed && typeof exposed.getCurrentPanel === "function"
+? exposed.getCurrentPanel()
+: null;
+if (currentPanel && currentPanel.sign) {
+document.getElementById("guideArrow").value =
+String(currentPanel.sign.guideArrow || "None").split(":")[0];
+document.getElementById("guideArrowLanes").value =
+currentPanel.sign.guideArrowLanes ?? 1;
+document.getElementById("arrowLocations").value =
+currentPanel.sign.arrowPosition || "Middle";
+document.getElementById("exitOnlyDirection").value =
+String(currentPanel.sign.exitguideArrows || "").split(":")[0];
+}
+const setupAssetSelectorModal = ({
+buttonId,
+modalId,
+closeId,
+searchId,
+gridId,
+inputId,
+labelId,
+sourceObject,
+defaultKey,
+itemClassName = "",
+previewClassName = "",
+currentLabelPrefix = "Current: ",
+shouldReadForm = true,
+}) => {
+const chooseBtn = document.getElementById(buttonId);
+const modal = document.getElementById(modalId);
+const closeBtn = document.getElementById(closeId);
+const search = document.getElementById(searchId);
+const grid = document.getElementById(gridId);
+const input = document.getElementById(inputId);
+const label = document.getElementById(labelId);
+if (!chooseBtn || !modal || !grid || !input || !sourceObject) {
+return;
+}
+const getCurrentKey = () =>
+sourceObject[input.value] ? input.value : defaultKey;
+const updateCurrentLabel = () => {
+if (!label) {
+return;
+}
+const currentKey = getCurrentKey();
+const currentDef = sourceObject[currentKey];
+if (currentDef) {
+label.textContent =
+currentLabelPrefix + String(currentDef.label || currentDef.name || currentKey);
+}
+};
+const applyAssetSelection = (key) => {
+input.value = key;
+input.dispatchEvent(new Event("input", { bubbles: true }));
+if (modalId !== "iconSelectorModal" || !shouldReadForm) {
+input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+updateCurrentLabel();
+if (shouldReadForm) {
+readForm();
+}
+};
+if (modalId === "iconSelectorModal") {
+getIconPickerController().bindTarget(chooseBtn, {
+getCurrentKey,
+onSelect: applyAssetSelection,
+});
+updateCurrentLabel();
+return;
+}
+const populateGrid = (filter = "") => {
+lib.clearChildren(grid);
+const filterText = String(filter || "").trim().toLowerCase();
+const currentKey = getCurrentKey();
+const entries = Object.entries(sourceObject)
+.filter(([key, definition]) => {
+const itemLabel = String(definition?.label || definition?.name || key).toLowerCase();
+const itemKey = String(key).toLowerCase();
+return (
+!filterText ||
+itemLabel.includes(filterText) ||
+itemKey.includes(filterText)
+);
+})
+.sort((a, b) => {
+const aCustom = !!a[1]?.customIconPicker;
+const bCustom = !!b[1]?.customIconPicker;
+if (aCustom !== bCustom) {
+return aCustom ? -1 : 1;
+}
+if (aCustom && bCustom) {
+return (a[1]?.customIconOrder ?? 0) - (b[1]?.customIconOrder ?? 0);
+}
+return String(a[1]?.label || a[1]?.name || a[0]).localeCompare(
+String(b[1]?.label || b[1]?.name || b[0])
+);
+});
+for (const [key, definition] of entries) {
+const itemLabel = String(definition?.label || definition?.name || key);
+const itemSrc = String(definition?.src || definition?.asset || definition?.url || "");
+const item = document.createElement("button");
+item.type = "button";
+item.className = ["assetGridCard", itemClassName].filter(Boolean).join(" ");
+item.title = itemLabel;
+item.dataset.assetKey = key;
+item.classList.toggle("selected", key === currentKey);
+const preview = document.createElement("span");
+preview.className = "assetGridPreview";
+if (itemSrc) {
+const img = document.createElement("img");
+img.src = itemSrc;
+img.alt = itemLabel;
+img.loading = "lazy";
+img.decoding = "async";
+img.draggable = false;
+if (previewClassName) {
+img.classList.add(previewClassName);
+}
+img.onerror = () => {
+item.classList.add("assetPreviewMissing");
+preview.textContent = "?";
+img.remove();
+};
+preview.appendChild(img);
+} else {
+item.classList.add("assetPreviewMissing");
+preview.textContent = "?";
+}
+const text = document.createElement("span");
+text.className = "assetGridLabel";
+text.textContent = itemLabel;
+item.appendChild(preview);
+item.appendChild(text);
+item.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+applyAssetSelection(key);
+if (typeof modal.close === "function") {
+modal.close();
+} else {
+modal.removeAttribute("open");
+}
+});
+grid.appendChild(item);
+}
+if (!entries.length) {
+const empty = document.createElement("div");
+empty.className = "assetGridEmpty";
+empty.textContent = "No matches";
+grid.appendChild(empty);
+}
+};
+if (chooseBtn.dataset.assetSelectorInitialized !== "true") {
+chooseBtn.dataset.assetSelectorInitialized = "true";
+chooseBtn.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (search) {
+search.value = "";
+}
+populateGrid("");
+if (typeof modal.showModal === "function") {
+modal.showModal();
+} else {
+modal.setAttribute("open", "");
+}
+if (search) {
+search.focus();
+}
+});
+if (closeBtn) {
+closeBtn.addEventListener("click", (event) => {
+event.preventDefault();
+modal.close();
+});
+}
+if (search) {
+search.addEventListener("input", () => {
+populateGrid(search.value);
+});
+search.addEventListener("keydown", (event) => {
+if (event.key === "Escape") {
+event.preventDefault();
+modal.close();
+}
+});
+}
+modal.addEventListener("click", (event) => {
+if (event.target === modal) {
+modal.close();
+}
+});
+}
+updateCurrentLabel();
+};
+setupAssetSelectorModal({
+buttonId: "sdIcon_chooseBtn",
+modalId: "iconSelectorModal",
+closeId: "closeIconSelector",
+searchId: "iconSearch",
+gridId: "iconGrid",
+inputId: "sdIcon_icon",
+labelId: "sdIcon_selectedLabel",
+sourceObject: IconElement.prototype.icons,
+defaultKey: IconElement.prototype.defaultIcon,
+itemClassName: "IconGridCard",
+previewClassName: "iconPickerPreviewImage",
+});
+setupAssetSelectorModal({
+buttonId: "sdTollLogo_chooseBtn",
+modalId: "tollLogoSelectorModal",
+closeId: "closeTollLogoSelector",
+searchId: "tollLogoSearch",
+gridId: "tollLogoGrid",
+inputId: "sdTollLogo_logo",
+labelId: "sdTollLogo_selectedLabel",
+sourceObject: TollLogoElement.prototype.logos,
+defaultKey: TollLogoElement.prototype.defaultLogo,
+itemClassName: "tollLogoGridCard",
+previewClassName: "tollLogoPickerPreviewImage",
+});
+setupAssetSelectorModal({
+buttonId: "exitIconChooseButton",
+modalId: "iconSelectorModal",
+closeId: "closeIconSelector",
+searchId: "iconSearch",
+gridId: "iconGrid",
+inputId: "exitIconPickerValue",
+labelId: "exitIconCurrent",
+sourceObject: IconElement.prototype.icons,
+defaultKey: IconElement.prototype.icons?.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon,
+itemClassName: "iconGridCard",
+previewClassName: "iconPickerPreviewImage",
+currentLabelPrefix: "",
+});
+setupAssetSelectorModal({
+buttonId: "exitTollLogoChooseButton",
+modalId: "tollLogoSelectorModal",
+closeId: "closeTollLogoSelector",
+searchId: "tollLogoSearch",
+gridId: "tollLogoGrid",
+inputId: "exitTollLogoPickerValue",
+labelId: "exitTollLogoCurrent",
+sourceObject: TollLogoElement.prototype.logos,
+defaultKey: TollLogoElement.prototype.logos?.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo,
+itemClassName: "tollLogoGridCard",
+previewClassName: "tollLogoPickerPreviewImage",
+currentLabelPrefix: "",
+});
+setupAssetSelectorModal({
+buttonId: "sdArrow_chooseBtn",
+modalId: "arrowSelectorModal",
+closeId: "closeArrowSelector",
+searchId: "arrowSearch",
+gridId: "arrowGrid",
+inputId: "sdArrow_arrow",
+labelId: "sdArrow_selectedLabel",
+sourceObject: ArrowElement.prototype.arrows,
+defaultKey: ArrowElement.prototype.defaultArrow,
+itemClassName: "arrowGridCard",
+previewClassName: "arrowPickerPreviewImage",
+});
+setupAssetSelectorModal({
+buttonId: "settingsDefaultsIconChooseButton",
+modalId: "iconSelectorModal",
+closeId: "closeIconSelector",
+searchId: "iconSearch",
+gridId: "iconGrid",
+inputId: "settingsDefaultsIconValue",
+labelId: "settingsDefaultsIconCurrent",
+sourceObject: IconElement.prototype.icons,
+defaultKey: IconElement.prototype.defaultIcon,
+itemClassName: "iconGridCard",
+previewClassName: "iconPickerPreviewImage",
+currentLabelPrefix: "",
+shouldReadForm: false,
+});
+setupAssetSelectorModal({
+buttonId: "settingsDefaultsTollLogoChooseButton",
+modalId: "tollLogoSelectorModal",
+closeId: "closeTollLogoSelector",
+searchId: "tollLogoSearch",
+gridId: "tollLogoGrid",
+inputId: "settingsDefaultsTollLogoValue",
+labelId: "settingsDefaultsTollLogoCurrent",
+sourceObject: TollLogoElement.prototype.logos,
+defaultKey: TollLogoElement.prototype.defaultLogo,
+itemClassName: "tollLogoGridCard",
+previewClassName: "tollLogoPickerPreviewImage",
+currentLabelPrefix: "",
+shouldReadForm: false,
+});
+setupAssetSelectorModal({
+buttonId: "settingsDefaultsArrowChooseButton",
+modalId: "arrowSelectorModal",
+closeId: "closeArrowSelector",
+searchId: "arrowSearch",
+gridId: "arrowGrid",
+inputId: "settingsDefaultsArrowValue",
+labelId: "settingsDefaultsArrowCurrent",
+sourceObject: ArrowElement.prototype.arrows,
+defaultKey: ArrowElement.prototype.defaultArrow,
+itemClassName: "arrowGridCard",
+previewClassName: "arrowPickerPreviewImage",
+currentLabelPrefix: "",
+shouldReadForm: false,
+});
+const panel = exposed.getCurrentPanel();
+const sign =
+exposed.vars.currentlySelectedSubPanelIndex >= 0
+? panel.sign.subPanels[exposed.vars.currentlySelectedSubPanelIndex]
+: exposed.getCurrentSubPanel();
+const selectedExitTabIndex = exposed.vars.currentlySelectedExitTabIndex;
+const selectedNestedExitTabIndex =
+exposed.vars.currentlySelectedNestedExitTabIndex;
+const currentExitTab = panel.exitTabs[selectedExitTabIndex];
+const maxNested = getNestedExitTabLimit();
+if (
+maxNested != null &&
+currentExitTab &&
+currentExitTab.nestedExitTabs.length > maxNested
+) {
+currentExitTab.nestedExitTabs.splice(maxNested);
+}
+if (
+currentExitTab &&
+selectedNestedExitTabIndex > -1 &&
+selectedNestedExitTabIndex >= currentExitTab.nestedExitTabs.length
+) {
+const newNestedIndex =
+currentExitTab.nestedExitTabs.length > 0
+? currentExitTab.nestedExitTabs.length - 1
+: -1;
+exposed.changeEditingExitTab(selectedExitTabIndex, newNestedIndex);
+return;
+}
+let exitTab =
+currentExitTab && selectedNestedExitTabIndex > -1
+? currentExitTab.nestedExitTabs[selectedNestedExitTabIndex]
+: currentExitTab;
+if (exitTabEditorMode !== "default") {
+syncCurrentExitTabProfileSelectionFromTab(exitTab);
+}
+exitTab = getExitTabEditorTarget(exitTab);
+if (!exitTab) {
+if (panel && typeof panel.newExitTab === "function") {
+panel.newExitTab();
+if (typeof exposed.changeEditingExitTab === "function") {
+exposed.changeEditingExitTab(Math.max(0, panel.exitTabs.length - 1), -1);
+return;
+}
+exitTab = panel.exitTabs[Math.max(0, panel.exitTabs.length - 1)];
+}
+if (!exitTab) {
+return;
+}
+}
+updateExitTabModeUi();
+const panelList = document.getElementById("panelList");
+const panelListShowHiddenPanels = document.getElementById("panelListShowHiddenPanels");
+const subPanelList = document.getElementById("subPanelList");
+const exitTabList = document.getElementById("exitTabList");
+if (panelListShowHiddenPanels) {
+panelListShowHiddenPanels.checked = showHiddenPanelsInPanelList;
+if (panelListShowHiddenPanels.dataset.showHiddenPanelsBound !== "true") {
+panelListShowHiddenPanels.dataset.showHiddenPanelsBound = "true";
+panelListShowHiddenPanels.addEventListener("change", () => {
+showHiddenPanelsInPanelList = panelListShowHiddenPanels.checked;
+updateForm();
+});
+}
+}
+toggleExitTabWiggle(false);
+clearExitTabDropIndicators();
+exitTabDragState = null;
+exitTabRowDragState = null;
+endPanelDrag();
+endSubPanelTabDrag();
+togglePanelListWiggle(false);
+if (exitTabList && !exitTabList.dataset.exitTabDragAttached) {
+exitTabList.addEventListener("dragover", handleExitTabDragOver);
+exitTabList.addEventListener("drop", handleExitTabDrop);
+exitTabList.addEventListener("dragleave", handleExitTabDragLeave);
+exitTabList.dataset.exitTabDragAttached = "true";
+}
+if (panelList && !panelList.dataset.panelDragAttached) {
+panelList.addEventListener("dragover", handlePanelDragOver);
+panelList.addEventListener("drop", handlePanelDrop);
+panelList.addEventListener("dragleave", handlePanelDragLeave);
+panelList.dataset.panelDragAttached = "true";
+}
+if (subPanelList && !subPanelList.dataset.subPanelTabDragAttached) {
+subPanelList.addEventListener("dragover", handleSubPanelTabDragOver);
+subPanelList.addEventListener("drop", handleSubPanelTabDrop);
+subPanelList.addEventListener("dragleave", handleSubPanelTabDragLeave);
+subPanelList.dataset.subPanelTabDragAttached = "true";
+}
+const postPositionSelectElmt = document.getElementById("postPosition");
+if (postPositionSelectElmt && post.polePosition) {
+postPositionSelectElmt.value = post.polePosition;
+}
+const postColorSelectElmt = document.getElementById("postColor");
+if (postColorSelectElmt && post.color) {
+ensureCustomColorOptionsForSelect(postColorSelectElmt);
+ensureNativeColorSelectOption(postColorSelectElmt, post.color);
+postColorSelectElmt.value = post.color;
+}
+const showPostCheckbox = document.getElementById("showPost");
+if (showPostCheckbox) {
+showPostCheckbox.checked = !!post.showPost;
+}
+const secondExitOnlyCheckbox = document.getElementById("secondExitOnly");
+if (secondExitOnlyCheckbox) {
+secondExitOnlyCheckbox.checked = currentPanel?.sign?.secondExitOnly === true;
+}
+while (panelList.firstChild) {
+panelList.removeChild(panelList.lastChild);
+}
+while (subPanelList.firstChild) {
+subPanelList.removeChild(subPanelList.lastChild);
+}
+while (exitTabList.firstChild) {
+exitTabList.removeChild(exitTabList.lastChild);
+}
+const getPanelListNumber = (panelIndex) => {
+let visibleNumber = 0;
+for (let index = 0; index <= panelIndex; index++) {
+if (!post.panels[index]?.stackedWithPrevious) {
+visibleNumber++;
+}
+}
+return Math.max(1, visibleNumber);
+};
+const getPanelListLabel = (panelIndex) => {
+const labelNumber = getPanelListNumber(panelIndex);
+return "Panel " + labelNumber;
+};
+for (
+let panelIndex = 0, panelsLength = post.panels.length;
+panelIndex < panelsLength;
+panelIndex++
+) {
+if (post.panels[panelIndex]?.stackedWithPrevious === true) {
+continue;
+}
+const panelHiddenFromPost = post.panels[panelIndex]?.hiddenFromPost === true;
+if (panelHiddenFromPost && !showHiddenPanelsInPanelList) {
+continue;
+}
+const panelRow = document.createElement("div");
+panelRow.className =
+"panelListRow" +
+(panelHiddenFromPost ? " hiddenFromPost" : "");
+const panelButton = document.createElement("button");
+panelButton.id = "edit" + (panelIndex + 1);
+panelButton.type = "button";
+panelButton.className =
+"panelListButton" +
+(exposed.vars.currentlySelectedPanelIndex == panelIndex
+? " active"
+: "");
+panelButton.dataset.panelIndex = panelIndex.toString();
+panelButton.draggable =
+post.panels.length > 1 && !panelHiddenFromPost;
+const label = document.createElement("span");
+label.className = "panelListLabel";
+const panelLabelText = getPanelListLabel(panelIndex);
+label.textContent = panelLabelText;
+panelButton.appendChild(label);
+panelButton.addEventListener("click", function () {
+if (panelHiddenFromPost) {
+app.togglePanelHidden(panelIndex);
+}
+exposed.changeEditingPanel(panelIndex);
+});
+panelButton.addEventListener("dragstart", handlePanelDragStart);
+panelButton.addEventListener("dragend", handlePanelDragEnd);
+const copyButton = document.createElement("button");
+copyButton.type = "button";
+copyButton.className = "panelCopyButton";
+copyButton.title = "Copy " + panelLabelText + " as PNG";
+copyButton.setAttribute("aria-label", "Copy " + panelLabelText + " as PNG");
+copyButton.disabled = panelHiddenFromPost;
+const copyIcon = document.createElement("span");
+copyIcon.className = "material-symbols-outlined";
+copyIcon.textContent = "content_copy";
+copyButton.appendChild(copyIcon);
+copyButton.addEventListener("mousedown", function (event) {
+event.preventDefault();
+event.stopPropagation();
+});
+copyButton.addEventListener("click", async (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (!app || typeof app.copyPanelPNG !== "function") {
+return;
+}
+const originalIcon = copyIcon.textContent;
+copyButton.disabled = true;
+try {
+const copied = await app.copyPanelPNG(panelIndex);
+if (copied) {
+copyIcon.textContent = "check";
+window.setTimeout(() => {
+copyIcon.textContent = originalIcon;
+copyButton.disabled = panelHiddenFromPost;
+}, 900);
+return;
+}
+} finally {
+if (copyIcon.textContent !== "check") {
+copyButton.disabled = panelHiddenFromPost;
+}
+}
+});
+const hideButton = document.createElement("button");
+hideButton.type = "button";
+hideButton.className =
+"panelVisibilityButton" +
+(panelHiddenFromPost ? " isHidden" : "");
+hideButton.title =
+(panelHiddenFromPost ? "Show " : "Hide ") +
+panelLabelText;
+hideButton.setAttribute(
+"aria-label",
+(panelHiddenFromPost ? "Show " : "Hide ") +
+panelLabelText
+);
+const hideIcon = document.createElement("span");
+hideIcon.className = "material-symbols-outlined";
+hideIcon.textContent =
+panelHiddenFromPost ? "visibility_off" : "visibility";
+hideButton.appendChild(hideIcon);
+hideButton.addEventListener("mousedown", function (event) {
+event.preventDefault();
+event.stopPropagation();
+});
+hideButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+app.togglePanelHidden(panelIndex);
+});
+const deleteButton = document.createElement("button");
+deleteButton.type = "button";
+deleteButton.className = "panelDeleteButton";
+deleteButton.title = "Delete " + panelLabelText;
+deleteButton.setAttribute("aria-label", "Delete " + panelLabelText);
+const deleteIcon = document.createElement("span");
+deleteIcon.className = "material-symbols-outlined";
+deleteIcon.textContent = "delete";
+deleteButton.appendChild(deleteIcon);
+deleteButton.addEventListener("mousedown", function (event) {
+event.preventDefault();
+event.stopPropagation();
+});
+deleteButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+app.deletePanelAt(panelIndex);
+});
+panelRow.appendChild(panelButton);
+panelRow.appendChild(copyButton);
+panelRow.appendChild(hideButton);
+panelRow.appendChild(deleteButton);
+panelList.appendChild(panelRow);
+}
+const panelSpacingSliders = Array.from(
+document.querySelectorAll("#panelSpacing, #settingsPanelSpacing")
+);
+const panelSpacingValueInputs = Array.from(
+document.querySelectorAll("#panelSpacingValue, #settingsPanelSpacingValue")
+);
+const resolvedPanelSpacing =
+typeof post.panelSpacing === "number" && post.panelSpacing >= 0
+? Math.min(post.panelSpacing, 8)
+: 4;
+const resolvedDefaultPanelSpacing = getDefaultPanelSpacingPreference();
+panelSpacingSliders.forEach((slider) => {
+slider.value = resolvedPanelSpacing;
+});
+panelSpacingValueInputs.forEach((input) => {
+input.value = resolvedPanelSpacing;
+});
+Array.from(document.querySelectorAll("#settingsDefaultPanelSpacing")).forEach((slider) => {
+slider.value = resolvedDefaultPanelSpacing;
+});
+Array.from(document.querySelectorAll("#settingsDefaultPanelSpacingValue")).forEach((input) => {
+input.value = resolvedDefaultPanelSpacing;
+});
+const postThicknessValueInput =
+document.getElementById("postThicknessValue");
+const resolvedPostThickness =
+post && typeof post.normalizeThickness === "function"
+? post.normalizeThickness(post.thickness)
+: normalizeStoredPostThickness(post ? post.thickness : undefined);
+if (post) {
+post.thickness = resolvedPostThickness;
+}
+if (postThicknessValueInput) {
+postThicknessValueInput.value = resolvedPostThickness;
+}
+const hasBlockElementContent = (controlData) =>
+controlData &&
+Array.isArray(controlData.rows) &&
+controlData.rows.some(
+(row) => Array.isArray(row) && row.some(Boolean)
+);
+const createSubPanelTab = ({
+id,
+label,
+subPanelIndex,
+deleteLabel,
+canDelete = true,
+emptyGlobal = false,
+}) => {
+const tabGroup = document.createElement("div");
+tabGroup.className =
+"subPanelTabGroup" +
+(exposed.vars.currentlySelectedSubPanelIndex === subPanelIndex
+? " active"
+: "") +
+(emptyGlobal ? " emptyGlobalTab" : "") +
+(!canDelete ? " lockedSubPanelTab" : "");
+tabGroup.dataset.subpanelIndex = String(subPanelIndex);
+if (subPanelIndex >= 0) {
+tabGroup.draggable = true;
+tabGroup.dataset.draggableSubpanel = "true";
+tabGroup.addEventListener("dragstart", handleSubPanelTabDragStart);
+tabGroup.addEventListener("dragend", handleSubPanelTabDragEnd);
+}
+const tabButton = document.createElement("button");
+tabButton.id = id;
+tabButton.type = "button";
+tabButton.className = "subPanelTabButton";
+tabButton.textContent = label;
+tabButton.addEventListener("click", function () {
+exposed.changeEditingSubPanel(subPanelIndex);
+});
+const deleteButton = document.createElement("button");
+deleteButton.type = "button";
+deleteButton.className = "subPanelTabDeleteButton";
+deleteButton.title = deleteLabel;
+deleteButton.setAttribute("aria-label", deleteLabel);
+deleteButton.disabled = !canDelete;
+const deleteIcon = document.createElement("span");
+deleteIcon.className = "material-symbols-outlined";
+deleteIcon.textContent = "delete";
+deleteButton.appendChild(deleteIcon);
+deleteButton.addEventListener("mousedown", function (event) {
+event.preventDefault();
+event.stopPropagation();
+});
+deleteButton.addEventListener("click", function (event) {
+event.preventDefault();
+event.stopPropagation();
+app.removeSubPanel(subPanelIndex);
+});
+tabGroup.appendChild(tabButton);
+tabGroup.appendChild(deleteButton);
+return tabGroup;
+};
+const renderStackedPanelControls = () => {
+const stackedPanelList = document.getElementById("stackedPanelList");
+if (!stackedPanelList) {
+return;
+}
+if (stackedPanelList.dataset.dropdownCloseBound !== "true") {
+document.addEventListener("click", (event) => {
+document
+.querySelectorAll(".stackedPanelOptionsWrapper.open")
+.forEach((wrapper) => {
+if (!wrapper.contains(event.target)) {
+wrapper.classList.remove("open");
+}
+});
+});
+stackedPanelList.dataset.dropdownCloseBound = "true";
+}
+stackedPanelList.replaceChildren();
+const stackInfo =
+exposed && typeof exposed.getCurrentStackedPanelInfo === "function"
+? exposed.getCurrentStackedPanelInfo()
+: {
+topIndex: exposed?.vars?.currentlySelectedPanelIndex || 0,
+mainIndex: exposed?.vars?.currentlySelectedPanelIndex || 0,
+selectedSlot: "Main",
+hasAdditional: false,
+spacing: 0,
+matchWidth: false,
+};
+const createStackedPanelOptions = () => {
+const wrapper = document.createElement("div");
+wrapper.className = "stackedPanelOptionsWrapper";
+const toggleButton = document.createElement("button");
+toggleButton.type = "button";
+toggleButton.className = "stackedPanelOptionsButton";
+toggleButton.title = "Additional panel settings";
+toggleButton.setAttribute("aria-label", "Additional panel settings");
+const toggleIcon = document.createElement("span");
+toggleIcon.className = "material-symbols-outlined";
+toggleIcon.textContent = "keyboard_arrow_down";
+toggleButton.appendChild(toggleIcon);
+toggleButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+document
+.querySelectorAll(".stackedPanelOptionsWrapper.open")
+.forEach((openWrapper) => {
+if (openWrapper !== wrapper) {
+openWrapper.classList.remove("open");
+}
+});
+wrapper.classList.toggle("open");
+});
+const dropdown = document.createElement("div");
+dropdown.className = "stackedPanelOptionsDropdown";
+dropdown.addEventListener("click", (event) => event.stopPropagation());
+const spacingRow = document.createElement("label");
+spacingRow.className = "stackedPanelOptionsRow";
+const spacingLabel = document.createElement("span");
+spacingLabel.textContent = "Spacing:";
+const spacingSlider = document.createElement("input");
+spacingSlider.type = "range";
+spacingSlider.min = "0";
+spacingSlider.max = "5";
+spacingSlider.step = "0.1";
+spacingSlider.value = String(
+Math.max(0, Math.min(5, parseFloat(stackInfo.spacing ?? 0) || 0))
+);
+spacingSlider.className = "stackedPanelSpacingSlider";
+const spacingInput = document.createElement("input");
+spacingInput.type = "number";
+spacingInput.step = "0.1";
+spacingInput.value = String(stackInfo.spacing ?? 0);
+spacingInput.className = "stackedPanelSpacingInput";
+const parseStackedSpacing = (rawValue) => {
+const parsedValue = parseFloat(rawValue);
+return Number.isFinite(parsedValue) ? parsedValue : 0;
+};
+const clampStackedSpacingSlider = (value) =>
+Math.max(0, Math.min(5, Number.isFinite(value) ? value : 0));
+const syncStackedSpacingSlider = (value) => {
+spacingSlider.value = String(clampStackedSpacingSlider(value));
+};
+const commitStackedSpacing = (rawValue) => {
+const value = parseStackedSpacing(rawValue);
+syncStackedSpacingSlider(value);
+spacingInput.value = String(value);
+if (typeof app.setStackedPanelSpacing === "function") {
+app.setStackedPanelSpacing(value);
+}
+};
+spacingSlider.addEventListener("input", () => {
+spacingInput.value = spacingSlider.value;
+});
+spacingSlider.addEventListener("change", () => {
+commitStackedSpacing(spacingSlider.value);
+});
+spacingInput.addEventListener("input", () => {
+const parsedValue = parseFloat(spacingInput.value);
+if (Number.isFinite(parsedValue)) {
+syncStackedSpacingSlider(parsedValue);
+}
+});
+spacingInput.addEventListener("change", () => {
+commitStackedSpacing(spacingInput.value);
+});
+spacingInput.addEventListener("blur", () => {
+const value = parseStackedSpacing(spacingInput.value);
+syncStackedSpacingSlider(value);
+spacingInput.value = String(value);
+});
+[spacingSlider, spacingInput].forEach((control) => {
+control.addEventListener("pointerdown", (event) => event.stopPropagation());
+control.addEventListener("mousedown", (event) => event.stopPropagation());
+control.addEventListener("dragstart", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+});
+spacingRow.appendChild(spacingLabel);
+spacingRow.appendChild(spacingSlider);
+spacingRow.appendChild(spacingInput);
+const matchWidthRow = document.createElement("label");
+matchWidthRow.className = "stackedPanelOptionsCheckboxRow";
+const matchWidthInput = document.createElement("input");
+matchWidthInput.type = "checkbox";
+matchWidthInput.checked = stackInfo.matchWidth === true;
+matchWidthInput.addEventListener("change", () => {
+if (typeof app.setStackedPanelMatchWidth === "function") {
+app.setStackedPanelMatchWidth(matchWidthInput.checked);
+}
+});
+const matchWidthText = document.createElement("span");
+matchWidthText.textContent = "Keep panel width consistent";
+matchWidthRow.appendChild(matchWidthInput);
+matchWidthRow.appendChild(matchWidthText);
+dropdown.appendChild(spacingRow);
+dropdown.appendChild(matchWidthRow);
+wrapper.appendChild(toggleButton);
+wrapper.appendChild(dropdown);
+return wrapper;
+};
+const getAdditionalPanelLetter = (orderIndex) => {
+let n = Number(orderIndex) + 1;
+let label = "";
+while (n > 0) {
+n--;
+label = String.fromCharCode(65 + (n % 26)) + label;
+n = Math.floor(n / 26);
+}
+return label || "A";
+};
+const createStackButtonGroup = ({ label, title, active = false, onClick, onDelete = null, deleteTitle = "", extraClass = "" }) => {
+const group = document.createElement("div");
+group.className =
+"stackedPanelTabGroup" +
+(active ? " active" : "") +
+(extraClass ? " " + extraClass : "");
+const slotButton = document.createElement("button");
+slotButton.type = "button";
+slotButton.className = "stackedPanelTabButton";
+slotButton.textContent = label;
+slotButton.title = title || label;
+slotButton.addEventListener("click", onClick);
+group.appendChild(slotButton);
+if (typeof onDelete === "function") {
+const deleteButton = document.createElement("button");
+deleteButton.type = "button";
+deleteButton.className = "stackedPanelDeleteButton";
+deleteButton.title = deleteTitle || "Delete additional panel";
+deleteButton.setAttribute("aria-label", deleteButton.title);
+const deleteIcon = document.createElement("span");
+deleteIcon.className = "material-symbols-outlined";
+deleteIcon.textContent = "delete";
+deleteButton.appendChild(deleteIcon);
+deleteButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+onDelete();
+});
+group.appendChild(deleteButton);
+}
+return group;
+};
+stackedPanelList.appendChild(
+createStackButtonGroup({
+label: "Main Panel",
+active: stackInfo.selectedSlot === "Main",
+title: "Edit the main panel",
+onClick: () => {
+if (typeof app.changeEditingStackedPanelSlot === "function") {
+app.changeEditingStackedPanelSlot("Main");
+}
+},
+})
+);
+const selectedPanelIndex = exposed?.vars?.currentlySelectedPanelIndex;
+const mainPanelIndex = Number.isInteger(stackInfo.mainIndex)
+? stackInfo.mainIndex
+: stackInfo.topIndex;
+const additionalPanelIndices = Array.isArray(stackInfo.verticalOrder)
+? stackInfo.verticalOrder.filter((panelIndex) => panelIndex !== mainPanelIndex)
+: Array.isArray(stackInfo.additionalIndices)
+? stackInfo.additionalIndices
+: [];
+additionalPanelIndices.forEach((panelIndex, orderIndex) => {
+const letter = getAdditionalPanelLetter(orderIndex);
+stackedPanelList.appendChild(
+createStackButtonGroup({
+label: letter,
+active: selectedPanelIndex === panelIndex,
+title: `Edit additional panel ${letter}`,
+extraClass: "additionalStackedPanelSlot",
+onClick: () => {
+if (typeof app.changeEditingPanel === "function") {
+app.changeEditingPanel(panelIndex);
+}
+},
+onDelete: () => {
+if (typeof app.removeStackedPanelSlot === "function") {
+app.removeStackedPanelSlot(panelIndex);
+}
+},
+deleteTitle: `Delete additional panel ${letter}`,
+})
+);
+});
+stackedPanelList.appendChild(
+createStackButtonGroup({
+label: "Add Panel Above",
+title: "Add an additional panel above this main panel",
+extraClass: "addStackedPanelSlot",
+onClick: () => {
+if (typeof app.createStackedPanelAboveSelected === "function") {
+app.createStackedPanelAboveSelected();
+}
+},
+})
+);
+const addBelowGroup = createStackButtonGroup({
+label: "Add Panel Below",
+title: "Add an additional panel below this main panel",
+extraClass: "addStackedPanelSlot",
+onClick: () => {
+if (typeof app.createStackedPanelBelowSelected === "function") {
+app.createStackedPanelBelowSelected();
+}
+},
+});
+addBelowGroup.appendChild(createStackedPanelOptions());
+stackedPanelList.appendChild(addBelowGroup);
+};
+const createSubPanelDividerButton = (dividerIndex) => {
+const isVisible = typeof exposed.isSubpanelDividerVisible !== "function" || exposed.isSubpanelDividerVisible(dividerIndex);
+const button = document.createElement("button");
+button.type = "button";
+button.className = "subPanelDividerToggle" + (isVisible ? " active" : "");
+button.dataset.dividerIndex = String(dividerIndex);
+button.textContent = "|";
+button.setAttribute("aria-pressed", String(isVisible));
+button.setAttribute("aria-label", `Divider between Subpanels ${dividerIndex + 1} and ${dividerIndex + 2}`);
+button.title = `${isVisible ? "Hide" : "Show"} divider between Subpanels ${dividerIndex + 1} and ${dividerIndex + 2}`;
+button.addEventListener("click", event => {
+event.preventDefault();
+event.stopPropagation();
+exposed.setSubpanelDividerVisible?.(dividerIndex, !isVisible);
+});
+return button;
+};
+subPanelList.appendChild(
+createSubPanelTab({
+id: "globalTop",
+label: "Top",
+subPanelIndex: -2,
+deleteLabel: "Clear Top",
+emptyGlobal: !hasBlockElementContent(panel.sign.globalTopBlockElements),
+})
+);
+subPanelList.appendChild(
+createSubPanelTab({
+id: "globalBottom",
+label: "Bottom",
+subPanelIndex: -1,
+deleteLabel: "Clear Bottom",
+emptyGlobal: !hasBlockElementContent(panel.sign.globalBottomBlockElements),
+})
+);
+for (
+let subPanelIndex = 0, subPanelsLength = panel.sign.subPanels.length;
+subPanelIndex < subPanelsLength;
+subPanelIndex++
+) {
+if (subPanelIndex > 0) subPanelList.appendChild(createSubPanelDividerButton(subPanelIndex - 1));
+subPanelList.appendChild(
+createSubPanelTab({
+id: "sub_edit" + (subPanelIndex + 1),
+label: (subPanelsLength >= 4 ? "Subp. " : "Subpanel ") + (subPanelIndex + 1),
+subPanelIndex,
+deleteLabel: "Delete Subpanel " + (subPanelIndex + 1),
+canDelete: panel.sign.subPanels.length > 1,
+})
+);
+}
+renderStackedPanelControls();
+for (
+let exitTabIndex = panel.exitTabs.length - 1;
+exitTabIndex >= 0;
+exitTabIndex--
+) {
+const exitTabGroup = document.createElement("div");
+exitTabGroup.className = "exitTabGroup";
+const exitTabRow = document.createElement("div");
+exitTabRow.className = "exitTabListRow exitTabParentListRow";
+exitTabRow.dataset.exitTabIndex = String(exitTabIndex);
+if (panel.exitTabs.length > 1) {
+const rowMoveControl = document.createElement("div");
+rowMoveControl.className = "exitTabRowMoveControl";
+rowMoveControl.setAttribute("aria-label", "Move tab row");
+const canMoveUp = exitTabIndex < panel.exitTabs.length - 1;
+const canMoveDown = exitTabIndex > 0;
+const addRowMoveButton = (direction) => {
+const button = document.createElement("button");
+button.type = "button";
+button.className = `exitTabRowMoveButton ${direction}`;
+button.title = direction === "up" ? "Move tab row up" : "Move tab row down";
+button.setAttribute("aria-label", button.title);
+const icon = document.createElement("span");
+icon.className = "material-symbols-outlined";
+icon.textContent = direction === "up" ? "keyboard_arrow_up" : "keyboard_arrow_down";
+button.appendChild(icon);
+button.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+if (typeof exposed.moveExitTab === "function") {
+exposed.moveExitTab(
+exitTabIndex,
+direction === "up" ? exitTabIndex + 2 : exitTabIndex - 1
+);
+}
+});
+rowMoveControl.appendChild(button);
+};
+if (canMoveUp) {
+addRowMoveButton("up");
+}
+if (canMoveDown) {
+addRowMoveButton("down");
+}
+rowMoveControl.classList.toggle("singleButton", canMoveUp !== canMoveDown);
+exitTabRow.appendChild(rowMoveControl);
+}
+const exitTabButton = document.createElement("button");
+exitTabButton.type = "button";
+exitTabButton.id = "tab_edit" + (exitTabIndex + 1);
+exitTabButton.className = "exitTabButton";
+exitTabButton.dataset.exitTabIndex = exitTabIndex.toString();
+exitTabButton.dataset.exitTabRowParentIndex = String(exitTabIndex);
+exitTabButton.dataset.exitTabFlatIndex = "0";
+exitTabButton.draggable = false;
+const exitTabButtonLabel = document.createElement("span");
+exitTabButtonLabel.className = "exitTabButtonLabel";
+exitTabButtonLabel.textContent = getExitTabListLabel(exitTabIndex);
+exitTabButton.appendChild(exitTabButtonLabel);
+const exitTabDeleteButton = document.createElement("span");
+exitTabDeleteButton.className = "exitTabInlineDelete material-symbols-outlined";
+exitTabDeleteButton.title = "Delete tab";
+exitTabDeleteButton.setAttribute("role", "button");
+exitTabDeleteButton.setAttribute("aria-label", "Delete tab " + (exitTabIndex + 1));
+exitTabDeleteButton.textContent = "delete";
+exitTabDeleteButton.addEventListener("pointerdown", function (event) {
+event.preventDefault();
+event.stopPropagation();
+});
+exitTabDeleteButton.addEventListener("click", function (event) {
+event.preventDefault();
+event.stopPropagation();
+if (typeof exposed.removeExitTab === "function") {
+exposed.removeExitTab(exitTabIndex);
+}
+});
+exitTabButton.appendChild(exitTabDeleteButton);
+if (
+exposed.vars.currentlySelectedExitTabIndex === exitTabIndex &&
+exposed.vars.currentlySelectedNestedExitTabIndex === -1
+) {
+exitTabButton.classList.add("active");
+}
+exitTabButton.addEventListener("click", function (event) {
+event.preventDefault();
+event.stopPropagation();
+exposed.changeEditingExitTab(exitTabIndex, -1);
+});
+exitTabRow.appendChild(exitTabButton);
+const nestedColumn = document.createElement("div");
+nestedColumn.className = "exitTabNestedColumn";
+nestedColumn.dataset.exitTabIndex = String(exitTabIndex);
+const nestedExitTabs = panel.exitTabs[exitTabIndex].nestedExitTabs || [];
+const allowedNestedLength =
+maxNested != null
+? Math.min(nestedExitTabs.length, maxNested)
+: nestedExitTabs.length;
+if (allowedNestedLength > 0) {
+exitTabRow.addEventListener("dragover", handleExitTabRowDragOver);
+exitTabRow.addEventListener("drop", handleExitTabRowDrop);
+exitTabRow.addEventListener("dragleave", handleExitTabRowDragLeave);
+exitTabButton.draggable = true;
+exitTabButton.addEventListener("dragstart", handleExitTabRowDragStart);
+exitTabButton.addEventListener("dragend", handleExitTabRowDragEnd);
+} else {
+exitTabButton.draggable = panel.exitTabs.length > 1;
+exitTabButton.addEventListener("dragstart", handleExitTabDragStart);
+exitTabButton.addEventListener("dragend", handleExitTabDragEnd);
+}
+exitTabButtonLabel.textContent = getExitTabListLabel(
+exitTabIndex,
+-1,
+allowedNestedLength
+);
+if (allowedNestedLength > 1) {
+nestedColumn.addEventListener("dragover", handleNestedExitTabDragOver);
+nestedColumn.addEventListener("drop", handleNestedExitTabDrop);
+nestedColumn.addEventListener("dragleave", handleNestedExitTabDragLeave);
+}
+for (let nestIndex = 0; nestIndex < allowedNestedLength; nestIndex++) {
+const nestedButton = document.createElement("button");
+nestedButton.type = "button";
+nestedButton.id =
+"tab_edit" + (exitTabIndex + 1) + "_nest" + (nestIndex + 1);
+nestedButton.className = "exitTabNestedButton";
+nestedButton.dataset.exitTabIndex = String(exitTabIndex);
+nestedButton.dataset.nestedExitTabIndex = String(nestIndex);
+nestedButton.dataset.exitTabRowParentIndex = String(exitTabIndex);
+nestedButton.dataset.exitTabFlatIndex = String(nestIndex + 1);
+nestedButton.draggable = allowedNestedLength > 0;
+const nestedLabel = document.createElement("span");
+nestedLabel.className = "exitTabButtonLabel";
+nestedLabel.textContent = getExitTabListLabel(exitTabIndex, nestIndex, allowedNestedLength);
+nestedButton.appendChild(nestedLabel);
+const nestedDeleteButton = document.createElement("span");
+nestedDeleteButton.className = "exitTabInlineDelete material-symbols-outlined";
+nestedDeleteButton.title = "Delete nested tab";
+nestedDeleteButton.setAttribute("role", "button");
+nestedDeleteButton.setAttribute("aria-label", "Delete nested tab " + getExitTabListLabel(exitTabIndex, nestIndex, allowedNestedLength));
+nestedDeleteButton.textContent = "delete";
+nestedDeleteButton.addEventListener("pointerdown", function (event) {
+event.preventDefault();
+event.stopPropagation();
+});
+nestedDeleteButton.addEventListener("click", function (event) {
+event.preventDefault();
+event.stopPropagation();
+if (typeof exposed.changeEditingExitTab === "function") {
+exposed.changeEditingExitTab(exitTabIndex, nestIndex);
+}
+if (typeof exposed.deleteNestExitTab === "function") {
+exposed.deleteNestExitTab(nestIndex);
+}
+});
+nestedButton.appendChild(nestedDeleteButton);
+if (
+exposed.vars.currentlySelectedExitTabIndex === exitTabIndex &&
+exposed.vars.currentlySelectedNestedExitTabIndex === nestIndex
+) {
+nestedButton.classList.add("active");
+}
+nestedButton.addEventListener("click", function (event) {
+event.preventDefault();
+event.stopPropagation();
+exposed.changeEditingExitTab(exitTabIndex, nestIndex);
+});
+nestedButton.addEventListener("dragstart", handleExitTabRowDragStart);
+nestedButton.addEventListener("dragend", handleExitTabRowDragEnd);
+nestedColumn.appendChild(nestedButton);
+}
+if (allowedNestedLength > 0) {
+exitTabRow.appendChild(nestedColumn);
+}
+exitTabGroup.appendChild(exitTabRow);
+exitTabList.appendChild(exitTabGroup);
+}
+const addNestedButton = document.getElementById("addNestedExitTab");
+if (addNestedButton) {
+const selectedExitTab = panel.exitTabs[selectedExitTabIndex];
+const nestedCount =
+selectedExitTab && selectedExitTab.nestedExitTabs
+? selectedExitTab.nestedExitTabs.length
+: 0;
+const limit = maxNested != null ? maxNested : null;
+addNestedButton.disabled =
+!selectedExitTab || (limit != null && nestedCount >= limit);
+}
+const aplArrowList = document.getElementById("aplArrowList");
+const aplArrowTypeSelect = document.getElementById("aplArrowType");
+const selectedAPLIndex = exposed.vars.currentlySelectedAPLArrowIndex;
+const getAPLArrowKind = (arrow) => {
+if (arrow?.kind) return arrow.kind;
+if (arrow?.type === "APL_UP") return "UP";
+if (arrow?.type === "APL_UP_TURN") return arrow.flip ? "UP_LEFT" : "UP_RIGHT";
+if (arrow?.type === "APL_DUAL_TURN") return "DUAL_TURN";
+if (arrow?.type === "APL_TURN") return arrow.flip ? "LEFT_TURN" : "RIGHT_TURN";
+if (arrow?.type === "APL_UP_CFX") return "UP_CFX";
+if (arrow?.type === "APL_UP_TURN_CFX") {
+return arrow.flip ? "UP_LEFT_CFX" : "UP_RIGHT_CFX";
+}
+if (arrow?.type === "APL_TURN_CFX") {
+return arrow.flip ? "LEFT_TURN_CFX" : "RIGHT_TURN_CFX";
+}
+return "UP";
+};
+const getAPLArrowLabel = (arrow) => {
+const labels = {
+UP: "Up",
+UP_LEFT: "Up Left Turn",
+UP_RIGHT: "Up Right Turn",
+DUAL_TURN: "Dual Turn",
+LEFT_TURN: "Left Turn",
+RIGHT_TURN: "Right Turn",
+UP_CFX: "CFX Up",
+UP_LEFT_CFX: "CFX Up Left Turn",
+UP_RIGHT_CFX: "CFX Up Right Turn",
+LEFT_TURN_CFX: "CFX Left Turn",
+RIGHT_TURN_CFX: "CFX Right Turn",
+};
+return labels[getAPLArrowKind(arrow)] || "Up";
+};
+const createAPLDropZone = ({ placement, subPanelIndex, dividerAfterSubPanelIndex }) => {
+const dropZone = document.createElement("div");
+dropZone.className = "aplArrowDropZone";
+dropZone.textContent = "Drop arrow here";
+dropZone.dataset.aplDropPlacement = placement;
+if (placement === "divider") {
+dropZone.dataset.dividerAfterSubpanelIndex = String(dividerAfterSubPanelIndex);
+} else {
+dropZone.dataset.subpanelIndex = String(subPanelIndex);
+}
+dropZone.addEventListener("dragover", (event) => {
+event.preventDefault();
+dropZone.classList.add("dragOver");
+});
+dropZone.addEventListener("dragleave", () => {
+dropZone.classList.remove("dragOver");
+});
+dropZone.addEventListener("drop", (event) => {
+event.preventDefault();
+dropZone.classList.remove("dragOver");
+const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+if (!Number.isFinite(fromIndex)) {
+return;
+}
+if (placement === "divider") {
+exposed.moveAPLArrow(fromIndex, {
+placement: "divider",
+dividerAfterSubPanelIndex,
+});
+} else {
+exposed.moveAPLArrow(fromIndex, {
+placement: "subpanel",
+subPanelIndex,
+});
+}
+});
+return dropZone;
+};
+let aplVisualArrowOrder = [];
+const shouldShowSpacingAfterArrow = (arrowIndex) => {
+const visualIndex = aplVisualArrowOrder.indexOf(arrowIndex);
+return visualIndex >= 0 && visualIndex < aplVisualArrowOrder.length - 1;
+};
+const createAPLArrowRow = (arrow, arrowIndex, sectionArrows, sectionLocalIndex) => {
+const arrowRow = document.createElement("div");
+arrowRow.className =
+"aplArrowListItem" + (arrowIndex === selectedAPLIndex ? " active" : "");
+arrowRow.draggable = false;
+arrowRow.dataset.aplIndex = String(arrowIndex);
+const dragHandle = document.createElement("button");
+dragHandle.type = "button";
+dragHandle.className = "aplArrowDragHandle";
+dragHandle.textContent = "☰";
+dragHandle.title = "Drag to reorder";
+dragHandle.draggable = true;
+arrowRow.addEventListener("dragstart", (event) => {
+const startedFromHandle = event.target.closest(".aplArrowDragHandle");
+if (!startedFromHandle) {
+event.preventDefault();
+event.stopPropagation();
+return;
+}
+event.dataTransfer.effectAllowed = "move";
+event.dataTransfer.setData("text/plain", String(arrowIndex));
+arrowRow.classList.add("dragging");
+});
+arrowRow.addEventListener("dragend", () => {
+arrowRow.classList.remove("dragging");
+});
+const stopControlDragStart = (element) => {
+if (!element) {
+return;
+}
+element.addEventListener("pointerdown", (event) => {
+event.stopPropagation();
+});
+element.addEventListener("mousedown", (event) => {
+event.stopPropagation();
+});
+element.addEventListener("dragstart", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+};
+arrowRow.addEventListener("dragover", (event) => {
+event.preventDefault();
+arrowRow.classList.add("dragOver");
+});
+arrowRow.addEventListener("dragleave", () => {
+arrowRow.classList.remove("dragOver");
+});
+arrowRow.addEventListener("drop", (event) => {
+event.preventDefault();
+arrowRow.classList.remove("dragOver");
+const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+if (!Number.isFinite(fromIndex)) {
+return;
+}
+if (arrow.placement === "divider") {
+exposed.moveAPLArrow(fromIndex, {
+placement: "divider",
+dividerAfterSubPanelIndex: arrow.dividerAfterSubPanelIndex,
+beforeIndex: arrowIndex,
+});
+} else {
+exposed.moveAPLArrow(fromIndex, {
+placement: "subpanel",
+subPanelIndex: arrow.subPanelIndex,
+beforeIndex: arrowIndex,
+});
+}
+});
+const currentKind = getAPLArrowKind(arrow);
+const typePickerMount = document.createElement("select");
+const typePickerHost = document.createElement("div");
+typePickerHost.className = "aplInlineTypePickerHost";
+typePickerHost.appendChild(typePickerMount);
+const typePickerApi = createFlatArrowPicker({
+mount: typePickerMount,
+value: currentKind,
+placeholder: "Arrow",
+items: APL_ARROW_PICKER_ITEMS,
+createPreviewNode: createAPLArrowPreviewNode,
+onChange: (nextValue) => {
+if (exposed && typeof exposed.updateAPLArrowType === "function") {
+exposed.updateAPLArrowType(nextValue, arrowIndex);
+}
+},
+});
+const typeSelect = typePickerApi.element;
+typeSelect.classList.add("aplInlineTypePicker");
+const sizeControl = document.createElement("div");
+sizeControl.className = "aplArrowSizeControl";
+const sizeLabel = document.createElement("span");
+sizeLabel.textContent = "Size:";
+const sizeSlider = document.createElement("input");
+sizeSlider.type = "range";
+sizeSlider.className = "aplArrowSizeSlider";
+sizeSlider.min = "1";
+sizeSlider.max = "10";
+sizeSlider.step = "0.1";
+sizeSlider.value = Number.isFinite(Number(arrow.arrowSizeRem))
+? String(Number(arrow.arrowSizeRem))
+: "4.75";
+const sizeValue = document.createElement("span");
+sizeValue.textContent = `${sizeSlider.value} rem`;
+sizeSlider.addEventListener("input", function () {
+sizeValue.textContent = `${this.value} rem`;
+});
+sizeSlider.addEventListener("change", function () {
+if (exposed && typeof exposed.setAPLArrowSize === "function") {
+exposed.setAPLArrowSize(arrowIndex, this.value);
+}
+});
+stopControlDragStart(sizeSlider);
+sizeControl.appendChild(sizeLabel);
+sizeControl.appendChild(sizeSlider);
+sizeControl.appendChild(sizeValue);
+const exitOnlyLabel = document.createElement("label");
+exitOnlyLabel.className = "aplExitOnlyInlineLabel";
+const exitOnlyCheckbox = document.createElement("input");
+exitOnlyCheckbox.type = "checkbox";
+exitOnlyCheckbox.checked = arrow.exitOnly === true;
+exitOnlyCheckbox.addEventListener("change", () => {
+exposed.setAPLExitOnly(arrowIndex, exitOnlyCheckbox.checked);
+});
+exitOnlyLabel.appendChild(exitOnlyCheckbox);
+exitOnlyLabel.appendChild(document.createTextNode(" Exit Only"));
+const deleteButton = document.createElement("button");
+deleteButton.type = "button";
+deleteButton.className = "aplArrowDeleteButton";
+deleteButton.textContent = "Delete";
+deleteButton.addEventListener("click", () => {
+exposed.removeAPLArrowAt(arrowIndex);
+});
+stopControlDragStart(typeSelect);
+stopControlDragStart(exitOnlyCheckbox);
+stopControlDragStart(deleteButton);
+arrowRow.appendChild(dragHandle);
+arrowRow.appendChild(typeSelect);
+arrowRow.appendChild(sizeControl);
+arrowRow.appendChild(exitOnlyLabel);
+arrowRow.appendChild(deleteButton);
+const fragment = document.createDocumentFragment();
+fragment.appendChild(arrowRow);
+if (arrow.exitOnly === true) {
+const settings = arrow.aplExitText || {};
+const textRow = document.createElement("div");
+textRow.className = "aplExitTextSettingsRow";
+const addInput = (property, label, value, options = {}) => {
+const holder = document.createElement("div");
+holder.className = `aplExitTextField aplExitTextField-${property}`;
+if (options.showLabel) {
+const title = document.createElement("span");
+title.textContent = label;
+holder.appendChild(title);
+}
+const input = document.createElement("input");
+input.type = options.type || "text";
+input.value = String(value);
+input.setAttribute("aria-label", `${label} for APL arrow ${arrowIndex + 1}`);
+if (options.min != null) input.min = String(options.min);
+if (options.max != null) input.max = String(options.max);
+if (options.step != null) input.step = String(options.step);
+input.addEventListener("change", () => {
+let next = input.value;
+if (options.type === "number") {
+const parsed = Number(next);
+next = String(Number.isFinite(parsed)
+? Math.max(options.min, Math.min(options.max, parsed))
+: value);
+}
+exposed.setAPLExitOnlyTextSetting(arrowIndex, property, next);
+});
+input.addEventListener("keydown", (event) => {
+if (event.key === "Enter") input.blur();
+});
+stopControlDragStart(input);
+holder.appendChild(input);
+textRow.appendChild(holder);
+};
+addInput("left", "Left text", settings.left ?? "EXIT");
+addInput("right", "Right text", settings.right ?? "ONLY");
+const fontHolder = document.createElement("div");
+fontHolder.className = "aplExitTextFontField";
+const fontSelect = document.createElement("select");
+getExitTabAvailableFonts().forEach((font) => fontSelect.add(new Option(font, font)));
+if (![...fontSelect.options].some((option) => option.value === "Series E")) {
+fontSelect.add(new Option("Series E", "Series E"));
+}
+fontSelect.value = settings.font || "Series E";
+fontSelect.setAttribute("aria-label", `Font for APL arrow ${arrowIndex + 1}`);
+fontSelect.addEventListener("change", () =>
+exposed.setAPLExitOnlyTextSetting(arrowIndex, "font", fontSelect.value));
+stopControlDragStart(fontSelect);
+fontHolder.appendChild(fontSelect);
+textRow.appendChild(fontHolder);
+queueMicrotask(() => {
+if (fontSelect.isConnected) {
+const picker = createFontPicker({ selectEl: fontSelect, mode: "allFontsGrouped" });
+picker?.wrapper?.classList.add("aplExitTextFontPicker");
+picker?.menu?.classList.add("aplExitTextFontMenu");
+}
+});
+addInput("size", "Size", settings.size ?? 70,
+{ type: "number", min: 50, max: 150, step: 1, showLabel: true });
+addInput("spacing", "Spacing", settings.spacing ?? 0,
+{ type: "number", min: -0.15, max: 0.5, step: 0.01, showLabel: true });
+fragment.appendChild(textRow);
+}
+return fragment;
+};
+const createAPLSpacingRow = (arrowIndex, arrow) => {
+if (!arrow) {
+return null;
+}
+const spacingRow = document.createElement("div");
+spacingRow.className = "aplArrowSpacingRow aplBetweenArrowSpacingRow";
+if (arrow.placement === "divider") {
+spacingRow.classList.add("aplSpacingAfterDivider");
+}
+const spacingLabel = document.createElement("label");
+spacingLabel.textContent = "Spacing:";
+const spacingSlider = document.createElement("input");
+spacingSlider.type = "range";
+spacingSlider.className = "aplArrowSpacingSlider";
+spacingSlider.min = "0";
+spacingSlider.max = "14";
+spacingSlider.step = "0.2";
+spacingSlider.value = Number.isFinite(Number(arrow?.spacingAfterRem))
+? String(Number(arrow.spacingAfterRem))
+: "8";
+const spacingValue = document.createElement("span");
+spacingValue.textContent = `${spacingSlider.value} rem`;
+spacingSlider.addEventListener("input", function () {
+spacingValue.textContent = `${this.value} rem`;
+});
+spacingSlider.addEventListener("change", function () {
+exposed.setAPLArrowSpacing(arrowIndex, this.value);
+});
+spacingSlider.addEventListener("pointerdown", (event) => {
+event.stopPropagation();
+});
+spacingSlider.addEventListener("mousedown", (event) => {
+event.stopPropagation();
+});
+spacingSlider.addEventListener("dragstart", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+spacingRow.appendChild(spacingLabel);
+spacingRow.appendChild(spacingSlider);
+spacingRow.appendChild(spacingValue);
+return spacingRow;
+};
+const createAPLBeforeSpacingRow = (arrowIndex, arrow) => {
+if (!arrow) {
+return null;
+}
+const spacingRow = document.createElement("div");
+spacingRow.className = "aplArrowSpacingRow aplBeforeArrowSpacingRow";
+const spacingLabel = document.createElement("label");
+spacingLabel.textContent = "Spacing:";
+const spacingSlider = document.createElement("input");
+spacingSlider.type = "range";
+spacingSlider.className = "aplArrowSpacingSlider";
+spacingSlider.min = "0";
+spacingSlider.max = "10";
+spacingSlider.step = "0.1";
+spacingSlider.max = "14";
+spacingSlider.step = "0.2";
+spacingSlider.value = Number.isFinite(Number(arrow.spacingBeforeRem))
+? String(Number(arrow.spacingBeforeRem))
+: "8";
+const spacingValue = document.createElement("span");
+spacingValue.textContent = `${spacingSlider.value} rem`;
+spacingSlider.addEventListener("input", function () {
+spacingValue.textContent = `${this.value} rem`;
+});
+spacingSlider.addEventListener("change", function () {
+exposed.setAPLArrowBeforeSpacing(arrowIndex, this.value);
+});
+spacingSlider.addEventListener("pointerdown", (event) => {
+event.stopPropagation();
+});
+spacingSlider.addEventListener("mousedown", (event) => {
+event.stopPropagation();
+});
+spacingSlider.addEventListener("dragstart", (event) => {
+event.preventDefault();
+event.stopPropagation();
+});
+spacingRow.appendChild(spacingLabel);
+spacingRow.appendChild(spacingSlider);
+spacingRow.appendChild(spacingValue);
+return spacingRow;
+};
+if (aplArrowList) {
+const mergeAdjacentCheckbox = document.getElementById("aplMergeAdjacentExitOnly");
+if (mergeAdjacentCheckbox) {
+mergeAdjacentCheckbox.checked = panel.sign.aplExitOnlyMergeAdjacent === true;
+if (mergeAdjacentCheckbox.dataset.aplMergeBound !== "true") {
+mergeAdjacentCheckbox.dataset.aplMergeBound = "true";
+mergeAdjacentCheckbox.addEventListener("change", () => {
+exposed.setAPLExitOnlyMergeAdjacent(mergeAdjacentCheckbox.checked);
+});
+}
+}
+aplArrowList.querySelectorAll(".aplExitTextFontField select").forEach((select) => {
+select._fontPickerApi?.destroy?.();
+});
+lib.clearChildren(aplArrowList);
+const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
+const selectedSubpanelStatus = document.getElementById("aplSelectedSubpanelStatus");
+if (selectedSubpanelStatus) {
+selectedSubpanelStatus.textContent =
+"Selected Subpanel: Subpanel " + (selectedSubPanelIndex + 1);
+}
+const aplArrows = panel.sign.aplArrows || [];
+const subPanelCount = panel.sign.subPanels.length;
+const aplSubpanelGroups =
+exposed && typeof exposed.getAPLSubpanelGroups === "function"
+? exposed.getAPLSubpanelGroups()
+: Array.from({ length: subPanelCount }, (_, index) => ({
+start: index,
+end: index,
+indices: [index],
+groupIndex: index,
+label: `Subpanel ${index + 1}`,
+}));
+const selectedGroup =
+aplSubpanelGroups.find((group) =>
+group.indices.includes(selectedSubPanelIndex)
+) || aplSubpanelGroups[0];
+if (selectedSubpanelStatus) {
+selectedSubpanelStatus.textContent =
+"Selected Subpanel: " +
+(selectedGroup ? selectedGroup.label : "Subpanel 1");
+}
+aplVisualArrowOrder = [];
+aplSubpanelGroups.forEach((group, groupOrderIndex) => {
+aplArrows.forEach((arrow, index) => {
+if (
+arrow.placement !== "divider" &&
+group.indices.includes(arrow.subPanelIndex)
+) {
+aplVisualArrowOrder.push(index);
+}
+});
+if (groupOrderIndex < aplSubpanelGroups.length - 1) {
+aplArrows.forEach((arrow, index) => {
+if (
+arrow.placement === "divider" &&
+arrow.dividerAfterSubPanelIndex === group.end
+) {
+aplVisualArrowOrder.push(index);
+}
+});
+}
+});
+aplSubpanelGroups.forEach((group, groupOrderIndex) => {
+const subPanelSection = document.createElement("div");
+subPanelSection.className =
+"aplSubpanelSection" +
+(group.indices.includes(selectedSubPanelIndex) ? " selected" : "");
+const sectionHeader = document.createElement("div");
+sectionHeader.className = "aplSubpanelSectionHeader";
+sectionHeader.textContent = group.label;
+sectionHeader.addEventListener("click", () => {
+exposed.changeEditingSubPanel(group.start);
+});
+subPanelSection.appendChild(sectionHeader);
+const sectionArrows = aplArrows
+.map((arrow, index) => ({ arrow, index }))
+.filter(
+({ arrow }) =>
+arrow.placement !== "divider" &&
+group.indices.includes(arrow.subPanelIndex)
+);
+subPanelSection.appendChild(
+createAPLDropZone({
+placement: "subpanel",
+subPanelIndex: group.start,
+})
+);
+sectionArrows.forEach(({ arrow, index }, localIndex) => {
+if (localIndex === 0 && group.start > 0) {
+const dividerBeforeGroup = group.start - 1;
+const dividerBeforeThisGroup = aplArrows.some(
+(candidate) =>
+candidate.placement === "divider" &&
+candidate.dividerAfterSubPanelIndex === dividerBeforeGroup
+);
+if (dividerBeforeThisGroup) {
+const beforeSpacingRow = createAPLBeforeSpacingRow(index, arrow);
+if (beforeSpacingRow) {
+subPanelSection.appendChild(beforeSpacingRow);
+}
+}
+}
+subPanelSection.appendChild(
+createAPLArrowRow(arrow, index, sectionArrows, localIndex)
+);
+const hasDividerAfterGroup =
+groupOrderIndex < aplSubpanelGroups.length - 1 &&
+aplArrows.some(
+(candidate) =>
+candidate.placement === "divider" &&
+candidate.dividerAfterSubPanelIndex === group.end
+);
+const isLastArrowInSubpanel =
+localIndex === sectionArrows.length - 1;
+if (
+localIndex < sectionArrows.length - 1 ||
+(isLastArrowInSubpanel && hasDividerAfterGroup)
+) {
+const spacingRow = createAPLSpacingRow(index, arrow);
+if (spacingRow) {
+subPanelSection.appendChild(spacingRow);
+}
+}
+});
+const addToSubpanelButton = document.createElement("button");
+addToSubpanelButton.type = "button";
+addToSubpanelButton.textContent = "Add arrow to " + group.label;
+addToSubpanelButton.addEventListener("click", () => {
+exposed.changeEditingSubPanel(group.start);
+exposed.addAPLArrow(null, {
+placement: "subpanel",
+subPanelIndex: group.start,
+});
+});
+subPanelSection.appendChild(addToSubpanelButton);
+aplArrowList.appendChild(subPanelSection);
+if (groupOrderIndex < aplSubpanelGroups.length - 1) {
+const dividerIndex = group.end;
+const dividerSection = document.createElement("div");
+dividerSection.className = "aplDividerSection";
+const dividerHeader = document.createElement("div");
+dividerHeader.className = "aplDividerSectionHeader";
+dividerHeader.textContent = "Divider " + (dividerIndex + 1);
+dividerSection.appendChild(dividerHeader);
+dividerSection.appendChild(
+createAPLDropZone({
+placement: "divider",
+dividerAfterSubPanelIndex: dividerIndex,
+})
+);
+const dividerArrows = aplArrows
+.map((arrow, index) => ({ arrow, index }))
+.filter(
+({ arrow }) =>
+arrow.placement === "divider" &&
+arrow.dividerAfterSubPanelIndex === dividerIndex
+);
+dividerArrows.forEach(({ arrow, index }, localIndex) => {
+dividerSection.appendChild(
+createAPLArrowRow(arrow, index, dividerArrows, localIndex)
+);
+});
+if (dividerArrows.length === 0) {
+const addDividerArrowButton = document.createElement("button");
+addDividerArrowButton.type = "button";
+addDividerArrowButton.textContent = "Add divider arrow";
+addDividerArrowButton.addEventListener("click", () => {
+exposed.addAPLArrow(null, {
+placement: "divider",
+dividerAfterSubPanelIndex: dividerIndex,
+});
+});
+dividerSection.appendChild(addDividerArrowButton);
+}
+aplArrowList.appendChild(dividerSection);
+}
+});
+if (
+aplArrowTypeSelect &&
+aplArrows.length > 0 &&
+selectedAPLIndex < aplArrows.length
+) {
+aplArrowTypeSelect.value = getAPLArrowKind(aplArrows[selectedAPLIndex]);
+}
+}
+const panelColorSelectElmt = document.getElementById("panelColor");
+ensureCustomColorOptionsForSelect(panelColorSelectElmt);
+ensureNativeColorSelectOption(panelColorSelectElmt, panel.color);
+for (const option of panelColorSelectElmt.options) {
+if (option.value == panel.color) {
+option.selected = true;
+break;
+}
+}
+const panelCornerSelectElmt = document.getElementById("panelCorner");
+for (const option of panelCornerSelectElmt.options) {
+if (option.value == panel.corner) {
+option.selected = true;
+break;
+}
+}
+const panelBorderRadiusElmt = document.getElementById("panelBorderRadius");
+if (panelBorderRadiusElmt) {
+const resolvedRadius =
+typeof panel.borderRadius === "number"
+? panel.borderRadius
+: Panel.prototype.defaultBorderRadius;
+panelBorderRadiusElmt.value = resolvedRadius;
+}
+const panelBorderThickness = Panel.getBorderThickness(panel);
+document.getElementById("panelBorderThickness").value = String(panelBorderThickness);
+document.getElementById("panelBorderThicknessValue").value = `${Math.round(panelBorderThickness / 0.2 * 100)}%`;
+const selectionFlashElmt = document.getElementById("disableFlash");
+if (selectionFlashElmt) {
+selectionFlashElmt.checked = post?.disableFlash === true;
+}
+syncPanelPaddingControlsFromSign(panel.sign);
+const vmsSettings = VmsPanel.settings(panel);
+document.getElementById("vmsPanel").checked=panel.isVms===true;
+document.getElementById("copySignsOnly").checked=post.copySignsOnly!==false;
+document.getElementById("showBlockBoundingBoxes").checked=!!post.showBlockBoundingBoxes;
+document.getElementById("showAlignmentGuides").checked=!!post.showAlignmentGuides;
+document.getElementById("alignmentGuideControls").classList.toggle("hidden",!post.showAlignmentGuides);
+const guideSpacing=post.normalizeAlignmentGuideSpacing(post.alignmentGuideSpacing);
+const guidePhase=post.normalizeAlignmentGuidePhase(post.alignmentGuidePhase,guideSpacing);
+document.getElementById("alignmentGuideSpacing").value=guideSpacing;
+document.getElementById("alignmentGuideSpacingValue").value=guideSpacing;
+document.getElementById("alignmentGuidePhase").max=guideSpacing;
+document.getElementById("alignmentGuidePhase").value=guidePhase;
+document.getElementById("alignmentGuidePhaseValue").value=guidePhase;
+document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
+document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
+document.getElementById("vmsAntialias").checked = vmsSettings.vmsAntialias;
+const frameColorSelect = document.getElementById("vmsFrameColor");
+ensureCustomColorOptionsForSelect(frameColorSelect);
+const frameColorOption = ensureNativeColorSelectOption(frameColorSelect, vmsSettings.vmsFrameColor);
+frameColorSelect.value = frameColorOption?.value || vmsSettings.vmsFrameColor;
+const vmsToggle = document.getElementById("toggleVmsPanel");
+vmsToggle.textContent = panel.isVms === true ? "Switch Panel to Regular" : "Switch Panel to VMS";
+vmsToggle.setAttribute("aria-pressed", String(panel.isVms === true));
+const outActionMessage = document.getElementById("outActionMessage");
+const outActionMessageLabel = document.getElementById(
+"outActionMessageLabel"
+);
+const globalPositioning = document.getElementById("globalPosition");
+const globalPositionLabel = document.getElementById("globalPositionLabel");
+const g_actionMessage = document.getElementById("g_actionMessage");
+g_actionMessage.className =
+exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
+outActionMessage.className =
+exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
+outActionMessageLabel.className =
+exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
+g_actionMessage.className =
+exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
+globalPositioning.className =
+exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
+globalPositionLabel.className =
+exposed.vars.currentlySelectedSubPanelIndex >= 0 ? "invisible" : "";
+outActionMessage.checked = panel.sign.advisoryMessage;
+const subPanelHeight = document.getElementById("subPanelHeight");
+const subPanelHeightLabel = document.getElementById("subPanelHeightLabel");
+const subPanelLength = document.getElementById("subPanelLength");
+const subPanelLengthLabel = document.getElementById("subPanelLengthLabel");
+subPanelHeight.style.display =
+exposed.vars.currentlySelectedSubPanelIndex > 0 ? "initial" : "none";
+subPanelHeightLabel.style.display =
+exposed.vars.currentlySelectedSubPanelIndex > 0 ? "inline-block" : "none";
+subPanelLength.style.display =
+exposed.vars.currentlySelectedSubPanelIndex != -1 &&
+panel.sign.subPanels.length > 1
+? "initial"
+: "none";
+subPanelLengthLabel.style.display =
+exposed.vars.currentlySelectedSubPanelIndex != -1 &&
+panel.sign.subPanels.length > 1
+? "inline-block"
+: "none";
+const exitNumberElmt = document.getElementById("exitNumber");
+const exitTabBilingualField = document.getElementById("exitTabBilingual");
+const exitTabBilingualBottomTextField = document.getElementById("exitTabBilingualBottomText");
+if (exitTabBilingualField) {
+exitTabBilingualField.checked = exitTab.bilingual === true;
+}
+if (exitTabBilingualBottomTextField) {
+exitTabBilingualBottomTextField.value =
+exitTab.bilingualBottomText || "SORTIE";
+}
+updateExitTabBilingualControls(exitTab);
+if (exitNumberElmt) {
+const profileEditorMode = exitTabEditorMode === "default";
+const hideExitNumber = profileEditorMode || exitNumberElmt.classList.contains("hidden");
+exitNumberElmt.value = profileEditorMode ? "" : String(exitTab.number || "");
+exitNumberElmt.hidden = hideExitNumber;
+exitNumberElmt.disabled = hideExitNumber;
+}
+const exitTabPositionSelectElmt =
+document.getElementById("exitTabPosition");
+for (const option of exitTabPositionSelectElmt.options) {
+if (option.value == exitTab.position) {
+option.selected = true;
+break;
+}
+}
+const showLeft = document.getElementById("showLeft");
+const showLeftLabel = document.getElementById("showLeftLabel");
+const hasExitNumberText = updateExitTabLeftControlVisibility(exitTab.number);
+if (showLeft) {
+showLeft.checked = exitTab.showLeft === true;
+}
+const exitTabWidthSelectElmt = document.getElementById("exitTabWidth");
+syncExitTabWidthOptions(exitTab);
+let exitTabWidthMatched = false;
+for (const option of exitTabWidthSelectElmt.options) {
+if (option.value == exitTab.width) {
+option.selected = true;
+exitTabWidthMatched = true;
+break;
+}
+}
+if (!exitTabWidthMatched && exitTab.width) {
+const option = document.createElement("option");
+option.value = exitTab.width;
+option.textContent = exitTab.width;
+exitTabWidthSelectElmt.appendChild(option);
+exitTabWidthSelectElmt.value = exitTab.width;
+}
+const exitTabColorElmt = document.querySelector("#exitColor");
+ensureCustomColorOptionsForSelect(exitTabColorElmt);
+ensureNativeColorSelectOption(exitTabColorElmt, exitTab.color);
+for (const option of exitTabColorElmt.options) {
+if (option.value == exitTab.color) {
+option.selected = true;
+break;
+}
+}
+const exitTabTextColorElmt = document.querySelector("#exitTabTextColor");
+if (exitTabTextColorElmt) {
+exitTab.textColor = exitTab.textColor || ExitTab.prototype.defaultTextColor;
+ensureCustomColorOptionsForSelect(exitTabTextColorElmt);
+ensureNativeColorSelectOption(exitTabTextColorElmt, exitTab.textColor);
+for (const option of exitTabTextColorElmt.options) {
+if (option.value == exitTab.textColor) {
+option.selected = true;
+break;
+}
+}
+}
+const exitTabVariantElmt = document.querySelector("#exitVariant");
+if (exitTabVariantElmt) {
+for (const option of exitTabVariantElmt.options) {
+if (option.value == exitTab.variant) {
+option.selected = true;
+break;
+}
+}
+toggleExitTabVariantOptionsVisibility(exitTab.variant);
+}
+const currentSign = panel?.sign;
+if (currentSign) {
+const qcEnabled = document.getElementById("qcExitMarkerEnabled");
+const qcNumber = document.getElementById("qcExitMarkerNumber");
+const qcPosition = document.getElementById("qcExitMarkerPosition");
+const qcFlipped = document.getElementById("qcExitMarkerFlipped");
+const qcSize = document.getElementById("qcExitMarkerSize");
+const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
+if (qcEnabled) {
+qcEnabled.checked = !!currentSign.quebecExitMarkerEnabled;
+}
+if (qcNumber) {
+qcNumber.value = currentSign.quebecExitMarkerNumber || "1";
+}
+if (qcPosition) {
+qcPosition.value = String(currentSign.quebecExitMarkerPosition || "Center")
+.replace(/^Bottom\s+/i, "")
+.trim();
+}
+if (qcFlipped) {
+qcFlipped.checked = !!currentSign.quebecExitMarkerFlipped;
+}
+if (qcSize) {
+const resolvedSize =
+Number.isFinite(parseFloat(currentSign.quebecExitMarkerSizeRem))
+? parseFloat(currentSign.quebecExitMarkerSizeRem)
+: 3.3;
+qcSize.value = resolvedSize;
+if (qcSizeValue) {
+qcSizeValue.innerHTML = resolvedSize;
+}
+}
+}
+const tollLogoSizeInput = document.getElementById("exitTollLogoSize");
+const tollLogoSizeValueElmt = document.getElementById(
+"exitTollLogoSizeValue"
+);
+const resolvedTollLogoSize = (() => {
+const parsed = parseFloat(exitTab.tollLogoSize);
+if (Number.isFinite(parsed) && parsed > 0) {
+return parsed;
+}
+return typeof ExitTab.prototype.defaultTollLogoSize === "number"
+? ExitTab.prototype.defaultTollLogoSize
+: 3;
+})();
+if (tollLogoSizeInput) {
+tollLogoSizeInput.value = resolvedTollLogoSize;
+}
+if (tollLogoSizeValueElmt) {
+tollLogoSizeValueElmt.textContent = resolvedTollLogoSize.toString();
+}
+const tollLogoSelect = document.getElementById("exitTollLogoSelect");
+if (tollLogoSelect && tollLogoSelect.options.length > 0) {
+const desiredLogo =
+exitTab.icon || TollLogoElement.prototype.defaultLogo || "";
+for (const option of tollLogoSelect.options) {
+if (option.value == desiredLogo) {
+option.selected = true;
+break;
+}
+}
+}
+const tollLogoOnly = document.getElementById("exitTollLogoOnly");
+if (tollLogoOnly) {
+tollLogoOnly.checked =
+exitTab.tollLogoOnly === undefined ? true : exitTab.tollLogoOnly;
+}
+const tollLogoSquare = document.getElementById("exitTollLogoSquare");
+if (tollLogoSquare) {
+tollLogoSquare.checked = !!exitTab.tollLogoSquare;
+}
+const iconSetting = document.getElementById("iconSelect");
+if (iconSetting) {
+iconSetting.value = exitTab.icon || "";
+for (const option of iconSetting.options) {
+if (option.value == exitTab.icon) {
+option.selected = true;
+break;
+}
+}
+}
+const exitTollLogoPickerValue = document.getElementById("exitTollLogoPickerValue");
+const exitTollLogoCurrent = document.getElementById("exitTollLogoCurrent");
+const exitIconPickerValue = document.getElementById("exitIconPickerValue");
+const exitIconCurrent = document.getElementById("exitIconCurrent");
+if (exitTollLogoPickerValue) {
+exitTollLogoPickerValue.value = exitTab.variant === "Toll Logo"
+? (exitTab.icon || (TollLogoElement.prototype.logos?.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo))
+: (exitTollLogoPickerValue.value || (TollLogoElement.prototype.logos?.TxTag ? "TxTag" : TollLogoElement.prototype.defaultLogo));
+}
+if (exitTollLogoCurrent) {
+const def = TollLogoElement?.prototype?.logos?.[exitTollLogoPickerValue?.value] || TollLogoElement?.prototype?.logos?.TxTag;
+exitTollLogoCurrent.textContent = def?.label || "TxTag";
+}
+if (exitIconPickerValue) {
+exitIconPickerValue.value = exitTab.variant === "Icon"
+? (exitTab.icon || (IconElement.prototype.icons?.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon))
+: (exitIconPickerValue.value || (IconElement.prototype.icons?.AIRPORT ? "AIRPORT" : IconElement.prototype.defaultIcon));
+}
+if (exitIconCurrent) {
+const def = IconElement?.prototype?.icons?.[exitIconPickerValue?.value] || IconElement?.prototype?.icons?.AIRPORT;
+exitIconCurrent.textContent = def?.label || "Airport";
+}
+const exitTabFontFamily = document.getElementById("exitTabFontFamily");
+if (exitTabFontFamily) {
+exitTab.fontFamily = normalizeExitTabFontFamily(
+exitTab.fontFamily,
+exitTab.FHWAFont === true
+? ExitTab.prototype.defaultFHWAFontFamily
+: (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
+);
+exitTab.FHWAFont = isExitTabHighwayGothicFontFamily(exitTab.fontFamily);
+if (!Array.from(exitTabFontFamily.options).some((option) => option.value === exitTab.fontFamily)) {
+lib.appendOption(exitTabFontFamily, exitTab.fontFamily);
+}
+exitTabFontFamily.value = exitTab.fontFamily;
+if (exitTabFontFamily._fontPickerApi) {
+exitTabFontFamily._fontPickerApi.sync();
+}
+}
+const exitTabCharacterSpacing = document.getElementById("exitTabCharacterSpacing");
+if (exitTabCharacterSpacing) {
+exitTab.characterSpacing = normalizeExitTabCharacterSpacing(exitTab.characterSpacing);
+exitTabCharacterSpacing.value = String(exitTab.characterSpacing);
+}
+const fullBorder = document.getElementById("fullBorder");
+fullBorder.checked = exitTab.fullBorder;
+const squareCorners = document.getElementById("squareCorners");
+squareCorners.checked = exitTab.squareCorners;
+const cornerRadius = document.getElementById("exitTabCornerRadius");
+if (cornerRadius) {
+const bindingKey = exitTabEditorMode === "default"
+? `default:${selectedExitTabProfileId}:${selectedExitTabProfileVariant}`
+: `current:${exposed.vars.currentlySelectedPanelIndex}:${exposed.vars.currentlySelectedExitTabIndex}:${exposed.vars.currentlySelectedNestedExitTabIndex}`;
+if (cornerRadius.dataset.bindingKey !== bindingKey) {
+delete cornerRadius.dataset.customRadius;
+cornerRadius.dataset.bindingKey = bindingKey;
+}
+const inheritsPanelRadius = exitTab.cornerRadius === "panel" || exitTab.cornerRadius == null;
+const customRadius = Number(exitTab.cornerRadius);
+const parentRadius = getSelectedPanelCornerRadius();
+const effectiveRadius = exitTab.squareCorners === true
+? 0.25
+: inheritsPanelRadius ? parentRadius : customRadius;
+if (!inheritsPanelRadius && Number.isFinite(customRadius)) {
+cornerRadius.dataset.customRadius = String(Math.max(0, Math.min(2, customRadius)));
+}
+document.getElementById("exitTabUsePanelCornerRadius").checked = inheritsPanelRadius;
+setExitTabRangeControlValue(cornerRadius, Math.max(0, Math.min(2, effectiveRadius)));
+cornerRadius.disabled = inheritsPanelRadius || exitTab.squareCorners === true;
+document.getElementById("exitTabCornerRadiusValue").textContent =
+formatExitTabSliderDisplayValue("exitTabCornerRadiusValue", effectiveRadius);
+}
+const topOffset = document.getElementById("topOffset");
+topOffset.checked = exitTab.topOffset;
+const verticalArrangement = document.getElementById("verticalArrangement");
+verticalArrangement.checked = exitTab.verticalArrangement;
+const caStyle = document.getElementById("caStyle");
+caStyle.checked = exitTab.caStyle;
+const exitTabTransparent = document.getElementById("exitTabTransparent");
+if (exitTabTransparent) {
+exitTabTransparent.checked = exitTab.transparent === true;
+}
+const borderThickness = document.getElementById("borderThickness");
+const resolvedBorderThickness = (() => {
+const parsedValue = parseFloat(exitTab.borderThickness);
+if (Number.isFinite(parsedValue) && parsedValue >= 0) {
+return parsedValue;
+}
+return ExitTab.prototype.defaultBorderThickness;
+})();
+exitTab.borderThickness = resolvedBorderThickness;
+setExitTabRangeControlValue(borderThickness, resolvedBorderThickness);
+document.getElementById("borderValue").innerHTML =
+formatExitTabDecimalValue(resolvedBorderThickness);
+const minHeight = document.getElementById("minHeight");
+const resolvedMinHeight = (() => {
+const parsedValue = parseFloat(exitTab.minHeight);
+if (Number.isFinite(parsedValue) && parsedValue >= 0) {
+return parsedValue;
+}
+return getCurrentExitTabDefaultMinHeight(exitTab.variant);
+})();
+exitTab.minHeight = resolvedMinHeight;
+setExitTabRangeControlValue(minHeight, resolvedMinHeight);
+document.getElementById("minValue").innerHTML = formatExitTabDecimalValue(resolvedMinHeight);
+const fontSize = document.getElementById("fontSize");
+const fontSizeLabel = document.getElementById("fontSizeLabel") || document.querySelector('label[for="fontSize"]');
+const fontValueElmt = document.getElementById("fontValue");
+const usesAssetSizeSlider = isExitTabAssetVariantValue(exitTab.variant);
+const resolvedFontSize = usesAssetSizeSlider
+? normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3)
+: normalizeExitTabNormalFontSizeValue(exitTab.fontSize, getCurrentExitTabDefaultFontSize());
+if (fontSize) {
+if (usesAssetSizeSlider) {
+fontSize.min = "1";
+fontSize.max = "6";
+fontSize.step = "0.1";
+} else {
+fontSize.min = "10";
+fontSize.max = "40";
+fontSize.step = "1";
+}
+setExitTabRangeControlValue(fontSize, resolvedFontSize);
+}
+if (fontSizeLabel) {
+fontSizeLabel.textContent = usesAssetSizeSlider
+? (exitTab.variant === "Icon" ? "Icon Size (rem):" : "Logo Size (rem):")
+: "Text Size (px):";
+}
+if (usesAssetSizeSlider) {
+exitTab.tollLogoSize = resolvedFontSize;
+} else {
+exitTab.fontSize = resolvedFontSize;
+exitTab.normalFontSizeBeforeAsset = resolvedFontSize;
+}
+if (fontValueElmt) {
+fontValueElmt.innerHTML = usesAssetSizeSlider
+? formatExitTabDecimalValue(resolvedFontSize)
+: resolvedFontSize.toString();
+}
+const horizontalPadding = document.getElementById("exitTabHorizontalPadding");
+const isAssetExitTabForPaddingControls = isExitTabAssetVariantValue(exitTab.variant);
+const resolvedHorizontalPadding = (() => {
+if (isAssetExitTabForPaddingControls) {
+return normalizeExitTabAssetPaddingValue(exitTab.assetHorizontalPadding, 0);
+}
+const parsedValue = parseFloat(exitTab.horizontalPadding);
+if (Number.isFinite(parsedValue)) {
+return Math.max(-1, Math.min(3, parsedValue));
+}
+return ExitTab.prototype.defaultHorizontalPadding;
+})();
+if (isAssetExitTabForPaddingControls) {
+exitTab.assetHorizontalPadding = resolvedHorizontalPadding;
+} else {
+exitTab.horizontalPadding = resolvedHorizontalPadding;
+}
+if (horizontalPadding) {
+horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "-1";
+horizontalPadding.max = "3";
+horizontalPadding.step = "0.1";
+setExitTabRangeControlValue(horizontalPadding, resolvedHorizontalPadding);
+}
+const horizontalPaddingValue = document.getElementById("exitTabHorizontalPaddingValue");
+if (horizontalPaddingValue) {
+horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
+}
+const exitTextSizePercent = document.getElementById("exitTabTextSizePercent");
+const exitTextSizePercentLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
+const resolvedExitTextSizePercent = (() => {
+if (isAssetExitTabForPaddingControls) {
+return normalizeExitTabAssetPaddingValue(exitTab.assetVerticalPadding, 0);
+}
+const parsedValue = parseFloat(exitTab.exitTextSizePercent);
+const parsedVersion = parseInt(exitTab.exitTextSizePercentVersion, 10);
+if (
+parsedVersion !== ExitTab.prototype.exitTextSizePercentVersion &&
+Number.isFinite(parsedValue) &&
+(parsedValue === 100 || parsedValue === 60)
+) {
+return ExitTab.prototype.defaultExitTextSizePercent;
+}
+if (Number.isFinite(parsedValue)) {
+return Math.max(25, Math.min(100, parsedValue));
+}
+return ExitTab.prototype.defaultExitTextSizePercent;
+})();
+if (isAssetExitTabForPaddingControls) {
+exitTab.assetVerticalPadding = resolvedExitTextSizePercent;
+} else {
+exitTab.exitTextSizePercent = resolvedExitTextSizePercent;
+exitTab.exitTextSizePercentVersion = ExitTab.prototype.exitTextSizePercentVersion;
+}
+if (exitTextSizePercent) {
+exitTextSizePercent.min = isAssetExitTabForPaddingControls ? "-3" : "25";
+exitTextSizePercent.max = isAssetExitTabForPaddingControls ? "3" : "100";
+exitTextSizePercent.step = isAssetExitTabForPaddingControls ? "0.1" : "1";
+setExitTabRangeControlValue(exitTextSizePercent, resolvedExitTextSizePercent);
+}
+if (exitTextSizePercentLabel) {
+exitTextSizePercentLabel.textContent = isAssetExitTabForPaddingControls
+? "Vertical padding:"
+: '"EXIT" text size %:';
+}
+const exitTextSizePercentValue = document.getElementById("exitTabTextSizePercentValue");
+if (exitTextSizePercentValue) {
+exitTextSizePercentValue.innerHTML = isAssetExitTabForPaddingControls
+? formatExitTabDecimalValue(resolvedExitTextSizePercent)
+: resolvedExitTextSizePercent.toString();
+}
+const nestedTabSpacingInput = document.getElementById("nestedTabSpacing");
+if (nestedTabSpacingInput) {
+const parentExitTab = panel.exitTabs[selectedExitTabIndex];
+const spacingSource =
+exitTabEditorMode === "default" ? exitTab : parentExitTab;
+const resolvedSpacing = spacingSource?.nestedTabSpacing ?? 0;
+setExitTabRangeControlValue(nestedTabSpacingInput, resolvedSpacing);
+}
+const nestedSpacingValue = document.getElementById("nestedSpacingValue");
+if (nestedSpacingValue) {
+nestedSpacingValue.innerHTML = formatExitTabDecimalValue(nestedTabSpacingInput.value);
+}
+updateShieldSubform();
+const sMSPTextList = document.querySelector("#sMSPTextList");
+const currentEditingTarget =
+typeof exposed.getCurrentSubPanel === "function"
+? exposed.getCurrentSubPanel()
+: sign;
+const currentBlockElements = currentEditingTarget?.blockElements;
+const currentRows = Array.isArray(currentBlockElements?.rows)
+? currentBlockElements.rows
+: [];
+closeSubpanelBlockTypePicker();
+sMSPTextList.innerHTML = "";
+ensureSubpanelClipboardSelectionForRows(currentRows);
+document.querySelector("#SMSPSelectLabel").textContent =
+"Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
+document.querySelector("#SMSPElementLabel").textContent =
+"Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
+document.querySelector("#sMSPDeleteSelectedRow").disabled =
+currentRows.length <= 1;
+document.querySelector("#sMSPDeleteSelectedBlock").disabled =
+currentRows.length <= 1 &&
+(!currentRows[exposed.vars.currentlySelectedRowIndex] ||
+currentRows[exposed.vars.currentlySelectedRowIndex].length <= 1);
+for (let row = 0; row < currentRows.length; row++) {
+const sMControlRow = document.createElement("div");
+sMControlRow.dataset.dataRow = row.toString();
+sMControlRow.className =
+"sMControlRow" +
+(row == exposed.vars.currentlySelectedRowIndex ? " selected" : "") +
+(rowIsFullySelectedForSubpanelClipboard(row, currentRows)
+? " clipboardRowSelected"
+: "");
+for (let item = 0; item < currentRows[row].length; item++) {
+const blockElement = currentRows[row][item];
+const currentBlockElemType =
+Control.prototype.blockToClassElems.getElem(blockElement) ||
+blockElement.constructor.name;
+const textEditorBlock = document.createElement("div");
+const clipboardBlockSelected = subpanelClipboardSelection.selectedBlocks.has(
+getSubpanelBlockSelectionKey(row, item)
+);
+textEditorBlock.className =
+"textEditorBlock " +
+Control.prototype.blockInternalElements[currentBlockElemType] +
+(item == exposed.vars.currentlySelectedBlockIndex &&
+row == exposed.vars.currentlySelectedRowIndex
+? " selected"
+: "") +
+(clipboardBlockSelected ? " clipboardSelected" : "");
+textEditorBlock.dataset.row = row.toString();
+textEditorBlock.dataset.block = item.toString();
+textEditorBlock.draggable = true;
+const blockTypeLabel = document.createElement("span");
+blockTypeLabel.className = "textEditorBlockLabel";
+blockTypeLabel.textContent =
+Control.prototype.blockElements[currentBlockElemType] || "Block";
+const blockTypeSelect = document.createElement("select");
+blockTypeSelect.className = "blockTypeInlineSelect";
+blockTypeSelect.value = currentBlockElemType;
+blockTypeSelect.setAttribute("aria-label", "Change block type");
+blockTypeSelect.title = "Change block type";
+for (const element in Control.prototype.blockElements) {
+lib.appendOption(blockTypeSelect, element, {
+selected: element === currentBlockElemType,
+text: Control.prototype.blockElements[element],
+});
+}
+const blockTypePicker = createInlineSubpanelBlockTypePicker({
+nativeSelect: blockTypeSelect,
+row,
+item,
+currentValue: currentBlockElemType,
+anchor: textEditorBlock,
+});
+textEditorBlock.appendChild(blockTypeLabel);
+if (blockElement instanceof GroupedBlockElement) {
+const editGroup = document.createElement("button");
+editGroup.type = "button";
+editGroup.className = "mergeEditGroup";
+editGroup.title = "Edit group contents";
+editGroup.setAttribute("aria-label", "Edit group contents");
+editGroup.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span>';
+editGroup.addEventListener("click", event => {
+event.preventDefault(); event.stopPropagation();
+exposed.enterGroupElement(row, item);
+});
+textEditorBlock.appendChild(editGroup);
+blockTypeLabel.textContent = blockElement.label || "Group";
+}
+textEditorBlock.appendChild(blockTypePicker);
+sMControlRow.appendChild(textEditorBlock);
+textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
+textEditorBlock.addEventListener("dragend", handleBlockDragEnd);
+textEditorBlock.addEventListener("click", (event) => {
+event.stopPropagation();
+if (textEditorBlock.dataset.dragging === "true") {
+event.preventDefault();
+return;
+}
+if (event.ctrlKey || event.metaKey || event.shiftKey) {
+event.preventDefault();
+handleSubpanelBlockSelectionClick(row, item, event, currentRows);
+return;
+}
+subpanelClipboardSelection.lastAppSelectionKey = "";
+if (typeof exposed.setSelectedRowAndBlock === "function") {
+exposed.setSelectedRowAndBlock(row, item);
+} else {
+exposed.setSelectedRow(row);
+exposed.setSelectedControlElem(item);
+}
+});
+}
+if (
+isSubpanelClipboardSelectionAllowed() &&
+exposed &&
+typeof exposed.hasSubpanelClipboard === "function" &&
+exposed.hasSubpanelClipboard()
+) {
+const pasteRowButton = document.createElement("button");
+pasteRowButton.type = "button";
+pasteRowButton.className = "sMControlRowPasteButton";
+pasteRowButton.title = "Paste copied elements here";
+pasteRowButton.setAttribute("aria-label", "Paste copied elements here");
+pasteRowButton.innerHTML =
+'<span class="material-symbols-outlined">content_paste</span>';
+pasteRowButton.addEventListener("mousedown", (event) => {
+event.stopPropagation();
+});
+pasteRowButton.addEventListener("click", (event) => {
+event.preventDefault();
+event.stopPropagation();
+pasteCurrentSubpanelClipboardSelection(row);
+});
+sMControlRow.appendChild(pasteRowButton);
+}
+sMSPTextList.appendChild(sMControlRow);
+sMControlRow.draggable = true;
+sMControlRow.style.position = "relative";
+sMControlRow.addEventListener("dragstart", handleRowDragStart);
+sMControlRow.addEventListener("dragend", handleRowDragEnd);
+sMControlRow.addEventListener("dragenter", handleRowDragEnter);
+sMControlRow.addEventListener("dragover", handleRowDragOver);
+sMControlRow.addEventListener("dragleave", handleRowDragLeave);
+sMControlRow.addEventListener("drop", handleRowDrop);
+sMControlRow.addEventListener("click", (event) => {
+if (event.target.closest(".sMControlRowPasteButton")) {
+return;
+}
+if (event.ctrlKey || event.metaKey || event.shiftKey) {
+event.preventDefault();
+handleSubpanelRowSelectionClick(row, event, currentRows);
+return;
+}
+subpanelClipboardSelection.lastAppSelectionKey = "";
+if (typeof exposed.setSelectedRowAndBlock === "function") {
+exposed.setSelectedRowAndBlock(row, 0);
+} else {
+exposed.setSelectedRow(row);
+}
+});
+}
+sMSPTextList.addEventListener("dragover", handleRowListDragOver);
+sMSPTextList.addEventListener("drop", handleRowListDrop);
+sMSPTextList.addEventListener("dragleave", handleRowListDragLeave);
+for (const divConfig of document.querySelectorAll(
+"#smSPProperties > div"
+)) {
+if (
+divConfig.dataset.property ==
+Control.prototype.blockInternalElements[
+Control.prototype.blockToClassElems.getElem(
+exposed.getCurrentBlockElem()
+)
+]
+) {
+divConfig.classList.remove("hidden");
+selectedSettings = divConfig;
+} else {
+divConfig.classList.add("hidden");
+}
+}
+const currentBlockElem = exposed.getCurrentBlockElem();
+const blockElemType =
+Control.prototype.blockInternalElements[
+Control.prototype.blockToClassElems.getElem(currentBlockElem)
+];
+if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
+if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
+normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+currentBlockElem.smallCapitals = false;
+}
+if (currentBlockElem.textColor === undefined) {
+currentBlockElem.textColor =
+blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+}
+}
+if (blockElemType === "sdIcon") {
+const normalizeIconNumber = (value, fallback = 0) => {
+const parsed = parseFloat(
+value !== null && value !== undefined ? value : fallback
+);
+return Number.isFinite(parsed) ? parsed : fallback;
+};
+const legacyIconSpacing = normalizeIconNumber(currentBlockElem.spacing, 0);
+currentBlockElem.paddingHorizontal = normalizeIconNumber(
+currentBlockElem.paddingHorizontal,
+legacyIconSpacing
+);
+currentBlockElem.paddingVertical = normalizeIconNumber(
+currentBlockElem.paddingVertical,
+0
+);
+currentBlockElem.spacing = 0;
+currentBlockElem.invertColors =
+currentBlockElem.invertColors === true ||
+currentBlockElem.invertColors === "true" ||
+currentBlockElem.invertColors === 1 ||
+currentBlockElem.invertColors === "1" ||
+currentBlockElem.invertColors === "on";
+setupSdIconEditorControls();
+}
+if (blockElemType === "sdArrow") {
+const normalizePadding = (value, fallback = 0) => {
+const parsed = parseFloat(
+value !== null && value !== undefined ? value : fallback
+);
+return isNaN(parsed) ? fallback : parsed;
+};
+const fallbackPadding =
+currentBlockElem.padding !== undefined &&
+currentBlockElem.padding !== null
+? currentBlockElem.padding
+: 0;
+currentBlockElem.paddingHorizontal = normalizePadding(
+currentBlockElem.paddingHorizontal,
+fallbackPadding
+);
+currentBlockElem.paddingVertical = normalizePadding(
+currentBlockElem.paddingVertical,
+fallbackPadding
+);
+delete currentBlockElem.padding;
+currentBlockElem.flip =
+currentBlockElem.flip === true ||
+currentBlockElem.flip === "true" ||
+currentBlockElem.flip === 1 ||
+currentBlockElem.flip === "1" ||
+currentBlockElem.flip === "on";
+const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
+? TextElement.prototype.alignment
+: ["Left", "Center", "Right"];
+currentBlockElem.alignment = validArrowAlignments.includes(
+currentBlockElem.alignment
+)
+? currentBlockElem.alignment
+: "Center";
+}
+if (blockElemType === "sdShield") {
+normalizeSdShieldBannerStyleFields(currentBlockElem);
+currentBlockElem.scaleBannersWithShield =
+ShieldElement.prototype.normalizeScaleBannersWithShield(
+currentBlockElem.scaleBannersWithShield
+);
+if (currentBlockElem.shieldBacks === undefined) {
+currentBlockElem.shieldBacks = false;
+} else {
+currentBlockElem.shieldBacks =
+currentBlockElem.shieldBacks === true ||
+currentBlockElem.shieldBacks === "true" ||
+currentBlockElem.shieldBacks === 1 ||
+currentBlockElem.shieldBacks === "1" ||
+currentBlockElem.shieldBacks === "on";
+}
+if (currentBlockElem.indentFirstLetter === undefined) {
+currentBlockElem.indentFirstLetter = true;
+}
+if (currentBlockElem.indentFirstLetter2 === undefined) {
+currentBlockElem.indentFirstLetter2 =
+currentBlockElem.indentFirstLetter;
+}
+currentBlockElem.shieldSize =
+ShieldElement.prototype.normalizeShieldSize(
+currentBlockElem.shieldSize
+);
+if (currentBlockElem.smallCaps === undefined) {
+currentBlockElem.smallCaps = true;
+}
+if (currentBlockElem.smallCaps2 === undefined) {
+currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
+}
+if (currentBlockElem.manualBanners === undefined) {
+currentBlockElem.manualBanners = getDefaultManualBannersSetting();
+}
+if (currentBlockElem.roadName === undefined) {
+currentBlockElem.roadName = "";
+}
+currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
+currentBlockElem.bannerLetterSpacing
+);
+if (currentBlockElem.alignment === undefined) {
+currentBlockElem.alignment = "Center";
+}
+}
+if (blockElemType === "sdBlocker") {
+currentBlockElem.orientation =
+DividerElement.prototype.normalizeOrientation(
+currentBlockElem.orientation
+);
+}
+for (const propertyName in currentBlockElem) {
+const elementId = `${blockElemType}_${propertyName}`;
+const element = document.getElementById(elementId);
+const displayElement = document.getElementById(elementId + "Val");
+if (element) {
+const handleCustomBanner =
+blockElemType === "sdShield" &&
+(propertyName === "bannerType" || propertyName === "bannerType2");
+if (handleCustomBanner) {
+const manualCheckbox = document.getElementById("sdShield_manualBanners");
+if (manualCheckbox) {
+manualCheckbox.checked = currentBlockElem.manualBanners !== false;
+}
+const customInputId =
+propertyName === "bannerType"
+? "sdShield_bannerCustomText"
+: "sdShield_bannerCustomText2";
+const customInput = document.getElementById(customInputId);
+const currentBanner =
+currentBlockElem[propertyName] || getDefaultBannerType();
+const matchedPreset = findBannerDropdownPresetValue(currentBanner);
+const manualBanners = !manualCheckbox || manualCheckbox.checked;
+if (element.tagName === "SELECT") {
+element.value = matchedPreset || getDefaultBannerType();
+element.addEventListener("change", scheduleSdShieldReadForm, { once: true });
+}
+if (customInput) {
+customInput.value = manualBanners ? currentBanner : "";
+customInput.addEventListener("blur", scheduleSdShieldReadForm, { once: true });
+}
+syncManualBannerInputMode();
+syncSdShieldBannerBackgroundColorPickerVisuals();
+if (displayElement) {
+displayElement.textContent = currentBanner;
+}
+continue;
+}
+const formReadHandler =
+blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
+if (blockElemType === "sdShield" && propertyName === "numberStyle") {
+element.checked=currentBlockElem.numberStyle==='legacy';
+element.addEventListener('change',formReadHandler,{once:true});
+} else if (element.type === "checkbox") {
+element.checked = currentBlockElem[propertyName];
+element.addEventListener("change", formReadHandler, { once: true });
+} else if (element.type === "radio") {
+if (element.value === currentBlockElem[propertyName].toString()) {
+element.checked = true;
+}
+element.addEventListener("change", formReadHandler, { once: true });
+} else if (element.tagName === "SELECT") {
+const currentSelectValue =
+propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
+? normalizeUiFontValue(currentBlockElem[propertyName])
+: currentBlockElem[propertyName];
+currentBlockElem[propertyName] = currentSelectValue;
+if (!Array.from(element.options).some((option) => option.value === currentSelectValue)) {
+lib.appendOption(element, currentSelectValue);
+}
+element.value = currentSelectValue;
+if (
+blockElemType === "sdShield" &&
+(propertyName === "bannerFontFamily1" ||
+propertyName === "bannerFontFamily2")
+) {
+element.dataset.shieldBannerFontUserChanged = "false";
+}
+element.addEventListener("change", formReadHandler, { once: true });
+element.addEventListener("blur", formReadHandler, { once: true });
+} else {
+element.value = currentBlockElem[propertyName];
+element.addEventListener(
+element.type === "text" ? "blur" : "change",
+formReadHandler,
+{ once: true }
+);
+if (
+element.type === "range" &&
+displayElement &&
+!element.dataset.syncDisplay
+) {
+element.addEventListener("input", () => {
+displayElement.value = element.value;
+});
+element.dataset.syncDisplay = "true";
+}
+}
+}
+if (displayElement) {
+if (
+displayElement.tagName === "INPUT" &&
+displayElement.type === "number"
+) {
+displayElement.value = currentBlockElem[propertyName];
+} else {
+displayElement.textContent = currentBlockElem[propertyName];
+}
+}
+}
+if (blockElemType === "sdShield") {
+normalizeSdShieldBannerStyleFields(currentBlockElem);
+writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
+setupSdShieldCompactControls();
+}
+if (blockElemType === "sdIcon") {
+setupSdIconEditorControls();
+updateSdIconExtraControls(currentBlockElem);
+}
+if (blockElemType === "sdArrow") {
+const arrowRotationButtons = document.querySelectorAll(
+".sdArrow_rotationPreset"
+);
+const currentRotation = parseFloat(currentBlockElem.rotation) || 0;
+arrowRotationButtons.forEach((button) => {
+const degrees = parseFloat(button.dataset.degrees || "0") || 0;
+button.classList.toggle(
+"activated",
+Math.abs((((currentRotation % 360) + 360) % 360) - degrees) < 0.5
+);
+});
+const arrowFlipInput = document.getElementById("sdArrow_flip");
+const arrowFlipButton = document.getElementById("sdArrow_flipButton");
+if (arrowFlipInput && arrowFlipButton) {
+arrowFlipInput.value = currentBlockElem.flip ? "true" : "false";
+arrowFlipButton.classList.toggle("activated", currentBlockElem.flip);
+arrowFlipButton.setAttribute(
+"aria-pressed",
+currentBlockElem.flip ? "true" : "false"
+);
+}
+}
+const currentBlockProperties = currentBlockElements?.blockProperties || [];
+const selectedBlockProperties =
+currentBlockProperties[exposed.vars.currentlySelectedRowIndex] || new Block();
+const clampBlockMarginSliderValue = (value) => {
+const parsed = parseFloat(value);
+if (!Number.isFinite(parsed)) {
+return 0;
+}
+return Math.max(0, Math.min(3, parsed));
+};
+document.querySelector("#sdBlock_topPadding").value =
+clampBlockMarginSliderValue(selectedBlockProperties.topPadding);
+document
+.querySelector("#sdBlock_topPadding")
+.addEventListener("change", readForm, { once: true });
+document.querySelector("#sdBlock_bottomPadding").value =
+clampBlockMarginSliderValue(selectedBlockProperties.bottomPadding);
+document
+.querySelector("#sdBlock_bottomPadding")
+.addEventListener("change", readForm, { once: true });
+const topPadValEl = document.querySelector("#sdBlock_topPaddingVal");
+const bottomPadValEl = document.querySelector("#sdBlock_bottomPaddingVal");
+const topPadValue = selectedBlockProperties.topPadding;
+const bottomPadValue = selectedBlockProperties.bottomPadding;
+if (topPadValEl) {
+if (topPadValEl.tagName === "INPUT" && topPadValEl.type === "number") {
+topPadValEl.value = topPadValue;
+} else {
+topPadValEl.textContent = topPadValue;
+}
+}
+if (bottomPadValEl) {
+if (
+bottomPadValEl.tagName === "INPUT" &&
+bottomPadValEl.type === "number"
+) {
+bottomPadValEl.value = bottomPadValue;
+} else {
+bottomPadValEl.textContent = bottomPadValue;
+}
+}
+bindBlockMarginStepperCommit();
+document.querySelector("#sdBlock_backgroundColor").value =
+selectedBlockProperties.backgroundColor;
+document
+.querySelector("#sdBlock_backgroundColor")
+.addEventListener("blur", readForm, { once: true });
+const blockBorderColorEl = document.querySelector("#sdBlock_borderColor");
+if (blockBorderColorEl) {
+const storedBorderColor =
+selectedBlockProperties.borderColor;
+blockBorderColorEl.value =
+storedBorderColor || Block.defaultBorderColor || "Match BG";
+blockBorderColorEl.addEventListener("blur", readForm, { once: true });
+}
+const blockBackgroundFullWidthEl = document.querySelector(
+"#sdBlock_backgroundFullWidth"
+);
+blockBackgroundFullWidthEl.checked =
+!!selectedBlockProperties.backgroundFullWidth;
+blockBackgroundFullWidthEl.addEventListener("change", readForm, {
+once: true,
+});
+document.querySelector("#sdBlock_width").value =
+selectedBlockProperties.width;
+document
+.querySelector("#sdBlock_width")
+.addEventListener("change", readForm, { once: true });
+document
+.querySelector("#sdBlock_stretchLeft")
+.addEventListener("change", readForm, { once: true });
+document.querySelector("#sdBlock_stretchLeft").checked =
+selectedBlockProperties.stretchLeft;
+document
+.querySelector("#sdBlock_stretchCenter")
+.addEventListener("change", readForm, { once: true });
+document.querySelector("#sdBlock_stretchCenter").checked =
+selectedBlockProperties.stretchCenter;
+document
+.querySelector("#sdBlock_stretchRight")
+.addEventListener("change", readForm, { once: true });
+document.querySelector("#sdBlock_stretchRight").checked =
+selectedBlockProperties.stretchRight;
+const shieldPositionsSelectElmt =
+document.getElementById("shieldsPosition");
+for (const option of shieldPositionsSelectElmt.options) {
+if (option.value == panel.sign.shieldPosition) {
+option.selected = true;
+break;
+}
+}
+const shieldBacksElmt = document.getElementById("shieldBacks");
+shieldBacksElmt.checked = panel.sign.shieldBacks;
+const guideArrowSelectElmt = document.getElementById("guideArrow");
+for (const option of guideArrowSelectElmt.options) {
+if (option.value == panel.sign.guideArrow) {
+option.selected = true;
+break;
+}
+}
+const guideArrowLanesElmt = document.getElementById("guideArrowLanes");
+guideArrowLanesElmt.value = panel.sign.guideArrowLanes;
+syncStandardArrowControls(panel.sign);
+syncExitOnlyEditor(panel.sign, panel);
+const useCanadianDownArrowsElmt = document.getElementById(
+"useCanadianDownArrows"
+);
+if (useCanadianDownArrowsElmt) {
+useCanadianDownArrowsElmt.checked = !!panel.sign.useCanadianDownArrows;
+}
+const exitOnlyDirectionLabel = document.getElementById(
+"exitOnlyDirectionLabel"
+);
+const showExitOnlyLabel = document.getElementById("showExitOnlyLabel");
+const hideExitArrowLabel = document.getElementById("hideExitArrowLabel");
+const exitOnlyDirection = document.getElementById("exitOnlyDirection");
+const showExitOnly = document.getElementById("showExitOnly");
+const hideExitArrow = document.getElementById("hideExitArrow");
+const exitOnlyBorderModeLabel = document.getElementById(
+"exitOnlyBorderModeLabel"
+);
+const exitOnlyBorderModeSelect = document.getElementById(
+"exitOnlyBorderMode"
+);
+const exitOnlyLeftTextLabel = document.getElementById(
+"exitOnlyLeftTextLabel"
+);
+const exitOnlyLeftTextInput = document.getElementById("exitOnlyLeftText");
+const exitOnlyRightTextLabel = document.getElementById(
+"exitOnlyRightTextLabel"
+);
+const exitOnlyRightTextInput = document.getElementById("exitOnlyRightText");
+const exitOnlyPadding = document.getElementById("exitOnlyPadding");
+const exitOnlyPaddingValue = document.getElementById("paddingValue");
+const exitOnlyPaddingLabel = document.getElementById(
+"exitOnlyPaddingLabel"
+);
+exitOnlyDirectionLabel.className = !panel.sign.guideArrow.includes(
+"Exit Only"
+)
+? "invisible"
+: "";
+exitOnlyPaddingLabel.className =
+panel.sign.guideArrow === "None" ? "invisible" : "";
+showExitOnlyLabel.className = !panel.sign.guideArrow.includes("Exit Only")
+? "invisible"
+: "";
+if (hideExitArrowLabel) {
+hideExitArrowLabel.className = !panel.sign.guideArrow.includes("Exit Only")
+? "invisible"
+: "";
+}
+exitOnlyDirection.className = !panel.sign.guideArrow.includes("Exit Only")
+? "invisible"
+: "";
+exitOnlyPadding.className =
+panel.sign.guideArrow === "None" ? "invisible" : "";
+showExitOnly.className = !panel.sign.guideArrow.includes("Exit Only")
+? "invisible"
+: "";
+if (hideExitArrow) {
+hideExitArrow.className = !panel.sign.guideArrow.includes("Exit Only")
+? "invisible"
+: "";
+}
+if (exitOnlyLeftTextLabel && exitOnlyLeftTextInput) {
+exitOnlyLeftTextLabel.className = !panel.sign.guideArrow.includes(
+"Exit Only"
+)
+? "invisible"
+: "";
+exitOnlyLeftTextInput.className = !panel.sign.guideArrow.includes(
+"Exit Only"
+)
+? "invisible"
+: "";
+exitOnlyLeftTextInput.value = panel.sign.exitOnlyLeftText || "";
+}
+if (exitOnlyRightTextLabel && exitOnlyRightTextInput) {
+exitOnlyRightTextLabel.className = !panel.sign.guideArrow.includes(
+"Exit Only"
+)
+? "invisible"
+: "";
+exitOnlyRightTextInput.className = !panel.sign.guideArrow.includes(
+"Exit Only"
+)
+? "invisible"
+: "";
+exitOnlyRightTextInput.value = panel.sign.exitOnlyRightText || "";
+}
+paddingValue.className =
+panel.sign.guideArrow === "None" ? "invisible" : "";
+if (exitOnlyBorderModeLabel && exitOnlyBorderModeSelect) {
+const shouldShowBorderMode =
+panel.sign.secondExitOnly !== true &&
+(panel.sign.guideArrow == "Half Exit Only" ||
+panel.sign.guideArrow == "Exit Only");
+exitOnlyBorderModeLabel.className = shouldShowBorderMode
+? ""
+: "invisible";
+exitOnlyBorderModeSelect.className = shouldShowBorderMode
+? ""
+: "invisible";
+const resolvedBorderMode = Sign.prototype.exitOnlyBorderModes.includes(
+panel.sign.exitOnlyBorderMode
+)
+? panel.sign.exitOnlyBorderMode
+: Sign.prototype.exitOnlyBorderModes[0];
+exitOnlyBorderModeSelect.value = resolvedBorderMode;
+}
+showExitOnly.checked = !!panel.sign.showExitOnly;
+showExitOnly.value = panel.sign.showExitOnly;
+if (hideExitArrow) {
+hideExitArrow.checked = !!panel.sign.hideExitArrow;
+hideExitArrow.value = panel.sign.hideExitArrow;
+}
+const resolvedExitOnlyPadding =
+panel.sign.exitOnlyPadding !== undefined &&
+panel.sign.exitOnlyPadding !== null &&
+panel.sign.exitOnlyPadding !== ""
+? panel.sign.exitOnlyPadding
+: 0.25;
+panel.sign.exitOnlyPadding = resolvedExitOnlyPadding;
+exitOnlyPadding.value = resolvedExitOnlyPadding;
+exitOnlyPaddingValue.textContent = resolvedExitOnlyPadding;
+for (const option of exitOnlyDirection.options) {
+if (option.value == panel.sign.exitguideArrows) {
+option.selected = true;
+break;
+}
+}
+let currentBlockElemForPickerSync = null;
+try {
+currentBlockElemForPickerSync =
+exposed && typeof exposed.getCurrentBlockElem === "function"
+? exposed.getCurrentBlockElem()
+: null;
+} catch (error) {
+currentBlockElemForPickerSync = null;
+}
+if (
+currentBlockElemForPickerSync &&
+Control.prototype.blockInternalElements[
+Control.prototype.blockToClassElems.getElem(currentBlockElemForPickerSync)
+] === "sdShield" &&
+typeof ensureSdShieldBasePicker === "function"
+) {
+ensureSdShieldBasePicker();
+const selectedShieldBase = syncShieldBasePickerValue(
+currentBlockElemForPickerSync.shieldBase ||
+currentBlockElemForPickerSync.type ||
+ShieldElement.prototype.defaultShieldBase ||
+"I"
+);
+if (typeof syncSdShieldVariantPickerForBase === "function") {
+syncSdShieldVariantPickerForBase(selectedShieldBase, {
+requestedValue:
+currentBlockElemForPickerSync.shieldType ||
+getSdShieldAutoVariantValue(),
+updateBlock: true,
+});
+}
+}
+if (typeof ensureGuideArrowPicker === "function") {
+ensureGuideArrowPicker();
+}
+if (typeof ensureExitOnlyDirectionPicker === "function") {
+ensureExitOnlyDirectionPicker();
+}
+const otherSymbolSelectElement = document.getElementById("otherSymbol");
+for (const option of otherSymbolSelectElement.options) {
+if (option.value == panel.sign.otherSymbol) {
+option.selected = true;
+break;
+}
+}
+const oSNumElmt = document.getElementById("oSNum");
+oSNumElmt.value = panel.sign.oSNum;
+const advisoryMessageElmt = document.getElementById("outActionMessage");
+advisoryMessageElmt.checked = panel.sign.advisoryMessage;
+[
+"sdCtrlText",
+"sdAdvisory",
+"sdActionMessage",
+"sdIcon",
+"sdTollLogo",
+].forEach((block) => {
+bindTextFormattingControls(block);
+setDependentVisibility(block);
+});
+applyEditorInputBehavior(document);
+bindAllFontPreviewSelects(document);
+syncAllFontPickers();
+syncAllColorPickers();
+applyExitOnlyArrowVisibility();
+if (blockElemType === "sdShield") {
+updateShieldCountyVisibility(
+currentBlockElem?.shieldBase ||
+currentBlockElem?.type ||
+ShieldElement.prototype.defaultShieldBase ||
+"I"
+);
+}
+syncGlobalBlockControls();
+scheduleSubpanelModalHeightSync();
+window.SignMakerMergeUI?.sync();
+window.SignMakerEditorRuntime?.ensure();
+window.SignMakerSettings22?.sync();
+};
+const updateShieldSubform = function () {
+const shieldsContainerElmt = document.getElementById("shields");
+if (!shieldsContainerElmt) {
+return;
+}
+let subPanel;
+if (exposed.vars.currentlySelectedSubPanelIndex < 0) {
+subPanel =
+typeof exposed.getCurrentSubPanel === "function"
+? exposed.getCurrentSubPanel()
+: null;
+} else {
+subPanel =
+typeof exposed.getCurrentSubPanel === "function"
+? exposed.getCurrentSubPanel()
+: null;
+}
+const shields = Array.isArray(subPanel?.shields) ? subPanel.shields : [];
+while (shieldsContainerElmt.firstChild) {
+shieldsContainerElmt.removeChild(shieldsContainerElmt.lastChild);
+}
+for (
+let shieldIndex = 0, length = shields.length;
+shieldIndex < length;
+shieldIndex++
+) {
+const rowContainerElmt = document.createElement("div");
+rowContainerElmt.style.width = "100%";
+const toCheckElmt = document.createElement("input");
+toCheckElmt.type = "checkbox";
+toCheckElmt.id = `shield${shieldIndex}_to`;
+toCheckElmt.name = `shield${shieldIndex}_to`;
+toCheckElmt.checked = shields[shieldIndex].to;
+toCheckElmt.addEventListener("change", readForm);
+rowContainerElmt.appendChild(toCheckElmt);
+const toCheckLabelElmt = document.createElement("label");
+toCheckLabelElmt.setAttribute("for", `shield${shieldIndex}_to`);
+toCheckLabelElmt.appendChild(document.createTextNode(" TO "));
+rowContainerElmt.appendChild(toCheckLabelElmt);
+const typeSelectPlaceholder = document.createElement("select");
+typeSelectPlaceholder.id = `shield${shieldIndex}_type`;
+rowContainerElmt.appendChild(typeSelectPlaceholder);
+const shieldPicker = createShieldPicker({
+mount: typeSelectPlaceholder,
+value:
+shields[shieldIndex].shieldBase ||
+shields[shieldIndex].type ||
+"I",
+placeholder: "Shield type",
+onChange: (nextValue) => {
+const shield = shields[shieldIndex];
+if ("shieldBase" in shield) {
+shield.shieldBase = nextValue;
+}
+if ("type" in shield) {
+shield.type = nextValue;
+}
+if (typeof readForm === "function") {
+readForm();
+}
+},
+});
+const routeNumberElmt = document.createElement("input");
+routeNumberElmt.type = "text";
+routeNumberElmt.id = `shield${shieldIndex}_routeNumber`;
+routeNumberElmt.placeholder = "00";
+routeNumberElmt.value = shields[shieldIndex].routeNumber;
+routeNumberElmt.addEventListener("change", readForm);
+rowContainerElmt.appendChild(routeNumberElmt);
+const specialBannerTypeSelectElmt = document.createElement("select");
+if (
+Shield.prototype.specialBannerTypes[shields[shieldIndex].type] !=
+undefined
+) {
+for (const specialBannerType of Object.keys(
+Shield.prototype.specialBannerTypes[shields[shieldIndex].type]
+)) {
+if (exposed.checkSpecialShield(shieldIndex, specialBannerType)) {
+const optionElmt = document.createElement("option");
+optionElmt.value = specialBannerType;
+if (specialBannerType == shields[shieldIndex].specialBannerType) {
+optionElmt.selected = true;
+} else {
+optionElmt.selected = false;
+}
+optionElmt.appendChild(document.createTextNode(specialBannerType));
+specialBannerTypeSelectElmt.appendChild(optionElmt);
+}
+}
+let optionElmt = document.createElement("option");
+optionElmt.value = "None";
+if ("None" == shields[shieldIndex].specialBannerType) {
+optionElmt.selected = true;
+} else {
+optionElmt.selected = false;
+}
+optionElmt.appendChild(document.createTextNode("None"));
+specialBannerTypeSelectElmt.appendChild(optionElmt);
+specialBannerTypeSelectElmt.style.visibility = "";
+} else {
+specialBannerTypeSelectElmt.style.visibility = "hidden";
+}
+specialBannerTypeSelectElmt.id = `shield${shieldIndex}_specialBannerType`;
+specialBannerTypeSelectElmt.addEventListener("change", readForm);
+rowContainerElmt.appendChild(specialBannerTypeSelectElmt);
+rowContainerElmt.appendChild(document.createElement("br"));
+const indentElmt = document.createElement("input");
+indentElmt.type = "checkbox";
+indentElmt.id = `shield${shieldIndex}_indentFirstLetter`;
+indentElmt.checked =
+shields[shieldIndex].indentFirstLetter !== undefined
+? shields[shieldIndex].indentFirstLetter
+: true;
+indentElmt.onchange = readForm;
+rowContainerElmt.appendChild(indentElmt);
+const indentLabelElmt = document.createElement("label");
+indentLabelElmt.setAttribute(
+"for",
+`shield${shieldIndex}_indentFirstLetter`
+);
+indentLabelElmt.appendChild(
+document.createTextNode("Enlarge First Letter")
+);
+rowContainerElmt.appendChild(indentLabelElmt);
+const indentElmt2 = document.createElement("input");
+indentElmt2.type = "checkbox";
+indentElmt2.id = `shield${shieldIndex}_indentFirstLetter2`;
+indentElmt2.checked =
+shields[shieldIndex].indentFirstLetter2 !== undefined
+? shields[shieldIndex].indentFirstLetter2
+: shields[shieldIndex].indentFirstLetter;
+indentElmt2.onchange = readForm;
+rowContainerElmt.appendChild(indentElmt2);
+const indentLabelElmt2 = document.createElement("label");
+indentLabelElmt2.setAttribute(
+"for",
+`shield${shieldIndex}_indentFirstLetter2`
+);
+indentLabelElmt2.appendChild(
+document.createTextNode("Enlarge First Letter (2nd Banner)")
+);
+rowContainerElmt.appendChild(indentLabelElmt2);
+const fontSizeLabelElmt = document.createElement("label");
+fontSizeLabelElmt.setAttribute("for", `shield${shieldIndex}_fontSize`);
+fontSizeLabelElmt.appendChild(document.createTextNode("Text Size: "));
+fontSizeLabelElmt.style.marginLeft = "2rem";
+rowContainerElmt.appendChild(fontSizeLabelElmt);
+const fontSizeText = document.createElement("input");
+fontSizeText.type = "number";
+fontSizeText.id = `shield${shieldIndex}_fontSize`;
+fontSizeText.placeholder = 1.6;
+fontSizeText.value = parseFloat(
+shields[shieldIndex].fontSize.split("rem")[0]
+);
+fontSizeText.min = 1;
+fontSizeText.max = 3;
+fontSizeText.style.width = "4rem";
+fontSizeText.onchange = readForm;
+rowContainerElmt.appendChild(fontSizeText);
+rowContainerElmt.appendChild(document.createElement("br"));
+rowContainerElmt.appendChild(document.createTextNode("Banners:"));
+rowContainerElmt.appendChild(document.createElement("br"));
+const bannerTypeSelectElmt = document.createElement("select");
+const blankBannerTypeOption = document.createElement("option");
+blankBannerTypeOption.value = "";
+blankBannerTypeOption.textContent = "";
+bannerTypeSelectElmt.appendChild(blankBannerTypeOption);
+for (const bannerType of Shield.prototype.bannerTypes) {
+const optionValue = getBannerDropdownValue(bannerType);
+lib.appendOption(bannerTypeSelectElmt, optionValue, {
+selected:
+getBannerDropdownValue(shields[shieldIndex].bannerType) ===
+optionValue,
+text: optionValue,
+});
+}
+bannerTypeSelectElmt.id = `shield${shieldIndex}_bannerType`;
+bannerTypeSelectElmt.addEventListener("change", readForm);
+rowContainerElmt.appendChild(bannerTypeSelectElmt);
+const bannerCustomInputElmt = document.createElement("input");
+bannerCustomInputElmt.type = "text";
+bannerCustomInputElmt.placeholder = "Banner Text";
+bannerCustomInputElmt.id = `shield${shieldIndex}_bannerCustomText`;
+const isCustomBanner =
+!findBannerDropdownPresetValue(shields[shieldIndex].bannerType);
+bannerCustomInputElmt.value = isCustomBanner
+? shields[shieldIndex].bannerType
+: "";
+bannerCustomInputElmt.addEventListener("blur", readForm);
+rowContainerElmt.appendChild(bannerCustomInputElmt);
+const bannerPositionSelectElmt = document.createElement("select");
+for (const bannerPosition of Shield.prototype.bannerPositions) {
+lib.appendOption(bannerPositionSelectElmt, bannerPosition, {
+selected: shields[shieldIndex].bannerPosition == bannerPosition,
+});
+}
+bannerPositionSelectElmt.id = `shield${shieldIndex}_bannerPosition`;
+bannerPositionSelectElmt.addEventListener("change", readForm);
+rowContainerElmt.appendChild(bannerPositionSelectElmt);
+bindToBannerEntryDefaults(
+bannerCustomInputElmt,
+bannerPositionSelectElmt,
+indentElmt
+);
+rowContainerElmt.appendChild(document.createElement("br"));
+const bannerType2SelectElmt = document.createElement("select");
+const blankBannerType2Option = document.createElement("option");
+blankBannerType2Option.value = "";
+blankBannerType2Option.textContent = "";
+bannerType2SelectElmt.appendChild(blankBannerType2Option);
+for (const bannerType2 of Shield.prototype.bannerTypes) {
+const optionValue = getBannerDropdownValue(bannerType2);
+lib.appendOption(bannerType2SelectElmt, optionValue, {
+selected:
+getBannerDropdownValue(shields[shieldIndex].bannerType2) ===
+optionValue,
+text: optionValue,
+});
+}
+bannerType2SelectElmt.id = `shield${shieldIndex}_bannerType2`;
+bannerType2SelectElmt.addEventListener("change", readForm);
+rowContainerElmt.appendChild(bannerType2SelectElmt);
+const bannerCustomInputElmt2 = document.createElement("input");
+bannerCustomInputElmt2.type = "text";
+bannerCustomInputElmt2.placeholder = "Banner Text";
+bannerCustomInputElmt2.id = `shield${shieldIndex}_bannerCustomText2`;
+const isCustomBanner2 =
+!findBannerDropdownPresetValue(shields[shieldIndex].bannerType2);
+bannerCustomInputElmt2.value = isCustomBanner2
+? shields[shieldIndex].bannerType2
+: "";
+bannerCustomInputElmt2.addEventListener("blur", readForm);
+rowContainerElmt.appendChild(bannerCustomInputElmt2);
+rowContainerElmt.appendChild(document.createElement("br"));
+const duplicateElmt = document.createElement("input");
+duplicateElmt.type = "button";
+duplicateElmt.value = "Duplicate";
+duplicateElmt.dataset.shieldIndex = shieldIndex;
+duplicateElmt.addEventListener("click", function () {
+exposed.duplicateShield(shieldIndex);
+});
+rowContainerElmt.appendChild(duplicateElmt);
+const deleteElmt = document.createElement("input");
+deleteElmt.type = "button";
+deleteElmt.value = "Delete";
+deleteElmt.dataset.shieldIndex = shieldIndex;
+deleteElmt.addEventListener("click", function () {
+exposed.deleteShield(deleteElmt.dataset.shieldIndex);
+});
+rowContainerElmt.appendChild(deleteElmt);
+shieldsContainerElmt.appendChild(rowContainerElmt);
+}
+};
+const updateShieldModalVisual = (selected, differentShield) => {
+const holder = document.querySelector(".shieldPreview");
+const img = holder.querySelector(".selectedShieldPreview");
+if (selected.shieldType === "custom" && selected.imageData) {
+img.src = selected.imageData;
+} else {
+img.src = Shield.prototype.getDirectoryFromShield(
+selected.shieldValue,
+selected.variant
+);
+}
+if (selected.shieldBacks) {
+img.style.setProperty(
+"--shieldBackColor",
+(
+lib.colors[selected.shieldBackColor] || selected.shieldBackColor
+).toLowerCase()
+);
+img.style.setProperty(
+"--shieldBackRadius",
+selected.shieldBorderRadius + "px"
+);
+} else {
+img.style.setProperty("--shieldBackColor", "");
+img.style.setProperty("--shieldBackRadius", "");
+}
+holder.querySelector(".selectedShieldName").textContent =
+selected.shieldName;
+if (differentShield) {
+document.querySelector("#selectedShieldVariant").innerHTML = "";
+for (const variant of Shield.prototype.getPropertiesFromName(
+selected.shieldValue
+).variants) {
+lib.appendOption(
+document.querySelector("#selectedShieldVariant"),
+variant,
+{ selected: selected.variant == variant }
+);
+}
+}
+document.querySelector("#selectedShieldBacks").value = selected.shieldBacks;
+const selectedBackColorElmt = document.querySelector("#selectedBackColor");
+if (selectedBackColorElmt) {
+ensureCustomColorOptionsForSelect(selectedBackColorElmt);
+if (selected.backColor) {
+ensureNativeColorSelectOption(selectedBackColorElmt, selected.backColor);
+}
+selectedBackColorElmt.value = selected.backColor;
+}
+document.querySelector("#selectedBackRoudness").value =
+selected.shieldBorderRadius;
+syncAllColorPickers();
+};
+const promptShield = function (currentValue, returnMethod = null) {
+const modal = document.querySelector("#shieldImgSelector");
+const holder = document.querySelector("#modalHolder");
+let eventListeners = [];
+return new Promise((resolve, reject) => {
+let selectedShield = {
+shieldType: currentValue?.shieldType || "preset",
+shieldName: currentValue?.shieldName || "Interstate",
+shieldValue: currentValue?.shieldValue || "I",
+variant: currentValue?.variant || "2 Digit",
+shieldBacks: currentValue?.shieldBacks || false,
+shieldBackColor: currentValue?.shieldBackColor || "Black",
+shieldBorderRadius: currentValue?.shieldBorderRadius || 4,
+imageType: currentValue?.imageType || "file",
+imageData: currentValue?.imageData || "",
+};
+document.querySelector("#presetShields").addEventListener("click", () => {
+document.querySelector(".shieldLibrary").dataset.tab =
+"presetShieldList";
+document.querySelector("#presetShields").className = "selected";
+document.querySelector("#customShields").className = "";
+selectedShield.shieldType = "preset";
+});
+document.querySelector("#customShields").addEventListener("click", () => {
+document.querySelector(".shieldLibrary").dataset.tab = "uploadShield";
+document.querySelector("#customShields").className = "selected";
+document.querySelector("#presetShields").className = "";
+selectedShield.shieldType = "custom";
+});
+updateShieldModalVisual(selectedShield, true);
+holder.style.display = "flex";
+modal.style.display = "flex";
+modal.showModal();
+const fileInput = document.querySelector("#uploadCustomShield");
+if (fileInput) {
+fileInput.addEventListener("change", (e) => {
+const file = e.target.files[0];
+if (file) {
+const reader = new FileReader();
+reader.onload = (e) => {
+selectedShield.shieldType = "custom";
+selectedShield.imageType = "data";
+selectedShield.imageData = e.target.result;
+selectedShield.shieldName = file.name.split(".")[0];
+updateShieldModalVisual(selectedShield, true);
+};
+reader.readAsDataURL(file);
+}
+});
+}
+document
+.querySelector("#presetShields")
+?.addEventListener("click", () => {
+document.querySelector(".shieldLibrary").dataset.tab =
+"presetShieldList";
+document.querySelector("#presetShields").className = "selected";
+document.querySelector("#customShields").className = "";
+selectedShield.shieldType = "preset";
+});
+document
+.querySelector("#customShields")
+?.addEventListener("click", () => {
+document.querySelector(".shieldLibrary").dataset.tab = "uploadShield";
+document.querySelector("#customShields").className = "selected";
+document.querySelector("#presetShields").className = "";
+selectedShield.shieldType = "custom";
+});
+document.querySelector("#shieldImgSelectorClose")?.addEventListener(
+"click",
+() => {
+holder.style.display = "none";
+modal.style.display = "none";
+modal.close();
+for (const e of eventListeners) {
+e.element.removeEventListener("click", e.handler);
+}
+eventListeners.length = 0;
+if (returnMethod) returnMethod(null);
+resolve(null);
+},
+{ once: true }
+);
+const setShield = (event) => {
+let isDifferent =
+selectedShield.shieldValue != event.currentTarget.dataset.name;
+selectedShield.shieldName =
+event.currentTarget.querySelector(".shieldItemName").textContent;
+selectedShield.shieldValue = event.currentTarget.dataset.name;
+searchFromDir(
+Shield.prototype.shieldDirectory,
+document.querySelector("#presetShieldList")
+);
+if (
+isDifferent &&
+!Shield.prototype
+.getPropertiesFromName(selectedShield.shieldValue)
+.variants.includes(selectedShield.variant)
+) {
+selectedShield.variant =
+Shield.prototype.getPropertiesFromName(selectedShield.shieldValue)
+.variants[0] || "";
+}
+updateShieldModalVisual(selectedShield, isDifferent);
+};
+const searchFromDir = (dir, parentElem, createListeners) => {
+let hasAnything = false;
+for (const category in dir) {
+const cat = dir[category];
+if (category == "type") {
+continue;
+}
+if (cat.type == "category") {
+const childElem = parentElem.querySelector(
+'.shieldCategory[data-category="' + category + '"]'
+);
+if (searchFromDir(cat, childElem, createListeners)) {
+hasAnything = true;
+if (selectedShield.name != "") {
+childElem.classList.remove("open");
+childElem.querySelector(".shieldCategoryHead").click();
+}
+}
+} else if (cat.type == "shield") {
+const childElem = parentElem.querySelector(
+'.shieldCategoryType[data-name="' + category + '"]'
+);
+if (cat.name == selectedShield.shieldName) {
+hasAnything = true;
+childElem.classList.add("selected");
+childElem.querySelector(".shieldItemSelected").textContent =
+"radio_button_checked";
+} else {
+childElem.classList.remove("selected");
+childElem.querySelector(".shieldItemSelected").textContent =
+"radio_button_unchecked";
+}
+if (createListeners) {
+childElem.addEventListener("click", setShield);
+eventListeners.push({ element: childElem, handler: setShield });
+}
+}
+}
+return hasAnything;
+};
+searchFromDir(
+Shield.prototype.shieldDirectory,
+document.querySelector("#presetShieldList"),
+true
+);
+const handleVariant = (e) => {
+selectedShield.variant = e.currentTarget.value;
+updateShieldModalVisual(selectedShield, false);
+};
+document
+.querySelector("#selectedShieldVariant")
+.addEventListener("change", handleVariant);
+eventListeners.push({
+element: document.querySelector("#selectedShieldVariant"),
+handler: handleVariant,
+});
+const handleBackColor = (e) => {
+selectedShield.shieldBackColor = e.currentTarget.value;
+updateShieldModalVisual(selectedShield, false);
+};
+document
+.querySelector("#selectedBackColor")
+.addEventListener("change", handleBackColor);
+eventListeners.push({
+element: document.querySelector("#selectedBackColor"),
+handler: handleBackColor,
+});
+const handleBorderRadius = (e) => {
+selectedShield.shieldBorderRadius = parseInt(e.currentTarget.value);
+updateShieldModalVisual(selectedShield, false);
+};
+document
+.querySelector("#selectedBackRoudness")
+.addEventListener("change", handleBorderRadius);
+eventListeners.push({
+element: document.querySelector("#selectedBackRoudness"),
+handler: handleBorderRadius,
+});
+const handleShieldBackCheckbox = (e) => {
+selectedShield.shieldBacks = e.currentTarget.checked;
+updateShieldModalVisual(selectedShield, false);
+};
+document
+.querySelector("#selectedShieldBacks")
+.addEventListener("change", handleShieldBackCheckbox);
+eventListeners.push({
+element: document.querySelector("#selectedShieldBacks"),
+handler: handleShieldBackCheckbox,
+});
+window.customShields.loadSavedShields((shield) => {
+selectedShield.shieldType = "custom";
+selectedShield.shieldName = shield.fileName;
+selectedShield.imageType = "data";
+selectedShield.imageData = shield.data;
+updateShieldModalVisual(selectedShield, true);
+});
+document.querySelector("#setShield").addEventListener("click", () => {
+holder.style.display = "none";
+modal.style.display = "none";
+modal.close();
+for (const e of eventListeners) {
+e.element.removeEventListener("click", e.handler);
+}
+eventListeners.length = 0;
+if (returnMethod) returnMethod(selectedShield);
+resolve(selectedShield);
+});
+});
+};
+return {
+init: initialize,
+readForm,
+updateForm,
+updateShieldSubform,
+ensureSubpanelMenuOpen: () => ensureSubpanelMenuOpenPublic(),
+ensureExitTabMenuOpen: () => ensureExitTabMenuOpenPublic(),
+ensureGuideArrowMenuOpen: (mode) => ensureGuideArrowMenuOpenPublic(mode),
+selectStandardArrowIndividual,
+setExitTabEditorMode,
+setExitTabProfileSelected,
+applyExitTabProfileToCurrentTab,
+applyDefaultExitTabProfileToTab,
+applyExitTabDefaultProfileToPrototype,
+resetExitTabCurrentProfileSelection,
+getDefaultPanelSpacingPreference,
+setPanelCorner: value => { document.getElementById("panelCorner").value=value; readForm(); },
+getMergeGroupSelectionRefs: () => {
+const rows = exposed.getCurrentSubPanel()?.blockElements?.rows || [];
+const selection = getSubpanelClipboardSelectionPayload(rows);
+return selection.rows.flatMap(entry => entry.selectedBlockIndices.map(blockIndex => ({ rowIndex: entry.rowIndex, blockIndex })));
+},
+};
+})();

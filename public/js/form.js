@@ -766,10 +766,10 @@ const formHandler = (function () {
         });
       });
 
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-      });
+      for (const root of document.querySelectorAll('.modals, dialog')) {
+        if (root.matches('dialog') && root.closest('.modals')) continue;
+        observer.observe(root, {childList:true, subtree:true});
+      }
     };
     const isDedupableSelectElement = (selectEl) =>
       !!(
@@ -946,10 +946,10 @@ const formHandler = (function () {
         changedSelects.forEach(scheduleDedupeSelectOptions);
       });
 
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-      });
+      for (const root of document.querySelectorAll('.modals, dialog')) {
+        if (root.matches('dialog') && root.closest('.modals')) continue;
+        observer.observe(root, {childList:true, subtree:true});
+      }
 
       document.addEventListener(
         "change",
@@ -2434,6 +2434,7 @@ const formHandler = (function () {
       if (!selectEl) {
         return null;
       }
+      if (!selectEl._profilePickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'profile', () => createExitTabProfilePicker(selectEl))) return null;
       if (selectEl._profilePickerApi) {
         selectEl._profilePickerApi.sync();
         return selectEl._profilePickerApi;
@@ -8997,6 +8998,7 @@ const getPostThicknessFallback = () =>
       if (!selectEl) {
         return null;
       }
+      if(!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
 
       syncFontSelectOptionLabels(selectEl);
 
@@ -9009,6 +9011,7 @@ const getPostThicknessFallback = () =>
 
       const wrapper = document.createElement("div");
       wrapper.className = `fontPicker fontPicker-${mode}`;
+      wrapper.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
 
       const trigger = document.createElement("button");
       trigger.type = "button";
@@ -9023,6 +9026,7 @@ const getPostThicknessFallback = () =>
 
       const menu = document.createElement("div");
       menu.className = "fontPickerMenu";
+      menu.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
       const isCustomShieldFontPicker = selectEl.id === "customShieldMakerRouteFont";
       wrapper.classList.toggle("customShieldFontPicker", isCustomShieldFontPicker);
       menu.classList.toggle("customShieldFontPickerMenu", isCustomShieldFontPicker);
@@ -9087,6 +9091,7 @@ const getPostThicknessFallback = () =>
         button.textContent = getUiFontDisplayName(fontValue);
         const renderedFontValue = resolveFontPickerPreviewFont(fontValue);
         button.style.fontFamily = `"${renderedFontValue}", sans-serif`;
+        button.style.setProperty('--sm-font-preview-family',`"${renderedFontValue}"`);
         button.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(fontValue));
 
         if (selectEl.value === fontValue) {
@@ -9114,6 +9119,7 @@ const getPostThicknessFallback = () =>
         button.textContent = getUiFontDisplayName(family);
         const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
         button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
+        button.style.setProperty('--sm-font-preview-family',`"${renderedPreviewFont}"`);
         button.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(previewFont));
 
         if (selectEl.value === family) {
@@ -9429,24 +9435,24 @@ const getPostThicknessFallback = () =>
       normalizeCustomCssColorValue(a).toLowerCase() ===
       normalizeCustomCssColorValue(b).toLowerCase();
 
+    let defaultColorLookupSource = null;
+    let defaultColorLookup = new Map();
     const getDefaultColorNameForCustomPickerValue = (value = "") => {
       const normalizedValue = normalizeCustomCssColorValue(value).toLowerCase();
       if (!normalizedValue || typeof lib === "undefined" || !lib.colors) {
         return "";
       }
 
-      for (const [colorName, colorValue] of Object.entries(lib.colors)) {
-        if (String(colorName).toLowerCase() === normalizedValue) {
-          return colorName;
-        }
-
-        const normalizedDefaultColor = normalizeCustomCssColorValue(colorValue).toLowerCase();
-        if (normalizedDefaultColor && normalizedDefaultColor === normalizedValue) {
-          return colorName;
+      if (defaultColorLookupSource !== lib.colors) {
+        defaultColorLookupSource = lib.colors;
+        defaultColorLookup = new Map();
+        for (const [colorName, colorValue] of Object.entries(lib.colors)) {
+          for (const key of [String(colorName).toLowerCase(), normalizeCustomCssColorValue(colorValue).toLowerCase()]) {
+            if (key && !defaultColorLookup.has(key)) defaultColorLookup.set(key, colorName);
+          }
         }
       }
-
-      return "";
+      return defaultColorLookup.get(normalizedValue) || "";
     };
 
     const isDefaultColorValueForCustomPicker = (value = "") =>
@@ -9599,6 +9605,7 @@ const getPostThicknessFallback = () =>
       if (!selectEl) {
         return "";
       }
+      if (selectEl.labels) return selectEl.labels[0]?.textContent || "";
 
       if (selectEl.id) {
         const escapedId =
@@ -9974,6 +9981,7 @@ const getPostThicknessFallback = () =>
       if (!isColorSelectElement(selectEl)) {
         return null;
       }
+      if (!selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
 
       ensureCustomColorOptionsForSelect(selectEl);
 
@@ -10685,6 +10693,7 @@ const getPostThicknessFallback = () =>
 
     const refreshAllShieldPickers = () => {
       activeShieldPickerApis.forEach((pickerApi) => {
+        if (!pickerApi?.element?.isConnected) { activeShieldPickerApis.delete(pickerApi); return; }
         if (pickerApi && typeof pickerApi.refresh === "function") {
           pickerApi.refresh();
         }
@@ -11726,6 +11735,7 @@ const getPostThicknessFallback = () =>
         label: String(label || value),
       }));
 
+    const blockTypeLabelWidths = new Map();
     const syncSubpanelStandaloneBlockTypePickerWidth = (wrapper, trigger, label) => {
       if (!wrapper || !trigger || !label) {
         return;
@@ -11734,6 +11744,10 @@ const getPostThicknessFallback = () =>
       /* Measure outside the flex button so the current row cannot squeeze the
          probe and make the picker narrower than its longest option. */
       const labelStyle = window.getComputedStyle(label);
+      const entries = getSubpanelBlockTypeEntries();
+      const cacheKey = JSON.stringify([labelStyle.fontFamily,labelStyle.fontSize,labelStyle.fontWeight,labelStyle.fontStyle,labelStyle.letterSpacing,labelStyle.lineHeight,entries.map(entry=>entry.label)]);
+      let widestLabel = document.fonts?.status === "loaded" ? blockTypeLabelWidths.get(cacheKey) : undefined;
+      if (widestLabel === undefined) {
       const probe = document.createElement("span");
       probe.style.position = "fixed";
       probe.style.left = "-10000px";
@@ -11753,10 +11767,13 @@ const getPostThicknessFallback = () =>
       probe.style.lineHeight = labelStyle.lineHeight;
       document.body.appendChild(probe);
 
-      let widestLabel = 0;
-      for (const entry of getSubpanelBlockTypeEntries()) {
+      widestLabel = 0;
+      for (const entry of entries) {
         probe.textContent = entry.label;
         widestLabel = Math.max(widestLabel, probe.getBoundingClientRect().width);
+      }
+      probe.remove();
+      if (document.fonts?.status === "loaded") blockTypeLabelWidths.set(cacheKey, widestLabel);
       }
 
       const triggerStyle = window.getComputedStyle(trigger);
@@ -11770,8 +11787,6 @@ const getPostThicknessFallback = () =>
       const targetWidth = Math.ceil(
         widestLabel + paddingLeft + paddingRight + borderLeft + borderRight + caretWidth + gap + 2
       );
-
-      probe.remove();
 
       if (targetWidth > 0) {
         wrapper.style.setProperty("--block-type-trigger-width", `${targetWidth}px`);
@@ -12187,7 +12202,7 @@ const getPostThicknessFallback = () =>
         row.appendChild(editButton);
       }
 
-      if (node.children && node.children.length) {
+      if (isExpanded) {
         const childrenWrap = document.createElement("div");
         childrenWrap.className = "shieldPickerTreeChildren";
         childrenWrap.dataset.parentId = node.id || "";
@@ -12309,6 +12324,7 @@ const getPostThicknessFallback = () =>
 
       const tree = document.createElement("div");
       tree.className = "shieldPickerTree";
+      let treeDirty = true;
       popover.appendChild(tree);
 
       wrapper.appendChild(trigger);
@@ -12344,12 +12360,6 @@ const getPostThicknessFallback = () =>
           triggerIconPath,
           SHIELD_DROPDOWN_PLACEHOLDER_ICON
         );
-        fitShieldPickerTriggerLabelText(trigger, triggerLabel);
-        if (typeof requestAnimationFrame === "function") {
-          requestAnimationFrame(() =>
-            fitShieldPickerTriggerLabelText(trigger, triggerLabel)
-          );
-        }
       };
 
       const openCustomShieldMakerFromPicker = () => {
@@ -12413,7 +12423,11 @@ const getPostThicknessFallback = () =>
       };
 
       const rerenderTree = (forceRebuild = false) => {
-        if (forceRebuild || !tree.childElementCount) {
+        if (forceRebuild) treeDirty = true;
+        if (!wrapper.classList.contains("open")) return;
+        if (treeDirty || !tree.childElementCount) {
+          treeDirty = false;
+          const scrollTop = popover.scrollTop;
           renderShieldPickerTree({
             container: tree,
             nodes: rootNodes,
@@ -12438,11 +12452,7 @@ const getPostThicknessFallback = () =>
 
                 syncTrigger();
 
-                if (options.preserveTree) {
-                  updateShieldPickerTreeState(tree, currentValue, expandedIds);
-                } else {
-                  rerenderTree(true);
-                }
+                rerenderTree(true);
 
                   if (!options.keepOpen) {
                     saveShieldPickerScrollTop();
@@ -12460,7 +12470,7 @@ const getPostThicknessFallback = () =>
                   expandedIds.add(id);
                 }
 
-                updateShieldPickerTreeState(tree, currentValue, expandedIds);
+                rerenderTree(true);
               },
               onEdit: (node) => {
                 saveShieldPickerScrollTop();
@@ -12478,7 +12488,7 @@ const getPostThicknessFallback = () =>
                 }
               },
             });
-
+            popover.scrollTop = scrollTop;
             return;
           }
 
@@ -12544,6 +12554,7 @@ const getPostThicknessFallback = () =>
         element: wrapper,
         getValue: () => currentValue,
         setValue: (nextValue) => {
+          if (currentValue === (nextValue || "")) return;
           currentValue = nextValue || "";
           expandPathToValue(currentValue);
           syncTrigger();
@@ -15224,6 +15235,7 @@ const getPostThicknessFallback = () =>
       }
 
     function reDisplay() {
+      window.SignMakerEditorRuntime?.ensure();
       const openingPanelStylePopover = panelStylePopoverIsOpen();
       const modalHolder = document.querySelector(".modals");
       const previousModalVisibility = modalHolder?.style.visibility || "";
@@ -21370,7 +21382,6 @@ const getPostThicknessFallback = () =>
     mergePendingFormRefresh = false;
     syncPostReference();
     normalizeExitTabProfiles();
-    ensureCustomColorOptionsForAllColorSelects(document);
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {
         const selectedPanel =
@@ -24481,12 +24492,6 @@ const getPostThicknessFallback = () =>
       normalizeSdShieldBannerStyleFields(currentBlockElem);
       writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
       setupSdShieldCompactControls();
-      if (typeof syncAllFontPickers === "function") {
-        syncAllFontPickers();
-      }
-      if (typeof syncAllColorPickers === "function") {
-        syncAllColorPickers();
-      }
     }
 
     if (blockElemType === "sdIcon") {
@@ -24873,7 +24878,7 @@ const getPostThicknessFallback = () =>
       scheduleSubpanelModalHeightSync();
   
     window.SignMakerMergeUI?.sync();
-    window.SignMakerDropdowns?.refresh();
+    window.SignMakerEditorRuntime?.ensure();
     window.SignMakerSettings22?.sync();
   };
     

@@ -4336,18 +4336,18 @@ const ungroupSelectedBlockElement = () => {
       const naturalPostWidth = postContainerElmt.offsetWidth || 0;
       const mainVisualScale = getMainVisualScale();
 
-      postContainerElmt.style.transformOrigin = "center center";
-      postContainerElmt.style.transition = "transform 280ms ease";
-      postContainerElmt.style.willChange = "transform";
+      const setTransform = value => {
+        if (postContainerElmt.style.transform !== value) postContainerElmt.style.transform = value;
+      };
 
       if (!viewportWidth || !naturalPostWidth || !mainVisualScale) {
-        postContainerElmt.style.transform = "translateX(0px) scale(1)";
+        setTransform("translateX(0px) scale(1)");
         return;
       }
 
       const visibleMenus = getVisibleSideMenuElements();
       if (!visibleMenus.length) {
-        postContainerElmt.style.transform = "translateX(0px) scale(1)";
+        setTransform("translateX(0px) scale(1)");
         return;
       }
 
@@ -4389,7 +4389,7 @@ const ungroupSelectedBlockElement = () => {
         rightBlockedEdge - SIDE_MENU_VIEWPORT_GAP < normalPostRight;
 
       if (!intrudesFromLeft && !intrudesFromRight) {
-        postContainerElmt.style.transform = "translateX(0px) scale(1)";
+        setTransform("translateX(0px) scale(1)");
         return;
       }
 
@@ -4413,13 +4413,12 @@ const ungroupSelectedBlockElement = () => {
             )
           : 1;
 
-      postContainerElmt.style.transform =
-        `translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`;
+      setTransform(`translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`);
     };
 
     const schedulePostViewportLayoutUpdate = () => {
       if (postViewportLayoutFrame !== null) {
-        window.cancelAnimationFrame(postViewportLayoutFrame);
+        return;
       }
 
       postViewportLayoutFrame = window.requestAnimationFrame(() => {
@@ -4522,15 +4521,7 @@ const ungroupSelectedBlockElement = () => {
         return;
       }
 
-      const schedule = () => {
-        schedulePostViewportLayoutUpdate();
-
-        window.requestAnimationFrame(() => {
-          schedulePostViewportLayoutUpdate();
-        });
-
-        setTimeout(schedulePostViewportLayoutUpdate, 80);
-      };
+      const schedule = schedulePostViewportLayoutUpdate;
 
       const targets = [
         document.body,
@@ -4545,8 +4536,7 @@ const ungroupSelectedBlockElement = () => {
       for (const target of targets) {
         postViewportLayoutObserver.observe(target, {
           attributes: true,
-          childList: true,
-          subtree: true,
+          subtree: false,
           attributeFilter: [
             "style",
             "class",
@@ -4557,6 +4547,13 @@ const ungroupSelectedBlockElement = () => {
           ],
         });
       }
+
+      // Observe sizes, not the descendants' inline styles or the preview transform.
+      if (typeof ResizeObserver === "function") {
+        const sizes = new ResizeObserver(schedule);
+        for (const target of [document.getElementById("postContainer"), ...document.querySelectorAll(".sMModal"), document.getElementById("sMConfigBar"), document.getElementById("panelSelect")].filter(Boolean)) sizes.observe(target);
+      }
+      for (const target of document.querySelectorAll(".modals, #sMConfigBar, #panelSelect")) target.addEventListener("transitionend", schedule);
 
       window.addEventListener("resize", schedule);
       window.addEventListener("load", schedule);
@@ -4621,6 +4618,7 @@ const ungroupSelectedBlockElement = () => {
     const init = async function () {
       if (initializationStarted) return;
       initializationStarted = true;
+      window.performance?.mark?.("signmaker:init-start");
       post = new Post(DEFAULT_POST_POSITION);
       post.panelSpacing = getDefaultPanelSpacing();
       post.newPanel();
@@ -4649,12 +4647,15 @@ const ungroupSelectedBlockElement = () => {
           redraw();
           await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
           document.documentElement.removeAttribute("data-sign-loading");
+          window.performance?.mark?.("signmaker:sign-ready");
+          window.performance?.measure?.("signmaker:sign-startup", "signmaker:init-start", "signmaker:sign-ready");
           // Give the panels a paint before the menu setup occupies the thread.
           if (document.visibilityState !== "hidden") {
             await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
           }
         },
       });
+      window.SignMakerEditorRuntime?.init();
       window.SignMakerMergeUI?.init();
       window.SignMakerSettings22?.sync();
       window.SignMakerDropdowns?.init();
@@ -4747,6 +4748,9 @@ const ungroupSelectedBlockElement = () => {
 
       bindPostViewportLayoutWatcher();
       schedulePostViewportLayoutUpdate();
+      document.documentElement.dataset.appReady = "true";
+      window.performance?.mark?.("signmaker:editor-ready");
+      window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
     };
 
   // Create a new panel, set the current editing panel to that panel, update the form, and redraw.
@@ -10332,6 +10336,32 @@ const ungroupSelectedBlockElement = () => {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
+  let imageExportLibraryPromise = null;
+  const loadImageExportLibrary = () => {
+    if (window.htmlToImage) return Promise.resolve(window.htmlToImage);
+    if (imageExportLibraryPromise) return imageExportLibraryPromise;
+    imageExportLibraryPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      let timer;
+      const finish = error => {
+        clearTimeout(timer);
+        script.onload = script.onerror = null;
+        script.remove();
+        if (error || !window.htmlToImage) {
+          imageExportLibraryPromise = null;
+          reject(error || new Error("The image export library did not initialize."));
+        } else resolve(window.htmlToImage);
+      };
+      script.src = new URL("js/HtmlToImage.js", document.baseURI).href;
+      script.async = true;
+      script.onload = () => finish();
+      script.onerror = () => finish(new Error("Unable to load the image export library. Please retry."));
+      timer = setTimeout(() => finish(new Error("Loading the image export library timed out. Please retry.")), 20000);
+      document.head.appendChild(script);
+    });
+    return imageExportLibraryPromise;
+  };
+
   const createImageBackedSvgDataUrl = async (
     exportElement,
     exportOptions,
@@ -10342,6 +10372,7 @@ const ungroupSelectedBlockElement = () => {
     const pixelRatio = getExportPixelRatio(width, height, isPreview);
     const svgWidth = Math.max(1, Math.ceil(width * pixelRatio));
     const svgHeight = Math.max(1, Math.ceil(height * pixelRatio));
+    const htmlToImage = await loadImageExportLibrary();
     const pngDataUrl = await htmlToImage.toPng(exportElement, {
       ...exportOptions,
       pixelRatio,
@@ -11682,6 +11713,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
         const pngExportScale = getExportPixelRatio(width, height, isPreview);
 
+        const htmlToImage = await loadImageExportLibrary();
         const pngDataUrl = await htmlToImage.toPng(exportElement, {
           ...exportOptions,
           pixelRatio: pngExportScale,
@@ -17329,6 +17361,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     try {
       restore = materializeExportBannerFirstLetters(source);
       await waitForImagesInElement(source);
+      const htmlToImage = await loadImageExportLibrary();
       return await htmlToImage.toCanvas(source, options);
     } finally {
       restore();
@@ -18866,7 +18899,7 @@ const serializePostWithElementTypes = (space) => {
       for (const [holder, message] of [[templatesList, "No saved templates"], [presetsList, "No presets match your search"]]) {
         if (holder && !holder.children.length) { const empty=document.createElement("p"); empty.className="templateEmptyMessage"; empty.textContent=message; holder.appendChild(empty); }
       }
-      window.SignMakerDropdowns?.refresh();
+      window.SignMakerEditorRuntime?.ensure();
     } catch (error) {
       console.error("Error refreshing templates list:", error);
     }

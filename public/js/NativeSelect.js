@@ -33,7 +33,7 @@
     trigger.setAttribute('aria-controls', id);
     trigger.setAttribute('aria-expanded', 'false');
     const swatchMarkup = colorForValue ? '<span class="colorPickerSwatch" aria-hidden="true"></span>' : '';
-    trigger.innerHTML = (headerFooter ? '' : swatchMarkup) + '<span class="symbolPickerLabel"></span><svg class="symbolPickerCaret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg>';
+    trigger.innerHTML = (headerFooter ? '' : swatchMarkup) + '<span class="symbolPickerLabel"></span><svg class="symbolPickerCaret" viewBox="4 4 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg>';
     wrapper.append(trigger);
     select.classList.add('nativeSelectSource');
     select.insertAdjacentElement('afterend', wrapper);
@@ -345,9 +345,13 @@
       if (!pickersBySelect.has(select) && !select.classList.contains('nativeSelectSource')) convert(select);
     };
     document.querySelectorAll('select').forEach(tryConvert);
-    new MutationObserver((mutations) => {
+    const observer = new MutationObserver((mutations) => {
       let removed = false;
       for (const mutation of mutations) {
+        if (mutation.type === 'attributes') {
+          if (mutation.target.tagName === 'SELECT') tryConvert(mutation.target);
+          continue;
+        }
         if (mutation.removedNodes.length) removed = true;
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== 1) continue;
@@ -358,6 +362,8 @@
       if (removed) {
         pickersBySelect.forEach((picker, select) => { if (!select.isConnected) picker.destroy(); });
       }
-    }).observe(document.body, { childList: true, subtree: true });
+    });
+    const roots = [...document.querySelectorAll('.modals, #panelSelect, #sMConfigBar, dialog')];
+    roots.filter(root => !roots.some(other => other !== root && other.contains(root))).forEach(root => observer.observe(root, {childList:true, subtree:true, attributes:true, attributeFilter:['hidden','class','style']}));
   };
 })();

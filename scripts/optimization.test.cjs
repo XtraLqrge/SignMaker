@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const {compactJS,compactCSS,parse,normalize} = require('./build.cjs');
+const {compactJS,compactCSS,minifyJS,parse,normalize} = require('./build.cjs');
 const root=path.resolve(__dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const parsed=new Map();
@@ -76,6 +76,52 @@ test('compaction preserves ASI, regular expressions, template literals and direc
     assert.equal(normalize(parse(compactJS(source))),normalize(parse(source)));
   }
 });
+test('minification preserves global model names and representative behavior',()=>{
+  const source='class SampleElement { constructor(x=4){this.x=x;} value(){return this.x*2;} } const api={name:SampleElement.name,value:new SampleElement().value(),optional:x=>x?.v??3};';
+  for(const code of [source,minifyJS(source)]){
+    const c=context({});vm.runInContext(code+';this.result=[api.name,api.value,api.optional(null),api.optional({v:7})];',c);
+    assert.equal(JSON.stringify(c.result),'["SampleElement",8,3,7]');
+  }
+});
+test('editor resources load once on demand, preserving script execution order',async()=>{
+  const added=[];
+  const c=context({window:{localStorage:{getItem(){return null;}}},document:{
+    currentScript:{dataset:{editorScripts:'["js/a.js","js/b.js"]',editorCss:'css/editor.css'}},
+    createElement:tag=>({tag}),head:{appendChild:element=>added.push(element)}
+  }});
+  vm.runInContext(read('public/js/Startup.js'),c);
+  assert.equal(added.length,0,'Fresh visits do not start the editor early');
+  const first=c.window.SignMakerBoot.loadEditor(),second=c.window.SignMakerBoot.loadEditor();
+  assert.equal(first,second);assert.equal(added.length,3);
+  assert.equal(added[0].href,'css/editor.css');
+  assert.deepEqual(added.slice(1).map(element=>[element.src,element.async]),[['js/a.js',false],['js/b.js',false]]);
+  added.forEach(element=>element.onload());await first;
+});
+test('returning visits fetch their editor alongside the rendering scripts',async()=>{
+  const added=[];
+  const c=context({window:{localStorage:{getItem:key=>key==='signMaker.autosave.v1'?'saved':null}},document:{
+    currentScript:{dataset:{editorScripts:'["js/editor.js"]'}},createElement:()=>({}),head:{appendChild:element=>added.push(element)}
+  }});
+  vm.runInContext(read('public/js/Startup.js'),c);assert.equal(added.length,1);
+  added[0].onload();await c.window.SignMakerBoot.loadEditor();
+});
+test('critical CSS and deferred editor assets are complete and independently cached',()=>{
+  const manifest=JSON.parse(read('build-manifest.json')),html=read('public/index.html');
+  assert.ok(manifest.criticalCSS.gzipBytes<40000);
+  assert.ok(manifest.startupJS.gzipBytes<170000);
+  for(const source of manifest.deferredEditor){
+    assert.ok(fs.existsSync(path.join(root,'public',source)));
+    assert.ok(!html.includes('src="'+source+'"'),'Editor must be loaded by the startup coordinator');
+  }
+  const {criticalCSS}=require('./critical-css.cjs');
+  assert.match(criticalCSS(['css/sign-foundation.css','css/form.css'],readFile=>read('public/'+readFile)),/\.bE-textElement/);
+  assert.ok(read('public/'+manifest.deferredStyles).includes('.shieldPicker'));
+});
+test('SEO output allows crawling and provides a standalone dev deployment',()=>{
+  assert.match(read('public/index.html'),/<meta name="robots" content="index, follow">/);
+  assert.match(read('public/_headers'),/! X-Robots-Tag/);
+  assert.ok(!read('wrangler.dev.jsonc').includes('"previews"'));
+});
 test('production HTML references existing, content-addressed assets',()=>{
   const html=read('public/index.html'),manifest=JSON.parse(read('build-manifest.json'));
   for(const match of html.matchAll(/(?:src|href)="((?:js|css)\/[^"?]+)(?:\?[^"]*)?"/g)){
@@ -89,7 +135,7 @@ test('production HTML references existing, content-addressed assets',()=>{
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
     if(asset.source==='js/Control.js')source=source.replace('IconFallbacks.js?v=773d7c4b80c1',path.basename(manifest.assets.find(a=>a.source==='js/IconFallbacks.js').output));
     if(asset.source==='js/Shield.js')source=source.replace('"ShieldFallbacks.js"',JSON.stringify(path.basename(manifest.assets.find(a=>a.source==='js/ShieldFallbacks.js').output)));
-    assert.ok(normalize(parse(source))===normalize(parse(read('public/'+asset.output))),asset.source+' is stale or changed semantics; run npm run build');
+    assert.equal(read('public/'+asset.output), minifyJS(source), asset.source+' is stale; run npm run build');
     assert.ok(read('public/_headers').includes('/'+asset.output+'\n  Cache-Control: public, max-age=31536000, immutable'));
   }
 });

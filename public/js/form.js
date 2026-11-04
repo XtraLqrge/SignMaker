@@ -12602,10 +12602,13 @@ const getPostThicknessFallback = () =>
         const hasNativeOption = Array.from(nativeSelect.options || []).some(
           (option) => option.value === normalizedValue
         );
-
-        if (hasNativeOption) {
-          nativeSelect.value = normalizedValue;
+        if (!hasNativeOption) {
+          const option = document.createElement("option");
+          option.value = normalizedValue;
+          option.textContent = normalizedValue;
+          nativeSelect.replaceChildren(option);
         }
+        nativeSelect.value = normalizedValue;
       }
 
       const pickerApi =
@@ -13097,7 +13100,7 @@ const getPostThicknessFallback = () =>
           ...nextState,
         };
         syncTrigger();
-        renderItems();
+        if (wrapper.classList.contains("open")) renderItems();
       };
 
       const refreshPreview = () => {
@@ -13173,6 +13176,8 @@ const getPostThicknessFallback = () =>
       if (!nativeSelect) {
         return null;
       }
+      if (window.SignMakerEditorRuntime?.defer(nativeSelect, "shieldVariant", () =>
+        syncSdShieldVariantPickerForBase(baseValue, { requestedValue, preferRemembered, updateBlock }))) return null;
 
       const normalizedBase =
         baseValue ||
@@ -13304,6 +13309,8 @@ const getPostThicknessFallback = () =>
       if (!nativeSelect) {
         return null;
       }
+
+      if (window.SignMakerEditorRuntime?.defer(nativeSelect, "shieldBase", ensureSdShieldBasePicker)) return null;
 
       let pickerHost = nativeSelect.parentElement?.querySelector(
         ".sdShieldBasePickerHost"
@@ -18450,57 +18457,10 @@ const getPostThicknessFallback = () =>
       lib.appendOption(divider_colorSelect, value, { text: label });
     }
 
-    if (shield_shieldBase && ShieldElement.prototype.blockShieldBases) {
-      const shields = ShieldElement.prototype.blockShieldBases || [];
-      const currentValue =
-        shield_shieldBase.value || ShieldElement.prototype.defaultShieldBase;
-      shield_shieldBase.innerHTML = "";
-
-      const groupMap = new Map();
-      for (const shield of shields) {
-        const categories = Array.isArray(shield.categories)
-          ? shield.categories
-          : [];
-        const groupLabel = categories.length ? categories.join(" / ") : "Other";
-        if (!groupMap.has(groupLabel)) {
-          groupMap.set(groupLabel, []);
-        }
-        groupMap.get(groupLabel).push(shield);
-      }
-
-      let firstOptionValue = "";
-      const sortedGroups = Array.from(groupMap.entries()).sort((a, b) =>
-        a[0].localeCompare(b[0])
-      );
-
-      for (const [groupLabel, groupShields] of sortedGroups) {
-        const optgroup = document.createElement("optgroup");
-        optgroup.label = groupLabel;
-
-        groupShields
-          .slice()
-          .sort((a, b) =>
-            (a.label || a.value).localeCompare(b.label || b.value)
-          )
-          .forEach(({ value, label }) => {
-            const option = document.createElement("option");
-            option.value = value;
-            option.text = label || value;
-            if (!firstOptionValue) {
-              firstOptionValue = value;
-            }
-            if (currentValue && value === currentValue) {
-              option.selected = true;
-            }
-            optgroup.appendChild(option);
-          });
-
-        shield_shieldBase.appendChild(optgroup);
-      }
-
-      if (!shield_shieldBase.value && firstOptionValue) {
-        shield_shieldBase.value = firstOptionValue;
-      }
+    // The visible tree owns the catalog; its hidden value field needs one option.
+    if (shield_shieldBase) {
+      syncShieldBasePickerValue(shield_shieldBase.dataset.pickerValue ||
+        shield_shieldBase.value || ShieldElement.prototype.defaultShieldBase);
     }
       if (shield_shieldBase) {
         shield_shieldBase.addEventListener("change", () => {

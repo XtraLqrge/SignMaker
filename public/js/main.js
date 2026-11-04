@@ -4627,10 +4627,32 @@ const ungroupSelectedBlockElement = () => {
       ensureExtendedGuideArrowOptions();
       bindDownloadResolutionControl();
 
-      // Read the sign while the form loads its custom icon registry.
+      // A fresh sign needs no editor registries. Paint it before loading them.
       const savedSnapshot = getRestoreOnRefreshMode() === "never"
-        ? null : readSavedAppStateSnapshot();
+        ? null : await readSavedAppStateSnapshot();
       let restored = false, migratedLegacyNoneBanners = false;
+      const paintSign = async () => {
+        await Promise.all([
+          prepareIconImagesForPost(post),
+          window.SignMakerFonts?.preparePost(post),
+        ]);
+        redraw();
+        await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
+        document.documentElement.removeAttribute("data-sign-loading");
+        window.performance?.mark?.("signmaker:sign-ready");
+        window.performance?.measure?.("signmaker:sign-startup", "signmaker:init-start", "signmaker:sign-ready");
+        if (document.visibilityState !== "hidden") {
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
+        }
+      };
+      let hasStoredPostPreferences = false;
+      try {
+        hasStoredPostPreferences = ["signMaker.postPosition", "signMaker.showPost", "signMaker.postColor", "signMaker.postThickness"]
+          .some(key => window.localStorage.getItem(key) !== null);
+      } catch (_) {}
+      const paintedFreshSign = !savedSnapshot && !hasStoredPostPreferences;
+      if (paintedFreshSign) await paintSign();
+      await window.SignMakerBoot?.loadEditor();
       window.customShields = new CustomShields();
       await formHandler.init(exposeToFormHandler, {
         beforeUI: async () => {
@@ -4640,19 +4662,7 @@ const ungroupSelectedBlockElement = () => {
             currentlySelectedPanelIndex = post.panels.length - 1;
           }
           migratedLegacyNoneBanners = migrateLegacyNoneShieldBannersOnce();
-          await Promise.all([
-            prepareIconImagesForPost(post),
-            window.SignMakerFonts?.preparePost(post),
-          ]);
-          redraw();
-          await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
-          document.documentElement.removeAttribute("data-sign-loading");
-          window.performance?.mark?.("signmaker:sign-ready");
-          window.performance?.measure?.("signmaker:sign-startup", "signmaker:init-start", "signmaker:sign-ready");
-          // Give the panels a paint before the menu setup occupies the thread.
-          if (document.visibilityState !== "hidden") {
-            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
-          }
+          if (!paintedFreshSign) await paintSign();
         },
       });
       window.SignMakerEditorRuntime?.init();

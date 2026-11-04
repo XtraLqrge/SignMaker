@@ -1,0 +1,3 @@
+const lib={clearChildren:function(e){for(;e.firstChild;)e.removeChild(e.firstChild)},appendOption:function(e,r,{selected:t=!1,text:n}={}){
+// Asset pickers keep their value in hidden inputs, which have no options.
+if("INPUT"===e?.tagName)return;n||(n=r);const o=document.createElement("option");o.value=r,o.selected=t,o.appendChild(document.createTextNode(n)),e.appendChild(o)},colors:{Green:"rgb(0, 95, 77)",Blue:"rgb(0, 67, 123)",Brown:"rgb(98, 51, 30)",Yellow:"rgb(252, 207, 52)",White:"rgb(255, 255, 255)",Black:"rgb(0, 0, 0)",Purple:"#4B0082",Orange:"rgb(255, 89, 4)",Red:"rgb(255, 0, 0)","Fluorescent Pink":"rgb(255, 51, 204)","Fluorescent Yellow-Green":"rgb(153, 255, 0)"},shieldPositions:{Left:"row",Above:"column",Right:"row-reverse"}};

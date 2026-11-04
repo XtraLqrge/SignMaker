@@ -1,3 +1,5 @@
+> Historical first-pass notes. See [the latest mobile and SEO revision](mobile-performance-round2.md) for the current build.
+
 # Mobile performance pass, November 4, 2026
 
 This update starts from the previously delivered dev build. Its generated HTML

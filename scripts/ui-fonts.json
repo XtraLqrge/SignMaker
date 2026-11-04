@@ -180,6 +180,10 @@
       "source": "https://fonts.gstatic.com/s/overpass/v19/qFdH35WCmI96Ajtm81GlU9s.woff2",
       "bytes": 39380,
       "sha256": "29217ef8adef5f6c059feb461bdb029348205fc233dc9b6ca8604b0d068ac086"
+    },
+    "text.32b459fc830b67d3.woff2": {
+      "sha256": "32b459fc830b67d3b9e1a2fcfdf1950c8852a50901a775eab2144eb860a59b58",
+      "bytes": 35704
     }
   }
 }

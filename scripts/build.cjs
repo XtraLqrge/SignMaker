@@ -39,6 +39,16 @@ function build() {
     }
   }
   let html = fs.readFileSync(path.join(__dirname,'index.source.html'),'utf8');
+  assert.match(html, /^<!DOCTYPE html>/i, 'Standards-mode doctype is required');
+  const uiFonts=JSON.parse(fs.readFileSync(path.join(__dirname,'ui-fonts.json'),'utf8'));
+  const iconCoverage=JSON.parse(fs.readFileSync(path.join(__dirname,'ui-icon-coverage.json'),'utf8'));
+  for(const [file,record] of Object.entries(uiFonts.files)) {
+    const bytes=fs.readFileSync(path.join(publicRoot,'fonts/ui',file));
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),record.sha256,'UI font checksum: '+file);
+  }
+  assert.equal(uiFonts.files[iconCoverage.file].sha256,iconCoverage.sha256,'Icon coverage must match the included font');
+  for(const name of require('./ui-icons.cjs').collect(root,html))assert.ok(iconCoverage.verifiedIconNames.includes(name),'Missing icon glyph: '+name);
+  html=html.replace('<!-- UI_ICON_PRELOAD -->',`<link rel="preload" as="font" type="font/woff2" href="fonts/ui/${iconCoverage.file}" crossorigin>`);
   const assets = [];
   const emitted = new Map();
   const emitJS = relative => {
@@ -59,8 +69,7 @@ function build() {
     styles.push(relative);
     return styles.length === 1 ? '<!-- APP_STYLES -->' : '';
   });
-  // Keep all CSS tokens and cascade order unchanged. Relative URLs still resolve
-  // from /css/, and the Google Fonts link remains in its original position.
+  // Keep CSS tokens and cascade order unchanged. Relative URLs resolve from /css/.
   const css = styles.map(relative => `/* ${relative} */\n`+fs.readFileSync(path.join(publicRoot,relative),'utf8')).join('\n');
   const cssTarget = `css/app.${digest(css)}.css`;
   fs.writeFileSync(path.join(publicRoot,cssTarget),css);
@@ -75,7 +84,7 @@ function build() {
     for (const key of Object.keys(size)) sum[key]+=size[key];
     return sum;
   },{bytes:0,gzipBytes:0,brotliBytes:0});
-  const manifest = {format:1,scriptCount:startup.length,localStylesheetCount:1,startupJS:totals,assets};
+  const manifest = {format:1,scriptCount:startup.length,localStylesheetCount:1,startupJS:totals,uiIconFont:{file:'fonts/ui/'+iconCoverage.file,bytes:iconCoverage.bytes,names:uiFonts.iconNames.length},assets};
   fs.writeFileSync(manifestPath, JSON.stringify(manifest,null,2)+'\n');
   console.log(`Built ${startup.length} scripts, one local stylesheet; startup JS ${totals.bytes.toLocaleString()} bytes (${totals.brotliBytes.toLocaleString()} Brotli estimate).`);
   return manifest;

@@ -1,0 +1,185 @@
+{
+  "iconNames": [
+    "add",
+    "add_photo_alternate",
+    "arrow_drop_down",
+    "arrow_drop_up",
+    "attach_file",
+    "check",
+    "check_circle",
+    "chevron_left",
+    "chevron_right",
+    "close",
+    "close_fullscreen",
+    "content_copy",
+    "content_paste",
+    "dark_mode",
+    "delete",
+    "delete_sweep",
+    "description",
+    "download",
+    "download_done",
+    "drag_indicator",
+    "edit",
+    "edit_note",
+    "error",
+    "expand_content",
+    "expand_less",
+    "expand_more",
+    "explore",
+    "folder",
+    "hourglass_empty",
+    "image",
+    "keyboard_arrow_down",
+    "keyboard_arrow_up",
+    "layers",
+    "light_mode",
+    "menu_open",
+    "move_down",
+    "open_in_full",
+    "open_in_new",
+    "radio_button_checked",
+    "radio_button_unchecked",
+    "redo",
+    "refresh",
+    "restart_alt",
+    "save",
+    "settings",
+    "shield",
+    "tune",
+    "undo",
+    "upload",
+    "upload_file",
+    "visibility",
+    "visibility_off"
+  ],
+  "symbolRequest": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,0&icon_names=add,add_photo_alternate,arrow_drop_down,arrow_drop_up,attach_file,check,check_circle,chevron_left,chevron_right,close,close_fullscreen,content_copy,content_paste,dark_mode,delete,delete_sweep,description,download,download_done,drag_indicator,edit,edit_note,error,expand_content,expand_less,expand_more,explore,folder,hourglass_empty,image,keyboard_arrow_down,keyboard_arrow_up,layers,light_mode,menu_open,move_down,open_in_full,open_in_new,radio_button_checked,radio_button_unchecked,redo,refresh,restart_alt,save,settings,shield,tune,undo,upload,upload_file,visibility,visibility_off&display=block",
+  "textRequest": "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Overpass:ital,wght@0,100..900;1,100..900&display=swap",
+  "files": {
+    "symbols.c05d0d02818ef06d.woff2": {
+      "source": "https://fonts.gstatic.com/l/font?kit=kJEPBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzByHX9rA6RzaxHMPdY43zj-jCxv3fzvRNO1Vy1oTrdw0HasFiArONPu98w6-d_2EURKL_fLeZaZHeT4sSKhp0S_bagdh70Epu68em5ufcpg4xZbBlGZM7KXU0CZPcXiF-2jFiMlGGkuGdVsCvZjn2H0GM&skey=b8dc2088854b122f&v=v383",
+      "bytes": 18628,
+      "sha256": "c05d0d02818ef06d666d255ec0cecc5dff62ff148c4e10fdea09a85472efe3e6"
+    },
+    "text.4ee1c3b9f5a9e1e6.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwkT9nA2.woff2",
+      "bytes": 43992,
+      "sha256": "4ee1c3b9f5a9e1e6d0de25553e221995286c4f414d966ff88b044edbd2e2b44d"
+    },
+    "text.cd3d9beabd6f8b1f.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwAT9nA2.woff2",
+      "bytes": 32196,
+      "sha256": "cd3d9beabd6f8b1fe8726281516753faf2b6abbc1b0c22e68d148f81a597d9eb"
+    },
+    "text.f21ed36275ab20b7.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwgT9nA2.woff2",
+      "bytes": 18620,
+      "sha256": "f21ed36275ab20b74f0301ca70abf63cc3ab7addd294665486f946a09465e243"
+    },
+    "text.94fd1ce2533a7db4.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwcT9nA2.woff2",
+      "bytes": 33184,
+      "sha256": "94fd1ce2533a7db49fac13877633836edee820d2af40a0f1929d30c06e9dcacb"
+    },
+    "text.d102ea2c86a59e30.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwsT9nA2.woff2",
+      "bytes": 16216,
+      "sha256": "d102ea2c86a59e30a0c647a30791e251bf6701492a50549d1cdcf8a643fbbc98"
+    },
+    "text.cd92c8740f77f482.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwoT9nA2.woff2",
+      "bytes": 146460,
+      "sha256": "cd92c8740f77f482bcd39e831fa7b1445589e9203cc9edb39fd49435d8976257"
+    },
+    "text.c58f9d530baa7e96.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwQT9g.woff2",
+      "bytes": 79716,
+      "sha256": "c58f9d530baa7e96355f444502eca739d5eefa0f328f3d635b73648373214629"
+    },
+    "text.e3a8d2d7497a325b.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvvYwYL8g.woff2",
+      "bytes": 41520,
+      "sha256": "e3a8d2d7497a325b85c2e0c9d931ba1741415d23d1f828ebc5ce8c116dab44e8"
+    },
+    "text.e1dea13a93c69f52.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvmYwYL8g.woff2",
+      "bytes": 29636,
+      "sha256": "e1dea13a93c69f52837e370541ffe132508352666e9288ab910f2c422f4b9b50"
+    },
+    "text.e0f32d9ee75a83f4.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvuYwYL8g.woff2",
+      "bytes": 17376,
+      "sha256": "e0f32d9ee75a83f4031e1a7bc8926f962278e282d3535be7d8dbeb3bd62914b5"
+    },
+    "text.93c5ac80e25cda1c.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvhYwYL8g.woff2",
+      "bytes": 30200,
+      "sha256": "93c5ac80e25cda1cf289206c724027eeb187c9d398106f0079a912cbe80616ce"
+    },
+    "text.935ab355938e6cd9.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvtYwYL8g.woff2",
+      "bytes": 15268,
+      "sha256": "935ab355938e6cd9b5fa39f2c3250ee16f3b08807c65dc4162356b50dbc8c7a2"
+    },
+    "text.5e6d4fe9d9f4bff8.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvsYwYL8g.woff2",
+      "bytes": 133336,
+      "sha256": "5e6d4fe9d9f4bff8b2a2469d25ab19576bb85331e22c6ed51398e16f95d56a9c"
+    },
+    "text.2c295d99e26dcf35.woff2": {
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcviYwY.woff2",
+      "bytes": 72920,
+      "sha256": "2c295d99e26dcf357d4d01bcf270fd6924b600c9a13dd8c363ef114f4c6976fa"
+    },
+    "text.2e2e275ace96af3a.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdB35WCmI96Ajtm81GgY9TqxycJ.woff2",
+      "bytes": 16744,
+      "sha256": "2e2e275ace96af3a6b021bf201e9ddf88af7404536d3ad2df2646191e3109272"
+    },
+    "text.adfc2ea29f483d75.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdB35WCmI96Ajtm81GgY93qxycJ.woff2",
+      "bytes": 23424,
+      "sha256": "adfc2ea29f483d75ff7dc739a601ebe1717bc1142700d523124f5063a48935a7"
+    },
+    "text.491fa36fac452d42.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdB35WCmI96Ajtm81GgY9bqxycJ.woff2",
+      "bytes": 8840,
+      "sha256": "491fa36fac452d4228ae8bc8d598891946d39d56ca2a81fdcd0c2499cb91c78b"
+    },
+    "text.2e42fd68985ac5a4.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdB35WCmI96Ajtm81GgY9fqxycJ.woff2",
+      "bytes": 49092,
+      "sha256": "2e42fd68985ac5a4d3e7afc802dd282fe96e210d5158ac55223c314758d604d7"
+    },
+    "text.3d13e308a3bc8d21.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdB35WCmI96Ajtm81GgY9nqxw.woff2",
+      "bytes": 40796,
+      "sha256": "3d13e308a3bc8d219fb17feec458c76781bacfcfbbab08e46266e34486aaaa21"
+    },
+    "text.12a07033692a4d1e.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdH35WCmI96Ajtm81GoU9vyww.woff2",
+      "bytes": 16708,
+      "sha256": "12a07033692a4d1ecea07c0918b8bdedd376b66ed5cf0f4489039606227c977a"
+    },
+    "text.77b83f0f4040e008.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdH35WCmI96Ajtm81GhU9vyww.woff2",
+      "bytes": 27448,
+      "sha256": "77b83f0f4040e0084bb4a21929439052aab64f444c10b69fcce352faa6a9c539"
+    },
+    "text.45d2a9a17a5d513e.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdH35WCmI96Ajtm81GqU9vyww.woff2",
+      "bytes": 8480,
+      "sha256": "45d2a9a17a5d513e82a28f3479a747755cea07dac6bcafd7fdbf248f79e47f5f"
+    },
+    "text.0a1c9727f08b9125.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdH35WCmI96Ajtm81GrU9vyww.woff2",
+      "bytes": 46080,
+      "sha256": "0a1c9727f08b91252c19bd4ca36caf98162455f33c0adcac935606b5d8d11938"
+    },
+    "text.29217ef8adef5f6c.woff2": {
+      "source": "https://fonts.gstatic.com/s/overpass/v19/qFdH35WCmI96Ajtm81GlU9s.woff2",
+      "bytes": 39380,
+      "sha256": "29217ef8adef5f6c059feb461bdb029348205fc233dc9b6ca8604b0d068ac086"
+    }
+  }
+}

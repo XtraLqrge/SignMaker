@@ -24,13 +24,19 @@ window.SignMakerEditorRuntime=(()=>{
     if(!previous||previous.kind==='native'||previous.kind===kind)pending.set(element,{kind,build});
     return true;
   };
+  const ensureElement=element=>{
+    const job=pending.get(element);
+    if(!job)return;
+    pending.delete(element);
+    if(element.isConnected)job.build();
+  };
   const ensure=()=>{
     if(flushing)return;
     flushing=true;
     try{
       for(const [element,job] of [...pending]){
         if(!element.isConnected){pending.delete(element);continue;}
-        if(isActive(element)){pending.delete(element);job.build();}
+        if(isActive(element))ensureElement(element);
       }
     }finally{flushing=false;}
   };
@@ -49,5 +55,5 @@ window.SignMakerEditorRuntime=(()=>{
     },true);
     ensure();
   };
-  return {init,isActive,defer,ensure,schedule,pendingKind:element=>pending.get(element)?.kind,pendingCount:()=>pending.size};
+  return {init,isActive,defer,ensureElement,ensure,schedule,pendingKind:element=>pending.get(element)?.kind,pendingCount:()=>pending.size};
 })();

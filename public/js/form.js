@@ -4429,6 +4429,10 @@ const getPostThicknessFallback = () =>
     const positionPanelStylePopover = () => {
       const modalHolder = document.querySelector(".modals");
       const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
+      if (!activeMenu || !panelStylePopoverIsOpen()) {
+        clearPanelStylePopoverPosition();
+        return;
+      }
       const panelStyleModal = document.querySelector(".sMModal."+activeMenu);
       const configBar = document.getElementById("sMConfigBar");
       const trigger = document.getElementById(activeMenu);
@@ -9601,11 +9605,22 @@ const getPostThicknessFallback = () =>
       }
     };
 
+    const colorSelectLabels = new WeakMap();
     const getColorSelectLabelText = (selectEl) => {
       if (!selectEl) {
         return "";
       }
-      if (selectEl.labels) return selectEl.labels[0]?.textContent || "";
+      const cached = colorSelectLabels.get(selectEl);
+      if (cached && cached.id === selectEl.id && cached.label.isConnected &&
+          (cached.label.htmlFor ? cached.label.htmlFor === selectEl.id : cached.label.contains(selectEl))) {
+        return cached.label.textContent || "";
+      }
+      const labels = selectEl.labels;
+      if (labels) {
+        const label = labels[0];
+        if (label) colorSelectLabels.set(selectEl, {id:selectEl.id,label});
+        return label?.textContent || "";
+      }
 
       if (selectEl.id) {
         const escapedId =
@@ -9636,18 +9651,12 @@ const getPostThicknessFallback = () =>
         selectEl.className,
         selectEl.dataset.tooltip,
         selectEl.getAttribute("data-toolTip"),
-        getColorSelectLabelText(selectEl),
       ]
         .filter(Boolean)
         .join(" ");
 
-      if (/font|alignment|position|variant|width|corner|measurement|orientation|shield|icon|logo|arrow|lane|spacing|padding/i.test(descriptor)) {
-        if (!/color|bg|background|border/i.test(descriptor)) {
-          return false;
-        }
-      }
-
-      return /color|bg|background|border/i.test(descriptor);
+      if (/color|bg|background|border/i.test(descriptor)) return true;
+      return /color|bg|background|border/i.test(getColorSelectLabelText(selectEl));
     };
 
     const getResolvedColorValue = (value) => {
@@ -13808,6 +13817,7 @@ const getPostThicknessFallback = () =>
       const syncTrigger = () => {
         const entry = findArrowPickerEntryByValue(currentValue, items);
         triggerLabel.textContent = entry ? entry.label : placeholder;
+        if (window.SignMakerEditorRuntime?.defer(wrapper, "arrow-preview", syncTrigger)) return;
           triggerIconHolder.innerHTML = "";
           const triggerIcon = createPreviewNode(entry ? entry.value : "", previewOptions);
           if (triggerIcon) {
@@ -13819,6 +13829,11 @@ const getPostThicknessFallback = () =>
       };
 
       const renderList = () => {
+        if (!wrapper.classList.contains("open")) return;
+        if (list.childElementCount === items.length) {
+          [...list.children].forEach((row,index) => row.classList.toggle("selected", items[index].value === currentValue));
+          return;
+        }
         list.innerHTML = "";
 
         items.forEach((item) => {
@@ -13863,9 +13878,11 @@ const getPostThicknessFallback = () =>
           event.stopPropagation();
 
           const willOpen = !wrapper.classList.contains("open");
+          if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
           wrapper.classList.toggle("open", willOpen);
 
           if (willOpen) {
+            renderList();
             placePopover();
           }
         });
@@ -13896,9 +13913,10 @@ const getPostThicknessFallback = () =>
 
       return {
         element: wrapper,
-        destroy: () => pickerListeners.abort(),
+        destroy: () => { pickerListeners.abort(); popover.remove(); wrapper.remove(); },
         getValue: () => currentValue,
         setValue: (nextValue) => {
+          if (currentValue === (nextValue || "")) return;
           currentValue = nextValue || "";
           syncTrigger();
           renderList();
@@ -19085,6 +19103,8 @@ const getPostThicknessFallback = () =>
       const shieldItemSeleted = document.createElement("span");
       shieldCategoryType.className = "shieldCategoryType";
       shieldCategoryImg.className = "shieldItemImg";
+      shieldCategoryImg.loading = "lazy";
+      shieldCategoryImg.decoding = "async";
       shieldItemName.className = "shieldItemName";
       shieldItemSeleted.className =
         "shieldItemSelected material-symbols-outlined";
@@ -19155,7 +19175,11 @@ const getPostThicknessFallback = () =>
       }
     };
 
-    createFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+    const populateLegacyShieldGallery = () => {
+      if (presetShieldList.childElementCount) return;
+      createFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+    };
+    if (!window.SignMakerEditorRuntime?.defer(presetShieldList, "shield-gallery", populateLegacyShieldGallery)) populateLegacyShieldGallery();
 
     document.querySelector("#presetShields").addEventListener("click", () => {
       document.querySelector(".shieldLibrary").dataset.tab = "presetShieldList";
@@ -19992,6 +20016,7 @@ const getPostThicknessFallback = () =>
 
   const updateSdIconPreview = () => {
     const previewImage = document.getElementById("sdIcon_previewImage");
+    if (previewImage && window.SignMakerEditorRuntime?.defer(previewImage, "icon-preview", updateSdIconPreview)) return;
     const label = document.getElementById("sdIcon_selectedLabel");
 
     const { key, definition } = getSdIconDefinition();
@@ -25275,6 +25300,7 @@ const getPostThicknessFallback = () =>
         selectedShield.shieldType = "custom";
       });
 
+      window.SignMakerEditorRuntime?.ensureElement(document.querySelector("#presetShieldList"));
       updateShieldModalVisual(selectedShield, true);
 
       holder.style.display = "flex";

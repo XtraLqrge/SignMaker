@@ -43,6 +43,7 @@ class Element {
   get childElementCount(){return this.children.length;}
   replaceWith(node){const parent=this.parentElement;if(parent){parent.children[parent.children.indexOf(this)]=node;node.parentElement=parent;this.parentElement=null;}}
   appendChild(node){node.parentElement?.children.splice(node.parentElement.children.indexOf(node),1);this.children.push(node);node.parentElement=this;return node;}
+  append(...nodes){nodes.forEach(node=>this.appendChild(node));}
   remove(){this.parentElement?.children.splice(this.parentElement.children.indexOf(this),1);this.isConnected=false;}
   matches(selector){return selector.split(',').some(s=>s.startsWith('.')?this.classList.contains(s.slice(1)):this.tagName===s.toUpperCase());}
   closest(selector){for(let node=this;node;node=node.parentElement)if(node.matches(selector))return node;return null;}
@@ -212,4 +213,98 @@ test('asset compression preserves PNG raster bytes and ancillary chunks',()=>{
   assert.ok(raster(before).equals(raster(after)));
   assert.deepEqual(after.filter(part=>part.type!=='IDAT').map(part=>part.raw),before.filter(part=>part.type!=='IDAT').map(part=>part.raw));
   assert.ok(compressed.length<=sample.length);assert.ok(recompressPNG(compressed).equals(compressed));
+});
+
+test('UI fonts load locally and every interface icon has a verified glyph',()=>{
+  const crypto=require('node:crypto'),manifest=JSON.parse(read('scripts/ui-fonts.json')),coverage=JSON.parse(read('scripts/ui-icon-coverage.json'));
+  const html=read('public/index.html');
+  assert.match(html,/^<!DOCTYPE html>/i);
+  assert.equal(/<(?:link|script)\b[^>]*(?:fonts\.googleapis\.com|fonts\.gstatic\.com)/.test(html),false);
+  const icons=fs.readFileSync(path.join(root,'public/fonts/ui',coverage.file));
+  assert.equal(crypto.createHash('sha256').update(icons).digest('hex'),coverage.sha256);
+  assert.ok(icons.length<25000);
+  const required=require('./ui-icons.cjs').collect(root,read('scripts/index.source.html'));
+  for(const icon of [...required,...manifest.iconNames])assert.ok(coverage.verifiedIconNames.includes(icon),icon);
+  for(const [file,record]of Object.entries(manifest.files)){
+    const bytes=fs.readFileSync(path.join(root,'public/fonts/ui',file));
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),record.sha256,file);
+  }
+  const css=read('public/css/ui-fonts.css');
+  assert.equal(/url\(https?:/.test(css),false);
+  assert.match(css,/font-family: 'Inter'/);assert.match(css,/font-family: 'Overpass'/);assert.match(css,/font-display: swap/);
+});
+
+test('settings positioning handles closed and unknown menus without invalid selectors',()=>{
+  const bar={dataset:{currentMenu:''}},holder={classList:new Classes(),style:{removeProperty(){}}};
+  const document={getElementById:id=>id==='sMConfigBar'?bar:null,querySelector:selector=>{
+    if(selector.endsWith('.')||selector.includes('undefined'))throw Error('Invalid selector '+selector);
+    return selector==='.modals'?holder:null;
+  }};
+  const c=context({document});
+  vm.runInContext(['panelStylePopoverIsOpen','clearPanelStylePopoverPosition','positionPanelStylePopover'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.position=positionPanelStylePopover;',c);
+  for(const menu of ['',undefined,'guideArrowConfig','subPanelConfig','templates','panelStyleConfig','appSettingsConfig']){
+    bar.dataset.currentMenu=menu;assert.doesNotThrow(()=>c.position(),String(menu));
+  }
+});
+
+test('deferred galleries can initialize before a dialog opens and stay initialized',()=>{
+  const dialog=new Element('','DIALOG'),gallery=new Element();dialog.open=false;dialog.appendChild(gallery);
+  const c=context({window:{},document:{getElementById:()=>null}});vm.runInContext(read('public/js/EditorRuntime.js'),c);
+  const api=c.window.SignMakerEditorRuntime;let built=0;
+  assert.equal(api.defer(gallery,'gallery',()=>built++),true);api.ensure();assert.equal(built,0);
+  api.ensureElement(gallery);api.ensureElement(gallery);assert.equal(built,1);
+  dialog.open=true;api.ensure();assert.equal(built,1);
+});
+
+test('legacy shield gallery creates no preview images during closed-dialog startup',()=>{
+  const holder=new Element(),dialog=new Element('','DIALOG');dialog.open=false;dialog.appendChild(holder);let images=0;
+  const document={createElement:tag=>{if(tag==='img')images++;return new Element('',tag.toUpperCase());},getElementById:()=>null};
+  const c=context({document,window:{},presetShieldList:holder,Shield:{prototype:{shieldDirectory:{Region:{type:'category',I:{type:'shield',name:'Interstate',variants:['2 Digit']},US:{type:'shield',name:'US Route',variants:['2 Digit']}}},getDirectoryFromShield:(name,variant)=>name+'/'+variant}}});
+  vm.runInContext(read('public/js/EditorRuntime.js'),c);
+  vm.runInContext(['createShieldRow','createShieldCategory','createFromDir','populateLegacyShieldGallery'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.populate=populateLegacyShieldGallery;',c);
+  c.window.SignMakerEditorRuntime.defer(holder,'gallery',c.populate);assert.equal(images,0);
+  c.window.SignMakerEditorRuntime.ensureElement(holder);assert.equal(images,2);
+  const rows=holder.querySelectorAll('.shieldCategoryType');assert.equal(rows.length,2);assert.equal(rows[0].dataset.name,'I');
+  for(const image of holder.querySelectorAll('IMG')){assert.equal(image.loading,'lazy');assert.equal(image.decoding,'async');}
+  c.populate();assert.equal(images,2);
+});
+
+test('arrow previews defer construction and list rows persist across selection changes',()=>{
+  const modal=new Element('sMModal guideArrowConfig'),mount=new Element('','SELECT');modal.appendChild(mount);
+  const bar={dataset:{currentMenu:''}},events=[];let images=0,selected='';
+  const document={createElement:tag=>new Element('',tag.toUpperCase()),getElementById:()=>bar,addEventListener:(...args)=>events.push(args)};
+  const window={addEventListener(){},SignMakerDropdowns:{prepareMenu(){},positionMenu(){}}};
+  const c=context({document,window,AbortController,createArrowPreviewNode:()=>{images++;return new Element('','IMG');},ARROW_PICKER_ITEMS:[]});
+  vm.runInContext(read('public/js/EditorRuntime.js'),c);
+  vm.runInContext(['findArrowPickerEntryByValue','createFlatArrowPicker'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.create=createFlatArrowPicker;',c);
+  const picker=c.create({mount,value:'A',items:[{value:'A',label:'First'},{value:'B',label:'Second'}],onChange:value=>selected=value});
+  assert.equal(images,0);
+  bar.dataset.currentMenu='guideArrowConfig';window.SignMakerEditorRuntime.ensure();assert.equal(images,1);
+  const trigger=picker.element.children[0],popover=picker.element.children[1],list=popover.children[0];
+  const click=node=>node.events.find(([type])=>type==='click')[1]({preventDefault(){},stopPropagation(){}});
+  assert.equal(list.childElementCount,0);click(trigger);assert.equal(list.childElementCount,2);assert.equal(images,3);
+  const first=list.children[0];click(list.children[1]);assert.equal(selected,'B');assert.equal(picker.getValue(),'B');assert.equal(list.children[0],first);assert.equal(images,4);
+  click(trigger);assert.equal(list.children[0],first);assert.equal(images,4);
+  events.find(([type])=>type==='click')[1]({target:new Element()});assert.equal(picker.element.classList.contains('open'),false);
+  picker.destroy();assert.equal(picker.element.isConnected,false);assert.equal(popover.isConnected,false);
+});
+
+test('color classification caches label discovery without hiding label text changes',()=>{
+  let discoveries=0;const label={isConnected:true,htmlFor:'choice',textContent:'Color'};
+  const select={tagName:'SELECT',id:'choice',name:'',className:'',dataset:{},classList:new Classes(),getAttribute(){return null;},get labels(){discoveries++;return[label];}};
+  const c=context({document:{},CSS:{escape:x=>x}});
+  vm.runInContext('let colorSelectLabels=new WeakMap();'+['getColorSelectLabelText','isColorSelectElement'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.classify=isColorSelectElement;',c);
+  for(let n=0;n<20;n++)assert.equal(c.classify(select),true);assert.equal(discoveries,1);
+  label.textContent='Alignment';assert.equal(c.classify(select),false);assert.equal(discoveries,1);
+  select.id='backgroundColor';assert.equal(c.classify(select),true);assert.equal(discoveries,1);
+  select.classList.add('fontPickerNativeSelect');assert.equal(c.classify(select),false);
+});
+
+test('hidden icon previews do not request or crop their default artwork',()=>{
+  const modal=new Element('sMModal subPanelConfig'),image=new Element('','IMG');modal.appendChild(image);
+  const bar={dataset:{currentMenu:''}},label={};let prepared=0;
+  const document={getElementById:id=>({sMConfigBar:bar,sdIcon_previewImage:image,sdIcon_selectedLabel:label}[id])};
+  const c=context({document,window:{},getSdIconDefinition:()=>({key:'A',definition:{label:'Airport',src:'airport.svg'}}),setPreparedIconImageSource:()=>prepared++});
+  vm.runInContext(read('public/js/EditorRuntime.js'),c);vm.runInContext(declaration('public/js/form.js','updateSdIconPreview')+'this.update=updateSdIconPreview;',c);
+  c.update();assert.equal(prepared,0);bar.dataset.currentMenu='subPanelConfig';c.window.SignMakerEditorRuntime.ensure();assert.equal(prepared,1);assert.equal(label.textContent,'Current: Airport');
 });

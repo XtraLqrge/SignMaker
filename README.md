@@ -4,6 +4,40 @@
 
 SignMaker is a JavaScript-based app for creating highway guide signs. Based off of [Kurumi's Sign Maker](http://www.kurumi.com/roads/signmaker). Allows for the creation of highway guide signs in the style defined by the United States FHWA in their [MUTCD](https://mutcd.fhwa.dot.gov/kno_2009r1r2.htm).
 
+## Run and deploy
+
+This project includes editable sources and a prebuilt `public/` directory. Serve
+`public/` through a web server. For example, from the project root:
+
+```sh
+python3 -m http.server 8765 --directory public
+```
+
+Open `http://localhost:8765`. Use HTTP rather than opening `index.html` as a file,
+so local assets, saved templates and downloads work normally.
+
+After editing JavaScript or CSS in `public/`, or the canonical HTML in
+`scripts/index.source.html`, regenerate the production files:
+
+```sh
+npm run build
+npm test
+```
+
+These commands require Node 20 or newer and no npm dependencies. The build keeps
+the source files, checks JavaScript syntax equivalence, and produces hashed
+assets, `public/index.html`, cache headers and `build-manifest.json`. Edit
+`scripts/index.source.html` instead of the generated `public/index.html`.
+
+For the existing Cloudflare Workers static-assets deployment, use
+`npm run build` as the build command and `npx wrangler deploy` as the deploy
+command. The included `wrangler.jsonc` serves `public/`. Keep the existing
+production and preview branch settings in Cloudflare.
+
+The UI fonts are included locally, with licenses in `docs/licenses/`. Normal
+builds do not download fonts. See [performance notes](docs/performance.md) for
+the measured bottlenecks, changes and optional browser checks.
+
 While the other versions (dki-os/SignMaker) and its forks do exist, this fork attempts to recreate (most) of the existing signs inside the US. Features include:
 
 * Clearview font (some states use Clearview on their signs)

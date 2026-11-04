@@ -14,7 +14,7 @@
 /js/FontLoader.bf646d121cd050e9.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/EditorRuntime.8581aa3bf5ce7193.js
+/js/EditorRuntime.644793818b4408ca.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.be593d1e6a588b55.js
@@ -59,7 +59,7 @@
 /js/IconPicker.9baca953966635e8.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.97c0034af1363084.js
+/js/form.f3f69e89a04adc60.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.777ab62b7e28746f.js
@@ -83,5 +83,5 @@
 /js/DropdownTheme.8711b89db0fb95f2.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.50152f890b1851ed.css
+/css/app.7e662199744fde13.css
   Cache-Control: public, max-age=31536000, immutable

@@ -22,6 +22,7 @@ const url=process.argv[2]||'http://localhost:8765';
     await page.goto(url,{waitUntil:'load'});
     const ready=()=>page.waitForFunction(()=>document.documentElement.dataset.appReady==='true',null,{timeout:60000});
     await ready();
+    assert.equal(await page.locator('#presetShieldList img').count(),0,'Closed shield gallery loads no thumbnails');
     const metrics=await page.evaluate(()=>({
       url:location.href,userAgent:navigator.userAgent,
       navigation:performance.getEntriesByType('navigation').map(e=>e.toJSON()),
@@ -61,8 +62,8 @@ const url=process.argv[2]||'http://localhost:8765';
     await page.locator('#appDropdownAnimations').check();
     const panelsBefore=await page.evaluate(()=>app.getPost().panels.length);
     await page.evaluate(()=>app.newPanel());assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
-    await page.evaluate(()=>app.undo());assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore);
-    await page.evaluate(()=>app.redo());assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
+    await page.evaluate(()=>app.undo());await page.waitForFunction(count=>app.getPost().panels.length===count,panelsBefore);
+    await page.evaluate(()=>app.redo());await page.waitForFunction(count=>app.getPost().panels.length===count,panelsBefore+1);
     await page.reload();await ready();assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed. Timings and screenshots: '+output);

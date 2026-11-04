@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en" data-theme="light" data-sign-loading>
 
 <head>
@@ -11,8 +12,6 @@
     }
   </style>
   <meta charset="UTF-8">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=Edge">
   <meta name="author" content="Brendon Strowe, Maplou, JK_Potato/Computer, DuskDarf1, XtraLqrge">
@@ -54,8 +53,7 @@
     })();
   </script>
   <link rel="icon" type="image/x-icon" href="img/other-symbols/icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- UI_ICON_PRELOAD -->
   <script src="js/FontLoader.js?v=20261028-fonts1"></script>
   <!-- CSS Links -->
   <link href="css/page.css?v=20261028-fonts1" rel="stylesheet" type="text/css">
@@ -63,7 +61,7 @@
   <link href="css/shields.css?v=20261025c" rel="stylesheet" type="text/css">
   <link href="css/form.css?v=20261104-ui3" rel="stylesheet" type="text/css">
   <link href="css/sign-foundation.css?v=20261025a" rel="stylesheet" type="text/css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=Overpass:ital,wght@0,100..900;1,100..900&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap">
+  <link rel="stylesheet" href="css/ui-fonts.css">
   <!-- Page Links -->
   <script defer src="js/EditorRuntime.js" type="text/javascript"></script>
   <script defer src="js/AlignmentButtons.js?v=20261104-layout5" type="text/javascript"></script>
@@ -194,14 +192,14 @@
           <h3>Saved Images</h3>
           <div id="savedCustomShieldsList">
             <div class="customShieldItem">
-              <img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="shieldItemImg">
+              <img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="shieldItemImg" loading="lazy" decoding="async">
               <span class="shieldItemName">Custom Shield 1</span>
               <button class="deleteCustomShieldBtn">
                 <span class="material-symbols-outlined">delete</span>
               </button>
             </div>
             <div class="customShieldItem selected">
-              <img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="shieldItemImg">
+              <img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="shieldItemImg" loading="lazy" decoding="async">
               <span class="shieldItemName">Custom Shield 2</span>
               <button class="deleteCustomShieldBtn">
                 <span class="material-symbols-outlined">delete</span>
@@ -211,7 +209,7 @@
         </div>
       </div>
       <div class="shieldPreview">
-        <img class="selectedShieldPreview" src="img/shields/United%20States/Interstate/I-2Digit.svg">
+        <img class="selectedShieldPreview" src="img/shields/United%20States/Interstate/I-2Digit.svg" loading="lazy" decoding="async">
         <br>
         <span class="selectedShieldName">Interstate</span>
         <br>
@@ -268,7 +266,7 @@
             <div class="customShieldMakerPreviewFrame">
               <div class="customShieldMakerPreviewStage">
                 <div id="customShieldMakerShieldShell" class="shield customShieldMakerShieldShell">
-                  <img id="customShieldMakerPreviewImg" class="shieldImg" alt="Custom shield preview" hidden>
+                  <img id="customShieldMakerPreviewImg" class="shieldImg" alt="Custom shield preview" hidden loading="lazy" decoding="async">
                   <span id="customShieldMakerRouteNumber" class="routeNumber"></span>
                 </div>
               </div>
@@ -1243,19 +1241,19 @@
                       <button class="dragIndicator">
                         <span class="material-symbols-outlined">drag_indicator</span>
                       </button>
-                      <span class="smSPShieldBlock"><img src="img/shields/United%20States/AZ/AZ-2Digit.svg" class="smSPShieldVisual">AZ-45</span>
+                      <span class="smSPShieldBlock"><img src="img/shields/United%20States/AZ/AZ-2Digit.svg" class="smSPShieldVisual" loading="lazy" decoding="async">AZ-45</span>
                     </div>
                     <div class="smSPShieldRow">
                       <button class="dragIndicator">
                         <span class="material-symbols-outlined">drag_indicator</span>
                       </button>
-                      <span class="smSPShieldBlock"><img src="img/shields/United%20States/TX/TXTOLL-2Digit.svg" class="smSPShieldVisual">TX-45 TOLL</span>
+                      <span class="smSPShieldBlock"><img src="img/shields/United%20States/TX/TXTOLL-2Digit.svg" class="smSPShieldVisual" loading="lazy" decoding="async">TX-45 TOLL</span>
                     </div>
                     <div class="smSPShieldRow">
                       <button class="dragIndicator">
                         <span class="material-symbols-outlined">drag_indicator</span>
                       </button>
-                      <span class="smSPShieldBlock"><img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="smSPShieldVisual">I-35E</span>
+                      <span class="smSPShieldBlock"><img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="smSPShieldVisual" loading="lazy" decoding="async">I-35E</span>
                     </div>
                   </div>
                 </div>
@@ -1263,7 +1261,7 @@
                   <button class="dragIndicator">
                     <span class="material-symbols-outlined">drag_indicator</span>
                   </button>
-                  <span class="smSPShieldBlock"><img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="smSPShieldVisual">I-35</span>
+                  <span class="smSPShieldBlock"><img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="smSPShieldVisual" loading="lazy" decoding="async">I-35</span>
                 </div>
               </div>
 
@@ -1272,7 +1270,7 @@
                 <div id="smSPShieldImgConfig">
                   <div>
                     <div id="smSPShieldImgPreview">
-                      <img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="smSPShieldLargeVisual">
+                      <img src="img/shields/United%20States/Interstate/I-2Digit.svg" class="smSPShieldLargeVisual" loading="lazy" decoding="async">
                     </div>
                     <button id="changeImgBtn">
                       <span class="material-symbols-outlined">image</span>Change Image
@@ -1723,7 +1721,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
 
                   <div class="sdIconPreviewColumn">
                     <div id="sdIcon_previewBox" class="sdIconPreviewBox" aria-label="Selected icon preview">
-                      <img id="sdIcon_previewImage" alt="Selected icon preview">
+                      <img id="sdIcon_previewImage" alt="Selected icon preview" loading="lazy" decoding="async">
                     </div>
                   </div>
                 </div>
@@ -2112,7 +2110,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
       <div class="sMModal templates" data-current-menu="sMTemplatesSaved">
         <nav class="sMModalBar">
           <div class="sMModalTitle">
-            <img src="img/other-symbols/ui/template.svg" alt="" class="configIcon templateIcon">
+            <img src="img/other-symbols/ui/template.svg" alt="" class="configIcon templateIcon" loading="lazy" decoding="async">
             Templates
           </div>
           <div data-tab="sMTemplatesSaved" class="sMModalTab selected" id="sMTemplatesSavedTab">Saved</div>
@@ -2319,7 +2317,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <span>Guide Arrows</span>
       </button>
       <button id="templates" class="sMConfigOption">
-        <img src="img/other-symbols/ui/template.svg" alt="Templates Icon" class="configIcon templateIcon">
+        <img src="img/other-symbols/ui/template.svg" alt="Templates Icon" class="configIcon templateIcon" loading="lazy" decoding="async">
         <span id="templatesButtonLabel">Templates</span>
       </button>
       <button type="button" id="copySign" class="sMConfigOption" data-tooltip="Copy Sign">
@@ -2355,7 +2353,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
   </form>
   <footer>
     <div>
-      <img src="img/other-symbols/icon.png" alt="SignMaker 2.19 logo" height="38">
+      <img src="img/other-symbols/icon.png" alt="SignMaker 2.19 logo" height="38" loading="lazy" decoding="async">
       <div class="footerdiv">
         <h3>Highway Sign Maker (v2.19) [BETA]</h3>
         <p>

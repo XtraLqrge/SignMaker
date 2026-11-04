@@ -1,4 +1,4 @@
-![SignMaker Preview Thumbnail](https://github.com/JKPotato-Computer/SignMaker/blob/main/img/other-symbols/Banner.png)
+![SignMaker Preview Thumbnail](https://github.com/XtraLqrge/SignMaker/blob/v2.19-beta/public/img/other-symbols/Banner.png)
 
 ### Important: The page for SignMaker v2.19 has moved to [hwysignmaker.com](https://hwysignmaker.com/).
 

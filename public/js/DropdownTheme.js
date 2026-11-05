@@ -37,7 +37,7 @@ window.SignMakerDropdowns = (() => {
     release(menu);
   };
   const animateOpen=(menu,state)=>{
-    if(!animationsEnabled||typeof menu.animate!=='function')return;
+    if(!animationsEnabled||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||typeof menu.animate!=='function')return;
     const offset=menu.classList.contains('opensUp')?'0 0.15rem':'0 -0.15rem';
     // Filter and translation animate independently of the final layout and scale.
     const animation=menu.animate([{filter:'opacity(0)',translate:offset},{filter:'opacity(1)',translate:'0 0'}],{duration:160,easing:'ease-out'});
@@ -51,20 +51,20 @@ window.SignMakerDropdowns = (() => {
     if(!animationsEnabled)for(const state of portals.values()){state.animation?.cancel();state.animation=null;}
   };
   const setOpen=(menu,owner,openClass='open')=>{
+    const state=portals.get(menu);
     const requested=owner.isConnected&&!owner.hidden&&!owner.classList.contains('hidden')&&owner.classList.contains(openClass);
     if(!requested)menu.dataset.dropdownReady='false';
-    const open=requested&&menu.dataset.dropdownReady==='true';
+    const open=requested&&menu.dataset.dropdownReady==='true'&&state?.anchorVisible!==false;
     menu.classList.toggle('open',open);
     menu.setAttribute('aria-hidden',String(!open));
     menu.inert=!open;
     put(menu,{'opacity':open?'1':'0','visibility':open?'visible':'hidden','pointer-events':open?'auto':'none'});
-    const state=portals.get(menu);
     if(state){
       if(open&&!state.open)animateOpen(menu,state);
       if(!open){state.animation?.cancel();state.animation=null;}
       state.open=open;
     }
-    if(!open)release(menu);
+    if(!requested)release(menu);
   };
   const positionMenu=(menu,trigger,{minWidth=12.5,maxWidth=24,openClass='open',beside=null,anchor=null,fitContent=false}={})=>{
     const owner=trigger.closest(owners)||trigger.parentElement;
@@ -89,7 +89,9 @@ window.SignMakerDropdowns = (() => {
     const savedScrollTop=menu.scrollTop;
     menu.classList.add('smDropdownMenu');
     const triggerRect=trigger.getBoundingClientRect();
-    const rect=anchor?.isConnected?anchor.getBoundingClientRect():triggerRect;
+    const reference=anchor?.isConnected?anchor:trigger;
+    let rect=reference===trigger?triggerRect:reference.getBoundingClientRect();
+    const settingsContent=trigger.closest(':is(#settings22Modal, #postStyleModal) .sMModalContent');
     const rootStyle=getComputedStyle(document.documentElement);
     const rem=parseFloat(rootStyle.fontSize)||20;
     const fallback=trigger.closest('.modals,.compactSettingsWindow')?parseFloat(rootStyle.getPropertyValue('--sm-app-zoom'))||1:1;
@@ -106,17 +108,29 @@ window.SignMakerDropdowns = (() => {
     }
     const width=Math.min(Math.max(rect.width/scale,minWidth*rem,contentWidth),maxWidth*rem,(viewportWidth-edge*2)/scale);
     put(menu,{'display':'block','position':dialog?'absolute':'fixed','width':width+'px','min-width':'0','max-width':width+'px','height':'auto','max-height':'none','font-size':menu.classList.contains('headerFooterMenu')?'0.7rem':'0.85rem','transform-origin':'top left','transform':'scale('+zoom+')','overflow-y':'auto','z-index':'2147483000'});
-    const below=Math.max(0,viewportHeight-rect.bottom-edge-gap),above=Math.max(0,rect.top-edge-gap);
     const contentHeight=menu.scrollHeight*scale;
-    const upwards=below<Math.min(contentHeight,240*scale)&&above>below;
+    if(settingsContent){
+      const contentRect=settingsContent.getBoundingClientRect();
+      if(!previous&&!beside){
+        const desiredRoom=Math.min(contentHeight,5*rem*scale);
+        const missingRoom=rect.bottom+gap+edge+desiredRoom-viewportHeight;
+        const scrollBy=Math.min(missingRoom,rect.top-contentRect.top-gap);
+        if(scrollBy>0){
+          settingsContent.scrollTop+=scrollBy/scale;
+          rect=reference.getBoundingClientRect();
+        }
+      }
+      portals.get(menu).anchorVisible=rect.bottom>contentRect.top&&rect.bottom<=contentRect.bottom+1;
+    }
+    const below=Math.max(0,viewportHeight-rect.bottom-edge-gap),above=Math.max(0,rect.top-edge-gap);
+    const upwards=!settingsContent&&below<Math.min(contentHeight,240*scale)&&above>below;
     const available=upwards?above:below;
     const maxHeight=available/scale;
     const paintedHeight=Math.min(menu.scrollHeight,maxHeight)*scale;
     let left=Math.max(edge,Math.min(rect.left,viewportWidth-width*scale-edge));
     if(beside){const anchor=beside.getBoundingClientRect();left=anchor.right+gap+width*scale<viewportWidth-edge?anchor.right+gap:Math.max(edge,anchor.left-width*scale-gap);}
     const top=upwards?rect.top-gap-paintedHeight:rect.bottom+gap;
-    const bottom=upwards&&!beside?(dialog?dialogRect.bottom:viewportHeight)-rect.top+gap:null;
-    put(menu,{'left':(left-dialogRect.left)/portalScale+'px','right':'auto','top':bottom===null?(top-dialogRect.top)/portalScale+'px':'auto','bottom':bottom===null?'auto':bottom/portalScale+'px','max-height':Math.max(0,maxHeight)+'px'});
+    put(menu,{'left':(left-dialogRect.left)/portalScale+'px','right':'auto','top':(top-dialogRect.top)/portalScale+'px','bottom':'auto','max-height':Math.max(0,maxHeight)+'px'});
     menu.classList.toggle('opensUp',upwards);
     menu.dataset.dropdownReady='true';
     setOpen(menu,owner,openClass);

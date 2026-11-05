@@ -162,13 +162,21 @@
 
 
 /* Use the normal editor modal layer, with no overlay that intercepts clicks. */
-#settings22Modal { pointer-events:auto!important; position:relative!important; inset:auto!important; width:20rem!important; min-width:20rem!important; max-width:calc((100vw - 2rem) / var(--sm-app-zoom,1))!important; }
-#settings22Modal label { pointer-events:auto; }
-#settings22Modal>.sMModalBar { display:flex!important; flex-direction:row!important; flex-wrap:wrap!important; justify-content:flex-start!important; gap:0!important; width:100%; padding:0!important; }
-#settings22Modal .sMModalTitle { flex:0 0 100%; justify-content:flex-start; }
+:is(#settings22Modal, #postStyleModal) { pointer-events:auto!important; position:relative!important; inset:auto!important; width:20rem!important; min-width:20rem!important; max-width:calc((100vw - 2rem) / var(--sm-app-zoom,1))!important; }
+:is(#settings22Modal, #postStyleModal) label { pointer-events:auto; }
+:is(#settings22Modal, #postStyleModal)>.sMModalBar { display:flex!important; flex-direction:row!important; flex-wrap:wrap!important; justify-content:flex-start!important; gap:0!important; width:100%; padding:0!important; }
+:is(#settings22Modal, #postStyleModal) .sMModalTitle { flex:0 0 100%; justify-content:flex-start; }
+#postStyleModal { box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.24); }
+#postStyleModal .sMModalContent { padding: 0.7rem; }
+#postStyleModal .sMModalTitle { margin: 0; padding: 0.55rem 0.65rem; box-sizing: border-box; }
+#postStyleModal .generalSettingsSection { margin-top: 0; }
 #settings22Modal .sMModalTab { width:auto!important; margin:0!important; padding:0.2rem 0.5rem!important; cursor:pointer; }
 #settings22Modal .sMModalTab.selected { text-decoration:underline; }
-#settings22Modal .sMModalContent { max-height:calc((100dvh - 6rem) / var(--sm-app-zoom,1)); }
+:is(#settings22Modal, #postStyleModal) .sMModalContent {
+  max-height: min(calc((100dvh - 6rem) / var(--sm-app-zoom, 1)), var(--settings-content-max-height, 100dvh));
+}
+#settings22Modal #alignmentGuideControls:not(.hidden) { display: contents; }
+#settings22Modal #alignmentGuideControls .settingsRangeValue { white-space: nowrap; }
 #settings22Modal #sMAppSettings { grid-template-columns:minmax(0,1fr) 8rem; }
 #settings22Modal #sMAppSettings.tabHidden,#settings22Modal #sMDefaults.tabHidden,#settings22Modal #sMAppShortcuts.tabHidden { display:none!important; }
 #settings22Modal #defaultsFields fieldset[hidden] { display:none!important; }

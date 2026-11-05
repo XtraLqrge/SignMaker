@@ -19,12 +19,44 @@
     transition:none!important; animation:none!important;
   }
   .fontPickerTrigger { height:1.6rem!important; min-height:1.6rem!important; max-height:1.6rem!important; }
+  :is(#sMStandardArrows,#sMExitOnlyArrows) :is(.fontPicker,.colorPicker,.smColorPicker,.nativeSelectTrigger,.fontPickerTrigger,.colorPickerTrigger,.arrowPicker>.shieldPickerTrigger) {
+    height:1.85rem!important; min-height:1.85rem!important; max-height:1.85rem!important;
+  }
+  :is(#sMStandardArrows,#sMExitOnlyArrows) .arrowPicker>.shieldPickerTrigger { font-size:0.9rem!important; }
+  .sdShieldBannerFontSelect+.fontPicker,
+  .sdShieldBannerFontSelect+.fontPicker .fontPickerTrigger {
+    height:1.32rem!important;
+    min-height:1.32rem!important;
+    max-height:1.32rem!important;
+  }
   :is(.colorPickerTrigger,.smColorPicker>.nativeSelectTrigger) { padding:0 0.35rem!important; }
   .sdShieldBannerBackgroundColorSelect+.colorPicker>.colorPickerTrigger { height:1.32rem!important; min-height:1.32rem!important; max-height:1.32rem!important; }
   .headerFooterPicker>.nativeSelectTrigger { height:1.2rem!important; min-height:1.2rem!important; max-height:1.2rem!important; font-size:0.7rem!important; padding:0 0.35rem!important; }
   .blockTypeInlinePickerTrigger { justify-content:center!important; width:1.8rem!important; padding:0!important; background:transparent!important; border:0!important; color:inherit!important; }
   .fontPickerTriggerLabel { font-family:var(--sm-font-preview-family,Inter),sans-serif!important; font-size:var(--sm-font-preview-size,0.9rem)!important; line-height:1.1!important; transform:none!important; }
   :is(.colorPickerTriggerLabel,.shieldPickerTriggerLabel,.profilePickerTriggerLabel,.symbolPickerLabel) { font-size:inherit!important; line-height:1.1!important; min-width:0!important; overflow:hidden!important; text-overflow:ellipsis!important; white-space:nowrap!important; }
+  .sdShieldVariantPickerHost .shieldPickerTrigger {
+    height:var(--sd-shield-top-control-height)!important;
+    min-height:var(--sd-shield-top-control-height)!important;
+    max-height:var(--sd-shield-top-control-height)!important;
+  }
+  .sdShieldBasePickerHost .shieldPicker,
+  .sdShieldBasePickerHost .shieldPickerTrigger {
+    height:auto!important;
+    min-height:var(--sd-shield-top-control-height)!important;
+    max-height:none!important;
+  }
+  .sdShieldBasePickerHost .shieldPickerTrigger { padding-block:0.075rem!important; }
+  .sdShieldBasePickerHost .shieldPickerTriggerLabel {
+    display:-webkit-box!important;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    flex:1 1 auto;
+    font-size:0.75rem!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere;
+    text-align:left;
+  }
   :is(.nativeSelectTrigger,.fontPickerTrigger,.colorPickerTrigger,.shieldPickerTrigger,.profilePickerTrigger,.blockTypeInlinePickerTrigger):focus-visible { outline:2px solid Highlight!important; outline-offset:1px!important; }
   :is(.symbolPickerMenu,.fontPickerMenu,.colorPickerMenu,.shieldPickerPopover,.blockTypePickerPopover,.profilePickerMenu) {
     background:var(--sm-dropdown-background)!important; color:var(--sm-dropdown-color)!important;
@@ -65,9 +97,8 @@
     margin:0 0 0 auto!important; padding:0!important; color:currentColor!important; background:none!important;
     font-size:0!important; line-height:0!important; transform:rotate(0deg)!important; transition:transform 160ms ease-in-out!important;
   }
-  .blockTypeInlinePickerTrigger>.shieldPickerTriggerCaret { width:1.35rem!important; min-width:1.35rem!important; max-width:1.35rem!important; height:1.35rem!important; min-height:1.35rem!important; max-height:1.35rem!important; flex-basis:1.35rem!important; }
+  .blockTypeInlinePickerTrigger>.shieldPickerTriggerCaret { width:0.8rem!important; min-width:0.8rem!important; max-width:0.8rem!important; height:0.8rem!important; min-height:0.8rem!important; max-height:0.8rem!important; flex-basis:0.8rem!important; }
   span:is(.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret)::before { content:""!important; display:block!important; width:100%!important; height:100%!important; background:currentColor!important; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='4 4 16 16' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E") center/contain no-repeat!important; }
-  .blockTypeInlinePickerTrigger>span.shieldPickerTriggerCaret::before { mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='6 6 12 12' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.25 9.25l4.75 4.75 4.75-4.75'/%3E%3C/svg%3E")!important; }
   span:is(.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret)::after { display:none!important; }
   :is(.symbolPicker,.fontPicker,.colorPicker,.shieldPicker,.profilePicker).open :is(.symbolPickerCaret,.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret) { transform:rotate(180deg)!important; }
   :root[data-dropdown-animations="false"] :is(.symbolPickerCaret,.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret) { transition:none!important; }

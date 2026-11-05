@@ -1,0 +1,10 @@
+{
+  "name": "signmaker-v219",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node --test scripts/optimization.test.cjs",
+    "test:browser": "node scripts/browser-check.cjs",
+    "optimize:assets": "node scripts/optimize-assets.cjs"
+  }
+}

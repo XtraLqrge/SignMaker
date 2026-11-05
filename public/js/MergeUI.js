@@ -57,6 +57,8 @@ window.SignMakerMergeUI = (() => {
     const values = [...select.options].map(option => option.value);
     const isColor = values.some(value => Object.hasOwn(lib.colors, value)) && values.every(value => !value || Object.hasOwn(lib.colors, value) || ["Inherit","Transparent","None"].includes(value) || CSS.supports("color",value));
     const options = isColor ? { colorForValue: value => lib.colors[value] || (CSS.supports("color", value) ? value : "") } : /font/i.test(select.id) ? { textStyleForValue: value => ({ fontFamily: value || "Inter, sans-serif" }) } : {};
+    if (select.id === "postColor") options.colorForValue = value => value === "Silver" ? "#bfbfbf" : lib.colors[value];
+    if (select.id === "postType") options.minMenuWidth = 245;
     const picker = window.createNativeSelectPicker(select, label, options);
     if (!picker.alignmentButtons) picker.wrapper.style.width = select.style.width || "";
   };

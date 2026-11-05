@@ -45,6 +45,14 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
       if(await page.locator('#sMConfigBar').getAttribute('data-current-menu')!==id)await page.locator('#'+id).click();
     };
     await openMenu('subPanelConfig');
+    assert.equal(await page.locator('#SMSPElementLabel').evaluate(element=>element.parentElement.classList.contains('SMSPNewElementHolder')),true,'Selected block label belongs to the action bar');
+    const caret=page.locator('.blockTypeInlinePickerTrigger>.shieldPickerTriggerCaret').first();
+    assert.ok(await caret.evaluate(element=>parseFloat(getComputedStyle(element).width)<=parseFloat(getComputedStyle(document.documentElement).fontSize)*0.81),'Element-label chevrons stay compact');
+    if(!mobile){
+      const label=await page.locator('#SMSPElementLabel').boundingBox();
+      const picker=await page.locator('.SMSPNewElementHolder .blockTypePickerTrigger').boundingBox();
+      assert.ok(Math.abs(label.y+label.height/2-picker.y-picker.height/2)<=3,'Selected block label aligns with the controls');
+    }
     const font=page.locator('#sdCtrlText_fontFamily + .fontPicker .fontPickerTrigger');
     await font.click();
     const menu=page.locator('.fontPickerMenu.open');await menu.waitFor({state:'visible'});
@@ -67,11 +75,30 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
     await page.locator('#appDropdownAnimations').uncheck();
     assert.equal(await page.locator('html').getAttribute('data-dropdown-animations'),'false');
     await page.locator('#appDropdownAnimations').check();
+    // Pointer dragging supports one panel as well as multi-panel posts.
+    await page.evaluate(()=>{
+      app.getPost().polePosition='Right';
+      app.exposeToFormHandler.redraw();
+      app.newPanel();
+    });
+    await page.locator('#hideConfig').click();
+    await page.waitForTimeout(400);
+    const firstPanel=page.locator('#panel0 > .signContainer');
+    const start=await firstPanel.boundingBox();
+    const startOffset=await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem);
+    const x=start.x+start.width/2,y=start.y+start.height/2;
+    await page.mouse.move(x,y);await page.mouse.down();
+    await page.mouse.move(x,y+40,{steps:8});await page.mouse.up();
+    const movedOffset=await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem);
+    assert.notEqual(movedOffset,startOffset);assert.ok(Math.abs(movedOffset)<=6);
+    await page.evaluate(()=>app.undo());await page.waitForFunction(offset=>app.getPost().panels[0].verticalOffsetRem===offset,startOffset);
+    await page.evaluate(()=>app.redo());await page.waitForFunction(offset=>app.getPost().panels[0].verticalOffsetRem===offset,movedOffset);
     const panelsBefore=await page.evaluate(()=>app.getPost().panels.length);
     await page.evaluate(()=>app.newPanel());assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
     await page.evaluate(()=>app.undo());await page.waitForFunction(count=>app.getPost().panels.length===count,panelsBefore);
     await page.evaluate(()=>app.redo());await page.waitForFunction(count=>app.getPost().panels.length===count,panelsBefore+1);
     await page.reload();await ready();assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
+    assert.equal(await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem),movedOffset,'Panel height survives reload');
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed. Timings and screenshots: '+output);
   }finally{

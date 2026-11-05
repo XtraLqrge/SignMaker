@@ -28,8 +28,8 @@ body .blockTypeInlinePicker { width:1.8rem!important; min-width:1.8rem!important
 :root .sMModal.panelStyleConfig label { width:auto!important; min-width:0!important; margin:0!important; font-size:0.85rem!important; text-align:left!important; }
 :root .sMModal.panelStyleConfig input[type="number"],:root .sMModal.panelStyleConfig input[type="range"] { width:100%!important; margin:0!important; min-width:0!important; box-sizing:border-box; }
 :root .sMModal.panelStyleConfig input[type="checkbox"] { justify-self:start; }
-:root .sMModal.panelStyleConfig #vmsPanelSettings:not([hidden]),:root .sMModal.panelStyleConfig #alignmentGuideControls:not(.hidden) { display:contents!important; }
-:root .sMModal.panelStyleConfig [hidden],:root .sMModal.panelStyleConfig #alignmentGuideControls.hidden { display:none!important; }
+:root .sMModal.panelStyleConfig #vmsPanelSettings:not([hidden]) { display:contents!important; }
+:root .sMModal.panelStyleConfig [hidden] { display:none!important; }
 :root .sMModal.panelStyleConfig .panelStyleSectionHeader { grid-column:1/-1; margin:0.25rem 0; font-size:1rem; }
 :root .sMModal.panelStyleConfig #sMPanelPadding:not(.tabHidden) { display:flex!important; flex-direction:column; gap:0.75rem; width:100%; }
 :root .sMModal.panelStyleConfig #sMPanelPadding>.panelPaddingRow { display:grid!important; grid-template-columns:4rem minmax(0,1fr) 4rem!important; gap:0.6rem; align-items:center; width:100%; }

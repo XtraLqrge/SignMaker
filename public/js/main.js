@@ -37,7 +37,7 @@ const app = (function () {
   let subpanelClipboardMemoryPayload = null;
 
   const normalizeDefaultPanelSpacingValue = (value, fallback = DEFAULT_PANEL_SPACING) => {
-    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+    const parsed = value == null ? NaN : typeof value === "string" ? parseFloat(value) : Number(value);
     const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
     const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : DEFAULT_PANEL_SPACING;
 
@@ -185,6 +185,11 @@ const scheduleAlignmentGuideUpdate = (
       return;
     }
 
+    if (!post.showAlignmentGuides) {
+      guideElmt.classList.remove("visible");
+      return;
+    }
+
     const spacing = post.normalizeAlignmentGuideSpacing(
       post.alignmentGuideSpacing
     );
@@ -198,13 +203,10 @@ const scheduleAlignmentGuideUpdate = (
     guideElmt.style.setProperty("--alignmentGuideSpacing", spacing + "rem");
     guideElmt.style.setProperty("--alignmentGuidePhase", phase + "rem");
 
-    if (!post.showAlignmentGuides) {
-      return;
-    }
-
     const update = () => {
+      if (!post.showAlignmentGuides) return;
       const panelElmts = Array.from(
-        panelContainerElmt.querySelectorAll(".panel[data-panel-index]")
+        panelContainerElmt.querySelectorAll(".panel[data-panel-index]:not(.panelHiddenFromPost)")
       );
       if (!panelElmts.length) {
         guideElmt.classList.remove("visible");
@@ -212,6 +214,9 @@ const scheduleAlignmentGuideUpdate = (
       }
 
       const postRect = postContainerElmt.getBoundingClientRect();
+      const scale = postContainerElmt.offsetWidth
+        ? postRect.width / postContainerElmt.offsetWidth || 1
+        : 1;
       const panelContainerRect = panelContainerElmt.getBoundingClientRect();
       const panelBottom = Math.max(
         ...panelElmts.map((panelElmt) => panelElmt.getBoundingClientRect().bottom)
@@ -226,9 +231,9 @@ const scheduleAlignmentGuideUpdate = (
         panelContainerRect.right - postRect.left
       );
 
-      guideElmt.style.top = top + "px";
-      guideElmt.style.left = left + "px";
-      guideElmt.style.width = Math.max(0, right - left) + "px";
+      guideElmt.style.top = top / scale + "px";
+      guideElmt.style.left = left / scale + "px";
+      guideElmt.style.width = Math.max(0, right - left) / scale + "px";
     };
 
     if (typeof window.requestAnimationFrame === "function") {
@@ -2360,6 +2365,7 @@ const ungroupSelectedBlockElement = () => {
             : panel.exitTabs;
 
           Object.assign(panel, panelData);
+          panel.verticalOffsetRem = Panel.normalizeVerticalOffset(panelData.verticalOffsetRem);
           panel.borderThickness = Panel.getBorderThickness(panelData);
           delete panel.hideBorder;
           Object.assign(panel, VmsPanel.settings(panelData));
@@ -2430,7 +2436,9 @@ const ungroupSelectedBlockElement = () => {
           return;
         }
 
+        const previousPost = post;
         post = rebuiltPost;
+        if (!skipUi) formHandler.persistPostAppearance(post, previousPost);
 
         const clampSelection = (value, min, max, fallback) => {
           if (typeof value !== "number" || Number.isNaN(value)) {
@@ -6102,6 +6110,9 @@ const ungroupSelectedBlockElement = () => {
       applyRenderedExitTabAnchors(panelElmt, panel);
     };
 
+    const shouldDragPanelFromAccessory = (panelElmt, event) =>
+      panelElmt.classList.contains("panelDragHandle") && !event.altKey;
+
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
       if (!panelElmt || !holder || !tabElmt || !exitTab) return;
       tabElmt.classList.add("draggableExitTab");
@@ -6120,7 +6131,7 @@ const ungroupSelectedBlockElement = () => {
         event.stopPropagation();
       });
       tabElmt.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || shouldDragPanelFromAccessory(panelElmt, event)) return;
         const signElmt = panelElmt.querySelector(":scope > .signContainer > .sign");
         if (!signElmt) return;
         const startRect = tabElmt.getBoundingClientRect();
@@ -7204,33 +7215,26 @@ const ungroupSelectedBlockElement = () => {
       });
     };
 
-    const delRow = () => {
+    const delRow = (deleteIndex = currentlySelectedRowIndex) => {
+      const blockElems = getActiveBlockElements();
+      if (!Number.isInteger(deleteIndex) || !blockElems?.rows[deleteIndex] ||
+          !blockElems.rows.some((row, index) => index !== deleteIndex && row.length)) {
+        return null;
+      }
+
       return runWithUndo(() => {
-        const subPanel = getCurrentSubPanel();
-        const blockElems = subPanel?.blockElements;
-
-        if (!blockElems || blockElems.rows.length <= 1) {
-          return;
-        }
-
-        const deleteIndex = clamp(
-          currentlySelectedRowIndex,
-          0,
-          blockElems.rows.length - 1
-        );
-
         blockElems.deleteRow(deleteIndex);
 
-        currentlySelectedRowIndex = clamp(
-          deleteIndex,
-          0,
-          Math.max(0, blockElems.rows.length - 1)
-        );
-        currentlySelectedBlockIndex = 0;
+        if (deleteIndex < currentlySelectedRowIndex) {
+          currentlySelectedRowIndex--;
+        } else if (deleteIndex === currentlySelectedRowIndex) {
+          currentlySelectedBlockIndex = 0;
+        }
 
         normalizeSelectionForCurrentPost();
         redraw();
         formHandler.updateForm();
+        return deleteIndex;
       });
     };
     
@@ -7673,35 +7677,7 @@ const ungroupSelectedBlockElement = () => {
       return deletedIndex;
     };
 
-    const deleteCurrentRowShortcut = () => {
-      return runWithUndo(() => {
-        const blockElements = getCurrentSubPanel()?.blockElements;
-        const rows = blockElements?.rows || [];
-        if (rows.length <= 1) {
-          return null;
-        }
-
-        const deleteIndex = clamp(
-          currentlySelectedRowIndex,
-          0,
-          rows.length - 1
-        );
-
-        blockElements.deleteRow(deleteIndex);
-        currentlySelectedRowIndex = clamp(
-          deleteIndex,
-          0,
-          Math.max(0, blockElements.rows.length - 1)
-        );
-        currentlySelectedBlockIndex = 0;
-
-        normalizeSelectionForCurrentPost();
-        formHandler.updateForm();
-        redraw();
-
-        return deleteIndex;
-      });
-    };
+    const deleteCurrentRowShortcut = () => delRow();
 
     const moveRow = (fromIndex, toIndex) => {
       return runWithUndo(() => {
@@ -7892,42 +7868,23 @@ const ungroupSelectedBlockElement = () => {
       });
     };
 
-    const delControlElem = () => {
+    const delControlElem = (
+      rowIndex = currentlySelectedRowIndex,
+      blockIndex = currentlySelectedBlockIndex
+    ) => {
+      const blockElems = getActiveBlockElements();
+      const row = blockElems?.rows[rowIndex];
+      if (!Number.isInteger(rowIndex) || !Number.isInteger(blockIndex) || !row?.[blockIndex]) return;
+
+      if (row.length === 1) {
+        return delRow(rowIndex);
+      }
+
       return runWithUndo(() => {
-        const blockElems = getCurrentSubPanel().blockElements;
-        const deleteRowIndex = clamp(
-          currentlySelectedRowIndex,
-          0,
-          Math.max(0, blockElems.rows.length - 1)
-        );
-        const rowBeforeDelete = blockElems.rows[deleteRowIndex] || [];
-        const deleteBlockIndex = clamp(
-          currentlySelectedBlockIndex,
-          0,
-          Math.max(0, rowBeforeDelete.length - 1)
-        );
-        const removedWholeRow = blockElems.removeElement(
-          deleteRowIndex,
-          deleteBlockIndex
-        );
-
-        if (removedWholeRow) {
-          currentlySelectedRowIndex = clamp(
-            deleteRowIndex,
-            0,
-            Math.max(0, blockElems.rows.length - 1)
-          );
-          currentlySelectedBlockIndex = 0;
-        } else {
-          const rowAfterDelete = blockElems.rows[deleteRowIndex] || [];
-          currentlySelectedRowIndex = deleteRowIndex;
-          currentlySelectedBlockIndex = clamp(
-            deleteBlockIndex,
-            0,
-            Math.max(0, rowAfterDelete.length - 1)
-          );
+        blockElems.removeElement(rowIndex, blockIndex);
+        if (rowIndex === currentlySelectedRowIndex && blockIndex < currentlySelectedBlockIndex) {
+          currentlySelectedBlockIndex--;
         }
-
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
@@ -11023,6 +10980,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   ) => {
     const rects = [];
     const addRect = (node, { force = false } = {}) => {
+      if (node?.id === "alignmentGuides") return;
       // The VMS housing already bounds its entire screen. Content beyond a
       // fixed-width screen is clipped and must not enlarge the export crop.
       if (node?.closest?.(".panel.vmsPanel > .signContainer, .panel.vmsPanel > .vmsPanelDisplay")) {
@@ -11152,7 +11110,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           : Array.from(element.children).filter(
               (child) =>
                 child.classList &&
-                child.classList.contains("post") &&
+                child.matches(".post, .fdotSupport") &&
                 isElementVisibleForExport(child)
             );
 
@@ -12233,7 +12191,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   const redraw = function (options = {}) {
     VmsPanel.disconnect();
     const postContainerElmt = document.getElementById("postContainer");
-    postContainerElmt.classList.toggle("showBlockBoundingBoxes", !!post.showBlockBoundingBoxes);
     const panelContainerElmt = document.getElementById("panelContainer");
     const previousArrowFrames = collectRenderedArrows(panelContainerElmt);
     exitTabAnchorObservers.forEach((observer) => observer.disconnect());
@@ -12254,7 +12211,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     const availablePolePositions = Post.prototype.polePositions;
     const polePosition = availablePolePositions.includes(post.polePosition)
       ? post.polePosition
-      : availablePolePositions[0];
+      : DEFAULT_POST_POSITION;
+    const fdot = window.SignMakerFDOTSupports;
+    const fdotSupport = fdot?.get(polePosition);
+    const supportsVerticalPanelDrag = !!fdotSupport || ["Left", "Right", "Overhead"].includes(polePosition);
+    const hadFdotSupport = postContainerElmt.classList.contains("fdotSupportContainer");
     const polePositionClass = `polePosition${polePosition}`;
     const availableColors = Post.prototype.colors;
     const postUsesCustomColor = isCustomCssColorValue(post.color);
@@ -12263,6 +12224,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       : availableColors[0];
     const colorClass = normalizedPostColor && !postUsesCustomColor ? ` postColor${normalizedPostColor}` : "";
     postContainerElmt.className = `${polePositionClass}${colorClass}`;
+    postContainerElmt.classList.toggle("showBlockBoundingBoxes", !!post.showBlockBoundingBoxes);
     applyCustomPostColorVars(postContainerElmt, postUsesCustomColor ? post.color : "");
     const normalizedThickness = post.normalizeThickness(post.thickness);
     post.thickness = normalizedThickness;
@@ -12315,6 +12277,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       panelContainerElmt.style.background = "";
     }
 
+    if (fdotSupport || hadFdotSupport) {
+      fdot.prepare(post, postContainerElmt, panelContainerElmt);
+    }
     lib.clearChildren(panelContainerElmt);
     if (panelContainerElmt) {
       // Attach drag handlers to panelContainer once
@@ -12397,7 +12362,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               });
           });
           const isAdditionalStackedPanel = isStackedPanelBottom(index);
+          const canPositionPanelVertically = supportsVerticalPanelDrag && !isPanelConfiguredHidden(index);
           panelElmt.draggable =
+            !canPositionPanelVertically &&
             !isAdditionalStackedPanel &&
             post.panels.length > 1 &&
             !isPanelConfiguredHidden(index);
@@ -12460,6 +12427,29 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           } else {
             currentPanelStackElmt = null;
             panelContainerElmt.appendChild(panelElmt);
+          }
+
+          if (canPositionPanelVertically) {
+            const movementRoot = currentPanelStackElmt || panelElmt;
+            const positionPanel = post.panels[stackTopIndex];
+            positionPanel.verticalOffsetRem = Panel.normalizeVerticalOffset(positionPanel.verticalOffsetRem);
+            window.SignMakerPanelDrag.bind(panelElmt, movementRoot, {
+              index: stackTopIndex,
+              limit: Panel.maxVerticalOffset,
+              getOffset: () => Panel.normalizeVerticalOffset(positionPanel.verticalOffsetRem),
+              getEndIndex: peerIndex => getRenderedPanelGroupEndIndex(peerIndex),
+              onCommit: (offset, dropIndex) => {
+                if (post.panels[stackTopIndex] !== positionPanel) return;
+                const end = getRenderedPanelGroupEndIndex(stackTopIndex) + 1;
+                const reorder = dropIndex < stackTopIndex || dropIndex > end;
+                if (!reorder && offset === positionPanel.verticalOffsetRem) return;
+                runWithUndo(() => {
+                  positionPanel.verticalOffsetRem = Panel.normalizeVerticalOffset(offset);
+                  if (reorder) movePanel(stackTopIndex, dropIndex);
+                  else redraw();
+                });
+              },
+            });
           }
           
           // Store CA style exit tabs to append inside sign later
@@ -14317,6 +14307,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           signCont.appendChild(guideArrowsElmt);
           guideArrowsElmt.dataset.panelIndex = String(index);
           let suppressArrowBandClickUntil = 0;
+          const openStandardGuideArrowMenu = () => {
+            selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
+              guideMode: "standard", suppressRedraw: true, deferMenu: true });
+            formHandler.ensureGuideArrowMenuOpen("standard");
+          };
           
           guideArrowsElmt.addEventListener("click", (event) => {
               if (event.target.closest(".standardGuideArrowFrame") ||
@@ -16136,7 +16131,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                         frame.classList.toggle("selectedGuideArrow", selectedGuideArrowPanelIndex === index && selectedGuideArrowIndex === i);
                         frame.style.left = `${Math.max(-25, Math.min(25, Number(detail.offsetX) || 0))}rem`;
                         frame.addEventListener("pointerdown", (event) => {
-                          if (event.button !== 0) return;
+                          if (event.button !== 0 || shouldDragPanelFromAccessory(panelElmt, event)) return;
                           event.preventDefault();
                           event.stopPropagation();
                           const canDrag = arrowCount > 1 &&
@@ -16148,9 +16143,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             document.getElementById("standardArrowIndividual")?.inert !== true;
                           if (!canDrag) {
                             suppressArrowBandClickUntil = performance.now() + 750;
-                            selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
-                              guideMode: "standard", suppressRedraw: true, deferMenu: true });
-                            formHandler.ensureGuideArrowMenuOpen("standard");
+                            openStandardGuideArrowMenu();
                             return;
                           }
                           suppressArrowBandClickUntil = performance.now() + 750;
@@ -16218,6 +16211,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                         frame.addEventListener("click", (event) => {
                           event.preventDefault();
                           event.stopPropagation();
+                          if (shouldDragPanelFromAccessory(panelElmt, event)) openStandardGuideArrowMenu();
                         });
                         if (i === 0) frame.style.marginLeft = `${horizontalPadding}rem`;
                         if (i === arrowCount - 1) frame.style.marginRight = `${horizontalPadding}rem`;
@@ -16693,9 +16687,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     plainArrow.addEventListener("click", (event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        if (shouldDragPanelFromAccessory(panelElmt, event)) openStandardGuideArrowMenu();
                     });
                     plainArrow.addEventListener("pointerdown", (event) => {
-                        if (event.button !== 0) return;
+                        if (event.button !== 0 || shouldDragPanelFromAccessory(panelElmt, event)) return;
                         event.preventDefault();
                         event.stopPropagation();
                         suppressArrowBandClickUntil = performance.now() + 750;
@@ -17356,6 +17351,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           VmsPanel.mount(panelElmt);
         }
       });
+      if (fdotSupport) fdot.render(post, postContainerElmt, panelContainerElmt);
+      scheduleAlignmentGuideUpdate(postContainerElmt, panelContainerElmt);
       }
       
       watchRuralPostLayout();
@@ -17410,6 +17407,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         setSelectedControlElem,
         setSelectedRowAndBlock,
         replaceControlElemTypeAt,
+        delRow,
+        delControlElem,
         copySubpanelClipboard,
         cutSubpanelClipboard,
         pasteSubpanelClipboard,
@@ -17638,7 +17637,7 @@ const serializePostWithElementTypes = (space) => {
   const cloneTemplateValue = (value) => JSON.parse(JSON.stringify(value));
 
   const createDefaultTemplateData = (buildTemplate) => {
-    const defaultPost = new Post(Post.prototype.polePositions[0]);
+    const defaultPost = new Post(DEFAULT_POST_POSITION);
     defaultPost.newPanel();
     defaultPost.panels[0].sign.subPanels[0].blockElements = new Control(
       buildTemplate()
@@ -17820,7 +17819,9 @@ const serializePostWithElementTypes = (space) => {
 
   const getTemplateSnapshot = (template, variantId) => {
     const variant = getTemplateVariant(template, variantId);
-    const serializedData = variant?.data || template?.data;
+    const builtIn = DEFAULT_TEMPLATE_DEFINITIONS.find(definition => definition.id === String(template?.id));
+    const serializedData = variant?.data || (builtIn
+      ? createDefaultTemplateData(builtIn.build) : template?.data);
     if (typeof serializedData !== "string") {
       throw new Error("Template data is missing.");
     }
@@ -18993,9 +18994,9 @@ const serializePostWithElementTypes = (space) => {
 
         newRow: (...args) => runWithUndo(() => newRow(...args)),
         dupRow: (...args) => runWithUndo(() => dupRow(...args)),
-        delRow: (...args) => runWithUndo(() => delRow(...args)),
+        delRow,
         newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
-        delControlElem: (...args) => runWithUndo(() => delControlElem(...args)),
+        delControlElem,
         copySubpanelClipboard,
         cutSubpanelClipboard,
         pasteSubpanelClipboard,

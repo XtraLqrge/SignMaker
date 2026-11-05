@@ -20,6 +20,7 @@ class Panel {
 
     this.sign = sign;
     this.exitTabs = exitTabs;
+    this.verticalOffsetRem = 0;
     this.isVms = false;
     this.borderThickness = 0.2;
     this.vmsResolution = "medium";
@@ -39,6 +40,14 @@ class Panel {
     exitTab.borderThickness = Panel.getBorderThickness(this);
 
     this.exitTabs.push(exitTab);
+  }
+
+  static get maxVerticalOffset() { return 6; }
+
+  static normalizeVerticalOffset(value) {
+    const offset = Number(value);
+    return Number.isFinite(offset)
+      ? Math.max(-Panel.maxVerticalOffset, Math.min(Panel.maxVerticalOffset, offset)) : 0;
   }
 
   static getBorderThickness(panel = {}) {

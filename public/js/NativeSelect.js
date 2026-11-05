@@ -57,6 +57,7 @@
     const attributeObserver = new MutationObserver(() => { syncVisibility(); sync(); });
     attributeObserver.observe(select, { attributes: true, attributeFilter: ['hidden', 'class', 'style', 'disabled'] });
     let menu = null;
+    let menuRows = [];
     let open = false;
     let active = 0;
     let pointer = null;
@@ -99,9 +100,9 @@
       const options = entries();
       const count = options.length + (customColors ? 1 : 0);
       active = count ? (index + count) % count : 0;
-      const row = menu.children[active];
+      const row = menuRows[active];
       if (!row) return;
-      [...menu.children].forEach((item, itemIndex) => item.classList.toggle('active', itemIndex === active));
+      menuRows.forEach((item, itemIndex) => item.classList.toggle('active', itemIndex === active));
       trigger.setAttribute('aria-activedescendant', row.id);
       if (row.offsetTop < menu.scrollTop) menu.scrollTop = row.offsetTop;
       else if (row.offsetTop + row.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = row.offsetTop + row.offsetHeight - menu.clientHeight;
@@ -152,7 +153,7 @@
       menu.addEventListener('pointerdown', event => {
         if (event.button !== 0 || event.pointerType === 'touch' || !event.target.closest('[data-native-index]')) return;
         event.preventDefault();
-        pointer = event.pointerId;
+        pointer = { id: event.pointerId };
       });
       menu.addEventListener('pointermove', event => {
         const row = event.target.closest('[data-native-index]');
@@ -167,13 +168,16 @@
     }
     function listenWhileOpen() {
       listen(document, 'pointermove', event => {
-        if (pointer === null || pointer !== event.pointerId) return;
+        if (!pointer || pointer.id !== event.pointerId) return;
         const row = hit(event)?.closest('[data-native-index]');
         if (row && menu.contains(row)) highlight(Number(row.dataset.nativeIndex));
       }, true);
       listen(document, 'pointerup', event => {
-        if (pointer === null || pointer !== event.pointerId) return;
+        if (!pointer || pointer.id !== event.pointerId) return;
+        const { startX, startY } = pointer;
         pointer = null;
+        // Opening can scroll the trigger into view under a stationary pointer.
+        if (startX === event.clientX && startY === event.clientY) return;
         const target = hit(event);
         if (menu.contains(target) && (target.closest('[data-picker-remove], [data-picker-custom]'))) {
           event.preventDefault();
@@ -185,7 +189,7 @@
         else if (!trigger.contains(target)) close(true);
       }, true);
       listen(document, 'pointercancel', event => {
-        if (pointer === null || pointer !== event.pointerId) return;
+        if (!pointer || pointer.id !== event.pointerId) return;
         pointerClick = false;
         close(true);
       }, true);
@@ -199,8 +203,16 @@
       const removeMarkup = (option, index) => customColors && option.dataset.customColor
         ? `<span class="symbolPickerRemove" role="button" title="Remove ${escape(option.textContent)}" data-picker-remove="${index}">×</span>`
         : '';
-      menu.innerHTML = options.map((option, index) => `<button type="button" id="${id}-${index}" class="symbolPickerItem${option.value === select.value ? ' selected' : ''}" role="option" aria-selected="${option.value === select.value}" tabindex="-1" data-native-index="${index}" ${option.disabled ? 'disabled' : ''}>${swatchMarkup}<span class="symbolPickerLabel">${escape(option.textContent)}</span>${removeMarkup(option, index)}<span class="symbolPickerCheck" aria-hidden="true">${option.value === select.value ? '✓' : ''}</span></button>`).join('') +
+      menu.innerHTML = options.map((option, index) => {
+        const group = option.parentElement;
+        const grouped = group.tagName === 'OPTGROUP';
+        const heading = grouped && group !== options[index - 1]?.parentElement
+          ? `<div class="symbolPickerGroupLabel" aria-hidden="true">${escape(group.label)}</div>`
+          : '';
+        return heading + `<button type="button" id="${id}-${index}" class="symbolPickerItem${option.value === select.value ? ' selected' : ''}" role="option" aria-selected="${option.value === select.value}" tabindex="-1" data-native-index="${index}" ${grouped ? 'data-grouped-option' : ''} ${option.disabled ? 'disabled' : ''}>${swatchMarkup}<span class="symbolPickerLabel">${escape(option.textContent)}</span>${removeMarkup(option, index)}<span class="symbolPickerCheck" aria-hidden="true">${option.value === select.value ? '✓' : ''}</span></button>`;
+      }).join('') +
         (customColors ? `<button type="button" id="${id}-custom" class="symbolPickerItem symbolPickerCustom" role="option" tabindex="-1" data-picker-custom>Custom…</button>` : '');
+      menuRows = menu.querySelectorAll('[role="option"]');
     }
     function show() {
       if (trigger.disabled) return;
@@ -289,7 +301,7 @@
       if (event.button !== 0 || event.pointerType === 'touch' || trigger.disabled) return;
       event.preventDefault();
       if (open) close();
-      else { show(); pointer = event.pointerId; }
+      else { show(); pointer = { id: event.pointerId, startX: event.clientX, startY: event.clientY }; }
       pointerClick = true;
     });
     trigger.addEventListener('click', event => {
@@ -340,6 +352,7 @@
   // Converts every select already on the page and any added later with
   // convert(select), and destroys the pickers of selects that are removed.
   const pickersBySelect = new Map();
+  window.getNativeSelectPicker = select => pickersBySelect.get(select);
   window.observeNativeSelects = (convert) => {
     const tryConvert = (select) => {
       if (!pickersBySelect.has(select) && !select.classList.contains('nativeSelectSource')) convert(select);

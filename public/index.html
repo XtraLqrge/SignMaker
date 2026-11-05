@@ -3,7 +3,7 @@
 
 <head>
   <style>
-    html[data-sign-loading] #postContainer .post {
+    html[data-sign-loading] #postContainer :is(.post, .fdotSupport) {
       visibility: hidden !important;
     }
     html[data-sign-loading] #panelContainer {
@@ -333,26 +333,29 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.64476c3dc71954c6.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.f36af08b6dfdf264.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.65366aece301c8a4.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.3d2caff02552091a.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MergeUI.7d48e7160861f34f.js","js/Settings22.515ebbe65b349361.js","js/DropdownTheme.58c3113382f86b86.js"]' data-editor-css="css/app.c7ca72753e1f87fd.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.9108337f79975d68.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.cea6b4f66c066103.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MergeUI.1475b00939b6826a.js","js/Settings22.515ebbe65b349361.js","js/DropdownTheme.b86f0a2d2efc60e1.js"]' data-editor-css="css/app.33b164c208d3f3ad.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.a99346499808afab.js"></script>
 <script defer src="js/Sign.3640c7bc4cd48652.js"></script>
 <script defer src="js/ExitTab.28a7fed807403f99.js"></script>
-<script defer src="js/Panel.5dd62a21053900e8.js"></script>
+<script defer src="js/Panel.170c60a0a7bfad5b.js"></script>
+<script defer src="js/PanelDrag.b295e48ad1bba025.js"></script>
 <script defer src="js/VmsPanel.34d9648ce7eb7499.js"></script>
-<script defer src="js/Post.cd87e4479c5dc57b.js"></script>
+<script defer src="js/Post.9f6684dc6741e278.js"></script>
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
 <script defer src="js/Control.75538ee946a50f91.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
-<script defer src="js/main.67401547a8ae7dd5.js"></script>
+<script defer src="js/main.bc93be1bf1fede56.js"></script>
+  
+  
   
   
   
@@ -700,27 +703,27 @@ remember
                       <span class="settingsRangeValue" id="settingsInterfaceTextSizeValue">100%</span>
                     </div></div></div>
               <div class="generalSettingRow"><label for="appDropdownAnimations">Dropdown animations:</label><div class="generalSettingControl"><input type="checkbox" id="appDropdownAnimations" checked></div></div>
+              <div class="generalSettingRow"><label for="disableFlash">Disable Selection Flash:</label><div class="generalSettingControl"><input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm(event);"></div></div>
+              <div class="generalSettingRow"><label for="showBlockBoundingBoxes">Show Block Bounds:</label><div class="generalSettingControl"><input type="checkbox" id="showBlockBoundingBoxes" name="showBlockBoundingBoxes" onchange="formHandler.readForm(event);"></div></div>
+              <div class="generalSettingRow"><label for="showAlignmentGuides" data-tooltip="Draws evenly spaced vertical guides below the rendered signs.">Alignment Guides:</label><div class="generalSettingControl"><input type="checkbox" id="showAlignmentGuides" name="showAlignmentGuides" onchange="formHandler.readForm(event);"></div></div>
+              <div id="alignmentGuideControls" class="hidden">
+                <div class="generalSettingRow">
+                  <label for="alignmentGuideSpacing">Guide Spacing:</label>
+                  <div class="generalSettingControl"><div class="settingsRangeControl">
+                    <input type="range" id="alignmentGuideSpacing" name="alignmentGuideSpacing" min="1" max="15" step="0.25" value="4" oninput="formHandler.readForm(event);">
+                    <span class="settingsRangeValue"><output id="alignmentGuideSpacingValue">4</output> rem</span>
+                  </div></div>
+                </div>
+                <div class="generalSettingRow">
+                  <label for="alignmentGuidePhase">Guide Phase:</label>
+                  <div class="generalSettingControl"><div class="settingsRangeControl">
+                    <input type="range" id="alignmentGuidePhase" name="alignmentGuidePhase" min="0" max="4" step="0.25" value="0" oninput="formHandler.readForm(event);">
+                    <span class="settingsRangeValue"><output id="alignmentGuidePhaseValue">0</output> rem</span>
+                  </div></div>
+                </div>
+              </div>
             </section>
-            <section id="settingsGeneral" class="generalSettingsSection">
-              <h3>Post</h3>
-              <div class="generalSettingRow"><label for="postPosition" data-tooltip="Controls the kind of post or gantry that will display on the screen.">
-                        Post Position:
-                      </label><div class="generalSettingControl"><select id="postPosition" name="postPosition" onchange="formHandler.readForm();"></select></div></div>
-              <div class="generalSettingRow"><label for="postColor" data-tooltip="Sets the color of the posts and supports.">
-                        Post Color:
-                      </label><div class="generalSettingControl"><select id="postColor" name="postColor" onchange="formHandler.readForm();"></select></div></div>
-              <div class="generalSettingRow"><label for="postThicknessValue">Post Thickness (rem):</label><div class="generalSettingControl"><input type="number" id="postThicknessValue" name="postThicknessValue" min="0" step="0.25" value="1" onchange="formHandler.readForm();" onblur="formHandler.readForm();"></div></div>
-              <div class="generalSettingRow"><label for="settingsPanelSpacing">Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
-                        <input type="range" id="settingsPanelSpacing" min="0" max="8" step="0.1" value="4">
-                        <input type="number" id="settingsPanelSpacingValue" min="0" max="8" step="0.1" value="4">
-                      </div></div></div>
-              <div class="generalSettingRow"><label for="settingsDefaultPanelSpacing">Default Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
-                        <input type="range" id="settingsDefaultPanelSpacing" min="0" max="8" step="0.1" value="1">
-                        <input type="number" id="settingsDefaultPanelSpacingValue" min="0" max="8" step="0.1" value="1">
-                      </div></div></div>
-              <div class="generalSettingRow"><label for="showPost" id="showPostLabel">Hide Post:</label><div class="generalSettingControl"><input type="checkbox" id="showPost" name="showPost" value="showPost" onchange="formHandler.readForm();"></div></div>
-              <div class="generalSettingsActions"><button type="button" id="settingsResetAll">Reset All Settings</button></div>
-            </section>
+            <div class="generalSettingsActions"><button type="button" id="settingsResetAll">Reset All Settings</button></div>
           </div>
           <div id="sMDefaults" class="tabHidden">
             <p>Saved automatically. Applies to new signs and blocks.</p>
@@ -1137,6 +1140,35 @@ remember
           </div>
         </div>
       </div>
+      <div class="sMModal postStyleConfig settings22Window" id="postStyleModal">
+        <nav class="sMModalBar">
+          <div class="sMModalTitle"><span class="material-symbols-outlined">tune</span> Post Style</div>
+        </nav>
+        <div class="sMModalContent">
+          <div class="generalSettingsSection">
+              <div class="generalSettingRow"><label for="postPosition" data-tooltip="Controls where the supports sit relative to the panels.">
+                        Post Position:
+                      </label><div class="generalSettingControl"><select id="postPosition" name="postPosition" onchange="formHandler.readForm(event);"></select></div></div>
+              <div class="generalSettingRow"><label for="postType">Post Type:</label><div class="generalSettingControl"><select id="postType" name="postType" onchange="formHandler.readForm(event);"></select></div></div>
+              <div class="generalSettingRow"><label for="postColor" data-tooltip="Sets the color of the posts and supports.">
+                        Post Color:
+                      </label><div class="generalSettingControl"><select id="postColor" name="postColor" onchange="formHandler.readForm(event);"></select></div></div>
+              <div class="generalSettingRow"><label for="postThickness">Post Thickness (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="postThickness" min="0" max="2.5" step="0.5" value="1" onchange="formHandler.readForm(event);">
+                        <input type="number" id="postThicknessValue" name="postThicknessValue" min="0" max="2.5" step="0.1" value="1" aria-label="Post thickness in rem" onchange="formHandler.readForm(event);">
+                      </div></div></div>
+              <div class="generalSettingRow"><label for="settingsPanelSpacing">Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="settingsPanelSpacing" min="0" max="8" step="0.1" value="1">
+                        <input type="number" id="settingsPanelSpacingValue" min="0" max="8" step="0.1" value="1">
+                      </div></div></div>
+              <div class="generalSettingRow"><label for="settingsDefaultPanelSpacing">Default Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="settingsDefaultPanelSpacing" min="0" max="8" step="0.1" value="1">
+                        <input type="number" id="settingsDefaultPanelSpacingValue" min="0" max="8" step="0.1" value="1">
+                      </div></div></div>
+              <div class="generalSettingRow"><label for="showPost" id="showPostLabel">Hide Post:</label><div class="generalSettingControl"><input type="checkbox" id="showPost" name="showPost" value="showPost" onchange="formHandler.readForm(event);"></div></div>
+          </div>
+        </div>
+      </div>
       <div class="sMModal panelStyleConfig" data-current-menu="sMPanelAppearance">
         <nav class="sMModalBar">
           <div class="sMModalTitle">
@@ -1188,24 +1220,6 @@ remember
                   <option value="Black">Black</option>
                 </select>
                 <br>
-              </div>
-              <label for="disableFlash">Disable Selection Flash: </label>
-              <input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm();">
-              <br>
-              <label for="showBlockBoundingBoxes">Show Block Bounds: </label>
-              <input type="checkbox" id="showBlockBoundingBoxes" name="showBlockBoundingBoxes" onchange="formHandler.readForm();">
-              <br>
-              <label for="showAlignmentGuides" data-tooltip="Draws evenly spaced vertical guides below the rendered signs.">Alignment Guides:
-              </label>
-              <input type="checkbox" id="showAlignmentGuides" name="showAlignmentGuides" onchange="formHandler.readForm();">
-              <div id="alignmentGuideControls" class="hidden">
-                <label for="alignmentGuideSpacing">Spacing (<output id="alignmentGuideSpacingValue">4</output>
-                  rem):</label>
-                <input type="range" id="alignmentGuideSpacing" name="alignmentGuideSpacing" min="1" max="15" step="0.25" value="4" oninput="formHandler.readForm(event);">
-                <br>
-                <label for="alignmentGuidePhase">Phase (<output id="alignmentGuidePhaseValue">0</output>
-                  rem):</label>
-                <input type="range" id="alignmentGuidePhase" name="alignmentGuidePhase" min="0" max="4" step="0.25" value="0" oninput="formHandler.readForm(event);">
               </div>
             </div>
           </div>
@@ -1292,11 +1306,11 @@ remember
                 </button>
               </div>
 
-              <select id="exitVariant" class="exitTabVariantSelect" onchange="formHandler.readForm();"></select>
+              <select id="exitVariant" class="exitTabVariantSelect" aria-label="Exit tab type" onchange="formHandler.readForm(event);"></select>
 
-              <select id="exitTabPosition" class="exitTabPositionSelect" onchange="formHandler.readForm();"></select>
+              <select id="exitTabPosition" class="exitTabPositionSelect" onchange="formHandler.readForm(event);"></select>
 
-              <select id="exitTabWidth" class="exitTabWidthSelect" onchange="formHandler.readForm();"></select>
+              <select id="exitTabWidth" class="exitTabWidthSelect" aria-label="Exit tab width" onchange="formHandler.readForm(event);"></select>
 
               <label for="exitTabBilingualBottomText" id="exitTabBilingualBottomTextLabel" class="exitTabBottomTextLabel" hidden>Bottom:</label>
               <input type="text" id="exitTabBilingualBottomText" name="exitTabBilingualBottomText" placeholder="SORTIE" class="exitTabBottomTextInput" onchange="formHandler.readForm();" hidden>
@@ -1305,7 +1319,7 @@ remember
 
             <div class="exitTabStyleSettingsGrid">
               <label for="exitTabFontFamily" id="exitTabFontFamilyLabel">Font:</label>
-              <select id="exitTabFontFamily" name="exitTabFontFamily" onchange="formHandler.readForm();"></select>
+              <select id="exitTabFontFamily" name="exitTabFontFamily" onchange="formHandler.readForm(event);"></select>
 
               <label for="exitTabCharacterSpacing" id="exitTabCharacterSpacingLabel">Spacing:</label>
               <input type="number" id="exitTabCharacterSpacing" name="exitTabCharacterSpacing" min="-0.15" max="0.25" step="0.01" value="0" onchange="formHandler.readForm();">
@@ -1640,10 +1654,6 @@ remember
                   <span class="material-symbols-outlined">content_copy</span>
                   Duplicate
                 </button>
-                <button id="sMSPDeleteSelectedRow" onclick="app.delRow();" disabled>
-                  <span class="material-symbols-outlined">delete</span>
-                  Selected
-                </button>
               <select id="mergeAddHeader" aria-label="Add Header"><option value="" hidden>Add Header</option></select>
                   <select id="mergeAddFooter" aria-label="Add Footer"><option value="" hidden>Add Footer</option></select>
                 </div>
@@ -1670,8 +1680,8 @@ remember
                 </div>
               </div>
               <div id="sMSPElement">
-                <span id="SMSPElementLabel">Selected: Block 1</span>
                 <div class="SMSPNewElementHolder">
+                  <span id="SMSPElementLabel">Selected: Block 1</span>
                   <span>New: </span>
                   <select id="sMSPElementSelect" style="width: 30%"></select>
                   <button id="sMSPCreateElement" onclick="app.newControlElem(document.querySelector('#sMSPElementSelect').value, event);">
@@ -1680,10 +1690,6 @@ remember
                   <button id="sMSPDuplicateSelectedBlock" onclick="app.duplicateControlElem();">
                     <span class="material-symbols-outlined">content_copy</span>
                     Duplicate
-                  </button>
-                  <button id="sMSPDeleteSelectedBlock" onclick="app.delControlElem();">
-                    <span class="material-symbols-outlined" disabled>delete</span>
-                    Selected
                   </button>
                 </div>
               </div>
@@ -2584,8 +2590,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           <div class="panelSpacingControl">
             <label for="panelSpacing">Spacing</label>
             <div class="panelSpacingInputs">
-              <input type="range" id="panelSpacing" min="0" max="8" step="0.25" value="4">
-              <input type="number" class="num" id="panelSpacingValue" min="0" max="8" step="0.25" value="4">
+              <input type="range" id="panelSpacing" min="0" max="8" step="0.25" value="1">
+              <input type="number" class="num" id="panelSpacingValue" min="0" max="8" step="0.25" value="1">
             </div>
           </div>
         </div>
@@ -2593,6 +2599,10 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
       <button id="panelStyleConfig" class="sMConfigOption">
         <span class="material-symbols-outlined"> tune </span>
         <span>Panel Style</span>
+      </button>
+      <button id="postStyleConfig" class="sMConfigOption" type="button" aria-label="Post Style" title="Post Style">
+        <svg class="configIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 4v16M7 7h13M7 12h13"/></svg>
+        <span>Post Style</span>
       </button>
       <button id="exitTabConfig" class="sMConfigOption">
         <span class="material-symbols-outlined"> folder </span>
@@ -2629,10 +2639,10 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <span class="buttonLabel">Hide Menu</span>
       </button>
       <div class="historyBar">
-        <button id="undoButton" class="historyButton" onclick="app.undo()" type="button" title="Undo (CTRL+Z)" aria-label="Undo (CTRL+Z)">
+        <button id="undoButton" class="historyButton" type="button" title="Undo (CTRL+Z)" aria-label="Undo (CTRL+Z)">
           <span class="material-symbols-outlined">undo</span>
         </button>
-        <button id="redoButton" class="historyButton" onclick="app.redo()" type="button" title="Redo (CTRL+Y)" aria-label="Redo (CTRL+Y)">
+        <button id="redoButton" class="historyButton" type="button" title="Redo (CTRL+Y)" aria-label="Redo (CTRL+Y)">
           <span class="material-symbols-outlined">redo</span>
         </button>
         <button id="clearAllButton" class="historyButton" type="button" title="Clear all" aria-label="Clear all" onclick="app.clearAll();">

@@ -1,4 +1,4 @@
-![SignMaker Preview Thumbnail](https://github.com/JKPotato-Computer/SignMaker/blob/main/img/other-symbols/Banner.png)
+![SignMaker Preview Thumbnail](https://github.com/XtraLqrge/SignMaker/blob/v2.19-beta/public/img/other-symbols/Banner.png)
 
 The latest build prioritizes the sign before loading editor controls. See
 [Mobile performance and SEO](docs/mobile-performance-round2.md) for measurements,
@@ -8,6 +8,9 @@ Cloudflare Preview's forced `noindex` header.
 ### Important: The page for SignMaker v2.19 has moved to [hwysignmaker.com](https://hwysignmaker.com/).
 
 SignMaker is a JavaScript-based app for creating highway guide signs. Based off of [Kurumi's Sign Maker](http://www.kurumi.com/roads/signmaker). Allows for the creation of highway guide signs in the style defined by the United States FHWA in their [MUTCD](https://mutcd.fhwa.dot.gov/kno_2009r1r2.htm).
+
+See [the block editor and panel-placement update](docs/editor-layout-and-panel-dragging.md)
+for vertical dragging, snapping and default-setting changes.
 
 ## Run and deploy
 
@@ -44,7 +47,7 @@ builds do not download fonts. See [performance notes](docs/performance.md) for
 the measured bottlenecks, changes and optional browser checks.
 
 The latest [mobile performance pass](docs/mobile-performance-round2.md) reduces startup
-downloads and work, with 32 passing regression checks. The optional browser
+downloads and work, with 39 passing regression checks. The optional browser
 check supports a phone viewport with
 `npm run test:browser -- http://localhost:8765 --mobile`.
 

@@ -1796,7 +1796,7 @@ nav#SMConfigBar.invisible>.sMConfigOption:not(#hideConfig) {
   display: none;
 }
 
-#smSPTextEditor,
+#sMSPTextEditor,
 #smSPShieldEditor {
   display: flex;
   flex-direction: column;
@@ -1808,7 +1808,7 @@ nav#SMConfigBar.invisible>.sMConfigOption:not(#hideConfig) {
 }
 
 #sMSPCreate,
-#smSPElement,
+#sMSPElement,
 #smSPShieldHeader,
 #smSPShieldList {
   display: flex;
@@ -1821,7 +1821,7 @@ nav#SMConfigBar.invisible>.sMConfigOption:not(#hideConfig) {
   width: 100%;
 }
 
-#smSPElement,
+#sMSPElement,
 #smSPShieldList {
   gap: 1rem;
 }
@@ -5461,12 +5461,14 @@ dialog:not([open]) {
 }
 
 .exitTabMainSettingsGrid {
+  --exit-tab-type-width: 10rem;
+  --exit-tab-width-width: 6.25rem;
   display: grid;
-  grid-template-columns: max-content 8rem 6rem 5rem 5rem;
+  grid-template-columns: max-content minmax(4rem, 8rem) minmax(0, var(--exit-tab-type-width)) 5rem minmax(0, var(--exit-tab-width-width));
   column-gap: 0.55rem;
   row-gap: 0.55rem;
   align-items: center;
-  width: max-content;
+  width: min(100%, calc(16rem + var(--exit-tab-type-width) + var(--exit-tab-width-width)));
 }
 
 .exitTabMainSettingsGrid label {
@@ -5490,13 +5492,13 @@ dialog:not([open]) {
 .exitTabMainTextInput {
   grid-column: 2;
   grid-row: 1;
-  width: 8rem;
+  width: 100%;
 }
 
-.exitTabVariantSelect {
+:is(.exitTabVariantSelect, #exitVariant + .symbolPicker) {
   grid-column: 3;
   grid-row: 1;
-  width: 6rem;
+  width: 100%;
 }
 
 .exitTabPositionSelect {
@@ -5505,10 +5507,10 @@ dialog:not([open]) {
   width: 5rem;
 }
 
-.exitTabWidthSelect {
+:is(.exitTabWidthSelect, #exitTabWidth + .symbolPicker) {
   grid-column: 5;
   grid-row: 1;
-  width: 5rem;
+  width: 100%;
 }
 
 .exitTabColorSelect,
@@ -10281,18 +10283,18 @@ html[data-config-position="bottom"] .modals {
 }
 
 .sMModal.exitTabConfig.defaultConfigMode .exitTabMainSettingsGrid {
-  grid-template-columns: 6rem 5rem 5rem;
+  grid-template-columns: minmax(0, var(--exit-tab-type-width)) 5rem minmax(0, var(--exit-tab-width-width));
 }
 
-.sMModal.exitTabConfig.defaultConfigMode #exitVariant {
+.sMModal.exitTabConfig.defaultConfigMode :is(#exitVariant, #exitVariant + .symbolPicker) {
   grid-column: 1;
 }
 
-.sMModal.exitTabConfig.defaultConfigMode #exitTabPosition {
+.sMModal.exitTabConfig.defaultConfigMode :is(#exitTabPosition, .exitTabMainSettingsGrid > .alignmentButtons) {
   grid-column: 2;
 }
 
-.sMModal.exitTabConfig.defaultConfigMode #exitTabWidth {
+.sMModal.exitTabConfig.defaultConfigMode :is(#exitTabWidth, #exitTabWidth + .symbolPicker) {
   grid-column: 3;
 }
 

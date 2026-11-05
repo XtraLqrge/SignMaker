@@ -112,13 +112,7 @@ const formHandler = (function () {
       });
     };
 
-    const runShieldUndoableCommit = (callback) => {
-      /*
-       * A scheduled shield readForm or a still-open banner-text history
-       * transaction can otherwise absorb a picker change. Flush that older
-       * transaction first so the shield/variant change becomes the next undo
-       * entry immediately.
-       */
+    const flushShieldFormEdit = () => {
       if (sdShieldReadFormFrame) {
         if (typeof cancelAnimationFrame === "function") {
           cancelAnimationFrame(sdShieldReadFormFrame);
@@ -143,7 +137,11 @@ const formHandler = (function () {
         exposed.endUndoableChange();
         sdShieldLiveBannerUndoActive = false;
       }
+    };
 
+    const runShieldUndoableCommit = (callback) => {
+      // Finish a pending shield edit before starting a picker undo entry.
+      flushShieldFormEdit();
       const canUseUndo =
         exposed && typeof exposed.beginUndoableChange === "function" &&
         typeof exposed.endUndoableChange === "function";
@@ -1012,17 +1010,13 @@ const formHandler = (function () {
 
       const shouldAllowAplEdge = canUseAplEdgeExitTab();
 
-      Array.from(exitTabWidthSelectElmt.options)
-        .filter((option) => isAplEdgeExitTabWidth(option.value))
-        .forEach((option) => option.remove());
-
+      const aplEdgeOption = Array.from(exitTabWidthSelectElmt.options)
+        .find((option) => isAplEdgeExitTabWidth(option.value));
       if (shouldAllowAplEdge) {
-        const option = document.createElement("option");
-        option.value = EXIT_TAB_APL_EDGE_WIDTH;
-        option.textContent = EXIT_TAB_APL_EDGE_WIDTH;
-        exitTabWidthSelectElmt.appendChild(option);
-      } else if (exitTab && isAplEdgeExitTabWidth(exitTab.width)) {
-        exitTab.width = "Edge";
+        if (!aplEdgeOption) exitTabWidthSelectElmt.add(new Option(EXIT_TAB_APL_EDGE_WIDTH));
+      } else {
+        aplEdgeOption?.remove();
+        if (exitTab && isAplEdgeExitTabWidth(exitTab.width)) exitTab.width = "Edge";
       }
 
       return shouldAllowAplEdge;
@@ -2071,7 +2065,7 @@ const formHandler = (function () {
       currentPanelExitTabProfileId &&
       currentPanelExitTabProfileId !== EXIT_TAB_DEFAULT_PROFILE_ID;
 
-    const saveCurrentExitTabEditsToSelectedProfile = (exitTab = null) => {
+    const saveCurrentExitTabEditsToSelectedProfile = (exitTab, widthChanged) => {
       if (!exitTab || !shouldSaveCurrentExitTabEditsToProfile()) {
         return false;
       }
@@ -2102,7 +2096,7 @@ const formHandler = (function () {
       setExitTabProfileIdOnTab(exitTab, profile.id);
       applyExitTabProfileToLinkedTabs(profile.id, {
         variant,
-        preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+        preserveWidth: !widthChanged,
       });
       return true;
     };
@@ -2261,7 +2255,7 @@ const formHandler = (function () {
       }
     };
 
-    const readExitTabProfileSettingsFromForm = (settings, variant) => {
+    const readExitTabProfileSettingsFromForm = (settings, variant, widthChange) => {
       const form = document.forms[0];
       const resolvedVariant = normalizeExitTabProfileVariant(variant);
       const isAssetVariant = isExitTabAssetVariantValue(resolvedVariant);
@@ -2270,9 +2264,7 @@ const formHandler = (function () {
       delete updated.number;
       updated.variant = resolvedVariant;
       updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
-      if (form["exitTabWidth"] && document.activeElement === form["exitTabWidth"]) {
-        updated.width = form["exitTabWidth"].value || updated.width;
-      }
+      if (widthChange) updated.width = widthChange;
       updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
       updated.textColor =
         form["exitTabTextColor"]?.value || updated.textColor || "Panel Color";
@@ -2376,7 +2368,7 @@ const formHandler = (function () {
       return normalizeExitTabProfileSettings(updated, resolvedVariant);
     };
 
-    const readExitTabProfileForm = () => {
+    const readExitTabProfileForm = (variantChange, widthChange) => {
       const store = normalizeExitTabProfiles();
       const profile =
         store.profiles.find((item) => item.id === selectedExitTabProfileId) ||
@@ -2390,19 +2382,20 @@ const formHandler = (function () {
         selectedExitTabProfileVariant
       );
       const requestedVariant = normalizeExitTabProfileVariant(
-        document.forms[0]["exitVariant"]?.value || activeVariant
+        variantChange || document.forms[0]["exitVariant"]?.value || activeVariant
       );
 
       profile.settingsByVariant[activeVariant] =
         readExitTabProfileSettingsFromForm(
           getExitTabProfileSettings(profile, activeVariant),
-          activeVariant
+          activeVariant,
+          widthChange
         );
       profile.settings = profile.settingsByVariant.Default;
       store.selectedId = profile.id;
       applyExitTabProfileToLinkedTabs(profile.id, {
         variant: activeVariant,
-        preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+        preserveWidth: !widthChange,
       });
 
       if (
@@ -2818,19 +2811,6 @@ const formHandler = (function () {
     };
 
     const getNestedExitTabLimit = () => null;
-const getPostThicknessFallback = () =>
-    typeof Post.prototype.defaultThickness === "number"
-      ? Post.prototype.defaultThickness
-      : 1;
-  const normalizeStoredPostThickness = (value) => {
-    const parsed =
-      typeof value === "string" ? parseFloat(value) : Number(value);
-    if (Number.isFinite(parsed)) {
-      return Math.max(0, parsed);
-    }
-    return getPostThicknessFallback();
-  };
-
   const logStorageWarning = (message, error) => {
     if (!localStorageWarningLogged) {
       console.warn(message, error);
@@ -2871,7 +2851,7 @@ const getPostThicknessFallback = () =>
   };
 
   const normalizePanelSpacingPreference = (value, fallback = 1) => {
-    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+    const parsed = value == null ? NaN : typeof value === "string" ? parseFloat(value) : Number(value);
     const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
     const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1;
 
@@ -4410,7 +4390,7 @@ const getPostThicknessFallback = () =>
 
     const panelStylePopoverIsOpen = () => {
       const configBar = document.getElementById("sMConfigBar");
-      return ["panelStyleConfig","appSettingsConfig"].includes(configBar?.dataset.currentMenu);
+      return ["panelStyleConfig","postStyleConfig","appSettingsConfig"].includes(configBar?.dataset.currentMenu);
     };
 
     const clearPanelStylePopoverPosition = () => {
@@ -4429,29 +4409,17 @@ const getPostThicknessFallback = () =>
     const positionPanelStylePopover = () => {
       const modalHolder = document.querySelector(".modals");
       const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
-      if (!activeMenu || !panelStylePopoverIsOpen()) {
-        clearPanelStylePopoverPosition();
-        return;
-      }
+      if (!panelStylePopoverIsOpen()) return;
       const panelStyleModal = document.querySelector(".sMModal."+activeMenu);
       const configBar = document.getElementById("sMConfigBar");
       const trigger = document.getElementById(activeMenu);
 
-      if (
-        !modalHolder ||
-        !panelStyleModal ||
-        !configBar ||
-        !panelStylePopoverIsOpen()
-      ) {
-        clearPanelStylePopoverPosition();
-        return;
-      }
+      if (!modalHolder || !panelStyleModal || !configBar) return;
 
       modalHolder.classList.add("panelStylePopoverOpen");
 
       const barRect = configBar.getBoundingClientRect();
       const triggerRect = trigger?.getBoundingClientRect() || barRect;
-      const modalRect = panelStyleModal.getBoundingClientRect();
       const position = String(
         configBar.dataset.position ||
         document.documentElement.dataset.configPosition ||
@@ -4459,7 +4427,21 @@ const getPostThicknessFallback = () =>
       ).toLowerCase();
       const gap = 8;
       const edge = 8;
+      const settings = activeMenu === "appSettingsConfig" || activeMenu === "postStyleConfig";
+      const settingsBesideBar = settings && position === "right";
 
+      if (settings) {
+        const rootStyle = getComputedStyle(document.documentElement);
+        const scale = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
+        const headerHeight = panelStyleModal.querySelector(".sMModalBar").getBoundingClientRect().height;
+        const contentTop = position === "top" ? barRect.bottom + gap : Math.max(0, barRect.top);
+        const available = position === "bottom" ? barRect.top - gap : window.innerHeight - contentTop;
+        const dropdownRoom = 2 * (parseFloat(rootStyle.fontSize) || 20) * scale;
+        const maxContentHeight = Math.max(0, (available - headerHeight - edge - dropdownRoom) / scale);
+        panelStyleModal.style.setProperty("--settings-content-max-height", `${maxContentHeight}px`);
+      }
+
+      const modalRect = panelStyleModal.getBoundingClientRect();
       let left = triggerRect.left;
       let top = triggerRect.top;
 
@@ -4469,13 +4451,14 @@ const getPostThicknessFallback = () =>
         top = barRect.bottom + gap;
       } else {
         left = barRect.left - gap - modalRect.width;
+        if (settingsBesideBar) top = Math.max(0, barRect.top);
       }
 
       const maxLeft = Math.max(edge, window.innerWidth - modalRect.width - edge);
       const maxTop = Math.max(edge, window.innerHeight - modalRect.height - edge);
 
       left = Math.max(edge, Math.min(maxLeft, left));
-      top = Math.max(edge, Math.min(maxTop, top));
+      if (!settingsBesideBar) top = Math.max(edge, Math.min(maxTop, top));
 
       modalHolder.style.setProperty("left", `${left}px`, "important");
       modalHolder.style.setProperty("top", `${top}px`, "important");
@@ -4515,6 +4498,7 @@ const getPostThicknessFallback = () =>
         panelStylePopoverResizeObserver.observe(configBar);
         panelStylePopoverResizeObserver.observe(panelStyleModal);
         panelStylePopoverResizeObserver.observe(document.getElementById("settings22Modal"));
+        panelStylePopoverResizeObserver.observe(document.getElementById("postStyleModal"));
       }
     };
 
@@ -4542,18 +4526,6 @@ const getPostThicknessFallback = () =>
       return panelSelect;
     };
 
-    const clearPanelSelectorPopoverPosition = () => {
-      const panelSelect = document.getElementById("panelSelect");
-
-      if (!panelSelect) {
-        return;
-      }
-
-      ["top", "right", "bottom", "left"].forEach((property) => {
-        panelSelect.style.removeProperty(property);
-      });
-    };
-
     const positionPanelSelectorPopover = () => {
       const panelSelect = ensurePanelSelectorPopoverPortal();
       const configBar = document.getElementById("sMConfigBar");
@@ -4567,7 +4539,6 @@ const getPostThicknessFallback = () =>
         !trigger ||
         !panelSelectorPopoverIsOpen()
       ) {
-        clearPanelSelectorPopoverPosition();
         return;
       }
 
@@ -4817,7 +4788,7 @@ const getPostThicknessFallback = () =>
     });
   };
 
-  const formatPostKindLabel = (value) => {
+  const formatPostPositionLabel = (value) => {
     if (typeof value !== "string") {
       return "";
     }
@@ -5036,11 +5007,7 @@ const getPostThicknessFallback = () =>
 
     const storedPostThickness = getStoredItem(STORAGE_KEYS.postThickness);
     if (storedPostThickness !== null && post) {
-      const normalizedThickness =
-        typeof post.normalizeThickness === "function"
-          ? post.normalizeThickness(storedPostThickness)
-          : normalizeStoredPostThickness(storedPostThickness);
-      post.thickness = normalizedThickness;
+      post.thickness = post.normalizeThickness(storedPostThickness);
     }
 
     if (post) {
@@ -9641,7 +9608,7 @@ const getPostThicknessFallback = () =>
     };
 
     const isColorSelectElement = (selectEl) => {
-      if (!selectEl || selectEl.tagName !== "SELECT") {
+      if (!selectEl || selectEl.tagName !== "SELECT" || selectEl.id === "postColor") {
         return false;
       }
 
@@ -15267,22 +15234,66 @@ const getPostThicknessFallback = () =>
         });
       }
 
+    const configPopoverAnimations = new WeakMap();
+
+    const setConfigPopover = (popover, display, { animate = true, onClose } = {}) => {
+      const wasOpen = !!popover.style.display && !popover.inert;
+      if (display ? wasOpen : !popover.style.display || (!wasOpen && animate)) return;
+
+      const previousAnimation = configPopoverAnimations.get(popover);
+      const opacity = previousAnimation ? Number(getComputedStyle(popover).opacity) : (display ? 0 : 1);
+      previousAnimation?.cancel();
+      configPopoverAnimations.delete(popover);
+      popover.inert = !display;
+
+      const finish = () => {
+        configPopoverAnimations.delete(popover);
+        if (!display) {
+          popover.style.display = "";
+          onClose?.();
+        }
+      };
+
+      if (display) popover.style.display = display;
+      if (!animate || !window.SignMakerDropdowns.getAnimationsEnabled() ||
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
+          typeof popover.animate !== "function") {
+        finish();
+        return;
+      }
+
+      const animation = popover.animate(
+        [{ opacity }, { opacity: display ? 1 : 0 }],
+        { duration: display ? 150 : 110, easing: display ? "ease-out" : "ease-in" }
+      );
+      configPopoverAnimations.set(popover, animation);
+      animation.onfinish = finish;
+    };
+
     function reDisplay() {
       window.SignMakerEditorRuntime?.ensure();
       const openingPanelStylePopover = panelStylePopoverIsOpen();
-      const modalHolder = document.querySelector(".modals");
-      const previousModalVisibility = modalHolder?.style.visibility || "";
+      const modals = [...document.querySelectorAll(".sMModal")];
+      const nextModal = modals.find(modal => modal.classList.contains(sMConfigBar.dataset.currentMenu));
 
-      if (openingPanelStylePopover && modalHolder) {
-        modalHolder.style.visibility = "hidden";
-        modalHolder.classList.add("panelStylePopoverOpen");
-      }
-
-      for (const holder of document.querySelectorAll(".sMModal")) {
-        if (holder.classList.contains(sMConfigBar.dataset.currentMenu)) {
-          holder.style.display = "block";
+      for (const holder of modals) {
+        const open = holder === nextModal;
+        if (holder.matches(".panelStyleConfig, .postStyleConfig, .appSettingsConfig")) {
+          if (!open && holder.style.display && !holder.inert) {
+            window.nativeSelectPickers?.forEach(picker => {
+              if (picker.wrapper.classList.contains("open") && holder.contains(picker.wrapper)) picker.close?.();
+            });
+            holder.querySelectorAll(".fontPicker.open, .colorPicker.open, .colorPicker.addingCustomColor")
+              .forEach(picker => picker.classList.remove("open", "addingCustomColor"));
+          }
+          setConfigPopover(holder, open ? "block" : "", {
+            animate: open || !nextModal,
+            onClose: () => {
+              if (!panelStylePopoverIsOpen()) clearPanelStylePopoverPosition();
+            }
+          });
         } else {
-          holder.style.display = "";
+          holder.style.display = open ? "block" : "";
         }
       }
 
@@ -15293,11 +15304,8 @@ const getPostThicknessFallback = () =>
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
         const panelSelect = ensurePanelSelectorPopoverPortal();
         if (panelSelect) {
-          const previousPanelSelectVisibility = panelSelect.style.visibility || "";
-          panelSelect.style.visibility = "hidden";
-          panelSelect.style.display = "flex";
+          setConfigPopover(panelSelect, "flex");
           positionPanelSelectorPopover();
-          panelSelect.style.visibility = previousPanelSelectVisibility;
           schedulePanelSelectorPopoverPosition();
         }
         document.querySelectorAll(
@@ -15305,11 +15313,7 @@ const getPostThicknessFallback = () =>
         )[0].classList.add("selected");
       } else {
         const panelSelect = document.querySelector("#panelSelect");
-        if (panelSelect) {
-          panelSelect.style.display = "";
-          panelSelect.style.removeProperty("visibility");
-        }
-        clearPanelSelectorPopoverPosition();
+        if (panelSelect) setConfigPopover(panelSelect, "");
         document.querySelectorAll(
           ".sMConfigOption:has(#panelSelector)"
         )[0].classList.remove("selected");
@@ -15353,13 +15357,9 @@ const getPostThicknessFallback = () =>
       }
 
       if (openingPanelStylePopover) {
-        if (modalHolder) {
-          modalHolder.classList.add("panelStylePopoverOpen");
-          positionPanelStylePopover();
-          modalHolder.style.visibility = previousModalVisibility;
-        }
+        positionPanelStylePopover();
         schedulePanelStylePopoverPosition();
-      } else {
+      } else if (!modals.some(modal => modal.style.display && modal.matches(".panelStyleConfig, .postStyleConfig, .appSettingsConfig"))) {
         clearPanelStylePopoverPosition();
       }
     }
@@ -15569,6 +15569,40 @@ const getPostThicknessFallback = () =>
         sMConfigBar.dataset.currentMenu = menuId || "";
         reDisplay();
       };
+
+      const postContainer = document.getElementById("postContainer");
+      const panelContainer = document.getElementById("panelContainer");
+      postContainer.addEventListener("click", (event) => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented) return;
+        if (event.target !== postContainer && event.target !== panelContainer && !event.target.matches(".post")) return;
+        const currentPost = exposed.getPost();
+        if (currentPost.showPost || currentPost.thickness <= 0) return;
+        if (event.target.matches(".post")) {
+          openConfigMenuById("postStyleConfig");
+          return;
+        }
+        const support = postContainer.querySelector(".fdotSupport");
+        const { clientX, clientY } = event;
+        if (support) {
+          if (window.SignMakerFDOTSupports.containsPoint(support, clientX, clientY)) openConfigMenuById("postStyleConfig");
+          return;
+        }
+        if (event.target !== panelContainer || !panelContainer.offsetHeight) return;
+        const bounds = panelContainer.getBoundingClientRect();
+        const units = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) *
+          bounds.height / panelContainer.offsetHeight;
+        const y = (clientY - bounds.top) / units;
+        const halfThickness = currentPost.thickness / 2;
+        const style = getComputedStyle(postContainer);
+        const position = currentPost.polePosition;
+        const onSupport = position === "Center"
+          ? Math.abs(clientX - (bounds.left + bounds.width / 2)) <= halfThickness * units &&
+            bounds.bottom - clientY <= parseFloat(style.getPropertyValue("--post-center-height")) * units
+          : ["Left", "Right", "Overhead"].includes(position) &&
+            (Math.abs(y - parseFloat(style.getPropertyValue("--post-arm-upper"))) <= halfThickness ||
+              Math.abs(y - parseFloat(style.getPropertyValue("--post-arm-lower"))) <= halfThickness);
+        if (onSupport) openConfigMenuById("postStyleConfig");
+      });
 
       const toggleConfigMenuById = (menuId) => {
         if (!sMConfigBar) {
@@ -16377,11 +16411,7 @@ const getPostThicknessFallback = () =>
     };
 
     const commitPanelSpacingChange = (value) => {
-      const parsedValue = parseFloat(value);
-      const normalized =
-        Number.isFinite(parsedValue) && parsedValue >= 0
-          ? Math.min(parsedValue, 8)
-          : 4;
+      const normalized = normalizePanelSpacingPreference(value, getDefaultPanelSpacingPreference());
 
       syncPanelSpacingInputs(normalized);
 
@@ -16464,34 +16494,20 @@ const getPostThicknessFallback = () =>
       });
     });
 
-    const postThicknessValueInput =
-      document.getElementById("postThicknessValue");
-
-    const commitPostThicknessChange = (value) => {
-      const normalizedThickness =
-        post && typeof post.normalizeThickness === "function"
-          ? post.normalizeThickness(value)
-          : normalizeStoredPostThickness(value);
-      if (post) {
-        post.thickness = normalizedThickness;
-      }
-      if (postThicknessValueInput) {
-        postThicknessValueInput.value = normalizedThickness;
-      }
-      setStoredItem(STORAGE_KEYS.postThickness, normalizedThickness);
-      if (exposed && typeof exposed.redraw === "function") {
-        exposed.redraw();
-      }
-    };
-
-    if (postThicknessValueInput) {
-      postThicknessValueInput.addEventListener("input", () => {
-        commitPostThicknessChange(postThicknessValueInput.value);
-      });
-      postThicknessValueInput.addEventListener("change", () => {
-        commitPostThicknessChange(postThicknessValueInput.value);
-      });
-    }
+    const postThicknessSlider = document.getElementById("postThickness");
+    const postThicknessValueInput = document.getElementById("postThicknessValue");
+    postThicknessSlider.addEventListener("input", () => {
+      postThicknessValueInput.value = postThicknessSlider.value;
+    });
+    postThicknessValueInput.addEventListener("blur", () => {
+      syncPostReference();
+      syncPostThicknessControls(true);
+    });
+    postThicknessValueInput.addEventListener("keydown", event => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      postThicknessValueInput.blur();
+    });
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
     window.addEventListener("resize", scheduleSubpanelModalHeightSync);
@@ -16654,15 +16670,15 @@ const getPostThicknessFallback = () =>
         welcomeDialog.style.display = "flex";
       }
 
-    // Populate post kind options
+    // The model keeps the full preset ID across the position and type controls.
     const postPositionSelectElmt = document.getElementById("postPosition");
     for (const polePosition of Post.prototype.polePositions) {
-      const displayLabel = formatPostKindLabel(polePosition);
+      if (window.SignMakerFDOTSupports?.get(polePosition)) continue;
       lib.appendOption(postPositionSelectElmt, polePosition, {
-        selected: polePosition == post.polePosition,
-        text: displayLabel,
+        text: formatPostPositionLabel(polePosition),
       });
     }
+    syncPostPositionControls();
 
     const postColorSelectElmt = document.getElementById("postColor");
     if (postColorSelectElmt) {
@@ -20193,10 +20209,141 @@ const getPostThicknessFallback = () =>
   };
     
   // Handle Form
+  const syncPostType = (select, position, type = position) => {
+    const positionChanged = select.dataset.position !== position;
+    if (!positionChanged && select.value === type) return;
+    const picker = window.getNativeSelectPicker?.(select);
+    if (positionChanged) {
+      if (picker?.wrapper.classList.contains("open")) picker.close();
+      const supports = window.SignMakerFDOTSupports?.forPosition(position) ?? [];
+      const options = [new Option("Standard", position)];
+      if (supports.length) {
+        const group = document.createElement("optgroup");
+        group.label = "FDOT";
+        group.append(...supports.map(support => new Option(support.label, support.id)));
+        options.push(group);
+      }
+      select.replaceChildren(...options);
+      select.dataset.position = position;
+    }
+    select.value = type;
+    picker?.sync();
+  };
+
+  const syncPostPositionControls = () => {
+    const select = document.getElementById("postPosition");
+    const type = post.polePosition;
+    const position = window.SignMakerFDOTSupports?.get(type)?.position ?? type;
+    if (select.value !== position) {
+      select.value = position;
+      window.getNativeSelectPicker?.(select)?.sync();
+    }
+    syncPostType(document.getElementById("postType"), position, type);
+  };
+
+  const postAppearanceFields = new Map([
+    ["postPosition", "polePosition"], ["postType", "polePosition"],
+    ["postColor", "color"], ["showPost", "showPost"],
+    ["postThickness", "thickness"], ["postThicknessValue", "thickness"],
+  ]);
+  const postAppearanceStorage = new Map([
+    ["polePosition", STORAGE_KEYS.postPosition], ["color", STORAGE_KEYS.postColor],
+    ["showPost", STORAGE_KEYS.showPost], ["thickness", STORAGE_KEYS.postThickness],
+  ]);
+
+  const persistPostAppearance = (current, previous) => {
+    syncPostReference();
+    for (const [property, key] of postAppearanceStorage) {
+      if (current[property] !== previous?.[property]) {
+        setStoredItem(key, property === "showPost" ? !!current[property] : current[property]);
+        syncPostAppearanceField(property);
+      }
+    }
+  };
+
+  const syncPostThicknessControls = (force = false) => {
+    const input = document.getElementById("postThicknessValue");
+    const slider = document.getElementById("postThickness");
+    const value = post.normalizeThickness(post.thickness);
+    const thickness = String(value);
+    const sliderValue = String(Math.round(value * 2) / 2);
+    if (slider.value !== sliderValue) slider.value = sliderValue;
+    if (force || input.dataset.committedThickness !== thickness || document.activeElement !== input) {
+      if (input.value !== thickness) input.value = thickness;
+    }
+    input.dataset.committedThickness = thickness;
+  };
+
+  const syncPostAppearanceField = (property) => {
+    if (property === "polePosition") {
+      syncPostPositionControls();
+    } else if (property === "thickness") {
+      syncPostThicknessControls(true);
+    } else if (property === "showPost") {
+      document.getElementById("showPost").checked = !!post.showPost;
+    } else if (property === "color") {
+      const color = document.getElementById("postColor");
+      const value = Post.prototype.colors.includes(post.color) ? post.color : "";
+      if (color.value !== value) {
+        color.value = value;
+        window.getNativeSelectPicker?.(color)?.sync();
+      }
+    }
+  };
+
+  const readPostAppearance = (fieldId, value) => {
+    const property = postAppearanceFields.get(fieldId);
+    const previous = post[property];
+    if (property === "thickness") {
+      if (!value.trim() || !Number.isFinite(Number(value))) return false;
+      value = Math.round(post.normalizeThickness(value) * 10) / 10;
+    } else if (fieldId === "postType") {
+      const supports = window.SignMakerFDOTSupports;
+      const position = supports?.get(previous)?.position ?? previous;
+      if (value !== position && supports?.get(value)?.position !== position) {
+        syncPostPositionControls();
+        return false;
+      }
+    } else if (fieldId === "postColor" ? !Post.prototype.colors.includes(value) : !value && fieldId !== "showPost") {
+      return false;
+    }
+    post[property] = value;
+    syncPostAppearanceField(property);
+    if (previous === value) return false;
+    setStoredItem(postAppearanceStorage.get(property), value);
+    return true;
+  };
+
+  const readDisplaySettings = (form) => {
+    post.disableFlash = form["disableFlash"].checked;
+    post.showBlockBoundingBoxes = form["showBlockBoundingBoxes"].checked;
+    post.showAlignmentGuides = form["showAlignmentGuides"].checked;
+    post.alignmentGuideSpacing = post.normalizeAlignmentGuideSpacing(form["alignmentGuideSpacing"].value);
+    post.alignmentGuidePhase = post.normalizeAlignmentGuidePhase(form["alignmentGuidePhase"].value, post.alignmentGuideSpacing);
+  };
+
+  const syncDisplaySettings = () => {
+    document.getElementById("showBlockBoundingBoxes").checked=!!post.showBlockBoundingBoxes;
+    document.getElementById("showAlignmentGuides").checked=!!post.showAlignmentGuides;
+    document.getElementById("alignmentGuideControls").classList.toggle("hidden",!post.showAlignmentGuides);
+    const guideSpacing=post.normalizeAlignmentGuideSpacing(post.alignmentGuideSpacing);
+    const guidePhase=post.normalizeAlignmentGuidePhase(post.alignmentGuidePhase,guideSpacing);
+    document.getElementById("alignmentGuideSpacing").value=guideSpacing;
+    document.getElementById("alignmentGuideSpacingValue").value=guideSpacing;
+    document.getElementById("alignmentGuidePhase").max=guideSpacing;
+    document.getElementById("alignmentGuidePhase").value=guidePhase;
+    document.getElementById("alignmentGuidePhaseValue").value=guidePhase;
+  };
+
   // Read the form and update the page by redrawing it.
   const readForm = function (options = {}) {
     const deferHistoryEnd = options?.deferHistoryEnd === true;
-    syncPostReference();
+    const field = options?.target;
+    const changedControl = field ?? document.activeElement;
+    const exitWidthChange = changedControl?.id === "exitTabWidth" ? changedControl.value : "";
+    const exitVariantChange = changedControl?.id === "exitVariant" ? changedControl.value : "";
+    const postField = postAppearanceFields.has(field?.id) ? field.id : null;
+    const postValue = postField && (postField === "showPost" ? field.checked : field.value);
     if (
         exposed &&
         typeof exposed.beginUndoableChange === "function"
@@ -20204,12 +20351,23 @@ const getPostThicknessFallback = () =>
         exposed.beginUndoableChange();
       }
     try {
+    syncPostReference();
     const form = document.forms[0];
+    if (field?.matches?.("#disableFlash, #showBlockBoundingBoxes, #showAlignmentGuides, #alignmentGuideSpacing, #alignmentGuidePhase")) {
+      readDisplaySettings(form);
+      syncDisplaySettings();
+      exposed.redraw();
+      return;
+    }
+    if (postField) {
+      if (readPostAppearance(postField, postValue)) exposed.redraw();
+      return;
+    }
 
     readExitTabCornerRadiusFromForm();
 
     if (exitTabEditorMode === "default") {
-      const profileVariantChanged = readExitTabProfileForm();
+      const profileVariantChanged = readExitTabProfileForm(exitVariantChange, exitWidthChange);
       applyExitTabDefaultProfileToPrototype();
 
       if (profileVariantChanged) {
@@ -20256,17 +20414,8 @@ const getPostThicknessFallback = () =>
     }
 
     // Post
-    post.polePosition = form["postPosition"].value;
-    const requestedPostColor = form["postColor"] ? form["postColor"].value : null;
-    if (requestedPostColor) {
-      post.color = requestedPostColor;
-    }
-    post.showPost = form["showPost"].checked;
     delete post.secondExitOnly;
     currentPanel.sign.secondExitOnly = form["secondExitOnly"]?.checked === true;
-    setStoredItem(STORAGE_KEYS.postPosition, post.polePosition);
-    setStoredItem(STORAGE_KEYS.showPost, String(!!post.showPost));
-    setStoredItem(STORAGE_KEYS.postColor, post.color);
 
     // Panel
     currentPanel.color = form["panelColor"].value;
@@ -20291,11 +20440,7 @@ const getPostThicknessFallback = () =>
       }));
     }
 
-    post.disableFlash = form["disableFlash"].checked;
-    post.showBlockBoundingBoxes = form["showBlockBoundingBoxes"].checked;
-    post.showAlignmentGuides = form["showAlignmentGuides"].checked;
-    post.alignmentGuideSpacing = post.normalizeAlignmentGuideSpacing(form["alignmentGuideSpacing"].value);
-    post.alignmentGuidePhase = post.normalizeAlignmentGuidePhase(form["alignmentGuidePhase"].value,post.alignmentGuideSpacing);
+    readDisplaySettings(form);
 
     // Exit Tab
     if (exitTab) {
@@ -20303,7 +20448,7 @@ const getPostThicknessFallback = () =>
       exitTab.variant || "Default"
     );
     const requestedExitVariant = normalizeExitTabProfileVariant(
-      form["exitVariant"]?.value || previousExitVariant || "Default"
+      exitVariantChange || form["exitVariant"]?.value || previousExitVariant || "Default"
     );
     const isAssetExitTabVariant = isExitTabAssetVariantValue(requestedExitVariant);
 
@@ -20357,10 +20502,7 @@ const getPostThicknessFallback = () =>
       updateExitTabBilingualControls(exitTab);
     const aplEdgeAllowed = syncExitTabWidthOptions(exitTab);
     const previousExitTabWidth = exitTab.width || "Edge";
-    const requestedExitTabWidth = form["exitTabWidth"] &&
-      document.activeElement === form["exitTabWidth"]
-        ? form["exitTabWidth"].value
-        : exitTab.width || "Full";
+    const requestedExitTabWidth = exitWidthChange || exitTab.width || "Full";
 
     const shouldForceEmptyCurrentExitTabToEdge = false;
 
@@ -20385,10 +20527,9 @@ const getPostThicknessFallback = () =>
           ? showLeftField.checked
           : previousShowLeft;
 
-        const activeElement = document.activeElement;
-        const changedLeftCheckbox = showLeftField && activeElement === showLeftField;
+        const changedLeftCheckbox = showLeftField && changedControl === showLeftField;
         const changedPositionDropdown =
-          exitTabPositionField && activeElement === exitTabPositionField;
+          exitTabPositionField && changedControl === exitTabPositionField;
 
         /*
           Left checkbox:
@@ -20545,7 +20686,7 @@ const getPostThicknessFallback = () =>
         const previousUsesHighwayGothic = isExitTabHighwayGothicFontFamily(previousFontFamily);
         const nextUsesHighwayGothic = isExitTabHighwayGothicFontFamily(nextFontFamily);
         const changedExitTabFontDropdown =
-          exitTabFontSelect && document.activeElement === exitTabFontSelect;
+          exitTabFontSelect && changedControl === exitTabFontSelect;
 
         if (!isAssetExitTabVariant) {
           exitTab.fontFamily = nextFontFamily;
@@ -20695,7 +20836,7 @@ const getPostThicknessFallback = () =>
             : 0;
         }
 
-        saveCurrentExitTabEditsToSelectedProfile(exitTab);
+        saveCurrentExitTabEditsToSelectedProfile(exitTab, !!exitWidthChange);
     }
     // Misc Shields
     currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
@@ -21906,17 +22047,9 @@ const getPostThicknessFallback = () =>
       subPanelList.dataset.subPanelTabDragAttached = "true";
     }
 
-    const postPositionSelectElmt = document.getElementById("postPosition");
-    if (postPositionSelectElmt && post.polePosition) {
-      postPositionSelectElmt.value = post.polePosition;
-    }
+    syncPostPositionControls();
 
-    const postColorSelectElmt = document.getElementById("postColor");
-    if (postColorSelectElmt && post.color) {
-      ensureCustomColorOptionsForSelect(postColorSelectElmt);
-      ensureNativeColorSelectOption(postColorSelectElmt, post.color);
-      postColorSelectElmt.value = post.color;
-    }
+    syncPostAppearanceField("color");
 
     const showPostCheckbox = document.getElementById("showPost");
     if (showPostCheckbox) {
@@ -22116,11 +22249,8 @@ const getPostThicknessFallback = () =>
     const panelSpacingValueInputs = Array.from(
       document.querySelectorAll("#panelSpacingValue, #settingsPanelSpacingValue")
     );
-    const resolvedPanelSpacing =
-      typeof post.panelSpacing === "number" && post.panelSpacing >= 0
-        ? Math.min(post.panelSpacing, 8)
-        : 4;
     const resolvedDefaultPanelSpacing = getDefaultPanelSpacingPreference();
+    const resolvedPanelSpacing = normalizePanelSpacingPreference(post.panelSpacing, resolvedDefaultPanelSpacing);
 
     panelSpacingSliders.forEach((slider) => {
       slider.value = resolvedPanelSpacing;
@@ -22138,19 +22268,8 @@ const getPostThicknessFallback = () =>
       input.value = resolvedDefaultPanelSpacing;
     });
 
-    const postThicknessValueInput =
-      document.getElementById("postThicknessValue");
-    const resolvedPostThickness =
-      post && typeof post.normalizeThickness === "function"
-        ? post.normalizeThickness(post.thickness)
-        : normalizeStoredPostThickness(post ? post.thickness : undefined);
-    if (post) {
-      post.thickness = resolvedPostThickness;
-    }
-    if (postThicknessValueInput) {
-      postThicknessValueInput.value = resolvedPostThickness;
-    }
-    
+    syncPostThicknessControls();
+
     const hasBlockElementContent = (controlData) =>
       controlData &&
       Array.isArray(controlData.rows) &&
@@ -23502,16 +23621,7 @@ const getPostThicknessFallback = () =>
     const vmsSettings = VmsPanel.settings(panel);
     document.getElementById("vmsPanel").checked=panel.isVms===true;
     document.getElementById("copySignsOnly").checked=post.copySignsOnly!==false;
-    document.getElementById("showBlockBoundingBoxes").checked=!!post.showBlockBoundingBoxes;
-    document.getElementById("showAlignmentGuides").checked=!!post.showAlignmentGuides;
-    document.getElementById("alignmentGuideControls").classList.toggle("hidden",!post.showAlignmentGuides);
-    const guideSpacing=post.normalizeAlignmentGuideSpacing(post.alignmentGuideSpacing);
-    const guidePhase=post.normalizeAlignmentGuidePhase(post.alignmentGuidePhase,guideSpacing);
-    document.getElementById("alignmentGuideSpacing").value=guideSpacing;
-    document.getElementById("alignmentGuideSpacingValue").value=guideSpacing;
-    document.getElementById("alignmentGuidePhase").max=guideSpacing;
-    document.getElementById("alignmentGuidePhase").value=guidePhase;
-    document.getElementById("alignmentGuidePhaseValue").value=guidePhase;
+    syncDisplaySettings();
     document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
     document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
     document.getElementById("vmsAntialias").checked = vmsSettings.vmsAntialias;
@@ -24028,13 +24138,25 @@ const getPostThicknessFallback = () =>
     document.querySelector("#SMSPElementLabel").textContent =
       "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
 
-    document.querySelector("#sMSPDeleteSelectedRow").disabled =
-      currentRows.length <= 1;
-
-    document.querySelector("#sMSPDeleteSelectedBlock").disabled =
-      currentRows.length <= 1 &&
-      (!currentRows[exposed.vars.currentlySelectedRowIndex] ||
-        currentRows[exposed.vars.currentlySelectedRowIndex].length <= 1);
+    const elementCount = currentRows.reduce((count, row) => count + row.length, 0);
+    const makeDeleteButton = (className, label, remove) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">delete</span>';
+      // Commit a focused field during the click, after the button has received it.
+      button.addEventListener("mousedown", event => event.preventDefault());
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        const field = document.activeElement;
+        if (field?.matches("input, select, textarea")) field.blur();
+        flushShieldFormEdit();
+        if (exposed.getActiveBlockElements() === currentBlockElements) remove();
+      });
+      return button;
+    };
 
     for (let row = 0; row < currentRows.length; row++) {
       const sMControlRow = document.createElement("div");
@@ -24045,6 +24167,12 @@ const getPostThicknessFallback = () =>
         (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
           ? " clipboardRowSelected"
           : "");
+
+      if (currentRows.length > 1 && elementCount > currentRows[row].length) {
+        sMControlRow.appendChild(makeDeleteButton(
+          "sMControlRowDeleteButton", `Delete row ${row + 1}`, () => exposed.delRow(row)
+        ));
+      }
 
       for (let item = 0; item < currentRows[row].length; item++) {
         const blockElement = currentRows[row][item];
@@ -24066,6 +24194,7 @@ const getPostThicknessFallback = () =>
             ? " selected"
             : "") +
           (clipboardBlockSelected ? " clipboardSelected" : "");
+        if (elementCount > 1) textEditorBlock.classList.add("hasBlockDelete");
         textEditorBlock.dataset.row = row.toString();
         textEditorBlock.dataset.block = item.toString();
         textEditorBlock.draggable = true;
@@ -24073,7 +24202,9 @@ const getPostThicknessFallback = () =>
         const blockTypeLabel = document.createElement("span");
         blockTypeLabel.className = "textEditorBlockLabel";
         blockTypeLabel.textContent =
-          Control.prototype.blockElements[currentBlockElemType] || "Block";
+          blockElement instanceof GroupedBlockElement
+            ? blockElement.label || "Group"
+            : Control.prototype.blockElements[currentBlockElemType] || "Block";
 
         const blockTypeSelect = document.createElement("select");
         blockTypeSelect.className = "blockTypeInlineSelect";
@@ -24096,6 +24227,13 @@ const getPostThicknessFallback = () =>
           anchor: textEditorBlock,
         });
 
+        if (elementCount > 1) {
+          textEditorBlock.appendChild(makeDeleteButton(
+            "sMBlockDeleteButton",
+            `Delete ${blockTypeLabel.textContent} (row ${row + 1}, element ${item + 1})`,
+            () => exposed.delControlElem(row, item)
+          ));
+        }
         textEditorBlock.appendChild(blockTypeLabel);
         if (blockElement instanceof GroupedBlockElement) {
           const editGroup = document.createElement("button");
@@ -24109,7 +24247,6 @@ const getPostThicknessFallback = () =>
             exposed.enterGroupElement(row, item);
           });
           textEditorBlock.appendChild(editGroup);
-          blockTypeLabel.textContent = blockElement.label || "Group";
         }
         textEditorBlock.appendChild(blockTypePicker);
 
@@ -25486,6 +25623,7 @@ const getPostThicknessFallback = () =>
     return {
       init: initialize,
       readForm,
+      persistPostAppearance,
       updateForm,
       updateShieldSubform,
       ensureSubpanelMenuOpen: () => ensureSubpanelMenuOpenPublic(),

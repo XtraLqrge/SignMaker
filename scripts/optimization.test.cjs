@@ -21,6 +21,90 @@ function declaration(file,name) {
   throw Error('Missing declaration '+name);
 }
 const context=extras=>vm.createContext({console,URL,Promise,setTimeout,clearTimeout,queueMicrotask,...extras});
+
+test('missing panel spacing uses one while saved zero and custom spacing survive',()=>{
+  for(const [file,name] of [['public/js/main.js','normalizeDefaultPanelSpacingValue'],['public/js/form.js','normalizePanelSpacingPreference']]){
+    const c=context({DEFAULT_PANEL_SPACING:1});
+    vm.runInContext(declaration(file,name)+`;this.normalize=${name};`,c);
+    for(const value of [null,undefined,'','bad',-1])assert.equal(c.normalize(value),1);
+    for(const value of [0,'0'])assert.equal(c.normalize(value),0);
+    assert.equal(c.normalize('2.75'),2.75);assert.equal(c.normalize(12),8);
+  }
+});
+test('new posts use Right and one rem spacing while chosen positions stay intact',()=>{
+  const c=context({});vm.runInContext(read('public/js/Post.js')+';this.PostClass=Post;',c);
+  assert.equal(new c.PostClass().polePosition,'Right');
+  assert.equal(new c.PostClass('invalid').polePosition,'Right');
+  assert.equal(new c.PostClass().panelSpacing,1);
+  for(const position of ['Left','Right','Overhead','Rural','Center'])assert.equal(new c.PostClass(position).polePosition,position);
+});
+test('post thickness clamps to the control range and keeps saved precision inside it',()=>{
+  const c=context({});vm.runInContext(read('public/js/Post.js')+';this.PostClass=Post;',c);
+  const post=new c.PostClass();
+  for(const [value,expected] of [[-1,0],['0',0],['0.1',0.1],[2.25,2.25],[2.5,2.5],[3,2.5],['bad',1]]) {
+    assert.equal(post.normalizeThickness(value),expected);
+  }
+});
+test('built-in presets use current defaults while saved custom templates keep their post settings',()=>{
+  const c=context({getTemplateVariant:()=>null,DEFAULT_TEMPLATE_DEFINITIONS:[{id:'default-old',build(){}}],
+    createDefaultTemplateData:()=>'{"polePosition":"Right","panelSpacing":1}',normalizeTemplateSnapshot:value=>value});
+  vm.runInContext(declaration('public/js/main.js','getTemplateSnapshot')+';this.snapshot=getTemplateSnapshot;',c);
+  const old={id:'default-old',data:'{"polePosition":"Left","panelSpacing":0}'};
+  assert.equal(c.snapshot(old).polePosition,'Right');assert.equal(c.snapshot(old).panelSpacing,1);
+  const custom=c.snapshot({...old,id:'saved-custom'});assert.equal(custom.polePosition,'Left');assert.equal(custom.panelSpacing,0);
+});
+test('vertical panel offsets normalize old signs and clamp to the movement range',()=>{
+  const c=context({});vm.runInContext(read('public/js/Panel.js')+';this.PanelClass=Panel;',c);
+  for(const [input,expected] of [[undefined,0],[null,0],['bad',0],[Infinity,0],[-100,-6],[100,6],['2.25',2.25]])assert.equal(c.PanelClass.normalizeVerticalOffset(input),expected);
+});
+test('vertical snapping finds panel tops, bottoms, centers and adjoining edges',()=>{
+  const c=context({window:{}});vm.runInContext(read('public/js/PanelDrag.js'),c);
+  const snap=c.window.SignMakerPanelDrag.snapOffset;
+  const rect={left:0,right:100,top:100,bottom:140},peer={rect:{left:120,right:220,top:150,bottom:210}};
+  const options={startOffset:0,rect,peers:[peer],units:20};
+  for(const [offset,expected] of [[2.45,2.5],[3.45,3.5],[3.02,3],[0.55,0.5],[5.55,5.5]]){
+    const result=snap({...options,offset});assert.equal(result.offset,expected);assert.ok(result.snap);
+  }
+  assert.equal(snap({...options,offset:2.45,disabled:true}).offset,2.45);
+  assert.equal(snap({...options,offset:2.45,peers:[{rect:{...peer.rect,left:1000,right:1100}}]}).snap,null);
+  assert.equal(snap({...options,offset:2.45,peers:[]}).offset,2.45);
+});
+test('vertical snapping accounts for viewport scaling and rejects unreachable anchors',()=>{
+  const c=context({window:{}});vm.runInContext(read('public/js/PanelDrag.js'),c);
+  const snap=c.window.SignMakerPanelDrag.snapOffset;
+  const rect={left:0,right:50,top:50,bottom:70};
+  const peer={rect:{left:60,right:110,top:75,bottom:105}};
+  assert.equal(snap({offset:2.45,startOffset:0,rect,peers:[peer],units:10}).offset,2.5);
+  const result=snap({offset:100,startOffset:0,rect,peers:[{rect:{...peer.rect,top:500,bottom:520}}],units:10});
+  assert.equal(result.offset,6);assert.equal(result.snap,null);
+  assert.equal(snap({offset:-100,startOffset:0,rect,peers:[],units:10}).offset,-6);
+});
+test('vertical snapping lets an aligned panel leave its start and reach the travel limit',()=>{
+  const c=context({window:{}});vm.runInContext(read('public/js/PanelDrag.js'),c);
+  const snap=c.window.SignMakerPanelDrag.snapOffset;
+  const rect={left:0,right:50,top:50,bottom:90};
+  const aligned={rect:{...rect,left:60,right:110}};
+  const options={startOffset:0,rect,units:20};
+  const shortDrag=snap({...options,offset:0.35,peers:[aligned]});
+  assert.equal(shortDrag.offset,0.35);
+  assert.equal(shortDrag.snap,null);
+  const nearLimit={rect:{...aligned.rect,top:165,bottom:205}};
+  assert.equal(snap({...options,offset:6,peers:[nearLimit]}).offset,5.75);
+  assert.equal(snap({...options,offset:7,peers:[nearLimit]}).offset,6);
+});
+test('horizontal panel reordering crosses each slot at one third of the distance',()=>{
+  const c=context({window:{}});vm.runInContext(read('public/js/PanelDrag.js'),c);
+  const drop=c.window.SignMakerPanelDrag.dropPosition;
+  const peers=[{index:1,endIndex:3,rect:{left:100,right:200}},{index:4,endIndex:6,rect:{left:210,right:390}}];
+  assert.equal(drop(peers,79,0,45),null);
+  assert.equal(drop(peers,80,0,45).index,4,'Move past the first stack');
+  assert.equal(drop(peers,199,0,45).index,4,'Keep the first slot until the next threshold');
+  assert.equal(drop(peers,200,0,45).index,7,'Move past the second stack');
+  assert.equal(drop(peers,411,7,465),null);
+  assert.equal(drop(peers,410,7,465).index,4,'Move left past the nearest stack');
+  assert.equal(drop(peers,250,7,465).index,1,'Move left past both stacks');
+  assert.equal(drop([],140,0,45),null);
+});
 class Classes {
   constructor(...values){this.values=new Set(values);}
   contains(value){return this.values.has(value);}
@@ -55,6 +139,93 @@ class Element {
   addEventListener(...args){this.events.push(args);}
   animate(frames,options){this.animation={frames,options,cancel(){this.cancelled=true;}};return this.animation;}
 }
+test('panel gestures commit their preview and mark only actual horizontal reorders',()=>{
+  const view=new EventTarget(),doc=new EventTarget();
+  const frames=new Map(),commits=[];
+  let nextFrame=0,savedOffset=0;
+  Object.assign(view,{
+    getComputedStyle:()=>({fontSize:'20px'}),
+    requestAnimationFrame:fn=>{frames.set(++nextFrame,fn);return nextFrame;},
+    cancelAnimationFrame:id=>frames.delete(id),
+    setTimeout:fn=>fn(),
+    removeEventListener(type,listener,capture){
+      EventTarget.prototype.removeEventListener.call(this,type,listener,{capture:!!capture});
+    },
+  });
+  Object.assign(doc,{
+    defaultView:view,documentElement:new Element(),body:new Element(),
+    createElement:tag=>new Element('',tag.toUpperCase()),
+  });
+  const group=new Element(),panel=new Element('panel'),peer=new Element('panel');
+  group.append(panel,peer);
+  const guideArrows=new Element('guideArrows'),exitTab=new Element('exitTab');
+  panel.append(guideArrows,exitTab);
+  panel.querySelector=()=>({getBoundingClientRect:()=>panel.rect});
+  peer.querySelector=()=>({getBoundingClientRect:()=>peer.rect});
+  exitTab.getBoundingClientRect=()=>{throw new Error('Exit tabs must not be measured for panel alignment');};
+  panel.ownerDocument=doc;
+  panel.removeEventListener=(type,listener)=>{
+    panel.events=panel.events.filter(([event,callback])=>event!==type||callback!==listener);
+  };
+  panel.offsetWidth=100;
+  peer.dataset.panelIndex='1';
+  peer.rect={...panel.rect,left:220,right:320};
+  const c=context({window:{}});vm.runInContext(read('public/js/PanelDrag.js'),c);
+  c.window.SignMakerPanelDrag.bind(panel,panel,{
+    index:0,getOffset:()=>savedOffset,getEndIndex:index=>index,
+    onCommit:(offset,index)=>{savedOffset=offset;commits.push([offset,index]);},
+  });
+  const down=panel.events.find(([type])=>type==='pointerdown')[1];
+  const pointer=(type,x,y,altKey=false)=>Object.assign(new Event(type,{cancelable:true}),{
+    pointerId:1,button:0,clientX:x,clientY:y,altKey,
+  });
+  const move=(x,y)=>{
+    view.dispatchEvent(pointer('pointermove',x,y));
+    assert.equal(frames.size,1);
+    for(const [id,fn] of frames){frames.delete(id);fn();}
+  };
+  const hasMarker=()=>peer.classList.contains('dropBefore')||peer.classList.contains('dropAfter');
+  down({...pointer('pointerdown',198,115),target:panel});
+  move(200,122);
+  assert.equal(panel.style.top,'0.35rem');
+  assert.equal(hasMarker(),false);
+  move(345,130);
+  assert.equal(panel.style.top,'0.75rem');
+  assert.equal(hasMarker(),false);
+  view.dispatchEvent(pointer('pointerup',345,130));
+  assert.deepEqual(commits.pop(),[0.75,0]);
+
+  down({...pointer('pointerdown',105,115),target:guideArrows});
+  move(144,117);
+  assert.equal(hasMarker(),false);
+  move(145,117);
+  assert.equal(peer.classList.contains('dropAfter'),true);
+  assert.equal(panel.style.top,'0.75rem');
+  view.dispatchEvent(pointer('pointerup',145,117));
+  assert.equal(hasMarker(),false);
+  assert.deepEqual(commits.pop(),[0.75,2]);
+
+  peer.rect={...peer.rect,top:150,bottom:180};
+  down({...pointer('pointerdown',150,115),target:exitTab});
+  move(150,160);
+  assert.equal(doc.body.querySelector('.panelDragSnapGuide').style.display,'block');
+  assert.equal(panel.style.top,'3.25rem');
+  view.dispatchEvent(pointer('pointermove',150,115));
+  view.dispatchEvent(pointer('pointerup',150,115));
+  assert.deepEqual(commits.pop(),[3.25,0],'Release keeps the visible snap even with a newer unpainted sample');
+  assert.equal(doc.body.querySelector('.panelDragSnapGuide'),null);
+
+  down({...pointer('pointerdown',150,115),target:panel});
+  move(150,160);
+  assert.equal(panel.style.top,'5.75rem');
+  view.dispatchEvent(pointer('pointerup',150,160,true));
+  assert.deepEqual(commits.pop(),[5.5,0],'Alt at release uses the unsnapped position');
+
+  down({...pointer('pointerdown',150,115),target:panel});
+  view.dispatchEvent(pointer('pointermove',150,106));
+  view.dispatchEvent(pointer('pointerup',150,115));
+  assert.deepEqual(commits.pop(),[5.05,0],'Without a guide, release uses the last move');
+});
 function dropdownFixture(file, count=0){
   const body=new Element(),html=new Element(),triggers=[],wrappers=[],carets=[],observed=[];
   let scans=0;

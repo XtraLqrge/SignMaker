@@ -35,11 +35,11 @@ class Post {
    * @param {number} [lanesWide=1] - How many lanes wide the post should appear to be.
    * @param {string} [color=Post.prototype.colors[0]] - Visual color treatment for the post.
    */
-  constructor(polePosition, lanesWide = 1, color = Post.prototype.colors?.[0]) {
+  constructor(polePosition = "Right", lanesWide = 1, color = Post.prototype.colors?.[0]) {
     if (this.polePositions.includes(polePosition)) {
       this.polePosition = polePosition;
     } else {
-      this.polePosition = this.polePositions[0];
+      this.polePosition = "Right";
     }
     if (lanesWide >= 1 && lanesWide <= 6) {
       this.lanesWide = lanesWide;
@@ -183,10 +183,7 @@ class Post {
         : 1;
     const parsed =
       typeof value === "string" ? parseFloat(value) : Number(value);
-    if (!Number.isFinite(parsed)) {
-      return Math.max(0, fallback);
-    }
-    return Math.max(0, parsed);
+    return Math.min(2.5, Math.max(0, Number.isFinite(parsed) ? parsed : fallback));
   }
 }
 

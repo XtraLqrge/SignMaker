@@ -1,4 +1,17 @@
 /* Dropdown corners are square, including native and specialized pickers. */
+.symbolPickerGroupLabel {
+  padding: 0.45rem 0.55rem 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+@layer pickerAppearance {
+  .symbolPickerItem[data-grouped-option] .symbolPickerLabel {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+}
+
 body select,
 body [role="combobox"],
 body .smDropdownTrigger,
@@ -56,7 +69,7 @@ body .alignmentButtons>button:hover:not(:disabled) { background:var(--hoverColor
 body .alignmentButtons>button:focus-visible { outline:2px solid Highlight; outline-offset:1px; }
 body .alignmentButtons>button:disabled { opacity:0.4; cursor:default; }
 .exitTabMainSettingsGrid>.alignmentButtons { grid-column:4; grid-row:1; }
-#smSPProperties>[data-property="sdShield"] .sdShieldTopRow { --sd-shield-top-control-height:1.35rem!important; }
+#smSPProperties>[data-property="sdShield"] .sdShieldTopRow { --sd-shield-top-control-height:1.55rem!important; }
 
 /* The Defaults controls shrink and wrap inside their own grid column. */
 #settings22Modal #defaultsFields,
@@ -215,18 +228,19 @@ body .blockTypePickerList>.blockTypePickerItem { width:100%!important; min-width
 
 /* General settings use explicit rows so hidden native controls cannot shift columns. */
 #settings22Modal #sMAppSettings { display:block!important; }
-#settings22Modal .generalSettingsSection { display:grid; grid-template-columns:minmax(0,1fr); gap:0.55rem; width:100%; min-width:0; max-width:100%; margin:0.8rem 0 0; }
-#settings22Modal .generalSettingsSection>h3 { margin:0 0 0.15rem; padding:0 0 0.3rem; border-bottom:1px solid rgba(var(--baseColor),0.25); font-size:0.95rem; line-height:1.2; }
-#settings22Modal .generalSettingRow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,7.5rem); align-items:center; gap:0.5rem; width:100%; min-width:0; max-width:100%; }
-#settings22Modal .generalSettingRow>label { text-align:left; }
-#settings22Modal .generalSettingControl { width:100%; min-width:0; max-width:100%; box-sizing:border-box; }
-#settings22Modal .generalSettingControl>input[type="number"] { width:100%; min-width:0; max-width:100%; height:1.35rem; margin:0; padding:0.15rem 0.25rem; font-size:0.8rem; box-sizing:border-box; }
-#settings22Modal .generalSettingControl input[type="checkbox"] { width:auto; margin:0; }
-#settings22Modal .generalSettingControl .settingsRangeControl { display:grid; grid-template-columns:minmax(0,1fr) 2.6rem; align-items:center; gap:0.3rem; width:100%; min-width:0; max-width:100%; }
-#settings22Modal .generalSettingControl .settingsRangeControl input { width:100%; min-width:0; margin:0; }
-#settings22Modal .generalSettingControl .settingsRangeValue { width:auto; min-width:0; max-width:100%; font-size:0.8rem; text-align:right; }
-#settings22Modal .generalSettingControl .settingsPanelSpacingControl { display:grid; grid-template-columns:minmax(0,1fr) 2.5rem; align-items:center; gap:0.3rem; width:100%; min-width:0; max-width:100%; }
-#settings22Modal .generalSettingControl .settingsPanelSpacingControl input { width:100%; min-width:0; max-width:100%; margin:0; box-sizing:border-box; }
-#settings22Modal .generalSettingControl .settingsPanelSpacingControl input[type="number"] { height:1.35rem; padding:0.15rem; font-size:0.8rem; }
+:is(#settings22Modal, #postStyleModal) .generalSettingsSection { display:grid; grid-template-columns:minmax(0,1fr); gap:0.55rem; width:100%; min-width:0; max-width:100%; margin:0.8rem 0 0; }
+:is(#settings22Modal, #postStyleModal) .generalSettingsSection>h3 { margin:0 0 0.15rem; padding:0 0 0.3rem; border-bottom:1px solid rgba(var(--baseColor),0.25); font-size:0.95rem; line-height:1.2; }
+:is(#settings22Modal, #postStyleModal) .generalSettingRow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,7.5rem); align-items:center; gap:0.5rem; width:100%; min-width:0; max-width:100%; }
+#postStyleModal .generalSettingRow { grid-template-columns:minmax(0,min(49%,9rem)) minmax(0,1fr); }
+:is(#settings22Modal, #postStyleModal) .generalSettingRow>label { text-align:left; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl { width:100%; min-width:0; max-width:100%; box-sizing:border-box; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl>input[type="number"] { width:100%; min-width:0; max-width:100%; height:1.35rem; margin:0; padding:0.15rem 0.25rem; font-size:0.8rem; box-sizing:border-box; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl input[type="checkbox"] { width:auto; margin:0; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl .settingsRangeControl { display:grid; grid-template-columns:minmax(0,1fr) 2.6rem; align-items:center; gap:0.3rem; width:100%; min-width:0; max-width:100%; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl .settingsRangeControl input { width:100%; min-width:0; margin:0; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl .settingsRangeValue { width:auto; min-width:0; max-width:100%; font-size:0.8rem; text-align:right; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl .settingsPanelSpacingControl { display:grid; grid-template-columns:minmax(0,1fr) 2.5rem; align-items:center; gap:0.3rem; width:100%; min-width:0; max-width:100%; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl .settingsPanelSpacingControl input { width:100%; min-width:0; max-width:100%; margin:0; box-sizing:border-box; }
+:is(#settings22Modal, #postStyleModal) .generalSettingControl .settingsPanelSpacingControl input[type="number"] { height:1.35rem; padding:0.15rem; font-size:0.8rem; }
 #settings22Modal .generalSettingsActions { width:100%; min-width:0; margin:0.25rem 0 0; }
 #settings22Modal .generalSettingsActions>button { width:100%; min-width:0; max-width:100%; padding:0.35rem; font-size:0.8rem; box-sizing:border-box; }

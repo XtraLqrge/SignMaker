@@ -1,8 +1,55 @@
 ![SignMaker Preview Thumbnail](https://github.com/XtraLqrge/SignMaker/blob/v2.19-beta/public/img/other-symbols/Banner.png)
 
+The latest build prioritizes the sign before loading editor controls. See
+[Mobile performance and SEO](docs/mobile-performance-round2.md) for measurements,
+validation limits, and the standalone dev deployment command needed to avoid
+Cloudflare Preview's forced `noindex` header.
+
 ### Important: The page for SignMaker v2.19 has moved to [hwysignmaker.com](https://hwysignmaker.com/).
 
 SignMaker is a JavaScript-based app for creating highway guide signs. Based off of [Kurumi's Sign Maker](http://www.kurumi.com/roads/signmaker). Allows for the creation of highway guide signs in the style defined by the United States FHWA in their [MUTCD](https://mutcd.fhwa.dot.gov/kno_2009r1r2.htm).
+
+See [the block editor and panel-placement update](docs/editor-layout-and-panel-dragging.md)
+for vertical dragging, snapping and default-setting changes.
+
+## Run and deploy
+
+This project includes editable sources and a prebuilt `public/` directory. Serve
+`public/` through a web server. For example, from the project root:
+
+```sh
+python3 -m http.server 8765 --directory public
+```
+
+Open `http://localhost:8765`. Use HTTP rather than opening `index.html` as a file,
+so local assets, saved templates and downloads work normally.
+
+After editing JavaScript or CSS in `public/`, or the canonical HTML in
+`scripts/index.source.html`, regenerate the production files:
+
+```sh
+npm run build
+npm test
+```
+
+These commands require Node 20 or newer and no npm dependencies. The build keeps
+the source files, validates generated JavaScript, and produces hashed
+assets, `public/index.html`, cache headers and `build-manifest.json`. Edit
+`scripts/index.source.html` instead of the generated `public/index.html`.
+
+For the existing Cloudflare Workers static-assets deployment, use
+`npm run build` as the build command and `npx wrangler deploy` as the deploy
+command. The included `wrangler.jsonc` serves `public/`. Keep the existing
+production and preview branch settings in Cloudflare.
+
+The UI fonts are included locally, with licenses in `docs/licenses/`. Normal
+builds do not download fonts. See [performance notes](docs/performance.md) for
+the measured bottlenecks, changes and optional browser checks.
+
+The latest [mobile performance pass](docs/mobile-performance-round2.md) reduces startup
+downloads and work, with 39 passing regression checks. The optional browser
+check supports a phone viewport with
+`npm run test:browser -- http://localhost:8765 --mobile`.
 
 While the other versions (dki-os/SignMaker) and its forks do exist, this fork attempts to recreate (most) of the existing signs inside the US. Features include:
 

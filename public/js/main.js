@@ -14,6 +14,9 @@ const app = (function () {
     selectedPanelIndices: [],
   };
 
+  let currentlyEditingGroupPath = [];
+  let groupEditingContextKey = "";
+
   let currentlySelectedAPLArrowIndex = 0;
   let downloadPreviewRequestId = 0;
   const DEFAULT_POST_POSITION = "Right";
@@ -34,7 +37,7 @@ const app = (function () {
   let subpanelClipboardMemoryPayload = null;
 
   const normalizeDefaultPanelSpacingValue = (value, fallback = DEFAULT_PANEL_SPACING) => {
-    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+    const parsed = value == null ? NaN : typeof value === "string" ? parseFloat(value) : Number(value);
     const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
     const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : DEFAULT_PANEL_SPACING;
 
@@ -158,6 +161,85 @@ const app = (function () {
       insertIndex += 1;
       Sign.prototype.guideArrows.splice(insertIndex, 0, addition);
       existingLabels.add(label);
+    }
+  };
+
+  const clearTemplatePanelDropIndicator = () => document.querySelectorAll('.templatePanelDropTarget').forEach(element=>element.classList.remove('templatePanelDropTarget'));
+  const handleTemplateCanvasDrag = event => {
+    if (!templatePanelDragState) return;
+    const panel=event.target.closest?.('.panel[data-panel-index]');
+    if (!panel) return;
+    event.preventDefault();event.stopPropagation();
+    clearTemplatePanelDropIndicator();
+    if(event.type==='dragover'){panel.classList.add('templatePanelDropTarget');if(event.dataTransfer)event.dataTransfer.dropEffect='copy';}
+    else {const state=templatePanelDragState;endTemplatePanelDrag();loadTemplate(state.templateId,'replace-panel',state.variantId,Number(panel.dataset.panelIndex));}
+  };
+  document.addEventListener('dragover',handleTemplateCanvasDrag,true);
+  document.addEventListener('drop',handleTemplateCanvasDrag,true);
+const scheduleAlignmentGuideUpdate = (
+    postContainerElmt,
+    panelContainerElmt
+  ) => {
+    const guideElmt = document.getElementById("alignmentGuides");
+    if (!guideElmt || !postContainerElmt || !panelContainerElmt) {
+      return;
+    }
+
+    if (!post.showAlignmentGuides) {
+      guideElmt.classList.remove("visible");
+      return;
+    }
+
+    const spacing = post.normalizeAlignmentGuideSpacing(
+      post.alignmentGuideSpacing
+    );
+    const phase = post.normalizeAlignmentGuidePhase(
+      post.alignmentGuidePhase,
+      spacing
+    );
+    post.alignmentGuideSpacing = spacing;
+    post.alignmentGuidePhase = phase;
+    guideElmt.classList.toggle("visible", !!post.showAlignmentGuides);
+    guideElmt.style.setProperty("--alignmentGuideSpacing", spacing + "rem");
+    guideElmt.style.setProperty("--alignmentGuidePhase", phase + "rem");
+
+    const update = () => {
+      if (!post.showAlignmentGuides) return;
+      const panelElmts = Array.from(
+        panelContainerElmt.querySelectorAll(".panel[data-panel-index]:not(.panelHiddenFromPost)")
+      );
+      if (!panelElmts.length) {
+        guideElmt.classList.remove("visible");
+        return;
+      }
+
+      const postRect = postContainerElmt.getBoundingClientRect();
+      const scale = postContainerElmt.offsetWidth
+        ? postRect.width / postContainerElmt.offsetWidth || 1
+        : 1;
+      const panelContainerRect = panelContainerElmt.getBoundingClientRect();
+      const panelBottom = Math.max(
+        ...panelElmts.map((panelElmt) => panelElmt.getBoundingClientRect().bottom)
+      );
+      const top = Math.min(
+        postRect.height,
+        Math.max(0, panelBottom - postRect.top)
+      );
+      const left = Math.max(0, panelContainerRect.left - postRect.left);
+      const right = Math.min(
+        postRect.width,
+        panelContainerRect.right - postRect.left
+      );
+
+      guideElmt.style.top = top / scale + "px";
+      guideElmt.style.left = left / scale + "px";
+      guideElmt.style.width = Math.max(0, right - left) / scale + "px";
+    };
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(update);
+    } else {
+      update();
     }
   };
 
@@ -516,7 +598,7 @@ const app = (function () {
     return sign[key];
   };
 
-  const getCurrentSubPanel = () => {
+  const getRootSubPanel = () => {
     const panel = getCurrentPanel();
 
     if (!panel || !panel.sign) {
@@ -537,12 +619,351 @@ const app = (function () {
     return panel.sign.subPanels[currentlySelectedSubPanelIndex];
   };
 
+
+  const resetGroupEditing = () => { currentlyEditingGroupPath = []; groupEditingContextKey = ""; };
+  const getActiveGroupContext = () => {
+    const root = getRootSubPanel();
+    const key = currentlySelectedPanelIndex + ":" + currentlySelectedSubPanelIndex;
+    if (groupEditingContextKey !== key) { currentlyEditingGroupPath = []; groupEditingContextKey = key; }
+    let control = root?.blockElements, groupElement = null;
+    const validPath = [];
+    for (const segment of currentlyEditingGroupPath) {
+      const candidate = control?.rows?.[segment.rowIndex]?.[segment.blockIndex];
+      if (!(candidate instanceof GroupedBlockElement)) break;
+      validPath.push({ rowIndex: segment.rowIndex, blockIndex: segment.blockIndex });
+      groupElement = candidate;
+      control = candidate.blockElements;
+    }
+    currentlyEditingGroupPath = validPath;
+    return { root, control, groupElement, path: validPath };
+  };
+  const getActiveBlockElements = () => getActiveGroupContext().control;
+  const getActiveGroupElement = () => getActiveGroupContext().groupElement;
+  const getCurrentSubPanel = () => {
+    const context = getActiveGroupContext();
+    if (!context.root || !context.groupElement) return context.root;
+    return new Proxy(context.root, {
+      get(target, key) { return key === "blockElements" ? context.groupElement.blockElements : Reflect.get(target, key); },
+      set(target, key, value) { if (key === "blockElements") context.groupElement.blockElements = value; else Reflect.set(target, key, value); return true; },
+    });
+  };
+
+const addHeaderFooterRows = (blockElems, placement, backgroundColor) => {
+    if (
+      !blockElems ||
+      !Array.isArray(blockElems.rows) ||
+      !Object.prototype.hasOwnProperty.call(lib.colors, backgroundColor)
+    ) {
+      return false;
+    }
+
+    const textFont =
+      backgroundColor === "White" || backgroundColor === "Yellow"
+        ? "Series E"
+        : "Series EM";
+    const dividerColor =
+      backgroundColor === "Yellow" || backgroundColor === "White"
+        ? "Black"
+        : "White";
+    let textRowIndex;
+
+    if (placement === "header") {
+      blockElems.addRow(0, "ActionMessageElement");
+      textRowIndex = 0;
+      blockElems.addRow(1, "DividerElement");
+      if (blockElems.rows[1]?.[0]) {
+        blockElems.rows[1][0].dividerColor = dividerColor;
+        blockElems.rows[1][0].fullBleed = true;
+      }
+      blockElems.blockProperties[textRowIndex].bottomPadding = 0.2;
+      blockElems.blockProperties[0].edgePlacement = "header";
+      blockElems.blockProperties[1].edgePlacement = "header";
+    } else {
+      const dividerRowIndex = blockElems.rows.length;
+      blockElems.addRow(dividerRowIndex, "DividerElement");
+      if (blockElems.rows[dividerRowIndex]?.[0]) {
+        blockElems.rows[dividerRowIndex][0].dividerColor = dividerColor;
+        blockElems.rows[dividerRowIndex][0].fullBleed = true;
+      }
+      textRowIndex = dividerRowIndex + 1;
+      blockElems.addRow(textRowIndex, "ActionMessageElement");
+      blockElems.blockProperties[textRowIndex].topPadding = 0.2;
+      blockElems.blockProperties[dividerRowIndex].edgePlacement = "footer";
+      blockElems.blockProperties[textRowIndex].edgePlacement = "footer";
+    }
+
+    const textElement = blockElems.rows[textRowIndex]?.[0];
+    if (textElement) {
+      textElement.textContent = placement === "header" ? "Header" : "Footer";
+      textElement.backgroundColor = "Inherit";
+      textElement.textColor = ControlTextElement.defaultTextColor;
+      textElement.fontFamily = textFont;
+    }
+    blockElems.blockProperties[textRowIndex].backgroundColor = backgroundColor;
+
+    normalizeSelectionForCurrentPost();
+    formHandler.updateForm();
+    redraw();
+    return true;
+  };
+
   const getCurrentBlockRows = () => {
     return getCurrentSubPanel().blockElements.rows[currentlySelectedRowIndex];
   };
 
   const getCurrentBlockElem = () => {
     return getCurrentBlockRows()[currentlySelectedBlockIndex];
+  };
+
+const enterGroupElement = (
+    rowIndex = currentlySelectedRowIndex,
+    blockIndex = currentlySelectedBlockIndex
+  ) => {
+    const blockElements = getActiveBlockElements();
+    const row = blockElements.rows[rowIndex];
+    if (!Array.isArray(row)) {
+      return false;
+    }
+
+    const groupElement = row[blockIndex];
+    if (!(groupElement instanceof GroupedBlockElement)) {
+      return false;
+    }
+
+    currentlyEditingGroupPath.push({ rowIndex, blockIndex });
+    currentlySelectedRowIndex = 0;
+    currentlySelectedBlockIndex = 0;
+    normalizeSelectionForCurrentPost();
+    formHandler.updateForm();
+    redraw();
+    return true;
+  };
+
+const exitGroupElement = () => {
+    if (!currentlyEditingGroupPath.length) {
+      return false;
+    }
+
+    const previousGroup = currentlyEditingGroupPath.pop();
+    currentlySelectedRowIndex = previousGroup.rowIndex;
+    currentlySelectedBlockIndex = previousGroup.blockIndex;
+    normalizeSelectionForCurrentPost();
+    formHandler.updateForm();
+    redraw();
+    return true;
+  };
+
+const groupSelectedBlockElements = (selectedBlocks = []) => {
+    const blockElements = getActiveBlockElements();
+    if (
+      !blockElements ||
+      !Array.isArray(blockElements.rows) ||
+      !Array.isArray(selectedBlocks) ||
+      selectedBlocks.length < 2
+    ) {
+      return false;
+    }
+
+    const validSelections = selectedBlocks
+      .map((selection) => ({
+        rowIndex: Number(selection.rowIndex),
+        blockIndex: Number(selection.blockIndex),
+      }))
+      .filter(({ rowIndex, blockIndex }) => {
+        const row = blockElements.rows[rowIndex];
+        return (
+          Number.isInteger(rowIndex) &&
+          Number.isInteger(blockIndex) &&
+          Array.isArray(row) &&
+          blockIndex >= 0 &&
+          blockIndex < row.length
+        );
+      })
+      .sort((a, b) =>
+        a.rowIndex === b.rowIndex
+          ? a.blockIndex - b.blockIndex
+          : a.rowIndex - b.rowIndex
+      );
+
+    const uniqueSelections = [];
+    const seenSelectionKeys = new Set();
+    for (const selection of validSelections) {
+      const key = `${selection.rowIndex}:${selection.blockIndex}`;
+      if (!seenSelectionKeys.has(key)) {
+        seenSelectionKeys.add(key);
+        uniqueSelections.push(selection);
+      }
+    }
+
+    if (uniqueSelections.length < 2) {
+      return false;
+    }
+
+    const firstSelection = uniqueSelections[0];
+    const sourceRows = new Map();
+    for (const selection of uniqueSelections) {
+      if (!sourceRows.has(selection.rowIndex)) {
+        sourceRows.set(selection.rowIndex, []);
+      }
+      sourceRows.get(selection.rowIndex).push(selection.blockIndex);
+    }
+
+    const groupedRows = [];
+    const groupedBlockProperties = [];
+    for (const [rowIndex, blockIndexes] of sourceRows.entries()) {
+      const sourceRow = blockElements.rows[rowIndex];
+      const groupedRow = blockIndexes.map((blockIndex) => sourceRow[blockIndex]);
+      groupedRows.push(groupedRow);
+      groupedBlockProperties.push(
+        blockElements.cloneBlockProperties(
+          blockElements.blockProperties[rowIndex]
+        )
+      );
+    }
+
+    const parentInsertProperties = blockElements.cloneBlockProperties(
+      blockElements.blockProperties[firstSelection.rowIndex]
+    );
+
+    const rowIndexesDescending = Array.from(sourceRows.keys()).sort(
+      (a, b) => b - a
+    );
+    let firstRowWasRemoved = false;
+    let insertBlockIndex = firstSelection.blockIndex;
+
+    for (const rowIndex of rowIndexesDescending) {
+      const sourceRow = blockElements.rows[rowIndex];
+      const blockIndexesDescending = sourceRows
+        .get(rowIndex)
+        .slice()
+        .sort((a, b) => b - a);
+
+      for (const blockIndex of blockIndexesDescending) {
+        sourceRow.splice(blockIndex, 1);
+      }
+
+      if (rowIndex === firstSelection.rowIndex) {
+        insertBlockIndex = firstSelection.blockIndex;
+      }
+
+      if (sourceRow.length === 0) {
+        blockElements.rows.splice(rowIndex, 1);
+        blockElements.blockProperties.splice(rowIndex, 1);
+        if (rowIndex === firstSelection.rowIndex) {
+          firstRowWasRemoved = true;
+        }
+      }
+    }
+
+    const groupedBlock = new GroupedBlockElement({
+      blockElements: new Control({
+        rows: groupedRows,
+        blockProperties: groupedBlockProperties,
+      }),
+    });
+
+    if (firstRowWasRemoved || !blockElements.rows[firstSelection.rowIndex]) {
+      const insertRowIndex = clamp(
+        firstSelection.rowIndex,
+        0,
+        blockElements.rows.length
+      );
+      blockElements.rows.splice(insertRowIndex, 0, [groupedBlock]);
+      blockElements.blockProperties.splice(
+        insertRowIndex,
+        0,
+        parentInsertProperties
+      );
+      currentlySelectedRowIndex = insertRowIndex;
+      currentlySelectedBlockIndex = 0;
+    } else {
+      const targetRow = blockElements.rows[firstSelection.rowIndex];
+      targetRow.splice(
+        clamp(insertBlockIndex, 0, targetRow.length),
+        0,
+        groupedBlock
+      );
+      currentlySelectedRowIndex = firstSelection.rowIndex;
+      currentlySelectedBlockIndex = clamp(
+        insertBlockIndex,
+        0,
+        targetRow.length - 1
+      );
+    }
+
+    formHandler.updateForm();
+    redraw();
+    return true;
+  };
+
+const ungroupSelectedBlockElement = () => {
+    const blockElements = getActiveBlockElements();
+    const row = blockElements.rows[currentlySelectedRowIndex];
+    if (!Array.isArray(row)) {
+      return false;
+    }
+
+    const groupElement = row[currentlySelectedBlockIndex];
+    if (!(groupElement instanceof GroupedBlockElement)) {
+      return false;
+    }
+
+    const nestedControl = groupElement.blockElements;
+    const nestedRows = Array.isArray(nestedControl?.rows)
+      ? nestedControl.rows
+      : [];
+    if (!nestedRows.length) {
+      row.splice(currentlySelectedBlockIndex, 1);
+      formHandler.updateForm();
+      redraw();
+      return true;
+    }
+
+    const parentRowProperties = blockElements.cloneBlockProperties(
+      blockElements.blockProperties[currentlySelectedRowIndex]
+    );
+    const beforeGroup = row.slice(0, currentlySelectedBlockIndex);
+    const afterGroup = row.slice(currentlySelectedBlockIndex + 1);
+    const replacementRows = nestedRows.map((nestedRow, index) => {
+      const sourceRow = Array.isArray(nestedRow) ? nestedRow : [];
+      if (nestedRows.length === 1) {
+        return beforeGroup.concat(sourceRow, afterGroup);
+      }
+      if (index === 0) {
+        return beforeGroup.concat(sourceRow);
+      }
+      if (index === nestedRows.length - 1) {
+        return sourceRow.concat(afterGroup);
+      }
+      return sourceRow;
+    });
+    const replacementBlockProperties = replacementRows.map((_, index) =>
+      nestedControl && typeof nestedControl.cloneBlockProperties === "function"
+        ? nestedControl.cloneBlockProperties(
+          nestedControl.blockProperties[index] || parentRowProperties
+        )
+        : blockElements.cloneBlockProperties(parentRowProperties)
+    );
+
+    blockElements.rows.splice(
+      currentlySelectedRowIndex,
+      1,
+      ...replacementRows
+    );
+    blockElements.blockProperties.splice(
+      currentlySelectedRowIndex,
+      1,
+      ...replacementBlockProperties
+    );
+
+    currentlySelectedBlockIndex = clamp(
+      beforeGroup.length,
+      0,
+      Math.max(0, replacementRows[0].length - 1)
+    );
+    formHandler.updateForm();
+    redraw();
+    return true;
   };
 
   const clamp = (number, min, max) => Math.max(min, Math.min(number, max));
@@ -1053,10 +1474,13 @@ const app = (function () {
       currentlySelectedRowIndex,
       currentlySelectedBlockIndex,
       currentlySelectedAPLArrowIndex,
+      currentlyEditingGroupPath: currentlyEditingGroupPath.map(segment => ({ ...segment })),
       fileInfo: { ...fileInfo },
     });
 
     const applySelectionSnapshot = (selection = {}) => {
+      currentlyEditingGroupPath = Array.isArray(selection.currentlyEditingGroupPath) ? selection.currentlyEditingGroupPath.map(segment => ({ ...segment })) : [];
+      groupEditingContextKey = String(selection.currentlySelectedPanelIndex ?? currentlySelectedPanelIndex) + ":" + String(selection.currentlySelectedSubPanelIndex ?? currentlySelectedSubPanelIndex);
       currentlySelectedPanelIndex =
         typeof selection.currentlySelectedPanelIndex === "number"
           ? selection.currentlySelectedPanelIndex
@@ -1166,7 +1590,7 @@ const app = (function () {
       const workingSubPanel =
         currentlySelectedSubPanelIndex < 0
           ? getCurrentSubPanel()
-          : panel?.sign?.subPanels?.[currentlySelectedSubPanelIndex];
+          : getCurrentSubPanel();
 
       const rows = workingSubPanel?.blockElements?.rows;
 
@@ -1508,8 +1932,9 @@ const app = (function () {
       try {
         return JSON.stringify(
           {
-            post,
-            selection: getSelectionSnapshot(),
+            post: activeTemplateEditor ? JSON.parse(activeTemplateEditor.workspaceData) : post,
+            selection: activeTemplateEditor ? cloneTemplateValue(activeTemplateEditor.workspaceSelection) : getSelectionSnapshot(),
+            templateEditor: createTemplateEditorSessionState(),
           },
           historyReplacer
         );
@@ -1555,6 +1980,7 @@ const app = (function () {
     };
 
     const saveAppState = (snapshotOverride = null) => {
+      if (isSessionPersisting) return null;
       try {
         const snapshot =
           typeof snapshotOverride === "string"
@@ -1718,7 +2144,9 @@ const app = (function () {
                 let elemType = elemData?._elementType || elemData?.__undoType;
 
                 if (!elemType && Control.prototype.blockToClassElems) {
-                  if (elemData.icon !== undefined) {
+                  if (elemData?.blockElements && Array.isArray(elemData.blockElements.rows)) {
+                    elemType = "GroupedBlockElement";
+                  } else if (elemData.icon !== undefined) {
                     elemType = "IconElement";
                   } else if (elemData.arrow !== undefined) {
                     elemType = "ArrowElement";
@@ -1763,8 +2191,9 @@ const app = (function () {
                   Control.prototype.blockToClassElems[elemType]
                 ) {
                   const ElemClass = Control.prototype.blockToClassElems[elemType];
-                  const elem = new ElemClass(elemData);
+                  const elem = new ElemClass(elemType === "GroupedBlockElement" ? { ...elemData, blockElements: new Control() } : elemData);
                   Object.assign(elem, elemData);
+                  if (elemType === "GroupedBlockElement") elem.blockElements = reconstructControl(elemData.blockElements);
                   if (typeof elem.fontFamily === "string") {
                     elem.fontFamily = normalizeTextFontFamilyName(elem.fontFamily);
                   }
@@ -1838,6 +2267,11 @@ const app = (function () {
         }
       }
 
+      for (const key of ["copySignsOnly","showBlockBoundingBoxes","showAlignmentGuides"]) {
+        if(typeof postData[key] === "boolean") newPost[key]=postData[key];
+      }
+      newPost.alignmentGuideSpacing=newPost.normalizeAlignmentGuideSpacing(postData.alignmentGuideSpacing);
+      newPost.alignmentGuidePhase=newPost.normalizeAlignmentGuidePhase(postData.alignmentGuidePhase,newPost.alignmentGuideSpacing);
       newPost.panels = [];
 
       if (Array.isArray(postData.panels)) {
@@ -1931,6 +2365,7 @@ const app = (function () {
             : panel.exitTabs;
 
           Object.assign(panel, panelData);
+          panel.verticalOffsetRem = Panel.normalizeVerticalOffset(panelData.verticalOffsetRem);
           panel.borderThickness = Panel.getBorderThickness(panelData);
           delete panel.hideBorder;
           Object.assign(panel, VmsPanel.settings(panelData));
@@ -1989,13 +2424,21 @@ const app = (function () {
         }
 
         isApplyingHistory = true;
+        if (parsed.templateEditor) {
+          restoreTemplateEditorSession(parsed.templateEditor, parsed.post, parsed.selection, {skipUi});
+          currentHistorySnapshot = snapshot;
+          return;
+        }
+        activeTemplateEditor = null;
 
         const rebuiltPost = reconstructPostFromSnapshot(parsed.post);
         if (!rebuiltPost) {
           return;
         }
 
+        const previousPost = post;
         post = rebuiltPost;
+        if (!skipUi) formHandler.persistPostAppearance(post, previousPost);
 
         const clampSelection = (value, min, max, fallback) => {
           if (typeof value !== "number" || Number.isNaN(value)) {
@@ -2040,10 +2483,9 @@ const app = (function () {
           -1
         );
 
-        const workingSubPanel =
-          currentlySelectedSubPanelIndex < 0
-            ? getCurrentSubPanel()
-            : currentPanel?.sign?.subPanels?.[currentlySelectedSubPanelIndex];
+        currentlyEditingGroupPath = Array.isArray(parsed.selection?.currentlyEditingGroupPath) ? parsed.selection.currentlyEditingGroupPath.map(segment => ({ ...segment })) : [];
+        groupEditingContextKey = currentlySelectedPanelIndex + ":" + currentlySelectedSubPanelIndex;
+        const workingSubPanel = getCurrentSubPanel();
 
         const rowCount = workingSubPanel?.blockElements?.rows?.length ?? 0;
         currentlySelectedRowIndex = clampSelection(
@@ -2155,8 +2597,8 @@ const app = (function () {
         "#redoButton, #redoBtn, [data-action='redo'], [aria-label='Redo (CTRL+Y)'], [title='Redo (CTRL+Y)']"
       );
 
-      const undoDisabled = undoStack.length === 0;
-      const redoDisabled = redoStack.length === 0;
+      const undoDisabled = !!activeTemplateEditor || undoStack.length === 0;
+      const redoDisabled = !!activeTemplateEditor || redoStack.length === 0;
 
       undoButtons.forEach((button) => {
         if (button.disabled !== undoDisabled) {
@@ -2187,6 +2629,7 @@ const app = (function () {
     };
 
     const beginUndoableChange = () => {
+      if (activeTemplateEditor) return;
       if (isApplyingHistory) {
         return;
       }
@@ -2202,6 +2645,7 @@ const app = (function () {
     };
 
     const endUndoableChange = () => {
+      if (activeTemplateEditor) { scheduleAppStateSave(); return; }
       if (isApplyingHistory) {
         pendingBeforeSnapshot = null;
         return;
@@ -2238,6 +2682,7 @@ const app = (function () {
     };
 
     const undo = () => {
+      if (activeTemplateEditor) return false;
       if (!undoStack.length || isApplyingHistory) {
         return;
       }
@@ -2258,6 +2703,7 @@ const app = (function () {
     };
 
     const redo = () => {
+      if (activeTemplateEditor) return false;
       if (!redoStack.length || isApplyingHistory) {
         return;
       }
@@ -2597,7 +3043,7 @@ const app = (function () {
     const getRowsInMaster = (rowEl) => {
       const blockMaster = rowEl.closest(".blockElementMaster");
       return blockMaster
-        ? Array.from(blockMaster.querySelectorAll(":scope > .blockElementRow"))
+        ? Array.from(blockMaster.querySelectorAll(":scope > .blockElementRow")).sort((a, b) => Number(a.style.order || 0) - Number(b.style.order || 0))
         : [];
     };
 
@@ -2671,7 +3117,9 @@ const app = (function () {
       let top = toSignCssY(rowRect.top - signRect.top);
       let bottom = toSignCssY(rowRect.bottom - signRect.top);
 
-      if (globalTop || globalBottom) {
+      if (rowEl.closest(".bE-groupedBlockElement")) {
+        // Nested rows keep the measured bounds of their own group.
+      } else if (globalTop || globalBottom) {
         left = 0;
         right = signWidth;
       } else if (subPanelDisplay) {
@@ -3896,18 +4344,18 @@ const app = (function () {
       const naturalPostWidth = postContainerElmt.offsetWidth || 0;
       const mainVisualScale = getMainVisualScale();
 
-      postContainerElmt.style.transformOrigin = "center center";
-      postContainerElmt.style.transition = "transform 280ms ease";
-      postContainerElmt.style.willChange = "transform";
+      const setTransform = value => {
+        if (postContainerElmt.style.transform !== value) postContainerElmt.style.transform = value;
+      };
 
       if (!viewportWidth || !naturalPostWidth || !mainVisualScale) {
-        postContainerElmt.style.transform = "translateX(0px) scale(1)";
+        setTransform("translateX(0px) scale(1)");
         return;
       }
 
       const visibleMenus = getVisibleSideMenuElements();
       if (!visibleMenus.length) {
-        postContainerElmt.style.transform = "translateX(0px) scale(1)";
+        setTransform("translateX(0px) scale(1)");
         return;
       }
 
@@ -3949,7 +4397,7 @@ const app = (function () {
         rightBlockedEdge - SIDE_MENU_VIEWPORT_GAP < normalPostRight;
 
       if (!intrudesFromLeft && !intrudesFromRight) {
-        postContainerElmt.style.transform = "translateX(0px) scale(1)";
+        setTransform("translateX(0px) scale(1)");
         return;
       }
 
@@ -3973,13 +4421,12 @@ const app = (function () {
             )
           : 1;
 
-      postContainerElmt.style.transform =
-        `translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`;
+      setTransform(`translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`);
     };
 
     const schedulePostViewportLayoutUpdate = () => {
       if (postViewportLayoutFrame !== null) {
-        window.cancelAnimationFrame(postViewportLayoutFrame);
+        return;
       }
 
       postViewportLayoutFrame = window.requestAnimationFrame(() => {
@@ -4082,15 +4529,7 @@ const app = (function () {
         return;
       }
 
-      const schedule = () => {
-        schedulePostViewportLayoutUpdate();
-
-        window.requestAnimationFrame(() => {
-          schedulePostViewportLayoutUpdate();
-        });
-
-        setTimeout(schedulePostViewportLayoutUpdate, 80);
-      };
+      const schedule = schedulePostViewportLayoutUpdate;
 
       const targets = [
         document.body,
@@ -4105,8 +4544,7 @@ const app = (function () {
       for (const target of targets) {
         postViewportLayoutObserver.observe(target, {
           attributes: true,
-          childList: true,
-          subtree: true,
+          subtree: false,
           attributeFilter: [
             "style",
             "class",
@@ -4117,6 +4555,13 @@ const app = (function () {
           ],
         });
       }
+
+      // Observe sizes, not the descendants' inline styles or the preview transform.
+      if (typeof ResizeObserver === "function") {
+        const sizes = new ResizeObserver(schedule);
+        for (const target of [document.getElementById("postContainer"), ...document.querySelectorAll(".sMModal"), document.getElementById("sMConfigBar"), document.getElementById("panelSelect")].filter(Boolean)) sizes.observe(target);
+      }
+      for (const target of document.querySelectorAll(".modals, #sMConfigBar, #panelSelect")) target.addEventListener("transitionend", schedule);
 
       window.addEventListener("resize", schedule);
       window.addEventListener("load", schedule);
@@ -4181,6 +4626,7 @@ const app = (function () {
     const init = async function () {
       if (initializationStarted) return;
       initializationStarted = true;
+      window.performance?.mark?.("signmaker:init-start");
       post = new Post(DEFAULT_POST_POSITION);
       post.panelSpacing = getDefaultPanelSpacing();
       post.newPanel();
@@ -4189,10 +4635,32 @@ const app = (function () {
       ensureExtendedGuideArrowOptions();
       bindDownloadResolutionControl();
 
-      // Read the sign while the form loads its custom icon registry.
+      // A fresh sign needs no editor registries. Paint it before loading them.
       const savedSnapshot = getRestoreOnRefreshMode() === "never"
-        ? null : readSavedAppStateSnapshot();
+        ? null : await readSavedAppStateSnapshot();
       let restored = false, migratedLegacyNoneBanners = false;
+      const paintSign = async () => {
+        await Promise.all([
+          prepareIconImagesForPost(post),
+          window.SignMakerFonts?.preparePost(post),
+        ]);
+        redraw();
+        await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
+        document.documentElement.removeAttribute("data-sign-loading");
+        window.performance?.mark?.("signmaker:sign-ready");
+        window.performance?.measure?.("signmaker:sign-startup", "signmaker:init-start", "signmaker:sign-ready");
+        if (document.visibilityState !== "hidden") {
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
+        }
+      };
+      let hasStoredPostPreferences = false;
+      try {
+        hasStoredPostPreferences = ["signMaker.postPosition", "signMaker.showPost", "signMaker.postColor", "signMaker.postThickness"]
+          .some(key => window.localStorage.getItem(key) !== null);
+      } catch (_) {}
+      const paintedFreshSign = !savedSnapshot && !hasStoredPostPreferences;
+      if (paintedFreshSign) await paintSign();
+      await window.SignMakerBoot?.loadEditor();
       window.customShields = new CustomShields();
       await formHandler.init(exposeToFormHandler, {
         beforeUI: async () => {
@@ -4202,19 +4670,15 @@ const app = (function () {
             currentlySelectedPanelIndex = post.panels.length - 1;
           }
           migratedLegacyNoneBanners = migrateLegacyNoneShieldBannersOnce();
-          await Promise.all([
-            prepareIconImagesForPost(post),
-            window.SignMakerFonts?.preparePost(post),
-          ]);
-          redraw();
-          await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
-          document.documentElement.removeAttribute("data-sign-loading");
-          // Give the panels a paint before the menu setup occupies the thread.
-          if (document.visibilityState !== "hidden") {
-            await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
-          }
+          if (!paintedFreshSign) await paintSign();
         },
       });
+      window.SignMakerEditorRuntime?.init();
+      window.SignMakerMergeUI?.init();
+      window.SignMakerSettings22?.sync();
+      window.SignMakerDropdowns?.init();
+      finishTemplateEditorSessionUi();
+      await window.SignMakerEditorRuntime?.yieldToMain();
       formHandler.updateForm();
 
       // Font loading can change layout without rebuilding every panel or
@@ -4303,6 +4767,14 @@ const app = (function () {
 
       bindPostViewportLayoutWatcher();
       schedulePostViewportLayoutUpdate();
+      document.documentElement.dataset.appReady = "true";
+      document.querySelectorAll('[data-startup-inert]').forEach(element => {
+        element.inert = false;
+        element.removeAttribute('inert');
+        element.removeAttribute('data-startup-inert');
+      });
+      window.performance?.mark?.("signmaker:editor-ready");
+      window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
     };
 
   // Create a new panel, set the current editing panel to that panel, update the form, and redraw.
@@ -4815,6 +5287,7 @@ const app = (function () {
       panelNumber,
       { suppressFlash = false, preserveSubPanel = false } = {}
     ) {
+      resetGroupEditing();
       if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
         return;
       }
@@ -4996,7 +5469,7 @@ const app = (function () {
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
-        flashSelectedSubPanel({ waitForPostTransform: true });
+        flashSelectedSubPanel();
       });
     };
 
@@ -5061,12 +5534,13 @@ const app = (function () {
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
-        flashSelectedSubPanel({ waitForPostTransform: true });
+        flashSelectedSubPanel();
       });
     };
 
   // Set the current editing (SUB)panel based off paramter number, within the correct range (0 < # of panels - 1)
     const changeEditingSubPanel = function (subPanelNumber) {
+      resetGroupEditing();
       selectedGuideArrowPanelIndex = -1;
       selectedGuideArrowIndex = -1;
       const sign = getCurrentPanel()?.sign;
@@ -5096,11 +5570,11 @@ const app = (function () {
 
       formHandler.updateForm();
       redraw();
-      flashSelectedSubPanel({ waitForPostTransform: true });
+      flashSelectedSubPanel();
     };
     
-    const flashSelectedSubPanel = ({ waitForPostTransform = false } = {}) => {
-      const getSelectedSubPanelElmt = () => {
+    const flashSelectedSubPanel = () => {
+      flashElementAfterPostTransform(() => {
         const panelElmt = document.getElementById(
           "panel" + currentlySelectedPanelIndex
         );
@@ -5120,18 +5594,7 @@ const app = (function () {
         return panelElmt.querySelector(
           `[data-subpanel-index="${currentlySelectedSubPanelIndex}"]`
         );
-      };
-
-      if (waitForPostTransform) {
-        flashElementAfterPostTransform(getSelectedSubPanelElmt);
-        return;
-      }
-
-      const subPanelElmt = getSelectedSubPanelElmt();
-
-      if (subPanelElmt) {
-        flashElement(subPanelElmt);
-      }
+      });
     };
     
     const isGuideArrowMenuOpen = () => {
@@ -5636,6 +6099,9 @@ const app = (function () {
       applyRenderedExitTabAnchors(panelElmt, panel);
     };
 
+    const shouldDragPanelFromAccessory = (panelElmt, event) =>
+      panelElmt.classList.contains("panelDragHandle") && !event.altKey;
+
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
       if (!panelElmt || !holder || !tabElmt || !exitTab) return;
       tabElmt.classList.add("draggableExitTab");
@@ -5654,7 +6120,7 @@ const app = (function () {
         event.stopPropagation();
       });
       tabElmt.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || shouldDragPanelFromAccessory(panelElmt, event)) return;
         const signElmt = panelElmt.querySelector(":scope > .signContainer > .sign");
         if (!signElmt) return;
         const startRect = tabElmt.getBoundingClientRect();
@@ -5750,6 +6216,7 @@ const app = (function () {
       nestedExitTabIndex = -1,
       menu = "subpanel",
       guideMode = null,
+      groupPath = [],
       flashTarget = null,
       suppressRedraw = false,
       deferMenu = false,
@@ -5780,6 +6247,8 @@ const app = (function () {
         );
       }
 
+      currentlyEditingGroupPath = groupPath.map(segment => ({ ...segment }));
+      groupEditingContextKey = currentlySelectedPanelIndex + ":" + currentlySelectedSubPanelIndex;
       const selectedTarget = getCurrentSubPanel();
       const selectedRows = selectedTarget?.blockElements?.rows || [];
       const requestedRowIndex = Number(rowIndex);
@@ -5833,6 +6302,12 @@ const app = (function () {
         formHandler.ensureSubpanelMenuOpen();
       }
 
+      if (menu === "guideArrows") {
+        stopSelectionFlash?.();
+        if (!suppressRedraw) redraw();
+        return;
+      }
+
       if (suppressRedraw) {
         if (flashTarget) flashElementAfterPostTransform(() => flashTarget);
         return;
@@ -5844,9 +6319,7 @@ const app = (function () {
             ? "row"
             : menu === "exitTabs"
               ? "exitTab"
-              : menu === "guideArrows"
-                ? "guideArrows"
-                : "subpanel";
+              : "subpanel";
 
         const resolveFlashTargetAfterRedraw = () => {
           const panelElmt = document.getElementById("panel" + selectedPanelIndex);
@@ -5863,8 +6336,12 @@ const app = (function () {
             ) || panelElmt.querySelector(".exitTabContainer.tabVisible");
           }
 
-          if (flashTargetKind === "guideArrows") {
-            return panelElmt.querySelector(".guideArrows, .aplArrows");
+          if (flashTargetKind === "block") {
+            return panelElmt.querySelector(".selectedRenderedBlockElement");
+          }
+
+          if (flashTargetKind === "row") {
+            return panelElmt.querySelector(".selectedRenderedBlockRow");
           }
 
           if (currentlySelectedSubPanelIndex === GLOBAL_TOP_SUBPANEL_INDEX) {
@@ -5873,22 +6350,6 @@ const app = (function () {
 
           if (currentlySelectedSubPanelIndex === GLOBAL_BOTTOM_SUBPANEL_INDEX) {
             return panelElmt.querySelector(".globalBottom");
-          }
-
-          const blockMaster = panelElmt.querySelector(
-            `.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`
-          );
-
-          if (flashTargetKind === "block") {
-            return blockMaster?.querySelector(
-              `[data-sign-row="${currentlySelectedRowIndex}"][data-sign-block="${currentlySelectedBlockIndex}"]`
-            ) || null;
-          }
-
-          if (flashTargetKind === "row") {
-            return blockMaster?.querySelector(
-              `.blockElementRow[data-sign-row="${currentlySelectedRowIndex}"]`
-            ) || null;
           }
 
           return panelElmt.querySelector(
@@ -5901,7 +6362,7 @@ const app = (function () {
         if (flashTarget) {
           flashElementAfterPostTransform(resolveFlashTargetAfterRedraw);
         } else {
-          flashSelectedSubPanel({ waitForPostTransform: true });
+          flashSelectedSubPanel();
         }
     };
 
@@ -5926,99 +6387,63 @@ const app = (function () {
       };
     };
 
-    const flashElement = (targetElmt) => {
-      if (!targetElmt) return;
-      if (post && post.disableFlash) return;
-      if (!targetElmt.isConnected) return;
-
-      const rect = targetElmt.getBoundingClientRect();
-
-      if (rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
+    let stopSelectionFlash;
+    const flashElementAfterPostTransform = targetResolver => {
+      stopSelectionFlash?.();
+      if (post?.disableFlash) return;
 
       const overlay = document.createElement("div");
       overlay.className = "flash-selection";
-
       overlay.style.position = "fixed";
-      overlay.style.top = rect.top + "px";
-      overlay.style.left = rect.left + "px";
-      overlay.style.width = rect.width + "px";
-      overlay.style.height = rect.height + "px";
-      overlay.style.borderRadius = window.getComputedStyle(targetElmt).borderRadius || "0.25rem";
       overlay.style.zIndex = "999999";
 
-      document.body.appendChild(overlay);
-
-      setTimeout(() => {
+      let frame;
+      let target;
+      let previousRect;
+      let startedAt;
+      stopSelectionFlash = () => {
+        cancelAnimationFrame(frame);
         overlay.remove();
-      }, 500);
+        stopSelectionFlash = null;
+      };
+
+      // The editor can move and scale the post after the flash starts.
+      const followTarget = timestamp => {
+        if (post?.disableFlash || (startedAt !== undefined && timestamp - startedAt >= 500)) {
+          stopSelectionFlash();
+          return;
+        }
+        if (!target?.isConnected) {
+          target = targetResolver();
+          if (!target?.isConnected) {
+            stopSelectionFlash();
+            return;
+          }
+          overlay.style.borderRadius = window.getComputedStyle(target).borderRadius || "0.25rem";
+        }
+
+        const rect = target.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+          stopSelectionFlash();
+          return;
+        }
+        if (rect.left !== previousRect?.left || rect.top !== previousRect?.top ||
+            rect.width !== previousRect?.width || rect.height !== previousRect?.height) {
+          overlay.style.left = rect.left + "px";
+          overlay.style.top = rect.top + "px";
+          overlay.style.width = rect.width + "px";
+          overlay.style.height = rect.height + "px";
+          previousRect = rect;
+        }
+        if (startedAt === undefined) {
+          startedAt = performance.now();
+          document.body.appendChild(overlay);
+        }
+        frame = requestAnimationFrame(followTarget);
+      };
+      frame = requestAnimationFrame(followTarget);
     };
-    
-    const flashElementAfterPostTransform = (targetResolver) => {
-      if (post && post.disableFlash) return;
 
-      const postContainer = document.getElementById("postContainer");
-
-      const runFlash = () => {
-        requestAnimationFrame(() => {
-          const targetElmt =
-            typeof targetResolver === "function" ? targetResolver() : targetResolver;
-
-          if (!targetElmt || !targetElmt.isConnected) return;
-          flashElement(targetElmt);
-        });
-      };
-
-      if (!postContainer) {
-        runFlash();
-        return;
-      }
-
-      const computed = window.getComputedStyle(postContainer);
-      const durationParts = (computed.transitionDuration || "0s").split(",");
-      const delayParts = (computed.transitionDelay || "0s").split(",");
-
-      const toMs = (value) => {
-        const trimmed = String(value).trim();
-        if (trimmed.endsWith("ms")) return parseFloat(trimmed) || 0;
-        if (trimmed.endsWith("s")) return (parseFloat(trimmed) || 0) * 1000;
-        return parseFloat(trimmed) || 0;
-      };
-
-      const transitionMs = Math.max(
-        ...durationParts.map((duration, index) => {
-          const delay = delayParts[index] ?? delayParts[0] ?? "0s";
-          return toMs(duration) + toMs(delay);
-        }),
-        0
-      );
-
-      if (transitionMs <= 0) {
-        runFlash();
-        return;
-      }
-
-      let finished = false;
-
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        postContainer.removeEventListener("transitionend", onTransitionEnd);
-        runFlash();
-      };
-
-      const onTransitionEnd = (event) => {
-        if (event.target !== postContainer) return;
-        if (event.propertyName !== "transform") return;
-        finish();
-      };
-
-      postContainer.addEventListener("transitionend", onTransitionEnd);
-
-      setTimeout(finish, transitionMs + 40);
-    };
-    
     const getFreshFlashTarget = ({
       panelIndex = currentlySelectedPanelIndex,
       subPanelIndex = currentlySelectedSubPanelIndex,
@@ -6735,33 +7160,26 @@ const app = (function () {
       });
     };
 
-    const delRow = () => {
+    const delRow = (deleteIndex = currentlySelectedRowIndex) => {
+      const blockElems = getActiveBlockElements();
+      if (!Number.isInteger(deleteIndex) || !blockElems?.rows[deleteIndex] ||
+          !blockElems.rows.some((row, index) => index !== deleteIndex && row.length)) {
+        return null;
+      }
+
       return runWithUndo(() => {
-        const subPanel = getCurrentSubPanel();
-        const blockElems = subPanel?.blockElements;
-
-        if (!blockElems || blockElems.rows.length <= 1) {
-          return;
-        }
-
-        const deleteIndex = clamp(
-          currentlySelectedRowIndex,
-          0,
-          blockElems.rows.length - 1
-        );
-
         blockElems.deleteRow(deleteIndex);
 
-        currentlySelectedRowIndex = clamp(
-          deleteIndex,
-          0,
-          Math.max(0, blockElems.rows.length - 1)
-        );
-        currentlySelectedBlockIndex = 0;
+        if (deleteIndex < currentlySelectedRowIndex) {
+          currentlySelectedRowIndex--;
+        } else if (deleteIndex === currentlySelectedRowIndex) {
+          currentlySelectedBlockIndex = 0;
+        }
 
         normalizeSelectionForCurrentPost();
         redraw();
         formHandler.updateForm();
+        return deleteIndex;
       });
     };
     
@@ -7204,35 +7622,7 @@ const app = (function () {
       return deletedIndex;
     };
 
-    const deleteCurrentRowShortcut = () => {
-      return runWithUndo(() => {
-        const blockElements = getCurrentSubPanel()?.blockElements;
-        const rows = blockElements?.rows || [];
-        if (rows.length <= 1) {
-          return null;
-        }
-
-        const deleteIndex = clamp(
-          currentlySelectedRowIndex,
-          0,
-          rows.length - 1
-        );
-
-        blockElements.deleteRow(deleteIndex);
-        currentlySelectedRowIndex = clamp(
-          deleteIndex,
-          0,
-          Math.max(0, blockElements.rows.length - 1)
-        );
-        currentlySelectedBlockIndex = 0;
-
-        normalizeSelectionForCurrentPost();
-        formHandler.updateForm();
-        redraw();
-
-        return deleteIndex;
-      });
-    };
+    const deleteCurrentRowShortcut = () => delRow();
 
     const moveRow = (fromIndex, toIndex) => {
       return runWithUndo(() => {
@@ -7303,13 +7693,30 @@ const app = (function () {
 
       formHandler.updateForm();
       redraw();
+      flashElementAfterPostTransform(() => {
+        const panel = document.getElementById("panel" + currentlySelectedPanelIndex);
+        const master = panel?.querySelector(`.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`);
+        return master?.querySelector(`[data-sign-row="${currentlySelectedRowIndex}"][data-sign-block="${currentlySelectedBlockIndex}"]`);
+      });
     };
 
     const newControlElem = (selectedElem, evt = null) => {
       return runWithUndo(() => {
         const blockElems = getCurrentSubPanel().blockElements;
+        if (evt?.newRow) {
+          currentlySelectedRowIndex = Number.isInteger(evt.newRowIndex)
+            ? Math.max(0, Math.min(blockElems.rows.length, evt.newRowIndex))
+            : blockElems.rows.length;
+          blockElems.addRow(currentlySelectedRowIndex, selectedElem);
+          currentlySelectedBlockIndex = 0;
+          applyStoredShieldDefaultsToCurrentBlock();
+          formHandler.updateForm();
+          redraw();
+          return;
+        }
+        if (Number.isInteger(evt?.dropRow)) currentlySelectedRowIndex = evt.dropRow;
         const insertBeforeSelected = !!(evt && evt.shiftKey);
-        const insertIndex = insertBeforeSelected
+        const insertIndex = Number.isInteger(evt?.dropIndex) ? evt.dropIndex : insertBeforeSelected
           ? currentlySelectedBlockIndex
           : currentlySelectedBlockIndex + 1;
 
@@ -7423,69 +7830,30 @@ const app = (function () {
       });
     };
 
-    const delControlElem = () => {
+    const delControlElem = (
+      rowIndex = currentlySelectedRowIndex,
+      blockIndex = currentlySelectedBlockIndex
+    ) => {
+      const blockElems = getActiveBlockElements();
+      const row = blockElems?.rows[rowIndex];
+      if (!Number.isInteger(rowIndex) || !Number.isInteger(blockIndex) || !row?.[blockIndex]) return;
+
+      if (row.length === 1) {
+        return delRow(rowIndex);
+      }
+
       return runWithUndo(() => {
-        const blockElems = getCurrentSubPanel().blockElements;
-        const deleteRowIndex = clamp(
-          currentlySelectedRowIndex,
-          0,
-          Math.max(0, blockElems.rows.length - 1)
-        );
-        const rowBeforeDelete = blockElems.rows[deleteRowIndex] || [];
-        const deleteBlockIndex = clamp(
-          currentlySelectedBlockIndex,
-          0,
-          Math.max(0, rowBeforeDelete.length - 1)
-        );
-        const removedWholeRow = blockElems.removeElement(
-          deleteRowIndex,
-          deleteBlockIndex
-        );
-
-        if (removedWholeRow) {
-          currentlySelectedRowIndex = clamp(
-            deleteRowIndex,
-            0,
-            Math.max(0, blockElems.rows.length - 1)
-          );
-          currentlySelectedBlockIndex = 0;
-        } else {
-          const rowAfterDelete = blockElems.rows[deleteRowIndex] || [];
-          currentlySelectedRowIndex = deleteRowIndex;
-          currentlySelectedBlockIndex = clamp(
-            deleteBlockIndex,
-            0,
-            Math.max(0, rowAfterDelete.length - 1)
-          );
+        blockElems.removeElement(rowIndex, blockIndex);
+        if (rowIndex === currentlySelectedRowIndex && blockIndex < currentlySelectedBlockIndex) {
+          currentlySelectedBlockIndex--;
         }
-
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
       });
     };
 
-    const getCurrentEditableSubPanelForClipboard = () => {
-      const panel = getCurrentPanel();
-      const sign = panel?.sign;
-
-      if (!sign) {
-        return null;
-      }
-
-      if (currentlySelectedSubPanelIndex < 0) {
-        const currentTarget = getCurrentSubPanel();
-        return currentTarget?.blockElements ? currentTarget : null;
-      }
-
-      const subPanels = sign.subPanels;
-
-      if (!Array.isArray(subPanels)) {
-        return null;
-      }
-
-      return subPanels[currentlySelectedSubPanelIndex] || null;
-    };
+    const getCurrentEditableSubPanelForClipboard = () => getCurrentSubPanel();
 
     const serializeSubpanelClipboardValue = (value) => {
       try {
@@ -7520,8 +7888,9 @@ const app = (function () {
           Control.prototype.blockToClassElems[elemType]
         ) {
           const ElemClass = Control.prototype.blockToClassElems[elemType];
-          const elem = new ElemClass(data);
+          const elem = new ElemClass(elemType === "GroupedBlockElement" ? { ...data, blockElements: new Control() } : data);
           Object.assign(elem, data);
+          if (elemType === "GroupedBlockElement") elem.blockElements = Control.fromData(data.blockElements);
           delete elem._elementType;
           delete elem.__undoType;
           return elem;
@@ -8526,7 +8895,7 @@ const app = (function () {
           return;
         }
 
-        const duplicatedBlock = Object.assign(new Constructor(), sourceBlock);
+        const duplicatedBlock = blockElements.cloneElement(sourceBlock);
         const insertRowIndex = clamp(
           normalizedRow + 1,
           0,
@@ -8600,7 +8969,7 @@ const app = (function () {
         if (typeof Constructor !== "function") {
           return;
         }
-        const duplicatedBlock = Object.assign(new Constructor(), sourceBlock);
+        const duplicatedBlock = blockElements.cloneElement(sourceBlock);
         const insertIndex = clamp(
           currentlySelectedBlockIndex + 1,
           0,
@@ -9902,6 +10271,32 @@ const app = (function () {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
+  let imageExportLibraryPromise = null;
+  const loadImageExportLibrary = () => {
+    if (window.htmlToImage) return Promise.resolve(window.htmlToImage);
+    if (imageExportLibraryPromise) return imageExportLibraryPromise;
+    imageExportLibraryPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      let timer;
+      const finish = error => {
+        clearTimeout(timer);
+        script.onload = script.onerror = null;
+        script.remove();
+        if (error || !window.htmlToImage) {
+          imageExportLibraryPromise = null;
+          reject(error || new Error("The image export library did not initialize."));
+        } else resolve(window.htmlToImage);
+      };
+      script.src = new URL("js/HtmlToImage.js", document.baseURI).href;
+      script.async = true;
+      script.onload = () => finish();
+      script.onerror = () => finish(new Error("Unable to load the image export library. Please retry."));
+      timer = setTimeout(() => finish(new Error("Loading the image export library timed out. Please retry.")), 20000);
+      document.head.appendChild(script);
+    });
+    return imageExportLibraryPromise;
+  };
+
   const createImageBackedSvgDataUrl = async (
     exportElement,
     exportOptions,
@@ -9912,6 +10307,7 @@ const app = (function () {
     const pixelRatio = getExportPixelRatio(width, height, isPreview);
     const svgWidth = Math.max(1, Math.ceil(width * pixelRatio));
     const svgHeight = Math.max(1, Math.ceil(height * pixelRatio));
+    const htmlToImage = await loadImageExportLibrary();
     const pngDataUrl = await htmlToImage.toPng(exportElement, {
       ...exportOptions,
       pixelRatio,
@@ -9925,6 +10321,148 @@ const app = (function () {
     ].join("");
 
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+  };
+
+
+  let copyButtonRestoreTimer=null,copySignInProgress=false;
+  const setCopyButtonState = (state) => {
+    const button = document.getElementById("copySign");
+    const icon = button?.querySelector(".material-symbols-outlined");
+
+    if (!button || !icon) {
+      return;
+    }
+
+    if (copyButtonRestoreTimer) {
+      clearTimeout(copyButtonRestoreTimer);
+      copyButtonRestoreTimer = null;
+    }
+
+    const restore = () => {
+      button.disabled = false;
+      button.classList.remove("activated");
+      button.dataset.tooltip = "Copy Sign";
+      icon.textContent = "content_copy";
+    };
+
+    if (state === "copying") {
+      button.disabled = true;
+      button.classList.remove("activated");
+      button.dataset.tooltip = "Copying...";
+      icon.textContent = "hourglass_empty";
+      return;
+    }
+
+    if (state === "copied") {
+      button.disabled = false;
+      button.classList.add("activated");
+      button.dataset.tooltip = "Copied";
+      icon.textContent = "check";
+      copyButtonRestoreTimer = setTimeout(restore, 1400);
+      return;
+    }
+
+    if (state === "downloaded") {
+      button.disabled = false;
+      button.classList.add("activated");
+      button.dataset.tooltip = "Downloaded PNG";
+      icon.textContent = "download_done";
+      copyButtonRestoreTimer = setTimeout(restore, 1800);
+      return;
+    }
+
+    if (state === "error") {
+      button.disabled = false;
+      button.classList.remove("activated");
+      button.dataset.tooltip = "Copy Failed";
+      icon.textContent = "error";
+      copyButtonRestoreTimer = setTimeout(restore, 1800);
+      return;
+    }
+
+    restore();
+  };
+
+const downloadBlob = function (blob, ending) {
+    const url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.setAttribute("href", url);
+    a.setAttribute("download", "downloadedSign" + ending);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet) {
+    if (!file) {
+      throw new Error("No export target found");
+    }
+
+    const blobPromise = Promise.resolve(saveSign(file, true, false, selectedPanelIndexSet)).then(data => dataUrlToBlob(data, "image/png"));
+    let renderedBlob = null;
+    const getRenderedBlob = async () => {
+      if (!renderedBlob) {
+        renderedBlob = await blobPromise;
+      }
+      return renderedBlob;
+    };
+    const canWriteImage =
+      navigator.clipboard &&
+      typeof navigator.clipboard.write === "function" &&
+      typeof ClipboardItem !== "undefined";
+
+    if (canWriteImage) {
+      try {
+        let clipboardItem;
+        try {
+          clipboardItem = new ClipboardItem({ "image/png": blobPromise });
+        } catch (itemError) {
+          clipboardItem = new ClipboardItem({
+            "image/png": await getRenderedBlob(),
+          });
+        }
+
+        await navigator.clipboard.write([clipboardItem]);
+        return "copied";
+      } catch (clipboardError) {
+        console.error("Clipboard image write failed", clipboardError);
+        const blob = await getRenderedBlob();
+        downloadBlob(blob, ".png");
+        alert(
+          "This browser blocked image clipboard access, so the PNG was downloaded instead."
+        );
+        return "downloaded";
+      }
+    }
+
+    const blob = await getRenderedBlob();
+    downloadBlob(blob, ".png");
+    alert(
+      "This browser does not support copying images directly, so the PNG was downloaded instead."
+    );
+    return "downloaded";
+  };
+  const copySignToClipboard = async function(panelIndex=null) {
+    if(copySignInProgress) return false;
+    copySignInProgress=true;setCopyButtonState('copying');
+    try {
+      const selectedPanelIndexSet=Number.isInteger(panelIndex)?new Set([panelIndex]):null;
+      const file=Number.isInteger(panelIndex)||post.copySignsOnly!==false?document.getElementById('panelContainer'):document.getElementById('postContainer');
+      const result=await copyExportTargetToClipboard(file,selectedPanelIndexSet);
+      setCopyButtonState(result);return result==='copied';
+    }catch(error){setCopyButtonState('error');alert('Unable to copy the sign: '+error.message);return false;}
+    finally {copySignInProgress=false;}
+  };
+  const openCopyPanelContextMenu = event => {
+    event.preventDefault();event.stopPropagation();
+    const menu=document.getElementById('copyPanelContextMenu');if(!menu)return;
+    menu.innerHTML='';
+    for(const group of getExportablePanelGroups()){
+      const button=document.createElement('button');button.type='button';button.textContent='Copy Panel '+group.label;
+      button.addEventListener('click',()=>{menu.classList.add('hidden');copySignToClipboard(group.topIndex);});menu.appendChild(button);
+    }
+    menu.style.left=Math.max(8,Math.min(event.clientX,window.innerWidth-230))+'px';
+    menu.style.top=Math.max(8,Math.min(event.clientY,window.innerHeight-250))+'px';menu.classList.remove('hidden');
   };
 
   const copyBlobToClipboard = async (blobOrPromise, mimeType, fileName = "copiedSign") => {
@@ -10252,6 +10790,7 @@ const app = (function () {
     return "";
   };
   const getSafeExportFontEmbedCSS = async (root = null) => {
+    root ||= document.getElementById("panelContainer");
     const fontFaceRules = [];
     const normalizeFamily = (value) => String(value || "").trim().replace(/^["']|["']$/g, "").toLowerCase();
     const usedFamilies = root ? new Set([root, ...root.querySelectorAll("*")].flatMap((element) =>
@@ -10403,6 +10942,7 @@ const app = (function () {
   ) => {
     const rects = [];
     const addRect = (node, { force = false } = {}) => {
+      if (node?.id === "alignmentGuides") return;
       // The VMS housing already bounds its entire screen. Content beyond a
       // fixed-width screen is clipped and must not enlarge the export crop.
       if (node?.closest?.(".panel.vmsPanel > .signContainer, .panel.vmsPanel > .vmsPanelDisplay")) {
@@ -10511,12 +11051,11 @@ const app = (function () {
     return true;
   };
 
-  const getExportCloneSourceElements = (element) => {
+  const getExportCloneSourceElements = (element, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) => {
     if (!element) {
       return [];
     }
 
-    const selectedPanelIndexSet = getSelectedExportPanelIndexSet();
 
     if (element.id === "panelContainer") {
       return Array.from(element.children).filter((child) =>
@@ -10533,7 +11072,7 @@ const app = (function () {
           : Array.from(element.children).filter(
               (child) =>
                 child.classList &&
-                child.classList.contains("post") &&
+                child.matches(".post, .fdotSupport") &&
                 isElementVisibleForExport(child)
             );
 
@@ -10638,6 +11177,8 @@ const app = (function () {
     wrapper.style.boxSizing = "border-box";
 
     const clone = element.cloneNode(true);
+    clone.classList.remove("showBlockBoundingBoxes");
+    clone.querySelectorAll("#alignmentGuides").forEach(guide=>guide.remove());
     Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
       (hiddenPanelClone) => hiddenPanelClone.remove()
     );
@@ -10681,18 +11222,17 @@ const app = (function () {
     };
   };
 
-  const createStaticExportClone = (element) => {
+  const createStaticExportClone = (element, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) => {
     if (!element || !element.isConnected) {
       return null;
     }
 
-    const selectedPanelIndexSet = getSelectedExportPanelIndexSet();
 
     if (element.id === "postContainer" && !selectedPanelIndexSet) {
       return createFullPostStaticExportClone(element);
     }
 
-    const sourceElements = getExportCloneSourceElements(element).filter(
+    const sourceElements = getExportCloneSourceElements(element, selectedPanelIndexSet).filter(
       isElementVisibleForExport
     );
 
@@ -10990,13 +11530,13 @@ const app = (function () {
     };
   };
 
-  const withTemporaryExportStyles = async (element, callback) => {
+  const withTemporaryExportStyles = async (element, callback, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) => {
     await waitForPendingRenderedArrows(element);
     await VmsPanel.refresh(element);
     if (element?.id === "postContainer") {
       updateRuralPostLayout();
     }
-    const staticClone = createStaticExportClone(element);
+    const staticClone = createStaticExportClone(element, selectedPanelIndexSet);
     const exportElement = staticClone ? staticClone.node : element;
     const oldInline = staticClone
       ? null
@@ -11071,7 +11611,7 @@ const app = (function () {
     }
   };
 
-  const saveSign = async function (file, isPreview, isSVG) {
+  const saveSign = async function (file, isPreview, isSVG, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) {
     try {
       if (!file) {
         throw new Error("No export target found");
@@ -11109,6 +11649,7 @@ const app = (function () {
 
         const pngExportScale = getExportPixelRatio(width, height, isPreview);
 
+        const htmlToImage = await loadImageExportLibrary();
         const pngDataUrl = await htmlToImage.toPng(exportElement, {
           ...exportOptions,
           pixelRatio: pngExportScale,
@@ -11121,7 +11662,7 @@ const app = (function () {
 
         downloadFile(pngDataUrl, ".png");
         return true;
-      });
+      }, selectedPanelIndexSet);
     } catch (error) {
       console.error("Error Saving!", error);
       throw error;
@@ -11632,7 +12173,11 @@ const app = (function () {
     const availablePolePositions = Post.prototype.polePositions;
     const polePosition = availablePolePositions.includes(post.polePosition)
       ? post.polePosition
-      : availablePolePositions[0];
+      : DEFAULT_POST_POSITION;
+    const fdot = window.SignMakerFDOTSupports;
+    const fdotSupport = fdot?.get(polePosition);
+    const supportsVerticalPanelDrag = !!fdotSupport || ["Left", "Right", "Overhead"].includes(polePosition);
+    const hadFdotSupport = postContainerElmt.classList.contains("fdotSupportContainer");
     const polePositionClass = `polePosition${polePosition}`;
     const availableColors = Post.prototype.colors;
     const postUsesCustomColor = isCustomCssColorValue(post.color);
@@ -11641,6 +12186,7 @@ const app = (function () {
       : availableColors[0];
     const colorClass = normalizedPostColor && !postUsesCustomColor ? ` postColor${normalizedPostColor}` : "";
     postContainerElmt.className = `${polePositionClass}${colorClass}`;
+    postContainerElmt.classList.toggle("showBlockBoundingBoxes", !!post.showBlockBoundingBoxes);
     applyCustomPostColorVars(postContainerElmt, postUsesCustomColor ? post.color : "");
     const normalizedThickness = post.normalizeThickness(post.thickness);
     post.thickness = normalizedThickness;
@@ -11693,6 +12239,9 @@ const app = (function () {
       panelContainerElmt.style.background = "";
     }
 
+    if (fdotSupport || hadFdotSupport) {
+      fdot.prepare(post, postContainerElmt, panelContainerElmt);
+    }
     lib.clearChildren(panelContainerElmt);
     if (panelContainerElmt) {
       // Attach drag handlers to panelContainer once
@@ -11775,7 +12324,9 @@ const app = (function () {
               });
           });
           const isAdditionalStackedPanel = isStackedPanelBottom(index);
+          const canPositionPanelVertically = supportsVerticalPanelDrag && !isPanelConfiguredHidden(index);
           panelElmt.draggable =
+            !canPositionPanelVertically &&
             !isAdditionalStackedPanel &&
             post.panels.length > 1 &&
             !isPanelConfiguredHidden(index);
@@ -11838,6 +12389,29 @@ const app = (function () {
           } else {
             currentPanelStackElmt = null;
             panelContainerElmt.appendChild(panelElmt);
+          }
+
+          if (canPositionPanelVertically) {
+            const movementRoot = currentPanelStackElmt || panelElmt;
+            const positionPanel = post.panels[stackTopIndex];
+            positionPanel.verticalOffsetRem = Panel.normalizeVerticalOffset(positionPanel.verticalOffsetRem);
+            window.SignMakerPanelDrag.bind(panelElmt, movementRoot, {
+              index: stackTopIndex,
+              limit: Panel.maxVerticalOffset,
+              getOffset: () => Panel.normalizeVerticalOffset(positionPanel.verticalOffsetRem),
+              getEndIndex: peerIndex => getRenderedPanelGroupEndIndex(peerIndex),
+              onCommit: (offset, dropIndex) => {
+                if (post.panels[stackTopIndex] !== positionPanel) return;
+                const end = getRenderedPanelGroupEndIndex(stackTopIndex) + 1;
+                const reorder = dropIndex < stackTopIndex || dropIndex > end;
+                if (!reorder && offset === positionPanel.verticalOffsetRem) return;
+                runWithUndo(() => {
+                  positionPanel.verticalOffsetRem = Panel.normalizeVerticalOffset(offset);
+                  if (reorder) movePanel(stackTopIndex, dropIndex);
+                  else redraw();
+                });
+              },
+            });
           }
           
           // Store CA style exit tabs to append inside sign later
@@ -13504,71 +14078,33 @@ const app = (function () {
           };
 
           const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) => {
-            if (!blockMasterElmt) {
-              return;
-            }
-
-            blockMasterElmt.dataset.panelIndex = String(index);
-            blockMasterElmt.dataset.subpanel = String(subPanelIndex);
-
-            const rows = Array.from(
-              blockMasterElmt.querySelectorAll(".blockElementRow")
-            );
-
-            rows.forEach((rowElmt, rowIndex) => {
-              rowElmt.dataset.signRow = String(rowIndex);
-              rowElmt.classList.toggle(
-                "selectedRenderedBlockRow",
-                index === currentlySelectedPanelIndex &&
-                  subPanelIndex === currentlySelectedSubPanelIndex &&
-                  rowIndex === currentlySelectedRowIndex
-              );
-
-              rowElmt.addEventListener("click", (event) => {
-                if (event.target.closest("[data-sign-row][data-sign-block]")) {
-                  return;
-                }
-
-                event.stopPropagation();
-                selectRenderedPanelArea({
-                  panelIndex: index,
-                  subPanelIndex,
-                  rowIndex,
-                  blockIndex: 0,
-                  menu: "subpanel",
-                  flashTarget: rowElmt,
-                });
-              });
-            });
-
-            blockMasterElmt
-              .querySelectorAll("[data-sign-row][data-sign-block]")
-              .forEach((blockElmt) => {
-                const rowIndex = Number(blockElmt.dataset.signRow);
-                const blockIndex = Number(blockElmt.dataset.signBlock);
-
-                blockElmt.classList.toggle(
-                  "selectedRenderedBlockElement",
-                  index === currentlySelectedPanelIndex &&
-                    subPanelIndex === currentlySelectedSubPanelIndex &&
-                    rowIndex === currentlySelectedRowIndex &&
-                    blockIndex === currentlySelectedBlockIndex
-                );
-
-                blockElmt.addEventListener("click", (event) => {
-                  event.preventDefault();
+            const bindControl = (master, groupPath = []) => {
+              master.dataset.panelIndex = String(index);
+              master.dataset.subpanel = String(subPanelIndex);
+              const samePath = JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
+              const rows = Array.from(master.children).filter(element => element.classList.contains("blockElementRow"));
+              rows.forEach((rowElmt, rowIndex) => {
+                rowElmt.dataset.signRow = String(rowIndex);
+                rowElmt.classList.toggle("selectedRenderedBlockRow", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex);
+                rowElmt.addEventListener("click", event => {
+                  if (event.target.closest("[data-sign-row][data-sign-block]")?.closest(".blockElementMaster") === master) return;
                   event.stopPropagation();
-
-                  selectRenderedPanelArea({
-                    panelIndex: index,
-                    subPanelIndex,
-                    rowIndex: Number.isNaN(rowIndex) ? 0 : rowIndex,
-                    blockIndex: Number.isNaN(blockIndex) ? 0 : blockIndex,
-                    menu: "subpanel",
-                    flashTarget: blockElmt,
-                  });
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex:0, groupPath, menu:"subpanel", flashTarget:rowElmt });
                 });
               });
+              master.querySelectorAll("[data-sign-row][data-sign-block]").forEach(blockElmt => {
+                if (blockElmt.closest(".blockElementMaster") !== master) return;
+                const rowIndex = Number(blockElmt.dataset.signRow), blockIndex = Number(blockElmt.dataset.signBlock);
+                blockElmt.classList.toggle("selectedRenderedBlockElement", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex && blockIndex === currentlySelectedBlockIndex);
+                blockElmt.addEventListener("click", event => {
+                  event.preventDefault(); event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
+                });
+                const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
+                if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
+              });
+            };
+            if (blockMasterElmt) bindControl(blockMasterElmt);
           };
         
           const renderGlobalBlockElements = () => {
@@ -13733,6 +14269,11 @@ const app = (function () {
           signCont.appendChild(guideArrowsElmt);
           guideArrowsElmt.dataset.panelIndex = String(index);
           let suppressArrowBandClickUntil = 0;
+          const openStandardGuideArrowMenu = () => {
+            selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
+              guideMode: "standard", suppressRedraw: true, deferMenu: true });
+            formHandler.ensureGuideArrowMenuOpen("standard");
+          };
           
           guideArrowsElmt.addEventListener("click", (event) => {
               if (event.target.closest(".standardGuideArrowFrame") ||
@@ -13747,7 +14288,6 @@ const app = (function () {
                   menu: "guideArrows",
                   guideMode: "standard",
                   suppressRedraw: true,
-                  flashTarget: event.currentTarget,
               });
           });
           
@@ -13790,7 +14330,6 @@ const app = (function () {
                   subPanelIndex: 0,
                   menu: "guideArrows",
                   guideMode: "standard",
-                  flashTarget: event.currentTarget.closest(".sign") || event.currentTarget,
               });
           });
           signElmt.appendChild(sideLeftArrowElmt);
@@ -14468,6 +15007,13 @@ const app = (function () {
                    
                    // Shields
                    createShield(subPanel.shields, shieldsContainerElmt);
+                   if (blockElement.classList.contains("hasEdgeRows")) {
+                     signContentContainerElmt.classList.add("hasAnchoredRows");
+                     if (subPanel.shields.length) {
+                       shieldsContainerElmt.style.order = "2";
+                       blockElement.insertBefore(shieldsContainerElmt, blockElement.firstChild);
+                     }
+                   }
                    
                    // sign
                    signContentContainerElmt.style.padding = panel.sign.padding;
@@ -14525,7 +15071,6 @@ const app = (function () {
                                subPanelIndex: Number.isNaN(clickedSubPanelIndex) ? 0 : clickedSubPanelIndex,
                                menu: "guideArrows",
                                guideMode: "apl",
-                               flashTarget: event.currentTarget.closest(".subPanelDisplay"),
                            });
                        });
                        
@@ -14943,7 +15488,6 @@ const app = (function () {
                 subPanelIndex: 0,
                 menu: "guideArrows",
                 guideMode: "standard",
-                flashTarget: event.currentTarget.closest(".sign") || event.currentTarget,
             });
         });
         signElmt.appendChild(sideRightArrowElmt);
@@ -15545,7 +16089,7 @@ const app = (function () {
                         frame.classList.toggle("selectedGuideArrow", selectedGuideArrowPanelIndex === index && selectedGuideArrowIndex === i);
                         frame.style.left = `${Math.max(-25, Math.min(25, Number(detail.offsetX) || 0))}rem`;
                         frame.addEventListener("pointerdown", (event) => {
-                          if (event.button !== 0) return;
+                          if (event.button !== 0 || shouldDragPanelFromAccessory(panelElmt, event)) return;
                           event.preventDefault();
                           event.stopPropagation();
                           const canDrag = arrowCount > 1 &&
@@ -15557,9 +16101,7 @@ const app = (function () {
                             document.getElementById("standardArrowIndividual")?.inert !== true;
                           if (!canDrag) {
                             suppressArrowBandClickUntil = performance.now() + 750;
-                            selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
-                              guideMode: "standard", suppressRedraw: true, deferMenu: true });
-                            formHandler.ensureGuideArrowMenuOpen("standard");
+                            openStandardGuideArrowMenu();
                             return;
                           }
                           suppressArrowBandClickUntil = performance.now() + 750;
@@ -15627,6 +16169,7 @@ const app = (function () {
                         frame.addEventListener("click", (event) => {
                           event.preventDefault();
                           event.stopPropagation();
+                          if (shouldDragPanelFromAccessory(panelElmt, event)) openStandardGuideArrowMenu();
                         });
                         if (i === 0) frame.style.marginLeft = `${horizontalPadding}rem`;
                         if (i === arrowCount - 1) frame.style.marginRight = `${horizontalPadding}rem`;
@@ -15652,7 +16195,7 @@ const app = (function () {
                     sideFrame.addEventListener("click", (event) => {
                         event.stopPropagation();
                         selectRenderedPanelArea({ panelIndex: index, subPanelIndex: 0,
-                            menu: "guideArrows", guideMode: "standard", flashTarget: signElmt });
+                            menu: "guideArrows", guideMode: "standard" });
                         selectedGuideArrowIndex = 0;
                         formHandler.selectStandardArrowIndividual(0);
                     });
@@ -16102,9 +16645,10 @@ const app = (function () {
                     plainArrow.addEventListener("click", (event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        if (shouldDragPanelFromAccessory(panelElmt, event)) openStandardGuideArrowMenu();
                     });
                     plainArrow.addEventListener("pointerdown", (event) => {
-                        if (event.button !== 0) return;
+                        if (event.button !== 0 || shouldDragPanelFromAccessory(panelElmt, event)) return;
                         event.preventDefault();
                         event.stopPropagation();
                         suppressArrowBandClickUntil = performance.now() + 750;
@@ -16157,7 +16701,7 @@ const app = (function () {
                                 sign.exitSplitPlainArrowPosition = position;
                             });
                             else selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
-                                guideMode: "standard", suppressRedraw: true, flashTarget: guideArrowsElmt });
+                                guideMode: "standard", suppressRedraw: true });
                         };
                         const cancel = (cancelEvent) => {
                             if (cancelEvent.pointerId !== event.pointerId) return;
@@ -16765,6 +17309,8 @@ const app = (function () {
           VmsPanel.mount(panelElmt);
         }
       });
+      if (fdotSupport) fdot.render(post, postContainerElmt, panelContainerElmt);
+      scheduleAlignmentGuideUpdate(postContainerElmt, panelContainerElmt);
       }
       
       watchRuralPostLayout();
@@ -16786,6 +17332,7 @@ const app = (function () {
     try {
       restore = materializeExportBannerFirstLetters(source);
       await waitForImagesInElement(source);
+      const htmlToImage = await loadImageExportLibrary();
       return await htmlToImage.toCanvas(source, options);
     } finally {
       restore();
@@ -16795,6 +17342,15 @@ const app = (function () {
 
   // Expose necessary variables and functions to formHandler
     const exposeToFormHandler = {
+        getActiveBlockElements,
+        getActiveGroupElement,
+        getGroupEditingPath: () => currentlyEditingGroupPath.map(segment => ({ ...segment })),
+        enterGroupElement,
+        exitGroupElement,
+        groupSelectedBlockElements: (...args) => runWithUndo(() => groupSelectedBlockElements(...args)),
+        ungroupSelectedBlockElement: (...args) => runWithUndo(() => ungroupSelectedBlockElement(...args)),
+        addHeaderFooter: (placement, color) => runWithUndo(() => addHeaderFooterRows(getActiveBlockElements(), placement, color)),
+
         getCurrentPanel,
         getCurrentSubPanel,
         getCurrentBlockRows,
@@ -16809,6 +17365,8 @@ const app = (function () {
         setSelectedControlElem,
         setSelectedRowAndBlock,
         replaceControlElemTypeAt,
+        delRow,
+        delControlElem,
         copySubpanelClipboard,
         cutSubpanelClipboard,
         pasteSubpanelClipboard,
@@ -16817,6 +17375,7 @@ const app = (function () {
         endUndoableChange,
         undo,
 
+        newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
         moveControlElem: (...args) => runWithUndo(() => moveControlElem(...args)),
         moveRow: (...args) => runWithUndo(() => moveRow(...args)),
         changeEditingPanel,
@@ -16896,7 +17455,7 @@ const app = (function () {
     return post;
   };
 
-  const setPost = function (newPost) {
+  const setPost = function (newPost, selection, {skipUi=false}={}) {
     post = newPost;
     if (!post) {
       return;
@@ -16905,15 +17464,107 @@ const app = (function () {
       post.panelSpacing = getDefaultPanelSpacing();
     }
     post.thickness = post.normalizeThickness(post.thickness);
-    currentlySelectedPanelIndex = 0;
-    formHandler.updateForm();
-    redraw();
+    resetGroupEditing();
+    if (selection) applySelectionSnapshot(selection);
+    else { currentlySelectedPanelIndex=0; currentlySelectedSubPanelIndex=0; currentlySelectedRowIndex=0; currentlySelectedBlockIndex=0; }
+    normalizeSelectionForCurrentPost();
+    if (!skipUi) { formHandler.updateForm(); redraw(); }
       saveAppState();
   };
 
+  const addElementTypes = (obj, visited = new WeakSet()) => {
+    if (!obj || typeof obj !== "object" || visited.has(obj)) {
+      return;
+    }
+
+    visited.add(obj);
+
+    if (Array.isArray(obj)) {
+      obj.forEach((item) => addElementTypes(item, visited));
+      return;
+    }
+
+    if (Control.prototype.blockToClassElems) {
+      try {
+        const elemType = Control.prototype.blockToClassElems.getElem?.(obj);
+        if (elemType) {
+          obj._elementType = elemType;
+        }
+      } catch (error) {
+        // Not a Control element instance.
+      }
+    }
+
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key) && key !== "_elementType") {
+        addElementTypes(obj[key], visited);
+      }
+    }
+  };
+
+const removeElementTypes = (obj, visited = new WeakSet()) => {
+    if (!obj || typeof obj !== "object" || visited.has(obj)) {
+      return;
+    }
+
+    visited.add(obj);
+
+    if (Array.isArray(obj)) {
+      obj.forEach((item) => removeElementTypes(item, visited));
+      return;
+    }
+
+    if (obj._elementType) {
+      delete obj._elementType;
+    }
+
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        removeElementTypes(obj[key], visited);
+      }
+    }
+  };
+
+const serializePostWithElementTypes = (space) => {
+    addElementTypes(post);
+    try {
+      return JSON.stringify(post, null, space);
+    } finally {
+      removeElementTypes(post);
+    }
+  };
+
   // Template management functions
+  let isSessionPersisting = false;
+  let templatePanelDragState = null;
+  let pendingTemplateEditorUiState = null;
   let templateDB = null;
+  let defaultTemplatesPromise = null;
+  let activeTemplateEditor = null;
   const TEMPLATE_LOAD_WARNING_STORAGE_KEY = "signMaker.templateLoadWarning";
+  const DEFAULT_TEMPLATE_DATE = "2026-08-24T00:00:00.000Z";
+  const DEFAULT_TEMPLATE_DEFINITIONS = [
+    {
+      id: "default-simple-exit",
+      name: "Simple Exit",
+      build: buildSimpleExitTemplate,
+    },
+    {
+      id: "default-mileage-sign",
+      name: "Mileage Sign",
+      build: buildMileageTemplate,
+    },
+    {
+      id: "default-tolled-exit",
+      name: "Tolled Exit",
+      build: buildTolledExitTemplate,
+    },
+    {
+      id: "default-control-cities-advance-junction",
+      name: "Control Cities Advance Junction",
+      build: buildControlCitiesAdvanceJunctionTemplate,
+    },
+  ];
 
   const initTemplateDB = async function () {
     if (!templateDB) {
@@ -16942,57 +17593,54 @@ const app = (function () {
     }
   };
 
-  const addTemplateElementTypes = (obj, visited = new WeakSet()) => {
-    if (!obj || typeof obj !== "object" || visited.has(obj)) {
-      return;
-    }
+  const cloneTemplateValue = (value) => JSON.parse(JSON.stringify(value));
 
-    visited.add(obj);
+  const createDefaultTemplateData = (buildTemplate) => {
+    const defaultPost = new Post(DEFAULT_POST_POSITION);
+    defaultPost.newPanel();
+    defaultPost.panels[0].sign.subPanels[0].blockElements = new Control(
+      buildTemplate()
+    );
 
-    if (Array.isArray(obj)) {
-      obj.forEach((item) => addTemplateElementTypes(item, visited));
-      return;
-    }
-
-    if (Control.prototype.blockToClassElems) {
-      try {
-        const elemType = Control.prototype.blockToClassElems.getElem?.(obj);
-        if (elemType) {
-          obj._elementType = elemType;
-        }
-      } catch (error) {
-        // Not a block element instance.
-      }
-    }
-
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key) && key !== "_elementType") {
-        addTemplateElementTypes(obj[key], visited);
-      }
+    addElementTypes(defaultPost);
+    try {
+      return JSON.stringify(defaultPost, null, 2);
+    } finally {
+      removeElementTypes(defaultPost);
     }
   };
 
-  const removeTemplateElementTypes = (obj, visited = new WeakSet()) => {
-    if (!obj || typeof obj !== "object" || visited.has(obj)) {
-      return;
+  const ensureDefaultTemplates = async function (db) {
+    if (!defaultTemplatesPromise) {
+      defaultTemplatesPromise = (async () => {
+        const existingTemplates = await db.getAllTemplates();
+        const existingIds = new Set(
+          existingTemplates.map((template) => String(template.id))
+        );
+
+        for (const definition of DEFAULT_TEMPLATE_DEFINITIONS) {
+          if (existingIds.has(definition.id)) {
+            continue;
+          }
+
+          await db.saveTemplate({
+            id: definition.id,
+            name: definition.name,
+            data: createDefaultTemplateData(definition.build),
+            templateScope: "panel",
+            variants: [],
+            isDefault: true,
+            dateCreated: DEFAULT_TEMPLATE_DATE,
+            dateModified: DEFAULT_TEMPLATE_DATE,
+          });
+        }
+      })().catch((error) => {
+        defaultTemplatesPromise = null;
+        throw error;
+      });
     }
 
-    visited.add(obj);
-
-    if (Array.isArray(obj)) {
-      obj.forEach((item) => removeTemplateElementTypes(item, visited));
-      return;
-    }
-
-    if (obj._elementType) {
-      delete obj._elementType;
-    }
-
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        removeTemplateElementTypes(obj[key], visited);
-      }
-    }
+    return defaultTemplatesPromise;
   };
 
   const serializeTemplateData = function (scope = "post") {
@@ -17000,13 +17648,12 @@ const app = (function () {
       throw new Error("There is no sign to save.");
     }
 
-    addTemplateElementTypes(post);
-
+    addElementTypes(post);
     let snapshot;
     try {
-      snapshot = JSON.parse(JSON.stringify(post));
+      snapshot = cloneTemplateValue(post);
     } finally {
-      removeTemplateElementTypes(post);
+      removeElementTypes(post);
     }
 
     if (scope === "panel") {
@@ -17014,54 +17661,175 @@ const app = (function () {
       if (!selectedPanel) {
         throw new Error("There is no selected panel to save.");
       }
-
       snapshot.panels = [selectedPanel];
     }
 
     return JSON.stringify(snapshot, null, 2);
   };
 
-  const getTemplatePanelsFromData = function (template) {
-    if (!template || typeof template.data !== "string") {
-      return [];
+  const normalizeTemplateSnapshot = (snapshot) => {
+    if (!snapshot || typeof snapshot !== "object") {
+      throw new Error("Template data is invalid.");
     }
 
-    const parsedPostData = JSON.parse(template.data);
-    const rebuiltPost = reconstructPostFromSnapshot(parsedPostData);
-
-    if (!rebuiltPost || !Array.isArray(rebuiltPost.panels)) {
-      return [];
+    if (snapshot.panel && typeof snapshot.panel === "object") {
+      return { panels: [snapshot.panel] };
     }
 
-    return rebuiltPost.panels;
+    if (snapshot.sign && typeof snapshot.sign === "object") {
+      return { panels: [snapshot] };
+    }
+
+    if (Array.isArray(snapshot.panels)) {
+      return snapshot;
+    }
+
+    throw new Error("Template does not contain any panels.");
   };
 
-  const getTemplatePostFromData = function (template) {
-    if (!template || typeof template.data !== "string") {
+  const inferTemplateScope = (template) => {
+    if (template?.templateScope === "post") {
+      return "post";
+    }
+    if (template?.templateScope === "panel") {
+      return "panel";
+    }
+
+    try {
+      const snapshot = JSON.parse(template?.data || "{}");
+      return Array.isArray(snapshot.panels) && snapshot.panels.length > 1
+        ? "post"
+        : "panel";
+    } catch (error) {
+      return "panel";
+    }
+  };
+
+  const normalizeTemplateVariants = (template) => {
+    if (!Array.isArray(template?.variants)) {
+      return [];
+    }
+
+    const usedVariantIds = new Set();
+    return template.variants
+      .filter((variant) => variant && typeof variant === "object")
+      .map((variant, index) => {
+        const originalId = String(variant.id || `variant-${index + 1}`);
+        let uniqueId = originalId;
+        let duplicateNumber = 2;
+        while (usedVariantIds.has(uniqueId)) {
+          uniqueId = `${originalId}-${duplicateNumber}`;
+          duplicateNumber += 1;
+        }
+        usedVariantIds.add(uniqueId);
+
+        return {
+          ...variant,
+          id: uniqueId,
+          name: String(variant.name || `Variant ${index + 1}`),
+          data:
+            typeof variant.data === "string" && variant.data.length > 0
+              ? variant.data
+              : template.data,
+          fontFamily:
+            typeof variant.fontFamily === "string" ? variant.fontFamily : "",
+        };
+      });
+  };
+
+  const applyFontFamilyToTemplateData = (value, fontFamily, visited = new WeakSet()) => {
+    if (!value || typeof value !== "object" || visited.has(value)) {
+      return;
+    }
+
+    visited.add(value);
+    if (Array.isArray(value)) {
+      value.forEach((item) =>
+        applyFontFamilyToTemplateData(item, fontFamily, visited)
+      );
+      return;
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      if (key === "fontFamily") {
+        value[key] = fontFamily;
+      } else {
+        applyFontFamilyToTemplateData(child, fontFamily, visited);
+      }
+    }
+  };
+
+  const getTemplateVariant = (template, variantId) => {
+    const normalizedId = String(variantId || "");
+    if (!normalizedId) {
       return null;
     }
 
-    const parsedPostData = JSON.parse(template.data);
-    return reconstructPostFromSnapshot(parsedPostData);
+    const variant = normalizeTemplateVariants(template).find(
+      (candidate) => candidate.id === normalizedId
+    );
+    if (!variant) {
+      throw new Error(
+        `Template variant "${normalizedId}" no longer exists. Base was not changed.`
+      );
+    }
+    return variant;
+  };
+
+  const getTemplateSnapshot = (template, variantId) => {
+    const variant = getTemplateVariant(template, variantId);
+    const builtIn = DEFAULT_TEMPLATE_DEFINITIONS.find(definition => definition.id === String(template?.id));
+    const serializedData = variant?.data || (builtIn
+      ? createDefaultTemplateData(builtIn.build) : template?.data);
+    if (typeof serializedData !== "string") {
+      throw new Error("Template data is missing.");
+    }
+
+    const snapshot = normalizeTemplateSnapshot(JSON.parse(serializedData));
+    if (variant?.fontFamily) {
+      applyFontFamilyToTemplateData(snapshot, variant.fontFamily);
+    }
+    return snapshot;
+  };
+
+  const getTemplatePostFromData = (template, variantId) =>
+    reconstructPostFromSnapshot(getTemplateSnapshot(template, variantId));
+
+  const getTemplatePanelsFromData = (template, variantId) => {
+    const rebuiltPost = getTemplatePostFromData(template, variantId);
+    return Array.isArray(rebuiltPost?.panels) ? rebuiltPost.panels : [];
   };
 
   const saveTemplate = async function (templateName, scope = "post") {
+    if (activeTemplateEditor) {
+      showTemplateTab("sMTemplateEditor");
+      alert("Save or cancel the current template edit before creating another template.");
+      return;
+    }
+
     if (!templateName || templateName.trim() === "") {
       alert("Please enter a template name");
       return;
     }
 
     try {
+      if (formHandler && typeof formHandler.readForm === "function") {
+        formHandler.readForm();
+      }
+
       const db = await initTemplateDB();
+      await ensureDefaultTemplates(db);
       const normalizedScope = scope === "panel" ? "panel" : "post";
-      const postData = serializeTemplateData(normalizedScope);
+      const serializedData = serializeTemplateData(normalizedScope);
+      const now = new Date().toISOString();
 
       const templateData = {
         name: templateName.trim(),
-        data: postData,
+        data: serializedData,
         templateScope: normalizedScope,
-        dateCreated: new Date().toISOString(),
-        dateModified: new Date().toISOString(),
+        variants: [],
+        dateCreated: now,
+        dateModified: now,
       };
 
       await db.saveTemplate(templateData);
@@ -17094,21 +17862,42 @@ const app = (function () {
     return "replace-post";
   };
 
-  const getTemplateLoadConfirmationMessage = (mode) => {
-    if (mode === "replace-panel") {
-      return "Are you sure you want to load this template? THIS WILL REPLACE THE SELECTED PANEL!";
-    }
+  const getTemplateLoadConfirmationMessage = (mode) =>
+    mode === "replace-panel"
+      ? "Are you sure you want to load this template? THIS WILL REPLACE THE SELECTED PANEL!"
+      : "Are you sure you want to load this template? THIS WILL REPLACE YOUR CURRENT POST!";
 
-    return "Are you sure you want to load this template? THIS WILL REPLACE YOUR CURRENT SIGN!";
+  const recordTemplateUse = async function (db, template) {
+    try {
+      await db.saveTemplate({
+        ...template,
+        dateLastUsed: new Date().toISOString(),
+      });
+      if (getTemplateSortMode() === "last-used") {
+        await refreshTemplatesList();
+      }
+    } catch (error) {
+      console.warn("Unable to update template last-used date", error);
+    }
   };
 
-  const loadTemplate = async function (templateId, mode = "replace-post") {
+  const loadTemplate = async function (
+    templateId,
+    mode = "replace-post",
+    variantId = "",
+    targetPanelIndex = null
+  ) {
     if (!templateId) {
       return;
     }
 
-    const loadMode = normalizeTemplateLoadMode(mode);
+    if (activeTemplateEditor) {
+      showTemplateTab("sMTemplateEditor");
+      alert("Save or cancel the current template edit before loading another template.");
+      return;
+    }
 
+    const loadMode = normalizeTemplateLoadMode(mode);
     if (
       loadMode !== "add" &&
       getTemplateLoadWarningEnabled() &&
@@ -17127,41 +17916,34 @@ const app = (function () {
       }
 
       if (loadMode === "replace-post") {
-        const newPost = getTemplatePostFromData(template);
-
-        if (!newPost) {
-          alert("Template could not be loaded.");
-          return;
+        const newPost = getTemplatePostFromData(template, variantId);
+        if (!newPost || !Array.isArray(newPost.panels) || !newPost.panels.length) {
+          throw new Error("Template does not contain any panels.");
         }
-
-        beginUndoableChange();
-        post = newPost;
-        normalizeSelectionForCurrentPost();
-        currentlySelectedPanelIndex = 0;
-        currentlySelectedSubPanelIndex = 0;
-        currentlySelectedRowIndex = 0;
-        currentlySelectedBlockIndex = 0;
-        formHandler.updateForm();
-        redraw();
-        endUndoableChange();
+        runWithUndo(() => setPost(newPost));
+        await recordTemplateUse(db, template);
         return;
       }
 
-      const templatePanels = getTemplatePanelsFromData(template);
-
+      const templatePanels = getTemplatePanelsFromData(template, variantId);
       if (!templatePanels.length) {
-        alert("Template does not contain any panels.");
-        return;
+        throw new Error("Template does not contain any panels.");
       }
 
-      beginUndoableChange();
-
+      const hasRequestedIndex =
+        targetPanelIndex !== null && targetPanelIndex !== undefined;
+      const requestedIndex = hasRequestedIndex
+        ? Number(targetPanelIndex)
+        : Number.NaN;
       const selectedIndex = clamp(
-        currentlySelectedPanelIndex,
+        Number.isInteger(requestedIndex)
+          ? requestedIndex
+          : currentlySelectedPanelIndex,
         0,
         Math.max(0, post.panels.length - 1)
       );
 
+      beginUndoableChange();
       if (loadMode === "replace-panel") {
         post.panels.splice(selectedIndex, 1, ...templatePanels);
         currentlySelectedPanelIndex = selectedIndex;
@@ -17170,62 +17952,21 @@ const app = (function () {
         currentlySelectedPanelIndex = selectedIndex + 1;
       }
 
-      normalizeSelectionForCurrentPost();
       currentlySelectedSubPanelIndex = 0;
+      currentlySelectedExitTabIndex = 0;
+      currentlySelectedNestedExitTabIndex = -1;
       currentlySelectedRowIndex = 0;
       currentlySelectedBlockIndex = 0;
+      currentlySelectedAPLArrowIndex = 0;
+      resetGroupEditing();
+      normalizeSelectionForCurrentPost();
       formHandler.updateForm();
       redraw();
       endUndoableChange();
+      await recordTemplateUse(db, template);
     } catch (error) {
       console.error("Error loading template:", error);
       alert("Failed to load template: " + error.message);
-      endUndoableChange();
-    }
-  };
-
-  const renameTemplate = async function (templateId) {
-    if (!templateId) {
-      return;
-    }
-
-    try {
-      const db = await initTemplateDB();
-      const template = await db.getTemplate(templateId);
-
-      if (!template) {
-        alert("Template not found");
-        return;
-      }
-
-      const newName = window.prompt("Rename template:", template.name || "");
-
-      if (newName === null) {
-        return;
-      }
-
-      const trimmedName = newName.trim();
-      if (!trimmedName) {
-        alert("Please enter a template name");
-        return;
-      }
-
-      const renamedTemplate = {
-        ...template,
-        name: trimmedName,
-        dateModified: new Date().toISOString(),
-      };
-
-      if (typeof db.updateTemplate === "function") {
-        await db.updateTemplate(templateId, renamedTemplate);
-      } else {
-        await db.saveTemplate(renamedTemplate);
-      }
-
-      await refreshTemplatesList();
-    } catch (error) {
-      console.error("Error renaming template:", error);
-      alert("Failed to rename template: " + error.message);
     }
   };
 
@@ -17234,13 +17975,63 @@ const app = (function () {
       return;
     }
 
+    if (activeTemplateEditor) {
+      showTemplateTab("sMTemplateEditor");
+      alert("Save or cancel the current template edit before deleting a template.");
+      return;
+    }
+
     try {
       const db = await initTemplateDB();
+      const template = await db.getTemplate(templateId);
+      if (template?.isDefault || String(templateId).startsWith("default-")) {
+        return;
+      }
       await db.deleteTemplate(templateId);
       await refreshTemplatesList();
     } catch (error) {
       console.error("Error deleting template:", error);
       alert("Failed to delete template: " + error.message);
+    }
+  };
+
+  const renameTemplate = async function (templateId) {
+    if (!templateId || String(templateId).startsWith("default-")) {
+      return;
+    }
+
+    if (activeTemplateEditor) {
+      showTemplateTab("sMTemplateEditor");
+      alert("Save or cancel the current template edit before renaming a template.");
+      return;
+    }
+
+    try {
+      const db = await initTemplateDB();
+      const template = await db.getTemplate(templateId);
+      if (!template || template.isDefault) {
+        return;
+      }
+
+      const newName = window.prompt("Rename template:", template.name || "");
+      if (newName === null) {
+        return;
+      }
+      const trimmedName = newName.trim();
+      if (!trimmedName) {
+        alert("Please enter a template name");
+        return;
+      }
+
+      await db.updateTemplate(templateId, {
+        ...template,
+        name: trimmedName,
+        dateModified: new Date().toISOString(),
+      });
+      await refreshTemplatesList();
+    } catch (error) {
+      console.error("Error renaming template:", error);
+      alert("Failed to rename template: " + error.message);
     }
   };
 
@@ -17251,13 +18042,641 @@ const app = (function () {
 
   const getTemplateSortMode = function () {
     const sortSelect = document.getElementById("templateSortSelect");
-    return sortSelect?.value === "alphabetical" ? "alphabetical" : "date-created";
+    const sortMode = sortSelect?.value;
+    return sortMode === "alphabetical" || sortMode === "last-used"
+      ? sortMode
+      : "date-created";
+  };
+
+  const createTemplateActionButton = (className, icon, label, title) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.title = title || label;
+
+    const iconElement = document.createElement("span");
+    iconElement.className = "material-symbols-outlined";
+    iconElement.textContent = icon;
+    button.appendChild(iconElement);
+
+    if (label) {
+      const labelElement = document.createElement("span");
+      labelElement.textContent = label;
+      button.appendChild(labelElement);
+    }
+    return button;
+  };
+
+  const endTemplatePanelDrag = () => {
+    templatePanelDragState = null;
+    clearTemplatePanelDropIndicator();
+    document
+      .querySelectorAll(".templateReplacePanelBtn.templateDragging")
+      .forEach((button) => button.classList.remove("templateDragging"));
+  };
+
+  const getTemplateEditorFormState = () => ({
+    name: String(document.getElementById("templateEditorName")?.value || ""),
+    variantName: String(
+      document.getElementById("templateEditorVariantName")?.value || ""
+    ),
+    variantFont: String(
+      document.getElementById("templateEditorVariantFont")?.value || ""
+    ),
+    newVariantName: String(
+      document.getElementById("templateNewVariantName")?.value || ""
+    ),
+    newVariantFont: String(
+      document.getElementById("templateNewVariantFont")?.value || ""
+    ),
+  });
+
+  const applyTemplateEditorFormState = (formState) => {
+    if (!formState || typeof formState !== "object") {
+      return;
+    }
+
+    const valuesById = {
+      templateEditorName: formState.name,
+      templateEditorVariantName: formState.variantName,
+      templateEditorVariantFont: formState.variantFont,
+      templateNewVariantName: formState.newVariantName,
+      templateNewVariantFont: formState.newVariantFont,
+    };
+    for (const [id, value] of Object.entries(valuesById)) {
+      const input = document.getElementById(id);
+      if (input && typeof value === "string") {
+        input.value = value;
+      }
+    }
+  };
+
+  const createTemplateEditorSessionState = () => {
+    if (!activeTemplateEditor) {
+      return null;
+    }
+
+    const templatesModal = document.querySelector(".sMModal.templates");
+    const selectedTab = ["sMTemplatesSaved", "sMTemplateEditor"].includes(
+      templatesModal?.dataset.currentMenu
+    )
+      ? templatesModal.dataset.currentMenu
+      : "sMTemplateEditor";
+
+    return {
+      draft: cloneTemplateValue(activeTemplateEditor.draft),
+      activeVariantId: String(activeTemplateEditor.activeVariantId || ""),
+      editorData: JSON.parse(serializePostWithElementTypes()),
+      editorSelection: cloneTemplateValue(getSelectionSnapshot()),
+      selectedTab,
+      modalOpen:
+        document.getElementById("sMConfigBar")?.dataset.currentMenu ===
+        "templates",
+      formState: getTemplateEditorFormState(),
+    };
+  };
+
+  const restoreTemplateEditorSession = (
+    editorSession,
+    workspaceData,
+    workspaceSelection,
+    {skipUi=false}={}
+  ) => {
+    if (!editorSession || typeof editorSession !== "object") {
+      throw new Error("Template editor session is invalid.");
+    }
+
+    const draft = cloneTemplateValue(editorSession.draft);
+    if (!draft || typeof draft !== "object") {
+      throw new Error("Template editor draft is missing.");
+    }
+    draft.templateScope = inferTemplateScope(draft);
+    draft.variants = normalizeTemplateVariants(draft);
+
+    const activeVariantId = String(editorSession.activeVariantId || "");
+    if (activeVariantId) {
+      getTemplateVariant(draft, activeVariantId);
+    }
+
+    const editorData = editorSession.editorData;
+    if (
+      !editorData ||
+      typeof editorData !== "object" ||
+      !Array.isArray(editorData.panels) ||
+      !editorData.panels.length
+    ) {
+      throw new Error("Template editor canvas is missing.");
+    }
+
+    activeTemplateEditor = {
+      draft,
+      activeVariantId,
+      workspaceData: JSON.stringify(workspaceData, null, 2),
+      workspaceSelection: cloneTemplateValue(workspaceSelection),
+    };
+
+    isSessionPersisting = true;
+    try {
+      setPost(
+        reconstructPostFromSnapshot(editorData),
+        editorSession.editorSelection,
+        {skipUi}
+      );
+    } finally {
+      isSessionPersisting = false;
+    }
+
+    if (skipUi) { pendingTemplateEditorUiState=cloneTemplateValue(editorSession); return; }
+    updateTemplateEditorControls();
+    applyTemplateEditorFormState(editorSession.formState);
+    updateTemplateEditorStatus();
+
+    const selectedTab = ["sMTemplatesSaved", "sMTemplateEditor"].includes(
+      editorSession.selectedTab
+    )
+      ? editorSession.selectedTab
+      : "sMTemplateEditor";
+    showTemplateTab(selectedTab);
+
+    if (editorSession.modalOpen) {
+      const configBar = document.getElementById("sMConfigBar");
+      if (configBar?.dataset.currentMenu !== "templates") {
+        document.getElementById("templates")?.click();
+      }
+    }
+  };
+
+
+  const finishTemplateEditorSessionUi = () => {
+    if(!pendingTemplateEditorUiState || !activeTemplateEditor) return;
+    const pending=pendingTemplateEditorUiState;pendingTemplateEditorUiState=null;
+    updateTemplateEditorControls();applyTemplateEditorFormState(pending.formState);updateTemplateEditorStatus();
+    if(pending.modalOpen && document.getElementById('sMConfigBar')?.dataset.currentMenu!=='templates')document.getElementById('templates')?.click();
+    showTemplateTab(pending.selectedTab==='sMTemplatesSaved'?'sMTemplatesSaved':'sMTemplateEditor');
+  };
+
+  const updateTemplateEditorStatus = () => {
+    const hasEditor = !!activeTemplateEditor;
+    const nameInput = document.getElementById("templateEditorName");
+    const variantNameInput = document.getElementById(
+      "templateEditorVariantName"
+    );
+    const templateName = hasEditor
+      ? String(nameInput?.value || activeTemplateEditor.draft.name || "").trim() ||
+        "Untitled Template"
+      : "";
+    const activeVariant = hasEditor && activeTemplateEditor.activeVariantId
+      ? activeTemplateEditor.draft.variants.find(
+          (variant) => variant.id === activeTemplateEditor.activeVariantId
+        )
+      : null;
+    const versionName = !hasEditor
+      ? ""
+      : activeTemplateEditor.activeVariantId
+        ? String(variantNameInput?.value || activeVariant?.name || "").trim() ||
+          "Missing Variant"
+        : "Base";
+    const statusText = hasEditor
+      ? `Editing “${templateName}” - ${versionName}`
+      : "";
+
+    const templatesButtonLabel = document.getElementById(
+      "templatesButtonLabel"
+    );
+    if (templatesButtonLabel) {
+      templatesButtonLabel.textContent = hasEditor
+        ? "Templates (Editing)"
+        : "Templates";
+    }
+
+    const templatesButton = document.getElementById("templates");
+    if (templatesButton) {
+      if (hasEditor) {
+        templatesButton.title = statusText;
+        templatesButton.setAttribute("aria-label", statusText);
+      } else {
+        templatesButton.removeAttribute("title");
+        templatesButton.removeAttribute("aria-label");
+      }
+    }
+
+    const editorTab = document.getElementById("sMTemplateEditorTab");
+    if (editorTab) {
+      editorTab.textContent = hasEditor
+        ? "Template Editor (Editing)"
+        : "Template Editor";
+      editorTab.title = hasEditor ? statusText : "";
+    }
+
+    const heading = document.getElementById("templateEditorHeading");
+    if (heading) {
+      heading.textContent = hasEditor ? statusText : "Template Editor";
+    }
+
+    const notice = document.getElementById("templateEditingNotice");
+    if (notice) {
+      notice.hidden = !hasEditor;
+    }
+    const noticeText = document.getElementById("templateEditingNoticeText");
+    if (noticeText) {
+      noticeText.textContent = hasEditor
+        ? `${statusText}. Unsaved changes are preserved.`
+        : "";
+    }
+
+    const saveButton = document.getElementById("templateEditorSaveBtn");
+    if (saveButton) {
+      const saveLabel = hasEditor
+        ? `Save ${templateName} - ${versionName} and exit`
+        : "Save template and exit";
+      saveButton.title = saveLabel;
+      saveButton.setAttribute("aria-label", saveLabel);
+    }
+  
+    updateUndoButtons();
+    if (activeTemplateEditor) scheduleAppStateSave();
+  };
+
+  const showTemplateTab = (tabId) => {
+    const modal = document.querySelector(".sMModal.templates");
+    if (!modal) {
+      return;
+    }
+
+    modal.dataset.currentMenu = tabId;
+    modal.querySelectorAll(":scope > .sMModalContent > div").forEach((holder) => {
+      holder.classList.toggle("tabHidden", holder.id !== tabId);
+    });
+    modal.querySelectorAll(":scope > .sMModalBar .sMModalTab").forEach((tab) => {
+      tab.classList.toggle("selected", tab.dataset.tab === tabId);
+    });
+    updateTemplateEditorStatus();
+  };
+
+  const showActiveTemplateEditor = () => {
+    if (!activeTemplateEditor) {
+      return;
+    }
+    const configBar = document.getElementById("sMConfigBar");
+    if (configBar?.dataset.currentMenu !== "templates") {
+      document.getElementById("templates")?.click();
+    }
+    showTemplateTab("sMTemplateEditor");
+    saveAppState();
+  };
+
+  const populateTemplateFontSelect = (select, emptyLabel) => {
+    if (!select) {
+      return;
+    }
+    select.innerHTML = "";
+    if (emptyLabel) {
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = emptyLabel;
+      select.appendChild(emptyOption);
+    }
+    for (const fontFamily of TextElement.prototype.fontFamily || []) {
+      const option = document.createElement("option");
+      option.value = fontFamily;
+      option.textContent = fontFamily;
+      select.appendChild(option);
+    }
+  };
+
+  const getActiveTemplateEditorVariant = () => {
+    if (!activeTemplateEditor?.activeVariantId) {
+      return null;
+    }
+    const variant = activeTemplateEditor.draft.variants.find(
+      (variant) => variant.id === activeTemplateEditor.activeVariantId
+    );
+    if (!variant) {
+      throw new Error(
+        `The selected template variant "${activeTemplateEditor.activeVariantId}" no longer exists. Base was not changed.`
+      );
+    }
+    return variant;
+  };
+
+  const updateTemplateEditorControls = () => {
+    const empty = document.getElementById("templateEditorEmpty");
+    const form = document.getElementById("templateEditorForm");
+    if (!empty || !form) {
+      return;
+    }
+
+    const hasEditor = !!activeTemplateEditor;
+    empty.hidden = hasEditor;
+    form.hidden = !hasEditor;
+    if (!hasEditor) {
+      updateTemplateEditorStatus();
+      return;
+    }
+
+    const draft = activeTemplateEditor.draft;
+    const nameInput = document.getElementById("templateEditorName");
+    const scopeLabel = document.getElementById("templateEditorScope");
+    const versionSelect = document.getElementById("templateEditorVariantSelect");
+    const variantNameInput = document.getElementById("templateEditorVariantName");
+    const variantFontSelect = document.getElementById("templateEditorVariantFont");
+    const applyFontButton = document.getElementById("templateEditorApplyFont");
+    const deleteVariantButton = document.getElementById("templateEditorDeleteVariant");
+
+    nameInput.value = draft.name || "";
+    scopeLabel.textContent = draft.templateScope === "post" ? "Post" : "Panel";
+
+    versionSelect.innerHTML = "";
+    const baseOption = document.createElement("option");
+    baseOption.value = "";
+    baseOption.textContent = "Base";
+    versionSelect.appendChild(baseOption);
+    for (const variant of draft.variants) {
+      const option = document.createElement("option");
+      option.value = variant.id;
+      option.textContent = variant.name;
+      versionSelect.appendChild(option);
+    }
+    versionSelect.value = activeTemplateEditor.activeVariantId || "";
+
+    const activeVariant = getActiveTemplateEditorVariant();
+    variantNameInput.disabled = !activeVariant;
+    variantNameInput.value = activeVariant?.name || "Base";
+    populateTemplateFontSelect(variantFontSelect, "Keep Current Fonts");
+    variantFontSelect.disabled = !activeVariant;
+    variantFontSelect.value = activeVariant?.fontFamily || "";
+    applyFontButton.disabled = !activeVariant;
+    deleteVariantButton.disabled = !activeVariant;
+
+    const newVariantFont = document.getElementById("templateNewVariantFont");
+    if (newVariantFont && !newVariantFont.options.length) {
+      populateTemplateFontSelect(newVariantFont, "Keep Current Fonts");
+    }
+    updateTemplateEditorStatus();
+    window.nativeSelectPickers?.forEach(picker=>picker.sync());
+  };
+
+  const captureActiveTemplateEditorVersion = () => {
+    if (!activeTemplateEditor) {
+      return;
+    }
+    if (formHandler && typeof formHandler.readForm === "function") {
+      formHandler.readForm();
+    }
+
+    const nameInput = document.getElementById("templateEditorName");
+    const variantNameInput = document.getElementById("templateEditorVariantName");
+    const variantFontSelect = document.getElementById("templateEditorVariantFont");
+    const activeVariant = getActiveTemplateEditorVariant();
+    activeTemplateEditor.draft.name = String(nameInput?.value || "").trim();
+    const serializedData = serializeTemplateData(
+      activeTemplateEditor.draft.templateScope
+    );
+    if (activeVariant) {
+      activeVariant.name = String(variantNameInput?.value || activeVariant.name).trim();
+      activeVariant.fontFamily = String(variantFontSelect?.value || "");
+      activeVariant.data = serializedData;
+      activeVariant.dateModified = new Date().toISOString();
+    } else {
+      activeTemplateEditor.draft.data = serializedData;
+    }
+  };
+
+  const loadActiveTemplateEditorVersion = () => {
+    if (!activeTemplateEditor) {
+      return;
+    }
+    const editorPost = getTemplatePostFromData(
+      activeTemplateEditor.draft,
+      activeTemplateEditor.activeVariantId
+    );
+    setPost(editorPost);
+  };
+
+  const restoreTemplateEditorWorkspace = () => {
+    if (!activeTemplateEditor) {
+      return;
+    }
+    const { workspaceData, workspaceSelection } = activeTemplateEditor;
+    activeTemplateEditor = null;
+    setPost(
+      reconstructPostFromSnapshot(JSON.parse(workspaceData)),
+      workspaceSelection
+    );
+    updateTemplateEditorControls();
+  };
+
+  const editTemplate = async function (templateId, variantId = "") {
+    if (!templateId) {
+      return;
+    }
+
+    if (activeTemplateEditor) {
+      if (!window.confirm("Discard the current template editing session?")) {
+        return;
+      }
+      restoreTemplateEditorWorkspace();
+    }
+
+    try {
+      if (formHandler && typeof formHandler.readForm === "function") {
+        formHandler.readForm();
+      }
+      const db = await initTemplateDB();
+      const template = await db.getTemplate(templateId);
+      if (!template) {
+        throw new Error("Template not found.");
+      }
+
+      const draft = cloneTemplateValue(template);
+      draft.templateScope = inferTemplateScope(draft);
+      draft.variants = normalizeTemplateVariants(draft);
+      const normalizedVariantId = String(variantId || "");
+      const requestedVariant = draft.variants.find(
+        (variant) => variant.id === normalizedVariantId
+      );
+      if (normalizedVariantId && !requestedVariant) {
+        throw new Error(
+          `Template variant "${normalizedVariantId}" no longer exists. Base was not opened.`
+        );
+      }
+
+      activeTemplateEditor = {
+        draft,
+        activeVariantId: normalizedVariantId,
+        workspaceData: serializePostWithElementTypes(2),
+        workspaceSelection: cloneTemplateValue(getSelectionSnapshot()),
+      };
+
+      updateTemplateEditorControls();
+      showTemplateTab("sMTemplateEditor");
+      loadActiveTemplateEditorVersion();
+    } catch (error) {
+      if (activeTemplateEditor) {
+        try {
+          restoreTemplateEditorWorkspace();
+          showTemplateTab("sMTemplatesSaved");
+        } catch (restoreError) {
+          activeTemplateEditor = null;
+          updateTemplateEditorControls();
+        }
+      }
+      console.error("Error opening template editor:", error);
+      alert("Failed to open template editor: " + error.message);
+    }
+  };
+
+  const switchTemplateEditorVariant = function (variantId) {
+    if (!activeTemplateEditor) {
+      return;
+    }
+    try {
+      captureActiveTemplateEditorVersion();
+      const normalizedId = String(variantId || "");
+      if (
+        normalizedId &&
+        !activeTemplateEditor.draft.variants.some(
+          (variant) => variant.id === normalizedId
+        )
+      ) {
+        throw new Error(
+          `Template variant "${normalizedId}" no longer exists. Base was not selected.`
+        );
+      }
+      activeTemplateEditor.activeVariantId = normalizedId;
+      updateTemplateEditorControls();
+      loadActiveTemplateEditorVersion();
+    } catch (error) {
+      updateTemplateEditorControls();
+      console.error("Error switching template variant:", error);
+      alert("Failed to switch template variant: " + error.message);
+    }
+  };
+
+  const createTemplateVariantId = () =>
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? `variant-${crypto.randomUUID()}`
+      : `variant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const addTemplateEditorVariant = function () {
+    if (!activeTemplateEditor) {
+      return;
+    }
+
+    const nameInput = document.getElementById("templateNewVariantName");
+    const fontSelect = document.getElementById("templateNewVariantFont");
+    const variantName = String(nameInput?.value || "").trim();
+    if (!variantName) {
+      alert("Please enter a variant name");
+      return;
+    }
+
+    try {
+      captureActiveTemplateEditorVersion();
+      const sourceVariant = getActiveTemplateEditorVariant();
+      const sourceData = sourceVariant?.data || activeTemplateEditor.draft.data;
+      const snapshot = normalizeTemplateSnapshot(JSON.parse(sourceData));
+      const fontFamily = String(fontSelect?.value || "");
+      if (fontFamily) {
+        applyFontFamilyToTemplateData(snapshot, fontFamily);
+      }
+
+      const variant = {
+        id: createTemplateVariantId(),
+        name: variantName,
+        data: JSON.stringify(snapshot, null, 2),
+        fontFamily,
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+      };
+      activeTemplateEditor.draft.variants.push(variant);
+      activeTemplateEditor.activeVariantId = variant.id;
+      if (nameInput) {
+        nameInput.value = "";
+      }
+      if (fontSelect) {
+        fontSelect.value = "";
+      }
+      updateTemplateEditorControls();
+      loadActiveTemplateEditorVersion();
+    } catch (error) {
+      console.error("Error adding template variant:", error);
+      alert("Failed to add template variant: " + error.message);
+    }
+  };
+
+  const applyTemplateEditorFont = function () {
+    const variant = getActiveTemplateEditorVariant();
+    if (!variant) {
+      return;
+    }
+    const fontSelect = document.getElementById("templateEditorVariantFont");
+    const fontFamily = String(fontSelect?.value || "");
+    variant.fontFamily = fontFamily;
+    if (!fontFamily) {
+      return;
+    }
+    applyFontFamilyToTemplateData(post, fontFamily);
+    formHandler.updateForm();
+    redraw();
+  };
+
+  const deleteTemplateEditorVariant = function () {
+    const variant = getActiveTemplateEditorVariant();
+    if (!activeTemplateEditor || !variant) {
+      return;
+    }
+    if (!window.confirm(`Delete the "${variant.name}" variant?`)) {
+      return;
+    }
+
+    activeTemplateEditor.draft.variants = activeTemplateEditor.draft.variants.filter(
+      (candidate) => candidate.id !== variant.id
+    );
+    activeTemplateEditor.activeVariantId = "";
+    updateTemplateEditorControls();
+    loadActiveTemplateEditorVersion();
+  };
+
+  const saveTemplateEditor = async function () {
+    if (!activeTemplateEditor) {
+      return;
+    }
+
+    try {
+      captureActiveTemplateEditorVersion();
+      if (!activeTemplateEditor.draft.name) {
+        alert("Please enter a template name");
+        return;
+      }
+
+      const db = await initTemplateDB();
+      const updatedTemplate = {
+        ...activeTemplateEditor.draft,
+        variants: activeTemplateEditor.draft.variants,
+        dateModified: new Date().toISOString(),
+      };
+      await db.updateTemplate(updatedTemplate.id, updatedTemplate);
+      restoreTemplateEditorWorkspace();
+      showTemplateTab("sMTemplatesSaved");
+      await refreshTemplatesList();
+    } catch (error) {
+      console.error("Error saving template:", error);
+      alert("Failed to save template: " + error.message);
+    }
+  };
+
+  const cancelTemplateEditor = function () {
+    restoreTemplateEditorWorkspace();
+    showTemplateTab("sMTemplatesSaved");
+    refreshTemplatesList();
   };
 
   const refreshTemplatesList = async function () {
     try {
       const db = await initTemplateDB();
-      let templates = await db.getAllTemplates();
+      await ensureDefaultTemplates(db);
+      let templates = (await db.getAllTemplates()).map(template => ({ ...template, isDefault: !!template.isDefault || String(template.id).startsWith("default-") }));
 
       const templatesList = document.getElementById("savedTemplatesList");
       if (!templatesList) {
@@ -17265,71 +18684,198 @@ const app = (function () {
       }
 
       templatesList.innerHTML = "";
+      const presetsList = document.getElementById("presetTemplatesList");
+      if (presetsList) presetsList.innerHTML = "";
 
-      const searchValue = getTemplateSearchValue();
-      if (searchValue) {
-        templates = templates.filter((template) =>
-          String(template.name || "").toLowerCase().includes(searchValue)
-        );
+      const warningCheckbox = document.getElementById("templateLoadWarning");
+      if (warningCheckbox) {
+        warningCheckbox.checked = getTemplateLoadWarningEnabled();
       }
 
-      const sortMode = getTemplateSortMode();
-      if (sortMode === "alphabetical") {
-        templates.sort((a, b) =>
-          String(a.name || "").localeCompare(String(b.name || ""), undefined, {
-            sensitivity: "base",
-            numeric: true,
-          })
-        );
-      } else {
-        templates.sort((a, b) => {
-          const dateA = new Date(a.dateCreated || a.dateModified || 0);
-          const dateB = new Date(b.dateCreated || b.dateModified || 0);
-          return dateB - dateA;
+      const searchValue = getTemplateSearchValue();
+      const presetSearchValue = String(document.getElementById("presetTemplateSearch")?.value || "").trim().toLowerCase();
+      if (searchValue || presetSearchValue) {
+        templates = templates.filter((template) => {
+          const variantNames = normalizeTemplateVariants(template)
+            .map((variant) => variant.name)
+            .join(" ");
+          return `${template.name || ""} ${variantNames}`
+            .toLowerCase()
+            .includes(template.isDefault ? presetSearchValue : searchValue);
         });
       }
 
       if (templates.length === 0) {
-        templatesList.innerHTML = `<p class="templateEmptyMessage">${
-          searchValue ? "No saved templates match your search" : "No saved templates"
-        }</p>`;
+        const emptyMessage = document.createElement("p");
+        emptyMessage.className = "templateEmptyMessage";
+        emptyMessage.textContent = searchValue
+          ? "No templates match your search"
+          : "No templates";
+        templatesList.appendChild(emptyMessage);
         return;
       }
 
+      const sortMode = getTemplateSortMode();
+      templates.sort((a, b) => {
+        if (sortMode === "last-used") {
+          const dateLastUsedA = Date.parse(a.dateLastUsed || "") || 0;
+          const dateLastUsedB = Date.parse(b.dateLastUsed || "") || 0;
+          const lastUsedDifference = dateLastUsedB - dateLastUsedA;
+          if (lastUsedDifference) {
+            return lastUsedDifference;
+          }
+        }
+        const defaultDifference = Number(!!b.isDefault) - Number(!!a.isDefault);
+        if (defaultDifference) {
+          return defaultDifference;
+        }
+        if (sortMode === "alphabetical") {
+          return String(a.name || "").localeCompare(
+            String(b.name || ""),
+            undefined,
+            { sensitivity: "base", numeric: true }
+          );
+        }
+        const dateA = new Date(a.dateCreated || a.dateModified || 0);
+        const dateB = new Date(b.dateCreated || b.dateModified || 0);
+        return dateB - dateA;
+      });
+
       templates.forEach((template) => {
-        const escapedId = escapeHtml(template.id);
+        const variants = normalizeTemplateVariants(template);
         const templateItem = document.createElement("div");
         templateItem.className = "templateItem";
-        templateItem.innerHTML = `
-          <div class="templateItemInfo">
-            <div class="templateNameRow">
-              <span class="templateItemName">${escapeHtml(template.name)}</span>
-              <button class="templateRenameBtn" onclick="app.renameTemplate('${escapedId}')" title="Rename Template" aria-label="Rename Template">
-                <span class="material-symbols-outlined">edit</span>
-              </button>
-            </div>
-            <span class="templateItemDate">${formatDate(template.dateCreated || template.dateModified)}</span>
-          </div>
-          <div class="templateItemActions">
-            <button class="templateLoadBtn templateLoadPostBtn" onclick="app.loadTemplate('${escapedId}', 'replace-post')" title="Replace Post">
-              <span class="material-symbols-outlined">upload</span>
-              <span>Replace Post</span>
-            </button>
-            <button class="templateLoadBtn templateLoadPanelBtn" onclick="app.loadTemplate('${escapedId}', 'replace-panel')" title="Replace Panel">
-              <span class="material-symbols-outlined">move_down</span>
-              <span>Replace Panel</span>
-            </button>
-            <button class="templateLoadBtn templateAddBtn" onclick="app.loadTemplate('${escapedId}', 'add')" title="Add Template After Selected Panel">
-              <span class="material-symbols-outlined">add</span>
-              <span>Add</span>
-            </button>
-            <button class="templateDeleteBtn" onclick="app.deleteTemplate('${escapedId}')" title="Delete Template" aria-label="Delete Template">
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-          </div>
-        `;
-        templatesList.appendChild(templateItem);
+
+        const info = document.createElement("div");
+        info.className = "templateItemInfo";
+        const nameRow = document.createElement("div");
+        nameRow.className = "templateNameRow";
+        const name = document.createElement("span");
+        name.className = "templateItemName";
+        name.textContent = template.name || "Untitled Template";
+        nameRow.appendChild(name);
+
+        let variantSelect = null;
+        if (variants.length) {
+          variantSelect = document.createElement("select");
+          variantSelect.className = "templateVariantSelect";
+          variantSelect.setAttribute("aria-label", `${template.name} variant`);
+          const baseOption = document.createElement("option");
+          baseOption.value = "";
+          baseOption.textContent = "Base";
+          variantSelect.appendChild(baseOption);
+          for (const variant of variants) {
+            const option = document.createElement("option");
+            option.value = variant.id;
+            option.textContent = variant.name;
+            variantSelect.appendChild(option);
+          }
+          nameRow.appendChild(variantSelect);
+        }
+
+        const selectedVariantId = () => variantSelect?.value || "";
+        const editButton = createTemplateActionButton(
+          "templateEditBtn",
+          "edit",
+          "",
+          "Edit Template"
+        );
+        editButton.setAttribute("aria-label", "Edit Template");
+        editButton.addEventListener("click", () =>
+          editTemplate(template.id, selectedVariantId())
+        );
+        nameRow.appendChild(editButton);
+        if (!template.isDefault && !String(template.id).startsWith("default-")) {
+          const renameButton = createTemplateActionButton(
+            "templateRenameBtn",
+            "edit_note",
+            "",
+            "Rename Template"
+          );
+          renameButton.setAttribute("aria-label", "Rename Template");
+          renameButton.addEventListener("click", () => renameTemplate(template.id));
+          nameRow.appendChild(renameButton);
+        }
+        info.appendChild(nameRow);
+
+        const metadata = document.createElement("span");
+        metadata.className = "templateItemDate";
+        const scope = inferTemplateScope(template) === "post" ? "Post" : "Panel";
+        metadata.textContent = `${template.isDefault ? "Default · " : ""}${scope} · ${formatDate(
+          template.dateModified || template.dateCreated
+        )}`;
+        info.appendChild(metadata);
+        templateItem.appendChild(info);
+
+        const actions = document.createElement("div");
+        actions.className = "templateItemActions";
+        const replacePostButton = createTemplateActionButton(
+          "templateLoadBtn templateLoadPostBtn",
+          "upload",
+          "Replace Post"
+        );
+        replacePostButton.addEventListener("click", () =>
+          loadTemplate(template.id, "replace-post", selectedVariantId())
+        );
+        actions.appendChild(replacePostButton);
+
+        const replacePanelButton = createTemplateActionButton(
+          "templateLoadBtn templateReplacePanelBtn",
+          "move_down",
+          "Replace Panel",
+          "Replace the selected panel, or drag this button onto a panel"
+        );
+        replacePanelButton.draggable = true;
+        replacePanelButton.addEventListener("click", () =>
+          loadTemplate(template.id, "replace-panel", selectedVariantId())
+        );
+        replacePanelButton.addEventListener("dragstart", (event) => {
+          templatePanelDragState = {
+            templateId: template.id,
+            variantId: selectedVariantId(),
+          };
+          replacePanelButton.classList.add("templateDragging");
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "copy";
+            event.dataTransfer.setData(
+              "application/x-signmaker-template",
+              JSON.stringify(templatePanelDragState)
+            );
+            event.dataTransfer.setData("text/plain", template.name || "Template");
+          }
+        });
+        replacePanelButton.addEventListener("dragend", endTemplatePanelDrag);
+        actions.appendChild(replacePanelButton);
+
+        const addButton = createTemplateActionButton(
+          "templateLoadBtn templateAddBtn",
+          "add",
+          "Add",
+          "Add template after the selected panel"
+        );
+        addButton.addEventListener("click", () =>
+          loadTemplate(template.id, "add", selectedVariantId())
+        );
+        actions.appendChild(addButton);
+
+        if (!template.isDefault && !String(template.id).startsWith("default-")) {
+          const deleteButton = createTemplateActionButton(
+            "templateDeleteBtn",
+            "delete",
+            "",
+            "Delete Template"
+          );
+          deleteButton.setAttribute("aria-label", "Delete Template");
+          deleteButton.addEventListener("click", () => deleteTemplate(template.id));
+          actions.appendChild(deleteButton);
+        }
+        templateItem.appendChild(actions);
+        (template.isDefault && presetsList ? presetsList : templatesList).appendChild(templateItem);
       });
+      for (const [holder, message] of [[templatesList, "No saved templates"], [presetsList, "No presets match your search"]]) {
+        if (holder && !holder.children.length) { const empty=document.createElement("p"); empty.className="templateEmptyMessage"; empty.textContent=message; holder.appendChild(empty); }
+      }
+      window.SignMakerEditorRuntime?.ensure();
     } catch (error) {
       console.error("Error refreshing templates list:", error);
     }
@@ -17347,6 +18893,16 @@ const app = (function () {
   };
 
     return {
+
+        getActiveBlockElements,
+        getActiveGroupElement,
+        getGroupEditingPath: () => currentlyEditingGroupPath.map(segment => ({ ...segment })),
+        enterGroupElement,
+        exitGroupElement,
+        groupSelectedBlockElements: (...args) => runWithUndo(() => groupSelectedBlockElements(...args)),
+        ungroupSelectedBlockElement: (...args) => runWithUndo(() => ungroupSelectedBlockElement(...args)),
+        addHeaderFooter: (placement, color) => runWithUndo(() => addHeaderFooterRows(getActiveBlockElements(), placement, color)),
+
         init: init,
         newPanel: (...args) => runWithUndo(() => newPanel(...args)),
         duplicatePanel: (...args) => runWithUndo(() => duplicatePanel(...args)),
@@ -17372,6 +18928,9 @@ const app = (function () {
         downloadPNGSign: downloadPNGSign,
         downloadSVGSign: downloadSVGSign,
         copyPNGSign: copyPNGSign,
+        copySignToClipboard,
+        openCopyPanelContextMenu,
+        editTemplate, showActiveTemplateEditor, updateTemplateEditorStatus, switchTemplateEditorVariant, addTemplateEditorVariant, applyTemplateEditorFont, deleteTemplateEditorVariant, saveTemplateEditor, cancelTemplateEditor,
         copySVGSign: copySVGSign,
         copyPanelPNG: copyPanelPNG,
         updatePreview: updatePreview,
@@ -17394,9 +18953,9 @@ const app = (function () {
 
         newRow: (...args) => runWithUndo(() => newRow(...args)),
         dupRow: (...args) => runWithUndo(() => dupRow(...args)),
-        delRow: (...args) => runWithUndo(() => delRow(...args)),
+        delRow,
         newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
-        delControlElem: (...args) => runWithUndo(() => delControlElem(...args)),
+        delControlElem,
         copySubpanelClipboard,
         cutSubpanelClipboard,
         pasteSubpanelClipboard,

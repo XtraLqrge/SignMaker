@@ -1,0 +1,5 @@
+/* Load the editor after the current sign has its first paint opportunity. */
+window.SignMakerBoot=(()=>{const e=document.currentScript,o=JSON.parse(e?.dataset.editorScripts||"[]"),t=e?.dataset.editorCss;let r;const loadEditor=()=>{if(r)return r;const e=t?new Promise((e,o)=>{const r=document.createElement("link");r.rel="stylesheet",r.href=t,r.onload=e,r.onerror=()=>o(new Error("Unable to load editor styles.")),document.head.appendChild(r)}):Promise.resolve(),n=o.map(e=>new Promise((o,t)=>{const r=document.createElement("script");r.async=!1,r.src=e,r.onload=o,r.onerror=()=>t(new Error("Unable to load editor code.")),document.head.appendChild(r)}));return r=Promise.all([e,...n]),r};
+// Returning visitors may need saved custom assets and post preferences.
+// Fetch their editor immediately, in parallel with the rendering scripts.
+try{const e=window.localStorage,o="never"!==e.getItem("signMaker.restoreOnRefresh")&&e.getItem("signMaker.autosave.v1"),t=["signMaker.postPosition","signMaker.showPost","signMaker.postColor","signMaker.postThickness"].some(o=>null!==e.getItem(o));(o||t)&&loadEditor().catch(()=>{})}catch(e){}return{loadEditor}})();

@@ -35,11 +35,11 @@ class Post {
    * @param {number} [lanesWide=1] - How many lanes wide the post should appear to be.
    * @param {string} [color=Post.prototype.colors[0]] - Visual color treatment for the post.
    */
-  constructor(polePosition, lanesWide = 1, color = Post.prototype.colors?.[0]) {
+  constructor(polePosition = "Right", lanesWide = 1, color = Post.prototype.colors?.[0]) {
     if (this.polePositions.includes(polePosition)) {
       this.polePosition = polePosition;
     } else {
-      this.polePosition = this.polePositions[0];
+      this.polePosition = "Right";
     }
     if (lanesWide >= 1 && lanesWide <= 6) {
       this.lanesWide = lanesWide;
@@ -61,6 +61,11 @@ class Post {
         : 1;
     this.thickness = this.normalizeThickness(defaultThickness);
 
+    this.copySignsOnly = true;
+    this.showBlockBoundingBoxes = false;
+    this.showAlignmentGuides = false;
+    this.alignmentGuideSpacing = 4;
+    this.alignmentGuidePhase = 0;
     this.panels = [];
     this.panelSpacing = 1;
   }
@@ -178,10 +183,7 @@ class Post {
         : 1;
     const parsed =
       typeof value === "string" ? parseFloat(value) : Number(value);
-    if (!Number.isFinite(parsed)) {
-      return Math.max(0, fallback);
-    }
-    return Math.max(0, parsed);
+    return Math.min(2.5, Math.max(0, Number.isFinite(parsed) ? parsed : fallback));
   }
 }
 
@@ -201,3 +203,25 @@ Post.prototype.colors = [
 ];
 
 Post.prototype.defaultThickness = 1;
+
+Post.prototype.normalizeAlignmentGuideSpacing = function (value) {
+		const fallback = Post.prototype.defaultAlignmentGuideSpacing || 4;
+		const parsed =
+			typeof value === "string" ? parseFloat(value) : Number(value);
+		return Number.isFinite(parsed)
+			? Math.min(15, Math.max(1, parsed))
+			: fallback;
+	};
+
+Post.prototype.normalizeAlignmentGuidePhase = function (value, spacing = this.alignmentGuideSpacing) {
+		const normalizedSpacing = this.normalizeAlignmentGuideSpacing(spacing);
+		const fallback = Post.prototype.defaultAlignmentGuidePhase || 0;
+		const parsed =
+			typeof value === "string" ? parseFloat(value) : Number(value);
+		return Number.isFinite(parsed)
+			? Math.min(normalizedSpacing, Math.max(0, parsed))
+			: Math.min(normalizedSpacing, Math.max(0, fallback));
+	};
+
+Post.prototype.defaultAlignmentGuideSpacing=4;
+Post.prototype.defaultAlignmentGuidePhase=0;

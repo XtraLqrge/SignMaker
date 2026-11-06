@@ -185,8 +185,10 @@ window.SignMakerFonts = (() => {
       visited.add(value);
       if (value.sign && typeof value.sign === "object") panel = value.sign;
       for (const [key, child] of Object.entries(value)) {
-        if (/font(?:Family)?\d*$/i.test(key)) add(families, child, value, panel);
-        if (child && typeof child === "object") walk(child, panel);
+        const unusedExitText = key === "exitTextFont" && value.guideArrow === "None" && value.arrowMode !== "apl";
+        const emptyExitTab = key === "fontFamily" && value.variant === "Default" && !value.number && !value.showLeft;
+        if (!unusedExitText && !emptyExitTab && /font(?:Family)?\d*$/i.test(key)) add(families, child, value, panel);
+        if (key !== "exitTabProfiles" && child && typeof child === "object") walk(child, panel);
       }
       if (typeof value.shieldBase === "string") {
         families.add("Series D"); families.add("Series E");
@@ -258,7 +260,7 @@ window.SignMakerFonts = (() => {
         collectPost(defaults).forEach((name) => families.add(name));
       }
     } catch (error) {}
-    if (!families.size) { families.add("Clearview 5WR"); families.add("Series EEM"); }
+    if (!families.size) families.add("Series EM");
     families.forEach(preload);
   };
   early();

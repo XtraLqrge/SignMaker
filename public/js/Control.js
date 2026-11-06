@@ -1508,7 +1508,8 @@ class ShieldElement extends Shield {
       this.shieldBase = resolvedBase;
       this.shieldType = resolvedVariant;
 
-      this.routeNumber = `${getStoredDefaultsOption(
+      this.numberStyle = arguments[0]?.numberStyle === "legacy" ? "legacy" : "current";
+    this.routeNumber = `${getStoredDefaultsOption(
         { routeNumber },
         "routeNumber",
         "settingsDefaultsShieldRouteNumber",
@@ -1622,6 +1623,7 @@ class ShieldElement extends Shield {
   createElement(panel) {
     const wrapper = document.createElement("div");
     wrapper.className = "bE-shieldElement";
+    wrapper.classList.toggle("legacyRouteNumberStyle", this.numberStyle === "legacy");
 
     let toEl = null;
     if (this.to) {
@@ -1649,10 +1651,6 @@ class ShieldElement extends Shield {
       normalizedRoute,
       config
     );
-    if (routeText !== normalizedRoute) {
-      this.routeNumber = routeText;
-    }
-
     const migratedShieldType =
       ShieldElement.prototype.migrateLegacyBlockVariant(
         this.shieldType,
@@ -1694,14 +1692,11 @@ class ShieldElement extends Shield {
           variantKey
         )
       : null;
-    const routeNumberStyle =
-      ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)
-        ? null
-        : ShieldElement.prototype.getVariantMetadata(
-            config,
-            "routeNumberByVariant",
-            variantKey
-          );
+    const routeNumberStyle = ShieldElement.prototype.getVariantMetadata(
+      config,
+      "routeNumberByVariant",
+      variantKey
+    );
     const renderedRouteText = routeNumberStyle
       ? routeText.toUpperCase()
       : routeText;
@@ -1729,8 +1724,8 @@ class ShieldElement extends Shield {
       ? basePhysicalHeightRem * requestedShieldScale
       : null;
 
-    const isFloridaOfficialShield =
-      ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config);
+    const isFloridaOfficialShield = !!officialPhysicalDimensions &&
+      ["FL", "FLTOLL", "FLCFX", "FLTP"].includes(normalizedShieldCode);
     const isOntarioPrimaryShield = normalizedShieldCode === "ON";
 
     const configuredInternalScale = Number(config?.internalScale);
@@ -1820,6 +1815,8 @@ class ShieldElement extends Shield {
     const shieldContainer = document.createElement("div");
     const containerClass = config.className || config.value;
     shieldContainer.className = `bannerShieldContainer ${containerClass}`;
+    shieldContainer.classList.toggle("legacyRouteNumberStyle", this.numberStyle === "legacy");
+    shieldContainer.classList.toggle("oldInterstateNumberPositioning", /^I(?:-|$)/.test(String(this.shieldBase)) && ShieldElement.oldInterstateNumberPositioning === true);
     shieldContainer.classList.toggle(
       "shieldBacks",
       shieldBacksEnabled
@@ -2091,7 +2088,7 @@ class ShieldElement extends Shield {
     if (variablePanelWidth && officialPhysicalDimensions) {
       const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
       const assetWidthCss = this.useOfficialDimensions
-        ? `${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem`
+        ? `calc(${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem * var(--requestedShieldScale, 1))`
         : `calc(var(--shieldSize) * ${
             assetWidthIn / officialPhysicalDimensions.heightIn
           })`;
@@ -2111,7 +2108,7 @@ class ShieldElement extends Shield {
       shieldEl.style.setProperty(
         "--variableGuideArtworkClip",
         `calc(var(--shieldSize) * ${
-          0.25 / officialPhysicalDimensions.heightIn
+          1 / officialPhysicalDimensions.heightIn
         })`
       );
     }
@@ -2153,6 +2150,15 @@ class ShieldElement extends Shield {
       variableGuideContourRect.setAttribute("stroke", "#000000");
       variableGuideContourRect.setAttribute("stroke-width", "0.125");
       variableGuideContour.appendChild(variableGuideContourRect);
+      const panelBorder = variableGuideContourRect.cloneNode(false);
+      panelBorder.setAttribute("class", "variableGuidePanelBorder");
+      panelBorder.setAttribute("x", "0.625");
+      panelBorder.setAttribute("y", "0.625");
+      panelBorder.setAttribute("width", String(initialWidthIn - 1.25));
+      panelBorder.setAttribute("height", String(heightIn - 1.25));
+      panelBorder.setAttribute("rx", "0.625");
+      panelBorder.setAttribute("stroke-width", "0.625");
+      variableGuideContour.appendChild(panelBorder);
       shieldEl.appendChild(variableGuideContour);
     }
 
@@ -2187,7 +2193,7 @@ class ShieldElement extends Shield {
       }
 
       const usesV22NumberStyle =
-        ShieldElement.prototype.usesV22NumberStyle(config);
+        ShieldElement.prototype.usesV22NumberStyle(config, this);
 
       if (usesV22NumberStyle) {
         routeEl.textContent = renderedRouteText;
@@ -2478,6 +2484,46 @@ ShieldElement.prototype.defaultShieldSize = 3;
 ShieldElement.prototype.defaultScaleBannersWithShield = true;
 
 const OFFICIAL_ROADGEEK_METRICS = {
+  "Series C": {
+    "0": [0.706, 0.059983, 0.646],
+    "1": [0.407, 0.09, 0.297],
+    "2": [0.677, 0.06, 0.617],
+    "3": [0.677, 0.06, 0.617],
+    "4": [0.738, 0.03, 0.648],
+    "5": [0.677, 0.06, 0.617],
+    "6": [0.738, 0.09, 0.648],
+    "7": [0.678, 0.03, 0.588],
+    "8": [0.677, 0.06, 0.617],
+    "9": [0.677, 0.06, 0.617],
+    A: [0.699, 0.03, 0.669],
+    B: [0.732, 0.11, 0.672],
+    C: [0.738, 0.09, 0.648],
+    D: [0.762, 0.11, 0.672],
+    E: [0.679, 0.11, 0.619],
+    F: [0.649, 0.11, 0.619],
+    G: [0.738, 0.09, 0.648],
+    H: [0.782, 0.11, 0.672],
+    I: [0.36, 0.11, 0.25],
+    J: [0.649, 0.03, 0.539],
+    K: [0.732, 0.11, 0.672],
+    L: [0.649, 0.11, 0.619],
+    M: [0.881, 0.11, 0.771],
+    N: [0.782, 0.11, 0.672],
+    O: [0.766, 0.089983, 0.676],
+    P: [0.762, 0.11, 0.672],
+    Q: [0.766, 0.090496, 0.677],
+    R: [0.732, 0.11, 0.672],
+    S: [0.677, 0.06, 0.617],
+    T: [0.569, 0.03, 0.539],
+    U: [0.782, 0.11, 0.672],
+    V: [0.678, 0.03, 0.648],
+    W: [0.819, 0.03, 0.789],
+    X: [0.646, 0.03, 0.616],
+    Y: [0.699, 0.03, 0.669],
+    Z: [0.67, 0.06, 0.61],
+    " ": [0.428, 0, 0],
+    "-": [0.411, 0.03, 0.381],
+  },
   "Series D": {
     "0": [0.909, 0.1, 0.809],
     "1": [0.473, 0.1, 0.353],
@@ -2563,8 +2609,7 @@ ShieldElement.prototype.measureOfficialRouteInk = function ({
     } else {
       const metrics = context.measureText(rawCharacter);
       const left = cursor - Number(metrics.actualBoundingBoxLeft || 0);
-      const right =
-        cursor + Number(metrics.actualBoundingBoxRight || metrics.width);
+      const right = cursor + Number(metrics.actualBoundingBoxRight || metrics.width);
       inkLeft = Math.min(inkLeft, left);
       inkRight = Math.max(inkRight, right);
       cursor += metrics.width;
@@ -2579,10 +2624,12 @@ ShieldElement.prototype.measureOfficialRouteInk = function ({
     inkLeft = 0;
     inkRight = 0;
   }
-
   return { inkLeft, inkRight, inkWidth: inkRight - inkLeft };
 };
 
+// Keep adjacent glyph ink separated before fitting an optically adjusted
+// legend into its available span. Height is never reduced. If spacing alone
+// cannot fit, horizontal condensation is an explicit display compromise.
 ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
   wrapper,
   routeEl,
@@ -2600,14 +2647,14 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     if (!routeEl.isConnected || !shieldEl.isConnected) {
       return;
     }
-
-    const shieldBounds = shieldEl.getBoundingClientRect();
+    // Work in layout pixels: viewport zoom must not shrink the number twice.
+    const shieldHeight = parseFloat(getComputedStyle(shieldEl).height) || shieldEl.offsetHeight;
     const officialHeight = Number(officialPhysicalDimensions.heightIn);
-    if (!(shieldBounds.height > 0) || !(officialHeight > 0)) {
+    if (!(shieldHeight > 0) || !(officialHeight > 0)) {
       return;
     }
 
-    const pixelsPerInch = shieldBounds.height / officialHeight;
+    const pixelsPerInch = shieldHeight / officialHeight;
     const capHeightIn = Number(
       routeNumberStyle.capHeightInByCharacterCount?.[routeCharacterCount] ||
         routeNumberStyle.capHeightIn
@@ -2618,7 +2665,6 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     const fontSizePixels =
       (capHeightIn * pixelsPerInch) /
       ShieldElement.prototype.roadgeekCapHeightRatio;
-
     routeEl.style.fontSize = `${fontSizePixels}px`;
     routeEl.style.fontFamily = `"${routeFontFamily}"`;
     routeEl.style.top = `${
@@ -2631,7 +2677,6 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     if (!context) {
       return;
     }
-
     context.fontKerning = "none";
     context.font = `${fontSizePixels}px "${routeFontFamily}"`;
     const capHeightPixels = capHeightIn * pixelsPerInch;
@@ -2642,6 +2687,7 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       context,
     });
 
+    let horizontalScale = 1;
     if (
       routeNumberStyle.allowOpticalSpacing &&
       routeCharacterCount > 1 &&
@@ -2649,23 +2695,22 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     ) {
       const maximumWidth = routeNumberStyle.maxWidthIn * pixelsPerInch;
       if (measuredInk.inkWidth > maximumWidth) {
-        const spacingAdjustment =
-          (maximumWidth - measuredInk.inkWidth) /
-          (routeCharacterCount - 1);
-        routeEl.style.letterSpacing = `${spacingAdjustment}px`;
-        measuredInk = ShieldElement.prototype.measureOfficialRouteInk({
+        const fit = ShieldElement.prototype.fitOfficialRouteInk({
           routeText,
           routeFontFamily,
           capHeightPixels,
-          letterSpacingPixels: spacingAdjustment,
           context,
-        });
+        }, maximumWidth);
+        routeEl.style.letterSpacing = `${fit.spacing}px`;
+        horizontalScale = fit.scaleX;
+        measuredInk = fit;
       }
     }
+    routeEl.dataset.horizontalFit = String(horizontalScale);
 
     const { inkLeft, inkRight } = measuredInk;
-    const variablePanelWidth = routeNumberStyle.variablePanelWidth;
 
+    const variablePanelWidth = routeNumberStyle.variablePanelWidth;
     if (variablePanelWidth) {
       const minWidthIn = Number(variablePanelWidth.minWidthIn);
       const maxWidthIn = Number(variablePanelWidth.maxWidthIn);
@@ -2692,7 +2737,6 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       shieldEl.style.setProperty("--variableGuideAssetWidth", assetWidthCss);
       wrapper.style.setProperty("--shieldWidth", renderedWidthCss);
       wrapper.dataset.widthIn = String(renderedWidthIn);
-
       if (variableGuideContour && variableGuideContourRect) {
         variableGuideContour.setAttribute(
           "viewBox",
@@ -2702,12 +2746,18 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
           "width",
           String(renderedWidthIn - 0.125)
         );
+        variableGuideContour.querySelector(".variableGuidePanelBorder")
+          ?.setAttribute("width", String(renderedWidthIn - 1.25));
       }
     }
 
     let targetPosition;
     let sourcePosition;
-    if (Number.isFinite(routeNumberStyle.leftIn)) {
+    if (variablePanelWidth) {
+      targetPosition =
+        (Number(wrapper.dataset.widthIn) - Number(variablePanelWidth.rightClearanceIn)) * pixelsPerInch;
+      sourcePosition = inkRight;
+    } else if (Number.isFinite(routeNumberStyle.leftIn)) {
       targetPosition = routeNumberStyle.leftIn * pixelsPerInch;
       sourcePosition = inkLeft;
     } else if (Number.isFinite(routeNumberStyle.rightIn)) {
@@ -2720,9 +2770,7 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       targetPosition = centerXIn * pixelsPerInch;
       sourcePosition = (inkLeft + inkRight) / 2;
     }
-
-    routeEl.style.transform =
-      `translateX(${targetPosition - sourcePosition}px)`;
+    routeEl.style.transform = `translateX(${targetPosition - sourcePosition}px) scaleX(${horizontalScale})`;
   };
 
   queueMicrotask(layout);
@@ -2733,6 +2781,40 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       requestAnimationFrame(layout);
     });
   }
+};
+
+ShieldElement.prototype.fitOfficialRouteInk = function (options, maximumWidth) {
+  const measure = (spacing) => this.measureOfficialRouteInk({
+    ...options, letterSpacingPixels: spacing,
+  });
+  let ink = measure(0);
+  let spacing = 0;
+  let scaleX = 1;
+  const chars = Array.from(options.routeText.toUpperCase());
+  const metrics = OFFICIAL_ROADGEEK_METRICS[options.routeFontFamily];
+  if (maximumWidth > 0 && ink.inkWidth > maximumWidth) {
+    let minimumSpacing = -Infinity;
+    for (let i = 0; i < chars.length - 1; i++) {
+      const a = metrics?.[chars[i]];
+      const b = metrics?.[chars[i + 1]];
+      if (!a || !b) { minimumSpacing = 0; break; }
+      // Reserve 8% of cap height between bounding boxes, before scaling.
+      minimumSpacing = Math.max(minimumSpacing,
+        (0.08 - (a[0] + b[1] - a[2])) * options.capHeightPixels);
+    }
+    if (chars.length > 1) {
+      spacing = Math.min(0, Math.max(minimumSpacing,
+        (maximumWidth - ink.inkWidth) / (chars.length - 1)));
+      ink = measure(spacing);
+    }
+    scaleX = Math.min(1, maximumWidth / ink.inkWidth);
+  }
+  return {
+    spacing, scaleX,
+    inkLeft: ink.inkLeft * scaleX,
+    inkRight: ink.inkRight * scaleX,
+    inkWidth: ink.inkWidth * scaleX,
+  };
 };
 
 ShieldElement.prototype.normalizeShieldCode = function (code) {
@@ -4749,18 +4831,18 @@ ShieldElement.prototype.resolveBlockVariant = function (
   }
   const normalized = (desiredVariant || "").trim();
   if (normalized && normalized.toLowerCase() !== "auto") {
-    if (allowed.includes(normalized)) {
-      return normalized;
-    }
-
-    const legacyVariantKey =
-      ShieldElement.prototype.formatVariantKey(normalized);
-    const migratedVariant =
-      ShieldElement.prototype.resolveLegacyVariantAlias(
-        config?.legacyVariantAliases?.[legacyVariantKey],
-        routeNumber
-      );
-    if (migratedVariant && allowed.includes(migratedVariant)) {
+    const migratedVariant = ShieldElement.prototype.migrateLegacyBlockVariant(normalized, routeNumber, config);
+    if (allowed.includes(migratedVariant)) {
+      if (config.value === "FL" && ShieldElement.prototype.getRouteCharacterCount(routeNumber) >= 3) {
+        const variantKey = ShieldElement.prototype.formatVariantKey(migratedVariant);
+        const height = config.physicalDimensionsByVariant?.[variantKey]?.heightIn;
+        const wideVariant = height && allowed.find((variant) => {
+          const key = ShieldElement.prototype.formatVariantKey(variant);
+          return config.physicalDimensionsByVariant?.[key]?.heightIn === height &&
+            config.routeNumberByVariant?.[key]?.variablePanelWidth;
+        });
+        if (wideVariant) return wideVariant;
+      }
       return migratedVariant;
     }
 
@@ -5008,21 +5090,8 @@ ShieldElement.prototype.getVariantMetadata = function (
   return values[variantKey] || values.Default || null;
 };
 
-ShieldElement.prototype.usesPresetFloridaRouteNumberCss = function (config) {
-  const normalizedCode = ShieldElement.prototype.normalizeShieldCode(
-    config?.value || config?.assetName || ""
-  ).toUpperCase();
-
-  return ["FL", "FLTOLL", "FLCFX", "FLTP"].includes(
-    normalizedCode
-  );
-};
-
-ShieldElement.prototype.usesV22NumberStyle = function (config) {
-  if (ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)) {
-    return false;
-  }
-
+ShieldElement.prototype.usesV22NumberStyle = function (config, element) {
+  if (element?.numberStyle === "legacy" && ["I", "I-BUS", "I-BL", "I-BS", "I-DL", "I-DS", "I-F", "US", "USCA"].includes(ShieldElement.prototype.normalizeShieldCode(config?.value || config?.assetName || ""))) return true;
   return config?.standard === "FDOT" || config?.standard === "CFX";
 };
 
@@ -5729,12 +5798,14 @@ const prepareIconImagesForPost = (post) => {
   const walk = (value) => {
     if (!value || typeof value !== "object" || visited.has(value)) return;
     visited.add(value);
-    if (typeof value.icon === "string") {
+    if (typeof value.icon === "string" && (!value.variant || value.variant === "Icon")) {
       const definition = IconElement.prototype.icons[value.icon];
       const source = definition?.src || definition?.asset || definition?.url;
       if (source) sources.add(source);
     }
-    Object.values(value).forEach(walk);
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "exitTabProfiles") walk(child);
+    }
   };
   walk(post);
   return Promise.all(Array.from(sources, prepareTightImageSource));
@@ -6799,6 +6870,7 @@ class Block {
     stretchLeft = true,
     stretchCenter = true,
     stretchRight = true,
+    edgePlacement = "",
   } = {}) {
     this.topPadding = topPadding;
     this.bottomPadding = bottomPadding;
@@ -6809,6 +6881,7 @@ class Block {
     this.stretchLeft = stretchLeft;
     this.stretchCenter = stretchCenter;
     this.stretchRight = stretchRight;
+    this.edgePlacement = ["header", "footer"].includes(edgePlacement) ? edgePlacement : "";
   }
 }
 Block.defaultBorderColor = "Match BG";
@@ -7091,10 +7164,44 @@ class Control {
     return false;
   }
 
-  addRow(row, element) {
+createBlockWithNeighborBackground(row, sourceRowIndex) {
+    const newBlock = new Block();
+    const neighborIndexes = [];
+
+    if (Number.isInteger(sourceRowIndex)) {
+      neighborIndexes.push(sourceRowIndex);
+    }
+
+    neighborIndexes.push(row - 1, row);
+
+    for (const index of [...new Set(neighborIndexes)]) {
+      const neighborProperties = this.blockProperties[index];
+      if (
+        neighborProperties &&
+        typeof neighborProperties.backgroundColor === "string"
+      ) {
+        newBlock.backgroundColor = neighborProperties.backgroundColor;
+        break;
+      }
+    }
+
+    return newBlock;
+  }
+
+  addRow(row, element, { sourceRowIndex } = {}) {
+    const newBlockProperties = this.createBlockWithNeighborBackground(
+      row,
+      sourceRowIndex
+    );
+
     if (this.rows[row] && this.rows[row].length != 0) {
       this.rows.splice(row, 0, []);
-      this.blockProperties.splice(row, 0, new Block());
+      this.blockProperties.splice(row, 0, newBlockProperties);
+    } else if (!this.rows[row]) {
+      this.rows[row] = [];
+      this.blockProperties[row] = newBlockProperties;
+    } else if (!this.blockProperties[row]) {
+      this.blockProperties[row] = newBlockProperties;
     }
     this.addElement(Control.prototype.blockToClassElems[element], {}, row, 0);
   }
@@ -7102,16 +7209,14 @@ class Control {
   duplicateRow(row) {
     let newRows = [];
     for (const e of this.rows[row]) {
-      const blockElemType = Control.prototype.blockToClassElems.getElem(e);
-      newRows.push(
-        Object.assign(
-          new Control.prototype.blockToClassElems[blockElemType](),
-          e
-        )
-      );
+      newRows.push(this.cloneElement(e));
     }
     this.rows.splice(row + 1, 0, newRows);
-    this.blockProperties.splice(row + 1, 0, new Block());
+    this.blockProperties.splice(
+      row + 1,
+      0,
+      this.cloneBlockProperties(this.blockProperties[row])
+    );
   }
 
   deleteRow(row) {
@@ -7119,9 +7224,31 @@ class Control {
     this.blockProperties.splice(row, 1);
   }
 
+  getRowEdgePlacements() {
+    const placements = this.rows.map((row, index) => this.blockProperties[index]?.edgePlacement || "");
+    const isDivider = index => this.rows[index]?.length > 0 && this.rows[index].every(element => element instanceof DividerElement && element.fullBleed);
+    const isColoredText = index => {
+      const properties = this.blockProperties[index];
+      return properties?.backgroundFullWidth !== false && properties?.backgroundColor && properties.backgroundColor !== "Inherit" &&
+        this.rows[index]?.some(element => element instanceof TextElement);
+    };
+    // Earlier saved headers and footers used a colored text row and a full-width divider.
+    for (let index = 0; index + 1 < this.rows.length && isColoredText(index) && isDivider(index + 1); index += 2) {
+      if (!placements[index] && !placements[index + 1]) placements[index] = placements[index + 1] = "header";
+    }
+    for (let index = this.rows.length - 1; index > 0 && isColoredText(index) && isDivider(index - 1); index -= 2) {
+      if (!placements[index] && !placements[index - 1]) placements[index] = placements[index - 1] = "footer";
+    }
+    return placements;
+  }
+
   createElement(panel, subPanel) {
     const flexBox = document.createElement("div");
     flexBox.className = "blockElementMaster";
+    const edgePlacements = this.getRowEdgePlacements();
+    const rowOrder = index => edgePlacements[index] === "header" ? 0 : edgePlacements[index] === "footer" ? 4 : 2;
+    const visualIndices = this.rows.map((row, index) => index).sort((a, b) => rowOrder(a) - rowOrder(b));
+    if (edgePlacements.some(value => value === "header" || value === "footer")) flexBox.classList.add("hasEdgeRows");
     const resolveColorValue = (colorValue) => {
       if (typeof colorValue !== "string") {
         return "";
@@ -7204,11 +7331,13 @@ class Control {
       const bottomPositiveSpacing = Math.max(0, bottomPadding) + "rem";
       const topNegativeSpacing = Math.min(0, topPadding) + "rem";
       const bottomNegativeSpacing = Math.min(0, bottomPadding) + "rem";
-      const bleedTop = i === 0 ? signPadding.top : "0rem";
-      const bleedBottom = i === totalRows - 1 ? signPadding.bottom : "0rem";
+      const bleedTop = i === visualIndices[0] ? signPadding.top : "0rem";
+      const bleedBottom = i === visualIndices[visualIndices.length - 1] ? signPadding.bottom : "0rem";
 
       const flexRow = document.createElement("div");
       flexRow.className = "blockElementRow";
+      flexRow.dataset.edgePlacement = edgePlacements[i];
+      flexRow.style.order = String(rowOrder(i));
       flexRow.style.setProperty("--marginTop", topSpacing);
       flexRow.style.setProperty("--marginBottom", bottomSpacing);
       flexRow.style.setProperty("--blockPaddingTopExtra", "0rem");
@@ -7425,6 +7554,169 @@ class Control {
   }
 }
 
+class GroupedBlockElement {
+  constructor({
+    label = GroupedBlockElement.defaultLabel,
+    alignment = "Center",
+    backgroundColor = "Inherit",
+    padding = 0,
+    borderRadius = 0,
+    border = false,
+    borderColor = "Inherit",
+    blockElements,
+  } = {}) {
+    this.label =
+      typeof label === "string" && label.trim().length
+        ? label
+        : GroupedBlockElement.defaultLabel;
+    this.alignment = TextElement.prototype.alignment.includes(alignment)
+      ? alignment
+      : "Center";
+    this.backgroundColor = TextElement.prototype.backgroundColor.includes(backgroundColor)
+      ? backgroundColor
+      : "Inherit";
+    // Both in rem; the editor supplies strings.
+    this.padding = GroupedBlockElement.normalizeLength(padding);
+    this.borderRadius = GroupedBlockElement.normalizeLength(borderRadius);
+    this.border = border === true;
+    this.borderColor = TextElement.prototype.backgroundColor.includes(borderColor)
+      ? borderColor
+      : "Inherit";
+
+    if (blockElements instanceof Control) {
+      this.blockElements = blockElements;
+    } else if (blockElements && Array.isArray(blockElements.rows)) {
+      this.blockElements = Control.fromData(blockElements);
+    } else {
+      this.blockElements = new Control({
+        rows: [[new ControlTextElement({ textContent: "Grouped Block" })]],
+        blockProperties: [new Block()],
+      });
+    }
+  }
+
+  createElement(panel, subPanel) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "bE-groupedBlockElement";
+    wrapper.dataset.groupLabel = this.label;
+    const hasBackground = this.backgroundColor !== "Inherit";
+    if (hasBackground) {
+      wrapper.style.backgroundColor = (
+        lib.colors[this.backgroundColor] || this.backgroundColor
+      ).toLowerCase();
+      wrapper.style.color =
+        getColorBrightness(this.backgroundColor) === "light" ? "black" : "white";
+    }
+
+    const padding = GroupedBlockElement.normalizeLength(this.padding);
+    const borderRadius = GroupedBlockElement.normalizeLength(this.borderRadius);
+    if (padding) wrapper.style.padding = `${padding}rem`;
+    if (borderRadius) wrapper.style.borderRadius = `${borderRadius}rem`;
+    if (this.border) {
+      // Inherit follows the group's text color; the width matches the sign's.
+      wrapper.style.border = `var(--signBorderWidth, 0.2rem) solid ${
+        this.borderColor === "Inherit"
+          ? "currentColor"
+          : (lib.colors[this.borderColor] || this.borderColor).toLowerCase()
+      }`;
+    }
+
+    // Contents render as if on the group's color (e.g. Clearview W/B faces).
+    const nestedPanel =
+      panel && panel.sign
+        ? {
+          ...panel,
+          ...(hasBackground ? { color: this.backgroundColor } : {}),
+          sign: {
+            ...panel.sign,
+            padding: "0rem 0rem 0rem 0rem",
+          },
+        }
+        : panel;
+    const nestedBlockElements = this.blockElements.createElement(
+      nestedPanel,
+      subPanel
+    );
+    nestedBlockElements.classList.add("bE-groupedBlockElementContent");
+    wrapper.appendChild(nestedBlockElements);
+    return wrapper;
+  }
+}
+
+GroupedBlockElement.defaultLabel = "Group";
+GroupedBlockElement.normalizeLength = (value) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+GroupedBlockElement.prototype.alignment = TextElement.prototype.alignment;
+GroupedBlockElement.prototype.backgroundColor = TextElement.prototype.backgroundColor;
+GroupedBlockElement.prototype.borderColor = TextElement.prototype.backgroundColor;
+
+Control.prototype.cloneBlockProperties = function (properties) {
+  const clonedProperties = new Block(properties || {});
+  if (properties && typeof properties === "object") {
+    Object.assign(clonedProperties, properties);
+  }
+  return clonedProperties;
+};
+
+Control.prototype.cloneElement = function (element) {
+  if (!element || typeof element !== "object") {
+    return element;
+  }
+
+  const blockElemType = Control.prototype.blockToClassElems.getElem(element);
+  const Constructor = blockElemType
+    ? Control.prototype.blockToClassElems[blockElemType]
+    : null;
+  if (typeof Constructor !== "function") {
+    return Object.assign({}, element);
+  }
+
+  const clonedElement = Object.assign(new Constructor(element), element);
+  delete clonedElement._elementType;
+
+  if (typeof clonedElement.fontFamily === "string") {
+    clonedElement.fontFamily = normalizeTextFontFamilyName(
+      clonedElement.fontFamily
+    );
+  }
+
+  if (blockElemType === "ShieldElement") {
+    clonedElement.bannerFontFamily =
+      ShieldElement.prototype.normalizeBannerFontFamily(
+        clonedElement.bannerFontFamily
+      );
+    clonedElement.bannerFontFamily2 =
+      ShieldElement.prototype.normalizeBannerFontFamily(
+        clonedElement.bannerFontFamily2 || clonedElement.bannerFontFamily
+      );
+  }
+
+  if (blockElemType === "GroupedBlockElement") {
+    clonedElement.blockElements =
+      element.blockElements && typeof element.blockElements.clone === "function"
+        ? element.blockElements.clone()
+        : new Control(element.blockElements || {});
+  }
+
+  return clonedElement;
+};
+
+Control.prototype.clone = function () {
+  const rows = Array.isArray(this.rows)
+    ? this.rows.map((row) =>
+      Array.isArray(row) ? row.map((elem) => this.cloneElement(elem)) : []
+    )
+    : [];
+  const blockProperties = rows.map((row, index) =>
+    this.cloneBlockProperties(this.blockProperties[index])
+  );
+
+  return new Control({ rows, blockProperties });
+};
+
+
 Control.prototype.blockToClassElems = {
   ControlTextElement: ControlTextElement,
   DividerElement: DividerElement,
@@ -7436,27 +7728,23 @@ Control.prototype.blockToClassElems = {
   TollLogoElement: TollLogoElement,
   ActionMessageElement: ActionMessageElement,
   ElectronicSignElement: ElectronicSignElement,
+  GroupedBlockElement: GroupedBlockElement,
   getElem: (elemObj) => {
-    if (!elemObj || typeof elemObj !== "object") {
+    const constructor = elemObj?.constructor;
+    if (!constructor || constructor === Object || constructor === Array) {
       return null;
     }
-
-    for (const key in Control.prototype.blockToClassElems) {
-      if (key === "getElem") {
-        continue;
-      }
-
-      const ElemClass = Control.prototype.blockToClassElems[key];
-
-      if (typeof ElemClass !== "function" || !ElemClass.prototype) {
-        continue;
-      }
-
-      if (elemObj instanceof ElemClass) {
+    const classes = Control.prototype.blockToClassElems;
+    for (const key in classes) {
+      if (classes[key] === constructor) {
         return key;
       }
     }
-
+    for (const key in classes) {
+      if (key !== "getElem" && elemObj instanceof classes[key]) {
+        return key;
+      }
+    }
     return null;
   },
 };
@@ -7472,6 +7760,7 @@ Control.prototype.blockElements = {
   BeaconElement: "Flashing Beacon",
   TollLogoElement: "Toll Logo",
   ElectronicSignElement: "Variable Message",
+  GroupedBlockElement: "Grouped Block",
 };
 
 Control.prototype.blockInternalElements = {
@@ -7485,4 +7774,28 @@ Control.prototype.blockInternalElements = {
   TollLogoElement: "sdTollLogo",
   ActionMessageElement: "sdActionMessage",
   ElectronicSignElement: "sdElectronicSign",
+  GroupedBlockElement: "sdGroupedBlock",
+};
+
+// Rebuild nested controls when a group arrives from JSON or the block clipboard.
+Control.fromData = function (data = {}) {
+  const revive = value => {
+    if (!value || typeof value !== "object") return value;
+    const type = value._elementType || value.__undoType || Control.prototype.blockToClassElems.getElem(value) ||
+      (value.blockElements ? "GroupedBlockElement" : value.shieldBase !== undefined ? "ShieldElement" :
+        value.icon !== undefined ? "IconElement" : value.arrow !== undefined ? "ArrowElement" :
+        value.logo !== undefined ? "TollLogoElement" : value.dividerWidth !== undefined ? "DividerElement" :
+        value.beacon !== undefined ? "BeaconElement" : value.glow !== undefined ? "ElectronicSignElement" :
+        value.horizPadding !== undefined ? "AdvisoryMessageElement" : value.spacing !== undefined ? "ControlTextElement" : "ActionMessageElement");
+    const Constructor = Control.prototype.blockToClassElems[type];
+    if (typeof Constructor !== "function") return value;
+    const options = type === "GroupedBlockElement" ? { ...value, blockElements: new Control() } : value;
+    const element = Object.assign(new Constructor(options), value);
+    if (type === "GroupedBlockElement") element.blockElements = Control.fromData(value.blockElements);
+    delete element._elementType; delete element.__undoType;
+    return element;
+  };
+  const rows = (Array.isArray(data.rows) ? data.rows : []).map(row => (Array.isArray(row) ? row : []).map(revive));
+  const blockProperties = rows.map((_, index) => Object.assign(new Block(data.blockProperties?.[index] || {}), data.blockProperties?.[index]));
+  return new Control({ rows, blockProperties });
 };

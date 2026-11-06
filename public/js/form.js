@@ -112,13 +112,7 @@ const formHandler = (function () {
       });
     };
 
-    const runShieldUndoableCommit = (callback) => {
-      /*
-       * A scheduled shield readForm or a still-open banner-text history
-       * transaction can otherwise absorb a picker change. Flush that older
-       * transaction first so the shield/variant change becomes the next undo
-       * entry immediately.
-       */
+    const flushShieldFormEdit = () => {
       if (sdShieldReadFormFrame) {
         if (typeof cancelAnimationFrame === "function") {
           cancelAnimationFrame(sdShieldReadFormFrame);
@@ -143,7 +137,11 @@ const formHandler = (function () {
         exposed.endUndoableChange();
         sdShieldLiveBannerUndoActive = false;
       }
+    };
 
+    const runShieldUndoableCommit = (callback) => {
+      // Finish a pending shield edit before starting a picker undo entry.
+      flushShieldFormEdit();
       const canUseUndo =
         exposed && typeof exposed.beginUndoableChange === "function" &&
         typeof exposed.endUndoableChange === "function";
@@ -766,10 +764,10 @@ const formHandler = (function () {
         });
       });
 
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-      });
+      for (const root of document.querySelectorAll('.modals, dialog')) {
+        if (root.matches('dialog') && root.closest('.modals')) continue;
+        observer.observe(root, {childList:true, subtree:true});
+      }
     };
     const isDedupableSelectElement = (selectEl) =>
       !!(
@@ -946,10 +944,10 @@ const formHandler = (function () {
         changedSelects.forEach(scheduleDedupeSelectOptions);
       });
 
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-      });
+      for (const root of document.querySelectorAll('.modals, dialog')) {
+        if (root.matches('dialog') && root.closest('.modals')) continue;
+        observer.observe(root, {childList:true, subtree:true});
+      }
 
       document.addEventListener(
         "change",
@@ -981,6 +979,8 @@ const formHandler = (function () {
         configBarPosition: "signMaker.configBarPosition",
         interfaceUiScale: "signMaker.interfaceUiScale",
         interfaceThemeMode: "signMaker.interfaceThemeMode",
+        oldInterstateNumberPositioning: "signMaker.oldInterstateNumberPositioning",
+        defaultSignRadius: "signMaker.defaultSignRadius",
         shieldPickerScrollTop: "signMaker.shieldPickerScrollTop",
         customShieldMakerShields: "signMaker.customShieldMaker.shields.v1",
         customIconPickerIcons: "signMaker.customIconPicker.icons.v1",
@@ -1010,17 +1010,13 @@ const formHandler = (function () {
 
       const shouldAllowAplEdge = canUseAplEdgeExitTab();
 
-      Array.from(exitTabWidthSelectElmt.options)
-        .filter((option) => isAplEdgeExitTabWidth(option.value))
-        .forEach((option) => option.remove());
-
+      const aplEdgeOption = Array.from(exitTabWidthSelectElmt.options)
+        .find((option) => isAplEdgeExitTabWidth(option.value));
       if (shouldAllowAplEdge) {
-        const option = document.createElement("option");
-        option.value = EXIT_TAB_APL_EDGE_WIDTH;
-        option.textContent = EXIT_TAB_APL_EDGE_WIDTH;
-        exitTabWidthSelectElmt.appendChild(option);
-      } else if (exitTab && isAplEdgeExitTabWidth(exitTab.width)) {
-        exitTab.width = "Edge";
+        if (!aplEdgeOption) exitTabWidthSelectElmt.add(new Option(EXIT_TAB_APL_EDGE_WIDTH));
+      } else {
+        aplEdgeOption?.remove();
+        if (exitTab && isAplEdgeExitTabWidth(exitTab.width)) exitTab.width = "Edge";
       }
 
       return shouldAllowAplEdge;
@@ -2069,7 +2065,7 @@ const formHandler = (function () {
       currentPanelExitTabProfileId &&
       currentPanelExitTabProfileId !== EXIT_TAB_DEFAULT_PROFILE_ID;
 
-    const saveCurrentExitTabEditsToSelectedProfile = (exitTab = null) => {
+    const saveCurrentExitTabEditsToSelectedProfile = (exitTab, widthChanged) => {
       if (!exitTab || !shouldSaveCurrentExitTabEditsToProfile()) {
         return false;
       }
@@ -2100,7 +2096,7 @@ const formHandler = (function () {
       setExitTabProfileIdOnTab(exitTab, profile.id);
       applyExitTabProfileToLinkedTabs(profile.id, {
         variant,
-        preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+        preserveWidth: !widthChanged,
       });
       return true;
     };
@@ -2259,7 +2255,7 @@ const formHandler = (function () {
       }
     };
 
-    const readExitTabProfileSettingsFromForm = (settings, variant) => {
+    const readExitTabProfileSettingsFromForm = (settings, variant, widthChange) => {
       const form = document.forms[0];
       const resolvedVariant = normalizeExitTabProfileVariant(variant);
       const isAssetVariant = isExitTabAssetVariantValue(resolvedVariant);
@@ -2268,9 +2264,7 @@ const formHandler = (function () {
       delete updated.number;
       updated.variant = resolvedVariant;
       updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
-      if (form["exitTabWidth"] && document.activeElement === form["exitTabWidth"]) {
-        updated.width = form["exitTabWidth"].value || updated.width;
-      }
+      if (widthChange) updated.width = widthChange;
       updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
       updated.textColor =
         form["exitTabTextColor"]?.value || updated.textColor || "Panel Color";
@@ -2374,7 +2368,7 @@ const formHandler = (function () {
       return normalizeExitTabProfileSettings(updated, resolvedVariant);
     };
 
-    const readExitTabProfileForm = () => {
+    const readExitTabProfileForm = (variantChange, widthChange) => {
       const store = normalizeExitTabProfiles();
       const profile =
         store.profiles.find((item) => item.id === selectedExitTabProfileId) ||
@@ -2388,19 +2382,20 @@ const formHandler = (function () {
         selectedExitTabProfileVariant
       );
       const requestedVariant = normalizeExitTabProfileVariant(
-        document.forms[0]["exitVariant"]?.value || activeVariant
+        variantChange || document.forms[0]["exitVariant"]?.value || activeVariant
       );
 
       profile.settingsByVariant[activeVariant] =
         readExitTabProfileSettingsFromForm(
           getExitTabProfileSettings(profile, activeVariant),
-          activeVariant
+          activeVariant,
+          widthChange
         );
       profile.settings = profile.settingsByVariant.Default;
       store.selectedId = profile.id;
       applyExitTabProfileToLinkedTabs(profile.id, {
         variant: activeVariant,
-        preserveWidth: document.activeElement !== document.forms[0]["exitTabWidth"],
+        preserveWidth: !widthChange,
       });
 
       if (
@@ -2432,6 +2427,7 @@ const formHandler = (function () {
       if (!selectEl) {
         return null;
       }
+      if (!selectEl._profilePickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'profile', () => createExitTabProfilePicker(selectEl))) return null;
       if (selectEl._profilePickerApi) {
         selectEl._profilePickerApi.sync();
         return selectEl._profilePickerApi;
@@ -2487,11 +2483,13 @@ const formHandler = (function () {
         const open = !wrapper.classList.contains("open");
         closeAllProfilePickers(wrapper);
         render();
+        if (open) window.SignMakerDropdowns.prepareMenu(menu);
         wrapper.classList.toggle("open", open);
+        if(open)window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:12,maxWidth:24});
       });
 
       document.addEventListener("click", (event) => {
-        if (!wrapper.contains(event.target)) {
+        if (!wrapper.contains(event.target) && !menu.contains(event.target)) {
           wrapper.classList.remove("open");
         }
       });
@@ -2813,19 +2811,6 @@ const formHandler = (function () {
     };
 
     const getNestedExitTabLimit = () => null;
-const getPostThicknessFallback = () =>
-    typeof Post.prototype.defaultThickness === "number"
-      ? Post.prototype.defaultThickness
-      : 1;
-  const normalizeStoredPostThickness = (value) => {
-    const parsed =
-      typeof value === "string" ? parseFloat(value) : Number(value);
-    if (Number.isFinite(parsed)) {
-      return Math.max(0, parsed);
-    }
-    return getPostThicknessFallback();
-  };
-
   const logStorageWarning = (message, error) => {
     if (!localStorageWarningLogged) {
       console.warn(message, error);
@@ -2866,7 +2851,7 @@ const getPostThicknessFallback = () =>
   };
 
   const normalizePanelSpacingPreference = (value, fallback = 1) => {
-    const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+    const parsed = value == null ? NaN : typeof value === "string" ? parseFloat(value) : Number(value);
     const fallbackParsed = typeof fallback === "string" ? parseFloat(fallback) : Number(fallback);
     const resolvedFallback = Number.isFinite(fallbackParsed) ? fallbackParsed : 1;
 
@@ -2977,6 +2962,7 @@ const getPostThicknessFallback = () =>
     return [
       exposed.vars.currentlySelectedPanelIndex,
       exposed.vars.currentlySelectedSubPanelIndex,
+      JSON.stringify(exposed.getGroupEditingPath?.() || []),
     ].join(":");
   };
 
@@ -4404,7 +4390,7 @@ const getPostThicknessFallback = () =>
 
     const panelStylePopoverIsOpen = () => {
       const configBar = document.getElementById("sMConfigBar");
-      return configBar?.dataset.currentMenu === "panelStyleConfig";
+      return ["panelStyleConfig","postStyleConfig","appSettingsConfig"].includes(configBar?.dataset.currentMenu);
     };
 
     const clearPanelStylePopoverPosition = () => {
@@ -4422,25 +4408,18 @@ const getPostThicknessFallback = () =>
 
     const positionPanelStylePopover = () => {
       const modalHolder = document.querySelector(".modals");
-      const panelStyleModal = document.querySelector(".sMModal.panelStyleConfig");
+      const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
+      if (!panelStylePopoverIsOpen()) return;
+      const panelStyleModal = document.querySelector(".sMModal."+activeMenu);
       const configBar = document.getElementById("sMConfigBar");
-      const trigger = document.getElementById("panelStyleConfig");
+      const trigger = document.getElementById(activeMenu);
 
-      if (
-        !modalHolder ||
-        !panelStyleModal ||
-        !configBar ||
-        !panelStylePopoverIsOpen()
-      ) {
-        clearPanelStylePopoverPosition();
-        return;
-      }
+      if (!modalHolder || !panelStyleModal || !configBar) return;
 
       modalHolder.classList.add("panelStylePopoverOpen");
 
       const barRect = configBar.getBoundingClientRect();
       const triggerRect = trigger?.getBoundingClientRect() || barRect;
-      const modalRect = panelStyleModal.getBoundingClientRect();
       const position = String(
         configBar.dataset.position ||
         document.documentElement.dataset.configPosition ||
@@ -4448,7 +4427,21 @@ const getPostThicknessFallback = () =>
       ).toLowerCase();
       const gap = 8;
       const edge = 8;
+      const settings = activeMenu === "appSettingsConfig" || activeMenu === "postStyleConfig";
+      const settingsBesideBar = settings && position === "right";
 
+      if (settings) {
+        const rootStyle = getComputedStyle(document.documentElement);
+        const scale = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
+        const headerHeight = panelStyleModal.querySelector(".sMModalBar").getBoundingClientRect().height;
+        const contentTop = position === "top" ? barRect.bottom + gap : Math.max(0, barRect.top);
+        const available = position === "bottom" ? barRect.top - gap : window.innerHeight - contentTop;
+        const dropdownRoom = 2 * (parseFloat(rootStyle.fontSize) || 20) * scale;
+        const maxContentHeight = Math.max(0, (available - headerHeight - edge - dropdownRoom) / scale);
+        panelStyleModal.style.setProperty("--settings-content-max-height", `${maxContentHeight}px`);
+      }
+
+      const modalRect = panelStyleModal.getBoundingClientRect();
       let left = triggerRect.left;
       let top = triggerRect.top;
 
@@ -4458,13 +4451,14 @@ const getPostThicknessFallback = () =>
         top = barRect.bottom + gap;
       } else {
         left = barRect.left - gap - modalRect.width;
+        if (settingsBesideBar) top = Math.max(0, barRect.top);
       }
 
       const maxLeft = Math.max(edge, window.innerWidth - modalRect.width - edge);
       const maxTop = Math.max(edge, window.innerHeight - modalRect.height - edge);
 
       left = Math.max(edge, Math.min(maxLeft, left));
-      top = Math.max(edge, Math.min(maxTop, top));
+      if (!settingsBesideBar) top = Math.max(edge, Math.min(maxTop, top));
 
       modalHolder.style.setProperty("left", `${left}px`, "important");
       modalHolder.style.setProperty("top", `${top}px`, "important");
@@ -4503,6 +4497,8 @@ const getPostThicknessFallback = () =>
         });
         panelStylePopoverResizeObserver.observe(configBar);
         panelStylePopoverResizeObserver.observe(panelStyleModal);
+        panelStylePopoverResizeObserver.observe(document.getElementById("settings22Modal"));
+        panelStylePopoverResizeObserver.observe(document.getElementById("postStyleModal"));
       }
     };
 
@@ -4530,18 +4526,6 @@ const getPostThicknessFallback = () =>
       return panelSelect;
     };
 
-    const clearPanelSelectorPopoverPosition = () => {
-      const panelSelect = document.getElementById("panelSelect");
-
-      if (!panelSelect) {
-        return;
-      }
-
-      ["top", "right", "bottom", "left"].forEach((property) => {
-        panelSelect.style.removeProperty(property);
-      });
-    };
-
     const positionPanelSelectorPopover = () => {
       const panelSelect = ensurePanelSelectorPopoverPortal();
       const configBar = document.getElementById("sMConfigBar");
@@ -4555,7 +4539,6 @@ const getPostThicknessFallback = () =>
         !trigger ||
         !panelSelectorPopoverIsOpen()
       ) {
-        clearPanelSelectorPopoverPosition();
         return;
       }
 
@@ -4805,7 +4788,7 @@ const getPostThicknessFallback = () =>
     });
   };
 
-  const formatPostKindLabel = (value) => {
+  const formatPostPositionLabel = (value) => {
     if (typeof value !== "string") {
       return "";
     }
@@ -5024,11 +5007,7 @@ const getPostThicknessFallback = () =>
 
     const storedPostThickness = getStoredItem(STORAGE_KEYS.postThickness);
     if (storedPostThickness !== null && post) {
-      const normalizedThickness =
-        typeof post.normalizeThickness === "function"
-          ? post.normalizeThickness(storedPostThickness)
-          : normalizeStoredPostThickness(storedPostThickness);
-      post.thickness = normalizedThickness;
+      post.thickness = post.normalizeThickness(storedPostThickness);
     }
 
     if (post) {
@@ -6222,6 +6201,41 @@ const getPostThicknessFallback = () =>
     return { dropIndex, targetRow, placement };
   };
 
+  const getBlockCreateNewRowDropPosition = (container, clientY) => {
+    const rows = Array.from(container.querySelectorAll(".sMControlRow"));
+    if (!rows.length) {
+      return { dropIndex: 0, targetRow: null, placement: null };
+    }
+
+    const rowRects = rows.map((row) => row.getBoundingClientRect());
+    if (clientY <= rowRects[0].top + 6) {
+      return { dropIndex: 0, targetRow: rows[0], placement: "before" };
+    }
+
+    for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+      if (
+        clientY >= rowRects[rowIndex - 1].bottom - 6 &&
+        clientY <= rowRects[rowIndex].top + 6
+      ) {
+        return {
+          dropIndex: rowIndex,
+          targetRow: rows[rowIndex],
+          placement: "before",
+        };
+      }
+    }
+
+    if (clientY >= rowRects[rowRects.length - 1].bottom - 6) {
+      return {
+        dropIndex: rows.length,
+        targetRow: rows[rows.length - 1],
+        placement: "after",
+      };
+    }
+
+    return { dropIndex: null, targetRow: null, placement: null };
+  };
+
   const handleRowDragStart = (event) => {
     const row = event.currentTarget;
     const fromIndex = Number(row.dataset.dataRow);
@@ -6242,6 +6256,17 @@ const getPostThicknessFallback = () =>
   };
 
   const handleRowListDragOver = (event) => {
+    if (blockDragState?.newType) {
+      const { dropIndex, targetRow, placement } = getBlockCreateNewRowDropPosition(event.currentTarget, event.clientY);
+      clearRowDropIndicators();
+      if (Number.isInteger(dropIndex)) {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        clearBlockDragIndicators();
+        targetRow?.classList.add(placement === "before" ? "dropBefore" : "dropAfter");
+      }
+      return;
+    }
     if (!rowDragState) {
       return;
     }
@@ -6266,6 +6291,15 @@ const getPostThicknessFallback = () =>
   };
 
   const handleRowListDrop = (event) => {
+    if (blockDragState?.newType) {
+      const { dropIndex } = getBlockCreateNewRowDropPosition(event.currentTarget, event.clientY);
+      if (Number.isInteger(dropIndex)) {
+        event.preventDefault();
+        exposed.newControlElem(blockDragState.newType, { newRow: true, newRowIndex: dropIndex });
+        endBlockDrag();
+      }
+      return;
+    }
     if (!rowDragState) {
       return;
     }
@@ -6282,7 +6316,7 @@ const getPostThicknessFallback = () =>
   };
 
   const handleRowListDragLeave = (event) => {
-    if (!rowDragState) {
+    if (!rowDragState && !blockDragState?.newType) {
       return;
     }
     const container = event.currentTarget;
@@ -6399,7 +6433,9 @@ const getPostThicknessFallback = () =>
     }
     event.preventDefault();
     setNewRowDropState(false);
-    if (typeof exposed?.duplicateBlockIntoNewRow === "function") {
+    if (blockDragState.newType) {
+      exposed.newControlElem(blockDragState.newType, { newRow: true });
+    } else if (typeof exposed?.duplicateBlockIntoNewRow === "function") {
       exposed.duplicateBlockIntoNewRow(
         blockDragState.rowIndex,
         blockDragState.blockIndex
@@ -6409,6 +6445,7 @@ const getPostThicknessFallback = () =>
   };
 
   const endBlockDrag = () => {
+    clearRowDropIndicators();
     toggleBlockWiggle(false);
     clearBlockDragIndicators();
     setNewRowDropState(false);
@@ -6494,13 +6531,15 @@ const getPostThicknessFallback = () =>
     const rowEl = event.currentTarget;
     event.preventDefault();
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.dropEffect = blockDragState.newType ? "copy" : "move";
     }
     rowEl.classList.add("dropActive");
     getDropIndexForRow(rowEl, event.clientX);
   };
 
   const handleRowDrop = (event) => {
+    if (blockDragState?.newType && Number.isInteger(getBlockCreateNewRowDropPosition(
+      event.currentTarget.parentElement, event.clientY).dropIndex)) return;
     if (!blockDragState) {
       return;
     }
@@ -6508,6 +6547,11 @@ const getPostThicknessFallback = () =>
     const rowIndex = Number(rowEl.dataset.dataRow);
     event.preventDefault();
     const dropIndex = getDropIndexForRow(rowEl, event.clientX);
+    if (blockDragState.newType) {
+      exposed.newControlElem(blockDragState.newType, { dropRow: rowIndex, dropIndex });
+      endBlockDrag();
+      return;
+    }
     exposed.moveControlElem(
       blockDragState.rowIndex,
       blockDragState.blockIndex,
@@ -8657,7 +8701,8 @@ const getPostThicknessFallback = () =>
     enableSelectOptionDeduplication();
     dedupeAllSelectOptions(document);
     applyStoredPreferences();
-    await Promise.all([loadCustomIconRecords(), customShieldMakerLoadPromise]);
+    await Promise.all([loadCustomIconRecords(), customShieldMakerLoadPromise,
+      window.location?.protocol === "file:" ? window.loadSignMakerAssetFallbacks?.() : null]);
     syncCustomShieldMakerConfigs();
     // Restore and paint the sign before building the editor's option lists.
     if (typeof beforeUI === "function") {
@@ -8665,14 +8710,17 @@ const getPostThicknessFallback = () =>
       post = exposed.getPost();
     }
     await initUI();
+    await window.SignMakerEditorRuntime?.yieldToMain();
     initCustomShieldMaker();
+    await window.SignMakerEditorRuntime?.yieldToMain();
     initializeColorPickers();
+    await window.SignMakerEditorRuntime?.yieldToMain();
     dedupeAllSelectOptions(document);
     bindPanelPaddingControls();
     syncPanelPaddingControlsFromSign(exposed?.getCurrentPanel?.()?.sign);
     const selectionFlashElmt = document.getElementById("disableFlash");
     if (selectionFlashElmt) {
-      selectionFlashElmt.checked = post?.disableFlash !== true;
+      selectionFlashElmt.checked = post?.disableFlash === true;
     }
     bindConfigPositionControls();
     bindKeybindModeButtons(document);
@@ -8949,8 +8997,7 @@ const getPostThicknessFallback = () =>
     const isHighwayGothicFontValue = (value) =>
       isHighwayGothicUiFont(value) || value === "Highway Gothic";
 
-    const getFontPickerDisplaySize = (value) =>
-      isHighwayGothicFontValue(value) ? "120%" : "100%";
+    const getFontPickerDisplaySize=value=>isHighwayGothicFontValue(value)?'1.08rem':'0.9rem';
 
     const closeAllFontPickers = (except = null) => {
       document.querySelectorAll(".fontPicker.open").forEach((picker) => {
@@ -8991,6 +9038,7 @@ const getPostThicknessFallback = () =>
       if (!selectEl) {
         return null;
       }
+      if(!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
 
       syncFontSelectOptionLabels(selectEl);
 
@@ -9003,6 +9051,7 @@ const getPostThicknessFallback = () =>
 
       const wrapper = document.createElement("div");
       wrapper.className = `fontPicker fontPicker-${mode}`;
+      wrapper.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
 
       const trigger = document.createElement("button");
       trigger.type = "button";
@@ -9017,6 +9066,7 @@ const getPostThicknessFallback = () =>
 
       const menu = document.createElement("div");
       menu.className = "fontPickerMenu";
+      menu.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
       const isCustomShieldFontPicker = selectEl.id === "customShieldMakerRouteFont";
       wrapper.classList.toggle("customShieldFontPicker", isCustomShieldFontPicker);
       menu.classList.toggle("customShieldFontPickerMenu", isCustomShieldFontPicker);
@@ -9045,62 +9095,7 @@ const getPostThicknessFallback = () =>
         menu.classList.toggle("hidden", !isLive || wrapper.classList.contains("hidden"));
       };
 
-      const positionFloatingFontPickerMenu = () => {
-        syncFloatingFontPickerMenuClasses();
-
-        if (!wrapper.classList.contains("open")) {
-          return;
-        }
-
-        const triggerRect = trigger.getBoundingClientRect();
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-        const rootFontSize = parseFloat(
-          window.getComputedStyle(document.documentElement).fontSize
-        ) || 16;
-        const edgePadding = 8;
-        const preferredTop = isCustomShieldFontPicker
-          ? Math.max(edgePadding, triggerRect.top - rootFontSize * 12)
-          : Math.max(edgePadding, triggerRect.bottom + 3);
-        const availableBelow = Math.max(0, viewportHeight - preferredTop - edgePadding);
-        const isInlineShieldBannerFontPicker =
-          selectEl.classList.contains("sdShieldBannerFontSelect");
-        const isInlineShieldRoadNameFontPicker =
-          selectEl.id === "sdShield_roadNameFontFamily";
-        const isAplExitTextFontPicker =
-          wrapper.classList.contains("aplExitTextFontPicker");
-        const minimumMenuWidth = isAplExitTextFontPicker
-          ? Math.max(triggerRect.width, rootFontSize * 18)
-          : isInlineShieldRoadNameFontPicker
-          ? Math.max(triggerRect.width, rootFontSize * 7.25)
-          : isInlineShieldBannerFontPicker
-            ? Math.max(triggerRect.width, rootFontSize * 7.25)
-            : triggerRect.width;
-        const menuWidth = Math.min(
-          Math.max(triggerRect.width, minimumMenuWidth),
-          Math.max(minimumMenuWidth, viewportWidth - edgePadding * 2)
-        );
-        const left = Math.min(
-          Math.max(edgePadding, triggerRect.left),
-          Math.max(edgePadding, viewportWidth - menuWidth - edgePadding)
-        );
-
-        const rootDialog = menu.parentElement && menu.parentElement.tagName === "DIALOG"
-          ? menu.parentElement
-          : null;
-        const rootRect = rootDialog ? rootDialog.getBoundingClientRect() : { left: 0, top: 0 };
-
-        menu.style.setProperty("position", rootDialog ? "absolute" : "fixed", "important");
-        menu.style.setProperty("left", left - rootRect.left + "px", "important");
-        menu.style.setProperty("top", preferredTop - rootRect.top + "px", "important");
-        menu.style.setProperty("right", "auto", "important");
-        menu.style.setProperty("bottom", "auto", "important");
-        menu.style.setProperty("width", menuWidth + "px", "important");
-        menu.style.setProperty("min-width", Math.max(triggerRect.width, 1) + "px", "important");
-        menu.style.setProperty("max-height", Math.max(0, availableBelow) + "px", "important");
-        menu.style.setProperty("overflow-y", "auto", "important");
-        menu.style.setProperty("overscroll-behavior", "contain");
-      };
+      const positionFloatingFontPickerMenu=event=>{if(event?.target?.nodeType&&menu.contains(event.target))return;if(wrapper.classList.contains('open'))window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:15,maxWidth:24});};
 
       const updateTrigger = () => {
         const value = selectEl.value || "";
@@ -9119,8 +9114,9 @@ const getPostThicknessFallback = () =>
         const triggerPreviewFont = resolveFontPickerPreviewFont(
           previewFont || "Inter"
         );
-        trigger.style.fontFamily = `"${triggerPreviewFont}", sans-serif`;
-        trigger.style.fontSize = getFontPickerDisplaySize(previewFont);
+        triggerLabel.style.setProperty('--sm-font-preview-family', '"'+triggerPreviewFont+'"');
+        triggerLabel.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(previewFont));
+        window.SignMakerDropdowns.refresh(wrapper);
       };
 
       const makeFontButton = (fontValue) => {
@@ -9135,7 +9131,8 @@ const getPostThicknessFallback = () =>
         button.textContent = getUiFontDisplayName(fontValue);
         const renderedFontValue = resolveFontPickerPreviewFont(fontValue);
         button.style.fontFamily = `"${renderedFontValue}", sans-serif`;
-        button.style.fontSize = getFontPickerDisplaySize(fontValue);
+        button.style.setProperty('--sm-font-preview-family',`"${renderedFontValue}"`);
+        button.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(fontValue));
 
         if (selectEl.value === fontValue) {
           button.classList.add("selected");
@@ -9162,7 +9159,8 @@ const getPostThicknessFallback = () =>
         button.textContent = getUiFontDisplayName(family);
         const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
         button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
-        button.style.fontSize = getFontPickerDisplaySize(previewFont);
+        button.style.setProperty('--sm-font-preview-family',`"${renderedPreviewFont}"`);
+        button.style.setProperty('--sm-font-preview-size',getFontPickerDisplaySize(previewFont));
 
         if (selectEl.value === family) {
           button.classList.add("selected");
@@ -9253,9 +9251,10 @@ const getPostThicknessFallback = () =>
 
         if (willOpen) {
           render();
+          window.SignMakerDropdowns.prepareMenu(menu);
           wrapper.classList.add("open");
           syncFloatingFontPickerMenuClasses();
-          requestAnimationFrame(positionFloatingFontPickerMenu);
+          positionFloatingFontPickerMenu();
         } else {
           wrapper.classList.remove("open");
           syncFloatingFontPickerMenuClasses();
@@ -9476,24 +9475,24 @@ const getPostThicknessFallback = () =>
       normalizeCustomCssColorValue(a).toLowerCase() ===
       normalizeCustomCssColorValue(b).toLowerCase();
 
+    let defaultColorLookupSource = null;
+    let defaultColorLookup = new Map();
     const getDefaultColorNameForCustomPickerValue = (value = "") => {
       const normalizedValue = normalizeCustomCssColorValue(value).toLowerCase();
       if (!normalizedValue || typeof lib === "undefined" || !lib.colors) {
         return "";
       }
 
-      for (const [colorName, colorValue] of Object.entries(lib.colors)) {
-        if (String(colorName).toLowerCase() === normalizedValue) {
-          return colorName;
-        }
-
-        const normalizedDefaultColor = normalizeCustomCssColorValue(colorValue).toLowerCase();
-        if (normalizedDefaultColor && normalizedDefaultColor === normalizedValue) {
-          return colorName;
+      if (defaultColorLookupSource !== lib.colors) {
+        defaultColorLookupSource = lib.colors;
+        defaultColorLookup = new Map();
+        for (const [colorName, colorValue] of Object.entries(lib.colors)) {
+          for (const key of [String(colorName).toLowerCase(), normalizeCustomCssColorValue(colorValue).toLowerCase()]) {
+            if (key && !defaultColorLookup.has(key)) defaultColorLookup.set(key, colorName);
+          }
         }
       }
-
-      return "";
+      return defaultColorLookup.get(normalizedValue) || "";
     };
 
     const isDefaultColorValueForCustomPicker = (value = "") =>
@@ -9642,9 +9641,21 @@ const getPostThicknessFallback = () =>
       }
     };
 
+    const colorSelectLabels = new WeakMap();
     const getColorSelectLabelText = (selectEl) => {
       if (!selectEl) {
         return "";
+      }
+      const cached = colorSelectLabels.get(selectEl);
+      if (cached && cached.id === selectEl.id && cached.label.isConnected &&
+          (cached.label.htmlFor ? cached.label.htmlFor === selectEl.id : cached.label.contains(selectEl))) {
+        return cached.label.textContent || "";
+      }
+      const labels = selectEl.labels;
+      if (labels) {
+        const label = labels[0];
+        if (label) colorSelectLabels.set(selectEl, {id:selectEl.id,label});
+        return label?.textContent || "";
       }
 
       if (selectEl.id) {
@@ -9662,7 +9673,7 @@ const getPostThicknessFallback = () =>
     };
 
     const isColorSelectElement = (selectEl) => {
-      if (!selectEl || selectEl.tagName !== "SELECT") {
+      if (!selectEl || selectEl.tagName !== "SELECT" || selectEl.id === "postColor") {
         return false;
       }
 
@@ -9676,18 +9687,12 @@ const getPostThicknessFallback = () =>
         selectEl.className,
         selectEl.dataset.tooltip,
         selectEl.getAttribute("data-toolTip"),
-        getColorSelectLabelText(selectEl),
       ]
         .filter(Boolean)
         .join(" ");
 
-      if (/font|alignment|position|variant|width|corner|measurement|orientation|shield|icon|logo|arrow|lane|spacing|padding/i.test(descriptor)) {
-        if (!/color|bg|background|border/i.test(descriptor)) {
-          return false;
-        }
-      }
-
-      return /color|bg|background|border/i.test(descriptor);
+      if (/color|bg|background|border/i.test(descriptor)) return true;
+      return /color|bg|background|border/i.test(getColorSelectLabelText(selectEl));
     };
 
     const getResolvedColorValue = (value) => {
@@ -10015,66 +10020,13 @@ const getPostThicknessFallback = () =>
       });
     };
 
-    const fitColorPickerTriggerLabelText = (trigger, label) => {
-      if (!trigger || !label) {
-        return;
-      }
-
-      label.style.removeProperty("font-family");
-      label.style.removeProperty("font-size");
-      label.style.setProperty("white-space", "nowrap", "important");
-
-      const availableWidth = label.clientWidth;
-      if (!Number.isFinite(availableWidth) || availableWidth <= 0) {
-        return;
-      }
-
-      const initialStyle = window.getComputedStyle(label);
-      const initialFontSize = parseFloat(initialStyle.fontSize) || 14;
-      const fits = () => label.scrollWidth <= label.clientWidth + 0.5;
-
-      if (fits()) {
-        return;
-      }
-
-      label.style.setProperty(
-        "font-family",
-        '"Inter Tight", "Inter", sans-serif',
-        "important"
-      );
-      if (fits()) {
-        return;
-      }
-
-      const minimumFontSize = Math.min(initialFontSize, 7);
-      let low = minimumFontSize;
-      let high = initialFontSize;
-      let best = minimumFontSize;
-
-      label.style.setProperty("font-size", `${minimumFontSize}px`, "important");
-      if (!fits()) {
-        return;
-      }
-
-      for (let i = 0; i < 12; i += 1) {
-        const midpoint = (low + high) / 2;
-        label.style.setProperty("font-size", `${midpoint}px`, "important");
-
-        if (fits()) {
-          best = midpoint;
-          low = midpoint;
-        } else {
-          high = midpoint;
-        }
-      }
-
-      label.style.setProperty("font-size", `${best}px`, "important");
-    };
+    const fitColorPickerTriggerLabelText=(trigger,label)=>{label.style.removeProperty('font-size');label.style.removeProperty('font-family');window.SignMakerDropdowns.refresh(trigger);};
 
     const createColorPicker = (selectEl) => {
       if (!isColorSelectElement(selectEl)) {
         return null;
       }
+      if (!selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
 
       ensureCustomColorOptionsForSelect(selectEl);
 
@@ -10224,101 +10176,7 @@ const getPostThicknessFallback = () =>
       const getOptionLabel = (option) =>
         option?.textContent?.trim() || option?.label || option?.value || "Color";
 
-      const copySelectVisualsToTrigger = () => {
-        const wasNativeHidden = selectEl.classList.contains("colorPickerNativeSelect");
-        if (wasNativeHidden) {
-          selectEl.classList.remove("colorPickerNativeSelect");
-        }
-
-        const computed = window.getComputedStyle(selectEl);
-        const rect = selectEl.getBoundingClientRect();
-
-        if (wasNativeHidden) {
-          selectEl.classList.add("colorPickerNativeSelect");
-        }
-
-        const styleProperties = [
-          "width",
-          "minWidth",
-          "height",
-          "padding",
-          "paddingTop",
-          "paddingRight",
-          "paddingBottom",
-          "paddingLeft",
-          "border",
-          "borderRadius",
-          "background",
-          "backgroundColor",
-          "color",
-          "fontFamily",
-          "fontSize",
-          "fontWeight",
-          "letterSpacing",
-          "lineHeight",
-          "textTransform",
-          "boxSizing",
-        ];
-
-        styleProperties.forEach((propertyName) => {
-          const cssName = propertyName.replace(/[A-Z]/g, (match) => "-" + match.toLowerCase());
-          const propertyValue = computed.getPropertyValue(cssName);
-          if (propertyValue) {
-            trigger.style.setProperty(cssName, propertyValue);
-          }
-        });
-
-        trigger.style.backgroundImage = "none";
-        trigger.style.backgroundRepeat = "no-repeat";
-        trigger.style.backgroundPosition = "initial";
-        trigger.style.paddingRight = "0.35rem";
-        trigger.style.display = "inline-flex";
-        trigger.style.alignItems = "center";
-        trigger.style.justifyContent = "space-between";
-
-        wrapper.style.margin = computed.margin;
-        wrapper.style.verticalAlign = computed.verticalAlign || "middle";
-
-        const rootFontSize = parseFloat(
-          window.getComputedStyle(document.documentElement).fontSize
-        ) || 16;
-        const isCustomShieldMakerColorSelect =
-          selectEl.id === "customShieldMakerRouteColor" ||
-          !!selectEl.closest("#customShieldMaker");
-        const minimumColorPickerHeight = rootFontSize * 1.45;
-        const computedWidth = parseFloat(computed.width);
-        const computedMinWidth = parseFloat(computed.minWidth);
-        const computedHeight = parseFloat(computed.height);
-
-        const measuredWidth = Math.max(
-          Number.isFinite(rect.width) ? rect.width : 0,
-          Number.isFinite(computedWidth) ? computedWidth : 0,
-          Number.isFinite(computedMinWidth) ? computedMinWidth : 0
-        );
-        const storedBaseWidth = parseFloat(wrapper.dataset.colorPickerBaseWidth || "");
-        if (!Number.isFinite(storedBaseWidth) && measuredWidth > 0) {
-          wrapper.dataset.colorPickerBaseWidth = String(measuredWidth);
-        }
-
-        const targetWidth = Number.isFinite(storedBaseWidth)
-          ? storedBaseWidth
-          : measuredWidth;
-        const targetHeight = Math.max(
-          Number.isFinite(rect.height) ? rect.height : 0,
-          Number.isFinite(computedHeight) ? computedHeight : 0,
-          minimumColorPickerHeight
-        );
-
-        if (targetWidth > 0) {
-          wrapper.style.width = targetWidth + "px";
-          wrapper.style.minWidth = targetWidth + "px";
-        }
-        wrapper.style.maxWidth = isCustomShieldMakerColorSelect ? "100%" : "none";
-        trigger.style.width = "100%";
-        trigger.style.minWidth = "100%";
-        trigger.style.height = targetHeight + "px";
-        trigger.style.minHeight = minimumColorPickerHeight + "px";
-      };
+      const copySelectVisualsToTrigger=()=>window.SignMakerDropdowns.refresh(wrapper);
 
       const updateCustomPanelInputsFromHex = (hexValue) => {
         const sanitizedHex = normalizeCustomColorHexInput(hexValue).padEnd(6, "0").slice(0, 6);
@@ -10553,9 +10411,7 @@ const getPostThicknessFallback = () =>
         );
         triggerLabel.textContent = getOptionLabel(currentOption) || currentValue || "Color";
         fitColorPickerTriggerLabelText(trigger, triggerLabel);
-        requestAnimationFrame(() =>
-          fitColorPickerTriggerLabelText(trigger, triggerLabel)
-        );
+
         const resolvedValue = getColorOptionIconValue(currentValue, selectEl);
         triggerIcon.style.background = resolvedValue || "";
         triggerIcon.classList.toggle("specialColorSwatch", !resolvedValue);
@@ -10575,84 +10431,10 @@ const getPostThicknessFallback = () =>
         customPanel.classList.toggle("open", isAddingCustomColor);
       };
 
-      const positionFloatingColorPickerPanels = () => {
-        syncFloatingColorPickerPanelClasses();
-        if (!wrapper.classList.contains("open") && !wrapper.classList.contains("addingCustomColor")) {
-          return;
-        }
-
-        const triggerRect = trigger.getBoundingClientRect();
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-        const appZoom = parseFloat(
-          window.getComputedStyle(document.documentElement).getPropertyValue("--sm-app-zoom")
-        ) || 1;
-        const rootFontSize = parseFloat(
-          window.getComputedStyle(document.documentElement).fontSize
-        ) || 16;
-        const scaledRem = rootFontSize * appZoom;
-        const scaledPx = (value) => value * appZoom;
-        const edgePadding = 8;
-        const isCustomShieldMakerColorPicker =
-          selectEl.id === "customShieldMakerRouteColor" ||
-          !!selectEl.closest("#customShieldMaker");
-        const menuWidth = isCustomShieldMakerColorPicker
-          ? Math.min(
-              Math.max(triggerRect.width, 1),
-              Math.max(1, viewportWidth - edgePadding * 2)
-            )
-          : Math.min(
-              Math.max(triggerRect.width, scaledRem * 14),
-              Math.max(scaledRem * 14, viewportWidth - edgePadding * 2)
-            );
-        const preferredTop = isCustomShieldMakerColorPicker
-          ? Math.max(edgePadding, triggerRect.top - rootFontSize * 9)
-          : Math.max(edgePadding, triggerRect.bottom + 3);
-        const definedMaxPanelHeight = Math.min(rootFontSize * 34, viewportHeight * 0.75);
-        const availableBelow = Math.max(0, viewportHeight - preferredTop - edgePadding);
-        const top = preferredTop;
-        const maxPanelHeight = Math.max(
-          0,
-          Math.min(definedMaxPanelHeight, availableBelow)
-        );
-        const left = Math.min(
-          Math.max(edgePadding, triggerRect.left),
-          Math.max(edgePadding, viewportWidth - menuWidth - edgePadding)
-        );
-
-        const rootDialog = menu.parentElement && menu.parentElement.tagName === "DIALOG"
-          ? menu.parentElement
-          : null;
-        const rootRect = rootDialog ? rootDialog.getBoundingClientRect() : { left: 0, top: 0 };
-
-        menu.style.setProperty("position", rootDialog ? "absolute" : "fixed", "important");
-        menu.style.setProperty("left", left - rootRect.left + "px", "important");
-        menu.style.setProperty("top", top - rootRect.top + "px", "important");
-        menu.style.setProperty("right", "auto", "important");
-        menu.style.setProperty("bottom", "auto", "important");
-        menu.style.setProperty("width", menuWidth + "px", "important");
-        menu.style.setProperty("min-width", Math.max(triggerRect.width, 1) + "px", "important");
-        menu.style.setProperty("max-height", maxPanelHeight + "px", "important");
-        menu.style.setProperty("overflow-y", "auto", "important");
-        menu.style.setProperty("overscroll-behavior", "contain");
-
-        const panelWidth = scaledPx(248);
-        const panelLeftCandidate = left + menuWidth + scaledPx(7);
-        const panelLeft = panelLeftCandidate + panelWidth + edgePadding <= viewportWidth
-          ? panelLeftCandidate
-          : Math.max(edgePadding, left - panelWidth - scaledPx(7));
-
-        customPanel.style.setProperty("position", rootDialog ? "absolute" : "fixed", "important");
-        customPanel.style.setProperty("left", panelLeft - rootRect.left + "px", "important");
-        customPanel.style.setProperty("top", top - rootRect.top + "px", "important");
-        customPanel.style.setProperty("right", "auto", "important");
-        customPanel.style.setProperty("bottom", "auto", "important");
-        customPanel.style.setProperty("width", panelWidth + "px", "important");
-        customPanel.style.setProperty("min-width", panelWidth + "px", "important");
-        customPanel.style.setProperty("max-height", maxPanelHeight + "px", "important");
-        customPanel.style.setProperty("overflow-y", "auto", "important");
-        customPanel.style.setProperty("overscroll-behavior", "contain");
-      };
+      const positionFloatingColorPickerPanels=event=>{if(event?.target?.nodeType&&(menu.contains(event.target)||customPanel.contains(event.target)))return;
+   if(wrapper.classList.contains('open'))window.SignMakerDropdowns.positionMenu(menu,trigger,{minWidth:12.5,maxWidth:18});
+   if(wrapper.classList.contains('addingCustomColor'))window.SignMakerDropdowns.positionMenu(customPanel,trigger,{minWidth:16,maxWidth:20,openClass:'addingCustomColor',beside:menu});
+ };
 
       const syncHiddenState = () => {
         const hidden =
@@ -10682,9 +10464,10 @@ const getPostThicknessFallback = () =>
         closeAllColorPickers(wrapper);
         if (willOpen) {
           render();
+          window.SignMakerDropdowns.prepareMenu(menu);
           wrapper.classList.add("open");
           syncFloatingColorPickerPanelClasses();
-          requestAnimationFrame(positionFloatingColorPickerPanels);
+          positionFloatingColorPickerPanels();
         } else {
           wrapper.classList.remove("open", "addingCustomColor");
         }
@@ -10955,6 +10738,7 @@ const getPostThicknessFallback = () =>
 
     const refreshAllShieldPickers = () => {
       activeShieldPickerApis.forEach((pickerApi) => {
+        if (!pickerApi?.element?.isConnected) { activeShieldPickerApis.delete(pickerApi); return; }
         if (pickerApi && typeof pickerApi.refresh === "function") {
           pickerApi.refresh();
         }
@@ -11889,6 +11673,10 @@ const getPostThicknessFallback = () =>
         return;
       }
 
+      if (image.classList.contains("shieldPickerTriggerIcon") &&
+          window.SignMakerEditorRuntime?.defer(image, "shield-preview", () =>
+            setShieldPickerButtonIcon(image, requestedPath, finalFallback))) return;
+
       const requested = String(requestedPath || "").trim();
       const bundledFallback =
         requested &&
@@ -11996,6 +11784,7 @@ const getPostThicknessFallback = () =>
         label: String(label || value),
       }));
 
+    const blockTypeLabelWidths = new Map();
     const syncSubpanelStandaloneBlockTypePickerWidth = (wrapper, trigger, label) => {
       if (!wrapper || !trigger || !label) {
         return;
@@ -12004,6 +11793,10 @@ const getPostThicknessFallback = () =>
       /* Measure outside the flex button so the current row cannot squeeze the
          probe and make the picker narrower than its longest option. */
       const labelStyle = window.getComputedStyle(label);
+      const entries = getSubpanelBlockTypeEntries();
+      const cacheKey = JSON.stringify([labelStyle.fontFamily,labelStyle.fontSize,labelStyle.fontWeight,labelStyle.fontStyle,labelStyle.letterSpacing,labelStyle.lineHeight,entries.map(entry=>entry.label)]);
+      let widestLabel = document.fonts?.status === "loaded" ? blockTypeLabelWidths.get(cacheKey) : undefined;
+      if (widestLabel === undefined) {
       const probe = document.createElement("span");
       probe.style.position = "fixed";
       probe.style.left = "-10000px";
@@ -12023,10 +11816,13 @@ const getPostThicknessFallback = () =>
       probe.style.lineHeight = labelStyle.lineHeight;
       document.body.appendChild(probe);
 
-      let widestLabel = 0;
-      for (const entry of getSubpanelBlockTypeEntries()) {
+      widestLabel = 0;
+      for (const entry of entries) {
         probe.textContent = entry.label;
         widestLabel = Math.max(widestLabel, probe.getBoundingClientRect().width);
+      }
+      probe.remove();
+      if (document.fonts?.status === "loaded") blockTypeLabelWidths.set(cacheKey, widestLabel);
       }
 
       const triggerStyle = window.getComputedStyle(trigger);
@@ -12034,11 +11830,12 @@ const getPostThicknessFallback = () =>
       const paddingRight = parseFloat(triggerStyle.paddingRight) || 0;
       const borderLeft = parseFloat(triggerStyle.borderLeftWidth) || 0;
       const borderRight = parseFloat(triggerStyle.borderRightWidth) || 0;
+      const caret = trigger.querySelector('.shieldPickerTriggerCaret');
+      const caretWidth = caret ? parseFloat(window.getComputedStyle(caret).width) || 0 : 0;
+      const gap = parseFloat(triggerStyle.columnGap) || 0;
       const targetWidth = Math.ceil(
-        widestLabel + paddingLeft + paddingRight + borderLeft + borderRight + 2
+        widestLabel + paddingLeft + paddingRight + borderLeft + borderRight + caretWidth + gap + 2
       );
-
-      probe.remove();
 
       if (targetWidth > 0) {
         wrapper.style.setProperty("--block-type-trigger-width", `${targetWidth}px`);
@@ -12055,6 +11852,8 @@ const getPostThicknessFallback = () =>
       const popover = document.createElement("div");
       popover.id = "subpanelBlockTypePickerMenu";
       popover.className = "shieldPickerPopover blockTypePickerPopover";
+      popover.setAttribute("role", "listbox");
+      popover.setAttribute("aria-label", "Element type");
 
       const list = document.createElement("div");
       list.className = "blockTypePickerList";
@@ -12069,51 +11868,21 @@ const getPostThicknessFallback = () =>
       return popover;
     };
 
-    const placeSubpanelBlockTypePicker = () => {
-      const active = activeSubpanelBlockTypePicker;
-      const popover = subpanelBlockTypePickerMenu;
-
-      if (!active || !popover || !active.anchor?.isConnected) {
-        return;
-      }
-
-      const rect = active.anchor.getBoundingClientRect();
-      const visualScale =
-        parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue("--sm-app-zoom")
-        ) || 1;
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const bottomSpace = Math.max(90, viewportHeight - rect.bottom - 12);
-
-      popover.style.position = "fixed";
-      popover.style.width = "max-content";
-      popover.style.minWidth = active.inline ? "0px" : rect.width + "px";
-      popover.style.maxWidth = "calc(100vw - 16px)";
-      popover.style.top = rect.bottom + 2 + "px";
-      popover.style.bottom = "auto";
-      popover.style.maxHeight =
-        Math.max(90, Math.min(620, bottomSpace / visualScale)) + "px";
-
-      const menuWidth = popover.getBoundingClientRect().width || rect.width;
-      const desiredLeft = rect.left;
-      const clampedLeft = Math.min(
-        Math.max(8, desiredLeft),
-        Math.max(8, viewportWidth - menuWidth - 8)
-      );
-      popover.style.left = clampedLeft + "px";
+    const placeSubpanelBlockTypePicker=()=>{
+      const active=activeSubpanelBlockTypePicker;
+      if(active&&subpanelBlockTypePickerMenu)window.SignMakerDropdowns.positionMenu(subpanelBlockTypePickerMenu,active.trigger,{minWidth:0,maxWidth:18,anchor:active.anchor,fitContent:true});
     };
 
-    const closeSubpanelBlockTypePicker = () => {
-      if (activeSubpanelBlockTypePicker?.wrapper) {
-        activeSubpanelBlockTypePicker.wrapper.classList.remove("open");
-      }
+    const closeSubpanelBlockTypePicker = (restoreFocus = false) => {
+      const active = activeSubpanelBlockTypePicker;
+      activeSubpanelBlockTypePicker = null;
+      active?.wrapper.classList.remove("open");
+      active?.trigger.setAttribute("aria-expanded", "false");
 
       if (subpanelBlockTypePickerMenu) {
-        subpanelBlockTypePickerMenu.classList.remove("open");
+        window.SignMakerDropdowns.closeMenu(subpanelBlockTypePickerMenu);
       }
-
-      activeSubpanelBlockTypePicker = null;
+      if (restoreFocus && active?.trigger.isConnected) active.trigger.focus({ preventScroll: true });
     };
 
     const bindSubpanelBlockTypePickerGlobalEvents = () => {
@@ -12123,7 +11892,7 @@ const getPostThicknessFallback = () =>
 
       subpanelBlockTypePickerGlobalEventsBound = true;
 
-      document.addEventListener("click", (event) => {
+      const closeOnOutside = (event) => {
         const active = activeSubpanelBlockTypePicker;
         if (!active) {
           return;
@@ -12134,13 +11903,17 @@ const getPostThicknessFallback = () =>
         if (!clickedTrigger && !clickedMenu) {
           closeSubpanelBlockTypePicker();
         }
-      });
+      };
+      document.addEventListener("pointerdown", closeOnOutside, true);
+      document.addEventListener("click", closeOnOutside, true);
 
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && activeSubpanelBlockTypePicker) {
-          closeSubpanelBlockTypePicker();
+          event.preventDefault();
+          event.stopPropagation();
+          closeSubpanelBlockTypePicker(true);
         }
-      });
+      }, true);
 
       window.addEventListener("resize", () => {
         if (activeSubpanelBlockTypePicker) {
@@ -12175,6 +11948,8 @@ const getPostThicknessFallback = () =>
         item.textContent = entry.label;
         item.dataset.blockTypeValue = entry.value;
         item.classList.toggle("selected", entry.value === selectedValue);
+        item.setAttribute("role", "option");
+        item.setAttribute("aria-selected", String(entry.value === selectedValue));
 
         item.addEventListener("click", (event) => {
           event.preventDefault();
@@ -12221,6 +11996,9 @@ const getPostThicknessFallback = () =>
         inline,
       };
 
+      window.SignMakerDropdowns.prepareMenu(popover);
+      trigger.setAttribute("aria-controls", popover.id);
+      trigger.setAttribute("aria-expanded", "true");
       wrapper.classList.add("open");
       popover.classList.add("open");
       placeSubpanelBlockTypePicker();
@@ -12242,6 +12020,8 @@ const getPostThicknessFallback = () =>
         trigger.type = "button";
         trigger.className = "shieldPickerTrigger blockTypePickerTrigger";
         trigger.setAttribute("aria-label", "Choose new block type");
+        trigger.setAttribute("aria-haspopup", "listbox");
+        trigger.setAttribute("aria-expanded", "false");
 
         const label = document.createElement("span");
         label.className = "shieldPickerTriggerLabel blockTypePickerTriggerLabel";
@@ -12276,6 +12056,7 @@ const getPostThicknessFallback = () =>
             (item) => item.value === nativeSelect.value
           );
           label.textContent = entry?.label || "Control Text";
+          window.SignMakerDropdowns.refresh(wrapper);
           syncSubpanelStandaloneBlockTypePickerWidth(wrapper, trigger, label);
         };
 
@@ -12301,6 +12082,8 @@ const getPostThicknessFallback = () =>
       trigger.type = "button";
       trigger.className = "blockTypeInlinePickerTrigger";
       trigger.setAttribute("aria-label", "Change block type");
+      trigger.setAttribute("aria-haspopup", "listbox");
+      trigger.setAttribute("aria-expanded", "false");
       trigger.title = "Change block type";
       trigger.draggable = false;
 
@@ -12324,7 +12107,7 @@ const getPostThicknessFallback = () =>
         openSubpanelBlockTypePicker({
           wrapper,
           trigger,
-          anchor: trigger,
+          anchor: anchor || trigger,
           value: currentValue,
           inline: true,
           onSelect: (nextValue) => {
@@ -12468,7 +12251,7 @@ const getPostThicknessFallback = () =>
         row.appendChild(editButton);
       }
 
-      if (node.children && node.children.length) {
+      if (isExpanded) {
         const childrenWrap = document.createElement("div");
         childrenWrap.className = "shieldPickerTreeChildren";
         childrenWrap.dataset.parentId = node.id || "";
@@ -12523,62 +12306,7 @@ const getPostThicknessFallback = () =>
       });
     };
 
-    const fitShieldPickerTriggerLabelText = (trigger, label) => {
-      if (!trigger || !label) {
-        return;
-      }
-
-      label.style.removeProperty("font-family");
-      label.style.removeProperty("font-size");
-      label.style.setProperty("white-space", "nowrap", "important");
-
-      const availableWidth = label.clientWidth;
-      if (!Number.isFinite(availableWidth) || availableWidth <= 0) {
-        return;
-      }
-
-      const initialStyle = window.getComputedStyle(label);
-      const initialFontSize = parseFloat(initialStyle.fontSize) || 14;
-
-      const fits = () => label.scrollWidth <= label.clientWidth + 0.5;
-
-      if (fits()) {
-        return;
-      }
-
-      label.style.setProperty(
-        "font-family",
-        '"Inter Tight", "Inter", sans-serif',
-        "important"
-      );
-      if (fits()) {
-        return;
-      }
-
-      const minimumFontSize = Math.min(initialFontSize, 7);
-      let low = minimumFontSize;
-      let high = initialFontSize;
-      let best = minimumFontSize;
-
-      label.style.setProperty("font-size", `${minimumFontSize}px`, "important");
-      if (!fits()) {
-        return;
-      }
-
-      for (let i = 0; i < 12; i += 1) {
-        const midpoint = (low + high) / 2;
-        label.style.setProperty("font-size", `${midpoint}px`, "important");
-
-        if (fits()) {
-          best = midpoint;
-          low = midpoint;
-        } else {
-          high = midpoint;
-        }
-      }
-
-      label.style.setProperty("font-size", `${best}px`, "important");
-    };
+    const fitShieldPickerTriggerLabelText=(trigger,label)=>{label.style.removeProperty('font-size');label.style.removeProperty('font-family');window.SignMakerDropdowns.refresh(trigger);};
 
     const createShieldPicker = ({
       mount,
@@ -12641,39 +12369,11 @@ const getPostThicknessFallback = () =>
           }
         };
 
-        const placePopover = () => {
-          const rect = trigger.getBoundingClientRect();
-
-          const visualScale =
-            parseFloat(
-              getComputedStyle(document.documentElement)
-                .getPropertyValue("--sm-app-zoom")
-            ) || 1;
-
-          const viewportHeight = window.innerHeight;
-          const bottomSpace = viewportHeight - rect.bottom - 12;
-          const topSpace = rect.top - 12;
-          const openUpward = bottomSpace < 220 && topSpace > bottomSpace;
-
-          popover.style.position = "fixed";
-          popover.style.left = rect.left + "px";
-          popover.style.width = Math.max(rect.width, 320) + "px";
-
-          if (openUpward) {
-            popover.style.top = "auto";
-            popover.style.bottom = viewportHeight - rect.top + 2 + "px";
-            popover.style.maxHeight =
-              Math.max(260, Math.min(760, topSpace / visualScale)) + "px";
-          } else {
-            popover.style.bottom = "auto";
-            popover.style.top = rect.bottom + 2 + "px";
-            popover.style.maxHeight =
-              Math.max(260, Math.min(760, bottomSpace / visualScale)) + "px";
-          }
-        };;
+        const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:18,maxWidth:28});;
 
       const tree = document.createElement("div");
       tree.className = "shieldPickerTree";
+      let treeDirty = true;
       popover.appendChild(tree);
 
       wrapper.appendChild(trigger);
@@ -12709,12 +12409,6 @@ const getPostThicknessFallback = () =>
           triggerIconPath,
           SHIELD_DROPDOWN_PLACEHOLDER_ICON
         );
-        fitShieldPickerTriggerLabelText(trigger, triggerLabel);
-        if (typeof requestAnimationFrame === "function") {
-          requestAnimationFrame(() =>
-            fitShieldPickerTriggerLabelText(trigger, triggerLabel)
-          );
-        }
       };
 
       const openCustomShieldMakerFromPicker = () => {
@@ -12778,7 +12472,11 @@ const getPostThicknessFallback = () =>
       };
 
       const rerenderTree = (forceRebuild = false) => {
-        if (forceRebuild || !tree.childElementCount) {
+        if (forceRebuild) treeDirty = true;
+        if (!wrapper.classList.contains("open")) return;
+        if (treeDirty || !tree.childElementCount) {
+          treeDirty = false;
+          const scrollTop = popover.scrollTop;
           renderShieldPickerTree({
             container: tree,
             nodes: rootNodes,
@@ -12803,11 +12501,7 @@ const getPostThicknessFallback = () =>
 
                 syncTrigger();
 
-                if (options.preserveTree) {
-                  updateShieldPickerTreeState(tree, currentValue, expandedIds);
-                } else {
-                  rerenderTree(true);
-                }
+                rerenderTree(true);
 
                   if (!options.keepOpen) {
                     saveShieldPickerScrollTop();
@@ -12825,7 +12519,7 @@ const getPostThicknessFallback = () =>
                   expandedIds.add(id);
                 }
 
-                updateShieldPickerTreeState(tree, currentValue, expandedIds);
+                rerenderTree(true);
               },
               onEdit: (node) => {
                 saveShieldPickerScrollTop();
@@ -12843,7 +12537,7 @@ const getPostThicknessFallback = () =>
                 }
               },
             });
-
+            popover.scrollTop = scrollTop;
             return;
           }
 
@@ -12860,11 +12554,12 @@ const getPostThicknessFallback = () =>
             saveShieldPickerScrollTop();
           }
 
+          if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
           wrapper.classList.toggle("open", willOpen);
 
           if (willOpen) {
-            placePopover();
             rerenderTree();
+            placePopover();
             requestAnimationFrame(() => {
               restoreShieldPickerScrollTop();
             });
@@ -12908,6 +12603,7 @@ const getPostThicknessFallback = () =>
         element: wrapper,
         getValue: () => currentValue,
         setValue: (nextValue) => {
+          if (currentValue === (nextValue || "")) return;
           currentValue = nextValue || "";
           expandPathToValue(currentValue);
           syncTrigger();
@@ -12938,10 +12634,13 @@ const getPostThicknessFallback = () =>
         const hasNativeOption = Array.from(nativeSelect.options || []).some(
           (option) => option.value === normalizedValue
         );
-
-        if (hasNativeOption) {
-          nativeSelect.value = normalizedValue;
+        if (!hasNativeOption) {
+          const option = document.createElement("option");
+          option.value = normalizedValue;
+          option.textContent = normalizedValue;
+          nativeSelect.replaceChildren(option);
         }
+        nativeSelect.value = normalizedValue;
       }
 
       const pickerApi =
@@ -13315,26 +13014,7 @@ const getPostThicknessFallback = () =>
         wrapper.classList.remove("open");
       };
 
-      const placePopover = () => {
-        const rect = trigger.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const estimatedHeight = Math.max(1, state.options.length) * 42 + 8;
-        const bottomSpace = viewportHeight - rect.bottom - 10;
-        const topSpace = rect.top - 10;
-        const openUpward = bottomSpace < estimatedHeight && topSpace > bottomSpace;
-
-        popover.style.position = "fixed";
-        popover.style.left = rect.left + "px";
-        popover.style.width = Math.max(rect.width, 136) + "px";
-
-        if (openUpward) {
-          popover.style.top = "auto";
-          popover.style.bottom = viewportHeight - rect.top + 2 + "px";
-        } else {
-          popover.style.bottom = "auto";
-          popover.style.top = rect.bottom + 2 + "px";
-        }
-      };
+      const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:0,maxWidth:12});
 
       const applyImageFallback = (image, requestedPath = "") => {
         if (typeof window.applySignMakerAssetFallback === "function") {
@@ -13452,7 +13132,7 @@ const getPostThicknessFallback = () =>
           ...nextState,
         };
         syncTrigger();
-        renderItems();
+        if (wrapper.classList.contains("open")) renderItems();
       };
 
       const refreshPreview = () => {
@@ -13478,6 +13158,7 @@ const getPostThicknessFallback = () =>
               picker.classList.remove("open");
             }
           });
+        if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
         wrapper.classList.toggle("open", willOpen);
         if (willOpen) {
           renderItems();
@@ -13527,6 +13208,8 @@ const getPostThicknessFallback = () =>
       if (!nativeSelect) {
         return null;
       }
+      if (window.SignMakerEditorRuntime?.defer(nativeSelect, "shieldVariant", () =>
+        syncSdShieldVariantPickerForBase(baseValue, { requestedValue, preferRemembered, updateBlock }))) return null;
 
       const normalizedBase =
         baseValue ||
@@ -13572,7 +13255,7 @@ const getPostThicknessFallback = () =>
         nativeSelect.insertAdjacentElement("afterend", pickerHost);
       }
 
-      nativeSelect.style.display = "none";
+      nativeSelect.style.setProperty("display","none","important");
 
       let pickerApi =
         nativeSelect._shieldVariantPickerApi ||
@@ -13659,6 +13342,8 @@ const getPostThicknessFallback = () =>
         return null;
       }
 
+      if (window.SignMakerEditorRuntime?.defer(nativeSelect, "shieldBase", ensureSdShieldBasePicker)) return null;
+
       let pickerHost = nativeSelect.parentElement?.querySelector(
         ".sdShieldBasePickerHost"
       );
@@ -13669,7 +13354,7 @@ const getPostThicknessFallback = () =>
         nativeSelect.insertAdjacentElement("afterend", pickerHost);
       }
 
-      nativeSelect.style.display = "none";
+      nativeSelect.style.setProperty("display","none","important");
 
       let pickerApi =
         nativeSelect._shieldPickerApi || pickerHost._shieldPickerApi || null;
@@ -14144,14 +13829,7 @@ const getPostThicknessFallback = () =>
         const wrapper = document.createElement("div");
         wrapper.className = "shieldPicker arrowPicker";
     
-        const placePopover = () => {
-          const rect = trigger.getBoundingClientRect();
-          popover.style.position = "fixed";
-          popover.style.left = `${rect.left}px`;
-          popover.style.top = `${rect.bottom + 2}px`;
-          popover.style.width = `${Math.max(rect.width, 320)}px`;
-          popover.style.maxHeight = `${Math.max(160, window.innerHeight - rect.bottom - 12)}px`;
-        };
+        const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:12,maxWidth:24});
 
         const trigger = document.createElement("button");
         trigger.type = "button";
@@ -14186,6 +13864,7 @@ const getPostThicknessFallback = () =>
       const syncTrigger = () => {
         const entry = findArrowPickerEntryByValue(currentValue, items);
         triggerLabel.textContent = entry ? entry.label : placeholder;
+        if (window.SignMakerEditorRuntime?.defer(wrapper, "arrow-preview", syncTrigger)) return;
           triggerIconHolder.innerHTML = "";
           const triggerIcon = createPreviewNode(entry ? entry.value : "", previewOptions);
           if (triggerIcon) {
@@ -14197,6 +13876,11 @@ const getPostThicknessFallback = () =>
       };
 
       const renderList = () => {
+        if (!wrapper.classList.contains("open")) return;
+        if (list.childElementCount === items.length) {
+          [...list.children].forEach((row,index) => row.classList.toggle("selected", items[index].value === currentValue));
+          return;
+        }
         list.innerHTML = "";
 
         items.forEach((item) => {
@@ -14241,9 +13925,11 @@ const getPostThicknessFallback = () =>
           event.stopPropagation();
 
           const willOpen = !wrapper.classList.contains("open");
+          if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
           wrapper.classList.toggle("open", willOpen);
 
           if (willOpen) {
+            renderList();
             placePopover();
           }
         });
@@ -14274,9 +13960,10 @@ const getPostThicknessFallback = () =>
 
       return {
         element: wrapper,
-        destroy: () => pickerListeners.abort(),
+        destroy: () => { pickerListeners.abort(); popover.remove(); wrapper.remove(); },
         getValue: () => currentValue,
         setValue: (nextValue) => {
+          if (currentValue === (nextValue || "")) return;
           currentValue = nextValue || "";
           syncTrigger();
           renderList();
@@ -15117,6 +14804,7 @@ const getPostThicknessFallback = () =>
 
           if (hideConfigLabel) {
             hideConfigLabel.textContent = menuLabel;
+            document.getElementById("hideConfig").setAttribute("aria-label", menuLabel);
           }
           if (icon) {
             icon.textContent = isCollapsed ? "menu_open" : "open_in_full";
@@ -15146,6 +14834,18 @@ const getPostThicknessFallback = () =>
       }
 
       updateUtilityButtonLabels();
+      window.SignMakerSettings22.init({
+        getTheme:getStoredInterfaceThemeMode,
+        setTheme:value=>{applyInterfaceThemeMode(value,{persist:true});updateUtilityButtonLabels();},
+        getScale:getStoredInterfaceUIScale,
+        setScale:value=>applyInterfaceUIScale(value,{persist:true}),
+        getToolbar:getStoredConfigBarPosition,
+        setToolbar:value=>applyConfigBarPosition(value,{persist:true}),
+        getKeybind:getStoredKeybindMode,
+        setKeybind:value=>applyKeybindMode(value,{persist:true}),
+        getRestore:()=>normalizeRestoreOnRefreshMode(getStoredItem(STORAGE_KEYS.restoreOnRefresh)),
+        setRestore:value=>setStoredItem(STORAGE_KEYS.restoreOnRefresh,normalizeRestoreOnRefreshMode(value)),
+      });
       const exportButton = document.getElementById("export");
       const downloadDialog = document.getElementById("downloadContent");
       const cancelDownloadButton = document.getElementById("cancelDownload");
@@ -15202,73 +14902,12 @@ const getPostThicknessFallback = () =>
           }
         });
       }
-      const settingsMenuButton = document.getElementById("settingsMenuButton");
-      const signMakerSettingsModal = document.getElementById("signMakerSettingsModal");
-      const closeSignMakerSettings = document.getElementById("closeSignMakerSettings");
-
-      const isSettingsOpen = () =>
-        !!signMakerSettingsModal && signMakerSettingsModal.classList.contains("open");
-
-      const openSettings = () => {
-        if (!signMakerSettingsModal) {
-          return;
-        }
-        signMakerSettingsModal.classList.add("open");
-      };
-
-      const closeSettings = () => {
-        if (!signMakerSettingsModal) {
-          return;
-        }
-        signMakerSettingsModal.classList.remove("open");
-      };
-
-      if (settingsMenuButton) {
-        settingsMenuButton.type = "button";
-        settingsMenuButton.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-
-          if (isSettingsOpen()) {
-            closeSettings();
-          } else {
-            openSettings();
-          }
-        });
-      }
-
-      if (closeSignMakerSettings) {
-        closeSignMakerSettings.type = "button";
-        closeSignMakerSettings.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          closeSettings();
-        });
-      }
-
-      if (signMakerSettingsModal) {
-        signMakerSettingsModal.addEventListener("click", (event) => {
-          event.stopPropagation();
-        });
-      }
+      const isSettingsOpen=()=>sMConfigBar.dataset.currentMenu==='appSettingsConfig';
       const settingsSideTabs = document.querySelectorAll(".settingsSideTab");
       const settingsPages = document.querySelectorAll(".settingsPage");
       let currentSettingsPageId = "settingsGeneral";
 
-      const showSettingsPage = (pageId) => {
-        currentSettingsPageId = pageId;
-
-        settingsSideTabs.forEach((tab) => {
-          tab.classList.toggle(
-            "active",
-            tab.dataset.settingsPage === pageId
-          );
-        });
-
-        settingsPages.forEach((page) => {
-          page.classList.toggle("active", page.id === pageId);
-        });
-      };
+      const showSettingsPage = pageId => { currentSettingsPageId=pageId; window.SignMakerSettings22.showLegacyPage(pageId); };
 
       settingsSideTabs.forEach((tab) => {
         tab.addEventListener("click", (event) => {
@@ -15660,21 +15299,66 @@ const getPostThicknessFallback = () =>
         });
       }
 
-    function reDisplay() {
-      const openingPanelStylePopover = panelStylePopoverIsOpen();
-      const modalHolder = document.querySelector(".modals");
-      const previousModalVisibility = modalHolder?.style.visibility || "";
+    const configPopoverAnimations = new WeakMap();
 
-      if (openingPanelStylePopover && modalHolder) {
-        modalHolder.style.visibility = "hidden";
-        modalHolder.classList.add("panelStylePopoverOpen");
+    const setConfigPopover = (popover, display, { animate = true, onClose } = {}) => {
+      const wasOpen = !!popover.style.display && !popover.inert;
+      if (display ? wasOpen : !popover.style.display || (!wasOpen && animate)) return;
+
+      const previousAnimation = configPopoverAnimations.get(popover);
+      const opacity = previousAnimation ? Number(getComputedStyle(popover).opacity) : (display ? 0 : 1);
+      previousAnimation?.cancel();
+      configPopoverAnimations.delete(popover);
+      popover.inert = !display;
+
+      const finish = () => {
+        configPopoverAnimations.delete(popover);
+        if (!display) {
+          popover.style.display = "";
+          onClose?.();
+        }
+      };
+
+      if (display) popover.style.display = display;
+      if (!animate || !window.SignMakerDropdowns.getAnimationsEnabled() ||
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
+          typeof popover.animate !== "function") {
+        finish();
+        return;
       }
 
-      for (const holder of document.querySelectorAll(".sMModal")) {
-        if (holder.classList.contains(sMConfigBar.dataset.currentMenu)) {
-          holder.style.display = "block";
+      const animation = popover.animate(
+        [{ opacity }, { opacity: display ? 1 : 0 }],
+        { duration: display ? 150 : 110, easing: display ? "ease-out" : "ease-in" }
+      );
+      configPopoverAnimations.set(popover, animation);
+      animation.onfinish = finish;
+    };
+
+    function reDisplay() {
+      window.SignMakerEditorRuntime?.ensure();
+      const openingPanelStylePopover = panelStylePopoverIsOpen();
+      const modals = [...document.querySelectorAll(".sMModal")];
+      const nextModal = modals.find(modal => modal.classList.contains(sMConfigBar.dataset.currentMenu));
+
+      for (const holder of modals) {
+        const open = holder === nextModal;
+        if (holder.matches(".panelStyleConfig, .postStyleConfig, .appSettingsConfig")) {
+          if (!open && holder.style.display && !holder.inert) {
+            window.nativeSelectPickers?.forEach(picker => {
+              if (picker.wrapper.classList.contains("open") && holder.contains(picker.wrapper)) picker.close?.();
+            });
+            holder.querySelectorAll(".fontPicker.open, .colorPicker.open, .colorPicker.addingCustomColor")
+              .forEach(picker => picker.classList.remove("open", "addingCustomColor"));
+          }
+          setConfigPopover(holder, open ? "block" : "", {
+            animate: open || !nextModal,
+            onClose: () => {
+              if (!panelStylePopoverIsOpen()) clearPanelStylePopoverPosition();
+            }
+          });
         } else {
-          holder.style.display = "";
+          holder.style.display = open ? "block" : "";
         }
       }
 
@@ -15685,26 +15369,19 @@ const getPostThicknessFallback = () =>
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
         const panelSelect = ensurePanelSelectorPopoverPortal();
         if (panelSelect) {
-          const previousPanelSelectVisibility = panelSelect.style.visibility || "";
-          panelSelect.style.visibility = "hidden";
-          panelSelect.style.display = "flex";
+          setConfigPopover(panelSelect, "flex");
           positionPanelSelectorPopover();
-          panelSelect.style.visibility = previousPanelSelectVisibility;
           schedulePanelSelectorPopoverPosition();
         }
         document.querySelectorAll(
           ".sMConfigOption:has(#panelSelector)"
-        )[0].className = "sMConfigOption selected";
+        )[0].classList.add("selected");
       } else {
         const panelSelect = document.querySelector("#panelSelect");
-        if (panelSelect) {
-          panelSelect.style.display = "";
-          panelSelect.style.removeProperty("visibility");
-        }
-        clearPanelSelectorPopoverPosition();
+        if (panelSelect) setConfigPopover(panelSelect, "");
         document.querySelectorAll(
           ".sMConfigOption:has(#panelSelector)"
-        )[0].className = "sMConfigOption";
+        )[0].classList.remove("selected");
       }
 
       for (const button of document.querySelectorAll(".sMConfigOption")) {
@@ -15713,23 +15390,26 @@ const getPostThicknessFallback = () =>
         }
 
         if (button.id == sMConfigBar.dataset.currentMenu) {
-          button.className = "sMConfigOption selected";
+          button.classList.add("selected");
         } else {
-          button.className = "sMConfigOption";
+          button.classList.remove("selected");
         }
       }
 
       if (sMConfigBar.dataset.currentMenu === "templates") {
         const templatesModal = document.querySelector(".sMModal.templates");
         if (templatesModal) {
-          templatesModal.dataset.currentMenu = "sMTemplatesSaved";
+          const templateTab = document.getElementById("templateEditingNotice")?.hidden === false
+            ? "sMTemplateEditor" : ["sMTemplatesSaved","sMTemplatesPreset"].includes(templatesModal.dataset.currentMenu)
+              ? templatesModal.dataset.currentMenu : "sMTemplatesSaved";
+          templatesModal.dataset.currentMenu = templateTab;
 
           for (const holder of templatesModal.querySelectorAll(".sMModalContent > *")) {
-            holder.classList.toggle("tabHidden", holder.id !== "sMTemplatesSaved");
+            holder.classList.toggle("tabHidden", holder.id !== templateTab);
           }
 
           for (const tab of templatesModal.querySelectorAll(".sMModalTab")) {
-            tab.classList.toggle("selected", tab.dataset.tab === "sMTemplatesSaved");
+            tab.classList.toggle("selected", tab.dataset.tab === templateTab);
           }
 
           if (
@@ -15742,13 +15422,9 @@ const getPostThicknessFallback = () =>
       }
 
       if (openingPanelStylePopover) {
-        if (modalHolder) {
-          modalHolder.classList.add("panelStylePopoverOpen");
-          positionPanelStylePopover();
-          modalHolder.style.visibility = previousModalVisibility;
-        }
+        positionPanelStylePopover();
         schedulePanelStylePopoverPosition();
-      } else {
+      } else if (!modals.some(modal => modal.style.display && modal.matches(".panelStyleConfig, .postStyleConfig, .appSettingsConfig"))) {
         clearPanelStylePopoverPosition();
       }
     }
@@ -15759,6 +15435,7 @@ const getPostThicknessFallback = () =>
               !button.id ||
               button.id === "nightMode" ||
               button.id === "export" ||
+              button.id === "copySign" ||
               button.id === "hideConfig" ||
               button.id === "undoButton" ||
               button.id === "settingsMenuButton"
@@ -15958,6 +15635,40 @@ const getPostThicknessFallback = () =>
         reDisplay();
       };
 
+      const postContainer = document.getElementById("postContainer");
+      const panelContainer = document.getElementById("panelContainer");
+      postContainer.addEventListener("click", (event) => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented) return;
+        if (event.target !== postContainer && event.target !== panelContainer && !event.target.matches(".post")) return;
+        const currentPost = exposed.getPost();
+        if (currentPost.showPost || currentPost.thickness <= 0) return;
+        if (event.target.matches(".post")) {
+          openConfigMenuById("postStyleConfig");
+          return;
+        }
+        const support = postContainer.querySelector(".fdotSupport");
+        const { clientX, clientY } = event;
+        if (support) {
+          if (window.SignMakerFDOTSupports.containsPoint(support, clientX, clientY)) openConfigMenuById("postStyleConfig");
+          return;
+        }
+        if (event.target !== panelContainer || !panelContainer.offsetHeight) return;
+        const bounds = panelContainer.getBoundingClientRect();
+        const units = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) *
+          bounds.height / panelContainer.offsetHeight;
+        const y = (clientY - bounds.top) / units;
+        const halfThickness = currentPost.thickness / 2;
+        const style = getComputedStyle(postContainer);
+        const position = currentPost.polePosition;
+        const onSupport = position === "Center"
+          ? Math.abs(clientX - (bounds.left + bounds.width / 2)) <= halfThickness * units &&
+            bounds.bottom - clientY <= parseFloat(style.getPropertyValue("--post-center-height")) * units
+          : ["Left", "Right", "Overhead"].includes(position) &&
+            (Math.abs(y - parseFloat(style.getPropertyValue("--post-arm-upper"))) <= halfThickness ||
+              Math.abs(y - parseFloat(style.getPropertyValue("--post-arm-lower"))) <= halfThickness);
+        if (onSupport) openConfigMenuById("postStyleConfig");
+      });
+
       const toggleConfigMenuById = (menuId) => {
         if (!sMConfigBar) {
           return;
@@ -15980,8 +15691,8 @@ const getPostThicknessFallback = () =>
         const tollDialog = document.getElementById("tollLogoSelectorModal");
         const arrowDialog = document.getElementById("arrowSelectorModal");
 
-        if (signMakerSettingsModal && signMakerSettingsModal.classList.contains("open")) {
-          closeSettings();
+        if (isSettingsOpen()) {
+          sMConfigBar.dataset.currentMenu="";reDisplay();
           return true;
         }
 
@@ -16612,7 +16323,7 @@ const getPostThicknessFallback = () =>
           }
 
           const modal = document.querySelectorAll(
-            '.sMModal:has(.sMModalTab[data-tab="' + button.dataset.tab + '"]'
+            '.sMModal:has(.sMModalTab[data-tab="' + button.dataset.tab + '"])'
           )[0];
 
         if (modal.dataset.currentMenu != button.dataset.tab) {
@@ -16636,7 +16347,7 @@ const getPostThicknessFallback = () =>
         }
 
         // Refresh templates list when Saved tab is opened
-        if (button.dataset.tab === "sMTemplatesSaved" && typeof app !== "undefined" && typeof app.refreshTemplatesList === "function") {
+        if ((button.dataset.tab === "sMTemplatesSaved" || button.dataset.tab === "sMTemplatesPreset") && typeof app !== "undefined" && typeof app.refreshTemplatesList === "function") {
           app.refreshTemplatesList();
         }
       };
@@ -16647,9 +16358,9 @@ const getPostThicknessFallback = () =>
           return;
         }
 
-        const settingsModal = document.getElementById("signMakerSettingsModal");
+        const settingsModal = document.getElementById("settings22Modal");
 
-        if (settingsModal && settingsModal.classList.contains("open")) {
+        if (settingsModal && isSettingsOpen()) {
           const activeEl = document.activeElement;
           const activeIsControlsShortcut =
             activeEl &&
@@ -16665,7 +16376,7 @@ const getPostThicknessFallback = () =>
 
           event.preventDefault();
           event.stopPropagation();
-          settingsModal.classList.remove("open");
+          sMConfigBar.dataset.currentMenu="";reDisplay();
           return;
         }
 
@@ -16765,11 +16476,7 @@ const getPostThicknessFallback = () =>
     };
 
     const commitPanelSpacingChange = (value) => {
-      const parsedValue = parseFloat(value);
-      const normalized =
-        Number.isFinite(parsedValue) && parsedValue >= 0
-          ? Math.min(parsedValue, 8)
-          : 4;
+      const normalized = normalizePanelSpacingPreference(value, getDefaultPanelSpacingPreference());
 
       syncPanelSpacingInputs(normalized);
 
@@ -16852,34 +16559,20 @@ const getPostThicknessFallback = () =>
       });
     });
 
-    const postThicknessValueInput =
-      document.getElementById("postThicknessValue");
-
-    const commitPostThicknessChange = (value) => {
-      const normalizedThickness =
-        post && typeof post.normalizeThickness === "function"
-          ? post.normalizeThickness(value)
-          : normalizeStoredPostThickness(value);
-      if (post) {
-        post.thickness = normalizedThickness;
-      }
-      if (postThicknessValueInput) {
-        postThicknessValueInput.value = normalizedThickness;
-      }
-      setStoredItem(STORAGE_KEYS.postThickness, normalizedThickness);
-      if (exposed && typeof exposed.redraw === "function") {
-        exposed.redraw();
-      }
-    };
-
-    if (postThicknessValueInput) {
-      postThicknessValueInput.addEventListener("input", () => {
-        commitPostThicknessChange(postThicknessValueInput.value);
-      });
-      postThicknessValueInput.addEventListener("change", () => {
-        commitPostThicknessChange(postThicknessValueInput.value);
-      });
-    }
+    const postThicknessSlider = document.getElementById("postThickness");
+    const postThicknessValueInput = document.getElementById("postThicknessValue");
+    postThicknessSlider.addEventListener("input", () => {
+      postThicknessValueInput.value = postThicknessSlider.value;
+    });
+    postThicknessValueInput.addEventListener("blur", () => {
+      syncPostReference();
+      syncPostThicknessControls(true);
+    });
+    postThicknessValueInput.addEventListener("keydown", event => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      postThicknessValueInput.blur();
+    });
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
     window.addEventListener("resize", scheduleSubpanelModalHeightSync);
@@ -17042,15 +16735,15 @@ const getPostThicknessFallback = () =>
         welcomeDialog.style.display = "flex";
       }
 
-    // Populate post kind options
+    // The model keeps the full preset ID across the position and type controls.
     const postPositionSelectElmt = document.getElementById("postPosition");
     for (const polePosition of Post.prototype.polePositions) {
-      const displayLabel = formatPostKindLabel(polePosition);
+      if (window.SignMakerFDOTSupports?.get(polePosition)) continue;
       lib.appendOption(postPositionSelectElmt, polePosition, {
-        selected: polePosition == post.polePosition,
-        text: displayLabel,
+        text: formatPostPositionLabel(polePosition),
       });
     }
+    syncPostPositionControls();
 
     const postColorSelectElmt = document.getElementById("postColor");
     if (postColorSelectElmt) {
@@ -17184,6 +16877,18 @@ const getPostThicknessFallback = () =>
         });
     }
     ensureSubpanelNewElementTypePicker();
+    const newBlockButton = document.getElementById("sMSPCreateElement");
+    newBlockButton.draggable = true;
+    newBlockButton.addEventListener("dragstart", event => {
+      event.stopPropagation();
+      blockDragState = { newType: document.getElementById("sMSPElementSelect").value };
+      toggleBlockWiggle(true);
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "copy";
+        event.dataTransfer.setData("text/plain", blockDragState.newType);
+      }
+    });
+    newBlockButton.addEventListener("dragend", endBlockDrag);
     
 
     // Populate the guide arrow options
@@ -17559,6 +17264,7 @@ const getPostThicknessFallback = () =>
         button.className = "settingsDefaultsFontButton";
         button.dataset.fontValue = font;
         button.textContent = getSettingsDefaultsFontSuffix(font, selectedFamily);
+        button.title = font;
         button.classList.toggle("active", fontSelect.value === font);
 
         button.style.fontFamily = `"${resolveFontPickerPreviewFont(font)}", sans-serif`;
@@ -18354,7 +18060,7 @@ const getPostThicknessFallback = () =>
         .forEach((button) => {
           button.classList.toggle(
             "active",
-            button.textContent.trim() === valueInput.value
+            (button.dataset.alignmentValue || button.textContent.trim()) === valueInput.value
           );
         });
     };
@@ -18379,7 +18085,7 @@ const getPostThicknessFallback = () =>
           button.addEventListener("click", (event) => {
             event.preventDefault();
 
-            valueInput.value = button.textContent.trim();
+            valueInput.value = button.dataset.alignmentValue || button.textContent.trim();
             dispatchSettingsDefaultsInputAndChange(valueInput);
             updateSettingsDefaultsSegmentedButtons(pageId, valueInputId);
           });
@@ -18844,57 +18550,10 @@ const getPostThicknessFallback = () =>
       lib.appendOption(divider_colorSelect, value, { text: label });
     }
 
-    if (shield_shieldBase && ShieldElement.prototype.blockShieldBases) {
-      const shields = ShieldElement.prototype.blockShieldBases || [];
-      const currentValue =
-        shield_shieldBase.value || ShieldElement.prototype.defaultShieldBase;
-      shield_shieldBase.innerHTML = "";
-
-      const groupMap = new Map();
-      for (const shield of shields) {
-        const categories = Array.isArray(shield.categories)
-          ? shield.categories
-          : [];
-        const groupLabel = categories.length ? categories.join(" / ") : "Other";
-        if (!groupMap.has(groupLabel)) {
-          groupMap.set(groupLabel, []);
-        }
-        groupMap.get(groupLabel).push(shield);
-      }
-
-      let firstOptionValue = "";
-      const sortedGroups = Array.from(groupMap.entries()).sort((a, b) =>
-        a[0].localeCompare(b[0])
-      );
-
-      for (const [groupLabel, groupShields] of sortedGroups) {
-        const optgroup = document.createElement("optgroup");
-        optgroup.label = groupLabel;
-
-        groupShields
-          .slice()
-          .sort((a, b) =>
-            (a.label || a.value).localeCompare(b.label || b.value)
-          )
-          .forEach(({ value, label }) => {
-            const option = document.createElement("option");
-            option.value = value;
-            option.text = label || value;
-            if (!firstOptionValue) {
-              firstOptionValue = value;
-            }
-            if (currentValue && value === currentValue) {
-              option.selected = true;
-            }
-            optgroup.appendChild(option);
-          });
-
-        shield_shieldBase.appendChild(optgroup);
-      }
-
-      if (!shield_shieldBase.value && firstOptionValue) {
-        shield_shieldBase.value = firstOptionValue;
-      }
+    // The visible tree owns the catalog; its hidden value field needs one option.
+    if (shield_shieldBase) {
+      syncShieldBasePickerValue(shield_shieldBase.dataset.pickerValue ||
+        shield_shieldBase.value || ShieldElement.prototype.defaultShieldBase);
     }
       if (shield_shieldBase) {
         shield_shieldBase.addEventListener("change", () => {
@@ -19505,6 +19164,8 @@ const getPostThicknessFallback = () =>
       const shieldItemSeleted = document.createElement("span");
       shieldCategoryType.className = "shieldCategoryType";
       shieldCategoryImg.className = "shieldItemImg";
+      shieldCategoryImg.loading = "lazy";
+      shieldCategoryImg.decoding = "async";
       shieldItemName.className = "shieldItemName";
       shieldItemSeleted.className =
         "shieldItemSelected material-symbols-outlined";
@@ -19575,7 +19236,11 @@ const getPostThicknessFallback = () =>
       }
     };
 
-    createFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+    const populateLegacyShieldGallery = () => {
+      if (presetShieldList.childElementCount) return;
+      createFromDir(Shield.prototype.shieldDirectory, presetShieldList);
+    };
+    if (!window.SignMakerEditorRuntime?.defer(presetShieldList, "shield-gallery", populateLegacyShieldGallery)) populateLegacyShieldGallery();
 
     document.querySelector("#presetShields").addEventListener("click", () => {
       document.querySelector(".shieldLibrary").dataset.tab = "presetShieldList";
@@ -20412,6 +20077,7 @@ const getPostThicknessFallback = () =>
 
   const updateSdIconPreview = () => {
     const previewImage = document.getElementById("sdIcon_previewImage");
+    if (previewImage && window.SignMakerEditorRuntime?.defer(previewImage, "icon-preview", updateSdIconPreview)) return;
     const label = document.getElementById("sdIcon_selectedLabel");
 
     const { key, definition } = getSdIconDefinition();
@@ -20620,10 +20286,142 @@ const getPostThicknessFallback = () =>
   };
     
   // Handle Form
+  const syncPostType = (select, position, type = position) => {
+    const positionChanged = select.dataset.position !== position;
+    if (!positionChanged && select.value === type) return;
+    const picker = window.getNativeSelectPicker?.(select);
+    if (positionChanged) {
+      if (picker?.wrapper.classList.contains("open")) picker.close();
+      const supports = window.SignMakerFDOTSupports?.forPosition(position) ?? [];
+      const options = [new Option("Standard", position)];
+      if (supports.length) {
+        const group = document.createElement("optgroup");
+        group.label = "FDOT";
+        group.append(...supports.map(support => new Option(support.label, support.id)));
+        options.push(group);
+      }
+      select.replaceChildren(...options);
+      select.dataset.position = position;
+    }
+    select.value = type;
+    picker?.sync();
+  };
+
+  const syncPostPositionControls = () => {
+    const select = document.getElementById("postPosition");
+    const type = post.polePosition;
+    const position = window.SignMakerFDOTSupports?.get(type)?.position ?? type;
+    if (select.value !== position) {
+      select.value = position;
+      window.getNativeSelectPicker?.(select)?.sync();
+    }
+    syncPostType(document.getElementById("postType"), position, type);
+  };
+
+  const postAppearanceFields = new Map([
+    ["postPosition", "polePosition"], ["postType", "polePosition"],
+    ["postColor", "color"], ["showPost", "showPost"],
+    ["postThickness", "thickness"], ["postThicknessValue", "thickness"],
+  ]);
+  const postAppearanceStorage = new Map([
+    ["polePosition", STORAGE_KEYS.postPosition], ["color", STORAGE_KEYS.postColor],
+    ["showPost", STORAGE_KEYS.showPost], ["thickness", STORAGE_KEYS.postThickness],
+  ]);
+
+  const persistPostAppearance = (current, previous) => {
+    syncPostReference();
+    for (const [property, key] of postAppearanceStorage) {
+      if (current[property] !== previous?.[property]) {
+        setStoredItem(key, property === "showPost" ? !!current[property] : current[property]);
+        syncPostAppearanceField(property);
+      }
+    }
+  };
+
+  const syncPostThicknessControls = (force = false) => {
+    const input = document.getElementById("postThicknessValue");
+    const slider = document.getElementById("postThickness");
+    const value = post.normalizeThickness(post.thickness);
+    const thickness = String(value);
+    const sliderValue = String(Math.round(value * 2) / 2);
+    if (slider.value !== sliderValue) slider.value = sliderValue;
+    if (force || input.dataset.committedThickness !== thickness || document.activeElement !== input) {
+      if (input.value !== thickness) input.value = thickness;
+    }
+    input.dataset.committedThickness = thickness;
+  };
+
+  const syncPostAppearanceField = (property) => {
+    if (property === "polePosition") {
+      syncPostPositionControls();
+    } else if (property === "thickness") {
+      syncPostThicknessControls(true);
+    } else if (property === "showPost") {
+      document.getElementById("showPost").checked = !!post.showPost;
+    } else if (property === "color") {
+      const color = document.getElementById("postColor");
+      const value = Post.prototype.colors.includes(post.color) ? post.color : "";
+      if (color.value !== value) {
+        color.value = value;
+        window.getNativeSelectPicker?.(color)?.sync();
+      }
+    }
+  };
+
+  const readPostAppearance = (fieldId, value) => {
+    const property = postAppearanceFields.get(fieldId);
+    const previous = post[property];
+    if (property === "thickness") {
+      if (!value.trim() || !Number.isFinite(Number(value))) return false;
+      value = Math.round(post.normalizeThickness(value) * 10) / 10;
+    } else if (fieldId === "postType") {
+      const supports = window.SignMakerFDOTSupports;
+      const position = supports?.get(previous)?.position ?? previous;
+      if (value !== position && supports?.get(value)?.position !== position) {
+        syncPostPositionControls();
+        return false;
+      }
+    } else if (fieldId === "postColor" ? !Post.prototype.colors.includes(value) : !value && fieldId !== "showPost") {
+      return false;
+    }
+    post[property] = value;
+    syncPostAppearanceField(property);
+    if (previous === value) return false;
+    setStoredItem(postAppearanceStorage.get(property), value);
+    return true;
+  };
+
+  const readDisplaySettings = (form) => {
+    post.disableFlash = form["disableFlash"].checked;
+    post.showBlockBoundingBoxes = form["showBlockBoundingBoxes"].checked;
+    post.showAlignmentGuides = form["showAlignmentGuides"].checked;
+    post.alignmentGuideSpacing = post.normalizeAlignmentGuideSpacing(form["alignmentGuideSpacing"].value);
+    post.alignmentGuidePhase = post.normalizeAlignmentGuidePhase(form["alignmentGuidePhase"].value, post.alignmentGuideSpacing);
+  };
+
+  const syncDisplaySettings = () => {
+    document.getElementById("showBlockBoundingBoxes").checked=!!post.showBlockBoundingBoxes;
+    document.getElementById("showAlignmentGuides").checked=!!post.showAlignmentGuides;
+    document.getElementById("alignmentGuideControls").classList.toggle("hidden",!post.showAlignmentGuides);
+    const guideSpacing=post.normalizeAlignmentGuideSpacing(post.alignmentGuideSpacing);
+    const guidePhase=post.normalizeAlignmentGuidePhase(post.alignmentGuidePhase,guideSpacing);
+    document.getElementById("alignmentGuideSpacing").value=guideSpacing;
+    document.getElementById("alignmentGuideSpacingValue").value=guideSpacing;
+    document.getElementById("alignmentGuidePhase").max=guideSpacing;
+    document.getElementById("alignmentGuidePhase").value=guidePhase;
+    document.getElementById("alignmentGuidePhaseValue").value=guidePhase;
+  };
+
   // Read the form and update the page by redrawing it.
   const readForm = function (options = {}) {
+    mergeLiveInputRead = true;
     const deferHistoryEnd = options?.deferHistoryEnd === true;
-    syncPostReference();
+    const field = options?.target;
+    const changedControl = field ?? document.activeElement;
+    const exitWidthChange = changedControl?.id === "exitTabWidth" ? changedControl.value : "";
+    const exitVariantChange = changedControl?.id === "exitVariant" ? changedControl.value : "";
+    const postField = postAppearanceFields.has(field?.id) ? field.id : null;
+    const postValue = postField && (postField === "showPost" ? field.checked : field.value);
     if (
         exposed &&
         typeof exposed.beginUndoableChange === "function"
@@ -20631,12 +20429,23 @@ const getPostThicknessFallback = () =>
         exposed.beginUndoableChange();
       }
     try {
+    syncPostReference();
     const form = document.forms[0];
+    if (field?.matches?.("#disableFlash, #showBlockBoundingBoxes, #showAlignmentGuides, #alignmentGuideSpacing, #alignmentGuidePhase")) {
+      readDisplaySettings(form);
+      syncDisplaySettings();
+      exposed.redraw();
+      return;
+    }
+    if (postField) {
+      if (readPostAppearance(postField, postValue)) exposed.redraw();
+      return;
+    }
 
     readExitTabCornerRadiusFromForm();
 
     if (exitTabEditorMode === "default") {
-      const profileVariantChanged = readExitTabProfileForm();
+      const profileVariantChanged = readExitTabProfileForm(exitVariantChange, exitWidthChange);
       applyExitTabDefaultProfileToPrototype();
 
       if (profileVariantChanged) {
@@ -20670,10 +20479,7 @@ const getPostThicknessFallback = () =>
     };
 
     const selectedSubPanelIndex = exposed.vars.currentlySelectedSubPanelIndex;
-    const subPanel =
-      selectedSubPanelIndex >= 0
-        ? currentPanel.sign.subPanels[selectedSubPanelIndex]
-        : exposed.getCurrentSubPanel();
+    const subPanel = exposed.getCurrentSubPanel();
 
     if (!subPanel) {
       updateForm();
@@ -20686,17 +20492,8 @@ const getPostThicknessFallback = () =>
     }
 
     // Post
-    post.polePosition = form["postPosition"].value;
-    const requestedPostColor = form["postColor"] ? form["postColor"].value : null;
-    if (requestedPostColor) {
-      post.color = requestedPostColor;
-    }
-    post.showPost = form["showPost"].checked;
     delete post.secondExitOnly;
     currentPanel.sign.secondExitOnly = form["secondExitOnly"]?.checked === true;
-    setStoredItem(STORAGE_KEYS.postPosition, post.polePosition);
-    setStoredItem(STORAGE_KEYS.showPost, String(!!post.showPost));
-    setStoredItem(STORAGE_KEYS.postColor, post.color);
 
     // Panel
     currentPanel.color = form["panelColor"].value;
@@ -20711,6 +20508,7 @@ const getPostThicknessFallback = () =>
       ? Math.max(0, panelBorderRadiusInput)
       : Panel.prototype.defaultBorderRadius;
 
+    currentPanel.isVms = form["vmsPanel"].checked;
     if (currentPanel.isVms === true) {
       Object.assign(currentPanel, VmsPanel.settings({
         vmsResolution: form["vmsResolution"].value,
@@ -20720,9 +20518,7 @@ const getPostThicknessFallback = () =>
       }));
     }
 
-    // The UI is now positive: checked means selection flashing is enabled.
-    // Keep the existing persisted disableFlash property for backward compatibility.
-    post.disableFlash = !form["disableFlash"].checked;
+    readDisplaySettings(form);
 
     // Exit Tab
     if (exitTab) {
@@ -20730,7 +20526,7 @@ const getPostThicknessFallback = () =>
       exitTab.variant || "Default"
     );
     const requestedExitVariant = normalizeExitTabProfileVariant(
-      form["exitVariant"]?.value || previousExitVariant || "Default"
+      exitVariantChange || form["exitVariant"]?.value || previousExitVariant || "Default"
     );
     const isAssetExitTabVariant = isExitTabAssetVariantValue(requestedExitVariant);
 
@@ -20784,10 +20580,7 @@ const getPostThicknessFallback = () =>
       updateExitTabBilingualControls(exitTab);
     const aplEdgeAllowed = syncExitTabWidthOptions(exitTab);
     const previousExitTabWidth = exitTab.width || "Edge";
-    const requestedExitTabWidth = form["exitTabWidth"] &&
-      document.activeElement === form["exitTabWidth"]
-        ? form["exitTabWidth"].value
-        : exitTab.width || "Full";
+    const requestedExitTabWidth = exitWidthChange || exitTab.width || "Full";
 
     const shouldForceEmptyCurrentExitTabToEdge = false;
 
@@ -20812,10 +20605,9 @@ const getPostThicknessFallback = () =>
           ? showLeftField.checked
           : previousShowLeft;
 
-        const activeElement = document.activeElement;
-        const changedLeftCheckbox = showLeftField && activeElement === showLeftField;
+        const changedLeftCheckbox = showLeftField && changedControl === showLeftField;
         const changedPositionDropdown =
-          exitTabPositionField && activeElement === exitTabPositionField;
+          exitTabPositionField && changedControl === exitTabPositionField;
 
         /*
           Left checkbox:
@@ -20972,7 +20764,7 @@ const getPostThicknessFallback = () =>
         const previousUsesHighwayGothic = isExitTabHighwayGothicFontFamily(previousFontFamily);
         const nextUsesHighwayGothic = isExitTabHighwayGothicFontFamily(nextFontFamily);
         const changedExitTabFontDropdown =
-          exitTabFontSelect && document.activeElement === exitTabFontSelect;
+          exitTabFontSelect && changedControl === exitTabFontSelect;
 
         if (!isAssetExitTabVariant) {
           exitTab.fontFamily = nextFontFamily;
@@ -21122,7 +20914,7 @@ const getPostThicknessFallback = () =>
             : 0;
         }
 
-        saveCurrentExitTabEditsToSelectedProfile(exitTab);
+        saveCurrentExitTabEditsToSelectedProfile(exitTab, !!exitWidthChange);
     }
     // Misc Shields
     currentPanel.sign.shieldBacks = form["shieldBacks"].checked;
@@ -21357,7 +21149,9 @@ const getPostThicknessFallback = () =>
           continue;
         }
 
-        if (element.type === "checkbox") {
+        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
+          currentBlockElem.numberStyle=element.checked?'legacy':'current';
+        } else if (element.type === "checkbox") {
           currentBlockElem[propertyName] = element.checked;
         } else if (element.type === "radio") {
           if (element.checked) {
@@ -21766,10 +21560,48 @@ const getPostThicknessFallback = () =>
   /**
    * Update the fields in the form to the values of the currently selected panel.
    */
+
+  let mergeLiveInputRead = false;
+  let mergeLiveInputActive = false;
+  let mergePendingFormRefresh = false;
+  let mergeSliderDisplaysBefore = [];
+  let mergeLiveResetTimer = 0;
+  document.addEventListener("input", event => {
+    mergeLiveInputRead = false;
+    const field = event.target;
+    mergeLiveInputActive = ["range", "number", "text", "search"].includes(field?.type) || field?.tagName === "TEXTAREA";
+    mergeSliderDisplaysBefore = field?.type === "range" && field.id
+      ? [document.getElementById(field.id + "Val"), document.getElementById(field.id + "Value"), ...document.querySelectorAll('output[for="' + field.id + '"]')]
+        .filter(Boolean).map(display => [display, display.value ?? display.textContent]) : [];
+    clearTimeout(mergeLiveResetTimer);
+    mergeLiveResetTimer = setTimeout(() => { mergeLiveInputActive = false; }, 0);
+  }, true);
+  window.addEventListener("input", event => {
+    const field = event.target;
+    const signEditor = field?.closest?.(".panelStyleConfig,.postStyleConfig,.exitTabConfig");
+    if (mergeLiveInputActive && !mergeLiveInputRead && signEditor &&
+        field.type !== "search" && !(field.type === "number" && (field.value === "" || !field.validity.valid))) {
+      readForm({ target: field, deferHistoryEnd: true });
+    }
+    mergeLiveInputActive = false;
+    clearTimeout(mergeLiveResetTimer);
+    for (const [display, before] of mergeSliderDisplaysBefore) {
+      if ((display.value ?? display.textContent) !== before || display === document.activeElement) continue;
+      if (display.tagName === "INPUT" || display.tagName === "OUTPUT") display.value = event.target.value;
+      else display.textContent = event.target.value;
+    }
+    mergeSliderDisplaysBefore = [];
+  });
+  document.addEventListener("change", () => {
+    if (!mergePendingFormRefresh) return;
+    requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(); });
+  }, true);
+
   const updateForm = function () {
+    if (mergeLiveInputActive) { mergePendingFormRefresh = true; return; }
+    mergePendingFormRefresh = false;
     syncPostReference();
     normalizeExitTabProfiles();
-    ensureCustomColorOptionsForAllColorSelects(document);
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {
         const selectedPanel =
@@ -22301,17 +22133,9 @@ const getPostThicknessFallback = () =>
       subPanelList.dataset.subPanelTabDragAttached = "true";
     }
 
-    const postPositionSelectElmt = document.getElementById("postPosition");
-    if (postPositionSelectElmt && post.polePosition) {
-      postPositionSelectElmt.value = post.polePosition;
-    }
+    syncPostPositionControls();
 
-    const postColorSelectElmt = document.getElementById("postColor");
-    if (postColorSelectElmt && post.color) {
-      ensureCustomColorOptionsForSelect(postColorSelectElmt);
-      ensureNativeColorSelectOption(postColorSelectElmt, post.color);
-      postColorSelectElmt.value = post.color;
-    }
+    syncPostAppearanceField("color");
 
     const showPostCheckbox = document.getElementById("showPost");
     if (showPostCheckbox) {
@@ -22511,11 +22335,8 @@ const getPostThicknessFallback = () =>
     const panelSpacingValueInputs = Array.from(
       document.querySelectorAll("#panelSpacingValue, #settingsPanelSpacingValue")
     );
-    const resolvedPanelSpacing =
-      typeof post.panelSpacing === "number" && post.panelSpacing >= 0
-        ? Math.min(post.panelSpacing, 8)
-        : 4;
     const resolvedDefaultPanelSpacing = getDefaultPanelSpacingPreference();
+    const resolvedPanelSpacing = normalizePanelSpacingPreference(post.panelSpacing, resolvedDefaultPanelSpacing);
 
     panelSpacingSliders.forEach((slider) => {
       slider.value = resolvedPanelSpacing;
@@ -22533,19 +22354,8 @@ const getPostThicknessFallback = () =>
       input.value = resolvedDefaultPanelSpacing;
     });
 
-    const postThicknessValueInput =
-      document.getElementById("postThicknessValue");
-    const resolvedPostThickness =
-      post && typeof post.normalizeThickness === "function"
-        ? post.normalizeThickness(post.thickness)
-        : normalizeStoredPostThickness(post ? post.thickness : undefined);
-    if (post) {
-      post.thickness = resolvedPostThickness;
-    }
-    if (postThicknessValueInput) {
-      postThicknessValueInput.value = resolvedPostThickness;
-    }
-    
+    syncPostThicknessControls();
+
     const hasBlockElementContent = (controlData) =>
       controlData &&
       Array.isArray(controlData.rows) &&
@@ -22917,53 +22727,22 @@ const getPostThicknessFallback = () =>
         stackedPanelList.appendChild(addBelowGroup);
       };
 
-      const renderSubPanelDividerControls = (sign) => {
-        const dividerSettings = document.getElementById("subPanelDividerSettings");
-        const dividerList = document.getElementById("subPanelDividerToggleList");
-
-        if (!dividerSettings || !dividerList || !sign || !Array.isArray(sign.subPanels)) {
-          return;
-        }
-
-        dividerList.replaceChildren();
-
-        const dividerCount = Math.max(0, sign.subPanels.length - 1);
-
-        dividerSettings.hidden = dividerCount === 0;
-
-        if (dividerCount === 0) {
-          return;
-        }
-
-        for (let dividerIndex = 0; dividerIndex < dividerCount; dividerIndex++) {
-          const isVisible =
-            !exposed ||
-            typeof exposed.isSubpanelDividerVisible !== "function"
-              ? true
-              : exposed.isSubpanelDividerVisible(dividerIndex);
-
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className =
-            "subPanelDividerToggle" + (isVisible ? " active" : "");
-          button.setAttribute("aria-pressed", String(isVisible));
-          button.dataset.dividerIndex = String(dividerIndex);
-          button.textContent = `Divider ${dividerIndex + 1}`;
-          button.title = isVisible
-            ? `Click to hide the divider between Subpanels ${dividerIndex + 1} and ${dividerIndex + 2}`
-            : `Click to show the divider between Subpanels ${dividerIndex + 1} and ${dividerIndex + 2}`;
-
-          button.addEventListener("click", () => {
-            if (
-              exposed &&
-              typeof exposed.setSubpanelDividerVisible === "function"
-            ) {
-              exposed.setSubpanelDividerVisible(dividerIndex, !isVisible);
-            }
-          });
-
-          dividerList.appendChild(button);
-        }
+      const createSubPanelDividerButton = (dividerIndex) => {
+        const isVisible = typeof exposed.isSubpanelDividerVisible !== "function" || exposed.isSubpanelDividerVisible(dividerIndex);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "subPanelDividerToggle" + (isVisible ? " active" : "");
+        button.dataset.dividerIndex = String(dividerIndex);
+        button.textContent = "|";
+        button.setAttribute("aria-pressed", String(isVisible));
+        button.setAttribute("aria-label", `Divider between Subpanels ${dividerIndex + 1} and ${dividerIndex + 2}`);
+        button.title = `${isVisible ? "Hide" : "Show"} divider between Subpanels ${dividerIndex + 1} and ${dividerIndex + 2}`;
+        button.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          exposed.setSubpanelDividerVisible?.(dividerIndex, !isVisible);
+        });
+        return button;
       };
 
     subPanelList.appendChild(
@@ -22991,10 +22770,11 @@ const getPostThicknessFallback = () =>
       subPanelIndex < subPanelsLength;
       subPanelIndex++
     ) {
+      if (subPanelIndex > 0) subPanelList.appendChild(createSubPanelDividerButton(subPanelIndex - 1));
       subPanelList.appendChild(
         createSubPanelTab({
           id: "sub_edit" + (subPanelIndex + 1),
-          label: "Subpanel " + (subPanelIndex + 1),
+          label: (subPanelsLength >= 4 ? "Subp. " : "Subpanel ") + (subPanelIndex + 1),
           subPanelIndex,
           deleteLabel: "Delete Subpanel " + (subPanelIndex + 1),
           canDelete: panel.sign.subPanels.length > 1,
@@ -23002,7 +22782,6 @@ const getPostThicknessFallback = () =>
       );
     }
 
-    renderSubPanelDividerControls(panel.sign);
     renderStackedPanelControls();
 
     for (
@@ -23526,6 +23305,7 @@ const getPostThicknessFallback = () =>
             const fontHolder = document.createElement("div");
             fontHolder.className = "aplExitTextFontField";
             const fontSelect = document.createElement("select");
+            fontSelect.classList.add("fontPickerSource");
             getExitTabAvailableFonts().forEach((font) => fontSelect.add(new Option(font, font)));
             if (![...fontSelect.options].some((option) => option.value === "Series E")) {
               fontSelect.add(new Option("Series E", "Series E"));
@@ -23920,12 +23700,15 @@ const getPostThicknessFallback = () =>
     document.getElementById("panelBorderThicknessValue").value = `${Math.round(panelBorderThickness / 0.2 * 100)}%`;
     const selectionFlashElmt = document.getElementById("disableFlash");
     if (selectionFlashElmt) {
-      selectionFlashElmt.checked = post?.disableFlash !== true;
+      selectionFlashElmt.checked = post?.disableFlash === true;
     }
 
     syncPanelPaddingControlsFromSign(panel.sign);
 
     const vmsSettings = VmsPanel.settings(panel);
+    document.getElementById("vmsPanel").checked=panel.isVms===true;
+    document.getElementById("copySignsOnly").checked=post.copySignsOnly!==false;
+    syncDisplaySettings();
     document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
     document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
     document.getElementById("vmsAntialias").checked = vmsSettings.vmsAntialias;
@@ -24442,13 +24225,25 @@ const getPostThicknessFallback = () =>
     document.querySelector("#SMSPElementLabel").textContent =
       "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
 
-    document.querySelector("#sMSPDeleteSelectedRow").disabled =
-      currentRows.length <= 1;
-
-    document.querySelector("#sMSPDeleteSelectedBlock").disabled =
-      currentRows.length <= 1 &&
-      (!currentRows[exposed.vars.currentlySelectedRowIndex] ||
-        currentRows[exposed.vars.currentlySelectedRowIndex].length <= 1);
+    const elementCount = currentRows.reduce((count, row) => count + row.length, 0);
+    const makeDeleteButton = (className, label, remove) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">delete</span>';
+      // Commit a focused field during the click, after the button has received it.
+      button.addEventListener("mousedown", event => event.preventDefault());
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        const field = document.activeElement;
+        if (field?.matches("input, select, textarea")) field.blur();
+        flushShieldFormEdit();
+        if (exposed.getActiveBlockElements() === currentBlockElements) remove();
+      });
+      return button;
+    };
 
     for (let row = 0; row < currentRows.length; row++) {
       const sMControlRow = document.createElement("div");
@@ -24459,6 +24254,12 @@ const getPostThicknessFallback = () =>
         (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
           ? " clipboardRowSelected"
           : "");
+
+      if (currentRows.length > 1 && elementCount > currentRows[row].length) {
+        sMControlRow.appendChild(makeDeleteButton(
+          "sMControlRowDeleteButton", `Delete row ${row + 1}`, () => exposed.delRow(row)
+        ));
+      }
 
       for (let item = 0; item < currentRows[row].length; item++) {
         const blockElement = currentRows[row][item];
@@ -24480,6 +24281,7 @@ const getPostThicknessFallback = () =>
             ? " selected"
             : "") +
           (clipboardBlockSelected ? " clipboardSelected" : "");
+        if (elementCount > 1) textEditorBlock.classList.add("hasBlockDelete");
         textEditorBlock.dataset.row = row.toString();
         textEditorBlock.dataset.block = item.toString();
         textEditorBlock.draggable = true;
@@ -24487,7 +24289,9 @@ const getPostThicknessFallback = () =>
         const blockTypeLabel = document.createElement("span");
         blockTypeLabel.className = "textEditorBlockLabel";
         blockTypeLabel.textContent =
-          Control.prototype.blockElements[currentBlockElemType] || "Block";
+          blockElement instanceof GroupedBlockElement
+            ? blockElement.label || "Group"
+            : Control.prototype.blockElements[currentBlockElemType] || "Block";
 
         const blockTypeSelect = document.createElement("select");
         blockTypeSelect.className = "blockTypeInlineSelect";
@@ -24510,7 +24314,27 @@ const getPostThicknessFallback = () =>
           anchor: textEditorBlock,
         });
 
+        if (elementCount > 1) {
+          textEditorBlock.appendChild(makeDeleteButton(
+            "sMBlockDeleteButton",
+            `Delete ${blockTypeLabel.textContent} (row ${row + 1}, element ${item + 1})`,
+            () => exposed.delControlElem(row, item)
+          ));
+        }
         textEditorBlock.appendChild(blockTypeLabel);
+        if (blockElement instanceof GroupedBlockElement) {
+          const editGroup = document.createElement("button");
+          editGroup.type = "button";
+          editGroup.className = "mergeEditGroup";
+          editGroup.title = "Edit group contents";
+          editGroup.setAttribute("aria-label", "Edit group contents");
+          editGroup.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span>';
+          editGroup.addEventListener("click", event => {
+            event.preventDefault(); event.stopPropagation();
+            exposed.enterGroupElement(row, item);
+          });
+          textEditorBlock.appendChild(editGroup);
+        }
         textEditorBlock.appendChild(blockTypePicker);
 
         sMControlRow.appendChild(textEditorBlock);
@@ -24817,7 +24641,22 @@ const getPostThicknessFallback = () =>
         const formReadHandler =
           blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
 
-        if (element.type === "checkbox") {
+        // Update the sign on each edit without rebuilding the focused editor.
+        if (!element.dataset.livePreviewBound &&
+            (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
+          element.dataset.livePreviewBound = "true";
+          element.addEventListener("input", event => {
+            if (element.type === "number" && (element.value === "" || !element.validity.valid)) return;
+            readForm({ target: element, deferHistoryEnd: true });
+          });
+          element.addEventListener("blur", () => exposed?.endUndoableChange?.());
+        }
+
+
+        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
+          element.checked=currentBlockElem.numberStyle==='legacy';
+          element.addEventListener('change',formReadHandler,{once:true});
+        } else if (element.type === "checkbox") {
           element.checked = currentBlockElem[propertyName];
           element.addEventListener("change", formReadHandler, { once: true });
         } else if (element.type === "radio") {
@@ -24882,12 +24721,6 @@ const getPostThicknessFallback = () =>
       normalizeSdShieldBannerStyleFields(currentBlockElem);
       writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
       setupSdShieldCompactControls();
-      if (typeof syncAllFontPickers === "function") {
-        syncAllFontPickers();
-      }
-      if (typeof syncAllColorPickers === "function") {
-        syncAllColorPickers();
-      }
     }
 
     if (blockElemType === "sdIcon") {
@@ -25272,6 +25105,10 @@ const getPostThicknessFallback = () =>
 
       syncGlobalBlockControls();
       scheduleSubpanelModalHeightSync();
+  
+    window.SignMakerMergeUI?.sync();
+    window.SignMakerEditorRuntime?.ensure();
+    window.SignMakerSettings22?.sync();
   };
     
     /* END OF UPDATEFORM */
@@ -25667,6 +25504,7 @@ const getPostThicknessFallback = () =>
         selectedShield.shieldType = "custom";
       });
 
+      window.SignMakerEditorRuntime?.ensureElement(document.querySelector("#presetShieldList"));
       updateShieldModalVisual(selectedShield, true);
 
       holder.style.display = "flex";
@@ -25884,6 +25722,7 @@ const getPostThicknessFallback = () =>
     return {
       init: initialize,
       readForm,
+      persistPostAppearance,
       updateForm,
       updateShieldSubform,
       ensureSubpanelMenuOpen: () => ensureSubpanelMenuOpenPublic(),
@@ -25897,5 +25736,11 @@ const getPostThicknessFallback = () =>
       applyExitTabDefaultProfileToPrototype,
       resetExitTabCurrentProfileSelection,
       getDefaultPanelSpacingPreference,
+      setPanelCorner: value => { document.getElementById("panelCorner").value=value; readForm(); },
+      getMergeGroupSelectionRefs: () => {
+        const rows = exposed.getCurrentSubPanel()?.blockElements?.rows || [];
+        const selection = getSubpanelClipboardSelectionPayload(rows);
+        return selection.rows.flatMap(entry => entry.selectedBlockIndices.map(blockIndex => ({ rowIndex: entry.rowIndex, blockIndex })));
+      },
     };
 })();

@@ -7,6 +7,9 @@
   --post-color-light: rgb(240, 240, 240);
   --post-color-dark: rgb(128, 128, 128);
   --postThickness: 1rem;
+  --post-arm-upper: 7.425rem;
+  --post-arm-lower: 9.975rem;
+  --post-center-height: 24rem;
   --postGradient: linear-gradient(90deg,
       var(--post-color-mid) 0%,
       var(--post-color-light) 40%,
@@ -17,6 +20,40 @@
   --post-color-mid: rgb(191, 191, 191);
   --post-color-light: rgb(240, 240, 240);
   --post-color-dark: rgb(128, 128, 128);
+}
+
+#postContainer.fdotSupportContainer {
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  width: max-content;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+#postContainer.fdotSupportContainer > .post {
+  display: none;
+}
+
+.fdotSupport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  max-width: none;
+}
+
+#postContainer.fdotSupportContainer #panelContainer {
+  flex: none;
+  align-items: flex-end;
+  position: relative;
+  z-index: 1;
+  height: auto;
+  margin-top: 0;
+  background: none;
 }
 
 #postContainer.postColorBlack {
@@ -62,18 +99,12 @@
 #postContainer.polePositionLeft #panelContainer,
 #postContainer.polePositionRight #panelContainer,
 #postContainer.polePositionOverhead #panelContainer {
-  background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0) 47%,
-      var(--post-color-mid) 47%,
-      var(--post-color-light) 49%,
-      var(--post-color-dark) 52%,
-      rgba(255, 255, 255, 0) 52%,
-      rgba(255, 255, 255, 0) 64%,
-      var(--post-color-mid) 64%,
-      var(--post-color-light) 66%,
-      var(--post-color-dark) 69%,
-      rgba(255, 255, 255, 0) 69%);
+  --post-arm-gradient: linear-gradient(180deg, var(--post-color-mid), var(--post-color-light) 40%, var(--post-color-dark));
+  background-image: var(--post-arm-gradient), var(--post-arm-gradient);
+  background-size: 100% var(--postThickness, 1rem);
+  background-position: center calc(var(--post-arm-upper) - var(--postThickness, 1rem) / 2),
+    center calc(var(--post-arm-lower) - var(--postThickness, 1rem) / 2);
+  background-repeat: no-repeat;
   height: 15rem;
 }
 
@@ -91,13 +122,14 @@
       var(--post-color-light) 40%,
       var(--post-color-dark) 100%);
   background-repeat: no-repeat;
-  background-size: var(--postThickness, 1rem) 24rem;
+  background-size: var(--postThickness, 1rem) var(--post-center-height);
   background-position: center bottom;
   margin-top: 7.5rem;
 }
 
 .post {
   background: var(--postGradient);
+  cursor: pointer;
   width: var(--postThickness, 1rem);
   height: 24rem;
 
@@ -116,6 +148,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  -webkit-user-select: none;
+  user-select: none;
   width: -moz-max-content;
   width: -webkit-max-content;
   width: intrinsic;
@@ -129,6 +163,12 @@
   padding: 0rem;
   position: relative;
 }
+
+.panelDragRoot { position:relative; }
+.panelDragHandle { touch-action:none; cursor:grab; }
+.panelDragging,.panelDragging .panelDragHandle { cursor:grabbing; }
+.panelDragActive,.panelDragActive * { user-select:none!important; }
+.panelDragSnapGuide { position:fixed; height:0; border-top:1px dashed #64c4ff; pointer-events:none; z-index:2147483646; }
 
 .panel:first-child {
   padding-left: 1rem;
@@ -173,7 +213,9 @@
 }
 
 .panel.dropBefore::before,
-.panel.dropAfter::after {
+.panel.dropAfter::after,
+.panelStack.dropBefore::before,
+.panelStack.dropAfter::after {
   content: "";
   position: absolute;
   top: 10%;
@@ -185,11 +227,13 @@
   z-index: 10;
 }
 
-.panel.dropBefore::before {
+.panel.dropBefore::before,
+.panelStack.dropBefore::before {
   left: 0.25rem;
 }
 
-.panel.dropAfter::after {
+.panel.dropAfter::after,
+.panelStack.dropAfter::after {
   right: 0.25rem;
 }
 
@@ -2105,18 +2149,19 @@ img.exitOnlyArrow:last-child {
 
 @keyframes flashSelection {
   0% {
-    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0.75);
-    opacity: 1;
+    outline: 0.5rem solid yellow;
   }
 
-  20% {
-    box-shadow: 0 0 0 0.28rem rgba(255, 255, 0, 1);
-    opacity: 1;
+  15% {
+    outline: 1.125rem solid yellow;
+  }
+
+  25% {
+    outline: 0.5rem solid yellow;
   }
 
   100% {
-    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0);
-    opacity: 0;
+    outline: 0.5rem solid rgba(255, 255, 0, 0);
   }
 }
 
@@ -2124,10 +2169,10 @@ img.exitOnlyArrow:last-child {
   position: absolute;
   pointer-events: none;
   z-index: 50;
-  background: rgba(255, 255, 0, 0.08);
-  border-radius: inherit;
-  animation: flashSelection 0.45s ease-out forwards;
+  background: transparent;
+  animation: flashSelection 0.5s ease-in forwards;
 }
+
 #postContainer {
   position: relative;
 }

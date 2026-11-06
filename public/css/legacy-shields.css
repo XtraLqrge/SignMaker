@@ -1,0 +1,1551 @@
+/* Optional Legacy route-number rendering. Current shields keep v2.19 styles. */
+.bE-shieldElement.legacyRouteNumberStyle .routeNumber {
+  font-size: calc(1.5rem * var(--shieldScale, 1));
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I .routeNumber {
+  color: var(--white);
+  text-align: center !important;
+  top: 0.02em;
+  font-size: 2.35em;
+  font-weight: 0.001 !important;
+  letter-spacing: -1 !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus.three .routeNumber {
+  font-family: "Series C";
+  top: 0em !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.four .routeNumber {
+  font-family: "Series B";
+  top: 0em !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.cir .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.elp .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.rec .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.rec2 .routeNumber {
+  color: var(--black);
+  font-size: 2.2em;
+  font-family: "Series D";
+  top: 0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar,
+.legacyRouteNumberStyle .customShieldMakerShieldShell.seriesDSpacingFix .routeNumber .routeChar {
+  display: inline-block;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.seriesDSpacingFix .routeNumber .routeChar-3,
+.legacyRouteNumberStyle .customShieldMakerShieldShell.seriesDSpacingFix .routeNumber .routeChar-3 {
+  display: inline-block;
+  width: 0.501em;
+  min-width: 0.501em;
+  max-width: 0.501em;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: left;
+  text-indent: -0.046em;
+  position: static;
+  transform: none;
+}
+.legacyRouteNumberStyle .bannerShieldContainer .routeNumber {
+  left: 0;
+  right: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+.legacyRouteNumberStyle .bannerShieldContainer .routeNumber .routeChar {
+  display: inline-block;
+}
+.legacyRouteNumberStyle .bannerShieldContainer .routeNumber .routeChar:last-child {
+  letter-spacing: 0 !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.three.threeNoOne .routeNumber {
+    font-family: "Series C" !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.three.threeWithOne .routeNumber {
+    font-family: "Series D" !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.US .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.07em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.US.three.threeNoOne .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.US.four .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.C .routeNumber {
+  color: var(--countyYellow);
+  font-family: "Series D";
+  font-size: 1.5em;
+  top: 0.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.C.one .routeNumber {
+  font-size: 1.8em;
+  top: 0.25em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.C.two .routeNumber {
+  font-size: 1.7em;
+  top: 0.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.C.three .routeNumber {
+  font-size: 1.5em;
+  top: 0.35em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.C.four .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AL .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.13em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AL.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AK .routeNumber {
+  color: var(--black);
+  top: 0em;
+    font-size: 2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AK.one .routeNumber {
+  font-family: "Series E";
+  text-align: center;
+    top: 0.05em;
+  left: 0.275em;
+    font-size: 2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AK.two .routeNumber {
+    font-family: "Series D";
+    text-align: center;
+    top: 0.15em;
+    left: 0.25em;
+    font-size: 1.75em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AK.three .routeNumber {
+  font-family: "Series C";
+  text-align: center;
+    top: 0.25em;
+  left: 0.25em;
+    font-size: 1.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AZ .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+    text-align: center;
+  top: 0em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AZLOOP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.AZ.three .routeNumber {
+    color: var(--black);
+    font-family: "Series C";
+    text-align: center;
+    top: 0em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AR .routeNumber {
+  color: var(--black);
+    font-family: "Series B";
+    text-align: center;
+  top: -0.05em;
+  right: 0em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AR.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.AR.two .routeNumber {
+  font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AR.three .routeNumber {
+  font-family: "Series B";
+  right: 0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CA .routeNumber {
+  color: var(--white);
+  font-family: "Series D";
+  top: 0.1em;
+  font-size: 2.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CA.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CO .routeNumber {
+  color: var(--black);
+  font-size: 1.9em;
+  top: 0.51em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CO.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.CO.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CO.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CT .routeNumber {
+    color: var(--black);
+    font-size: 2.4em;
+    font-family: "Series D";
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CT.two .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.CT.three .routeNumber {
+    font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.DE .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    font-family: "Series C";
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.DC .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 1.5em;
+  top: 0.6em;
+  letter-spacing: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FL .routeNumber {
+	color: var(--black);
+	top: 0.3em;
+	right: 0.15em;
+	font-size: 1.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FL.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.FL.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.FL.three .routeNumber {
+	font-family: "Series D";
+	font-size: 2.2em;
+	top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FL.four .routeNumber {
+	font-family: "Series C";
+	font-size: 2.2em;
+	top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FL.toll .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.FL.cfxtoll .routeNumber {
+	font-family: "Series C";
+	font-size: 1.3em;
+	top: 0.7em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FL.toll .routeNumber {
+	left: -0.2rem;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FL.turnpike .routeNumber {
+	opacity: 0;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.GA .routeNumber {
+  color: var(--black);
+  font-size: 2.5em;
+  font-family: "Series C";
+  top: 0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.GA.three .routeNumber {
+  font-size: 2.3em;
+  top: 0.05em;
+  letter-spacing: -0.01em;
+}
+.legacyRouteNumberStyle */
+
+
+.bannerShieldContainer.HI .routeNumber {
+  color: var(--black);
+  font-size: 1.75em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.HI.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.HI.two .routeNumber {
+  font-family: "Series D";
+  top: 0.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.HI.three .routeNumber {
+  font-family: "Series C";
+  font-size: 1.75em;
+  top: 0.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.HI.four .routeNumber {
+    font-family: "Series C";
+    font-size: 1.35em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ID .routeNumber {
+    color: var(--black);
+  font-family: "Series C";
+  text-align: right;
+  top: -0.15em;
+  font-size: 2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ID.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ID.two .routeNumber {
+  right: 0.075em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ID.three .routeNumber {
+  font-family: "Series B"
+}
+.legacyRouteNumberStyle .shieldsContainer.shieldBacks.ID .routeNumber {
+  color: var(--white);
+}
+.legacyRouteNumberStyle .shieldsContainer:not(.shieldBacks) .ID .routeNumber {
+  color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IL .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    top: 0.175em;
+    font-size: 2.25em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IN .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    top: 0.05em;
+    font-size: 2.6em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IN.three .routeNumber {
+    font-family: "Series D" !important;
+    letter-spacing: -0.06em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IN.three.threeNoOne .routeNumber {
+    font-family: "Series D" !important;
+    letter-spacing: -0.06em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IN.three.threeWithOne .routeNumber {
+    letter-spacing: 0em !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IA .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IA.one .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.IA.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.IA.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KS .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KS.one .routeNumber {
+    font-family: "Series E";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KS.two .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KS.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KY .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KY.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.KY.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.KY.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.KY.four .routeNumber {
+    font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.LA .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.LA.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.LA.two .routeNumber {
+  font-size: 2.5em;
+  top: 0.12em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.LA.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.LA.four .routeNumber {
+  font-size: 2.2em;
+  top: 0.22em;
+  letter-spacing: -0.07em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.LA.four.fourWithOne .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.LA.four.fourNoOne .routeNumber {
+  font-family: "Series C";
+  letter-spacing: -0.02em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ME .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    top: -0.03em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MD .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.135em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MD.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MA .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    top: -0.03em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MI .routeNumber {
+  color: var(--black);
+  font-size: 2em;
+  top: 0.12em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MI.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.MI.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MI.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MN .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.MNBUS .routeNumber {
+  color: var(--white);
+    text-align: center;
+  font-family: "Series D";
+  font-size: 2.25em;
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MN.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.MNBUS.three .routeNumber {
+    font-family: "Series C"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MNCo .routeNumber {
+    font-family: "Series D";
+    font-size: 2em;
+    top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MNCo.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MS .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    top: -0.03em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MS.three .routeNumber {
+    font-family: "Series C"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MO .routeNumber {
+  color: var(--black);
+    font-size: 2.5em;
+    top: -0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MO.one .routeNumber {
+    font-family: "Series D"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MO.two .routeNumber {
+  font-family: "Series C";
+    left: -0.02em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MO.three .routeNumber {
+  font-family: "Series B";
+    left: -0.02em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.125em;
+  font-size: 2.25em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT.one .routeNumber {
+    font-family: "Series E"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT2 .routeNumber {
+  color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT2.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.MT2.two .routeNumber {
+    font-size: 1.75em;
+  top: 0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT2.three .routeNumber {
+  font-size: 1.5em;
+  top: 0.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT2.one .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MT2.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.MT2.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NE .routeNumber {
+  color: var(--black);
+  top: 0.03em;
+    font-size: 1.8em;
+    font-family: "Series D"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NE.link.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NE.spur.three .routeNumber {
+    font-family: "Series C"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NV .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 2em;
+  top: -0.2em;
+  letter-spacing: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NVCC .routeNumber {
+  color: #003881;
+  font-family: "Series C";
+  font-size: 1.5em;
+  top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NVCC.three .routeNumber {
+  font-family: "Series C";
+  font-size: 1.4em;
+  top: 0.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NH .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+    top: -0.05em;
+    right: -0.05em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NH.three .routeNumber {
+  font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NJ .routeNumber {
+    color: var(--black);
+    font-family: "Series C";
+    top: -0.06em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NM .routeNumber {
+  color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NM.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NM.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NM.one .routeNumber {
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NM.two .routeNumber {
+    color: var(--black);
+    text-align: center;
+    font-size: 1.75em;
+    font-family: "Series D";
+    top: 0.175em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NM.three .routeNumber {
+  font-family: "Series C";
+  font-size: 1.25em;
+  top: 0.55em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NY .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.05em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NY.three .routeNumber {
+    font-family: "Series D";
+    top: 0.05em;
+    font-size: 2.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NY.four .routeNumber {
+    font-family: "Series C";
+    top: 0.05em;
+    font-size: 2.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NC .routeNumber {
+  color: var(--black);
+  font-size: 1.9em;
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NC.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NC.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NC.three .routeNumber {
+  font-family: "Series C";
+    font-size: 1.75em;
+    top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ND .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: 0.075em;
+    right: 0.025em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ND.three .routeNumber {
+    font-family: "Series C";
+    top: 0.075em;
+    right: 0.025em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ND.four .routeNumber {
+    font-family: "Series B";
+    top: 0.075em;
+    right: 0.025em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OH .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+    font-size: 2.5em;
+  top: -0.075em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OH.three .routeNumber {
+    font-size: 2.2em;
+    top: 0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OK .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+    top: 0.13em;
+    font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OK.three .routeNumber {
+    font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OR .routeNumber {
+  color: var(--black);
+  top: -0.125em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OR.one .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.OR.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OR.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PA .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.05em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PA.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PATP .routeNumber {
+    color: var(--white);
+    font-family: "Series C";
+    font-size: 2.25em;
+    top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR .routeNumber {
+  color: var(--white);
+  font-family: "Series D";
+  font-size: 2.5em;
+  top: -0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR.one .routeNumber {
+  font-size: 3em;
+  top: -0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR.three.threeWithOne .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR2 .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 2.5em;
+  top: -0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR2.one .routeNumber {
+  font-size: 3em;
+  top: -0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR2.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR2.threeWithOne .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR3 .routeNumber {
+  color: var(--countyYellow);
+  font-family: "Series D";
+  font-size: 2.25em;
+  top: -0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR3.one .routeNumber {
+  font-size: 2.5em;
+  top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR3.two .routeNumber {
+  letter-spacing: -0.03em;
+  right: 0.03em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR3.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR3.three.threeWithOne .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR3.four .routeNumber {
+  font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR4 .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  font-size: 2.5em;
+  top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR4.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PR4.four .routeNumber {
+  font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.RI .routeNumber {
+  color: var(--black);
+  top: 0.1em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.RI.one .routeNumber {
+    font-family: "Series E";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.RI.two .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.RI.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SC .routeNumber {
+  color: var(--blue);
+  font-family: "Series D";
+  top: 0.18em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SC.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SD .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.075em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SD.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TN .routeNumber {
+  color: var(--black);
+  font-family: "Series D";
+  top: -0.15em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TN.three .routeNumber {
+    font-family: "Series C"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TN2 .routeNumber {
+  color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TN2.one .routeNumber {
+    font-family: "Series D";
+    font-size: 2.5em;
+    top: -0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TN2.two .routeNumber {
+  font-family: "Series D";
+    font-size: 2em;
+    top: -0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TN2.three .routeNumber {
+  font-family: "Series C";
+    font-size: 1.85em;
+    top: -0.175em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX .routeNumber {
+  font-size: 2.2em;
+  top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.three .routeNumber {
+    color: var(--black);
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.four .routeNumber {
+    color: var(--black);
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.BELTWAY .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.FM .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.LOOP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.PARK .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.RM .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.SPUR .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 2.2em;
+    top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.EXPRESS .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 2.2em;
+    top: 0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.EXPRESS.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.TOLL .routeNumber {
+    color: var(--white);
+    font-family: "Series E";
+    font-size: 2.25em;
+    top: -0.21em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.TOLL.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.TOLL.four .routeNumber {
+    font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.tollntta .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.tollctrma .routeNumber {
+  color: var(--white);
+  text-align: center;
+  font-family: "Clearview 3W";
+  letter-spacing: 0em;
+  font-size: 2em;
+  top: -0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.tollntta.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.tollctrma.three .routeNumber {
+  font-family: "Clearview 1W";
+  letter-spacing: 0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TX.tollntta.four .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TX.tollctrma.four .routeNumber {
+  font-family: "Clearview 1W";
+  font-size: 1.8em;
+  top: -0.11em;
+  letter-spacing: -0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.UT .routeNumber {
+  color: var(--black);
+    font-size: 1.75em;
+    top: 0.19em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.UT.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.UT.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.UT.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VT .routeNumber {
+  color: var(--green);
+  font-family: "Series D";
+  top: 0.15em;
+  font-size: 2.4em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VT.three .routeNumber {
+    font-family: "Series C"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA .routeNumber {
+  color: var(--black);
+    top: -0.15em;
+    font-size: 2.5em;
+
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA.one .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA.two .routeNumber {
+    font-family: "Series C"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA2 .routeNumber {
+  color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA2.one .routeNumber {
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA2.two .routeNumber {
+    font-size: 2.5em;
+    font-family: "Series C";
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.VA2.three .routeNumber {
+    font-size: 2.5em;
+    font-family: "Series B";
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WA .routeNumber {
+  color: var(--black);
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WA.one .routeNumber {
+    font-size: 2.5em;
+    top: -0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WA.two .routeNumber {
+  font-size: 2.1em;
+  top: 0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WA.three .routeNumber {
+  font-size: 1.75em;
+  top: 0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WV .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.04em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WV.three .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WI .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    font-family: "Series D";
+    top: -0.04em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WI.threeNoOne .routeNumber {
+    font-family: "Series D" !important;
+    letter-spacing: -0.03em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WICo .routeNumber {
+  color: var(--black);
+  font-size: 2.7em;
+  top: -0.07em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WICo.one .routeNumber {
+  font-family: "Series E";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WICo.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WICo.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WY .routeNumber {
+  color: var(--black);
+  top: 0.1em;
+  font-size: 2.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WY.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.WY.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.WY.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AB .routeNumber {
+    color: var(--black);
+    font-size: 2em;
+    top: 0.25em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AB.one .routeNumber {
+    font-family: "Series E";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AB.two .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AB.three .routeNumber {
+    font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AB2 .routeNumber {
+    color: var(--black);
+    font-family: "Series C";
+    font-size: 1.6em;
+    top: 0.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.AB2.three .routeNumber {
+    font-size: 1.4em;
+    top: 0.67em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ABTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.4em;
+    top: 0.45em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ABTC.two .routeNumber {
+    font-family: "Series C";
+    font-size: 1.2em;
+    top: 0.7em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ABTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BC .routeNumber {
+    font-family: "Helvetica Neue Bold";
+    color: #1752A9;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BC.one .routeNumber {
+    font-size: 1.5em;
+    top: .75em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BC.two .routeNumber {
+    font-size: 1.4em;
+    top: 0.8em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BC.three .routeNumber {
+    font-size: 1.1em;
+    top: 1.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BCYH .routeNumber {
+    font-family: "Helvetica Neue Bold";
+    color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BCYH.one .routeNumber {
+    font-size: 1.2em;
+    top: 1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BCYH.two .routeNumber {
+    font-size: 1em;
+    top: 1.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BCYH.three .routeNumber {
+    font-size: 0.7em;
+    top: 2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BCTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.4em;
+    top: 0.45em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.BCTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MB .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 2em;
+    top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MB.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.7em;
+    top: 0.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MB2 .routeNumber {
+    color: var(--white);
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.85em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MBTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MBTC.one .routeNumber {
+  font-size: 1.6em;
+  top: 0.3em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MBTC.two .routeNumber {
+  font-size: 1.2em;
+  top: 0.7em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MBTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NB .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NBCONN .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NBLOCAL .routeNumber {
+    color: var(--black);
+    font-family: "Arial Bold";
+    font-size: 1.6em;
+    top: 0.4em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NB.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NBCONN.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NBLOCAL.three .routeNumber {
+    font-family: "Arial Bold";
+    font-size: 1.15em;
+    top: 0.7em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NB.TC .routeNumber {
+    color: #016B4D;
+    font-family: "Arial Bold";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NB.TC.one .routeNumber {
+  font-size: 1.5em;
+  top: 0.55em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NB.TC.two .routeNumber {
+  font-size: 1.1em;
+  top: 1.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NB.TC.three .routeNumber {
+    font-size: 0.9em;
+    top: 1.4em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NL .routeNumber {
+    color: var(--black);
+    font-family: "Series E";
+    font-size: 1.8em;
+    top: 0.42em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NL.three .routeNumber {
+    font-family: "Series E";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NLTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.4em;
+    top: 0.4em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NLTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.1em;
+    top: 0.8em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NS .routeNumber {
+    color: var(--black);
+    font-size: 2.5em;
+    top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NS.one .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NS.two .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NS.three .routeNumber {
+    color: var(--white);
+    font-size: 1.5em;
+    top: 0.6em;
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NS.CONN .routeNumber {
+    color: var(--white);
+    font-family: "Series C";
+    font-size: 2em;
+    top: 0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NSTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NSTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON .routeNumber {
+    color: var(--black);
+}
+.legacyRouteNumberStyle .bannerShieldCOntainer.ON.one .routeNumber {
+    font-family: "Series E";
+    font-size: 2.7em;
+    top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON.two .routeNumber {
+    font-family: "Series D";
+    font-size: 2.5em;
+    top: 0.215em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON.three .routeNumber {
+    font-family: "Series C";
+    font-size: 2.5em;
+    top: 0.215em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON2 .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 2em;
+    top: 0.4em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON2.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.8em;
+    top: 0.55em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON3 .routeNumber {
+    color: var(--black);
+    font-family: "Series D";
+    font-size: 2.2em;
+    top: 0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ON3.three .routeNumber {
+    font-size: 2em;
+    top: 0.15em;
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ONTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ONTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.PEI .routeNumber {
+    color: var(--black);
+    font-family: "Series C";
+    font-size: 1.7em;
+    top: 0.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QCTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.76em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QCTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QC .routeNumber {
+    font-size: 1.75rem;
+    top: 0.3em;
+    color: var(--white);
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QC.one .routeNumber {
+    font-family: "Series E"
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QC.two .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QC.three .routeNumber {
+    font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.QC2 .routeNumber {
+    font-size: 1.75rem;
+    color: var(--white);
+    top: 0.35em;
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SK .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SK2 .routeNumber {
+    color: var(--white);
+    font-family: "Series C";
+    font-size: 1.5em;
+    top: 0.5em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SK2 .routeNumber {
+  color: #003883;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SKTC .routeNumber {
+    color: #016B4D;
+    font-family: "Series D";
+    font-size: 1.25em;
+    top: 0.6em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SKTC.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.05em;
+    top: 0.9em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.GSP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NJTP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.PIP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.B .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.BMP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.BP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.BR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.BRP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.CCP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.CI .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.FDR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.GCP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.H .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.HH .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.HR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.HRD .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.HRP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.JR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.KWV .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.LOSP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.M .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.MP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.N .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NSP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.NYST .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.O .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.Pe .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SA .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SBP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SM .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SMP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SO .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.TSP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.W .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OHTP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKCH .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKCR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKHB .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKIN .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKKC .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKKL .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKMS .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKTU .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.OKWR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.HTR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.SHT .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.WPT .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.PATPLOGO .routeNumber {
+    display: none !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TCH .routeNumber {
+    color: var(--green);
+    font-family: "Series D";
+    font-size: 1.5em;
+    top: 0.45em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TCH.two .routeNumber {
+    font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TCH.three .routeNumber {
+    font-family: "Series B";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TCHLeaf .routeNumber {
+    color: var(--green);
+    font-family: "Series E";
+    font-size: 2.25em;
+    top: 0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TCHLEaf.two .routeNumber {
+    font-family: "Series D";
+    font-size: 2em;
+    top: 0.2em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TCHLeaf.three .routeNumber {
+    font-family: "Series C";
+    font-size: 1.8em;
+    top: 0.25em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ONDVP .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ONGAR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ONTCCOR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ONTCGBR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ONTCLSR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ONTCNOR .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.ONTCOVR .routeNumber {
+    display: none !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bl .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bs .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.dl .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.ds .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.f .routeNumber {
+  color: var(--white);
+  top: 0.08em;
+  font-size: 2.25em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bl.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bl.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bs.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bs.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.dl.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.dl.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.ds.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.ds.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.f.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.f.two .routeNumber {
+  font-family: "Series D";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.bus.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bl.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.bs.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.dl.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.ds.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.I.f.three .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.USCA .routeNumber {
+  color: var(--black);
+  font-size: 2.2em;
+  font-family: "Series D";
+  top: 0.1em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.USCA.three .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.USCA.four .routeNumber {
+  font-family: "Series C";
+}
+.legacyRouteNumberStyle .bannerShieldContainer.ALPHANUM .routeNumber {
+  color: #ffa709;
+  font-size: 2.2em;
+  font-family: "Series EM";
+  top: 0.0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NAT .routeNumber {
+  color: var(--yellow);
+  font-size: 2em;
+  font-family: "Series D";
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NAT.two .routeNumber {
+  color: var(--yellow);
+  font-size: 2em;
+  font-family: "Series EM";
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NAT.onev .routeNumber {
+  color: var(--yellow);
+  font-size: 2em;
+  font-family: "Series EM";
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TOLLBLUE .routeNumber {
+  color: var(--yellow);
+  font-size: 2.2em;
+  font-family: "Series EM";
+  top: 0.0em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SR .routeNumber {
+  color: white;
+  font-size: 2.5em;
+  font-family: "Series C";
+  top: -0.10em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SR.one .routeNumber {
+  color: white;
+  font-size: 2.5em;
+  font-family: "Series EM";
+  top: -0.10em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NR .routeNumber {
+  color: black;
+  font-size: 2.5em;
+  font-family: "Series C";
+  top: -0.10em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.NR.one .routeNumber {
+  color: black;
+  font-size: 2.5em;
+  font-family: "Series EM";
+  top: -0.10em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MR .routeNumber {
+  color: rgb(0, 67, 123);
+  font-size: 2.5em;
+  font-family: "Series D";
+  top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.MR.one .routeNumber {
+  color: rgb(0, 67, 123);
+  font-size: 2.5em;
+  font-family: "Series EM";
+  top: -0.05em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TD .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.2em;
+  font-family: "Series D";
+  top: 0.10em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.TD.three .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2em;
+  font-family: "Series B";
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.FNSW .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.1em;
+  font-family: "Series C";
+  top: 0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.SH .routeNumber {
+  color: rgb(255, 255, 255);
+  font-size: 2.4em;
+  font-family: "Series D";
+  top: -0.15em;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.officialFdotShield .routeNumber.officialRouteNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.officialCfxShield .routeNumber.officialRouteNumber {
+	bottom: auto;
+	left: 0;
+	font-feature-settings: "kern" 0;
+	font-kerning: none;
+	font-synthesis: none;
+	letter-spacing: 0;
+	line-height: 1;
+	margin: 0;
+	right: auto;
+	text-align: left;
+	top: calc(var(--officialRouteCapTop, 0rem) - 0.142857143em);
+	transform: none;
+	transform-origin: 0 50%;
+	white-space: nowrap;
+	width: max-content;
+	z-index: 4;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP.three .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: calc(0.6rem * var(--shieldScale, 1));
+	font-size: calc(2rem * var(--shieldScale, 1));
+}
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP.four .routeNumber {
+	color: var(--black);
+	font-family: "Series C";
+	top: calc(0.6rem * var(--shieldScale, 1));
+	font-size: calc(2rem * var(--shieldScale, 1));
+}
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP_TOLL.one .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP_TOLL.two .routeNumber,
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP_TOLL.three .routeNumber {
+	color: var(--black);
+	font-family: "Series D";
+	top: calc(0.9rem * var(--shieldScale, 1));
+	font-size: calc(1.2rem * var(--shieldScale, 1));
+}
+.legacyRouteNumberStyle .bannerShieldContainer.DUSKSMP_TOLL.four .routeNumber {
+	color: var(--black);
+	font-family: "Series C";
+	top: calc(0.9rem * var(--shieldScale, 1));
+	font-size: calc(1.2rem * var(--shieldScale, 1));
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.oldInterstateNumberPositioning .routeNumber {
+  top: 0.16em !important;
+  font-size: 2em;
+  font-family: "Series D" !important;
+}
+.legacyRouteNumberStyle .bannerShieldContainer.I.oldInterstateNumberPositioning.four .routeNumber {
+  font-family: "Series C" !important;
+}
+
+.bannerShieldContainer.I.oldInterstateNumberPositioning .routeNumber {
+  top: 0.16em !important;
+  font-size: 2em;
+  font-family: "Series D" !important;
+}
+.bannerShieldContainer.I.oldInterstateNumberPositioning.four .routeNumber {
+  font-family: "Series C" !important;
+}

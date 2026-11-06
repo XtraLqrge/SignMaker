@@ -5,3 +5,8 @@
 # Windows
 Thumbs.db
 .vscode/
+node_modules/
+browser-results/
+
+# Local project instructions
+/AGENTS.md

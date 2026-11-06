@@ -1,0 +1,456 @@
+{
+  "format": 2,
+  "scriptCount": 14,
+  "localStylesheetCount": 1,
+  "deferredEditor": [
+    "js/AlignmentButtons.f1278edc85d1f9aa.js",
+    "js/NativeSelect.9108337f79975d68.js",
+    "js/FDOTSupports.26d110c7592ad794.js",
+    "js/IconPicker.f07693de1a9e8c8f.js",
+    "js/form.bbffd9c84392020d.js",
+    "js/IndexDB.905b66ca7e8b07ba.js",
+    "js/CustomShields.85049f03f2f32351.js",
+    "js/MergeUI.c2ff95e68568046c.js",
+    "js/Settings22.515ebbe65b349361.js",
+    "js/DropdownTheme.8ec2ddbe056ed93d.js"
+  ],
+  "deferredStyles": "css/app.77095f8e6d759b41.css",
+  "startupJS": {
+    "bytes": 589676,
+    "gzipBytes": 159444,
+    "brotliBytes": 132374
+  },
+  "criticalCSS": {
+    "bytes": 237623,
+    "gzipBytes": 36605,
+    "brotliBytes": 30282
+  },
+  "inlineFontHelper": {
+    "bytes": 8187,
+    "gzipBytes": 2302,
+    "brotliBytes": 1996
+  },
+  "uiIconFont": {
+    "file": "fonts/ui/symbols.c05d0d02818ef06d.woff2",
+    "bytes": 18628,
+    "names": 52
+  },
+  "assets": [
+    {
+      "source": "js/EditorRuntime.js",
+      "output": "js/EditorRuntime.22e3b656e2676515.js",
+      "original": {
+        "bytes": 2683,
+        "gzipBytes": 1025,
+        "brotliBytes": 856
+      },
+      "optimized": {
+        "bytes": 1708,
+        "gzipBytes": 865,
+        "brotliBytes": 731
+      }
+    },
+    {
+      "source": "js/lib.js",
+      "output": "js/lib.fe59e1d3b9e31c9f.js",
+      "original": {
+        "bytes": 1754,
+        "gzipBytes": 790,
+        "brotliBytes": 645
+      },
+      "optimized": {
+        "bytes": 746,
+        "gzipBytes": 472,
+        "brotliBytes": 393
+      }
+    },
+    {
+      "source": "js/ShieldFallbacks.js",
+      "output": "js/ShieldFallbacks.f15522022d253d8e.js",
+      "original": {
+        "bytes": 339232,
+        "gzipBytes": 184765,
+        "brotliBytes": 173178
+      },
+      "optimized": {
+        "bytes": 339221,
+        "gzipBytes": 184754,
+        "brotliBytes": 173135
+      }
+    },
+    {
+      "source": "js/Shield.js",
+      "output": "js/Shield.503233568ee3f25d.js",
+      "original": {
+        "bytes": 39423,
+        "gzipBytes": 9053,
+        "brotliBytes": 7740
+      },
+      "optimized": {
+        "bytes": 29199,
+        "gzipBytes": 8157,
+        "brotliBytes": 6992
+      }
+    },
+    {
+      "source": "js/Sign.js",
+      "output": "js/Sign.3640c7bc4cd48652.js",
+      "original": {
+        "bytes": 16289,
+        "gzipBytes": 4013,
+        "brotliBytes": 3511
+      },
+      "optimized": {
+        "bytes": 9633,
+        "gzipBytes": 3349,
+        "brotliBytes": 2973
+      }
+    },
+    {
+      "source": "js/ExitTab.js",
+      "output": "js/ExitTab.28a7fed807403f99.js",
+      "original": {
+        "bytes": 16965,
+        "gzipBytes": 3478,
+        "brotliBytes": 3058
+      },
+      "optimized": {
+        "bytes": 11184,
+        "gzipBytes": 2932,
+        "brotliBytes": 2593
+      }
+    },
+    {
+      "source": "js/Panel.js",
+      "output": "js/Panel.170c60a0a7bfad5b.js",
+      "original": {
+        "bytes": 4014,
+        "gzipBytes": 1348,
+        "brotliBytes": 1129
+      },
+      "optimized": {
+        "bytes": 2610,
+        "gzipBytes": 1117,
+        "brotliBytes": 945
+      }
+    },
+    {
+      "source": "js/PanelDrag.js",
+      "output": "js/PanelDrag.b295e48ad1bba025.js",
+      "original": {
+        "bytes": 10379,
+        "gzipBytes": 3157,
+        "brotliBytes": 2758
+      },
+      "optimized": {
+        "bytes": 5951,
+        "gzipBytes": 2470,
+        "brotliBytes": 2197
+      }
+    },
+    {
+      "source": "js/VmsPanel.js",
+      "output": "js/VmsPanel.34d9648ce7eb7499.js",
+      "original": {
+        "bytes": 22053,
+        "gzipBytes": 6474,
+        "brotliBytes": 5616
+      },
+      "optimized": {
+        "bytes": 13144,
+        "gzipBytes": 5182,
+        "brotliBytes": 4564
+      }
+    },
+    {
+      "source": "js/Post.js",
+      "output": "js/Post.9f6684dc6741e278.js",
+      "original": {
+        "bytes": 6753,
+        "gzipBytes": 1781,
+        "brotliBytes": 1538
+      },
+      "optimized": {
+        "bytes": 4539,
+        "gzipBytes": 1430,
+        "brotliBytes": 1241
+      }
+    },
+    {
+      "source": "js/Arrows.js",
+      "output": "js/Arrows.40ab7892bc2c752b.js",
+      "original": {
+        "bytes": 976,
+        "gzipBytes": 435,
+        "brotliBytes": 342
+      },
+      "optimized": {
+        "bytes": 828,
+        "gzipBytes": 409,
+        "brotliBytes": 355
+      }
+    },
+    {
+      "source": "js/IconFallbacks.js",
+      "output": "js/IconFallbacks.d438a3a04387fedd.js",
+      "original": {
+        "bytes": 1759458,
+        "gzipBytes": 956695,
+        "brotliBytes": 895245
+      },
+      "optimized": {
+        "bytes": 1759456,
+        "gzipBytes": 956697,
+        "brotliBytes": 895430
+      }
+    },
+    {
+      "source": "js/Control.js",
+      "output": "js/Control.3d98a96560c6d1fe.js",
+      "original": {
+        "bytes": 305529,
+        "gzipBytes": 61990,
+        "brotliBytes": 50623
+      },
+      "optimized": {
+        "bytes": 196876,
+        "gzipBytes": 50036,
+        "brotliBytes": 41203
+      }
+    },
+    {
+      "source": "js/SubPanels.js",
+      "output": "js/SubPanels.d4d392b29959e7d4.js",
+      "original": {
+        "bytes": 1675,
+        "gzipBytes": 637,
+        "brotliBytes": 531
+      },
+      "optimized": {
+        "bytes": 882,
+        "gzipBytes": 448,
+        "brotliBytes": 368
+      }
+    },
+    {
+      "source": "js/HtmlToImage.js",
+      "output": "js/HtmlToImage.27f73655f8a42531.js",
+      "original": {
+        "bytes": 17217,
+        "gzipBytes": 5612,
+        "brotliBytes": 4910
+      },
+      "optimized": {
+        "bytes": 16918,
+        "gzipBytes": 5603,
+        "brotliBytes": 4902
+      }
+    },
+    {
+      "source": "js/main.js",
+      "output": "js/main.fa1be85a42473c25.js",
+      "original": {
+        "bytes": 734634,
+        "gzipBytes": 126717,
+        "brotliBytes": 100037
+      },
+      "optimized": {
+        "bytes": 311222,
+        "gzipBytes": 81973,
+        "brotliBytes": 67343
+      }
+    },
+    {
+      "source": "js/AlignmentButtons.js",
+      "output": "js/AlignmentButtons.f1278edc85d1f9aa.js",
+      "original": {
+        "bytes": 4743,
+        "gzipBytes": 1542,
+        "brotliBytes": 1285
+      },
+      "optimized": {
+        "bytes": 2904,
+        "gzipBytes": 1265,
+        "brotliBytes": 1068
+      }
+    },
+    {
+      "source": "js/NativeSelect.js",
+      "output": "js/NativeSelect.9108337f79975d68.js",
+      "original": {
+        "bytes": 19291,
+        "gzipBytes": 5580,
+        "brotliBytes": 4789
+      },
+      "optimized": {
+        "bytes": 12269,
+        "gzipBytes": 4722,
+        "brotliBytes": 4076
+      }
+    },
+    {
+      "source": "js/FDOTSupports.js",
+      "output": "js/FDOTSupports.26d110c7592ad794.js",
+      "original": {
+        "bytes": 19782,
+        "gzipBytes": 5966,
+        "brotliBytes": 5227
+      },
+      "optimized": {
+        "bytes": 12056,
+        "gzipBytes": 4907,
+        "brotliBytes": 4276
+      }
+    },
+    {
+      "source": "js/IconPicker.js",
+      "output": "js/IconPicker.f07693de1a9e8c8f.js",
+      "original": {
+        "bytes": 19240,
+        "gzipBytes": 5161,
+        "brotliBytes": 4463
+      },
+      "optimized": {
+        "bytes": 13009,
+        "gzipBytes": 4328,
+        "brotliBytes": 3802
+      }
+    },
+    {
+      "source": "js/form.js",
+      "output": "js/form.bbffd9c84392020d.js",
+      "original": {
+        "bytes": 918106,
+        "gzipBytes": 155749,
+        "brotliBytes": 119044
+      },
+      "optimized": {
+        "bytes": 465442,
+        "gzipBytes": 107069,
+        "brotliBytes": 83865
+      }
+    },
+    {
+      "source": "js/IndexDB.js",
+      "output": "js/IndexDB.905b66ca7e8b07ba.js",
+      "original": {
+        "bytes": 5327,
+        "gzipBytes": 1044,
+        "brotliBytes": 900
+      },
+      "optimized": {
+        "bytes": 2997,
+        "gzipBytes": 850,
+        "brotliBytes": 739
+      }
+    },
+    {
+      "source": "js/CustomShields.js",
+      "output": "js/CustomShields.85049f03f2f32351.js",
+      "original": {
+        "bytes": 3912,
+        "gzipBytes": 1156,
+        "brotliBytes": 942
+      },
+      "optimized": {
+        "bytes": 2833,
+        "gzipBytes": 1005,
+        "brotliBytes": 819
+      }
+    },
+    {
+      "source": "js/MergeUI.js",
+      "output": "js/MergeUI.c2ff95e68568046c.js",
+      "original": {
+        "bytes": 7562,
+        "gzipBytes": 2438,
+        "brotliBytes": 2077
+      },
+      "optimized": {
+        "bytes": 5596,
+        "gzipBytes": 2085,
+        "brotliBytes": 1768
+      }
+    },
+    {
+      "source": "js/Settings22.js",
+      "output": "js/Settings22.515ebbe65b349361.js",
+      "original": {
+        "bytes": 3789,
+        "gzipBytes": 1206,
+        "brotliBytes": 1023
+      },
+      "optimized": {
+        "bytes": 3110,
+        "gzipBytes": 1077,
+        "brotliBytes": 923
+      }
+    },
+    {
+      "source": "js/DropdownTheme.js",
+      "output": "js/DropdownTheme.8ec2ddbe056ed93d.js",
+      "original": {
+        "bytes": 12052,
+        "gzipBytes": 3947,
+        "brotliBytes": 3462
+      },
+      "optimized": {
+        "bytes": 7615,
+        "gzipBytes": 3214,
+        "brotliBytes": 2848
+      }
+    },
+    {
+      "sources": [
+        "css/page.css",
+        "css/signs.css",
+        "css/shields.css",
+        "css/form.css",
+        "css/sign-foundation.css",
+        "css/ui-fonts.css",
+        "css/merge-features.css",
+        "css/legacy-shields.css",
+        "css/template-editor.css",
+        "css/ui-upgrade.css",
+        "css/settings22.css",
+        "css/editor-compact.css",
+        "css/dropdown-layout.css",
+        "css/picker-theme.css"
+      ],
+      "output": "css/app.77095f8e6d759b41.css",
+      "original": {
+        "bytes": 706217,
+        "gzipBytes": 99703,
+        "brotliBytes": 75916
+      },
+      "optimized": {
+        "bytes": 587668,
+        "gzipBytes": 80192,
+        "brotliBytes": 61496
+      }
+    },
+    {
+      "critical": true,
+      "output": "css/sign.2b957f3e96a8a021.css",
+      "optimized": {
+        "bytes": 237623,
+        "gzipBytes": 36605,
+        "brotliBytes": 30282
+      }
+    },
+    {
+      "source": "js/Startup.js",
+      "output": "js/Startup.9d75b1c853e51bc9.js",
+      "original": {
+        "bytes": 1757,
+        "gzipBytes": 731,
+        "brotliBytes": 585
+      },
+      "optimized": {
+        "bytes": 1154,
+        "gzipBytes": 604,
+        "brotliBytes": 476
+      }
+    }
+  ]
+}

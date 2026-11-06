@@ -1,0 +1,77 @@
+[
+  {
+    "path": "img/shields/United States/Florida/FDOT/FL-36-2Digit.svg",
+    "bytes": 1552,
+    "sha256": "2f436a7698991641fb5f572d474aa40eec4d7ed9335f6702ce5a76d585b65aa5"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FL-36-3Digit.svg",
+    "bytes": 1405,
+    "sha256": "e9d4a9d1568ea8219d6069dce6eb6823fb345d3a8cdc677c8ca2ea72a7acd1e6"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FL-30-2Digit.svg",
+    "bytes": 1546,
+    "sha256": "44adc4bf6516cc58b904f99bd2afe088ed341cc41ae0447f46114121cb25f33f"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FL-30-3Digit.svg",
+    "bytes": 1404,
+    "sha256": "1576891b582ff256d463bbfce1200aa369df1bb1cca2cb3ee14ba172a4fea292"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FL-24-2Digit.svg",
+    "bytes": 1533,
+    "sha256": "836f040558ca52817931786716d9f998dd573e5efb6cbd5911575a240dd19448"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FL-24-3Digit.svg",
+    "bytes": 1396,
+    "sha256": "11b066d20bc6bcc091036b9719943661f154e7a239001d4cfc11a89e3a84cbe8"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/TollFDOT-48.svg",
+    "bytes": 2893,
+    "sha256": "80c1a5f423cf09d640994da506dfacf3066139459c505e33defa8321b4f71702"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/TollFDOT-60.svg",
+    "bytes": 2825,
+    "sha256": "f8aad667404e8ed953b81acf0f8070c530b2f8734d33a350ab4c92b87f132177"
+  },
+  {
+    "path": "img/shields/United States/Florida/CFX/CFX-48.svg",
+    "bytes": 3940,
+    "sha256": "a82b253027a221323df37560c925c648a1e870ac4067545eb8a6abae2de38747"
+  },
+  {
+    "path": "img/shields/United States/Florida/CFX/CFX-60.svg",
+    "bytes": 4257,
+    "sha256": "8639ac950e6bf477abe96d76059da25ce385e7ebb12660f77a03130225d709bb"
+  },
+  {
+    "path": "img/shields/United States/Florida/CFX/CFXFDOT-48.svg",
+    "bytes": 3945,
+    "sha256": "388d9197236d5d50d08849d83487e0f6a33b532c946aedf120af0810c0721002"
+  },
+  {
+    "path": "img/shields/United States/Florida/CFX/CFXFDOT-60.svg",
+    "bytes": 4262,
+    "sha256": "4df04291328cded1a8fdb122631b785edda44ed957cfbb375bfd6a29551ab16f"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FLTP-48.svg",
+    "bytes": 25731,
+    "sha256": "59298a49595a0d6cd81b1efcf14f319513d7207aacf9410f634c054b81bdd243"
+  },
+  {
+    "path": "img/shields/United States/Florida/FDOT/FLTP-60.svg",
+    "bytes": 26511,
+    "sha256": "1b1048bc9859d02cbdedd3a90b6fa118d7cf74e80b39ec7786f1c48fdb85d4fb"
+  },
+  {
+    "path": "img/shields/United States/Florida/FLTP-Toll.svg",
+    "bytes": 170137,
+    "sha256": "408592f09bfec575903ecd71a600c2119833a64af58ff9b331ac08427f6e5d94"
+  }
+]

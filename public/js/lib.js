@@ -18,6 +18,8 @@ const lib = (function() {
 	 * @param {string} [text] - Display text for the option.
 	 */
 	const appendOption = function(selectElmt, value, {selected = false, text} = {}) {
+		// Asset pickers keep their value in hidden inputs, which have no options.
+		if (selectElmt?.tagName === "INPUT") return;
 		if (!text) {
 			text = value;
 		}

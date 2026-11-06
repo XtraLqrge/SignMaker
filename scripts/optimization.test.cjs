@@ -235,7 +235,7 @@ function dropdownFixture(file, count=0){
     trigger.querySelectorAll=selector=>selector.includes('Caret')?[caret]:[];
     wrappers.push(wrapper);triggers.push(trigger);carets.push(caret);
   }
-  const document={body,documentElement:html,querySelectorAll(selector){scans++;if(selector==='.colorPicker,.smColorPicker'||selector==='.fontPicker')return[];if(selector.includes('nativeSelectTrigger'))return triggers;return[];}};
+  const document={body,documentElement:html,addEventListener(){},querySelectorAll(selector){scans++;if(selector==='.colorPicker,.smColorPicker'||selector==='.fontPicker')return[];if(selector.includes('nativeSelectTrigger'))return triggers;return[];}};
   const window={innerWidth:900,innerHeight:600,localStorage:{getItem(){return null;},setItem(){}}};
   const c=context({window,document,getComputedStyle:()=>({fontSize:'20px',getPropertyValue(){return '0.5';}}),MutationObserver:class{constructor(cb){this.cb=cb;}observe(target,options){observed.push({observer:this,target,options});}disconnect(){this.disconnected=true;}}});
   vm.runInContext(read(file),c);
@@ -465,6 +465,70 @@ test('layout scheduling coalesces events and unchanged transforms cause no write
   for(let n=0;n<100;n++)c.check.schedulePostViewportLayoutUpdate();assert.equal(jobs.length,1);jobs.shift()();
   c.check.updatePostViewportLayout();assert.equal(writes,1);
   c.check.bindPostViewportLayoutWatcher();assert.ok(observed.length);assert.ok(observed.every(record=>!record.options.subtree));
+});
+test('selection flash follows post movement and stops tracking after replacement or expiry', () => {
+  const frames = new Map();
+  const overlays = new Set();
+  let nextFrame = 0;
+  let frameTime = 0;
+  let rect = { left: 180, top: 90, width: 120, height: 60 };
+  const post = { disableFlash: false };
+  let target = { isConnected: true, getBoundingClientRect: () => rect };
+  const c = context({
+    post,
+    performance: { now: () => frameTime },
+    document: {
+      createElement: () => ({ style: {}, remove() { overlays.delete(this); } }),
+      body: { appendChild: overlay => overlays.add(overlay) },
+    },
+    window: { getComputedStyle: () => ({ borderRadius: '4px' }) },
+    requestAnimationFrame: callback => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    },
+    cancelAnimationFrame: id => frames.delete(id),
+  });
+  vm.runInContext(
+    'let stopSelectionFlash;' + declaration('public/js/main.js', 'flashElementAfterPostTransform') +
+      'this.flash = flashElementAfterPostTransform;',
+    c
+  );
+  const paint = time => {
+    frameTime = time;
+    for (const [id, callback] of [...frames]) {
+      frames.delete(id);
+      callback(time);
+    }
+  };
+
+  c.flash(() => target);
+  paint(0);
+  const [overlay] = overlays;
+  assert.equal(overlay.style.left, '180px');
+  rect = { left: 116, top: 102, width: 90, height: 45 };
+  paint(140);
+  assert.equal(overlay.style.left, '116px');
+  assert.equal(overlay.style.top, '102px');
+  assert.equal(overlay.style.width, '90px');
+  assert.equal(overlay.style.height, '45px');
+
+  target.isConnected = false;
+  target = { isConnected: true, getBoundingClientRect: () => ({ ...rect, left: 100 }) };
+  paint(280);
+  assert.equal(overlay.style.left, '100px');
+
+  c.flash(() => target);
+  assert.equal(overlays.size, 0);
+  assert.equal(frames.size, 1);
+  paint(300);
+  assert.equal(overlays.size, 1);
+  paint(800);
+  assert.equal(overlays.size, 0);
+  assert.equal(frames.size, 0);
+
+  post.disableFlash = true;
+  c.flash(() => target);
+  assert.equal(frames.size, 0);
 });
 test('type picker text measurements are cached and invalidate when fonts change',()=>{
   let probes=0,measurements=0,fontSize='16px';

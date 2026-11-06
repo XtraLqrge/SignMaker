@@ -5469,7 +5469,7 @@ const ungroupSelectedBlockElement = () => {
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
-        flashSelectedSubPanel({ waitForPostTransform: true });
+        flashSelectedSubPanel();
       });
     };
 
@@ -5534,7 +5534,7 @@ const ungroupSelectedBlockElement = () => {
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
         redraw();
-        flashSelectedSubPanel({ waitForPostTransform: true });
+        flashSelectedSubPanel();
       });
     };
 
@@ -5570,11 +5570,11 @@ const ungroupSelectedBlockElement = () => {
 
       formHandler.updateForm();
       redraw();
-      flashSelectedSubPanel({ waitForPostTransform: true });
+      flashSelectedSubPanel();
     };
     
-    const flashSelectedSubPanel = ({ waitForPostTransform = false } = {}) => {
-      const getSelectedSubPanelElmt = () => {
+    const flashSelectedSubPanel = () => {
+      flashElementAfterPostTransform(() => {
         const panelElmt = document.getElementById(
           "panel" + currentlySelectedPanelIndex
         );
@@ -5594,18 +5594,7 @@ const ungroupSelectedBlockElement = () => {
         return panelElmt.querySelector(
           `[data-subpanel-index="${currentlySelectedSubPanelIndex}"]`
         );
-      };
-
-      if (waitForPostTransform) {
-        flashElementAfterPostTransform(getSelectedSubPanelElmt);
-        return;
-      }
-
-      const subPanelElmt = getSelectedSubPanelElmt();
-
-      if (subPanelElmt) {
-        flashElement(subPanelElmt);
-      }
+      });
     };
     
     const isGuideArrowMenuOpen = () => {
@@ -6313,6 +6302,12 @@ const ungroupSelectedBlockElement = () => {
         formHandler.ensureSubpanelMenuOpen();
       }
 
+      if (menu === "guideArrows") {
+        stopSelectionFlash?.();
+        if (!suppressRedraw) redraw();
+        return;
+      }
+
       if (suppressRedraw) {
         if (flashTarget) flashElementAfterPostTransform(() => flashTarget);
         return;
@@ -6324,9 +6319,7 @@ const ungroupSelectedBlockElement = () => {
             ? "row"
             : menu === "exitTabs"
               ? "exitTab"
-              : menu === "guideArrows"
-                ? "guideArrows"
-                : "subpanel";
+              : "subpanel";
 
         const resolveFlashTargetAfterRedraw = () => {
           const panelElmt = document.getElementById("panel" + selectedPanelIndex);
@@ -6343,8 +6336,12 @@ const ungroupSelectedBlockElement = () => {
             ) || panelElmt.querySelector(".exitTabContainer.tabVisible");
           }
 
-          if (flashTargetKind === "guideArrows") {
-            return panelElmt.querySelector(".guideArrows, .aplArrows");
+          if (flashTargetKind === "block") {
+            return panelElmt.querySelector(".selectedRenderedBlockElement");
+          }
+
+          if (flashTargetKind === "row") {
+            return panelElmt.querySelector(".selectedRenderedBlockRow");
           }
 
           if (currentlySelectedSubPanelIndex === GLOBAL_TOP_SUBPANEL_INDEX) {
@@ -6353,22 +6350,6 @@ const ungroupSelectedBlockElement = () => {
 
           if (currentlySelectedSubPanelIndex === GLOBAL_BOTTOM_SUBPANEL_INDEX) {
             return panelElmt.querySelector(".globalBottom");
-          }
-
-          const blockMaster = panelElmt.querySelector(
-            `.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`
-          );
-
-          if (flashTargetKind === "block") {
-            return blockMaster?.querySelector(
-              `[data-sign-row="${currentlySelectedRowIndex}"][data-sign-block="${currentlySelectedBlockIndex}"]`
-            ) || null;
-          }
-
-          if (flashTargetKind === "row") {
-            return blockMaster?.querySelector(
-              `.blockElementRow[data-sign-row="${currentlySelectedRowIndex}"]`
-            ) || null;
           }
 
           return panelElmt.querySelector(
@@ -6381,7 +6362,7 @@ const ungroupSelectedBlockElement = () => {
         if (flashTarget) {
           flashElementAfterPostTransform(resolveFlashTargetAfterRedraw);
         } else {
-          flashSelectedSubPanel({ waitForPostTransform: true });
+          flashSelectedSubPanel();
         }
     };
 
@@ -6406,99 +6387,63 @@ const ungroupSelectedBlockElement = () => {
       };
     };
 
-    const flashElement = (targetElmt) => {
-      if (!targetElmt) return;
-      if (post && post.disableFlash) return;
-      if (!targetElmt.isConnected) return;
-
-      const rect = targetElmt.getBoundingClientRect();
-
-      if (rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
+    let stopSelectionFlash;
+    const flashElementAfterPostTransform = targetResolver => {
+      stopSelectionFlash?.();
+      if (post?.disableFlash) return;
 
       const overlay = document.createElement("div");
       overlay.className = "flash-selection";
-
       overlay.style.position = "fixed";
-      overlay.style.top = rect.top + "px";
-      overlay.style.left = rect.left + "px";
-      overlay.style.width = rect.width + "px";
-      overlay.style.height = rect.height + "px";
-      overlay.style.borderRadius = window.getComputedStyle(targetElmt).borderRadius || "0.25rem";
       overlay.style.zIndex = "999999";
 
-      document.body.appendChild(overlay);
-
-      setTimeout(() => {
+      let frame;
+      let target;
+      let previousRect;
+      let startedAt;
+      stopSelectionFlash = () => {
+        cancelAnimationFrame(frame);
         overlay.remove();
-      }, 500);
+        stopSelectionFlash = null;
+      };
+
+      // The editor can move and scale the post after the flash starts.
+      const followTarget = timestamp => {
+        if (post?.disableFlash || (startedAt !== undefined && timestamp - startedAt >= 500)) {
+          stopSelectionFlash();
+          return;
+        }
+        if (!target?.isConnected) {
+          target = targetResolver();
+          if (!target?.isConnected) {
+            stopSelectionFlash();
+            return;
+          }
+          overlay.style.borderRadius = window.getComputedStyle(target).borderRadius || "0.25rem";
+        }
+
+        const rect = target.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+          stopSelectionFlash();
+          return;
+        }
+        if (rect.left !== previousRect?.left || rect.top !== previousRect?.top ||
+            rect.width !== previousRect?.width || rect.height !== previousRect?.height) {
+          overlay.style.left = rect.left + "px";
+          overlay.style.top = rect.top + "px";
+          overlay.style.width = rect.width + "px";
+          overlay.style.height = rect.height + "px";
+          previousRect = rect;
+        }
+        if (startedAt === undefined) {
+          startedAt = performance.now();
+          document.body.appendChild(overlay);
+        }
+        frame = requestAnimationFrame(followTarget);
+      };
+      frame = requestAnimationFrame(followTarget);
     };
-    
-    const flashElementAfterPostTransform = (targetResolver) => {
-      if (post && post.disableFlash) return;
 
-      const postContainer = document.getElementById("postContainer");
-
-      const runFlash = () => {
-        requestAnimationFrame(() => {
-          const targetElmt =
-            typeof targetResolver === "function" ? targetResolver() : targetResolver;
-
-          if (!targetElmt || !targetElmt.isConnected) return;
-          flashElement(targetElmt);
-        });
-      };
-
-      if (!postContainer) {
-        runFlash();
-        return;
-      }
-
-      const computed = window.getComputedStyle(postContainer);
-      const durationParts = (computed.transitionDuration || "0s").split(",");
-      const delayParts = (computed.transitionDelay || "0s").split(",");
-
-      const toMs = (value) => {
-        const trimmed = String(value).trim();
-        if (trimmed.endsWith("ms")) return parseFloat(trimmed) || 0;
-        if (trimmed.endsWith("s")) return (parseFloat(trimmed) || 0) * 1000;
-        return parseFloat(trimmed) || 0;
-      };
-
-      const transitionMs = Math.max(
-        ...durationParts.map((duration, index) => {
-          const delay = delayParts[index] ?? delayParts[0] ?? "0s";
-          return toMs(duration) + toMs(delay);
-        }),
-        0
-      );
-
-      if (transitionMs <= 0) {
-        runFlash();
-        return;
-      }
-
-      let finished = false;
-
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        postContainer.removeEventListener("transitionend", onTransitionEnd);
-        runFlash();
-      };
-
-      const onTransitionEnd = (event) => {
-        if (event.target !== postContainer) return;
-        if (event.propertyName !== "transform") return;
-        finish();
-      };
-
-      postContainer.addEventListener("transitionend", onTransitionEnd);
-
-      setTimeout(finish, transitionMs + 40);
-    };
-    
     const getFreshFlashTarget = ({
       panelIndex = currentlySelectedPanelIndex,
       subPanelIndex = currentlySelectedSubPanelIndex,
@@ -7748,13 +7693,30 @@ const ungroupSelectedBlockElement = () => {
 
       formHandler.updateForm();
       redraw();
+      flashElementAfterPostTransform(() => {
+        const panel = document.getElementById("panel" + currentlySelectedPanelIndex);
+        const master = panel?.querySelector(`.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`);
+        return master?.querySelector(`[data-sign-row="${currentlySelectedRowIndex}"][data-sign-block="${currentlySelectedBlockIndex}"]`);
+      });
     };
 
     const newControlElem = (selectedElem, evt = null) => {
       return runWithUndo(() => {
         const blockElems = getCurrentSubPanel().blockElements;
+        if (evt?.newRow) {
+          currentlySelectedRowIndex = Number.isInteger(evt.newRowIndex)
+            ? Math.max(0, Math.min(blockElems.rows.length, evt.newRowIndex))
+            : blockElems.rows.length;
+          blockElems.addRow(currentlySelectedRowIndex, selectedElem);
+          currentlySelectedBlockIndex = 0;
+          applyStoredShieldDefaultsToCurrentBlock();
+          formHandler.updateForm();
+          redraw();
+          return;
+        }
+        if (Number.isInteger(evt?.dropRow)) currentlySelectedRowIndex = evt.dropRow;
         const insertBeforeSelected = !!(evt && evt.shiftKey);
-        const insertIndex = insertBeforeSelected
+        const insertIndex = Number.isInteger(evt?.dropIndex) ? evt.dropIndex : insertBeforeSelected
           ? currentlySelectedBlockIndex
           : currentlySelectedBlockIndex + 1;
 
@@ -14326,7 +14288,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                   menu: "guideArrows",
                   guideMode: "standard",
                   suppressRedraw: true,
-                  flashTarget: event.currentTarget,
               });
           });
           
@@ -14369,7 +14330,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                   subPanelIndex: 0,
                   menu: "guideArrows",
                   guideMode: "standard",
-                  flashTarget: event.currentTarget.closest(".sign") || event.currentTarget,
               });
           });
           signElmt.appendChild(sideLeftArrowElmt);
@@ -15111,7 +15071,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                subPanelIndex: Number.isNaN(clickedSubPanelIndex) ? 0 : clickedSubPanelIndex,
                                menu: "guideArrows",
                                guideMode: "apl",
-                               flashTarget: event.currentTarget.closest(".subPanelDisplay"),
                            });
                        });
                        
@@ -15529,7 +15488,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 subPanelIndex: 0,
                 menu: "guideArrows",
                 guideMode: "standard",
-                flashTarget: event.currentTarget.closest(".sign") || event.currentTarget,
             });
         });
         signElmt.appendChild(sideRightArrowElmt);
@@ -16237,7 +16195,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     sideFrame.addEventListener("click", (event) => {
                         event.stopPropagation();
                         selectRenderedPanelArea({ panelIndex: index, subPanelIndex: 0,
-                            menu: "guideArrows", guideMode: "standard", flashTarget: signElmt });
+                            menu: "guideArrows", guideMode: "standard" });
                         selectedGuideArrowIndex = 0;
                         formHandler.selectStandardArrowIndividual(0);
                     });
@@ -16743,7 +16701,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                 sign.exitSplitPlainArrowPosition = position;
                             });
                             else selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
-                                guideMode: "standard", suppressRedraw: true, flashTarget: guideArrowsElmt });
+                                guideMode: "standard", suppressRedraw: true });
                         };
                         const cancel = (cancelEvent) => {
                             if (cancelEvent.pointerId !== event.pointerId) return;
@@ -17417,6 +17375,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         endUndoableChange,
         undo,
 
+        newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
         moveControlElem: (...args) => runWithUndo(() => moveControlElem(...args)),
         moveRow: (...args) => runWithUndo(() => moveRow(...args)),
         changeEditingPanel,

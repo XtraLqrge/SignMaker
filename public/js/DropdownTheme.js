@@ -66,7 +66,74 @@ window.SignMakerDropdowns = (() => {
     }
     if(!requested)release(menu);
   };
+  // Specialized pickers share the native picker's hold/release and keyboard behavior.
+  const triggerSelector='.fontPickerTrigger,.colorPickerTrigger,.shieldPickerTrigger,.profilePickerTrigger,.blockTypeInlinePickerTrigger';
+  const itemSelector='.fontPickerFontItem[data-font-value],.fontPickerFamilyItem[data-family-value],.colorPickerItem[data-color-value],[role="option"],.shieldPickerItem';
+  const editorTrigger=target=>{
+    const trigger=target.closest(triggerSelector);
+    return trigger&&!trigger.disabled&&!trigger.closest('.guideArrowConfig')?trigger:null;
+  };
+  const triggerMenus=new WeakMap();
+  let held=null,suppressClick=null;
+  const rows=menu=>[...menu.querySelectorAll(itemSelector)].filter(item=>!item.disabled&&item.getClientRects().length);
+  const choose=item=>{
+    if(item.matches('.fontPickerFontItem,.fontPickerFamilyItem,.colorPickerItem'))
+      item.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0}));
+    else item.click();
+  };
+  document.addEventListener('pointerdown',event=>{
+    const trigger=editorTrigger(event.target);
+    if(!trigger||event.button!==0||event.pointerType==='touch')return;
+    event.preventDefault();
+    trigger.focus({preventScroll:true});
+    trigger.click();
+    held={trigger,pointerId:event.pointerId};
+  },true);
+  document.addEventListener('pointerup',event=>{
+    if(!held||held.pointerId!==event.pointerId)return;
+    const {trigger}=held;held=null;
+    const menu=triggerMenus.get(trigger);
+    const target=document.elementFromPoint(event.clientX,event.clientY);
+    const item=target?.closest(itemSelector);
+    suppressClick={trigger,menu};
+    setTimeout(()=>{suppressClick=null;},0);
+    if(item&&!item.disabled&&menu?.classList.contains('open')&&menu.contains(item)){event.preventDefault();choose(item);}
+  },true);
+  document.addEventListener('pointercancel',event=>{if(held?.pointerId===event.pointerId)held=null;},true);
+  document.addEventListener('click',event=>{
+    if(!event.isTrusted||!suppressClick)return;
+    const {trigger,menu}=suppressClick;
+    if(trigger.contains(event.target)||menu?.contains(event.target)){
+      event.preventDefault();event.stopImmediatePropagation();suppressClick=null;
+    }
+  },true);
+  document.addEventListener('keydown',event=>{
+    const trigger=editorTrigger(event.target);
+    if(!trigger||event.ctrlKey||event.metaKey||event.altKey||event.isComposing)return;
+    if(!['ArrowDown','ArrowUp','Home','End','Enter',' '].includes(event.key)&&event.key.length!==1)return;
+    let menu=triggerMenus.get(trigger);
+    if(!menu?.classList.contains('open')){trigger.click();menu=triggerMenus.get(trigger);}
+    if(!menu)return;
+    const options=rows(menu);if(!options.length)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    let index=options.findIndex(item=>item.classList.contains('keyboardActive'));
+    if(event.key==='Enter'||event.key===' '){if(index>=0)choose(options[index]);return;}
+    if(event.key==='Home')index=0;
+    else if(event.key==='End')index=options.length-1;
+    else if(event.key==='ArrowDown')index=(index+1)%options.length;
+    else if(event.key==='ArrowUp')index=(Math.max(index,0)-1+options.length)%options.length;
+    else{
+      const key=event.key.toLowerCase();
+      const offset=Array.from({length:options.length},(_,i)=>(index+1+i)%options.length)
+        .find(i=>String(options[i].dataset.fontValue||options[i].dataset.familyValue||options[i].dataset.colorValue||options[i].textContent).trim().toLowerCase().startsWith(key));
+      if(offset===undefined)return;
+      index=offset;
+    }
+    options.forEach((item,i)=>item.classList.toggle('keyboardActive',i===index));
+    options[index].scrollIntoView({block:'nearest'});
+  },true);
   const positionMenu=(menu,trigger,{minWidth=12.5,maxWidth=24,openClass='open',beside=null,anchor=null,fitContent=false}={})=>{
+    triggerMenus.set(trigger,menu);
     const owner=trigger.closest(owners)||trigger.parentElement;
     if(!owner||!trigger.isConnected)return null;
     prepareMenu(menu);

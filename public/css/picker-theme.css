@@ -19,6 +19,14 @@
     transition:none!important; animation:none!important;
   }
   .fontPickerTrigger { height:1.6rem!important; min-height:1.6rem!important; max-height:1.6rem!important; }
+  #sMAPL .aplExitTextFontField :is(.fontPicker,.fontPickerTrigger) {
+    height:var(--apl-exit-text-control-height)!important;
+    min-height:var(--apl-exit-text-control-height)!important;
+    max-height:var(--apl-exit-text-control-height)!important;
+  }
+  #sMAPL .aplInlineTypePicker .shieldPickerTrigger {
+    height:2rem!important; min-height:2rem!important; max-height:2rem!important;
+  }
   :is(#sMStandardArrows,#sMExitOnlyArrows) :is(.fontPicker,.colorPicker,.smColorPicker,.nativeSelectTrigger,.fontPickerTrigger,.colorPickerTrigger,.arrowPicker>.shieldPickerTrigger) {
     height:1.85rem!important; min-height:1.85rem!important; max-height:1.85rem!important;
   }

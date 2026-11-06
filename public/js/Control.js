@@ -1651,10 +1651,6 @@ class ShieldElement extends Shield {
       normalizedRoute,
       config
     );
-    if (routeText !== normalizedRoute) {
-      this.routeNumber = routeText;
-    }
-
     const migratedShieldType =
       ShieldElement.prototype.migrateLegacyBlockVariant(
         this.shieldType,
@@ -1696,14 +1692,11 @@ class ShieldElement extends Shield {
           variantKey
         )
       : null;
-    const routeNumberStyle =
-      ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)
-        ? null
-        : ShieldElement.prototype.getVariantMetadata(
-            config,
-            "routeNumberByVariant",
-            variantKey
-          );
+    const routeNumberStyle = ShieldElement.prototype.getVariantMetadata(
+      config,
+      "routeNumberByVariant",
+      variantKey
+    );
     const renderedRouteText = routeNumberStyle
       ? routeText.toUpperCase()
       : routeText;
@@ -1731,8 +1724,8 @@ class ShieldElement extends Shield {
       ? basePhysicalHeightRem * requestedShieldScale
       : null;
 
-    const isFloridaOfficialShield =
-      ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config);
+    const isFloridaOfficialShield = !!officialPhysicalDimensions &&
+      ["FL", "FLTOLL", "FLCFX", "FLTP"].includes(normalizedShieldCode);
     const isOntarioPrimaryShield = normalizedShieldCode === "ON";
 
     const configuredInternalScale = Number(config?.internalScale);
@@ -2095,7 +2088,7 @@ class ShieldElement extends Shield {
     if (variablePanelWidth && officialPhysicalDimensions) {
       const assetWidthIn = Number(variablePanelWidth.assetWidthIn);
       const assetWidthCss = this.useOfficialDimensions
-        ? `${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem`
+        ? `calc(${ShieldElement.prototype.inchesToRem(assetWidthIn)}rem * var(--requestedShieldScale, 1))`
         : `calc(var(--shieldSize) * ${
             assetWidthIn / officialPhysicalDimensions.heightIn
           })`;
@@ -2115,7 +2108,7 @@ class ShieldElement extends Shield {
       shieldEl.style.setProperty(
         "--variableGuideArtworkClip",
         `calc(var(--shieldSize) * ${
-          0.25 / officialPhysicalDimensions.heightIn
+          1 / officialPhysicalDimensions.heightIn
         })`
       );
     }
@@ -2157,6 +2150,15 @@ class ShieldElement extends Shield {
       variableGuideContourRect.setAttribute("stroke", "#000000");
       variableGuideContourRect.setAttribute("stroke-width", "0.125");
       variableGuideContour.appendChild(variableGuideContourRect);
+      const panelBorder = variableGuideContourRect.cloneNode(false);
+      panelBorder.setAttribute("class", "variableGuidePanelBorder");
+      panelBorder.setAttribute("x", "0.625");
+      panelBorder.setAttribute("y", "0.625");
+      panelBorder.setAttribute("width", String(initialWidthIn - 1.25));
+      panelBorder.setAttribute("height", String(heightIn - 1.25));
+      panelBorder.setAttribute("rx", "0.625");
+      panelBorder.setAttribute("stroke-width", "0.625");
+      variableGuideContour.appendChild(panelBorder);
       shieldEl.appendChild(variableGuideContour);
     }
 
@@ -2482,6 +2484,46 @@ ShieldElement.prototype.defaultShieldSize = 3;
 ShieldElement.prototype.defaultScaleBannersWithShield = true;
 
 const OFFICIAL_ROADGEEK_METRICS = {
+  "Series C": {
+    "0": [0.706, 0.059983, 0.646],
+    "1": [0.407, 0.09, 0.297],
+    "2": [0.677, 0.06, 0.617],
+    "3": [0.677, 0.06, 0.617],
+    "4": [0.738, 0.03, 0.648],
+    "5": [0.677, 0.06, 0.617],
+    "6": [0.738, 0.09, 0.648],
+    "7": [0.678, 0.03, 0.588],
+    "8": [0.677, 0.06, 0.617],
+    "9": [0.677, 0.06, 0.617],
+    A: [0.699, 0.03, 0.669],
+    B: [0.732, 0.11, 0.672],
+    C: [0.738, 0.09, 0.648],
+    D: [0.762, 0.11, 0.672],
+    E: [0.679, 0.11, 0.619],
+    F: [0.649, 0.11, 0.619],
+    G: [0.738, 0.09, 0.648],
+    H: [0.782, 0.11, 0.672],
+    I: [0.36, 0.11, 0.25],
+    J: [0.649, 0.03, 0.539],
+    K: [0.732, 0.11, 0.672],
+    L: [0.649, 0.11, 0.619],
+    M: [0.881, 0.11, 0.771],
+    N: [0.782, 0.11, 0.672],
+    O: [0.766, 0.089983, 0.676],
+    P: [0.762, 0.11, 0.672],
+    Q: [0.766, 0.090496, 0.677],
+    R: [0.732, 0.11, 0.672],
+    S: [0.677, 0.06, 0.617],
+    T: [0.569, 0.03, 0.539],
+    U: [0.782, 0.11, 0.672],
+    V: [0.678, 0.03, 0.648],
+    W: [0.819, 0.03, 0.789],
+    X: [0.646, 0.03, 0.616],
+    Y: [0.699, 0.03, 0.669],
+    Z: [0.67, 0.06, 0.61],
+    " ": [0.428, 0, 0],
+    "-": [0.411, 0.03, 0.381],
+  },
   "Series D": {
     "0": [0.909, 0.1, 0.809],
     "1": [0.473, 0.1, 0.353],
@@ -2567,8 +2609,7 @@ ShieldElement.prototype.measureOfficialRouteInk = function ({
     } else {
       const metrics = context.measureText(rawCharacter);
       const left = cursor - Number(metrics.actualBoundingBoxLeft || 0);
-      const right =
-        cursor + Number(metrics.actualBoundingBoxRight || metrics.width);
+      const right = cursor + Number(metrics.actualBoundingBoxRight || metrics.width);
       inkLeft = Math.min(inkLeft, left);
       inkRight = Math.max(inkRight, right);
       cursor += metrics.width;
@@ -2583,10 +2624,12 @@ ShieldElement.prototype.measureOfficialRouteInk = function ({
     inkLeft = 0;
     inkRight = 0;
   }
-
   return { inkLeft, inkRight, inkWidth: inkRight - inkLeft };
 };
 
+// Keep adjacent glyph ink separated before fitting an optically adjusted
+// legend into its available span. Height is never reduced. If spacing alone
+// cannot fit, horizontal condensation is an explicit display compromise.
 ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
   wrapper,
   routeEl,
@@ -2604,14 +2647,14 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     if (!routeEl.isConnected || !shieldEl.isConnected) {
       return;
     }
-
-    const shieldBounds = shieldEl.getBoundingClientRect();
+    // Work in layout pixels: viewport zoom must not shrink the number twice.
+    const shieldHeight = parseFloat(getComputedStyle(shieldEl).height) || shieldEl.offsetHeight;
     const officialHeight = Number(officialPhysicalDimensions.heightIn);
-    if (!(shieldBounds.height > 0) || !(officialHeight > 0)) {
+    if (!(shieldHeight > 0) || !(officialHeight > 0)) {
       return;
     }
 
-    const pixelsPerInch = shieldBounds.height / officialHeight;
+    const pixelsPerInch = shieldHeight / officialHeight;
     const capHeightIn = Number(
       routeNumberStyle.capHeightInByCharacterCount?.[routeCharacterCount] ||
         routeNumberStyle.capHeightIn
@@ -2622,7 +2665,6 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     const fontSizePixels =
       (capHeightIn * pixelsPerInch) /
       ShieldElement.prototype.roadgeekCapHeightRatio;
-
     routeEl.style.fontSize = `${fontSizePixels}px`;
     routeEl.style.fontFamily = `"${routeFontFamily}"`;
     routeEl.style.top = `${
@@ -2635,7 +2677,6 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     if (!context) {
       return;
     }
-
     context.fontKerning = "none";
     context.font = `${fontSizePixels}px "${routeFontFamily}"`;
     const capHeightPixels = capHeightIn * pixelsPerInch;
@@ -2646,6 +2687,7 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       context,
     });
 
+    let horizontalScale = 1;
     if (
       routeNumberStyle.allowOpticalSpacing &&
       routeCharacterCount > 1 &&
@@ -2653,23 +2695,22 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
     ) {
       const maximumWidth = routeNumberStyle.maxWidthIn * pixelsPerInch;
       if (measuredInk.inkWidth > maximumWidth) {
-        const spacingAdjustment =
-          (maximumWidth - measuredInk.inkWidth) /
-          (routeCharacterCount - 1);
-        routeEl.style.letterSpacing = `${spacingAdjustment}px`;
-        measuredInk = ShieldElement.prototype.measureOfficialRouteInk({
+        const fit = ShieldElement.prototype.fitOfficialRouteInk({
           routeText,
           routeFontFamily,
           capHeightPixels,
-          letterSpacingPixels: spacingAdjustment,
           context,
-        });
+        }, maximumWidth);
+        routeEl.style.letterSpacing = `${fit.spacing}px`;
+        horizontalScale = fit.scaleX;
+        measuredInk = fit;
       }
     }
+    routeEl.dataset.horizontalFit = String(horizontalScale);
 
     const { inkLeft, inkRight } = measuredInk;
-    const variablePanelWidth = routeNumberStyle.variablePanelWidth;
 
+    const variablePanelWidth = routeNumberStyle.variablePanelWidth;
     if (variablePanelWidth) {
       const minWidthIn = Number(variablePanelWidth.minWidthIn);
       const maxWidthIn = Number(variablePanelWidth.maxWidthIn);
@@ -2696,7 +2737,6 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       shieldEl.style.setProperty("--variableGuideAssetWidth", assetWidthCss);
       wrapper.style.setProperty("--shieldWidth", renderedWidthCss);
       wrapper.dataset.widthIn = String(renderedWidthIn);
-
       if (variableGuideContour && variableGuideContourRect) {
         variableGuideContour.setAttribute(
           "viewBox",
@@ -2706,12 +2746,18 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
           "width",
           String(renderedWidthIn - 0.125)
         );
+        variableGuideContour.querySelector(".variableGuidePanelBorder")
+          ?.setAttribute("width", String(renderedWidthIn - 1.25));
       }
     }
 
     let targetPosition;
     let sourcePosition;
-    if (Number.isFinite(routeNumberStyle.leftIn)) {
+    if (variablePanelWidth) {
+      targetPosition =
+        (Number(wrapper.dataset.widthIn) - Number(variablePanelWidth.rightClearanceIn)) * pixelsPerInch;
+      sourcePosition = inkRight;
+    } else if (Number.isFinite(routeNumberStyle.leftIn)) {
       targetPosition = routeNumberStyle.leftIn * pixelsPerInch;
       sourcePosition = inkLeft;
     } else if (Number.isFinite(routeNumberStyle.rightIn)) {
@@ -2724,9 +2770,7 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       targetPosition = centerXIn * pixelsPerInch;
       sourcePosition = (inkLeft + inkRight) / 2;
     }
-
-    routeEl.style.transform =
-      `translateX(${targetPosition - sourcePosition}px)`;
+    routeEl.style.transform = `translateX(${targetPosition - sourcePosition}px) scaleX(${horizontalScale})`;
   };
 
   queueMicrotask(layout);
@@ -2737,6 +2781,40 @@ ShieldElement.prototype.scheduleOfficialRouteNumberLayout = function ({
       requestAnimationFrame(layout);
     });
   }
+};
+
+ShieldElement.prototype.fitOfficialRouteInk = function (options, maximumWidth) {
+  const measure = (spacing) => this.measureOfficialRouteInk({
+    ...options, letterSpacingPixels: spacing,
+  });
+  let ink = measure(0);
+  let spacing = 0;
+  let scaleX = 1;
+  const chars = Array.from(options.routeText.toUpperCase());
+  const metrics = OFFICIAL_ROADGEEK_METRICS[options.routeFontFamily];
+  if (maximumWidth > 0 && ink.inkWidth > maximumWidth) {
+    let minimumSpacing = -Infinity;
+    for (let i = 0; i < chars.length - 1; i++) {
+      const a = metrics?.[chars[i]];
+      const b = metrics?.[chars[i + 1]];
+      if (!a || !b) { minimumSpacing = 0; break; }
+      // Reserve 8% of cap height between bounding boxes, before scaling.
+      minimumSpacing = Math.max(minimumSpacing,
+        (0.08 - (a[0] + b[1] - a[2])) * options.capHeightPixels);
+    }
+    if (chars.length > 1) {
+      spacing = Math.min(0, Math.max(minimumSpacing,
+        (maximumWidth - ink.inkWidth) / (chars.length - 1)));
+      ink = measure(spacing);
+    }
+    scaleX = Math.min(1, maximumWidth / ink.inkWidth);
+  }
+  return {
+    spacing, scaleX,
+    inkLeft: ink.inkLeft * scaleX,
+    inkRight: ink.inkRight * scaleX,
+    inkWidth: ink.inkWidth * scaleX,
+  };
 };
 
 ShieldElement.prototype.normalizeShieldCode = function (code) {
@@ -4753,18 +4831,18 @@ ShieldElement.prototype.resolveBlockVariant = function (
   }
   const normalized = (desiredVariant || "").trim();
   if (normalized && normalized.toLowerCase() !== "auto") {
-    if (allowed.includes(normalized)) {
-      return normalized;
-    }
-
-    const legacyVariantKey =
-      ShieldElement.prototype.formatVariantKey(normalized);
-    const migratedVariant =
-      ShieldElement.prototype.resolveLegacyVariantAlias(
-        config?.legacyVariantAliases?.[legacyVariantKey],
-        routeNumber
-      );
-    if (migratedVariant && allowed.includes(migratedVariant)) {
+    const migratedVariant = ShieldElement.prototype.migrateLegacyBlockVariant(normalized, routeNumber, config);
+    if (allowed.includes(migratedVariant)) {
+      if (config.value === "FL" && ShieldElement.prototype.getRouteCharacterCount(routeNumber) >= 3) {
+        const variantKey = ShieldElement.prototype.formatVariantKey(migratedVariant);
+        const height = config.physicalDimensionsByVariant?.[variantKey]?.heightIn;
+        const wideVariant = height && allowed.find((variant) => {
+          const key = ShieldElement.prototype.formatVariantKey(variant);
+          return config.physicalDimensionsByVariant?.[key]?.heightIn === height &&
+            config.routeNumberByVariant?.[key]?.variablePanelWidth;
+        });
+        if (wideVariant) return wideVariant;
+      }
       return migratedVariant;
     }
 
@@ -5012,22 +5090,8 @@ ShieldElement.prototype.getVariantMetadata = function (
   return values[variantKey] || values.Default || null;
 };
 
-ShieldElement.prototype.usesPresetFloridaRouteNumberCss = function (config) {
-  const normalizedCode = ShieldElement.prototype.normalizeShieldCode(
-    config?.value || config?.assetName || ""
-  ).toUpperCase();
-
-  return ["FL", "FLTOLL", "FLCFX", "FLTP"].includes(
-    normalizedCode
-  );
-};
-
 ShieldElement.prototype.usesV22NumberStyle = function (config, element) {
   if (element?.numberStyle === "legacy" && ["I", "I-BUS", "I-BL", "I-BS", "I-DL", "I-DS", "I-F", "US", "USCA"].includes(ShieldElement.prototype.normalizeShieldCode(config?.value || config?.assetName || ""))) return true;
-  if (ShieldElement.prototype.usesPresetFloridaRouteNumberCss(config)) {
-    return false;
-  }
-
   return config?.standard === "FDOT" || config?.standard === "CFX";
 };
 

@@ -413,7 +413,7 @@
                       <input type="range" id="settingsInterfaceTextSize" class="settingsInterfaceRange" min="50" max="150" step="1" value="100">
                       <span class="settingsRangeValue" id="settingsInterfaceTextSizeValue">100%</span>
                     </div></div></div>
-              <div class="generalSettingRow"><label for="appDropdownAnimations">Dropdown animations:</label><div class="generalSettingControl"><input type="checkbox" id="appDropdownAnimations" checked></div></div>
+              <div class="generalSettingRow"><label for="appDropdownAnimations">Interface animations:</label><div class="generalSettingControl"><input type="checkbox" id="appDropdownAnimations" checked></div></div>
               <div class="generalSettingRow"><label for="disableFlash">Disable Selection Flash:</label><div class="generalSettingControl"><input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showBlockBoundingBoxes">Show Block Bounds:</label><div class="generalSettingControl"><input type="checkbox" id="showBlockBoundingBoxes" name="showBlockBoundingBoxes" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showAlignmentGuides" data-tooltip="Draws evenly spaced vertical guides below the rendered signs.">Alignment Guides:</label><div class="generalSettingControl"><input type="checkbox" id="showAlignmentGuides" name="showAlignmentGuides" onchange="formHandler.readForm(event);"></div></div>
@@ -2331,13 +2331,13 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <img src="img/other-symbols/ui/template.svg" alt="Templates Icon" class="configIcon templateIcon" loading="lazy" decoding="async">
         <span id="templatesButtonLabel">Templates</span>
       </button>
-      <button type="button" id="copySign" class="sMConfigOption" data-tooltip="Copy Sign">
+      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" title="Copy Sign" data-tooltip="Copy Sign">
   <span class="material-symbols-outlined">content_copy</span><span class="buttonLabel">Copy Sign</span>
-</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden"></menu><button id="export" class="sMConfigOption">
+</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
         <span class="material-symbols-outlined"> download </span>
         <span class="buttonLabel">Export</span>
       </button>
-      <button id="nightMode" class="sMConfigOption">
+      <button id="nightMode" class="sMConfigOption" aria-label="Light/dark mode" title="Light/dark mode">
         <span class="material-symbols-outlined"> dark_mode </span>
         <span class="buttonLabel">Dark Mode</span>
       </button>

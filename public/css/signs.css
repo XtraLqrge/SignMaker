@@ -2149,18 +2149,19 @@ img.exitOnlyArrow:last-child {
 
 @keyframes flashSelection {
   0% {
-    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0.75);
-    opacity: 1;
+    outline: 0.5rem solid yellow;
   }
 
-  20% {
-    box-shadow: 0 0 0 0.28rem rgba(255, 255, 0, 1);
-    opacity: 1;
+  15% {
+    outline: 1.125rem solid yellow;
+  }
+
+  25% {
+    outline: 0.5rem solid yellow;
   }
 
   100% {
-    box-shadow: 0 0 0 0.18rem rgba(255, 255, 0, 0);
-    opacity: 0;
+    outline: 0.5rem solid rgba(255, 255, 0, 0);
   }
 }
 
@@ -2168,10 +2169,10 @@ img.exitOnlyArrow:last-child {
   position: absolute;
   pointer-events: none;
   z-index: 50;
-  background: rgba(255, 255, 0, 0.08);
-  border-radius: inherit;
-  animation: flashSelection 0.45s ease-out forwards;
+  background: transparent;
+  animation: flashSelection 0.5s ease-in forwards;
 }
+
 #postContainer {
   position: relative;
 }

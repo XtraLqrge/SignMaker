@@ -3542,6 +3542,7 @@ dialog:not([open]) {
 }
 
 .aplExitTextSettingsRow {
+  --apl-exit-text-control-height: 1.75rem;
   display: grid;
   grid-template-columns: 5.8rem 5.8rem 9.3rem max-content max-content;
   gap: 0.6rem;
@@ -3570,7 +3571,7 @@ dialog:not([open]) {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: 2rem;
+  height: var(--apl-exit-text-control-height);
   padding: 0.2rem 0.4rem;
   font: 0.88rem "Inter", sans-serif;
   color: var(--textColor);
@@ -3585,15 +3586,15 @@ dialog:not([open]) {
   appearance: none;
   margin: 0;
 }
-.aplExitTextSettingsRow .aplExitTextFontPicker,
-.aplExitTextSettingsRow .aplExitTextFontPicker .fontPickerTrigger {
+.aplExitTextFontField > .fontPicker,
+.aplExitTextFontField .fontPickerTrigger {
   display: block;
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100%;
-  height: 2rem;
+  height: var(--apl-exit-text-control-height);
 }
-.aplExitTextSettingsRow .aplExitTextFontPicker .fontPickerTrigger {
+.aplExitTextFontField .fontPickerTrigger {
   display: inline-flex;
   padding-left: 0.55rem;
   padding-right: 1.55rem;
@@ -3632,6 +3633,7 @@ dialog:not([open]) {
 .aplArrowDeleteButton {
   width: 4.25rem !important;
   min-width: 4.25rem !important;
+  height: 2rem !important;
   padding-left: 0.35rem !important;
   padding-right: 0.35rem !important;
   white-space: nowrap !important;
@@ -15001,4 +15003,33 @@ input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-
   width: 2.8rem;
   font-size: 0.8rem;
   text-align: right;
+}
+
+/* The animation preference covers interface fades/slides, not selection feedback. */
+:root[data-dropdown-animations="false"] *,
+:root[data-dropdown-animations="false"] *::before,
+:root[data-dropdown-animations="false"] *::after {
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+:root[data-dropdown-animations="false"] :not(.flash-selection) {
+  animation: none !important;
+}
+.smDropdownMenu .keyboardActive {
+  background: Highlight !important;
+  color: HighlightText !important;
+}
+
+/* Compact utility buttons on both horizontal toolbar layouts. */
+nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
+  :is(#copySign, #export, #nightMode, #appSettingsConfig, #hideConfig) {
+  min-width: 2.6rem;
+  width: 2.6rem;
+  padding-inline: 0.4rem;
+  justify-content: center;
+  gap: 0;
+}
+nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
+  :is(#copySign, #export, #nightMode, #appSettingsConfig, #hideConfig) > .buttonLabel {
+  display: none;
 }

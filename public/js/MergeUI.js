@@ -47,12 +47,12 @@ window.SignMakerMergeUI = (() => {
     if(pendingKind&&pendingKind!=='native')return;
     if (select._shieldPickerApi || select._shieldVariantPickerApi || select.classList.contains("shieldPickerNativeSource") || select.multiple || select.hidden || select.classList.contains("hidden") ||
         select.getAttribute("aria-hidden") === "true" || select.classList.contains("blockTypeInlineSelect") ||
-        select.classList.contains('nativeSelectSource')) return;
+        select.classList.contains('nativeSelectSource') || select.classList.contains('fontPickerSource')) return;
     if(runtime?.defer(select,'native',()=>convertSelect(select)))return;
     if(getComputedStyle(select).display==='none')return;
     // Existing font, color, shield and asset pickers retain their own controls.
     if (select.nextElementSibling?.matches(".fontPicker, .colorPicker, .shieldPicker, .symbolPicker") ||
-        select.classList.contains("fontPickerSource") || select.classList.contains("colorPickerSource")) return;
+        select.classList.contains("colorPickerSource")) return;
     const label = select.getAttribute("aria-label") || select.labels?.[0]?.textContent.trim() || select.title || "Choose an option";
     const values = [...select.options].map(option => option.value);
     const isColor = values.some(value => Object.hasOwn(lib.colors, value)) && values.every(value => !value || Object.hasOwn(lib.colors, value) || ["Inherit","Transparent","None"].includes(value) || CSS.supports("color",value));

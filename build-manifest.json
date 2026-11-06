@@ -7,23 +7,23 @@
     "js/NativeSelect.9108337f79975d68.js",
     "js/FDOTSupports.26d110c7592ad794.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
-    "js/form.cea6b4f66c066103.js",
+    "js/form.bbffd9c84392020d.js",
     "js/IndexDB.905b66ca7e8b07ba.js",
     "js/CustomShields.85049f03f2f32351.js",
-    "js/MergeUI.1475b00939b6826a.js",
+    "js/MergeUI.c2ff95e68568046c.js",
     "js/Settings22.515ebbe65b349361.js",
-    "js/DropdownTheme.b86f0a2d2efc60e1.js"
+    "js/DropdownTheme.8ec2ddbe056ed93d.js"
   ],
-  "deferredStyles": "css/app.33b164c208d3f3ad.css",
+  "deferredStyles": "css/app.77095f8e6d759b41.css",
   "startupJS": {
-    "bytes": 586496,
-    "gzipBytes": 158357,
-    "brotliBytes": 131563
+    "bytes": 589676,
+    "gzipBytes": 159444,
+    "brotliBytes": 132374
   },
   "criticalCSS": {
-    "bytes": 236655,
-    "gzipBytes": 36414,
-    "brotliBytes": 30116
+    "bytes": 237623,
+    "gzipBytes": 36605,
+    "brotliBytes": 30282
   },
   "inlineFontHelper": {
     "bytes": 8187,
@@ -80,16 +80,16 @@
     },
     {
       "source": "js/Shield.js",
-      "output": "js/Shield.a99346499808afab.js",
+      "output": "js/Shield.503233568ee3f25d.js",
       "original": {
-        "bytes": 37649,
-        "gzipBytes": 8768,
-        "brotliBytes": 7460
+        "bytes": 39423,
+        "gzipBytes": 9053,
+        "brotliBytes": 7740
       },
       "optimized": {
-        "bytes": 27617,
-        "gzipBytes": 7857,
-        "brotliBytes": 6728
+        "bytes": 29199,
+        "gzipBytes": 8157,
+        "brotliBytes": 6992
       }
     },
     {
@@ -206,16 +206,16 @@
     },
     {
       "source": "js/Control.js",
-      "output": "js/Control.75538ee946a50f91.js",
+      "output": "js/Control.3d98a96560c6d1fe.js",
       "original": {
-        "bytes": 302095,
-        "gzipBytes": 60921,
-        "brotliBytes": 49911
+        "bytes": 305529,
+        "gzipBytes": 61990,
+        "brotliBytes": 50623
       },
       "optimized": {
-        "bytes": 194765,
-        "gzipBytes": 49160,
-        "brotliBytes": 40584
+        "bytes": 196876,
+        "gzipBytes": 50036,
+        "brotliBytes": 41203
       }
     },
     {
@@ -248,16 +248,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.bc93be1bf1fede56.js",
+      "output": "js/main.fa1be85a42473c25.js",
       "original": {
-        "bytes": 735570,
-        "gzipBytes": 126848,
-        "brotliBytes": 100160
+        "bytes": 734634,
+        "gzipBytes": 126717,
+        "brotliBytes": 100037
       },
       "optimized": {
-        "bytes": 311735,
-        "gzipBytes": 82062,
-        "brotliBytes": 67415
+        "bytes": 311222,
+        "gzipBytes": 81973,
+        "brotliBytes": 67343
       }
     },
     {
@@ -318,16 +318,16 @@
     },
     {
       "source": "js/form.js",
-      "output": "js/form.cea6b4f66c066103.js",
+      "output": "js/form.bbffd9c84392020d.js",
       "original": {
-        "bytes": 914010,
-        "gzipBytes": 154904,
-        "brotliBytes": 118377
+        "bytes": 918106,
+        "gzipBytes": 155749,
+        "brotliBytes": 119044
       },
       "optimized": {
-        "bytes": 463024,
-        "gzipBytes": 106391,
-        "brotliBytes": 83360
+        "bytes": 465442,
+        "gzipBytes": 107069,
+        "brotliBytes": 83865
       }
     },
     {
@@ -360,16 +360,16 @@
     },
     {
       "source": "js/MergeUI.js",
-      "output": "js/MergeUI.1475b00939b6826a.js",
+      "output": "js/MergeUI.c2ff95e68568046c.js",
       "original": {
         "bytes": 7562,
-        "gzipBytes": 2437,
+        "gzipBytes": 2438,
         "brotliBytes": 2077
       },
       "optimized": {
         "bytes": 5596,
         "gzipBytes": 2085,
-        "brotliBytes": 1775
+        "brotliBytes": 1768
       }
     },
     {
@@ -388,16 +388,16 @@
     },
     {
       "source": "js/DropdownTheme.js",
-      "output": "js/DropdownTheme.b86f0a2d2efc60e1.js",
+      "output": "js/DropdownTheme.8ec2ddbe056ed93d.js",
       "original": {
-        "bytes": 8269,
-        "gzipBytes": 2821,
-        "brotliBytes": 2458
+        "bytes": 12052,
+        "gzipBytes": 3947,
+        "brotliBytes": 3462
       },
       "optimized": {
-        "bytes": 5065,
-        "gzipBytes": 2296,
-        "brotliBytes": 2011
+        "bytes": 7615,
+        "gzipBytes": 3214,
+        "brotliBytes": 2848
       }
     },
     {
@@ -417,25 +417,25 @@
         "css/dropdown-layout.css",
         "css/picker-theme.css"
       ],
-      "output": "css/app.33b164c208d3f3ad.css",
+      "output": "css/app.77095f8e6d759b41.css",
       "original": {
-        "bytes": 705776,
-        "gzipBytes": 99464,
-        "brotliBytes": 75759
+        "bytes": 706217,
+        "gzipBytes": 99703,
+        "brotliBytes": 75916
       },
       "optimized": {
-        "bytes": 587354,
-        "gzipBytes": 80056,
-        "brotliBytes": 61448
+        "bytes": 587668,
+        "gzipBytes": 80192,
+        "brotliBytes": 61496
       }
     },
     {
       "critical": true,
-      "output": "css/sign.f36af08b6dfdf264.css",
+      "output": "css/sign.2b957f3e96a8a021.css",
       "optimized": {
-        "bytes": 236655,
-        "gzipBytes": 36414,
-        "brotliBytes": 30116
+        "bytes": 237623,
+        "gzipBytes": 36605,
+        "brotliBytes": 30282
       }
     },
     {

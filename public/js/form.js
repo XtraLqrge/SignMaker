@@ -4718,7 +4718,7 @@ const formHandler = (function () {
 
   const getActualInterfaceUIScale = (displayScale) => {
     const normalized = normalizeInterfaceUIScale(displayScale);
-    return normalized / 150;
+    return normalized / 100;
   };
 
   const applyInterfaceUIScale = (value, { persist = false } = {}) => {
@@ -6201,6 +6201,41 @@ const formHandler = (function () {
     return { dropIndex, targetRow, placement };
   };
 
+  const getBlockCreateNewRowDropPosition = (container, clientY) => {
+    const rows = Array.from(container.querySelectorAll(".sMControlRow"));
+    if (!rows.length) {
+      return { dropIndex: 0, targetRow: null, placement: null };
+    }
+
+    const rowRects = rows.map((row) => row.getBoundingClientRect());
+    if (clientY <= rowRects[0].top + 6) {
+      return { dropIndex: 0, targetRow: rows[0], placement: "before" };
+    }
+
+    for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+      if (
+        clientY >= rowRects[rowIndex - 1].bottom - 6 &&
+        clientY <= rowRects[rowIndex].top + 6
+      ) {
+        return {
+          dropIndex: rowIndex,
+          targetRow: rows[rowIndex],
+          placement: "before",
+        };
+      }
+    }
+
+    if (clientY >= rowRects[rowRects.length - 1].bottom - 6) {
+      return {
+        dropIndex: rows.length,
+        targetRow: rows[rows.length - 1],
+        placement: "after",
+      };
+    }
+
+    return { dropIndex: null, targetRow: null, placement: null };
+  };
+
   const handleRowDragStart = (event) => {
     const row = event.currentTarget;
     const fromIndex = Number(row.dataset.dataRow);
@@ -6221,6 +6256,17 @@ const formHandler = (function () {
   };
 
   const handleRowListDragOver = (event) => {
+    if (blockDragState?.newType) {
+      const { dropIndex, targetRow, placement } = getBlockCreateNewRowDropPosition(event.currentTarget, event.clientY);
+      clearRowDropIndicators();
+      if (Number.isInteger(dropIndex)) {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        clearBlockDragIndicators();
+        targetRow?.classList.add(placement === "before" ? "dropBefore" : "dropAfter");
+      }
+      return;
+    }
     if (!rowDragState) {
       return;
     }
@@ -6245,6 +6291,15 @@ const formHandler = (function () {
   };
 
   const handleRowListDrop = (event) => {
+    if (blockDragState?.newType) {
+      const { dropIndex } = getBlockCreateNewRowDropPosition(event.currentTarget, event.clientY);
+      if (Number.isInteger(dropIndex)) {
+        event.preventDefault();
+        exposed.newControlElem(blockDragState.newType, { newRow: true, newRowIndex: dropIndex });
+        endBlockDrag();
+      }
+      return;
+    }
     if (!rowDragState) {
       return;
     }
@@ -6261,7 +6316,7 @@ const formHandler = (function () {
   };
 
   const handleRowListDragLeave = (event) => {
-    if (!rowDragState) {
+    if (!rowDragState && !blockDragState?.newType) {
       return;
     }
     const container = event.currentTarget;
@@ -6378,7 +6433,9 @@ const formHandler = (function () {
     }
     event.preventDefault();
     setNewRowDropState(false);
-    if (typeof exposed?.duplicateBlockIntoNewRow === "function") {
+    if (blockDragState.newType) {
+      exposed.newControlElem(blockDragState.newType, { newRow: true });
+    } else if (typeof exposed?.duplicateBlockIntoNewRow === "function") {
       exposed.duplicateBlockIntoNewRow(
         blockDragState.rowIndex,
         blockDragState.blockIndex
@@ -6388,6 +6445,7 @@ const formHandler = (function () {
   };
 
   const endBlockDrag = () => {
+    clearRowDropIndicators();
     toggleBlockWiggle(false);
     clearBlockDragIndicators();
     setNewRowDropState(false);
@@ -6473,13 +6531,15 @@ const formHandler = (function () {
     const rowEl = event.currentTarget;
     event.preventDefault();
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.dropEffect = blockDragState.newType ? "copy" : "move";
     }
     rowEl.classList.add("dropActive");
     getDropIndexForRow(rowEl, event.clientX);
   };
 
   const handleRowDrop = (event) => {
+    if (blockDragState?.newType && Number.isInteger(getBlockCreateNewRowDropPosition(
+      event.currentTarget.parentElement, event.clientY).dropIndex)) return;
     if (!blockDragState) {
       return;
     }
@@ -6487,6 +6547,11 @@ const formHandler = (function () {
     const rowIndex = Number(rowEl.dataset.dataRow);
     event.preventDefault();
     const dropIndex = getDropIndexForRow(rowEl, event.clientX);
+    if (blockDragState.newType) {
+      exposed.newControlElem(blockDragState.newType, { dropRow: rowIndex, dropIndex });
+      endBlockDrag();
+      return;
+    }
     exposed.moveControlElem(
       blockDragState.rowIndex,
       blockDragState.blockIndex,
@@ -14335,8 +14400,9 @@ const formHandler = (function () {
       for (const [name, value, digits] of [
         ["Angle", normalizeStandardAngle(sign.exitArrowAngle), 0],
         ["Size", clampStandardValue(sign.exitArrowSize, 1, 5, 10, 3), 1],
-        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 5, 100, 0.2), 2],
-        ["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2]
+        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 8, 100, 0.2), 2],
+        ["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2],
+        ["TextGap", clampStandardValue(sign.exitArrowTextGap, 0, 8, 100, 0), 2]
       ]) {
         exitArrowField(name).value = Math.min(Number(exitArrowField(name).max), value);
         exitArrowField(`${name}Value`).value = value.toFixed(digits);
@@ -14456,8 +14522,9 @@ const formHandler = (function () {
       for (const [field, name, min, max, precision, digits, fallback] of [
         [exitArrowField, "Angle", 0, 359, 1, 0, 0],
         [exitArrowField, "Size", 1, 5, 10, 1, 3],
-        [exitArrowField, "Padding", 0, 5, 100, 2, 0.2],
+        [exitArrowField, "Padding", 0, 8, 100, 2, 0.2],
         [exitArrowField, "Spacing", 0, 25, 100, 2, 8.5],
+        [exitArrowField, "TextGap", 0, 8, 100, 2, 0],
         [exitTextField, "Size", 50, 100, 1, 0, 70],
         [exitTextField, "Spacing", -0.15, 0.5, 100, 2, 0]
       ]) {
@@ -16812,6 +16879,18 @@ const formHandler = (function () {
         });
     }
     ensureSubpanelNewElementTypePicker();
+    const newBlockButton = document.getElementById("sMSPCreateElement");
+    newBlockButton.draggable = true;
+    newBlockButton.addEventListener("dragstart", event => {
+      event.stopPropagation();
+      blockDragState = { newType: document.getElementById("sMSPElementSelect").value };
+      toggleBlockWiggle(true);
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "copy";
+        event.dataTransfer.setData("text/plain", blockDragState.newType);
+      }
+    });
+    newBlockButton.addEventListener("dragend", endBlockDrag);
     
 
     // Populate the guide arrow options
@@ -20337,6 +20416,7 @@ const formHandler = (function () {
 
   // Read the form and update the page by redrawing it.
   const readForm = function (options = {}) {
+    mergeLiveInputRead = true;
     const deferHistoryEnd = options?.deferHistoryEnd === true;
     const field = options?.target;
     const changedControl = field ?? document.activeElement;
@@ -21350,7 +21430,8 @@ const formHandler = (function () {
           sign.exitArrowAngle = normalizeStandardAngle(exitArrowField("AngleValue").value);
           sign.exitArrowFlip = exitArrowField("Flip").getAttribute("aria-pressed") === "true";
           sign.exitArrowSize = clampStandardValue(exitArrowField("SizeValue").value, 1, 5, 10, 3);
-          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 8, 100, 0.2);
+          sign.exitArrowTextGap = clampStandardValue(exitArrowField("TextGapValue").value, 0, 8, 100, 0);
           sign.exitArrowSpacing = clampStandardValue(exitArrowField("SpacingValue").value, 0, 25, 100, 8.5);
           sign.exitTextFont = exitTextField("Font").value || "Series E";
           sign.exitTextSize = clampStandardValue(exitTextField("SizeValue").value, 50, 100, 1, 70);
@@ -21483,11 +21564,13 @@ const formHandler = (function () {
    * Update the fields in the form to the values of the currently selected panel.
    */
 
+  let mergeLiveInputRead = false;
   let mergeLiveInputActive = false;
   let mergePendingFormRefresh = false;
   let mergeSliderDisplaysBefore = [];
   let mergeLiveResetTimer = 0;
   document.addEventListener("input", event => {
+    mergeLiveInputRead = false;
     const field = event.target;
     mergeLiveInputActive = ["range", "number", "text", "search"].includes(field?.type) || field?.tagName === "TEXTAREA";
     mergeSliderDisplaysBefore = field?.type === "range" && field.id
@@ -21497,6 +21580,12 @@ const formHandler = (function () {
     mergeLiveResetTimer = setTimeout(() => { mergeLiveInputActive = false; }, 0);
   }, true);
   window.addEventListener("input", event => {
+    const field = event.target;
+    const signEditor = field?.closest?.(".panelStyleConfig,.postStyleConfig,.exitTabConfig,.guideArrowConfig");
+    if (mergeLiveInputActive && !mergeLiveInputRead && signEditor &&
+        field.type !== "search" && !(field.type === "number" && (field.value === "" || !field.validity.valid))) {
+      readForm({ target: field, deferHistoryEnd: true });
+    }
     mergeLiveInputActive = false;
     clearTimeout(mergeLiveResetTimer);
     for (const [display, before] of mergeSliderDisplaysBefore) {
@@ -24553,6 +24642,18 @@ const formHandler = (function () {
 
         const formReadHandler =
           blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
+
+        // Update the sign on each edit without rebuilding the focused editor.
+        if (!element.dataset.livePreviewBound &&
+            (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
+          element.dataset.livePreviewBound = "true";
+          element.addEventListener("input", event => {
+            if (element.type === "number" && (element.value === "" || !element.validity.valid)) return;
+            readForm({ target: element, deferHistoryEnd: true });
+          });
+          element.addEventListener("blur", () => exposed?.endUndoableChange?.());
+        }
+
 
         if (blockElemType === "sdShield" && propertyName === "numberStyle") {
           element.checked=currentBlockElem.numberStyle==='legacy';

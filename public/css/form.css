@@ -643,7 +643,7 @@ nav.sMModalBar {
 }
 
 :root {
-  --sm-app-zoom: 0.6667;
+  --sm-app-zoom: 1;
 }
 
 main {
@@ -13928,8 +13928,7 @@ span.toolTip {
 .modernExitOnly-laneSplit .modernExitColoredLane { flex: 0 0 auto; }
 .modernExitOnly-laneSplit .modernExitPlainLane { flex: 1 1 auto; }
 .modernExitSequence[data-arrow-count="1"][data-alignment="center"] {
-  justify-content: center !important;
-  column-gap: 0.55rem !important;
+  justify-content: center;
 }
 .modernExitSequence[data-arrow-count="1"][data-alignment="center"] > .modernExitTextSlot {
   flex: 0 0 auto !important;
@@ -15001,4 +15000,33 @@ input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-
   width: 2.8rem;
   font-size: 0.8rem;
   text-align: right;
+}
+
+/* The animation preference covers interface fades/slides, not selection feedback. */
+:root[data-dropdown-animations="false"] *,
+:root[data-dropdown-animations="false"] *::before,
+:root[data-dropdown-animations="false"] *::after {
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+:root[data-dropdown-animations="false"] :not(.flash-selection) {
+  animation: none !important;
+}
+.smDropdownMenu .keyboardActive {
+  background: Highlight !important;
+  color: HighlightText !important;
+}
+
+/* Compact utility buttons on both horizontal toolbar layouts. */
+nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
+  :is(#copySign, #export, #nightMode, #appSettingsConfig, #hideConfig) {
+  min-width: 2.6rem;
+  width: 2.6rem;
+  padding-inline: 0.4rem;
+  justify-content: center;
+  gap: 0;
+}
+nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
+  :is(#copySign, #export, #nightMode, #appSettingsConfig, #hideConfig) > .buttonLabel {
+  display: none;
 }

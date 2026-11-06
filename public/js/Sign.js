@@ -84,6 +84,7 @@ class Sign {
     exitArrowSize = 3,
     exitArrowPadding = 0.2,
     exitArrowSpacing = 8.5,
+    exitArrowTextGap = 0,
     exitArrowAlignment = "Center",
     exitTextFont = "Series E",
     exitTextSize = 70,
@@ -181,6 +182,7 @@ class Sign {
     this.exitArrowSize = exitArrowSize;
     this.exitArrowPadding = exitArrowPadding;
     this.exitArrowSpacing = exitArrowSpacing;
+    this.exitArrowTextGap = exitArrowTextGap;
     this.exitArrowAlignment = guideArrow === "Half Exit Only" &&
       !["Left", "Right"].includes(exitArrowAlignment) ? "Right" : exitArrowAlignment;
     this.exitTextFont = exitTextFont;

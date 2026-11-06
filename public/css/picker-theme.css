@@ -104,4 +104,4 @@
   :root[data-dropdown-animations="false"] :is(.symbolPickerCaret,.fontPickerTriggerCaret,.colorPickerTriggerCaret,.shieldPickerTriggerCaret,.profilePickerTriggerCaret) { transition:none!important; }
 }
 
-#postContainer { transform-origin:center center; transition:transform 280ms ease; }
+#postContainer { transform-origin:center center; transition:none; }

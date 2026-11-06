@@ -235,7 +235,7 @@ function dropdownFixture(file, count=0){
     trigger.querySelectorAll=selector=>selector.includes('Caret')?[caret]:[];
     wrappers.push(wrapper);triggers.push(trigger);carets.push(caret);
   }
-  const document={body,documentElement:html,querySelectorAll(selector){scans++;if(selector==='.colorPicker,.smColorPicker'||selector==='.fontPicker')return[];if(selector.includes('nativeSelectTrigger'))return triggers;return[];}};
+  const document={body,documentElement:html,addEventListener(){},querySelectorAll(selector){scans++;if(selector==='.colorPicker,.smColorPicker'||selector==='.fontPicker')return[];if(selector.includes('nativeSelectTrigger'))return triggers;return[];}};
   const window={innerWidth:900,innerHeight:600,localStorage:{getItem(){return null;},setItem(){}}};
   const c=context({window,document,getComputedStyle:()=>({fontSize:'20px',getPropertyValue(){return '0.5';}}),MutationObserver:class{constructor(cb){this.cb=cb;}observe(target,options){observed.push({observer:this,target,options});}disconnect(){this.disconnected=true;}}});
   vm.runInContext(read(file),c);

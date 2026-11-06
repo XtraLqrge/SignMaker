@@ -6435,70 +6435,15 @@ const ungroupSelectedBlockElement = () => {
       }, 500);
     };
     
-    const flashElementAfterPostTransform = (targetResolver) => {
-      if (post && post.disableFlash) return;
-
-      const postContainer = document.getElementById("postContainer");
-
-      const runFlash = () => {
-        requestAnimationFrame(() => {
-          const targetElmt =
-            typeof targetResolver === "function" ? targetResolver() : targetResolver;
-
-          if (!targetElmt || !targetElmt.isConnected) return;
-          flashElement(targetElmt);
-        });
-      };
-
-      if (!postContainer) {
-        runFlash();
-        return;
-      }
-
-      const computed = window.getComputedStyle(postContainer);
-      const durationParts = (computed.transitionDuration || "0s").split(",");
-      const delayParts = (computed.transitionDelay || "0s").split(",");
-
-      const toMs = (value) => {
-        const trimmed = String(value).trim();
-        if (trimmed.endsWith("ms")) return parseFloat(trimmed) || 0;
-        if (trimmed.endsWith("s")) return (parseFloat(trimmed) || 0) * 1000;
-        return parseFloat(trimmed) || 0;
-      };
-
-      const transitionMs = Math.max(
-        ...durationParts.map((duration, index) => {
-          const delay = delayParts[index] ?? delayParts[0] ?? "0s";
-          return toMs(duration) + toMs(delay);
-        }),
-        0
-      );
-
-      if (transitionMs <= 0) {
-        runFlash();
-        return;
-      }
-
-      let finished = false;
-
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        postContainer.removeEventListener("transitionend", onTransitionEnd);
-        runFlash();
-      };
-
-      const onTransitionEnd = (event) => {
-        if (event.target !== postContainer) return;
-        if (event.propertyName !== "transform") return;
-        finish();
-      };
-
-      postContainer.addEventListener("transitionend", onTransitionEnd);
-
-      setTimeout(finish, transitionMs + 40);
+    // Selection feedback must not wait for a transition that may never start.
+    const flashElementAfterPostTransform = targetResolver => {
+      if (post?.disableFlash) return;
+      requestAnimationFrame(() => {
+        const target = typeof targetResolver === "function" ? targetResolver() : targetResolver;
+        if (target?.isConnected) flashElement(target);
+      });
     };
-    
+
     const getFreshFlashTarget = ({
       panelIndex = currentlySelectedPanelIndex,
       subPanelIndex = currentlySelectedSubPanelIndex,
@@ -7748,13 +7693,30 @@ const ungroupSelectedBlockElement = () => {
 
       formHandler.updateForm();
       redraw();
+      flashElementAfterPostTransform(() => {
+        const panel = document.getElementById("panel" + currentlySelectedPanelIndex);
+        const master = panel?.querySelector(`.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`);
+        return master?.querySelector(`[data-sign-row="${currentlySelectedRowIndex}"][data-sign-block="${currentlySelectedBlockIndex}"]`);
+      });
     };
 
     const newControlElem = (selectedElem, evt = null) => {
       return runWithUndo(() => {
         const blockElems = getCurrentSubPanel().blockElements;
+        if (evt?.newRow) {
+          currentlySelectedRowIndex = Number.isInteger(evt.newRowIndex)
+            ? Math.max(0, Math.min(blockElems.rows.length, evt.newRowIndex))
+            : blockElems.rows.length;
+          blockElems.addRow(currentlySelectedRowIndex, selectedElem);
+          currentlySelectedBlockIndex = 0;
+          applyStoredShieldDefaultsToCurrentBlock();
+          formHandler.updateForm();
+          redraw();
+          return;
+        }
+        if (Number.isInteger(evt?.dropRow)) currentlySelectedRowIndex = evt.dropRow;
         const insertBeforeSelected = !!(evt && evt.shiftKey);
-        const insertIndex = insertBeforeSelected
+        const insertIndex = Number.isInteger(evt?.dropIndex) ? evt.dropIndex : insertBeforeSelected
           ? currentlySelectedBlockIndex
           : currentlySelectedBlockIndex + 1;
 
@@ -13980,8 +13942,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 return;
               }
 
-              const signWidth = Math.ceil(signElmt.getBoundingClientRect().width || 0);
-              const holderWidth = Math.ceil(signHolderElmt.getBoundingClientRect().width || 0);
+              const signWidth = Math.ceil(signElmt.offsetWidth || 0);
+              const holderWidth = Math.ceil(signHolderElmt.offsetWidth || 0);
 
               if (
                 hasGuideArrowThatCanWidenPanel ||
@@ -13996,10 +13958,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 const dividers = Array.from(signHolderElmt.children)
                   .filter((child) => child.classList.contains("subDivider"));
                 const subpanelWidth = subpanels.reduce(
-                  (sum, child) => sum + child.getBoundingClientRect().width, 0
+                  (sum, child) => sum + child.offsetWidth, 0
                 );
                 const dividerWidth = dividers.reduce(
-                  (sum, child) => sum + child.getBoundingClientRect().width, 0
+                  (sum, child) => sum + child.offsetWidth, 0
                 );
                 const holderStyle = getComputedStyle(signHolderElmt);
                 const innerWidth = Math.max(signElmt.clientWidth, signHolderElmt.clientWidth) -
@@ -14011,7 +13973,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 if (subpanels.length && missingWidth > 1) {
                   const extra = missingWidth / subpanels.length;
                   subpanels.forEach((child) => {
-                    const width = child.getBoundingClientRect().width;
+                    const width = child.offsetWidth;
                     child.style.boxSizing = "border-box";
                     child.style.width = `${width + extra}px`;
                     child.style.minWidth = `${width + extra}px`;
@@ -15555,15 +15517,15 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             if (intrinsicSubpanelGroupWidth === null) {
               const measuredWidth = Array.from(signHolderElmt.children)
                 .filter((child) => child.matches(".subPanelDisplay, .subDivider"))
-                .reduce((width, child) => width + child.getBoundingClientRect().width, 0);
+                .reduce((width, child) => width + child.offsetWidth, 0);
               if (measuredWidth > 0) intrinsicSubpanelGroupWidth = measuredWidth;
             }
             const arrowContainerWidth = Math.ceil(
               Math.max(
                 arrowContElmt.scrollWidth || 0,
-                arrowContElmt.getBoundingClientRect().width || 0,
+                arrowContElmt.offsetWidth || 0,
                 guideArrowsElmt?.scrollWidth || 0,
-                guideArrowsElmt?.getBoundingClientRect().width || 0
+                guideArrowsElmt?.offsetWidth || 0
               )
             );
 
@@ -15574,7 +15536,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             const currentSubpanelGroupWidth = Math.ceil(
               Math.max(
                 signHolderElmt.scrollWidth || 0,
-                signHolderElmt.getBoundingClientRect().width || 0
+                signHolderElmt.offsetWidth || 0
               )
             );
 
@@ -16255,11 +16217,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             const fixed = key.startsWith("TYPE_C_") || key === "TYPE_E";
             const angle = fixed ? 0 : ((Math.round(Number(sign.exitArrowAngle) || 0) % 360) + 360) % 360;
             const size = Math.max(1, Math.min(5, Number(sign.exitArrowSize) || 3));
-            const padding = Math.max(0, Math.min(5, Number(sign.exitArrowPadding) || 0));
+            const padding = Math.max(0, Math.min(8, Number(sign.exitArrowPadding) || 0));
             const spacing = Math.max(0, Math.min(25, Number(sign.exitArrowSpacing) || 0));
             const diagonalAmount = Math.abs(Math.sin(angle * Math.PI / 90));
             const extendedScale = key === "TYPE_A_EXTENDED" ? 1.15 : 1;
-            const verticalPadding = padding * (2 - 1.5 * diagonalAmount) + (key === "TYPE_B" ? 0.08 : 0);
+            const verticalPadding = padding * (1 - 0.75 * diagonalAmount) + (key === "TYPE_B" ? 0.08 : 0);
             const horizontalReduction = key === "TYPE_B" ? 0.43 :
                 ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.55 : 0.6;
             const noHorizontalPadding = ["TYPE_D", "TYPE_E"].includes(key);
@@ -16310,8 +16272,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 getReadableTextColorForCssColor(getResolvedCssColorValue(panel.color) || "var(--green)"));
             guideArrowsElmt.style.setProperty("--exitOnlyTopBorder", sign.exitTopBorder ? borderWidth : "0px");
             guideArrowsElmt.style.setProperty("--exitOnlyVerticalPadding", `${verticalPadding}rem`);
-            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding}rem`);
-            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${Math.max(0, coloredEdgePadding + padding - 0.2)}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${Math.max(0, (noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)) + padding - 0.2)}rem`);
             guideArrowsElmt.style.setProperty("--exitOnlyEdgeRadius", "var(--signBorderRadius, 0.75rem)");
             otherSymbolsElmt.style.display = "none";
             sideLeftArrowElmt.remove();
@@ -16439,8 +16401,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 const pixels = (value) => parseFloat(value) || 0;
                 const styles = getComputedStyle(sequence);
                 const items = [...sequence.children];
-                const sequenceWidth = items.reduce((width, item) =>
-                    width + item.getBoundingClientRect().width, 0) +
+                const sequenceWidth = styles.display === "grid" ? sequence.offsetWidth : items.reduce((width, item) =>
+                    width + item.offsetWidth + pixels(getComputedStyle(item).marginLeft) + pixels(getComputedStyle(item).marginRight), 0) +
                     Math.max(0, items.length - 1) * pixels(styles.columnGap);
                 const coloredStyle = getComputedStyle(colored);
                 const coloredWidth = sequenceWidth +
@@ -16453,22 +16415,22 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 const rootSize = pixels(getComputedStyle(document.documentElement).fontSize) || 16;
                 const standardArrowWidth = arrowFrames.length && variant !== "laneSplit"
                     ? arrowFrames.reduce((width, frame) =>
-                        width + (Number(frame.dataset.standardBoundsWidth) || frame.getBoundingClientRect().width / rootSize) * rootSize, 0) +
+                        width + (Number(frame.dataset.standardBoundsWidth) || frame.offsetWidth / rootSize) * rootSize, 0) +
                       Math.max(0, arrowFrames.length - 1) * spacing * rootSize +
                       2 * standardHorizontalPadding * rootSize + 0.4 * rootSize
                     : 0;
                 const areaWidth = Math.ceil(Math.max(
-                    coloredWidth + (plain ? plain.getBoundingClientRect().width : 0) +
+                    coloredWidth + (plain ? plain.offsetWidth : 0) +
                         pixels(guideStyle.borderLeftWidth) + pixels(guideStyle.borderRightWidth) +
                         pixels(guideStyle.paddingLeft) + pixels(guideStyle.paddingRight),
                     standardArrowWidth,
                     guideArrowsElmt.scrollWidth,
-                    guideArrowsElmt.getBoundingClientRect().width,
+                    guideArrowsElmt.offsetWidth,
                     arrowContElmt.scrollWidth,
-                    arrowContElmt.getBoundingClientRect().width
+                    arrowContElmt.offsetWidth
                 ));
-                const signWidth = Math.ceil(signElmt.getBoundingClientRect().width || 0);
-                const holderWidth = Math.ceil(signHolderElmt.getBoundingClientRect().width || 0);
+                const signWidth = Math.ceil(signElmt.offsetWidth || 0);
+                const holderWidth = Math.ceil(signHolderElmt.offsetWidth || 0);
                 if (areaWidth > holderWidth + 1) {
                     signHolderElmt.classList.add("hasStandardGuideArrowWidthReserve");
                     signHolderElmt.style.setProperty("--standardGuideArrowMinWidth", `${areaWidth}px`);
@@ -16489,7 +16451,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     syncWidenedSubpanelFill();
                     syncSplitExitLanePlacement();
                     const forcedHolderWidth = Math.ceil(signHolderElmt.scrollWidth || 0);
-                    if (sign.exitForceSubpanelWidth && forcedHolderWidth > signElmt.getBoundingClientRect().width + 1) {
+                    if (sign.exitForceSubpanelWidth && forcedHolderWidth > signElmt.offsetWidth + 1) {
                         signElmt.style.minWidth = `${forcedHolderWidth}px`;
                         signCont.style.minWidth = `${forcedHolderWidth}px`;
                         syncSplitExitLanePlacement();
@@ -16499,7 +16461,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                         requestAnimationFrame(syncSplitExitLanePlacement);
                     });
                 } else {
-                    requestAnimationFrame(syncWidenedSubpanelFill);
+                    syncWidenedSubpanelFill();
                 }
               };
               apply();
@@ -16601,6 +16563,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 const sequence = document.createElement("div");
                 sequence.className = "modernExitSequence";
                 sequence.style.setProperty("--exitOnlyArrowGap", `${spacing}rem`);
+                sequence.style.setProperty("--exitOnlyTextGap", `${Math.max(0, Math.min(8, Number(sign.exitArrowTextGap) || 0))}rem`);
                 const appendArrow = () => sequence.appendChild(makeArrow(variant === "boxed"));
                 const appendGap = () => {
                     const gap = document.createElement("span");
@@ -16641,7 +16604,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 if (laneCount === 1 && alignment === "Center") {
                     // Keep both words next to the arrow as the panel widens.
                     sequence.style.justifyContent = "center";
-                    sequence.style.columnGap = "0.55rem";
+                    sequence.style.columnGap = `${0.55 + Math.max(0, Math.min(8, Number(sign.exitArrowTextGap) || 0))}rem`;
                     for (const slot of [leftText, rightText]) {
                         slot.style.flex = "0 0 auto";
                         slot.style.width = "max-content";
@@ -17353,6 +17316,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       });
       if (fdotSupport) fdot.render(post, postContainerElmt, panelContainerElmt);
       scheduleAlignmentGuideUpdate(postContainerElmt, panelContainerElmt);
+      // Fit the updated geometry before painting a live edit.
+      updatePostViewportLayout();
       }
       
       watchRuralPostLayout();
@@ -17417,6 +17382,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         endUndoableChange,
         undo,
 
+        newControlElem: (...args) => runWithUndo(() => newControlElem(...args)),
         moveControlElem: (...args) => runWithUndo(() => moveControlElem(...args)),
         moveRow: (...args) => runWithUndo(() => moveRow(...args)),
         changeEditingPanel,

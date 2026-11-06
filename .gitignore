@@ -10,3 +10,6 @@ browser-results/
 
 # Local project instructions
 /AGENTS.md
+
+# Cloudflare Wrangler local files
+/.wrangler/

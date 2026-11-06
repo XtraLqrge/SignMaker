@@ -288,9 +288,19 @@ test('critical CSS and deferred editor assets are complete and independently cac
   assert.match(criticalCSS(['css/sign-foundation.css','css/form.css'],readFile=>read('public/'+readFile)),/\.bE-textElement/);
   assert.ok(read('public/'+manifest.deferredStyles).includes('.shieldPicker'));
 });
-test('SEO output allows crawling and provides a standalone dev deployment',()=>{
-  assert.match(read('public/index.html'),/<meta name="robots" content="index, follow">/);
-  assert.match(read('public/_headers'),/! X-Robots-Tag/);
+test('SEO output allows crawling and uses the same production URL in the canonical tag and sitemap', () => {
+  const html = read('public/index.html');
+  const production = 'https://hwysignmaker.com/';
+  assert.match(html, /<meta name="robots" content="index, follow">/);
+  assert.match(html, /<meta name="description" content="[^"]+">/);
+  assert.ok(html.includes(`<link rel="canonical" href="${production}">`));
+  assert.deepEqual(read('public/robots.txt').trim().split(/\r?\n/).filter(Boolean), [
+    'User-agent: *',
+    'Allow: /',
+    `Sitemap: ${production}sitemap.xml`,
+  ]);
+  assert.deepEqual([...read('public/sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]), [production]);
+  assert.doesNotMatch(read('public/_headers'), /x-robots-tag/i);
   assert.ok(!read('wrangler.dev.jsonc').includes('"previews"'));
 });
 test('production HTML references existing, content-addressed assets',()=>{

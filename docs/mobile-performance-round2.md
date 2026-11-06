@@ -45,8 +45,10 @@ build output. Use browser traces to measure paint and execution time.
 ## Dev deployment
 
 `wrangler.dev.jsonc` defines a standalone `signmaker-dev` Worker. Use its
-regular URL for a crawlable dev audit. Workers Preview URLs can carry an
-HTTP `noindex` directive independently of the app's robots metadata.
+regular URL for a crawlable dev audit, or run the SEO audit on
+`https://hwysignmaker.com/` after deploying to production. Cloudflare adds
+`X-Robots-Tag: noindex` to its `workers.dev` Preview URLs even when the app's
+`robots.txt` allows crawling.
 [Cloudflare Workers previews](https://developers.cloudflare.com/workers/previews/)
 
 ```sh

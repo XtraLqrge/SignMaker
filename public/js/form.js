@@ -4718,7 +4718,7 @@ const formHandler = (function () {
 
   const getActualInterfaceUIScale = (displayScale) => {
     const normalized = normalizeInterfaceUIScale(displayScale);
-    return normalized / 150;
+    return normalized / 100;
   };
 
   const applyInterfaceUIScale = (value, { persist = false } = {}) => {

@@ -47,38 +47,33 @@ nav#sMConfigBar:not([data-position]) {
 
 nav#sMConfigBar[data-position="bottom"],
 nav#sMConfigBar[data-position="top"] {
+  --sm-toolbar-zoom: calc(var(--sm-app-zoom) * 0.67);
   flex-direction: row;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: stretch;
   gap: 0.35rem;
   right: auto;
   left: 50%;
   width: max-content;
-  max-width: calc((100vw - 2rem) / var(--sm-app-zoom));
+  max-width: calc((100vw - 2rem) / var(--sm-toolbar-zoom));
   height: max-content;
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
   padding: 0.25rem;
-  scrollbar-width: thin;
 }
 
 nav#sMConfigBar[data-position="bottom"] {
   top: auto;
   bottom: 1rem;
-  transform: translateX(-50%) scale(var(--sm-app-zoom));
+  transform: translateX(-50%) scale(var(--sm-toolbar-zoom));
   transform-origin: bottom center;
 }
 
 nav#sMConfigBar[data-position="top"] {
   top: 1rem;
   bottom: auto;
-  transform: translateX(-50%) scale(var(--sm-app-zoom));
+  transform: translateX(-50%) scale(var(--sm-toolbar-zoom));
   transform-origin: top center;
-}
-
-nav#sMConfigBar[data-position="bottom"]::-webkit-scrollbar,
-nav#sMConfigBar[data-position="top"]::-webkit-scrollbar {
-  height: 0.45rem;
 }
 
 nav#sMConfigBar[data-position="bottom"] .sMConfigOption,
@@ -124,7 +119,7 @@ nav#sMConfigBar[data-position="bottom"].invisible {
   right: auto;
   left: 50%;
   bottom: 1rem;
-  transform: translateX(-50%) scale(var(--sm-app-zoom));
+  transform: translateX(-50%) scale(var(--sm-toolbar-zoom));
   transform-origin: bottom center;
 }
 
@@ -133,7 +128,7 @@ nav#sMConfigBar[data-position="top"].invisible {
   right: auto;
   left: 50%;
   bottom: auto;
-  transform: translateX(-50%) scale(var(--sm-app-zoom));
+  transform: translateX(-50%) scale(var(--sm-toolbar-zoom));
   transform-origin: top center;
 }
 
@@ -182,23 +177,9 @@ nav#sMConfigBar[data-position="top"].invisible #hideConfig {
 @media (max-width: 768px) {
   nav#sMConfigBar[data-position="bottom"],
   nav#sMConfigBar[data-position="top"] {
-    left: 0;
-    right: 0;
-    width: auto;
-    max-width: none;
-    transform: none;
-    justify-content: flex-start;
-    overflow-x: auto;
     gap: 0.25rem;
     padding: 0.4rem 0.5rem;
     box-sizing: border-box;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  nav#sMConfigBar[data-position="bottom"]::-webkit-scrollbar,
-  nav#sMConfigBar[data-position="top"]::-webkit-scrollbar {
-    display: none;
   }
 
   nav#sMConfigBar[data-position="bottom"] .sMConfigOption,
@@ -643,7 +624,7 @@ nav.sMModalBar {
 }
 
 :root {
-  --sm-app-zoom: 0.6667;
+  --sm-app-zoom: 1;
 }
 
 main {

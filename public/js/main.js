@@ -2736,6 +2736,7 @@ const ungroupSelectedBlockElement = () => {
       return runWithUndo(() => {
           const previousShowPost =
             typeof post?.showPost === "boolean" ? post.showPost : true;
+          const previousPanelCorner = post?.panels?.[currentlySelectedPanelIndex]?.corner;
 
           post = new Post(DEFAULT_POST_POSITION);
           post.panelSpacing = getDefaultPanelSpacing();
@@ -2774,6 +2775,9 @@ const ungroupSelectedBlockElement = () => {
 
         post.newPanel();
         currentlySelectedPanelIndex = post.panels.length - 1;
+        if (Panel.prototype.cornerType.includes(previousPanelCorner)) {
+          post.panels[currentlySelectedPanelIndex].corner = previousPanelCorner;
+        }
 
         const freshExitTab = post.panels[currentlySelectedPanelIndex]?.exitTabs?.[0];
         if (
@@ -2820,6 +2824,8 @@ const ungroupSelectedBlockElement = () => {
     }
 
     const computed = window.getComputedStyle(signElmt);
+    signElmt.querySelectorAll(".fullBleedDividerPainted").forEach(divider =>
+      divider.classList.remove("fullBleedDividerPainted"));
 
     const getNamedColor = (name, fallback) =>
       typeof lib !== "undefined" && lib.colors && lib.colors[name]
@@ -2923,8 +2929,16 @@ const ungroupSelectedBlockElement = () => {
     }
 
     const signRect = signElmt.getBoundingClientRect();
-    const signCssWidth = signElmt.offsetWidth || signRect.width;
-    const signCssHeight = signElmt.offsetHeight || signRect.height;
+    // offsetWidth/Height round to integers; that shifts background paint away
+    // from fractional DOM boundaries, especially when the canvas is scaled.
+    const layoutSize = (axis, edges) => {
+      const size = parseFloat(computed[axis]);
+      if (!Number.isFinite(size)) return axis === "width" ? signElmt.offsetWidth : signElmt.offsetHeight;
+      return size + (computed.boxSizing === "border-box" ? 0 : edges.reduce((sum, edge) =>
+        sum + (parseFloat(computed[`padding${edge}`]) || 0) + (parseFloat(computed[`border${edge}Width`]) || 0), 0));
+    };
+    const signCssWidth = layoutSize("width", ["Left", "Right"]) || signRect.width;
+    const signCssHeight = layoutSize("height", ["Top", "Bottom"]) || signRect.height;
     const signScaleX = signRect.width ? signCssWidth / signRect.width : 1;
     const signScaleY = signRect.height ? signCssHeight / signRect.height : signScaleX;
     const signWidth = signCssWidth;
@@ -3348,6 +3362,7 @@ const ungroupSelectedBlockElement = () => {
     };
 
     const contentLayers = [];
+    const fullBleedDividerLayers = [];
     const fillInfos = [];
     const rowInfos = [];
     const dividerInfos = [];
@@ -3400,6 +3415,22 @@ const ungroupSelectedBlockElement = () => {
       }
 
       const backgroundColor = rowEl.dataset.fullBleedBackgroundColor || "";
+      // A tab or arrow can widen the sign beyond the content column. Paint
+      // full-bleed dividers across the same resolved bounds as row backgrounds,
+      // while retaining the divider's actual vertical position and thickness.
+      for (const divider of rowEl.querySelectorAll(".dividerElement.fullBleed:not(.vertical)")) {
+        if (divider.closest(".blockElementRow") !== rowEl) continue;
+        const style = window.getComputedStyle(divider);
+        const bounds = divider.getBoundingClientRect();
+        if (style.visibility === "hidden" || style.display === "none" || !bounds.height) continue;
+        fullBleedDividerLayers.push(makeRectLayer(style.backgroundColor, {
+          left: rect.left,
+          width: rect.width,
+          top: snapCssValue(toSignCssY(bounds.top - signRect.top)),
+          height: snapCssValue(toSignCssY(bounds.height)),
+        }));
+        divider.classList.add("fullBleedDividerPainted");
+      }
       const borderColor =
         rowEl.dataset.fullBleedBorderColor ||
         (backgroundColor ? getContrastingBorderColor(backgroundColor) : "");
@@ -4060,6 +4091,7 @@ const ungroupSelectedBlockElement = () => {
     // Paint full-bleed row fills on the sign background itself, not in an
     // absolutely positioned child. Background layers are clipped by the sign's
     // own radius, which keeps colored edge rows consistent with normal panels.
+    fullBleedDividerLayers.forEach((layer) => addLayer(layer, "border-box"));
     contentLayers.forEach((layer) => addLayer(layer, "border-box"));
 
     addLayer(
@@ -13942,8 +13974,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 return;
               }
 
-              const signWidth = Math.ceil(signElmt.getBoundingClientRect().width || 0);
-              const holderWidth = Math.ceil(signHolderElmt.getBoundingClientRect().width || 0);
+              // Widths written back to CSS must stay in layout pixels, even
+              // while the canvas is scaled or its transform is animating.
+              const signWidth = Math.ceil(signElmt.offsetWidth || 0);
+              const holderWidth = Math.ceil(signHolderElmt.offsetWidth || 0);
 
               if (
                 hasGuideArrowThatCanWidenPanel ||
@@ -13958,10 +13992,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 const dividers = Array.from(signHolderElmt.children)
                   .filter((child) => child.classList.contains("subDivider"));
                 const subpanelWidth = subpanels.reduce(
-                  (sum, child) => sum + child.getBoundingClientRect().width, 0
+                  (sum, child) => sum + child.offsetWidth, 0
                 );
                 const dividerWidth = dividers.reduce(
-                  (sum, child) => sum + child.getBoundingClientRect().width, 0
+                  (sum, child) => sum + child.offsetWidth, 0
                 );
                 const holderStyle = getComputedStyle(signHolderElmt);
                 const innerWidth = Math.max(signElmt.clientWidth, signHolderElmt.clientWidth) -
@@ -13973,7 +14007,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 if (subpanels.length && missingWidth > 1) {
                   const extra = missingWidth / subpanels.length;
                   subpanels.forEach((child) => {
-                    const width = child.getBoundingClientRect().width;
+                    const width = child.offsetWidth;
                     child.style.boxSizing = "border-box";
                     child.style.width = `${width + extra}px`;
                     child.style.minWidth = `${width + extra}px`;
@@ -15513,15 +15547,17 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             if (intrinsicSubpanelGroupWidth === null) {
               const measuredWidth = Array.from(signHolderElmt.children)
                 .filter((child) => child.matches(".subPanelDisplay, .subDivider"))
-                .reduce((width, child) => width + child.getBoundingClientRect().width, 0);
+                .reduce((width, child) => width + child.offsetWidth, 0);
               if (measuredWidth > 0) intrinsicSubpanelGroupWidth = measuredWidth;
             }
             const arrowContainerWidth = Math.ceil(
               Math.max(
                 arrowContElmt.scrollWidth || 0,
-                arrowContElmt.getBoundingClientRect().width || 0,
+                arrowContElmt.offsetWidth || 0,
                 guideArrowsElmt?.scrollWidth || 0,
-                guideArrowsElmt?.getBoundingClientRect().width || 0
+                // The guide band shares the sign's border. Including that
+                // border in the content reserve adds it again on every pass.
+                guideArrowsElmt?.clientWidth || 0
               )
             );
 
@@ -15532,7 +15568,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             const currentSubpanelGroupWidth = Math.ceil(
               Math.max(
                 signHolderElmt.scrollWidth || 0,
-                signHolderElmt.getBoundingClientRect().width || 0
+                signHolderElmt.offsetWidth || 0
               )
             );
 

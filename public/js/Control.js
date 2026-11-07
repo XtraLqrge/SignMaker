@@ -5158,7 +5158,9 @@ class DividerElement {
       this.orientation === DividerElement.prototype.verticalOrientation;
     newDivider.className = "dividerElement" + (isVertical ? " vertical" : "");
     newDivider.style.visibility = this.visible ? "visible" : "hidden";
-    const lengthValue = this.dividerWidth + this.dividerMeasurement;
+    // Full bleed is an edge-to-edge layout mode, not extra padding added to
+    // the saved length. Keep that length in the model for when it is disabled.
+    const lengthValue = this.fullBleed ? "100%" : this.dividerWidth + this.dividerMeasurement;
     const thicknessValue = this.dividerHeight + "rem";
     newDivider.style.setProperty(
       "--dividerWidth",
@@ -7323,6 +7325,9 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
     for (let i = 0; i < totalRows; i++) {
       const row = this.rows[i];
       const properties = this.blockProperties[i];
+      const fullBleedDividerRow = row.length > 0 && row.every(element =>
+        element instanceof DividerElement && element.fullBleed &&
+        element.orientation !== DividerElement.prototype.verticalOrientation);
       const topPadding = parseFloat(properties.topPadding) || 0;
       const bottomPadding = parseFloat(properties.bottomPadding) || 0;
       const topSpacing = topPadding + "rem";
@@ -7364,7 +7369,7 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
       let appliedFullBleedBorderColor = "";
       const rowWidthValue = parseFloat(properties.width);
       const rowWidthStyle =
-        Number.isFinite(rowWidthValue) && rowWidthValue > 0
+        !fullBleedDividerRow && Number.isFinite(rowWidthValue) && rowWidthValue > 0
           ? rowWidthValue + "rem"
           : "";
 
@@ -7463,7 +7468,7 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         }
 
         const alignmentName = group.dataset.blockAlignment || "Center";
-        const shouldStretch =
+        const shouldStretch = fullBleedDividerRow ||
           (alignmentName === "Left" && properties.stretchLeft) ||
           (alignmentName === "Center" && properties.stretchCenter) ||
           (alignmentName === "Right" && properties.stretchRight);

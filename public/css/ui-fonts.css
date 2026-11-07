@@ -19,6 +19,9 @@
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
+  /* Explicit ligatures keep icon names rendering as symbols in Safari. */
+  font-variant-ligatures: common-ligatures;
+  font-feature-settings: 'liga' 1;
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }

@@ -12,7 +12,7 @@ class Panel {
     } else {
       this.color = "Green";
     }
-    if (Object.keys(this.cornerType).includes(corner)) {
+    if (this.cornerType.includes(corner)) {
       this.corner = corner;
     } else {
       this.corner = this.cornerType[0];

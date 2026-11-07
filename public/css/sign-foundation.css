@@ -309,6 +309,12 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
   align-self: stretch;
 }
 
+/* The sign background paints this divider edge-to-edge. Keep its layout box,
+   but avoid drawing a second, independently rasterized line in the center. */
+.dividerElement.fullBleedDividerPainted {
+  opacity: 0;
+}
+
 .dividerElement.fullBleed:not(.vertical) {
   width: calc(var(--dividerLength, 100%) + var(--dividerBleedLeft, 0rem) + var(--dividerBleedRight, 0rem));
   margin-left: calc(-1 * var(--dividerBleedLeft, 0rem));

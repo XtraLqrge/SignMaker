@@ -278,7 +278,9 @@ test('returning visits fetch their editor alongside the rendering scripts',async
 });
 test('critical CSS and deferred editor assets are complete and independently cached',()=>{
   const manifest=JSON.parse(read('build-manifest.json')),html=read('public/index.html');
-  assert.ok(manifest.criticalCSS.gzipBytes<40000);
+  // The icon font now travels inside CSS for Safari file:// support; allow
+  // its compressed bytes plus base64 overhead while retaining the CSS budget.
+  assert.ok(manifest.criticalCSS.gzipBytes<40000+manifest.uiIconFont.bytes*1.1);
   assert.ok(manifest.startupJS.gzipBytes<170000);
   for(const source of manifest.deferredEditor){
     assert.ok(fs.existsSync(path.join(root,'public',source)));
@@ -332,7 +334,11 @@ test('CSS compaction preserves declarations, cascade order and custom-property t
   }
   const asset=JSON.parse(read('build-manifest.json')).assets.find(asset=>asset.sources);
   const source=asset.sources.map(file=>read('public/'+file)).join('\n');
-  assert.equal(normalizeCSS(read('public/'+asset.output)),normalizeCSS(source));
+  const coverage=JSON.parse(read('scripts/ui-icon-coverage.json'));
+  // Font payload equality is checked below; normalize its intentional URL
+  // substitution here to keep checking every other declaration and its order.
+  const output=read('public/'+asset.output).replace(/data:font\/woff2;base64,[A-Za-z0-9+/=]+/g,'../fonts/ui/'+coverage.file);
+  assert.equal(normalizeCSS(output),normalizeCSS(source));
   assert.ok(asset.optimized.bytes<asset.original.bytes*0.9);
 });
 
@@ -599,6 +605,16 @@ test('UI fonts load locally and every interface icon has a verified glyph',()=>{
   const icons=fs.readFileSync(path.join(root,'public/fonts/ui',coverage.file));
   assert.equal(crypto.createHash('sha256').update(icons).digest('hex'),coverage.sha256);
   assert.ok(icons.length<25000);
+  // Both startup and deferred CSS must work without file:// font requests.
+  const buildManifest=JSON.parse(read('build-manifest.json'));
+  for(const asset of buildManifest.assets.filter(asset=>asset.output.endsWith('.css'))){
+    const bundle=read('public/'+asset.output);
+    const embedded=bundle.match(/data:font\/woff2;base64,([A-Za-z0-9+/=]+)/);
+    assert.ok(embedded,'Embedded icon font: '+asset.output);
+    assert.deepEqual(Buffer.from(embedded[1],'base64'),icons);
+    assert.equal(bundle.includes('../fonts/ui/'+coverage.file),false);
+  }
+  assert.equal(html.includes('href="fonts/ui/'+coverage.file+'"'),false);
   const required=require('./ui-icons.cjs').collect(root,read('scripts/index.source.html'));
   for(const icon of [...required,...manifest.iconNames])assert.ok(coverage.verifiedIconNames.includes(icon),icon);
   for(const [file,record]of Object.entries(manifest.files)){
@@ -694,4 +710,60 @@ test('closed shield triggers defer their artwork until their editor is active',(
   vm.runInContext(declaration('public/js/form.js','setShieldPickerButtonIcon')+'this.setIcon=setShieldPickerButtonIcon;',c);
   c.setIcon(image,'shield.svg');assert.equal(requests,0);
   bar.dataset.currentMenu='subPanelConfig';c.window.SignMakerEditorRuntime.ensure();assert.equal(source,'shield.svg');assert.equal(requests,1);
+});
+
+test('UI scale percentages match the rendered scale',()=>{
+  const c=context({});
+  vm.runInContext(`const INTERFACE_UI_SCALE_MIN=50,INTERFACE_UI_SCALE_MAX=150,INTERFACE_UI_SCALE_STEP=10,INTERFACE_UI_SCALE_DEFAULT=100;`+
+    ['normalizeInterfaceUIScale','getActualInterfaceUIScale'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.scale=getActualInterfaceUIScale;',c);
+  for(const [input,expected] of [[50,0.5],[100,1],[150,1.5],[null,1],['bad',1]])assert.equal(c.scale(input),expected);
+});
+
+test('panel constructor accepts corner names and Clear All retains the selected corner',()=>{
+  const c=context({lib:{colors:{Green:'#008000'}},window:{localStorage:{setItem(){}}},
+    runWithUndo:fn=>fn(),getDefaultPanelSpacing:()=>1,DEFAULT_POST_POSITION:'Left',
+    formHandler:{updateForm(){}},redraw(){},saveAppState(){},redoStack:[]});
+  vm.runInContext(read('public/js/Panel.js')+`
+    class Post { constructor(){this.panels=[];} newPanel(){this.panels.push(new Panel({}));} }
+    let post,currentlySelectedPanelIndex;
+  `+declaration('public/js/main.js','clearAll')+`
+    this.check=corner=>{
+      const constructed=new Panel({},'Green',[],corner).corner;
+      post={panels:[{corner:corner==='Round'?'Sharp':'Round'},{corner}],showPost:false};
+      currentlySelectedPanelIndex=1;
+      clearAll();
+      return {constructed,corner:post.panels[0].corner,count:post.panels.length,showPost:post.showPost};
+    };
+    this.invalid=()=>new Panel({},'Green',[],'0').corner;
+  `,c);
+  for(const corner of ['Sharp','Round']){
+    const result=c.check(corner);
+    assert.equal(result.constructed,corner);assert.equal(result.corner,corner);
+    assert.equal(result.count,1);assert.equal(result.showPost,false);
+  }
+  assert.equal(c.invalid(),'Sharp');
+});
+
+test('widened sign padding is independent of canvas scale',()=>{
+  for(const scale of [0.5,0.85,1,1.5]){
+    const child=width=>({offsetWidth:width,style:{},classList:{contains:name=>name==='subPanelDisplay'},getBoundingClientRect:()=>({width:width*scale})});
+    const children=[child(100),child(200)];
+    const holder={offsetWidth:400,clientWidth:400,children,classList:{add(){}},getBoundingClientRect:()=>({width:400*scale})};
+    const sign={...holder,offsetWidth:410,clientWidth:400};
+    const c=context({signElmt:sign,signHolderElmt:holder,hasGuideArrowThatCanWidenPanel:true,hasExitTabThatCanWidenPanel:false,exitTabAnchorsReady:false,
+      requestAnimationFrame(){},document:{},getComputedStyle:()=>({paddingLeft:'0',paddingRight:'0',columnGap:'10'})});
+    vm.runInContext(declaration('public/js/main.js','syncWidenedSubpanelFill')+'syncWidenedSubpanelFill();',c);
+    assert.equal(children[0].style.width,'145px','first subpanel at scale '+scale);
+    assert.equal(children[1].style.width,'245px','second subpanel at scale '+scale);
+  }
+});
+
+test('full-bleed painting preserves fractional sign dimensions',()=>{
+  for(const boxSizing of ['border-box','content-box']){
+    const computed={width:'406px',height:'312.28125px',boxSizing,paddingTop:'6px',paddingBottom:'6px',borderTopWidth:'4px',borderBottomWidth:'4px'};
+    const c=context({computed,signElmt:{offsetWidth:406,offsetHeight:312}});
+    vm.runInContext(declaration('public/js/main.js','layoutSize')+'this.size=layoutSize;',c);
+    assert.equal(c.size('height',['Top','Bottom']),boxSizing==='border-box'?312.28125:332.28125);
+    assert.equal(c.size('width',['Left','Right']),406);
+  }
 });

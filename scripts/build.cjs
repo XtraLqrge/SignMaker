@@ -76,7 +76,6 @@ function build() {
   }
   assert.equal(uiFonts.files[iconCoverage.file].sha256,iconCoverage.sha256,'Icon coverage must match the included font');
   for(const name of require('./ui-icons.cjs').collect(root,html))assert.ok(iconCoverage.verifiedIconNames.includes(name),'Missing icon glyph: '+name);
-  html=html.replace('<!-- UI_ICON_PRELOAD -->',`<link rel="preload" as="font" type="font/woff2" href="fonts/ui/${iconCoverage.file}" crossorigin>`);
   const assets = [];
   const emitted = new Map();
   const adapted = new Map();
@@ -119,11 +118,20 @@ function build() {
     return styles.length === 1 ? '<!-- APP_STYLES -->' : '';
   });
   // Preserve the rule/declaration tree and cascade order, without source spacing.
-  const cssSource = styles.map(relative => `/* ${relative} */\n`+fs.readFileSync(path.join(publicRoot,relative),'utf8')).join('\n');
+  // Safari does not load external web fonts from file:// pages. Embed the small
+  // icon subset in both bundles so opening index.html directly still works.
+  const iconData = fs.readFileSync(path.join(publicRoot,'fonts/ui',iconCoverage.file)).toString('base64');
+  const readStyle = relative => {
+    const source = fs.readFileSync(path.join(publicRoot,relative),'utf8');
+    return relative === 'css/ui-fonts.css'
+      ? source.replace(`url(../fonts/ui/${iconCoverage.file})`, `url("data:font/woff2;base64,${iconData}")`)
+      : source;
+  };
+  const cssSource = styles.map(relative => `/* ${relative} */\n`+readStyle(relative)).join('\n');
   const css=compactCSS(cssSource);
   const cssTarget = `css/app.${digest(css)}.css`;
   fs.writeFileSync(path.join(publicRoot,cssTarget),css);
-  const critical=compactCSS(criticalCSS(styles,file=>fs.readFileSync(path.join(publicRoot,file),'utf8')));
+  const critical=compactCSS(criticalCSS(styles,readStyle));
   const criticalTarget=`css/sign.${digest(critical)}.css`;
   fs.writeFileSync(path.join(publicRoot,criticalTarget),critical);
   html = html.replace('<!-- APP_STYLES -->', `<link href="${criticalTarget}" rel="stylesheet" type="text/css">`);

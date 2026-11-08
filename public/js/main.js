@@ -2244,6 +2244,8 @@ const ungroupSelectedBlockElement = () => {
         postData.color || Post.prototype.colors[0]
       );
 
+      Object.assign(newPost, postData);
+
       if (typeof postData.panelSpacing === "number") {
         newPost.panelSpacing = postData.panelSpacing;
       }
@@ -2296,6 +2298,7 @@ const ungroupSelectedBlockElement = () => {
             subPanels,
           });
 
+          Object.assign(sign, signData);
           if (Array.isArray(signData.shields)) {
             sign.shields = signData.shields.map((shieldData) => {
               const shield = new Shield(shieldData);
@@ -2307,7 +2310,6 @@ const ungroupSelectedBlockElement = () => {
             });
           }
 
-          Object.assign(sign, signData);
           if (typeof sign.exitTextFont === "string") {
             sign.exitTextFont = normalizeTextFontFamilyName(sign.exitTextFont);
           }
@@ -2674,10 +2676,10 @@ const ungroupSelectedBlockElement = () => {
       scheduleAppStateSave(afterSnapshot);
     };
 
-    const runWithUndo = (callback) => {
+    const runWithUndo = (callback, { live = false } = {}) => {
       beginUndoableChange();
       const result = callback();
-      endUndoableChange();
+      if (!live) endUndoableChange();
       return result;
     };
 
@@ -3948,7 +3950,7 @@ const ungroupSelectedBlockElement = () => {
           };
         }
       ).filter((entry) => entry.width > 0 && entry.height > 0);
-      const ringMaskId = "dynamicBorderRingMask";
+      const ringClipId = "dynamicBorderRingClip";
       const normalizePaintColor = (color) =>
         String(resolveCssColor(color) || color || "")
           .replace(/\s+/g, "")
@@ -4027,12 +4029,14 @@ const ungroupSelectedBlockElement = () => {
         borderCells.push(...rowCells);
       }
 
+      // Keep the curved ring vector-based: WebKit rasterizes an SVG mask at
+      // layout resolution, making its inner edge blurry in scaled exports.
       const svgParts = [
         `<svg xmlns="http://www.w3.org/2000/svg" width="${snapCssValue(safeWidth)}" height="${snapCssValue(safeHeight)}" viewBox="0 0 ${snapCssValue(safeWidth)} ${snapCssValue(safeHeight)}" preserveAspectRatio="none" shape-rendering="geometricPrecision">`,
         "<defs>",
-        `<mask id="${ringMaskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${snapCssValue(safeWidth)}" height="${snapCssValue(safeHeight)}">`,
-        `<path d="${escapeXml(`${outerPath} ${innerPath}`)}" fill="white" fill-rule="evenodd"/>`,
-        "</mask>",
+        `<clipPath id="${ringClipId}" clipPathUnits="userSpaceOnUse">`,
+        `<path d="${escapeXml(`${outerPath} ${innerPath}`)}" clip-rule="evenodd"/>`,
+        "</clipPath>",
         "</defs>",
       ];
 
@@ -4045,7 +4049,7 @@ const ungroupSelectedBlockElement = () => {
         )
         .forEach((cell) => {
           svgParts.push(
-            `<rect x="${snapCssValue(cell.left)}" y="${snapCssValue(cell.top)}" width="${snapCssValue(cell.right - cell.left)}" height="${snapCssValue(cell.bottom - cell.top)}" fill="${escapeXml(cell.color)}" mask="url(#${ringMaskId})" shape-rendering="crispEdges"/>`
+            `<rect x="${snapCssValue(cell.left)}" y="${snapCssValue(cell.top)}" width="${snapCssValue(cell.right - cell.left)}" height="${snapCssValue(cell.bottom - cell.top)}" fill="${escapeXml(cell.color)}" clip-path="url(#${ringClipId})" shape-rendering="crispEdges"/>`
           );
         });
 
@@ -4167,9 +4171,9 @@ const ungroupSelectedBlockElement = () => {
       }
       pending = true;
       if (typeof window.requestAnimationFrame === "function") {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(update);
-        });
+        // Reconcile cached-image and banner metrics before the first paint,
+        // rather than displaying a border sized for the previous layout.
+        window.requestAnimationFrame(update);
       } else {
         update();
       }
@@ -5354,7 +5358,7 @@ const ungroupSelectedBlockElement = () => {
         });
     };
 
-    const setPanelSpacing = function (value) {
+    const setPanelSpacing = function (value, options = {}) {
       return runWithUndo(() => {
         if (!post) {
           return;
@@ -5370,7 +5374,7 @@ const ungroupSelectedBlockElement = () => {
         post.panelSpacing = normalized;
         formHandler.updateForm();
         redraw();
-      });
+      }, options);
     };
 
     const addSubPanel = function () {
@@ -7408,7 +7412,7 @@ const ungroupSelectedBlockElement = () => {
     };
 
 
-    const setStackedPanelSpacing = (value) => {
+    const setStackedPanelSpacing = (value, options = {}) => {
       return runWithUndo(() => {
         if (!post || !Array.isArray(post.panels) || post.panels.length === 0) {
           return;
@@ -7425,7 +7429,7 @@ const ungroupSelectedBlockElement = () => {
 
         redraw();
         formHandler.updateForm();
-      });
+      }, options);
     };
 
     const setStackedPanelMatchWidth = (matchWidth) => {
@@ -9736,7 +9740,7 @@ const ungroupSelectedBlockElement = () => {
         return;
       };
 
-      const setAPLArrowSpacing = function (arrowIndex, spacingRem) {
+      const setAPLArrowSpacing = function (arrowIndex, spacingRem, options = {}) {
         return runWithUndo(() => {
           const sign = getCurrentPanel().sign;
           normalizeAllAPLArrows();
@@ -9752,10 +9756,10 @@ const ungroupSelectedBlockElement = () => {
             formHandler.updateForm();
             redraw();
           }
-        });
+        }, options);
       };
     
-        const setAPLArrowBeforeSpacing = function (arrowIndex, spacingRem) {
+        const setAPLArrowBeforeSpacing = function (arrowIndex, spacingRem, options = {}) {
           return runWithUndo(() => {
             const sign = getCurrentPanel().sign;
 
@@ -9770,10 +9774,10 @@ const ungroupSelectedBlockElement = () => {
               formHandler.updateForm();
               redraw();
             }
-          });
+          }, options);
         };
     
-        const setAPLArrowSize = function (arrowIndex, sizeRem) {
+        const setAPLArrowSize = function (arrowIndex, sizeRem, options = {}) {
           return runWithUndo(() => {
             const sign = getCurrentPanel().sign;
             normalizeAllAPLArrows();
@@ -9788,7 +9792,7 @@ const ungroupSelectedBlockElement = () => {
               formHandler.updateForm();
               redraw();
             }
-          });
+          }, options);
         };
 
       const setAPLExitOnly = function (index, isExitOnly) {
@@ -9814,16 +9818,16 @@ const ungroupSelectedBlockElement = () => {
         });
       };
 
-      const setAPLExitOnlyTextSetting = function (index, property, value) {
-        return runWithUndo(() => {
-          const sign = getCurrentPanel().sign;
-          const arrow = sign.aplArrows?.[index];
-          if (!arrow || !["left", "right", "font", "size", "spacing"].includes(property)) return;
-          arrow.aplExitText ||= {};
-          arrow.aplExitText[property] = value;
-          formHandler.updateForm();
-          redraw();
-        });
+      const setAPLExitOnlyTextSetting = function (index, property, value, { live = false } = {}) {
+        const sign = getCurrentPanel().sign;
+        const arrow = sign.aplArrows?.[index];
+        if (!arrow || !["left", "right", "font", "size", "spacing"].includes(property)) return;
+        beginUndoableChange();
+        arrow.aplExitText ||= {};
+        arrow.aplExitText[property] = value;
+        formHandler.updateForm();
+        redraw();
+        if (!live) endUndoableChange();
       };
 
       const moveAPLArrow = function (
@@ -10475,6 +10479,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     return "downloaded";
   };
   const copySignToClipboard = async function(panelIndex=null) {
+    flushPendingLivePreview();
     if(copySignInProgress) return false;
     copySignInProgress=true;setCopyButtonState('copying');
     try {
@@ -10763,6 +10768,101 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       reader.readAsDataURL(blob);
     });
 
+  let exportAssetLibraryPromise;
+  const loadExportAssetLibrary = () => {
+    if (!exportAssetLibraryPromise) {
+      exportAssetLibraryPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        const finish = error => {
+          clearTimeout(timer);script.remove();
+          script.onload = script.onerror = null;
+          error ? reject(error) : resolve(window.SignMakerExportAssets);
+        };
+        const timer = setTimeout(() => finish(new Error('Export resources timed out. Please retry.')), 20000);
+        script.src = new URL('js/ExportAssets.js', document.baseURI).href;
+        script.onload = () => finish(window.SignMakerExportAssets ? null : new Error('Export resources are unavailable.'));
+        script.onerror = () => finish(new Error('Unable to load export resources. Please rebuild the app.'));
+        document.head.appendChild(script);
+      }).catch(error => {exportAssetLibraryPromise = null;throw error;});
+    }
+    return exportAssetLibraryPromise;
+  };
+  const readExportResource = async source => {
+    const url = new URL(source, document.baseURI);
+    if (url.protocol === "file:") {
+      const library = await loadExportAssetLibrary();
+      return fetch(await library.read(url.href));
+    }
+    const response = await fetch(url.href, {cache:'force-cache'});
+    if (!response.ok) throw new Error('Unable to embed export resource: '+url.href);
+    return response;
+  };
+
+  const exportResourceCache = new Map();
+  const exportResourceDataURL = source => {
+    const url = new URL(source, document.baseURI).href;
+    if (url.startsWith('data:')) return Promise.resolve(url);
+    if (!exportResourceCache.has(url)) {
+      exportResourceCache.set(url, readExportResource(url).then(response => response.blob())
+        .then(readBlobAsDataUrl).catch(error => {exportResourceCache.delete(url);throw error;}));
+    }
+    return exportResourceCache.get(url);
+  };
+
+  const inlineExportResources = async root => {
+    const nodes = [root, ...root.querySelectorAll('*')];
+    const inlineURLs = async value => {
+      const matches = [...value.matchAll(/url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/g)];
+      for (const match of matches) {
+        const source=(match[1] ?? match[2] ?? match[3]).trim();
+        if (!source || source.startsWith('data:') || source.startsWith('#')) continue;
+        value=value.split(match[0]).join('url("'+await exportResourceDataURL(source)+'")');
+      }
+      return value;
+    };
+    const pseudoRules=[];
+    for (const [index,node] of nodes.entries()) {
+      if (node instanceof HTMLImageElement) {
+        const source=node.currentSrc || node.src;
+        if (source) {node.removeAttribute('srcset');node.removeAttribute('sizes');node.src=await exportResourceDataURL(source);}
+      } else if (node instanceof SVGElement && node.tagName.toLowerCase()==='image') {
+        const source=node.getAttribute('href') || node.getAttribute('xlink:href');
+        if(source){const data=await exportResourceDataURL(source);node.setAttribute('href',data);node.setAttributeNS('http://www.w3.org/1999/xlink','href',data);}
+      }
+      for (const pseudo of [null,'::before','::after']) {
+        const style=getComputedStyle(node,pseudo);
+        if(pseudo && ['none','normal',''].includes(style.content))continue;
+        const declarations=[];
+        for(const property of ['background-image','mask-image','-webkit-mask-image','border-image-source','list-style-image','content']){
+          const value=style.getPropertyValue(property);
+          if(!value.includes('url('))continue;
+          const inlined=await inlineURLs(value);
+          if(pseudo)declarations.push(property+':'+inlined+' !important;');
+          else node.style.setProperty(property,inlined,style.getPropertyPriority(property));
+        }
+        if(declarations.length){
+          node.setAttribute('data-export-resource',String(index));
+          pseudoRules.push('[data-export-resource="'+index+'"]'+pseudo+'{'+declarations.join('')+'}');
+        }
+      }
+    }
+    if(pseudoRules.length){const style=document.createElement('style');style.textContent=pseudoRules.join('\n');root.appendChild(style);}
+  };
+
+  const preparedExportFonts = new Map();
+  const prepareExportFonts = async root => {
+    const css = await getSafeExportFontEmbedCSS(root);
+    if (css && !preparedExportFonts.has(css)) {
+      const style=document.createElement('style');style.dataset.exportFonts='true';style.textContent=css;
+      document.head.appendChild(style);
+      const families=new Set([root,...root.querySelectorAll('*')].map(node=>getComputedStyle(node).fontFamily));
+      const ready=Promise.all([...families].map(family=>document.fonts.load('16px '+family)));
+      preparedExportFonts.set(css,ready);
+      try {await ready;} catch(error){style.remove();preparedExportFonts.delete(css);throw error;}
+    } else if(css) await preparedExportFonts.get(css);
+    return css;
+  };
+
   const inlineFontFaceUrls = async (cssText, baseHref) => {
     if (!cssText || !cssText.includes("url(")) {
       return cssText || "";
@@ -10782,7 +10882,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
       try {
         const resolvedUrl = new URL(rawUrl, baseHref || document.baseURI).href;
-        const response = await fetch(resolvedUrl);
+        const response = await readExportResource(resolvedUrl);
 
         if (!response.ok) {
           continue;
@@ -10810,7 +10910,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     urls.sort((a, b) => rank(a) - rank(b));
     for (const url of urls) {
       try {
-        const response = await fetch(new URL(url, rule.baseHref || document.baseURI).href, { cache: "force-cache" });
+        const response = await readExportResource(new URL(url, rule.baseHref || document.baseURI).href);
         if (!response.ok) continue;
         const blob = await response.blob();
         const signature = String.fromCharCode(...new Uint8Array(await blob.slice(0, 4).arrayBuffer()));
@@ -10819,7 +10919,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         return rule.cssText.replace(/src\s*:[^;]+;/i, `src: url("${data}");`);
       } catch (error) {}
     }
-    return "";
+    throw new Error("Unable to embed a font required by the sign: " + rule.cssText.slice(0,120));
   };
   const getSafeExportFontEmbedCSS = async (root = null) => {
     root ||= document.getElementById("panelContainer");
@@ -10828,7 +10928,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     const usedFamilies = root ? new Set([root, ...root.querySelectorAll("*")].flatMap((element) =>
       getComputedStyle(element).fontFamily.split(",").map(normalizeFamily))) : null;
 
+    if (new URL(document.baseURI).protocol === 'file:') {
+      // Safari treats file stylesheets as opaque to CSSOM even when it paints
+      // their fonts. The build supplies the same font-face definitions as data.
+      const library = await loadExportAssetLibrary();
+      for (const rule of library.fontFaces) {
+        if (usedFamilies && !usedFamilies.has(normalizeFamily(rule.family))) continue;
+        fontFaceRules.push({cssText:rule.cssText,baseHref:new URL(rule.stylesheet,document.baseURI).href});
+      }
+    }
+
     for (const sheet of Array.from(document.styleSheets)) {
+      if (sheet.ownerNode?.dataset?.exportFonts === "true") continue;
       let rules;
 
       try {
@@ -10853,7 +10964,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       fontFaceRules.map((rule) => {
         if (!root) return inlineFontFaceUrls(rule.cssText, rule.baseHref);
         const key = rule.baseHref + ":" + rule.cssText;
-        if (!vmsFontFaceCache.has(key)) vmsFontFaceCache.set(key, inlineVmsFontFace(rule));
+        if (!vmsFontFaceCache.has(key)) vmsFontFaceCache.set(key, inlineVmsFontFace(rule).catch(error => {
+          vmsFontFaceCache.delete(key);
+          throw error;
+        }));
         return vmsFontFaceCache.get(key);
       })
     );
@@ -10861,7 +10975,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     return inlinedRules.join("\n");
   };
   
-  const materializeExportBannerFirstLetters = (root) => {
+  const materializeExportBannerFirstLetters = (root, { plainTextOnly = false } = {}) => {
     if (!root) {
       return () => {};
     }
@@ -10873,6 +10987,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     const restoreCallbacks = [];
 
     for (const bannerEl of bannerElements) {
+      if (plainTextOnly && bannerEl.children.length) continue;
       const text = bannerEl.textContent || "";
 
       if (!text.trim()) {
@@ -11563,6 +11678,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   };
 
   const withTemporaryExportStyles = async (element, callback, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) => {
+    const exportFontCSS = await prepareExportFonts(element);
     await waitForPendingRenderedArrows(element);
     await VmsPanel.refresh(element);
     if (element?.id === "postContainer") {
@@ -11570,6 +11686,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     }
     const staticClone = createStaticExportClone(element, selectedPanelIndexSet);
     const exportElement = staticClone ? staticClone.node : element;
+    exportElement._exportFontCSS = exportFontCSS;
     const oldInline = staticClone
       ? null
       : {
@@ -11593,6 +11710,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     let restoreExportBannerFirstLetters = () => {};
 
     try {
+      await inlineExportResources(exportElement);
       await waitForNextFrame();
 
       restoreExportBannerFirstLetters =
@@ -11644,6 +11762,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   };
 
   const saveSign = async function (file, isPreview, isSVG, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) {
+    flushPendingLivePreview();
     try {
       if (!file) {
         throw new Error("No export target found");
@@ -11651,11 +11770,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
       return await withTemporaryExportStyles(file, async ({ width, height }, exportElement) => {
         const exportOptions = {
-          cacheBust: true,
+          cacheBust: false,
           width,
           height,
           backgroundColor: "transparent",
-          fontEmbedCSS: await getSafeExportFontEmbedCSS(),
+          fontEmbedCSS: exportElement._exportFontCSS,
           style: {
             transform: "none",
             transition: "none",
@@ -11702,7 +11821,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   };
 
     const setDownloadButtonsDisabled = (disabled) => {
-      ["downloadPNG", "downloadSVG", "copyPNG", "copySVG"].forEach((buttonId) => {
+      ["downloadPNG", "downloadSVG", "downloadJSON", "copyPNG", "copySVG"].forEach((buttonId) => {
         const button = document.getElementById(buttonId);
         if (button) {
           button.disabled = !!disabled;
@@ -11806,6 +11925,67 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       setDownloadButtonsDisabled(!hasSelection);
 
       return hasSelection;
+    };
+
+    const serializeSignJSON = function () {
+      flushPendingLivePreview();
+      const snapshot = JSON.parse(serializePostWithElementTypes(), (key, value) => key === "__undoType" ? undefined : value);
+      const selected = getSelectedExportPanelIndexSet();
+      if (selected) {
+        const indices = new Set(getExportablePanelGroups().filter(group => selected.has(group.topIndex)).flatMap(group => group.indices));
+        snapshot.panels = snapshot.panels.filter((panel, index) => indices.has(index));
+      }
+      return SignMakerSignDocument.encode(snapshot, formHandler.exportSignAssets(snapshot));
+    };
+
+    const downloadJSONSign = function () {
+      if (!syncDownloadSelection()) return;
+      try {
+        downloadBlob(new Blob([serializeSignJSON()], {type: "application/json"}), ".json");
+        document.getElementById("signJSONStatus").textContent = "Editable JSON downloaded.";
+      } catch (error) {
+        document.getElementById("signJSONStatus").textContent = error.message;
+      }
+    };
+
+    const importSignJSON = function (text) {
+      if (activeTemplateEditor) throw new Error("Close the template editor before importing a sign.");
+      const documentData = SignMakerSignDocument.decode(text);
+      const validateTypes = value => {
+        if (!value || typeof value !== "object") return;
+        const type = value._elementType || value.__undoType;
+        if (value._elementType && !Object.hasOwn(Control.prototype.blockToClassElems, type)) throw new Error("Unsupported block type: " + type);
+        Object.values(value).forEach(validateTypes);
+      };
+      validateTypes(documentData.post);
+      // Reconstruct before touching the current canvas. Constructors and existing
+      // migrations fill defaults for fields absent from older saved files.
+      let rebuilt = reconstructPostFromSnapshot(documentData.post);
+      formHandler.importSignAssets(documentData.customShields, documentData.post);
+      rebuilt = reconstructPostFromSnapshot(documentData.post);
+      flushPendingLivePreview();
+      endUndoableChange();
+      const previous = serializeAppState();
+      beginUndoableChange();
+      try { setPost(rebuilt); }
+      catch (error) { restoreAppState(previous); throw error; }
+      finally { endUndoableChange(); }
+      return true;
+    };
+
+    const importJSONFile = async function (input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const status = document.getElementById("signJSONStatus");
+      try {
+        importSignJSON(await file.text());
+        status.textContent = "Sign imported. Undo restores the previous canvas.";
+        updatePreview();
+      } catch (error) {
+        status.textContent = "Could not import JSON: " + error.message;
+      } finally {
+        input.value = "";
+      }
     };
 
     const downloadPNGSign = async function () {
@@ -12182,7 +12362,49 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     } while (pending.length);
   };
 
+  let livePreviewInputPending = false;
+  let livePreviewRedrawOptions = null;
+  let livePreviewRenderFrame = null;
+  let livePreviewInputCleanup = null;
+  const flushPendingLivePreview = () => {
+    if (livePreviewRenderFrame !== null) cancelAnimationFrame(livePreviewRenderFrame);
+    livePreviewInputCleanup?.();
+    livePreviewInputCleanup = null;
+    livePreviewRenderFrame = null;
+    livePreviewInputPending = false;
+    const options = livePreviewRedrawOptions;
+    livePreviewRedrawOptions = null;
+    if (options) redraw(options);
+  };
+  document.addEventListener("input", event => {
+    if (!event.target?.matches?.('input[type="range"], input[type="number"], input[type="text"], input[type="color"], textarea')) return;
+    if (livePreviewInputPending) return;
+    livePreviewInputPending = true;
+    // A single input can reach a paired-control handler, a property handler,
+    // and the form fallback. Draw their final model once, before the next paint.
+    // Register after the existing bubble handlers. Unlike a capture-phase
+    // microtask this also batches native events, and unlike drawing in rAF it
+    // leaves time for image/font layout callbacks before the frame is painted.
+    const finishInput = finished => {
+      if (finished === event) flushPendingLivePreview();
+    };
+    window.addEventListener("input", finishInput);
+    livePreviewInputCleanup = () => window.removeEventListener("input", finishInput);
+    // Controls which stop propagation still get a bounded, one-frame flush.
+    livePreviewRenderFrame = requestAnimationFrame(flushPendingLivePreview);
+  }, true);
+
   const redraw = function (options = {}) {
+    if (livePreviewInputPending) {
+      // A whole-post redraw wins if any handler requests one.
+      if (!livePreviewRedrawOptions || options.preserveOtherPanels !== true) {
+        livePreviewRedrawOptions = options;
+      } else if (livePreviewRedrawOptions.preserveOtherPanels === true &&
+                 livePreviewRedrawOptions.changedPanelIndex !== options.changedPanelIndex) {
+        livePreviewRedrawOptions = {};
+      }
+      return;
+    }
     VmsPanel.disconnect();
     const postContainerElmt = document.getElementById("postContainer");
     const panelContainerElmt = document.getElementById("panelContainer");
@@ -15503,6 +15725,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           }
         };
 
+        // WebKit can revise the intrinsic width of ::first-letter after its
+        // first paint. Use the same explicit glyph as export before measuring
+        // live banners, while preserving any structured banner content.
+        materializeExportBannerFirstLetters(panelElmt, { plainTextOnly: true });
         relocateAplArrowsBelowGlobalBottom();
         applyAplEdgeExitTabLayout();
                
@@ -15526,8 +15752,12 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         });
         signElmt.appendChild(sideRightArrowElmt);
 
+        // Keep the unexpanded content measurement for this render. Image-load
+        // callbacks call this again after the arrow reserve has stretched the
+        // row; measuring that stretched width would remove the reserve and
+        // make the content jump back on the following frame.
+        let intrinsicSubpanelGroupWidth = null;
         const syncStandardGuideArrowSubpanelWidth = () => {
-          let intrinsicSubpanelGroupWidth = null;
           const isStandardGuideArrow =
             panel.sign.arrowMode !== "apl" &&
             panel.sign.guideArrow !== "None" &&
@@ -18963,6 +19193,7 @@ const serializePostWithElementTypes = (space) => {
         moveSubPanel,
         downloadPNGSign: downloadPNGSign,
         downloadSVGSign: downloadSVGSign,
+        downloadJSONSign, serializeSignJSON, importSignJSON, importJSONFile,
         copyPNGSign: copyPNGSign,
         copySignToClipboard,
         openCopyPanelContextMenu,

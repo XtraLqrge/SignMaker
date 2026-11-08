@@ -256,7 +256,7 @@
           wrapper.append(input);
         }
         input.value = /^#[0-9a-f]{6}$/i.test(colorForValue?.(select.value) || '') ? colorForValue(select.value) : '#000000';
-        input.onchange = () => {
+        input.oninput = input.onchange = () => {
           customColors.add(input.value);
           select.value = input.value;
           select.dispatchEvent(new Event('change', { bubbles: true }));

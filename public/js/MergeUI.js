@@ -104,7 +104,7 @@ window.SignMakerMergeUI = (() => {
       Panel.prototype.defaultBorderRadius = Math.max(0, Math.min(5, Number(savedRadius)));
     }
     radius.value = String(Panel.prototype.defaultBorderRadius);
-    radius.addEventListener("change", () => {
+    radius.addEventListener("input", () => {
       if (!radius.checkValidity() || !Number.isFinite(radius.valueAsNumber)) return;
       Panel.prototype.defaultBorderRadius = radius.valueAsNumber;
       remember("signMaker.defaultSignRadius", radius.valueAsNumber);

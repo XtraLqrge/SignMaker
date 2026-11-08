@@ -316,9 +316,15 @@ test('production HTML references existing, content-addressed assets',()=>{
   for(const asset of manifest.assets.filter(asset=>asset.source)){
     let source=read('public/'+asset.source);
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
+    if(asset.source==='js/main.js')source=source.replace('js/ExportAssets.js',manifest.assets.find(a=>a.source==='js/ExportAssets.js').output);
     if(asset.source==='js/Control.js')source=source.replace('IconFallbacks.js?v=773d7c4b80c1',path.basename(manifest.assets.find(a=>a.source==='js/IconFallbacks.js').output));
     if(asset.source==='js/Shield.js')source=source.replace('"ShieldFallbacks.js"',JSON.stringify(path.basename(manifest.assets.find(a=>a.source==='js/ShieldFallbacks.js').output)));
-    assert.equal(read('public/'+asset.output), minifyJS(source), asset.source+' is stale; run npm run build');
+    if(asset.source==='js/ExportAssets.js'){
+      const output=read('public/'+asset.output);
+      assert.ok(!output.includes('EXPORT_ASSET_INDEX')&&!output.includes('EXPORT_FONT_FACES'));
+      const hash=require('node:crypto').createHash('sha256').update(output).digest('hex').slice(0,16);
+      assert.ok(asset.output.includes(hash),'Export asset index must be content-addressed');
+    }else assert.equal(read('public/'+asset.output), minifyJS(source), asset.source+' is stale; run npm run build');
     assert.ok(read('public/_headers').includes('/'+asset.output+'\n  Cache-Control: public, max-age=31536000, immutable'));
   }
 });
@@ -766,4 +772,44 @@ test('full-bleed painting preserves fractional sign dimensions',()=>{
     assert.equal(c.size('height',['Top','Bottom']),boxSizing==='border-box'?312.28125:332.28125);
     assert.equal(c.size('width',['Left','Right']),406);
   }
+});
+
+test('file export packs return original font and image bytes without fetch',async()=>{
+  const {pathToFileURL,fileURLToPath}=require('node:url');
+  const manifest=JSON.parse(read('build-manifest.json'));
+  const loader=manifest.assets.find(asset=>asset.source==='js/ExportAssets.js');
+  const base=pathToFileURL(path.join(root,'public/index.html')).href;
+  const loads=[];
+  const document={baseURI:base,currentScript:{src:new URL(loader.output,base).href},createElement:()=>({remove(){}}),head:{appendChild(script){
+    loads.push(script.src);
+    vm.runInContext(fs.readFileSync(fileURLToPath(script.src),'utf8'),c);
+    script.onload();
+  }}};
+  const c=context({document,window:{},atob,Blob,Response,DecompressionStream,Uint8Array});
+  vm.runInContext(read('public/'+loader.output),c);
+  const api=c.window.SignMakerExportAssets;
+  assert.ok(api.fontFaces.some(face=>face.family==='Series EM'&&face.cssText.includes('Roadgeek2014SeriesEM.woff2')));
+  for(const file of ['fonts/Roadgeek2014SeriesEM.woff2','img/icons/AIRPORT.svg','img/shields/Canada/QC/QC-2Digit.svg']){
+    const data=await api.read(new URL(file,base).href);
+    assert.deepEqual(Buffer.from(data.split(',')[1],'base64'),fs.readFileSync(path.join(root,'public',file)));
+  }
+  const count=loads.length;await api.read(new URL('img/icons/AIRPORT.svg',base).href);
+  assert.equal(loads.length,count,'A second export reuses the loaded pack');
+  await assert.rejects(api.read(new URL('../outside.svg',base).href),/outside this project/);
+  await assert.rejects(api.read(new URL('img/missing.svg',base).href),/Missing bundled/);
+  assert.ok(!read('public/index.html').includes('export-assets/'),'Asset packs are not loaded at startup');
+});
+
+test('portable JSON retains editable data and reads legacy snapshots', () => {
+  const codec = require('../public/js/SignDocument.js');
+  const post = {panelSpacing: 0, futureSetting: 'retained', panels: [{sign: {subPanels: [{blockElements: {rows: [[{_elementType:'DividerElement', dividerWidth:1, fullBleed:true}]], blockProperties:[{paddingTop:0}]}}]}}]};
+  assert.deepEqual(codec.decode(codec.encode(post)).post, post);
+  assert.deepEqual(codec.decode(JSON.stringify(post)).post, post);
+  assert.deepEqual(codec.decode(JSON.stringify({post})).post, post);
+  assert.deepEqual(codec.decode(JSON.stringify({panel:post.panels[0]})).post.panels, post.panels);
+  assert.deepEqual(codec.decode(JSON.stringify(post.panels[0])).post.panels, post.panels);
+});
+test('portable JSON rejects invalid files and unsupported versions before import', () => {
+  const {decode} = require('../public/js/SignDocument.js');
+  for (const text of ['not json', 'null', '{}', '{"panels":[]}', '{"panels":[null]}', '{"format":"other","post":{"panels":[{"sign":{}}]}}', '{"schemaVersion":999,"post":{"panels":[{"sign":{}}]}}', '{"__proto__":{},"panels":[{"sign":{}}]}', '{"panels":[{"sign":{"subPanels":[null]}}]}']) assert.throws(() => decode(text));
 });

@@ -635,20 +635,12 @@ const formHandler = (function () {
 
         input.dataset.blockMarginStepperBound = "true";
 
-        ["input", "change"].forEach((eventName) => {
-          input.addEventListener(
-            eventName,
-            (event) => {
-              if (blockMarginStepperCommitting) {
-                return;
-              }
-
-              event.stopImmediatePropagation();
-              syncSliderFromInput(input);
-            },
-            true
-          );
+        input.addEventListener("input", () => {
+          if (!isUsableLiveInput(input)) return;
+          syncSliderFromInput(input);
+          readForm({ target: input, deferHistoryEnd: true });
         });
+        input.addEventListener("change", () => commitInput(input));
 
         input.addEventListener(
           "keydown",
@@ -4780,7 +4772,7 @@ const formHandler = (function () {
 
     slider.addEventListener("input", () => {
       const normalized = normalizeInterfaceUIScale(slider.value);
-      updateInterfaceUIScaleDisplay(normalized);
+      applyInterfaceUIScale(normalized, { persist: true });
     });
 
     slider.addEventListener("change", () => {
@@ -6728,7 +6720,12 @@ const formHandler = (function () {
       };
 
       slider.addEventListener("input", syncValueFromSlider);
-      valueInput.addEventListener("input", () => {});
+      valueInput.addEventListener("input", () => {
+        if (!isUsableLiveInput(valueInput)) return;
+        const typed = valueInput.value;
+        commitSliderFromValue();
+        valueInput.value = typed;
+      });
       valueInput.addEventListener("change", commitSliderFromValue);
       valueInput.addEventListener("blur", commitSliderFromValue);
       syncValueFromSlider();
@@ -9958,6 +9955,7 @@ const formHandler = (function () {
 
       document.querySelectorAll(".colorPicker.open, .colorPicker.addingCustomColor").forEach((picker) => {
         if (picker !== except) {
+          picker._colorPickerSelect?._colorPickerApi?.cancelCustomPreview?.();
           picker.classList.remove("open", "addingCustomColor");
         }
       });
@@ -10228,7 +10226,9 @@ const formHandler = (function () {
         return storedColor || "#000000";
       };
 
+      let customPreviewOriginal = null;
       const showCustomPanel = () => {
+        cancelCustomPreview();
         const currentColor = getLastConcreteSelectedColor();
         updateCustomPanelInputsFromHex(currentColor);
         rgbaInputs[3].value = "1";
@@ -10252,6 +10252,7 @@ const formHandler = (function () {
       };
 
       const setSelectValue = (value, { dispatch = true } = {}) => {
+        if (dispatch) customPreviewOriginal = null;
         ensureNativeColorSelectOption(selectEl, value);
         selectEl.value = normalizeCustomCssColorValue(value) || value;
 
@@ -10260,6 +10261,30 @@ const formHandler = (function () {
           selectEl.dispatchEvent(new Event("change", { bubbles: true }));
           selectEl.dispatchEvent(new Event("blur"));
         }
+      };
+
+      const previewCustomColor = () => {
+        if (!selectEl.closest(liveEditorSelector)) return;
+        if (rgbaInputs.some(input => !isUsableLiveInput(input))) return;
+        if (customPreviewOriginal === null) customPreviewOriginal = selectEl.value;
+        setSelectValue(getCurrentCustomPanelColorValue(), { dispatch: false });
+        const wasLive = mergeLiveInputActive;
+        mergeLiveInputActive = true;
+        try { readForm({ target: selectEl, deferHistoryEnd: true }); }
+        finally { mergeLiveInputActive = wasLive; }
+        updateTrigger();
+      };
+      const cancelCustomPreview = () => {
+        if (customPreviewOriginal === null) return;
+        const original = customPreviewOriginal;
+        customPreviewOriginal = null;
+        setSelectValue(original, { dispatch: false });
+        const wasLive = mergeLiveInputActive;
+        mergeLiveInputActive = true;
+        try { readForm({ target: selectEl, deferHistoryEnd: true }); }
+        finally { mergeLiveInputActive = wasLive; }
+        exposed?.endUndoableChange?.();
+        updateTrigger();
       };
 
       const makeColorButton = ({ value, label, customRecord = null }) => {
@@ -10501,6 +10526,13 @@ const formHandler = (function () {
         event.stopPropagation();
       });
 
+      // Restore a preview before an outside action changes the selected block.
+      ["pointerdown", "click"].forEach(type => document.addEventListener(type, event => {
+        if (!wrapper.contains(event.target) && !menu.contains(event.target) && !customPanel.contains(event.target)) {
+          cancelCustomPreview();
+        }
+      }, true));
+
       document.addEventListener("click", (event) => {
         if (!wrapper.contains(event.target) && !menu.contains(event.target) && !customPanel.contains(event.target)) {
           wrapper.classList.remove("open", "addingCustomColor");
@@ -10511,6 +10543,7 @@ const formHandler = (function () {
       window.addEventListener("scroll", positionFloatingColorPickerPanels, true);
 
       const wrapperClassObserver = new MutationObserver(() => {
+        if (!wrapper.classList.contains("addingCustomColor")) cancelCustomPreview();
         syncFloatingColorPickerPanelClasses();
         positionFloatingColorPickerPanels();
       });
@@ -10522,6 +10555,7 @@ const formHandler = (function () {
       wheelInput.addEventListener("input", () => {
         updateCustomPanelInputsFromHex(wheelInput.value);
         rgbaInputs[3].value = "1";
+        previewCustomColor();
       });
 
       hexInput.addEventListener("input", () => {
@@ -10529,11 +10563,18 @@ const formHandler = (function () {
         hexInput.value = "#" + sanitized;
         if (sanitized.length === 6) {
           updateCustomPanelInputsFromHex(sanitized);
+          previewCustomColor();
         }
       });
 
       rgbaInputs.forEach((input) => {
-        input.addEventListener("input", syncHexFromRgba);
+        input.addEventListener("input", () => {
+          if (!isUsableLiveInput(input)) return;
+          const typed = input.value;
+          syncHexFromRgba();
+          previewCustomColor();
+          input.value = typed;
+        });
       });
 
       addButton.addEventListener("click", (event) => {
@@ -10559,6 +10600,7 @@ const formHandler = (function () {
           }
         });
 
+        customPreviewOriginal = null;
         setSelectValue(record.value);
         wrapper.classList.remove("addingCustomColor", "open");
         syncAllColorPickers();
@@ -10567,6 +10609,7 @@ const formHandler = (function () {
       cancelButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        cancelCustomPreview();
         wrapper.classList.remove("addingCustomColor");
       });
 
@@ -10581,6 +10624,7 @@ const formHandler = (function () {
       });
 
       const api = {
+        cancelCustomPreview,
         wrapper,
         trigger,
         menu,
@@ -14112,7 +14156,12 @@ const formHandler = (function () {
           }
         });
         individualArrowPickers.push(picker);
-        angle.addEventListener("change", () => mutate("angle", normalizeStandardAngle(angle.value)));
+        angle.addEventListener("input", () => {
+          if (!isUsableLiveInput(angle)) return;
+          mutate("angle", normalizeStandardAngle(angle.value), { deferHistoryEnd: true, refresh: false });
+        });
+        angle.addEventListener("change", () => mutate("angle", normalizeStandardAngle(angle.value), { refresh: false }));
+        angle.addEventListener("blur", () => exposed.endUndoableChange());
         angle.addEventListener("keydown", (event) => { if (event.key === "Enter") angle.blur(); });
         row.append(label, typeHost, angle);
         host.append(row);
@@ -14143,6 +14192,13 @@ const formHandler = (function () {
           });
           const finish = () => exposed.endUndoableChange();
           for (const eventName of ["change", "pointerup", "pointercancel", "blur"]) slider.addEventListener(eventName, finish);
+          number.addEventListener("input", () => {
+            if (!isUsableLiveInput(number)) return;
+            const value = clampStandardValue(number.value, 0, 25, 100, 8.5);
+            slider.value = String(Math.min(12, Math.max(4, value)));
+            mutate("spacingAfter", value, { deferHistoryEnd: true, refresh: false });
+          });
+          number.addEventListener("blur", finish);
           number.addEventListener("change", () => {
             const value = clampStandardValue(number.value, 0, 25, 100, 8.5);
             number.value = value.toFixed(2);
@@ -14595,6 +14651,7 @@ const formHandler = (function () {
           if (!pasted || !/[\r\n]/.test(pasted)) return;
           event.preventDefault();
           input.setRangeText(pasted.replace(/\r\n?|\n/g, "\\n"), input.selectionStart, input.selectionEnd, "end");
+          input.dispatchEvent(new Event("input", { bubbles: true }));
         });
         input.addEventListener("blur", () => {
           const stored = exposed.getCurrentPanel()?.sign?.[`exitOnly${name}Text`];
@@ -16475,13 +16532,13 @@ const formHandler = (function () {
       });
     };
 
-    const commitPanelSpacingChange = (value) => {
+    const commitPanelSpacingChange = (value, options) => {
       const normalized = normalizePanelSpacingPreference(value, getDefaultPanelSpacingPreference());
 
       syncPanelSpacingInputs(normalized);
 
       if (exposed && typeof exposed.setPanelSpacing === "function") {
-        exposed.setPanelSpacing(normalized);
+        exposed.setPanelSpacing(normalized, options);
       } else if (post) {
         post.panelSpacing = normalized;
         if (exposed && typeof exposed.redraw === "function") {
@@ -16503,7 +16560,8 @@ const formHandler = (function () {
       slider.dataset.panelSpacingBound = "true";
 
       slider.addEventListener("input", () => {
-        syncPanelSpacingInputs(slider.value);
+        mergeLiveInputRead = true;
+        commitPanelSpacingChange(slider.value, { live: true });
       });
 
       slider.addEventListener("change", () => {
@@ -16519,7 +16577,9 @@ const formHandler = (function () {
       input.dataset.panelSpacingBound = "true";
 
       input.addEventListener("input", () => {
-        syncPanelSpacingInputs(input.value);
+        if (!isUsableLiveInput(input)) return;
+        mergeLiveInputRead = true;
+        commitPanelSpacingChange(input.value, { live: true });
       });
 
       input.addEventListener("change", () => {
@@ -16535,7 +16595,8 @@ const formHandler = (function () {
       slider.dataset.defaultPanelSpacingBound = "true";
 
       slider.addEventListener("input", () => {
-        syncDefaultPanelSpacingInputs(slider.value);
+        mergeLiveInputRead = true;
+        commitDefaultPanelSpacingChange(slider.value);
       });
 
       slider.addEventListener("change", () => {
@@ -16551,7 +16612,9 @@ const formHandler = (function () {
       input.dataset.defaultPanelSpacingBound = "true";
 
       input.addEventListener("input", () => {
-        syncDefaultPanelSpacingInputs(input.value);
+        if (!isUsableLiveInput(input)) return;
+        mergeLiveInputRead = true;
+        commitDefaultPanelSpacingChange(input.value);
       });
 
       input.addEventListener("change", () => {
@@ -17965,6 +18028,13 @@ const formHandler = (function () {
           shieldSizeInput.dataset.defaultsInputBound = "true";
           shieldSizeSlider.addEventListener("input", syncShieldSizeInput);
           shieldSizeSlider.addEventListener("change", syncShieldSizeInput);
+          shieldSizeInput.addEventListener("input", () => {
+            if (!isUsableLiveInput(shieldSizeInput)) return;
+            const typed = shieldSizeInput.value;
+            shieldSizeSlider.value = typed;
+            shieldSizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
+            shieldSizeInput.value = typed;
+          });
           shieldSizeInput.addEventListener("change", () => {
             const entered = Number(shieldSizeInput.value);
             if (Number.isFinite(entered) && shieldSizeInput.value.trim() !== "") {
@@ -19129,6 +19199,10 @@ const formHandler = (function () {
         }
         readForm();
       };
+      valEl.addEventListener("input", event => {
+        if (!isUsableLiveInput(valEl)) return;
+        onChange(event);
+      });
       valEl.addEventListener("change", onChange);
     });
 
@@ -20414,8 +20488,9 @@ const formHandler = (function () {
 
   // Read the form and update the page by redrawing it.
   const readForm = function (options = {}) {
+    if (mergeLiveInputActive && !mergeLiveInputValid) return;
     mergeLiveInputRead = true;
-    const deferHistoryEnd = options?.deferHistoryEnd === true;
+    const deferHistoryEnd = options?.deferHistoryEnd === true || mergeLiveInputActive;
     const field = options?.target;
     const changedControl = field ?? document.activeElement;
     const exitWidthChange = changedControl?.id === "exitTabWidth" ? changedControl.value : "";
@@ -21336,8 +21411,8 @@ const formHandler = (function () {
       bottomMarginManualEl?.value ?? document.querySelector("#sdBlock_bottomPadding")?.value,
       0
     );
-    if (topMarginManualEl) topMarginManualEl.value = topMarginValue;
-    if (bottomMarginManualEl) bottomMarginManualEl.value = bottomMarginValue;
+    if (topMarginManualEl && !mergeLiveInputActive) topMarginManualEl.value = topMarginValue;
+    if (bottomMarginManualEl && !mergeLiveInputActive) bottomMarginManualEl.value = bottomMarginValue;
     const topMarginSliderEl = document.querySelector("#sdBlock_topPadding");
     const bottomMarginSliderEl = document.querySelector("#sdBlock_bottomPadding");
     if (topMarginSliderEl) topMarginSliderEl.value = Math.max(0, Math.min(3, topMarginValue));
@@ -21561,29 +21636,50 @@ const formHandler = (function () {
    * Update the fields in the form to the values of the currently selected panel.
    */
 
+  const liveEditorSelector = ".panelStyleConfig,.postStyleConfig,.exitTabConfig,.subPanelConfig,.guideArrowConfig";
+  const isUsableLiveInput = field => field?.type !== "number" ||
+    (field.value !== "" && !field.validity.badInput && Number.isFinite(field.valueAsNumber));
+  const isLiveEditorField = field => (!!field?.closest?.(liveEditorSelector) ||
+    field?.matches?.("#panelSpacing,#panelSpacingValue,#alignmentGuideSpacing,#alignmentGuidePhase,.stackedPanelSpacingSlider,.stackedPanelSpacingInput")) &&
+    !field.closest("#exitTabProfileManagerPicker,#standardArrowIndividualRows") &&
+    (field.tagName === "TEXTAREA" || ["range", "number", "text", "color"].includes(field.type));
+  let liveEditingField = null;
+  let liveEditingValue = null;
   let mergeLiveInputRead = false;
   let mergeLiveInputActive = false;
+  let mergeLiveInputValid = true;
   let mergePendingFormRefresh = false;
   let mergeSliderDisplaysBefore = [];
   let mergeLiveResetTimer = 0;
   document.addEventListener("input", event => {
     mergeLiveInputRead = false;
     const field = event.target;
-    mergeLiveInputActive = ["range", "number", "text", "search"].includes(field?.type) || field?.tagName === "TEXTAREA";
+    mergeLiveInputActive = isLiveEditorField(field);
+    mergeLiveInputValid = isUsableLiveInput(field);
+    liveEditingField = mergeLiveInputActive ? field : null;
+    liveEditingValue = mergeLiveInputActive ? field.value : null;
+    // The numeric companion must reach the model before any form reader runs.
+    if (mergeLiveInputActive && mergeLiveInputValid && field.type === "number" && /(?:Val|Value)$/.test(field.id)) {
+      const slider = document.getElementById(field.id.replace(/(?:Val|Value)$/, ""));
+      if (slider?.type === "range") slider.value = field.value;
+    }
     mergeSliderDisplaysBefore = field?.type === "range" && field.id
       ? [document.getElementById(field.id + "Val"), document.getElementById(field.id + "Value"), ...document.querySelectorAll('output[for="' + field.id + '"]')]
         .filter(Boolean).map(display => [display, display.value ?? display.textContent]) : [];
     clearTimeout(mergeLiveResetTimer);
-    mergeLiveResetTimer = setTimeout(() => { mergeLiveInputActive = false; }, 0);
+    mergeLiveResetTimer = setTimeout(() => { mergeLiveInputActive = false; mergeLiveInputValid = true; }, 0);
   }, true);
   window.addEventListener("input", event => {
     const field = event.target;
-    const signEditor = field?.closest?.(".panelStyleConfig,.postStyleConfig,.exitTabConfig");
+    const signEditor = isLiveEditorField(field);
     if (mergeLiveInputActive && !mergeLiveInputRead && signEditor &&
-        field.type !== "search" && !(field.type === "number" && (field.value === "" || !field.validity.valid))) {
+        isUsableLiveInput(field)) {
       readForm({ target: field, deferHistoryEnd: true });
     }
+    // Do not reformat a partially typed decimal, text selection, or caret.
+    if (liveEditingField === field && field.value !== liveEditingValue) field.value = liveEditingValue;
     mergeLiveInputActive = false;
+    mergeLiveInputValid = true;
     clearTimeout(mergeLiveResetTimer);
     for (const [display, before] of mergeSliderDisplaysBefore) {
       if ((display.value ?? display.textContent) !== before || display === document.activeElement) continue;
@@ -21592,6 +21688,16 @@ const formHandler = (function () {
     }
     mergeSliderDisplaysBefore = [];
   });
+  const finishLiveEdit = event => {
+    if (mergeLiveInputActive || !isLiveEditorField(event.target)) return;
+    exposed?.endUndoableChange?.();
+    if (mergePendingFormRefresh) requestAnimationFrame(() => {
+      if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm();
+    });
+  };
+  document.addEventListener("focusout", finishLiveEdit);
+  document.addEventListener("change", finishLiveEdit);
+  document.addEventListener("pointercancel", finishLiveEdit);
   document.addEventListener("change", () => {
     if (!mergePendingFormRefresh) return;
     requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(); });
@@ -22531,18 +22637,19 @@ const formHandler = (function () {
             spacingSlider.value = String(clampStackedSpacingSlider(value));
           };
 
-          const commitStackedSpacing = (rawValue) => {
+          const commitStackedSpacing = (rawValue, options) => {
             const value = parseStackedSpacing(rawValue);
             syncStackedSpacingSlider(value);
             spacingInput.value = String(value);
 
             if (typeof app.setStackedPanelSpacing === "function") {
-              app.setStackedPanelSpacing(value);
+              app.setStackedPanelSpacing(value, options);
             }
           };
 
           spacingSlider.addEventListener("input", () => {
-            spacingInput.value = spacingSlider.value;
+            mergeLiveInputRead = true;
+            commitStackedSpacing(spacingSlider.value, { live: true });
           });
           spacingSlider.addEventListener("change", () => {
             commitStackedSpacing(spacingSlider.value);
@@ -22550,7 +22657,8 @@ const formHandler = (function () {
           spacingInput.addEventListener("input", () => {
             const parsedValue = parseFloat(spacingInput.value);
             if (Number.isFinite(parsedValue)) {
-              syncStackedSpacingSlider(parsedValue);
+              mergeLiveInputRead = true;
+              commitStackedSpacing(parsedValue, { live: true });
             }
           });
           spacingInput.addEventListener("change", () => {
@@ -23216,6 +23324,8 @@ const formHandler = (function () {
 
           sizeSlider.addEventListener("input", function () {
             sizeValue.textContent = `${this.value} rem`;
+            mergeLiveInputRead = true;
+            exposed.setAPLArrowSize(arrowIndex, this.value, { live: true });
           });
 
           sizeSlider.addEventListener("change", function () {
@@ -23283,6 +23393,11 @@ const formHandler = (function () {
               if (options.min != null) input.min = String(options.min);
               if (options.max != null) input.max = String(options.max);
               if (options.step != null) input.step = String(options.step);
+              input.addEventListener("input", () => {
+                if (!isUsableLiveInput(input)) return;
+                mergeLiveInputRead = true;
+                exposed.setAPLExitOnlyTextSetting(arrowIndex, property, input.value, { live: true });
+              });
               input.addEventListener("change", () => {
                 let next = input.value;
                 if (options.type === "number") {
@@ -23363,6 +23478,8 @@ const formHandler = (function () {
 
         spacingSlider.addEventListener("input", function () {
           spacingValue.textContent = `${this.value} rem`;
+          mergeLiveInputRead = true;
+          exposed.setAPLArrowSpacing(arrowIndex, this.value, { live: true });
         });
 
         spacingSlider.addEventListener("change", function () {
@@ -23417,6 +23534,8 @@ const formHandler = (function () {
 
         spacingSlider.addEventListener("input", function () {
           spacingValue.textContent = `${this.value} rem`;
+          mergeLiveInputRead = true;
+          exposed.setAPLArrowBeforeSpacing(arrowIndex, this.value, { live: true });
         });
 
         spacingSlider.addEventListener("change", function () {
@@ -24646,7 +24765,7 @@ const formHandler = (function () {
             (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
           element.dataset.livePreviewBound = "true";
           element.addEventListener("input", event => {
-            if (element.type === "number" && (element.value === "" || !element.validity.valid)) return;
+            if (!isUsableLiveInput(element)) return;
             readForm({ target: element, deferHistoryEnd: true });
           });
           element.addEventListener("blur", () => exposed?.endUndoableChange?.());
@@ -25561,7 +25680,7 @@ const formHandler = (function () {
 
           // Cleanup event listeners
           for (const e of eventListeners) {
-            e.element.removeEventListener("click", e.handler);
+            e.element.removeEventListener(e.type || "click", e.handler);
           }
           eventListeners.length = 0;
 
@@ -25656,6 +25775,7 @@ const formHandler = (function () {
       eventListeners.push({
         element: document.querySelector("#selectedShieldVariant"),
         handler: handleVariant,
+        type: "change",
       });
 
       const handleBackColor = (e) => {
@@ -25668,18 +25788,21 @@ const formHandler = (function () {
       eventListeners.push({
         element: document.querySelector("#selectedBackColor"),
         handler: handleBackColor,
+        type: "change",
       });
 
       const handleBorderRadius = (e) => {
+        if (!isUsableLiveInput(e.currentTarget)) return;
         selectedShield.shieldBorderRadius = parseInt(e.currentTarget.value);
         updateShieldModalVisual(selectedShield, false);
       };
       document
         .querySelector("#selectedBackRoudness")
-        .addEventListener("change", handleBorderRadius);
+        .addEventListener("input", handleBorderRadius);
       eventListeners.push({
         element: document.querySelector("#selectedBackRoudness"),
         handler: handleBorderRadius,
+        type: "input",
       });
 
       const handleShieldBackCheckbox = (e) => {
@@ -25692,6 +25815,7 @@ const formHandler = (function () {
       eventListeners.push({
         element: document.querySelector("#selectedShieldBacks"),
         handler: handleShieldBackCheckbox,
+        type: "change",
       });
 
       window.customShields.loadSavedShields((shield) => {
@@ -25709,7 +25833,7 @@ const formHandler = (function () {
 
         // Cleanup event listeners
         for (const e of eventListeners) {
-          e.element.removeEventListener("click", e.handler);
+          e.element.removeEventListener(e.type || "click", e.handler);
         }
         eventListeners.length = 0;
 
@@ -25720,6 +25844,30 @@ const formHandler = (function () {
   };
 
     return {
+      exportSignAssets: snapshot => {
+        const text = JSON.stringify(snapshot);
+        return customShieldMakerRecords.filter(record => text.includes(JSON.stringify(record.value)));
+      },
+      importSignAssets: (records, snapshot) => {
+        const replacements = new Map();
+        for (const source of records) {
+          let record = normalizeCustomShieldMakerRecord(source);
+          const existing = getCustomShieldMakerRecordById(record.id);
+          if (existing && JSON.stringify(existing) === JSON.stringify(record)) continue;
+          if (existing) record = normalizeCustomShieldMakerRecord({...source, id: createCustomShieldMakerId()});
+          replacements.set(source.value || getCustomShieldMakerValue(source.id), record.value);
+          customShieldMakerRecords.push(record);
+        }
+        const remap = value => {
+          if (!value || typeof value !== "object") return;
+          for (const key of Object.keys(value)) {
+            if (["shieldBase", "type", "sourceShieldBase"].includes(key) && replacements.has(value[key])) value[key] = replacements.get(value[key]);
+            else remap(value[key]);
+          }
+        };
+        remap(snapshot);
+        if (records.length) { syncCustomShieldMakerConfigs(); saveCustomShieldMakerRecords(); }
+      },
       init: initialize,
       readForm,
       persistPostAppearance,

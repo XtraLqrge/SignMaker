@@ -15014,3 +15014,10 @@ nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
   :is(#copySign, #export, #nightMode, #appSettingsConfig, #hideConfig) > .buttonLabel {
   display: none;
 }
+
+#downloadContents .downloadJSONHelp {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0.75rem 0 0;
+}
+#signJSONStatus:empty { display: none; }

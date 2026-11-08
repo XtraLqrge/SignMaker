@@ -5,6 +5,9 @@
     "build": "node scripts/build.cjs",
     "test": "node --test scripts/optimization.test.cjs",
     "test:browser": "node scripts/browser-check.cjs",
-    "optimize:assets": "node scripts/optimize-assets.cjs"
+    "optimize:assets": "node scripts/optimize-assets.cjs",
+    "test:live": "node scripts/live-edit-check.cjs",
+    "test:preview": "node scripts/preview-stability-check.cjs",
+    "test:json": "node scripts/json-sign-check.cjs"
   }
 }

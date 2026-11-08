@@ -39,7 +39,30 @@
     decode(text);
     return text;
   }
-  const api = {encode, decode};
+  // Stable SVG container: the embedded document owns schema versioning, so
+  // JSON and SVG always use the same legacy readers and future migrations.
+  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+  const SVG_METADATA_ID = 'signmaker-document';
+  function svgMetadata(text) {
+    decode(text);
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<metadata id="${SVG_METADATA_ID}" data-format="signmaker" data-encoding="json">${escaped}</metadata>`;
+  }
+  function fromSVG(text) {
+    // Parse inert XML and read only our direct metadata child. Never insert
+    // imported artwork, scripts, or foreignObject content into the editor.
+    if (/<!DOCTYPE/i.test(text)) throw new Error('SVG files with a DOCTYPE are not supported.');
+    const xml = new root.DOMParser().parseFromString(text, 'image/svg+xml');
+    const svg = xml.documentElement;
+    if (xml.getElementsByTagName('parsererror').length || svg?.localName !== 'svg' || svg.namespaceURI !== SVG_NAMESPACE) throw new Error('Invalid SVG file.');
+    const metadata = Array.from(svg.children).filter(node => node.namespaceURI === SVG_NAMESPACE && node.localName === 'metadata' && node.id === SVG_METADATA_ID);
+    if (!metadata.length) throw new Error('This SVG has no editable SignMaker data. Older SVG exports contain only artwork; use the original JSON or export a new SVG from SignMaker.');
+    if (metadata.length !== 1 || metadata[0].children.length || metadata[0].getAttribute('data-encoding') !== 'json') throw new Error('Invalid editable SVG data.');
+    const json = metadata[0].textContent;
+    decode(json);
+    return json;
+  }
+  const api = {encode, decode, svgMetadata, fromSVG};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SignMakerSignDocument = api;
 })(typeof window !== 'undefined' ? window : globalThis);

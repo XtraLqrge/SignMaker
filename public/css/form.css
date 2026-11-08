@@ -1359,6 +1359,7 @@ textarea {
   align-items: stretch;
   gap: 1.25rem;
   height: 55%;
+  min-height: min(28rem, calc(100dvh - 2rem));
   max-height: calc(100dvh - 2rem);
   overflow: hidden;
   box-sizing: border-box;
@@ -1390,7 +1391,8 @@ textarea {
   grid-template-rows: auto auto auto auto;
   align-content: start;
   align-items: stretch;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #downloadPreview {

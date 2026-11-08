@@ -152,8 +152,8 @@
             <span class="material-symbols-outlined">download</span>
             <span class="downloadActionLabel">JSON</span>
           </button>
-          <button id="importJSON" class="downloadPrimaryButton" type="button" onclick="document.getElementById('importJSONFile').click()">Import JSON</button>
-          <input id="importJSONFile" type="file" accept=".json,application/json" hidden onchange="app.importJSONFile(this)">
+          <button id="importJSON" class="downloadPrimaryButton" type="button" aria-label="Import JSON or SVG" title="Import JSON or SVG" onclick="document.getElementById('importJSONFile').click()">Import</button>
+          <input id="importJSONFile" type="file" accept=".json,.svg,application/json,image/svg+xml" hidden onchange="app.importJSONFile(this)">
 
           <button id="copyPNG" class="downloadPrimaryButton" type="button" aria-label="Copy PNG" onclick="app.copyPNGSign()">
             <span class="material-symbols-outlined">content_copy</span>
@@ -165,7 +165,7 @@
             <span class="downloadActionLabel">SVG</span>
           </button>
         </div>
-        <p class="downloadJSONHelp">JSON saves an editable sign. Import replaces the canvas; Undo restores it.</p>
+        <p class="downloadJSONHelp">JSON and new SVG exports save editable signs. Import replaces the canvas; Undo restores it.</p>
         <p id="signJSONStatus" class="downloadJSONHelp" role="status"></p>
       </div>
 

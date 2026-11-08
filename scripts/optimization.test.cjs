@@ -813,3 +813,14 @@ test('portable JSON rejects invalid files and unsupported versions before import
   const {decode} = require('../public/js/SignDocument.js');
   for (const text of ['not json', 'null', '{}', '{"panels":[]}', '{"panels":[null]}', '{"format":"other","post":{"panels":[{"sign":{}}]}}', '{"schemaVersion":999,"post":{"panels":[{"sign":{}}]}}', '{"__proto__":{},"panels":[{"sign":{}}]}', '{"panels":[{"sign":{"subPanels":[null]}}]}']) assert.throws(() => decode(text));
 });
+
+test('SVG metadata embeds the shared versioned document and escapes XML text', () => {
+  const codec = require('../public/js/SignDocument.js');
+  const json = codec.encode({panels:[{sign:{text:'Québec & <West> </metadata> 🚗', padding:0}}]});
+  const metadata = codec.svgMetadata(json);
+  assert.match(metadata, /^<metadata id="signmaker-document"/);
+  assert.match(metadata, /&amp; &lt;West&gt; &lt;\/metadata&gt;/);
+  assert.match(metadata, /"schemaVersion": 1/);
+  assert.equal((metadata.match(/<\/metadata>/g) || []).length, 1);
+  assert.throws(() => codec.svgMetadata('{"schemaVersion":999}'), /version/);
+});

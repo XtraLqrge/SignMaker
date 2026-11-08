@@ -14,11 +14,11 @@
     "js/Settings22.d5c85ec51307e808.js",
     "js/DropdownTheme.8ec2ddbe056ed93d.js"
   ],
-  "deferredStyles": "css/app.341ad813a56f05d2.css",
+  "deferredStyles": "css/app.340e7fd1d596c162.css",
   "startupJS": {
-    "bytes": 601376,
-    "gzipBytes": 163487,
-    "brotliBytes": 135793
+    "bytes": 603185,
+    "gzipBytes": 164279,
+    "brotliBytes": 136489
   },
   "criticalCSS": {
     "bytes": 262195,
@@ -484,16 +484,16 @@
     },
     {
       "source": "js/SignDocument.js",
-      "output": "js/SignDocument.4f9a0145cc0a8138.js",
+      "output": "js/SignDocument.049462d0df09a6fc.js",
       "original": {
-        "bytes": 2896,
-        "gzipBytes": 1086,
-        "brotliBytes": 883
+        "bytes": 4578,
+        "gzipBytes": 1758,
+        "brotliBytes": 1454
       },
       "optimized": {
-        "bytes": 2171,
-        "gzipBytes": 942,
-        "brotliBytes": 764
+        "bytes": 3495,
+        "gzipBytes": 1540,
+        "brotliBytes": 1273
       }
     },
     {
@@ -526,16 +526,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.8c730943b0fef8dd.js",
+      "output": "js/main.86529fcfcd6c5edb.js",
       "original": {
-        "bytes": 748845,
-        "gzipBytes": 130678,
-        "brotliBytes": 103475
+        "bytes": 749605,
+        "gzipBytes": 130913,
+        "brotliBytes": 103575
       },
       "optimized": {
-        "bytes": 320456,
-        "gzipBytes": 85212,
-        "brotliBytes": 69900
+        "bytes": 320941,
+        "gzipBytes": 85406,
+        "brotliBytes": 70087
       }
     },
     {
@@ -695,16 +695,16 @@
         "css/dropdown-layout.css",
         "css/picker-theme.css"
       ],
-      "output": "css/app.341ad813a56f05d2.css",
+      "output": "css/app.340e7fd1d596c162.css",
       "original": {
-        "bytes": 731105,
-        "gzipBytes": 120412,
-        "brotliBytes": 94670
+        "bytes": 731174,
+        "gzipBytes": 120428,
+        "brotliBytes": 94745
       },
       "optimized": {
-        "bytes": 612364,
-        "gzipBytes": 100950,
-        "brotliBytes": 80271
+        "bytes": 612424,
+        "gzipBytes": 100973,
+        "brotliBytes": 80342
       }
     },
     {

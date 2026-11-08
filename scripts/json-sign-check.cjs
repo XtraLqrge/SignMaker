@@ -1,6 +1,7 @@
 /* Optional file:// WebKit integration check; uses the same env as test:live. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
 const {pathToFileURL} = require('node:url');
 const {webkit} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 (async () => {
@@ -19,19 +20,35 @@ const {webkit} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
    for (const type of types) {
     app.exposeToFormHandler.replaceControlElemTypeAt(0, 0, type);
     const saved = app.serializeSignJSON();
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg">' + SignMakerSignDocument.svgMetadata(saved) + '</svg>';
+    app.importSignSVG(svg);
+    check(app.exposeToFormHandler.getCurrentBlockElem().constructor.name === type, type + ' lost SVG class');
     app.importSignJSON(saved);
     check(app.exposeToFormHandler.getCurrentBlockElem().constructor.name === type, type + ' lost class');
     const normalized = app.serializeSignJSON();
     app.importSignJSON(normalized);
     check(app.serializeSignJSON() === normalized, type + ' unstable round trip');
    }
+   const special = JSON.parse(app.serializeSignJSON());
+   special.post.portableLabel = 'Québec & <West> </metadata> 🚗';
+   app.importSignJSON(JSON.stringify(special));
    const before = app.serializeSignJSON();
+   const svgFor = json => '<svg xmlns="http://www.w3.org/2000/svg">' + SignMakerSignDocument.svgMetadata(json) + '</svg>';
+   const svg = svgFor(before);
+   check(SignMakerSignDocument.fromSVG(svg) === before, 'SVG Unicode/XML escaping failed');
+   for (const invalid of ['<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/png;base64,AA=="/></svg>', '<svg>', '<!DOCTYPE svg><svg/>', svg.replace('"schemaVersion": 1', '"schemaVersion": 999'), svg.replace('</svg>', SignMakerSignDocument.svgMetadata(before) + '</svg>')]) {
+    try {app.importSignSVG(invalid); throw Error('accepted invalid SVG');} catch(e) {check(e.message !== 'accepted invalid SVG', e.message);}
+    check(app.serializeSignJSON() === before, 'invalid SVG changed canvas');
+   }
+   // Only metadata is read: imported SVG markup never executes or enters the DOM.
+   app.importSignSVG(svg.replace('</svg>', '<script>window.svgExecuted=true</script><foreignObject><div xmlns="http://www.w3.org/1999/xhtml" id="untrustedSVGContent">Untrusted</div></foreignObject></svg>'));
+   check(!window.svgExecuted && !document.getElementById('untrustedSVGContent'), 'SVG markup was activated');
    for (const bad of ['{}', '{"panels":[null]}', '{"schemaVersion":999}', 'no JSON']) {
     try {app.importSignJSON(bad); throw Error('accepted invalid');} catch(e) {check(e.message !== 'accepted invalid', e.message);}
     check(app.serializeSignJSON() === before, 'invalid import changed canvas');
    }
    const legacy = {panelSpacing:0, panels:[{sign:{subPanels:[]}, corner:'sharp'}]};
-   app.importSignJSON(JSON.stringify(legacy));
+   app.importSignSVG(svgFor(JSON.stringify(legacy)));
    check(app.getPost().panelSpacing === 0, 'zero spacing lost');
    app.undo();
    await new Promise(r => setTimeout(r, 150));
@@ -84,7 +101,49 @@ const {webkit} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
   await page.evaluate(() => app.downloadJSONSign());
   const file = await download;
   assert.equal(file.suggestedFilename(), 'downloadedSign.json');
+  await page.evaluate(() => {
+   const doc = JSON.parse(app.serializeSignJSON());
+   doc.post.panels.push(JSON.parse(JSON.stringify(doc.post.panels[0])), JSON.parse(JSON.stringify(doc.post.panels[0])));
+   doc.post.panels[1].stackedWithPrevious = true;
+   doc.post.panels[2].stackedWithPrevious = false;
+   app.importSignJSON(JSON.stringify(doc));
+   document.getElementById('entirePost').checked = false;
+   app.updatePreview();
+   for (const button of [...document.querySelectorAll('#downloadPanelButtons button')]) {
+    if ((button.getAttribute('aria-pressed') === 'true') !== (button.dataset.panelIndex === '0')) button.click();
+   }
+  });
+  const expected = JSON.parse(await page.evaluate(() => app.serializeSignJSON()));
+  assert.equal(expected.post.panels.length, 2);
+  const svgDownload = page.waitForEvent('download', {timeout:90000});
+  await page.evaluate(() => app.downloadSVGSign());
+  const svgFile = await svgDownload;
+  assert.equal(svgFile.suggestedFilename(), 'downloadedSign.svg');
+  const svgText = fs.readFileSync(await svgFile.path(), 'utf8');
+  assert.match(svgText, /<image /);
+  const imported = await page.evaluate(async text => {
+   const input = document.getElementById('importJSONFile');
+   const transfer = new DataTransfer(); transfer.items.add(new File([text], 'sign.svg', {type:'image/svg+xml'})); input.files = transfer.files;
+   await app.importJSONFile(input);
+   if (!document.getElementById('signJSONStatus').textContent.includes('Sign imported')) throw Error(document.getElementById('signJSONStatus').textContent);
+   return JSON.parse(app.serializeSignJSON());
+  }, svgText);
+  assert.deepEqual(imported, expected);
+  const copied = await page.evaluate(async () => {
+   let copiedText;
+   Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{
+    write: async items => { const item=items[0]; copiedText=await (await item.getType(item.types[0])).text(); },
+    writeText: async text => {copiedText=text;}
+   }});
+   await app.copySVGSign();
+   if (!copiedText) throw Error('SVG copy did not produce data');
+   return JSON.parse(SignMakerSignDocument.fromSVG(copiedText));
+  });
+  assert.deepEqual(copied.post, expected.post);
+  assert.deepEqual(copied.assets, expected.assets);
+  await page.evaluate(() => document.getElementById('export').click());
+  await page.locator('#downloadContent').screenshot({path:'/tmp/signmaker-svg-menu.png'});
   assert.deepEqual(errors, []);
-  console.log(`Passed: ${result} block types, stable JSON round trips, legacy defaults, invalid files, undo, custom shield assets, native file import, and download in WebKit.`);
+  console.log(`Passed: ${result} block types, stable JSON round trips, legacy defaults, invalid files, undo, custom shield assets, native file import, download, SVG metadata/escaping, SVG file import, and copied SVG in WebKit.`);
  } finally {await browser.close();}
 })().catch(e => {console.error(e); process.exitCode=1;});

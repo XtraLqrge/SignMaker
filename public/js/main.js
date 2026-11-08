@@ -10338,7 +10338,8 @@ const ungroupSelectedBlockElement = () => {
     exportOptions,
     width,
     height,
-    isPreview = false
+    isPreview = false,
+    signDocumentJSON = null
   ) => {
     const pixelRatio = getExportPixelRatio(width, height, isPreview);
     const svgWidth = Math.max(1, Math.ceil(width * pixelRatio));
@@ -10352,6 +10353,7 @@ const ungroupSelectedBlockElement = () => {
 
     const svgText = [
       `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">`,
+      signDocumentJSON ? SignMakerSignDocument.svgMetadata(signDocumentJSON) : "",
       `<image href="${escapeSvgAttribute(pngDataUrl)}" xlink:href="${escapeSvgAttribute(pngDataUrl)}" x="0" y="0" width="${svgWidth}" height="${svgHeight}" preserveAspectRatio="xMinYMin meet"/>`,
       `</svg>`,
     ].join("");
@@ -11677,7 +11679,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     };
   };
 
-  const withTemporaryExportStyles = async (element, callback, selectedPanelIndexSet = getSelectedExportPanelIndexSet()) => {
+  const withTemporaryExportStyles = async (element, callback, selectedPanelIndexSet = getSelectedExportPanelIndexSet(), { includeSignDocument = false } = {}) => {
     const exportFontCSS = await prepareExportFonts(element);
     await waitForPendingRenderedArrows(element);
     await VmsPanel.refresh(element);
@@ -11685,6 +11687,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       updateRuralPostLayout();
     }
     const staticClone = createStaticExportClone(element, selectedPanelIndexSet);
+    // Snapshot at the same time as the artwork clone, before asynchronous asset
+    // preparation. Later edits must not change the document inside this export.
+    const signDocumentJSON = includeSignDocument ? serializeSignJSON(selectedPanelIndexSet) : null;
     const exportElement = staticClone ? staticClone.node : element;
     exportElement._exportFontCSS = exportFontCSS;
     const oldInline = staticClone
@@ -11741,7 +11746,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       await waitForNextFrame();
 
       const box = getExportBox(exportElement);
-      return await callback(box, exportElement);
+      return await callback(box, exportElement, signDocumentJSON);
     } finally {
       restoreExportBannerFirstLetters();
 
@@ -11768,7 +11773,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         throw new Error("No export target found");
       }
 
-      return await withTemporaryExportStyles(file, async ({ width, height }, exportElement) => {
+      return await withTemporaryExportStyles(file, async ({ width, height }, exportElement, signDocumentJSON) => {
         const exportOptions = {
           cacheBust: false,
           width,
@@ -11787,7 +11792,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             exportOptions,
             width,
             height,
-            isPreview
+            isPreview,
+            signDocumentJSON
           );
 
           if (isPreview) {
@@ -11813,7 +11819,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
         downloadFile(pngDataUrl, ".png");
         return true;
-      }, selectedPanelIndexSet);
+      }, selectedPanelIndexSet, { includeSignDocument: isSVG });
     } catch (error) {
       console.error("Error Saving!", error);
       throw error;
@@ -11927,10 +11933,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       return hasSelection;
     };
 
-    const serializeSignJSON = function () {
+    const serializeSignJSON = function (selected = getSelectedExportPanelIndexSet()) {
       flushPendingLivePreview();
       const snapshot = JSON.parse(serializePostWithElementTypes(), (key, value) => key === "__undoType" ? undefined : value);
-      const selected = getSelectedExportPanelIndexSet();
       if (selected) {
         const indices = new Set(getExportablePanelGroups().filter(group => selected.has(group.topIndex)).flatMap(group => group.indices));
         snapshot.panels = snapshot.panels.filter((panel, index) => indices.has(index));
@@ -11973,16 +11978,20 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       return true;
     };
 
+    const importSignSVG = text => importSignJSON(SignMakerSignDocument.fromSVG(text));
+
     const importJSONFile = async function (input) {
       const file = input.files?.[0];
       if (!file) return;
       const status = document.getElementById("signJSONStatus");
       try {
-        importSignJSON(await file.text());
+        const text = await file.text();
+        if (/\.svg$/i.test(file.name) || file.type === "image/svg+xml" || text.trimStart().startsWith("<")) importSignSVG(text);
+        else importSignJSON(text);
         status.textContent = "Sign imported. Undo restores the previous canvas.";
         updatePreview();
       } catch (error) {
-        status.textContent = "Could not import JSON: " + error.message;
+        status.textContent = "Could not import sign: " + error.message;
       } finally {
         input.value = "";
       }
@@ -19193,7 +19202,7 @@ const serializePostWithElementTypes = (space) => {
         moveSubPanel,
         downloadPNGSign: downloadPNGSign,
         downloadSVGSign: downloadSVGSign,
-        downloadJSONSign, serializeSignJSON, importSignJSON, importJSONFile,
+        downloadJSONSign, serializeSignJSON, importSignJSON, importSignSVG, importJSONFile,
         copyPNGSign: copyPNGSign,
         copySignToClipboard,
         openCopyPanelContextMenu,

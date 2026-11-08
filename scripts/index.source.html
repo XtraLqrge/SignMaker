@@ -84,6 +84,7 @@
   <script defer src="js/form.js?v=20261104-general8" type="text/javascript"></script>
   <script defer src="js/IndexDB.js?v=20261104-ui2" type="text/javascript"></script>
   <script defer src="js/CustomShields.js" type="text/javascript"></script>
+<script defer src="js/SignDocument.js"></script>
   <script defer src="js/main.js?v=20261104-subpanels6" type="text/javascript"></script>
   <link href="css/merge-features.css?v=20261104-subpanels6" rel="stylesheet" type="text/css">
   <link href="css/legacy-shields.css?v=20261104" rel="stylesheet" type="text/css">
@@ -147,6 +148,13 @@
             <span class="downloadActionLabel">SVG</span>
           </button>
 
+          <button id="downloadJSON" class="downloadPrimaryButton" type="button" aria-label="Download editable JSON" onclick="app.downloadJSONSign()">
+            <span class="material-symbols-outlined">download</span>
+            <span class="downloadActionLabel">JSON</span>
+          </button>
+          <button id="importJSON" class="downloadPrimaryButton" type="button" aria-label="Import JSON or SVG" title="Import JSON or SVG" onclick="document.getElementById('importJSONFile').click()">Import</button>
+          <input id="importJSONFile" type="file" accept=".json,.svg,application/json,image/svg+xml" hidden onchange="app.importJSONFile(this)">
+
           <button id="copyPNG" class="downloadPrimaryButton" type="button" aria-label="Copy PNG" onclick="app.copyPNGSign()">
             <span class="material-symbols-outlined">content_copy</span>
             <span class="downloadActionLabel">PNG</span>
@@ -157,6 +165,8 @@
             <span class="downloadActionLabel">SVG</span>
           </button>
         </div>
+        <p class="downloadJSONHelp">JSON and new SVG exports save editable signs. Import replaces the canvas; Undo restores it.</p>
+        <p id="signJSONStatus" class="downloadJSONHelp" role="status"></p>
       </div>
 
       <div id="downloadPreview"></div>

@@ -340,7 +340,7 @@ remember
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.9108337f79975d68.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.27637952fb628b3e.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MergeUI.c2ff95e68568046c.js","js/Settings22.515ebbe65b349361.js","js/DropdownTheme.8ec2ddbe056ed93d.js"]' data-editor-css="css/app.94e390074ade7591.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.056b72186c01e238.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.0ecc11b6dc6e1030.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MergeUI.07d4ec4d260b714d.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.8ec2ddbe056ed93d.js"]' data-editor-css="css/app.340e7fd1d596c162.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.503233568ee3f25d.js"></script>
@@ -353,7 +353,8 @@ remember
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
 <script defer src="js/Control.7965129efa81ae54.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
-<script defer src="js/main.22a6c17f41cefca2.js"></script>
+<script defer src="js/SignDocument.049462d0df09a6fc.js"></script>
+<script defer src="js/main.86529fcfcd6c5edb.js"></script>
   
   
   
@@ -373,6 +374,7 @@ remember
   
   
   
+
   
   
   
@@ -436,6 +438,13 @@ remember
             <span class="downloadActionLabel">SVG</span>
           </button>
 
+          <button id="downloadJSON" class="downloadPrimaryButton" type="button" aria-label="Download editable JSON" onclick="app.downloadJSONSign()">
+            <span class="material-symbols-outlined">download</span>
+            <span class="downloadActionLabel">JSON</span>
+          </button>
+          <button id="importJSON" class="downloadPrimaryButton" type="button" aria-label="Import JSON or SVG" title="Import JSON or SVG" onclick="document.getElementById('importJSONFile').click()">Import</button>
+          <input id="importJSONFile" type="file" accept=".json,.svg,application/json,image/svg+xml" hidden onchange="app.importJSONFile(this)">
+
           <button id="copyPNG" class="downloadPrimaryButton" type="button" aria-label="Copy PNG" onclick="app.copyPNGSign()">
             <span class="material-symbols-outlined">content_copy</span>
             <span class="downloadActionLabel">PNG</span>
@@ -446,6 +455,8 @@ remember
             <span class="downloadActionLabel">SVG</span>
           </button>
         </div>
+        <p class="downloadJSONHelp">JSON and new SVG exports save editable signs. Import replaces the canvas; Undo restores it.</p>
+        <p id="signJSONStatus" class="downloadJSONHelp" role="status"></p>
       </div>
 
       <div id="downloadPreview"></div>

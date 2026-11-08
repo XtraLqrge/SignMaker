@@ -77,12 +77,17 @@ function build() {
   assert.equal(uiFonts.files[iconCoverage.file].sha256,iconCoverage.sha256,'Icon coverage must match the included font');
   for(const name of require('./ui-icons.cjs').collect(root,html))assert.ok(iconCoverage.verifiedIconNames.includes(name),'Missing icon glyph: '+name);
   const assets = [];
+  const exportAssets = require('./export-assets.cjs').buildExportAssets(publicRoot);
+  assets.push(...exportAssets.assets);
   const emitted = new Map();
   const adapted = new Map();
   const adapt = relative => {
     if (adapted.has(relative)) return adapted.get(relative);
     let source = fs.readFileSync(path.join(publicRoot,relative),'utf8');
     if (relative === 'js/main.js') source = source.replace('js/HtmlToImage.js', emitJS('js/HtmlToImage.js'));
+    if (relative === 'js/main.js') source = source.replace('js/ExportAssets.js', emitJS('js/ExportAssets.js'));
+    if (relative === 'js/ExportAssets.js') source = source.replace('/* EXPORT_ASSET_INDEX */ {}', JSON.stringify(exportAssets.index));
+    if (relative === 'js/ExportAssets.js') source = source.replace('/* EXPORT_FONT_FACES */ []', JSON.stringify(exportAssets.fontFaces));
     if (relative === 'js/Control.js') source = source.replace('IconFallbacks.js?v=773d7c4b80c1', path.basename(emitJS('js/IconFallbacks.js')));
     if (relative === 'js/Shield.js') source = source.replace('"ShieldFallbacks.js"',JSON.stringify(path.basename(emitJS('js/ShieldFallbacks.js'))));
     adapted.set(relative,source);

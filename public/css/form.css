@@ -1359,6 +1359,7 @@ textarea {
   align-items: stretch;
   gap: 1.25rem;
   height: 55%;
+  min-height: min(28rem, calc(100dvh - 2rem));
   max-height: calc(100dvh - 2rem);
   overflow: hidden;
   box-sizing: border-box;
@@ -1390,7 +1391,8 @@ textarea {
   grid-template-rows: auto auto auto auto;
   align-content: start;
   align-items: stretch;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #downloadPreview {
@@ -15014,3 +15016,10 @@ nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
   :is(#copySign, #export, #nightMode, #appSettingsConfig, #hideConfig) > .buttonLabel {
   display: none;
 }
+
+#downloadContents .downloadJSONHelp {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0.75rem 0 0;
+}
+#signJSONStatus:empty { display: none; }

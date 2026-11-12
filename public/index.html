@@ -20,6 +20,47 @@
   <meta name="google-site-verification" content="VxkA5T9XJaSoh3-BDZHmrBpQHw62FtBuPgPLY3B3pSY">
   <title>Highway Sign Maker</title>
   <link rel="canonical" href="https://hwysignmaker.com/">
+  <script data-interface-scale>
+    /* Restore interface size before styles paint; this key stays stable across builds. */
+    window.SignMakerInterfaceScale = (() => {
+      const key = "signMaker.interfaceUiScale";
+      const normalize = value => {
+        if (value === null || value === undefined || String(value).trim() === "") return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.round(Math.max(50, Math.min(150, parsed)) / 10) * 10 : null;
+      };
+      const readRecord = value => {
+        if (value == null) return null;
+        const [rawScale, rawTime] = String(value).split(":");
+        const scale = normalize(rawScale), savedAt = Number(rawTime || 0);
+        return scale !== null && Number.isSafeInteger(savedAt) && savedAt >= 0 ? {scale, savedAt} : null;
+      };
+      let localScale = null, localRecord = null, cookieRecord = null;
+      try { localScale = normalize(window.localStorage.getItem(key)); } catch (_) {}
+      try { localRecord = readRecord(window.localStorage.getItem(key + ".saved")); } catch (_) {}
+      try {
+        const cookie = document.cookie.split(";").map(item => item.trim()).find(item => item.startsWith(key + "="));
+        cookieRecord = cookie ? readRecord(decodeURIComponent(cookie.slice(key.length + 1))) : null;
+      } catch (_) {}
+      const newest = localRecord && (!cookieRecord || localRecord.savedAt >= cookieRecord.savedAt) ? localRecord : cookieRecord;
+      let scale = newest?.scale ?? localScale ?? 100, savedAt = newest?.savedAt || 0;
+      const save = value => {
+        scale = normalize(value) ?? 100;
+        savedAt = Math.max(Date.now(), savedAt + 1);
+        const record = scale + ":" + savedAt;
+        try { window.localStorage.setItem(key, String(scale)); } catch (_) {}
+        try { window.localStorage.setItem(key + ".saved", record); } catch (_) {}
+        try {
+          document.cookie = key + "=" + encodeURIComponent(record) + "; Max-Age=31536000; Path=/; SameSite=Lax" +
+            (window.location.protocol === "https:" ? "; Secure" : "");
+        } catch (_) {}
+        return scale;
+      };
+      if (localScale !== null || newest) save(scale);
+      document.documentElement.style.setProperty("--sm-app-zoom", String(scale / 100));
+      return { getScale: () => scale, setScale: save };
+    })();
+  </script>
   <script>
     (function () {
       const THEME_MODE_STORAGE_KEY = "signMaker.interfaceThemeMode";
@@ -333,28 +374,30 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.ea7a05936c6a1f6c.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.0294c4ba2ec77adc.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.056b72186c01e238.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.0ecc11b6dc6e1030.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MergeUI.07d4ec4d260b714d.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.8ec2ddbe056ed93d.js"]' data-editor-css="css/app.340e7fd1d596c162.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.056b72186c01e238.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.4d363d071c7e034d.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MergeUI.07d4ec4d260b714d.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.8ec2ddbe056ed93d.js"]' data-editor-css="css/app.549c0b443b255b61.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.503233568ee3f25d.js"></script>
 <script defer src="js/Sign.3640c7bc4cd48652.js"></script>
 <script defer src="js/ExitTab.28a7fed807403f99.js"></script>
-<script defer src="js/Panel.d6b9ae5f5f84f64c.js"></script>
-<script defer src="js/PanelDrag.b295e48ad1bba025.js"></script>
+<script defer src="js/Panel.5e4c31f252743c95.js"></script>
+<script defer src="js/PanelBorders.0b690deb621e6bc7.js"></script>
+<script defer src="js/PanelDrag.5ad70d87d3493110.js"></script>
 <script defer src="js/VmsPanel.34d9648ce7eb7499.js"></script>
 <script defer src="js/Post.9f6684dc6741e278.js"></script>
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
 <script defer src="js/Control.7965129efa81ae54.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
 <script defer src="js/SignDocument.049462d0df09a6fc.js"></script>
-<script defer src="js/main.86529fcfcd6c5edb.js"></script>
+<script defer src="js/main.a9f3c091e7f94b2d.js"></script>
+  
   
   
   
@@ -400,6 +443,7 @@ remember
     <div id="alignmentGuides" aria-hidden="true"></div></div>
   </main>
   <div id="modalHolder">
+    <input id="importJSONFile" type="file" accept=".json,.svg,application/json,image/svg+xml" hidden onchange="app.importJSONFile(this)">
     <dialog id="downloadContent">
       <button id="cancelDownload" class="downloadCloseButton" type="button" aria-label="Close download menu">
         <span class="material-symbols-outlined">close</span>
@@ -442,8 +486,6 @@ remember
             <span class="material-symbols-outlined">download</span>
             <span class="downloadActionLabel">JSON</span>
           </button>
-          <button id="importJSON" class="downloadPrimaryButton" type="button" aria-label="Import JSON or SVG" title="Import JSON or SVG" onclick="document.getElementById('importJSONFile').click()">Import</button>
-          <input id="importJSONFile" type="file" accept=".json,.svg,application/json,image/svg+xml" hidden onchange="app.importJSONFile(this)">
 
           <button id="copyPNG" class="downloadPrimaryButton" type="button" aria-label="Copy PNG" onclick="app.copyPNGSign()">
             <span class="material-symbols-outlined">content_copy</span>
@@ -454,8 +496,11 @@ remember
             <span class="material-symbols-outlined">content_copy</span>
             <span class="downloadActionLabel">SVG</span>
           </button>
+          <button id="copyJSON" class="downloadPrimaryButton" type="button" aria-label="Copy JSON file" title="Copy JSON file; downloads if file copying is unavailable" onclick="app.copyJSONSign()">
+            <span class="material-symbols-outlined">content_copy</span>
+            <span class="downloadActionLabel">JSON</span>
+          </button>
         </div>
-        <p class="downloadJSONHelp">JSON and new SVG exports save editable signs. Import replaces the canvas; Undo restores it.</p>
         <p id="signJSONStatus" class="downloadJSONHelp" role="status"></p>
       </div>
 
@@ -1200,13 +1245,28 @@ remember
               <label for="panelCorner">Panel Corners: </label>
               <select id="panelCorner" onchange="formHandler.setPanelCorner(this.value);"></select>
               <br>
-              <label for="panelBorderRadius">Sign Border Radius (rem): </label>
-              <input type="number" id="panelBorderRadius" name="panelBorderRadius" value=".75" min="0" max="5" step=".05" oninput="formHandler.readForm(event);">
+              <label for="panelBorderRadius">Border Radius (rem): </label>
+              <div class="panelStyleSliderControl">
+                <input type="range" id="panelBorderRadius" min="0" max="5" step="0.05" value="0.75" aria-label="Border radius">
+                <input type="number" id="panelBorderRadiusValue" min="0" max="5" step="0.05" value="0.75" aria-label="Border radius in rem">
+              </div>
               <br>
-              <label for="panelBorderThickness">Border Thickness: </label>
-              <div class="panelBorderThicknessControl">
-                <input type="range" id="panelBorderThickness" name="panelBorderThickness" min="0" max="0.4" step="0.1" value="0.2" oninput="document.getElementById('panelBorderThicknessValue').value = Math.round(this.value / 0.2 * 100) + '%'; formHandler.readForm(event);">
-                <output id="panelBorderThicknessValue" for="panelBorderThickness">100%</output>
+              <label for="panelBorderColor">Border Color: </label>
+              <select id="panelBorderColor" onchange="formHandler.readForm();"><option value="Inherit">Inherit</option></select>
+              <br>
+              <label for="panelBorderThickness">Border Thickness (rem): </label>
+              <div class="panelStyleSliderControl">
+                <input type="range" id="panelBorderThickness" min="0" max="0.4" step="0.01" value="0.2" aria-label="Border thickness">
+                <input type="number" id="panelBorderThicknessValue" min="0" max="0.4" step="0.01" value="0.2" aria-label="Border thickness in rem">
+              </div>
+              <br>
+              <label for="panelOuterBorder">Outer Border: </label>
+              <input type="checkbox" id="panelOuterBorder" onchange="formHandler.readForm();">
+              <br>
+              <label for="panelOuterBorderThickness" id="panelOuterBorderThicknessLabel" hidden>Outer Thickness (rem): </label>
+              <div class="panelStyleSliderControl" id="panelOuterBorderThicknessControl" hidden>
+                <input type="range" id="panelOuterBorderThickness" min="0" max="0.4" step="0.01" value="0.2" aria-label="Outer border thickness">
+                <input type="number" id="panelOuterBorderThicknessValue" min="0" max="0.4" step="0.01" value="0.2" aria-label="Outer border thickness in rem">
               </div>
               <br>
               <label for="vmsPanel">VMS Panel: </label>
@@ -2636,6 +2696,10 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
 </button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
         <span class="material-symbols-outlined"> download </span>
         <span class="buttonLabel">Export</span>
+      </button>
+      <button id="importJSON" class="sMConfigOption" type="button" aria-label="Import JSON or SVG" title="Import JSON or SVG">
+        <span class="material-symbols-outlined">upload</span>
+        <span class="buttonLabel">Import</span>
       </button>
       <button id="nightMode" class="sMConfigOption" aria-label="Light/dark mode" title="Light/dark mode">
         <span class="material-symbols-outlined"> dark_mode </span>

@@ -764,6 +764,103 @@ test('widened sign padding is independent of canvas scale',()=>{
   }
 });
 
+function borderPaintFixture({scale=1,radius=15,borderColor='rgb(255, 255, 255)',split=false,panelData=null,grouped=false,inspect=null,beforePaint=null}={}) {
+  const classes={add(){},remove(){},toggle(){},contains:()=>true};
+  const style=()=>({setProperty(key,value){this[key]=value;},removeProperty(key){delete this[key];}});
+  const box={left:15*scale,top:25*scale,width:406.375*scale,height:312.28125*scale};
+  box.right=box.left+box.width;box.bottom=box.top+box.height;
+  const panel={classList:classes};
+  const container={classList:classes,style:style(),removeAttribute(){},querySelectorAll:()=>[],querySelector:()=>null};
+  const master={querySelectorAll:()=>rows};
+  const count=panelData?panelData.sign.subPanels[0].blockElements.rows.length:split?2:1;
+  const makeRow=(index,color,border)=>{
+    const names=new Set(['blockElementRow','fullBleed']);
+    return {dataset:{fullBleedBackgroundColor:color,fullBleedBorderColor:border},style:style(),
+      classList:{add:name=>names.add(name),remove:name=>names.delete(name),contains:name=>names.has(name),
+        toggle(name,enabled){if(enabled)names.add(name);else names.delete(name);}},
+      getBoundingClientRect:()=>count>1?{...box,top:box.top+index*box.height/count,
+        bottom:box.top+(index+1)*box.height/count,height:box.height/count}:box,querySelectorAll:()=>[],
+      closest:selector=>selector==='.blockElementMaster'?master:selector==='.bE-groupedBlockElement'&&grouped?{}:null};
+  };
+  const colors={Green:'rgb(0, 95, 77)',Yellow:'rgb(252, 207, 52)',Brown:'rgb(98, 51, 30)'};
+  const rows=panelData?panelData.sign.subPanels[0].blockElements.blockProperties.map((row,index)=>
+    makeRow(index,colors[row.backgroundColor],row.backgroundColor==='Yellow'?'rgb(0, 0, 0)':'rgb(255, 255, 255)')):
+    [makeRow(0,'rgb(98, 51, 30)',borderColor)];
+  if(!panelData&&split)rows.push(makeRow(1,'rgb(252, 207, 52)','rgb(0, 0, 0)'));
+  const sign={isConnected:true,style:style(),classList:classes,getBoundingClientRect:()=>box,
+    querySelectorAll:selector=>selector.includes('.blockElementRow[data-')?rows.filter(row=>row.dataset.fullBleedBackgroundColor||row.dataset.fullBleedBorderColor):
+      selector==='.fullBleedBackgroundPainted'?rows.filter(row=>row.classList.contains('fullBleedBackgroundPainted')):[],
+    querySelector:()=>null,closest:selector=>selector==='.signContainer'?container:selector==='.panel'?panel:null};
+  const computed={width:'406.375px',height:'312.28125px',boxSizing:'border-box',backgroundColor:'rgb(0, 95, 77)',
+    color:'rgb(255, 255, 255)',getPropertyValue:key=>key==='--panelBorderColor'?'rgb(255, 255, 255)':'0px',
+    ...Object.fromEntries(['Top','Right','Bottom','Left'].map(edge=>['border'+edge+'Width','4px'])),
+    ...Object.fromEntries(['TopLeft','TopRight','BottomRight','BottomLeft'].map(corner=>['border'+corner+'Radius',radius+'px']))};
+  const document={documentElement:{},body:{appendChild(){}},createElement:()=>({style:{},remove(){}})};
+  const color=value=>value==='white'?'rgb(255, 255, 255)':value==='black'?'rgb(0, 0, 0)':value;
+  const getComputedStyle=element=>element===sign?computed:rows.includes(element)?{getPropertyValue:()=> '0px'}:
+    {fontSize:'20px',color:color(element.style?.color||'rgb(255, 255, 255)')};
+  const c=context({document,window:{getComputedStyle},lib:{colors:{White:'rgb(255, 255, 255)',Black:'rgb(0, 0, 0)'}},
+    PanelBorders:{recordFills(){}}});
+  vm.runInContext(declaration('public/js/main.js','applyPanelBorderGradient')+';this.paint=applyPanelBorderGradient;',c);
+  beforePaint?.(rows);
+  c.paint(sign);
+  inspect?.({rows,sign,paint:c.paint});
+  return sign.style;
+}
+
+test('the reported full-tab sign has one background owner after colored row paint completes',()=>{
+  const data=JSON.parse(read('scripts/fixtures/attached-full-tab-colored-rows.json'));
+  const panel=data.post.panels[0];
+  assert.equal(panel.exitTabs[0].width,'Full');
+  assert.equal(panel.exitTabs[0].fullBorder,false);
+  assert.equal(panel.outerBorder,true);
+  assert.deepEqual(panel.sign.subPanels[0].blockElements.blockProperties.map(row=>row.backgroundColor),['Yellow','Brown']);
+  for(const scale of [0.35,0.5,1,1.75]) {
+    borderPaintFixture({scale,radius:0,panelData:panel,
+      beforePaint:rows=>assert.ok(rows.every(row=>!row.classList.contains('fullBleedBackgroundPainted')),'Rows provide their initial loading background'),
+      inspect:({rows,sign,paint})=>{
+        assert.ok(rows.every(row=>row.classList.contains('fullBleedBackgroundPainted')),'Resolved fills must not be painted again above the sign border');
+        assert.match(sign.style.backgroundImage,/252, 207, 52/,'The sign owns the yellow row fill');
+        assert.match(sign.style.backgroundImage,/98, 51, 30/,'The sign owns the brown row fill');
+        assert.equal(sign.style.borderColor,'transparent','The sign still paints the black and white border segments');
+        rows.forEach(row=>{delete row.dataset.fullBleedBackgroundColor;delete row.dataset.fullBleedBorderColor;});
+        paint(sign);
+        assert.ok(rows.every(row=>!row.classList.contains('fullBleedBackgroundPainted')),'Clearing the resolved sign paint restores row ownership');
+      }});
+    assert.match(read('public/css/signs.css'),/\.sign \.blockElementRow\.fullBleed\.fullBleedBackgroundPainted\s*\{\s*background-color:\s*transparent\s*!important;/);
+  }
+  borderPaintFixture({grouped:true,inspect:({rows})=>{
+    assert.ok(rows.every(row=>!row.classList.contains('fullBleedBackgroundPainted')),'Nested groups retain their own local row paint');
+  }});
+});
+
+test('colored rows retain a native uniform border for attached and separated tab corner shapes',()=>{
+  for(const scale of [0.35,0.5,1,1.75])for(const radius of [0,15.375,25]) {
+    const white=borderPaintFixture({scale,radius,borderColor:'rgba(255, 255, 255, 1)'});
+    assert.notEqual(white.borderColor,'transparent','Coloring a brown row must not replace its uniform white CSS border');
+    assert.doesNotMatch(white.backgroundImage,/data:image\/svg/);
+    assert.match(white.backgroundImage,/98, 51, 30/,'Row colors still paint to the sign edge');
+    const black=borderPaintFixture({scale,radius,borderColor:'rgb(0, 0, 0)'});
+    assert.equal(black.borderColor,'rgb(0, 0, 0)','A uniform contrasting border remains native too');
+    assert.doesNotMatch(black.backgroundImage,/data:image\/svg/);
+  }
+});
+
+test('segmented border colors draw a smooth shared ring and only clip rectangular color regions',()=>{
+  for(const scale of [0.35,0.5,1,1.75])for(const radius of [0,15.375,25]) {
+    const style=borderPaintFixture({scale,radius,split:true});
+    assert.equal(style.borderColor,'transparent');
+    const svg=decodeURIComponent(style.backgroundImage.match(/data:image\/svg\+xml,([^"]+)/)[1]);
+    assert.match(svg,/viewBox="0 0 406\.375 312\.281"/);
+    assert.match(svg,/<path id="dynamicBorderRingPath"[^>]+fill-rule="evenodd"/);
+    assert.doesNotMatch(svg,/<clipPath[^>]*>\s*<path/,'The curved ring must be painted rather than used as a clipping mask');
+    assert.match(svg,/<clipPath[^>]*><rect[^>]+shape-rendering="crispEdges"/);
+    assert.match(svg,/<use href="#dynamicBorderRingPath"[^>]+shape-rendering="geometricPrecision"/);
+    assert.match(svg,/fill="rgb\(0, 0, 0\)"/);
+    assert.match(svg,/fill="rgb\(255, 255, 255\)"/);
+  }
+});
+
 test('full-bleed painting preserves fractional sign dimensions',()=>{
   for(const boxSizing of ['border-box','content-box']){
     const computed={width:'406px',height:'312.28125px',boxSizing,paddingTop:'6px',paddingBottom:'6px',borderTopWidth:'4px',borderBottomWidth:'4px'};
@@ -809,6 +906,125 @@ test('portable JSON retains editable data and reads legacy snapshots', () => {
   assert.deepEqual(codec.decode(JSON.stringify({panel:post.panels[0]})).post.panels, post.panels);
   assert.deepEqual(codec.decode(JSON.stringify(post.panels[0])).post.panels, post.panels);
 });
+test('Copy JSON requests a file attachment and saves a JSON file when native file copying is unavailable', async () => {
+  const codec=require('../public/js/SignDocument.js');
+  const {Blob,File}=require('node:buffer');
+  const buttons=Object.fromEntries(['downloadPNG','downloadSVG','downloadJSON','copyPNG','copySVG','copyJSON'].map(id=>[id,{disabled:false}]));
+  const status={textContent:''},copied=[],downloads=[],flashes=[];
+  let selected=true,mode='supported';
+  class ClipboardItem {
+    static supports(type){return mode==='unsupported'?type==='web application/json':type==='application/json';}
+    constructor(data,options){this.data=data;this.presentationStyle=mode==='ignored-style'?'unspecified':options.presentationStyle;}
+  }
+  const c=context({SignMakerSignDocument:codec,Blob,File,ClipboardItem,
+    document:{getElementById:id=>id==='signJSONStatus'?status:buttons[id]},
+    navigator:{clipboard:{write:async items=>{
+      assert.ok(Object.values(buttons).every(button=>button.disabled));
+      if(mode==='denied')throw Error('Clipboard denied');
+      assert.equal(items.length,1);
+      assert.equal(items[0].presentationStyle,'attachment');
+      const file=items[0].data['application/json'];
+      assert.ok(file instanceof File);
+      assert.equal(file.name,'copiedSign.json');
+      assert.equal(file.type,'application/json');
+      copied.push(file);
+    },writeText:()=>assert.fail('Copy JSON must never write plain text')}},
+    downloadBlob:(blob,ending)=>{
+      if(mode==='download-failed')throw Error('Download blocked');
+      assert.equal(ending,'.json');
+      assert.equal(blob.type,'application/json');
+      downloads.push(blob);
+    },
+    syncDownloadSelection:()=>{Object.values(buttons).forEach(button=>button.disabled=!selected);return selected;},
+    getSelectedExportPanelIndexSet:()=>new Set([1]),
+    getExportablePanelGroups:()=>[{topIndex:0,indices:[0]},{topIndex:1,indices:[1,2]}],
+    flushPendingLivePreview:()=>{},
+    serializePostWithElementTypes:()=>JSON.stringify({panels:[{sign:{text:'Excluded'}},{sign:{text:'Selected',__undoType:'Sign'}},{sign:{text:'Stacked'}}]}),
+    formHandler:{exportSignAssets:()=>[]},
+    flashDownloadActionButton:(...args)=>flashes.push(args),
+  });
+  for(const name of ['serializeSignJSON','copyJSONFileToClipboard','setDownloadButtonsDisabled','copyJSONSign'])vm.runInContext(declaration('public/js/main.js',name),c);
+  vm.runInContext('this.copy=copyJSONSign;',c);
+  assert.equal(await c.copy(),true,status.textContent);
+  const expectedJSON=await copied[0].text();
+  assert.deepEqual(codec.decode(expectedJSON).post.panels,[{sign:{text:'Selected'}},{sign:{text:'Stacked'}}]);
+  assert.ok(Object.values(buttons).every(button=>!button.disabled));
+  for(mode of ['unsupported','denied','ignored-style']) {
+    assert.equal(await c.copy(),true,status.textContent);
+    assert.equal(await downloads.at(-1).text(),expectedJSON,'Download fallback retains the same selected editable signs');
+    assert.match(status.textContent,/downloaded instead/);
+    assert.ok(Object.values(buttons).every(button=>!button.disabled));
+  }
+  assert.equal(copied.length,1,'Web-only formats must not be mistaken for native file attachments');
+  const write=c.navigator.clipboard.write;
+  c.navigator.clipboard.write=undefined;
+  assert.equal(await c.copy(),true);
+  c.navigator.clipboard.write=write;
+  assert.equal(downloads.length,4);
+  mode='download-failed';
+  ClipboardItem.supports=()=>false;
+  assert.equal(await c.copy(),false);
+  assert.match(status.textContent,/Download blocked/);
+  assert.ok(Object.values(buttons).every(button=>!button.disabled));
+  selected=false;
+  assert.equal(await c.copy(),false);
+  assert.equal(copied.length,1);
+  assert.equal(downloads.length,4);
+  assert.deepEqual(flashes.map(flash=>flash[1]),['Copied','Saved','Saved','Saved','Saved','Failed']);
+});
+
+test('live border paint follows late layout and font changes and releases old observers on redraw', () => {
+  const frames=[],timers=[],observers=[],paints=[];
+  const events=()=>{
+    const listeners=new Map();
+    return {addEventListener:(name,fn)=>{if(!listeners.has(name))listeners.set(name,new Set());listeners.get(name).add(fn);},
+      removeEventListener:(name,fn)=>listeners.get(name)?.delete(fn),
+      emit:(name,event)=>listeners.get(name)?.forEach(fn=>fn(event))};
+  };
+  const fonts=events(),document={...events(),fonts};
+  const image={...events(),complete:false};
+  const sign={},row={},tab={};
+  const root={isConnected:true,height:100,querySelectorAll:selector=>selector==='img'?[image]:[sign,row,tab]};
+  const c=context({document,window:{requestAnimationFrame:fn=>frames.push(fn),setTimeout:(fn,time)=>timers.push({fn,time})},
+    ResizeObserver:class {
+      constructor(callback){this.callback=callback;this.targets=[];observers.push(this);}
+      observe(target){this.targets.push(target);}
+      disconnect(){this.disconnected=true;}
+    },refreshDynamicPanelBorders:target=>paints.push({target,height:target.height})});
+  vm.runInContext(declaration('public/js/main.js','panelBorderGradientWatches')+declaration('public/js/main.js','schedulePanelBorderGradientUpdate')+'this.schedule=schedulePanelBorderGradientUpdate;',c);
+  const flush=()=>{let count=0;while(frames.length){assert.ok(++count<30);frames.shift()();}};
+  c.schedule(root);flush();
+  timers.filter(timer=>timer.time<=2500).forEach(timer=>timer.fn());
+  root.height=141.375;
+  if(!observers[0].disconnected)observers[0].callback();
+  flush();
+  assert.equal(paints.at(-1).height,141.375,'Measurements remain live after slow fonts/images finish');
+  assert.ok(observers[0].targets.includes(tab),'Tab sizing can move the sign without resizing its rows');
+  const before=paints.length;
+  root.height=157.625;
+  fonts.emit('loadingdone');image.emit('load');
+  document.emit('transitionend',{target:{id:'postContainer'},propertyName:'transform'});
+  flush();
+  assert.equal(paints.length,before+1,'Concurrent layout changes share one paint pass');
+  assert.equal(paints.at(-1).height,157.625);
+  const otherPanel={...root,height:180};
+  c.schedule(otherPanel);flush();
+  assert.notEqual(observers[0].disconnected,true,'Rendering another panel must retain the first panel watcher');
+  root.height=170;otherPanel.height=190;
+  const bothStart=paints.length;
+  fonts.emit('loadingdone');flush();
+  assert.deepEqual(paints.slice(bothStart).map(paint=>paint.height).sort((a,b)=>a-b),[170,190],'Each live panel updates independently');
+  root.isConnected=false;
+  const replacement={...root,isConnected:true,height:200};
+  c.schedule(replacement);flush();
+  assert.equal(observers[0].disconnected,true);
+  assert.notEqual(observers[1].disconnected,true,'Replacing one panel leaves other panel watchers active');
+  const oldCount=paints.filter(paint=>paint.target===root).length;
+  observers[0].callback();fonts.emit('loadingdone');flush();
+  assert.equal(paints.filter(paint=>paint.target===root).length,oldCount,'A redraw releases callbacks that refer to the old DOM');
+  assert.ok(paints.slice(-2).some(paint=>paint.target===replacement));
+});
+
 test('portable JSON rejects invalid files and unsupported versions before import', () => {
   const {decode} = require('../public/js/SignDocument.js');
   for (const text of ['not json', 'null', '{}', '{"panels":[]}', '{"panels":[null]}', '{"format":"other","post":{"panels":[{"sign":{}}]}}', '{"schemaVersion":999,"post":{"panels":[{"sign":{}}]}}', '{"__proto__":{},"panels":[{"sign":{}}]}', '{"panels":[{"sign":{"subPanels":[null]}}]}']) assert.throws(() => decode(text));
@@ -823,4 +1039,348 @@ test('SVG metadata embeds the shared versioned document and escapes XML text', (
   assert.match(metadata, /"schemaVersion": 1/);
   assert.equal((metadata.match(/<\/metadata>/g) || []).length, 1);
   assert.throws(() => codec.svgMetadata('{"schemaVersion":999}'), /version/);
+});
+
+test('panel border settings keep precise widths and initialize the outer rim only once', () => {
+  const c = context({lib: {colors: {Green: '#005f4d'}}});
+  vm.runInContext(read('public/js/Panel.js') + ';this.PanelClass=Panel;', c);
+  const PanelClass = c.PanelClass, panel = new PanelClass({});
+  assert.equal(panel.borderColor, 'Inherit');
+  assert.equal(panel.outerBorder, false);
+  assert.equal(panel.outerBorderThickness, null);
+  PanelClass.setBorderThickness(panel, 0.27);
+  assert.equal(panel.borderThickness, 0.27);
+  PanelClass.setOuterBorderEnabled(panel, true);
+  assert.equal(panel.outerBorderThickness, 0.27);
+  panel.outerBorderThickness = 0.13;
+  PanelClass.setOuterBorderEnabled(panel, false);
+  PanelClass.setBorderThickness(panel, 0.31);
+  PanelClass.setOuterBorderEnabled(panel, true);
+  assert.equal(PanelClass.getOuterBorderThickness(panel), 0.13);
+  assert.equal(PanelClass.getOuterBorderThickness({borderThickness: 0.33}), 0.33);
+  assert.equal(PanelClass.getOuterBorderThickness({outerBorderThickness: 0}), 0);
+  panel.borderColor = '#b82035';
+  const document = require('../public/js/SignDocument.js');
+  const restored = document.decode(document.encode({panels: [panel]})).post.panels[0];
+  assert.equal(restored.borderColor, '#b82035');
+  assert.equal(restored.outerBorderThickness, 0.13);
+  assert.equal(restored.outerBorder, true);
+});
+
+test('inherited panel borders choose the higher-contrast black or white', () => {
+  const colors = {Green:[0,95,77],Yellow:[252,207,52],Black:[0,0,0],White:[255,255,255],Gray:[128,128,128]};
+  const c = context({resolveCssColorToRgb: value => {
+    const [r,g,b] = colors[value]; return {r,g,b,a:1};
+  }});
+  vm.runInContext(declaration('public/js/main.js','getExitOnlyContrastColor')+'this.contrast=getExitOnlyContrastColor;',c);
+  for (const [color, foreground] of [['Green','white'],['Yellow','black'],['Black','white'],['White','black'],['Gray','black']]) {
+    assert.equal(c.contrast(color),`var(--${foreground})`);
+  }
+});
+
+test('outer face colors extend through exterior edges without moving row transitions', () => {
+  const borders = require('../public/js/PanelBorders.js');
+  assert.deepEqual(borders.extendFill({left: 0, top: 40, width: 200, height: 60}, 200, 100, 5),
+    {left: -5, top: 40, width: 210, height: 65});
+  assert.deepEqual(borders.extendFill({left: 20, top: 0, width: 80, height: 40}, 200, 100, 5),
+    {left: 20, top: -5, width: 80, height: 45});
+  const svg = borders.svgForSurfaces([{x: 0, y: 0, width: 200, height: 100,
+    corners: [12,12,0,0], color: '#005f4d', regions: [{color: '#fcce34', rect: {left:0, top:40, width:200, height:60}}]}],
+    5, {left:-5, top:-5, width:210, height:110});
+  assert.doesNotMatch(svg, /evenodd/,'The material is an expanded face, not a hollow border');
+  assert.match(svg, /A17 17/);
+  assert.match(svg, /y="40" width="210" height="65" fill="#fcce34"/);
+  assert.doesNotMatch(svg, /NaN|undefined|<mask/);
+});
+
+test('expanded faces stay inside the enlarged layout at every canvas scale', () => {
+  for (const scale of [0.5, 1, 2]) {
+    const classes = names => ({contains: name => names.includes(name)});
+    const rect = (left, top, width, height) => ({left:left*scale, top:top*scale, right:(left+width)*scale, bottom:(top+height)*scale, width:width*scale, height:height*scale});
+    const root = {}, rendered = [];
+    const panel = {isConnected:true, classList:classes(['panel','round','hasPanelOuterBorder']),
+      style:{getPropertyValue: key => key==='--panelOuterBorderWidth' ? '0.25rem' : '#005f4d'},
+      getBoundingClientRect:() => rect(0,0,230,180),
+      querySelector:() => rendered[0] || null,
+      querySelectorAll: selector => selector==='.panel' ? [] : surfaces,
+      prepend:image => rendered.unshift(image)};
+    const face = (box, color, css = {}) => ({classList:classes([]), closest:() => panel,
+      parentElement:panel, getBoundingClientRect:() => box, querySelectorAll:() => [],
+      computed:{display:'block', visibility:'visible', backgroundColor:color, ...css}});
+    const sign = face(rect(15,35,200,100),'rgb(0,95,77)',{borderTopLeftRadius:'12px',borderTopRightRadius:'12px',width:'200px',boxSizing:'border-box'});
+    const guide = face(rect(15,135,200,40),'rgb(0,95,77)');
+    const lane = face(rect(115,135,100,40),'rgb(252,207,52)');
+    guide.querySelectorAll = () => [lane];
+    const tab = face(rect(135,5,80,30),'rgb(252,207,52)');
+    const surfaces = [sign,guide,tab];
+    const document = {documentElement:root, createElementNS:(namespace, tagName) => {
+      const attributes = {};
+      return {tagName,namespaceURI:namespace,style:{}, setAttribute:(key,value)=>attributes[key]=String(value),
+        getAttribute:key=>attributes[key],
+        remove(){rendered.splice(rendered.indexOf(this),1);}};
+    }};
+    const c = context({document, getComputedStyle: element => element===root ? {fontSize:'20px'} :
+      element===panel ? {width:'230px',boxSizing:'border-box'} : element.computed});
+    vm.runInContext(read('public/js/PanelBorders.js')+';this.api=PanelBorders;',c);
+    c.api.recordFills(sign,[{color:'rgb(128,0,128)',rect:{left:0,top:40,width:200,height:60}}]);
+    c.api.refreshAll(panel);
+    assert.equal(rendered.length,1);
+    assert.equal(rendered[0].style.left,'10px');
+    assert.equal(rendered[0].style.top,'0px');
+    assert.equal(rendered[0].style.width,'210px');
+    assert.equal(rendered[0].style.height,'180px');
+    const body=c.api.bodyBounds(sign);
+    assert.equal(body.left,10*scale);
+    assert.equal(body.top,30*scale);
+    assert.equal(body.width,210*scale);
+    assert.equal(body.height,110*scale);
+    assert.equal(rendered[0].tagName,'svg');
+    assert.equal(rendered[0].getAttribute('preserveAspectRatio'),'none');
+    const svg = rendered[0].innerHTML;
+    assert.match(svg,/rgb\(128,0,128\)/);
+    assert.match(svg,/rgb\(252,207,52\)/);
+    assert.equal((svg.match(/clipPath id=/g)||[]).length,3);
+    c.api.refreshAll(panel);
+    assert.equal(rendered.length,1);
+    assert.equal(rendered[0].innerHTML,svg);
+    panel.classList = classes(['panel']);
+    c.api.refreshAll(panel);
+    assert.equal(rendered.length,0);
+  }
+});
+
+test('fractional row and Exit Only boundaries keep their layout positions under scaling', () => {
+  const classes = names => ({contains: name => names.includes(name)});
+  const root = {}, rendered = [], panels = [];
+  const scaleX = 1.25, scaleY = 1.1;
+  const rect = (left, top, width, height) => ({left:23.25+left*scaleX,top:17.75+top*scaleY,
+    right:23.25+(left+width)*scaleX,bottom:17.75+(top+height)*scaleY,width:width*scaleX,height:height*scaleY});
+  const document = {documentElement:root,createElementNS:(namespace,tagName)=>{
+    const attributes={};
+    return {namespaceURI:namespace,tagName,style:{},setAttribute:(key,value)=>attributes[key]=String(value),
+      getAttribute:key=>attributes[key],remove(){}};
+  }};
+  const c=context({document,getComputedStyle:element=>element===root?{fontSize:'20px'}:element.computed});
+  vm.runInContext(read('public/js/PanelBorders.js')+';this.api=PanelBorders;',c);
+  for (let index=0;index<2;index++) {
+    const panel={isConnected:true,classList:classes(['panel','round','hasPanelOuterBorder']),
+      computed:{width:'230.375px',height:'180.625px',boxSizing:'border-box'},
+      style:{getPropertyValue:key=>key==='--panelOuterBorderWidth'?'0.25rem':'#005f4d'},
+      getBoundingClientRect:()=>rect(0,0,230.375,180.625),querySelector:()=>rendered[index]||null,
+      querySelectorAll:selector=>selector==='.panel'?[]:[sign,guide],prepend:face=>rendered[index]=face};
+    const face=(box,color,css={})=>({classList:classes([]),closest:()=>panel,parentElement:panel,
+      getBoundingClientRect:()=>box,querySelectorAll:()=>[],
+      computed:{display:'block',visibility:'visible',backgroundColor:color,...css}});
+    const sign=face(rect(15.125,35.25,200.125,100.125),'#005f4d',
+      {width:'200.125px',height:'100.125px',boxSizing:'border-box'});
+    const guide=face(rect(15.125,129.375,200.125,40),'#005f4d');
+    const lane=face(rect(15.125,129.375,200.125,40),'#fccf34');
+    guide.querySelectorAll=()=>[lane];
+    c.api.recordFills(sign,[{color:'#62331e',rect:{left:0,top:40.0625,width:200.125,height:60.0625}}]);
+    c.api.refreshAll(panel);
+    const output=rendered[index];
+    assert.equal(output.getAttribute('viewBox'),'10.125 30.25 210.125 144.125');
+    assert.equal(output.getAttribute('preserveAspectRatio'),'none','Fractional paint must fill its exact layout viewport');
+    assert.match(output.innerHTML,/y="75.313" width="210.125" height="60.063" fill="#62331e"/);
+    assert.match(output.innerHTML,/y="129.375" width="210.125" height="45" fill="#fccf34"/);
+    const body=c.api.bodyBounds(sign);
+    assert.ok(Math.abs(body.top-rect(10.125,30.25,210.125,110.125).top)<1e-8);
+    panels.push(panel);
+  }
+  const ids=rendered.map(face=>face.innerHTML.match(/clipPath id="([^"]+)"/)[1]);
+  assert.notEqual(ids[0],ids[1],'Adjacent panels must keep independent clipping geometry');
+});
+
+test('connected guide and Exit Only faces extend exposed edges without painting into their shared seam', () => {
+  const borders=require('../public/js/PanelBorders.js');
+  const main={x:0,y:30,width:200,height:100,corners:[12,12,0,0],color:'#005f4d',regions:[]};
+  // The modern band overlaps the bottom of the sign by its existing margin.
+  const band={x:0,y:124,width:200,height:40,corners:[0,0,12,12],color:'#fccf34',regions:[]};
+  const tab={x:120,y:0,width:80,height:30,corners:[6,6,0,0],color:'#005f4d',regions:[]};
+  const surfaces=[main,band,tab];
+  assert.deepEqual(borders.exposedEdges(main,surfaces,5),{left:5,top:5,right:5,bottom:0});
+  assert.deepEqual(borders.exposedEdges(band,surfaces,5),{left:5,top:0,right:5,bottom:5});
+  assert.deepEqual(borders.exposedEdges(tab,surfaces,5),{left:5,top:5,right:5,bottom:0});
+  const expanded=borders.extendFill({left:0,top:0,width:200,height:40},200,40,5,borders.exposedEdges(band,surfaces,5));
+  assert.deepEqual(expanded,{left:-5,top:0,width:210,height:45});
+  const svg=borders.svgForSurfaces(surfaces,5,{left:-5,top:-5,width:210,height:174});
+  assert.match(svg,/<path d="M-5 124/,'Yellow material starts at the band, not above its seam');
+  assert.doesNotMatch(svg,/M-5 119/);
+  const fullTab={...tab,x:0,width:200};
+  assert.equal(borders.exposedEdges(main,[main,fullTab],5).top,0,'A full-width attached tab shares the entire top edge');
+});
+
+test('sharp panels extend a square material sheet while round panels extend their corner radius', () => {
+  const borders=require('../public/js/PanelBorders.js');
+  const face={x:5,y:5,width:200,height:100,corners:[12,12,12,12],color:'#005f4d',regions:[]};
+  const bounds={left:0,top:0,width:210,height:110};
+  const sharp=borders.svgForSurfaces([{...face,roundOuter:false}],5,bounds);
+  const round=borders.svgForSurfaces([{...face,roundOuter:true}],5,bounds);
+  assert.match(sharp,/M0 0H210A0 0/);
+  assert.match(round,/M17 0H193A17 17/);
+  const css=read('public/css/signs.css');
+  assert.match(css,/\.panel\.hasPanelOuterBorder\s*\{[^}]*padding:\s*var\(--panelOuterBorderWidth/,'Outer material reserves real layout space');
+});
+
+test('full-width attached tabs stop at the panel seam instead of extending side borders into it', () => {
+  const c=context({window:{getComputedStyle:()=>({paddingBottom:'2px'})}});
+  vm.runInContext(declaration('public/js/main.js','applyExitTabAttachedOverlap')+'this.apply=applyExitTabAttachedOverlap;',c);
+  for(const width of ['Full','full',' Full '])for(const border of [0,0.1,0.2,0.4])for(const scale of [0.5,1,4]) {
+    const element={style:{}};
+    c.apply(element,{width,fullBorder:false},border);
+    const extraPadding=element.style.paddingBottom?Number(element.style.paddingBottom.match(/\+ ([\d.]+)rem/)[1])*20:0;
+    const margin=(parseFloat(element.style.marginBottom)||0)*20;
+    const tabBottom=(70.25+extraPadding)*scale;
+    const panelTop=tabBottom+margin*scale;
+    assert.equal(tabBottom,panelTop,'The tab side border must end exactly where the panel starts');
+  }
+  for(const width of ['Edge','Narrow','Wide','APL Edge','Out']) {
+    const element={style:{}};
+    c.apply(element,{width,fullBorder:false},0.2);
+    assert.equal(element.style.marginBottom,'-0.62rem','Narrow attached tabs keep their existing overlap');
+    assert.equal(element.style.paddingBottom,'calc(2px + 0.62rem)');
+  }
+  for(const width of ['Full','Edge']) {
+    const style={marginBottom:'calc(5px + 0.4rem)',paddingBottom:'2px'};
+    const element={style:{...style}};
+    c.apply(element,{width,fullBorder:true},0.2);
+    assert.deepEqual(element.style,style,'Bottom-bordered tabs retain their separate normal and outer clearance');
+  }
+  const transparent={style:{}};
+  c.apply(transparent,{width:'Edge',fullBorder:false},0.2,true);
+  assert.deepEqual(transparent.style,{});
+});
+
+test('bottom-bordered exit tabs reserve both exterior material widths while preserving normal gaps', () => {
+  const c=context({lib:{colors:{Green:'#005f4d'}}});
+  vm.runInContext(read('public/js/Panel.js')+';this.PanelClass=Panel;',c);
+  const PanelClass=c.PanelClass, borders=require('../public/js/PanelBorders.js');
+  for(const thickness of [0.01,0.1,0.2,0.4]) {
+    const panel={outerBorder:true,outerBorderThickness:thickness};
+    const extra=PanelClass.getExitTabOuterClearance(panel,{bottomBorder:'4px'});
+    assert.equal(extra,thickness*2);
+    for(const normalGap of [0,0.25]) {
+      const rem=20,material=thickness*rem;
+      const tab={x:100,y:0,width:100,height:30};
+      const main={x:0,y:30+(normalGap+extra)*rem,width:200,height:100};
+      assert.equal(borders.exposedEdges(tab,[tab,main],material).bottom,material,'Tab retains its lower outer material');
+      assert.equal(borders.exposedEdges(main,[tab,main],material).top,material,'Panel retains its upper outer material');
+      const tabBottom=tab.y+tab.height+material;
+      const panelTop=main.y-material;
+      assert.ok(Math.abs(panelTop-tabBottom-normalGap*rem)<1e-8,'Existing spacing is retained outside both faces');
+    }
+  }
+  assert.equal(PanelClass.getExitTabOuterClearance({outerBorder:false},{bottomBorder:4}),0);
+  assert.equal(PanelClass.getExitTabOuterClearance({outerBorder:true,outerBorderThickness:0},{bottomBorder:4}),0);
+  assert.equal(PanelClass.getExitTabOuterClearance({outerBorder:true,outerBorderThickness:0.3},{bottomBorder:0}),0);
+  assert.equal(PanelClass.getExitTabOuterClearance({outerBorder:true,outerBorderThickness:0.3},{bottomBorder:4,embedded:true}),0);
+  assert.equal(PanelClass.getExitTabOuterClearance({outerBorder:true,borderThickness:0.31},{bottomBorder:4}),0.62);
+});
+
+function interfaceScaleFixture(state, {failLocalRead=false, failLocalWrite=false, failCookieWrite=false}={}) {
+  const values = new Map();
+  const document = {documentElement:{style:{setProperty:(key,value)=>values.set(key,value)}}};
+  Object.defineProperty(document,'cookie',{
+    get:()=>state.cookie || '',
+    set:value=>{if(failCookieWrite)throw Error('Cookies unavailable');state.cookie=value.split(';')[0];}
+  });
+  const window = {location:{protocol:'https:'},localStorage:{
+    getItem:key=>{if(failLocalRead)throw Error('Storage unavailable');return state.local.get(key) ?? null;},
+    setItem:(key,value)=>{if(failLocalWrite)throw Error('Storage full');state.local.set(key,value);}
+  }};
+  const source=read('scripts/index.source.html').match(/<script data-interface-scale>([\s\S]*?)<\/script>/)[1];
+  const c=context({document,window});vm.runInContext(source,c);
+  return {api:window.SignMakerInterfaceScale,values,window};
+}
+
+test('UI scale restores before editor scripts and survives a fresh build without overwriting saved choices', () => {
+  const key='signMaker.interfaceUiScale';
+  const state={local:new Map([[key,'60']]),cookie:''};
+  let visit=interfaceScaleFixture(state);
+  assert.equal(visit.values.get('--sm-app-zoom'),'0.6');
+  assert.equal(visit.api.getScale(),60);
+  visit.api.setScale(80);
+  assert.equal(state.local.get(key),'80');
+  visit=interfaceScaleFixture(state);
+  assert.equal(visit.api.getScale(),80);
+  assert.equal(visit.values.get('--sm-app-zoom'),'0.8');
+  const fresh={local:new Map(),cookie:''};
+  assert.equal(interfaceScaleFixture(fresh).api.getScale(),100);
+  assert.equal(fresh.local.size,0,'The default must not overwrite a missing preference');
+  const html=read('public/index.html');
+  assert.ok(html.indexOf('data-interface-scale')<html.search(/<link[^>]+href="css\//),'Restore scale before loading sign/editor styles');
+});
+
+test('UI scale keeps the newest successful preference when either local storage or cookies cannot be written', () => {
+  const key='signMaker.interfaceUiScale';
+  for (const blocked of [{failLocalWrite:true},{failCookieWrite:true}]) {
+    const state={local:new Map([[key,'60']]),cookie:''};
+    interfaceScaleFixture(state);
+    const visit=interfaceScaleFixture(state,blocked);
+    visit.api.setScale(90);
+    assert.equal(visit.api.getScale(),90);
+    assert.equal(interfaceScaleFixture(state).api.getScale(),90,'Reload must prefer the newer backup');
+  }
+  const state={local:new Map([[key,'70']]),cookie:''};
+  interfaceScaleFixture(state);
+  assert.equal(interfaceScaleFixture(state,{failLocalRead:true,failLocalWrite:true}).api.getScale(),70);
+  const unavailable=interfaceScaleFixture({local:new Map(),cookie:''},{failLocalRead:true,failLocalWrite:true,failCookieWrite:true});
+  unavailable.api.setScale(50);
+  const c=context({window:unavailable.window,normalizeInterfaceUIScale:value=>value,getStoredItem:()=>100,STORAGE_KEYS:{interfaceUiScale:key}});
+  vm.runInContext(declaration('public/js/form.js','getStoredInterfaceUIScale')+'this.getScale=getStoredInterfaceUIScale;',c);
+  assert.equal(c.getScale(),50,'Settings sync must retain the current choice even if all persistence fails');
+});
+
+test('open settings stay eight pixels from the final toolbar bounds during UI scale changes', () => {
+  for (const position of ['right','top','bottom']) {
+    let zoom=1, previousZoom=1, animating=false, stored=100, frameId=0;
+    const frames=new Map(), styleValues=new Map();
+    const style=()=>({setProperty:(key,value)=>styleValues.set(key,value),getPropertyValue:key=>styleValues.get(key)||''});
+    const root={dataset:{configPosition:position},style:{setProperty:(key,value)=>{
+      previousZoom=zoom;zoom=Number(value);animating=!root.dataset.interfaceScaleChanging;
+    }}};
+    const barBounds=()=>{
+      const scale=animating?previousZoom:zoom;
+      const width=(position==='right'?240:800)*scale,height=(position==='right'?700:80)*scale;
+      const left=position==='right'?2400-20-width:(2400-width)/2;
+      const top=position==='right'?(1800-height)/2:position==='top'?20:1800-height-20;
+      return {left,top,width,height,right:left+width,bottom:top+height};
+    };
+    const bar={dataset:{position,currentMenu:'appSettingsConfig'},getBoundingClientRect:barBounds};
+    const holder={classList:{add(){}},style:style()};
+    const modal={style:style(),querySelector:()=>({getBoundingClientRect:()=>({height:32*zoom})}),
+      getBoundingClientRect:()=>({width:400*zoom,height:800*zoom})};
+    const trigger={getBoundingClientRect:()=>({...barBounds(),left:barBounds().left+100*zoom})};
+    const document={documentElement:root,
+      getElementById:id=>id==='sMConfigBar'?bar:id==='appSettingsConfig'?trigger:null,
+      querySelector:selector=>selector==='.modals'?holder:selector==='.sMModal.appSettingsConfig'?modal:null};
+    const window={innerWidth:2400,innerHeight:1800,
+      requestAnimationFrame:callback=>{frames.set(++frameId,callback);return frameId;},
+      cancelAnimationFrame:id=>frames.delete(id),
+      SignMakerInterfaceScale:{setScale:value=>stored=value}};
+    const c=context({document,window,getComputedStyle:()=>({fontSize:'20px',getPropertyValue:()=>String(zoom)}),
+      INTERFACE_UI_SCALE_MIN:50,INTERFACE_UI_SCALE_MAX:150,INTERFACE_UI_SCALE_STEP:10,INTERFACE_UI_SCALE_DEFAULT:100,
+      panelSelectorPopoverIsOpen:()=>false,schedulePanelSelectorPopoverPosition(){}});
+    const names=['normalizeInterfaceUIScale','getActualInterfaceUIScale','updateInterfaceUIScaleDisplay',
+      'panelStylePopoverIsOpen','positionPanelStylePopover','schedulePanelStylePopoverPosition','applyInterfaceUIScale'];
+    vm.runInContext('let panelStylePopoverFrame=0,interfaceScalePositionFrame=0;'+names.map(name=>declaration('public/js/form.js',name)).join('\n')+'this.apply=applyInterfaceUIScale;',c);
+    const check=()=>{
+      const bounds=barBounds(),left=parseFloat(styleValues.get('left')),top=parseFloat(styleValues.get('top'));
+      if(position==='right') {
+        assert.equal(bounds.left-left-400*zoom,8);
+        assert.equal(top,bounds.top);
+      } else if(position==='top') assert.equal(top-bounds.bottom,8);
+      else assert.equal(bounds.top-top-800*zoom,8);
+    };
+    for(const scale of [50,150,70,100]) {
+      c.apply(scale,{persist:true});
+      assert.equal(stored,scale);
+      check();
+      for(let pass=0;frames.size&&pass<5;pass++) {
+        const pending=[...frames.values()];frames.clear();pending.forEach(callback=>callback());
+      }
+      check();
+      assert.equal(root.dataset.interfaceScaleChanging,undefined);
+    }
+  }
 });

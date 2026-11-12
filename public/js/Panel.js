@@ -23,6 +23,9 @@ class Panel {
     this.verticalOffsetRem = 0;
     this.isVms = false;
     this.borderThickness = 0.2;
+    this.borderColor = "Inherit";
+    this.outerBorder = false;
+    this.outerBorderThickness = null;
     this.vmsResolution = "medium";
     this.vmsResolutionVersion = 5;
     this.vmsAntialias = true;
@@ -53,7 +56,27 @@ class Panel {
   static getBorderThickness(panel = {}) {
     if (panel.hideBorder === true && panel.borderThickness == null) return 0;
     const value = parseFloat(panel.borderThickness);
-    return Number.isFinite(value) ? Math.round(Math.max(0, Math.min(0.4, value)) * 10) / 10 : 0.2;
+    return Number.isFinite(value) ? Math.round(Math.max(0, Math.min(0.4, value)) * 100) / 100 : 0.2;
+  }
+
+  static getOuterBorderThickness(panel = {}) {
+    return panel.outerBorderThickness == null
+      ? Panel.getBorderThickness(panel)
+      : Panel.getBorderThickness({ borderThickness: panel.outerBorderThickness });
+  }
+
+  static setOuterBorderEnabled(panel, enabled) {
+    if (enabled && panel.outerBorderThickness == null) {
+      panel.outerBorderThickness = Panel.getBorderThickness(panel);
+    }
+    panel.outerBorder = enabled === true;
+  }
+
+  static getExitTabOuterClearance(panel, { bottomBorder = 0, embedded = false } = {}) {
+    // A separately bordered tab needs room for its lower material and the
+    // panel's upper material. Existing normal-border spacing is retained.
+    return panel.outerBorder === true && !embedded && parseFloat(bottomBorder) > 0
+      ? Panel.getOuterBorderThickness(panel) * 2 : 0;
   }
 
   static setBorderThickness(panel, value) {

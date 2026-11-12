@@ -388,7 +388,6 @@
   background-color: var(--yellow);
   border-color: var(--black);
   color: var(--black);
-  padding: 1px;
 }
 
 .exitTab.white,
@@ -438,7 +437,6 @@
   background-color: var(--fluorescent-yellow-green);
   border-color: var(--black);
   color: var(--black);
-  padding: 1px;
 }
 
 .exitTabContainer.green {
@@ -3844,6 +3842,10 @@ img.exitOnlyArrow:last-child {
   ) !important;
 }
 
+.sign .blockElementRow.fullBleed.fullBleedBackgroundPainted {
+  background-color: transparent !important;
+}
+
 /* Clearview fraction rendering. Highway Gothic keeps the existing single-glyph fraction behavior.
    The custom Clearview fraction uses natural inline flow so wider numerators or
    denominators push the following fraction pieces right instead of shifting left. */
@@ -4686,6 +4688,68 @@ img.exitOnlyArrow:last-child {
 
 .panel.panelBorderHidden > .signContainer > .guideArrows .modernExitLayout > :last-child {
   border-right-width: 0 !important;
+}
+
+/* The outer material expands the panel's layout beyond its inner border. */
+.panel > .signContainer > .sign,
+.panel > .signContainer > .guideArrows:not(.modernExitOnly):not(.exit_only),
+.panel > .signContainer > .aplArrows {
+  border-color: var(--panelBorderColor, currentColor);
+}
+
+.panel.customPanelBorder .exitTab,
+.panel.customPanelBorder > .signContainer > .guideArrows,
+.panel.customPanelBorder > .signContainer > .aplArrows,
+.panel.customPanelBorder .modernExitColoredLane,
+.panel.customPanelBorder .modernExitPlainLane {
+  border-color: var(--panelBorderColor) !important;
+  --exitOnlyBorderColor: var(--panelBorderColor);
+  --exitOnlyPanelBorderColor: var(--panelBorderColor);
+}
+
+.panel.hasPanelOuterBorder {
+  isolation: isolate;
+  padding: var(--panelOuterBorderWidth, 0rem);
+}
+
+.panel.hasPanelOuterBorder:first-child {
+  padding-left: calc(1rem + var(--panelOuterBorderWidth, 0rem));
+}
+
+.panel.hasPanelOuterBorder:last-child {
+  padding-right: calc(1rem + var(--panelOuterBorderWidth, 0rem));
+}
+
+.panelStack > .panel.hasPanelOuterBorder,
+.panelStack > .panel.hasPanelOuterBorder:first-child,
+.panelStack > .panel.hasPanelOuterBorder:last-child {
+  padding-left: var(--panelOuterBorderWidth, 0rem);
+  padding-right: var(--panelOuterBorderWidth, 0rem);
+}
+
+/* The expanded face owns the material, including the space at rounded corners. */
+.panel.hasPanelOuterBorder > .signContainer,
+.panel.hasPanelOuterBorder > .exitTabContainer,
+.panel.hasPanelOuterBorder > .exitTabContainer > .exitTabHolder {
+  background: transparent !important;
+}
+
+.panel.hasPanelOuterBorder > .signContainer:has(> .guideArrows.modernExitOnly)::before,
+.panel.hasPanelOuterBorder > .signContainer:has(> .guideArrows.modernExitOnly)::after {
+  content: none !important;
+}
+
+.panel > .panelOuterFace {
+  position: absolute;
+  z-index: -1;
+  display: block;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* Capital-only messages use the cap top and baseline, with no descender allowance. */

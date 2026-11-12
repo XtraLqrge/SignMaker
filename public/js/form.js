@@ -4713,18 +4713,33 @@ const formHandler = (function () {
     return normalized / 100;
   };
 
+  let interfaceScalePositionFrame = 0;
   const applyInterfaceUIScale = (value, { persist = false } = {}) => {
     const normalized = normalizeInterfaceUIScale(value);
     const cssScale = getActualInterfaceUIScale(normalized);
 
-    document.documentElement.style.setProperty("--sm-app-zoom", String(cssScale));
+    const root = document.documentElement;
+    // Commit the toolbar's final transform before measuring its open menu.
+    // ResizeObserver does not report a CSS transform animation's final bounds.
+    root.dataset.interfaceScaleChanging = "true";
+    root.style.setProperty("--sm-app-zoom", String(cssScale));
     updateInterfaceUIScaleDisplay(normalized);
+    if (persist) {
+      if (window.SignMakerInterfaceScale) window.SignMakerInterfaceScale.setScale(normalized);
+      else setStoredItem(STORAGE_KEYS.interfaceUiScale, String(normalized));
+    }
+    if (panelStylePopoverIsOpen()) positionPanelStylePopover();
+    if (panelSelectorPopoverIsOpen()) positionPanelSelectorPopover();
     schedulePanelStylePopoverPosition();
     schedulePanelSelectorPopoverPosition();
 
-    if (persist) {
-      setStoredItem(STORAGE_KEYS.interfaceUiScale, String(normalized));
-    }
+    window.cancelAnimationFrame(interfaceScalePositionFrame);
+    interfaceScalePositionFrame = window.requestAnimationFrame(() => {
+      interfaceScalePositionFrame = 0;
+      if (panelStylePopoverIsOpen()) positionPanelStylePopover();
+      if (panelSelectorPopoverIsOpen()) positionPanelSelectorPopover();
+      delete root.dataset.interfaceScaleChanging;
+    });
 
     return normalized;
   };
@@ -4750,7 +4765,7 @@ const formHandler = (function () {
   };
 
   const getStoredInterfaceUIScale = () =>
-    normalizeInterfaceUIScale(getStoredItem(STORAGE_KEYS.interfaceUiScale));
+    normalizeInterfaceUIScale(window.SignMakerInterfaceScale?.getScale() ?? getStoredItem(STORAGE_KEYS.interfaceUiScale));
 
   const bindInterfaceUIScaleControl = (root = document) => {
     const slider = root.getElementById
@@ -9779,6 +9794,7 @@ const formHandler = (function () {
       const lowerValue = rawValue.toLowerCase();
 
       if (lowerValue === "inherit" || lowerValue === "panel color" || lowerValue === "default") {
+        if (selectEl?.id === "panelBorderColor") return exposed?.getPanelContrastColor?.() || "White";
         const effectiveOverride = selectEl?.dataset?.colorPickerEffectiveColor || "";
         return effectiveOverride || getCurrentPanelColorForPicker();
       }
@@ -14908,6 +14924,12 @@ const formHandler = (function () {
       const cancelDownloadButton = document.getElementById("cancelDownload");
       const modalHolder = document.getElementById("modalHolder");
 
+      document.getElementById("importJSON")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        document.getElementById("importJSONFile")?.click();
+      });
+
       if (exportButton && downloadDialog && modalHolder) {
         exportButton.type = "button";
         exportButton.addEventListener("click", (event) => {
@@ -15118,15 +15140,6 @@ const formHandler = (function () {
 
       bindShortcutCaptureInputs(document);
       
-      const panelBorderSlider = document.getElementById("panelBorderThickness");
-      if (panelBorderSlider && panelBorderSlider.dataset.boundPanelBorder !== "true") {
-        panelBorderSlider.dataset.boundPanelBorder = "true";
-        panelBorderSlider.addEventListener("input", () => readForm({ deferHistoryEnd: true }));
-        const finishPanelBorderChange = () => exposed?.endUndoableChange?.();
-        ["change", "pointerup", "pointercancel", "blur"].forEach((event) =>
-          panelBorderSlider.addEventListener(event, finishPanelBorderChange));
-      }
-
       const bindExitTabSliderReset = (buttonId, inputId, valueId, getResetValue) => {
         const button = document.getElementById(buttonId);
         const input = document.getElementById(inputId);
@@ -15492,6 +15505,7 @@ const formHandler = (function () {
               !button.id ||
               button.id === "nightMode" ||
               button.id === "export" ||
+              button.id === "importJSON" ||
               button.id === "copySign" ||
               button.id === "hideConfig" ||
               button.id === "undoButton" ||
@@ -16823,6 +16837,7 @@ const formHandler = (function () {
       lib.appendOption(colorSelectElmt, color, {
         text: color,
       });
+      lib.appendOption(document.getElementById("panelBorderColor"), color, { text: color });
     }
 
     const cornerTypeSelectElmt = document.getElementById("panelCorner");
@@ -20573,14 +20588,26 @@ const formHandler = (function () {
     // Panel
     currentPanel.color = form["panelColor"].value;
     currentPanel.corner = form["panelCorner"].value;
+    currentPanel.borderColor = form["panelBorderColor"].value || "Inherit";
     const nextPanelBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelBorderThickness"].value });
     if (nextPanelBorderThickness !== Panel.getBorderThickness(currentPanel)) {
       Panel.setBorderThickness(currentPanel, nextPanelBorderThickness);
       if (form["borderThickness"]) form["borderThickness"].value = String(nextPanelBorderThickness);
     }
+    const outerBorderEnabled = form["panelOuterBorder"].checked;
+    const firstOuterBorderEnable = outerBorderEnabled && currentPanel.outerBorderThickness == null;
+    Panel.setOuterBorderEnabled(currentPanel, outerBorderEnabled);
+    if (firstOuterBorderEnable) {
+      form["panelOuterBorderThickness"].value = String(nextPanelBorderThickness);
+      form["panelOuterBorderThicknessValue"].value = String(nextPanelBorderThickness);
+    } else if (outerBorderEnabled) {
+      currentPanel.outerBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelOuterBorderThickness"].value });
+    }
+    document.getElementById("panelOuterBorderThicknessLabel").hidden = !outerBorderEnabled;
+    document.getElementById("panelOuterBorderThicknessControl").hidden = !outerBorderEnabled;
     const panelBorderRadiusInput = parseFloat(form["panelBorderRadius"].value);
     currentPanel.borderRadius = Number.isFinite(panelBorderRadiusInput)
-      ? Math.max(0, panelBorderRadiusInput)
+      ? Math.max(0, Math.min(5, panelBorderRadiusInput))
       : Panel.prototype.defaultBorderRadius;
 
     currentPanel.isVms = form["vmsPanel"].checked;
@@ -23812,11 +23839,22 @@ const formHandler = (function () {
           ? panel.borderRadius
           : Panel.prototype.defaultBorderRadius;
       panelBorderRadiusElmt.value = resolvedRadius;
+      document.getElementById("panelBorderRadiusValue").value = resolvedRadius;
     }
 
     const panelBorderThickness = Panel.getBorderThickness(panel);
     document.getElementById("panelBorderThickness").value = String(panelBorderThickness);
-    document.getElementById("panelBorderThicknessValue").value = `${Math.round(panelBorderThickness / 0.2 * 100)}%`;
+    document.getElementById("panelBorderThicknessValue").value = String(panelBorderThickness);
+    const panelBorderColorSelect = document.getElementById("panelBorderColor");
+    ensureCustomColorOptionsForSelect(panelBorderColorSelect);
+    ensureNativeColorSelectOption(panelBorderColorSelect, panel.borderColor || "Inherit");
+    panelBorderColorSelect.value = panel.borderColor || "Inherit";
+    document.getElementById("panelOuterBorder").checked = panel.outerBorder === true;
+    document.getElementById("panelOuterBorderThicknessLabel").hidden = panel.outerBorder !== true;
+    document.getElementById("panelOuterBorderThicknessControl").hidden = panel.outerBorder !== true;
+    const outerBorderThickness = Panel.getOuterBorderThickness(panel);
+    document.getElementById("panelOuterBorderThickness").value = String(outerBorderThickness);
+    document.getElementById("panelOuterBorderThicknessValue").value = String(outerBorderThickness);
     const selectionFlashElmt = document.getElementById("disableFlash");
     if (selectionFlashElmt) {
       selectionFlashElmt.checked = post?.disableFlash === true;

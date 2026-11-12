@@ -56,7 +56,8 @@ window.SignMakerPanelDrag = (() => {
     const signs = root.matches(".panelStack")
       ? Array.from(root.querySelectorAll(":scope > .panel > .signContainer"))
       : [root.querySelector(":scope > .signContainer")].filter(Boolean);
-    const boxes = signs.map(sign => sign.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+    const boxes = signs.map(sign => typeof PanelBorders !== 'undefined'
+      ? PanelBorders.bodyBounds(sign) : sign.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
     if (!boxes.length) return null;
     const left = Math.min(...boxes.map(rect => rect.left)), right = Math.max(...boxes.map(rect => rect.right));
     const top = Math.min(...boxes.map(rect => rect.top)), bottom = Math.max(...boxes.map(rect => rect.bottom));

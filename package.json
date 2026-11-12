@@ -8,6 +8,11 @@
     "optimize:assets": "node scripts/optimize-assets.cjs",
     "test:live": "node scripts/live-edit-check.cjs",
     "test:preview": "node scripts/preview-stability-check.cjs",
-    "test:json": "node scripts/json-sign-check.cjs"
+    "test:json": "node scripts/json-sign-check.cjs",
+    "test:copy-menu": "node scripts/copy-menu-check.cjs",
+    "test:drag-feedback": "node scripts/drag-feedback-check.cjs",
+    "test:checkbox-labels": "node scripts/checkbox-label-check.cjs",
+    "test:arrows-menu": "node scripts/arrow-menu-check.cjs",
+    "test:warning-diamond": "node scripts/warning-diamond-check.cjs"
   }
 }

@@ -959,7 +959,6 @@ label {
   width: 7.5rem;
   text-align: right;
   display: inline-block;
-  pointer-events: none;
 }
 
 label .resetBtn,
@@ -14995,7 +14994,7 @@ input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-
   transition: none !important;
   scroll-behavior: auto !important;
 }
-:root[data-dropdown-animations="false"] :not(.flash-selection) {
+:root[data-dropdown-animations="false"] :not(.flash-selection):not(.dragWiggle) {
   animation: none !important;
 }
 .smDropdownMenu .keyboardActive {

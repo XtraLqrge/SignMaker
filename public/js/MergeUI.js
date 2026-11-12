@@ -81,9 +81,21 @@ window.SignMakerMergeUI = (() => {
     element("sMSPGroupSelectedBlocks").addEventListener("click", () => app.groupSelectedBlockElements(formHandler.getMergeGroupSelectionRefs()));
     element("sMSPUngroupSelectedBlock").addEventListener("click", () => app.ungroupSelectedBlockElement());
     element("sMSPEditSelectedGroup").addEventListener("click", () => app.enterGroupElement());
-    element("copySign").addEventListener("click",()=>app.copySignToClipboard());
+    element("copySign").addEventListener("click",()=>{app.closeCopyPanelContextMenu();app.copySignToClipboard();});
     element("copySign").addEventListener("contextmenu",event=>app.openCopyPanelContextMenu(event));
-    document.addEventListener("click",event=>{if(!event.target.closest("#copyPanelContextMenu"))element("copyPanelContextMenu").classList.add("hidden");});
+    element("copySign").addEventListener("keydown", event => {
+      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10") || event.key === "ArrowDown") app.openCopyPanelContextMenu(event);
+    });
+    document.addEventListener("pointerdown", event => {
+      if (!event.target.closest("#copyPanelContextMenu")) app.closeCopyPanelContextMenu();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !element("copyPanelContextMenu").classList.contains("hidden")) {
+        event.preventDefault();
+        app.closeCopyPanelContextMenu(true);
+      }
+    });
+    window.addEventListener("resize", () => app.closeCopyPanelContextMenu(true));
     element("sMSPExitGroup").addEventListener("click", () => app.exitGroupElement());
     document.querySelectorAll('[data-property="sdGroupedBlock"] input, [data-property="sdGroupedBlock"] select, #sdShield_numberStyle')
       .forEach(field => {

@@ -73,6 +73,7 @@
   <script defer src="js/Sign.js?v=20261008d" type="text/javascript"></script>
   <script defer src="js/ExitTab.js?v=20261025c" type="text/javascript"></script>
   <script defer src="js/Panel.js?v=20261026-messages1" type="text/javascript"></script>
+<script defer src="js/DragFeedback.js"></script>
   <script defer src="js/PanelDrag.js" type="text/javascript"></script>
   <script defer src="js/VmsPanel.js?v=20261026-messages1" type="text/javascript"></script>
   <script defer src="js/Post.js?v=20261104-ui2" type="text/javascript"></script>
@@ -85,6 +86,8 @@
   <script defer src="js/IndexDB.js?v=20261104-ui2" type="text/javascript"></script>
   <script defer src="js/CustomShields.js" type="text/javascript"></script>
 <script defer src="js/SignDocument.js"></script>
+<script defer src="js/GuideArrowDefaults.js"></script>
+<script defer src="js/BlockContextMenu.js"></script>
   <script defer src="js/main.js?v=20261104-subpanels6" type="text/javascript"></script>
   <link href="css/merge-features.css?v=20261104-subpanels6" rel="stylesheet" type="text/css">
   <link href="css/legacy-shields.css?v=20261104" rel="stylesheet" type="text/css">
@@ -401,6 +404,7 @@
               <input type="range" id="appUiScale" min="50" max="150" step="10" value="100">
               <output id="appUiScaleValue" for="appUiScale">100%</output>
             </div></div></div>
+              <div class="generalSettingRow"><label for="appShrinkSignsForPanels" data-tooltip="Turn off to keep signs at their normal size when an editing panel opens.">Shrink signs to fit panels:</label><div class="generalSettingControl"><input type="checkbox" id="appShrinkSignsForPanels" checked></div></div>
               <div class="generalSettingRow"><label for="appToolbarPosition">Toolbar:</label><div class="generalSettingControl"><select id="appToolbarPosition">
               <option value="right">Right sidebar</option>
               <option value="bottom">Bottom bar</option>
@@ -907,6 +911,9 @@
               <label for="panelColor">Panel Color: </label>
               <select id="panelColor" onchange="formHandler.readForm();"></select>
               <br>
+              <label for="panelWarningDiamond">Warning sign (45° square):</label>
+              <input type="checkbox" id="panelWarningDiamond" onchange="formHandler.readForm();">
+              <br>
               <label for="panelCorner">Panel Corners: </label>
               <select id="panelCorner" onchange="formHandler.setPanelCorner(this.value);"></select>
               <br>
@@ -1083,10 +1090,10 @@
 
                 <div class="exitTabSliderGroup" data-exit-slider="cornerRadius">
                   <div class="exitTabCornerRadiusLabel">
-                    <label for="exitTabCornerRadius">Set Corner Radius (rem):</label>
+                    <label for="exitTabUsePanelCornerRadius">Use panel corner radius:</label>
                     <input type="checkbox" id="exitTabUsePanelCornerRadius" name="exitTabUsePanelCornerRadius" checked title="Use parent panel corner radius" aria-label="Use parent panel corner radius" onchange="formHandler.readForm();">
                   </div>
-                  <input type="range" id="exitTabCornerRadius" name="exitTabCornerRadius" min="0" max="2" step="0.05" value="0.75" oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);" onchange="formHandler.readForm();">
+                  <input type="range" id="exitTabCornerRadius" aria-label="Custom corner radius (rem)" name="exitTabCornerRadius" min="0" max="2" step="0.05" value="0.75" oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);" onchange="formHandler.readForm();">
                   <label for="exitTabCornerRadius" id="exitTabCornerRadiusValue" class="exitTabSliderValue">0.75</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabCornerRadiusReset" aria-label="Reset corner radius">
                     <span class="material-symbols-outlined">refresh</span>
@@ -2341,9 +2348,9 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <img src="img/other-symbols/ui/template.svg" alt="Templates Icon" class="configIcon templateIcon" loading="lazy" decoding="async">
         <span id="templatesButtonLabel">Templates</span>
       </button>
-      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" title="Copy Sign" data-tooltip="Copy Sign">
+      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" aria-haspopup="menu" aria-expanded="false" aria-controls="copyPanelContextMenu" title="Copy Sign (right-click to choose a panel)" data-tooltip="Copy Sign (right-click to choose a panel)">
   <span class="material-symbols-outlined">content_copy</span><span class="buttonLabel">Copy Sign</span>
-</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
+</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden" role="menu" aria-label="Choose a sign panel to copy" tabindex="-1"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
         <span class="material-symbols-outlined"> download </span>
         <span class="buttonLabel">Export</span>
       </button>

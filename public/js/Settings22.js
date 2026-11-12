@@ -8,12 +8,13 @@ window.SignMakerSettings22=(()=>{
  };
  const sync=()=>{
   if(!preferences)return;
-  const state=JSON.stringify([preferences.getTheme(),preferences.getScale(),preferences.getToolbar(),preferences.getKeybind(),preferences.getRestore(),window.SignMakerDropdowns.getAnimationsEnabled()]);
+  const state=JSON.stringify([preferences.getTheme(),preferences.getScale(),preferences.getShrinkSignsForPanels(),preferences.getToolbar(),preferences.getKeybind(),preferences.getRestore(),window.SignMakerDropdowns.getAnimationsEnabled()]);
   if(state===lastState)return;
   lastState=state;
   field('appThemeMode').value=preferences.getTheme();
   field('appUiScale').value=String(preferences.getScale());
   field('appUiScaleValue').textContent=field('appUiScale').value+'%';
+  field('appShrinkSignsForPanels').checked=preferences.getShrinkSignsForPanels();
   field('appToolbarPosition').value=preferences.getToolbar();
   field('appKeybindMode').value=preferences.getKeybind();
   field('restoreOnRefresh').value=preferences.getRestore();
@@ -21,6 +22,7 @@ window.SignMakerSettings22=(()=>{
   refreshPickers();
  };
  const showDefaults=()=>{
+  window.SignMakerGuideDefaults?.init();
   const selected=field('defaultsCategory').value;
   field('defaultsFields').querySelectorAll('fieldset').forEach(section=>section.hidden=section.id!==selected);
   refreshPickers();
@@ -40,6 +42,7 @@ window.SignMakerSettings22=(()=>{
   field('appThemeMode').addEventListener('change',()=>{preferences.setTheme(field('appThemeMode').value);sync();});
   field('appUiScale').addEventListener('input',()=>{preferences.setScale(field('appUiScale').value);sync();});
   field('appUiScale').addEventListener('change',()=>{preferences.setScale(field('appUiScale').value);sync();});
+  field('appShrinkSignsForPanels').addEventListener('change',()=>{preferences.setShrinkSignsForPanels(field('appShrinkSignsForPanels').checked);sync();});
   field('appToolbarPosition').addEventListener('change',()=>{preferences.setToolbar(field('appToolbarPosition').value);sync();});
   field('appKeybindMode').addEventListener('change',()=>{preferences.setKeybind(field('appKeybindMode').value);sync();});
   field('restoreOnRefresh').addEventListener('change',()=>{preferences.setRestore(field('restoreOnRefresh').value);sync();});
@@ -49,7 +52,7 @@ window.SignMakerSettings22=(()=>{
   field('copySignsOnly').addEventListener('change',()=>{
    const bridge=app.exposeToFormHandler;bridge.beginUndoableChange();app.getPost().copySignsOnly=field('copySignsOnly').checked;bridge.endUndoableChange();
   });
-  new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme-mode','data-config-position','data-dropdown-animations','style']});
+  new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme-mode','data-config-position','data-dropdown-animations','data-shrink-signs-for-panels','style']});
   showDefaults();sync();
  };
  const showLegacyPage=id=>{

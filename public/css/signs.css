@@ -4702,3 +4702,26 @@ img.exitOnlyArrow:last-child {
 .bE-electronicSign.bE-multilineTextElement > .bE-textLine:empty {
   min-height: 1em;
 }
+
+/* Rotate only the square face. Content retains its normal coordinate system. */
+.panel.warningDiamond > .signContainer {
+  position:relative; display:grid; place-items:center;
+  width:var(--warningDiamondExtent, max-content) !important;
+  height:var(--warningDiamondExtent, auto) !important;
+  background:transparent !important; border:0 !important;
+  overflow:visible !important;
+}
+.panel.warningDiamond > .signContainer > .sign {
+  grid-area:1 / 1; width:max-content !important; min-width:0 !important;
+  background:transparent !important; border-color:transparent !important;
+  box-shadow:none !important; flex:none;
+}
+.warningDiamondFace {
+  /* Rounded panels hide their wrapper; the face must opt back into painting. */
+  visibility:visible;
+  position:absolute; width:70.710678%; height:70.710678%;
+  left:14.644661%; top:14.644661%; transform:rotate(45deg);
+  border:var(--panelBorderWidth,0.2rem) solid; box-sizing:border-box;
+  border-radius:var(--signBorderRadius,0.75rem); pointer-events:none;
+}
+.panel.sharp .warningDiamondFace { border-radius:0; }

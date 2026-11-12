@@ -824,3 +824,18 @@ test('SVG metadata embeds the shared versioned document and escapes XML text', (
   assert.equal((metadata.match(/<\/metadata>/g) || []).length, 1);
   assert.throws(() => codec.svgMetadata('{"schemaVersion":999}'), /version/);
 });
+
+test('panel auto-shrink preference keeps normal scale while retaining side-panel positioning', () => {
+  const post = {offsetWidth:900,style:{transform:''}};
+  const root = {dataset:{},clientWidth:1000};
+  let menus = [{pushDirection:'left',element:{getBoundingClientRect:()=>({right:500})}}];
+  const c=context({window:{innerWidth:1000},document:{documentElement:root,getElementById:()=>post},getMainVisualScale:()=>1,getVisibleSideMenuElements:()=>menus,SIDE_MENU_VIEWPORT_GAP:20,MIN_POST_VIEW_SCALE:0.1});
+  vm.runInContext(declaration('public/js/main.js','updatePostViewportLayout')+'this.update=updatePostViewportLayout;',c);
+  c.update();
+  assert.equal(post.style.transform, 'translateX(250px) scale(0.5111111111111111)');
+  root.dataset.shrinkSignsForPanels='false';c.update();
+  assert.equal(post.style.transform,'translateX(250px) scale(1)');
+  menus=[];c.update();assert.equal(post.style.transform,'translateX(0px) scale(1)');
+  menus=[{pushDirection:'right',element:{getBoundingClientRect:()=>({left:500})}}];c.update();
+  assert.equal(post.style.transform,'translateX(-250px) scale(1)');
+});

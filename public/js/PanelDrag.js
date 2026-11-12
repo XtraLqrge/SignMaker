@@ -134,6 +134,7 @@ window.SignMakerPanelDrag = (() => {
             }).filter(peer => Number.isInteger(peer.index) && peer.rect);
           state.axis = horizontal ? "horizontal" : "vertical";
           root.classList.add("panelDragging");
+          view.SignMakerDragFeedback?.begin([root, ...peers.map(peer => peer.element)]);
           doc.documentElement.classList.add("panelDragActive");
           handle.setPointerCapture?.(event.pointerId);
         }
@@ -161,6 +162,7 @@ window.SignMakerPanelDrag = (() => {
         view.removeEventListener("resize", cancel);
         handle.removeEventListener("lostpointercapture", cancel);
         if (handle.hasPointerCapture?.(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+        view.SignMakerDragFeedback?.end();
         root.classList.remove("panelDragging");
         doc.documentElement.classList.remove("panelDragActive");
         state.drop?.peer.element.classList.remove("dropBefore", "dropAfter");

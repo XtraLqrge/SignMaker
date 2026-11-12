@@ -954,6 +954,7 @@ const formHandler = (function () {
       );
     };
     const STORAGE_KEYS = {
+        shrinkSignsForPanels: "signMaker.shrinkSignsForPanels",
         postPosition: "signMaker.postPosition",
         postColor: "signMaker.postColor",
         showPost: "signMaker.showPost",
@@ -4747,6 +4748,13 @@ const formHandler = (function () {
   const zoomInterfaceOut = () => {
     const nextScale = stepInterfaceUIScale(-1);
     return nextScale;
+  };
+
+  const getShrinkSignsForPanels = () => getStoredItem(STORAGE_KEYS.shrinkSignsForPanels) !== "false";
+  const applyShrinkSignsForPanels = (enabled, {persist = false} = {}) => {
+    const value = enabled !== false;
+    document.documentElement.dataset.shrinkSignsForPanels = String(value);
+    if (persist) setStoredItem(STORAGE_KEYS.shrinkSignsForPanels, String(value));
   };
 
   const getStoredInterfaceUIScale = () =>
@@ -8724,6 +8732,7 @@ const formHandler = (function () {
     applyConfigBarPosition(getStoredConfigBarPosition());
     bindUndoControls();
     applyInterfaceUIScale(getStoredInterfaceUIScale());
+    applyShrinkSignsForPanels(getShrinkSignsForPanels());
     bindInterfaceUIScaleControl(document);
 
     try {
@@ -14894,6 +14903,8 @@ const formHandler = (function () {
       window.SignMakerSettings22.init({
         getTheme:getStoredInterfaceThemeMode,
         setTheme:value=>{applyInterfaceThemeMode(value,{persist:true});updateUtilityButtonLabels();},
+        getShrinkSignsForPanels,
+        setShrinkSignsForPanels:value=>applyShrinkSignsForPanels(value,{persist:true}),
         getScale:getStoredInterfaceUIScale,
         setScale:value=>applyInterfaceUIScale(value,{persist:true}),
         getToolbar:getStoredConfigBarPosition,
@@ -20573,6 +20584,7 @@ const formHandler = (function () {
     // Panel
     currentPanel.color = form["panelColor"].value;
     currentPanel.corner = form["panelCorner"].value;
+    currentPanel.warningDiamond = document.getElementById("panelWarningDiamond").checked;
     const nextPanelBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelBorderThickness"].value });
     if (nextPanelBorderThickness !== Panel.getBorderThickness(currentPanel)) {
       Panel.setBorderThickness(currentPanel, nextPanelBorderThickness);
@@ -23797,6 +23809,7 @@ const formHandler = (function () {
       }
     }
 
+    document.getElementById("panelWarningDiamond").checked = panel.warningDiamond === true;
     const panelCornerSelectElmt = document.getElementById("panelCorner");
     for (const option of panelCornerSelectElmt.options) {
       if (option.value == panel.corner) {

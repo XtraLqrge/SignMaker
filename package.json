@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "node scripts/build.cjs",
-    "test": "node --test scripts/optimization.test.cjs",
+    "test": "node --test scripts/optimization.test.cjs scripts/mobile-dropdowns.test.cjs scripts/mobile-gestures.test.cjs scripts/mobile-subpanels.test.cjs scripts/mobile-exit-tabs.test.cjs",
     "test:browser": "node scripts/browser-check.cjs",
     "optimize:assets": "node scripts/optimize-assets.cjs",
     "test:live": "node scripts/live-edit-check.cjs",

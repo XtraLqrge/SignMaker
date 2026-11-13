@@ -4,27 +4,31 @@
   "localStylesheetCount": 1,
   "deferredEditor": [
     "js/AlignmentButtons.f1278edc85d1f9aa.js",
-    "js/NativeSelect.056b72186c01e238.js",
+    "js/NativeSelect.7b59a44862f35bb2.js",
     "js/FDOTSupports.26d110c7592ad794.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
-    "js/form.7f03867597ce7325.js",
+    "js/form.538e763214c012bf.js",
     "js/IndexDB.905b66ca7e8b07ba.js",
     "js/CustomShields.85049f03f2f32351.js",
-    "js/MobileUI.63a8b59b504480c7.js",
+    "js/MobileGestures.d651e7f9704ea167.js",
+    "js/MobileSubpanels.1b126bebda2e3325.js",
+    "js/MobileExitTabs.d193a412da764660.js",
+    "js/MobileUI.a305ea6158e7dd65.js",
+    "js/MobileDropdowns.82efb2293f24f97e.js",
     "js/MergeUI.07d4ec4d260b714d.js",
     "js/Settings22.d5c85ec51307e808.js",
     "js/DropdownTheme.8ec2ddbe056ed93d.js"
   ],
-  "deferredStyles": "css/app.d69fbb94a01f7751.css",
+  "deferredStyles": "css/app.14136147486f20ca.css",
   "startupJS": {
-    "bytes": 616033,
-    "gzipBytes": 169185,
-    "brotliBytes": 140368
+    "bytes": 616080,
+    "gzipBytes": 169204,
+    "brotliBytes": 140295
   },
   "criticalCSS": {
-    "bytes": 273562,
-    "gzipBytes": 59388,
-    "brotliBytes": 50569
+    "bytes": 288292,
+    "gzipBytes": 63043,
+    "brotliBytes": 54198
   },
   "inlineFontHelper": {
     "bytes": 8187,
@@ -32,9 +36,9 @@
     "brotliBytes": 1996
   },
   "uiIconFont": {
-    "file": "fonts/ui/symbols.c05d0d02818ef06d.woff2",
-    "bytes": 18628,
-    "names": 52
+    "file": "fonts/ui/symbols.b86218c91b5064ea.woff2",
+    "bytes": 21060,
+    "names": 59
   },
   "assets": [
     {
@@ -43,9 +47,9 @@
       "bytes": 1162839
     },
     {
-      "output": "export-assets/b4a01196899dd4ee.js",
+      "output": "export-assets/91397fadae7b3693.js",
       "exportOnly": true,
-      "bytes": 1395994
+      "bytes": 1399214
     },
     {
       "output": "export-assets/7e863f96e7472f36.js",
@@ -527,30 +531,30 @@
     },
     {
       "source": "js/ExportAssets.js",
-      "output": "js/ExportAssets.bf286b9c96c4b089.js",
+      "output": "js/ExportAssets.1d472f4b14d1d257.js",
       "original": {
         "bytes": 134607,
-        "gzipBytes": 11190,
-        "brotliBytes": 8877
+        "gzipBytes": 11191,
+        "brotliBytes": 8899
       },
       "optimized": {
         "bytes": 132945,
         "gzipBytes": 10988,
-        "brotliBytes": 8760
+        "brotliBytes": 8724
       }
     },
     {
       "source": "js/main.js",
-      "output": "js/main.bc9f44940f63ecc3.js",
+      "output": "js/main.9874b9df8913d245.js",
       "original": {
-        "bytes": 758013,
-        "gzipBytes": 133240,
-        "brotliBytes": 105085
+        "bytes": 758093,
+        "gzipBytes": 133266,
+        "brotliBytes": 105154
       },
       "optimized": {
-        "bytes": 326279,
-        "gzipBytes": 86962,
-        "brotliBytes": 71248
+        "bytes": 326326,
+        "gzipBytes": 86981,
+        "brotliBytes": 71175
       }
     },
     {
@@ -569,16 +573,16 @@
     },
     {
       "source": "js/NativeSelect.js",
-      "output": "js/NativeSelect.056b72186c01e238.js",
+      "output": "js/NativeSelect.7b59a44862f35bb2.js",
       "original": {
-        "bytes": 19307,
-        "gzipBytes": 5585,
-        "brotliBytes": 4795
+        "bytes": 20755,
+        "gzipBytes": 5953,
+        "brotliBytes": 5118
       },
       "optimized": {
-        "bytes": 12279,
-        "gzipBytes": 4727,
-        "brotliBytes": 4078
+        "bytes": 13112,
+        "gzipBytes": 5018,
+        "brotliBytes": 4335
       }
     },
     {
@@ -611,16 +615,16 @@
     },
     {
       "source": "js/form.js",
-      "output": "js/form.7f03867597ce7325.js",
+      "output": "js/form.538e763214c012bf.js",
       "original": {
-        "bytes": 928811,
-        "gzipBytes": 157923,
-        "brotliBytes": 120531
+        "bytes": 933026,
+        "gzipBytes": 158963,
+        "brotliBytes": 121338
       },
       "optimized": {
-        "bytes": 471463,
-        "gzipBytes": 108577,
-        "brotliBytes": 85180
+        "bytes": 473839,
+        "gzipBytes": 109227,
+        "brotliBytes": 85561
       }
     },
     {
@@ -652,17 +656,73 @@
       }
     },
     {
-      "source": "js/MobileUI.js",
-      "output": "js/MobileUI.63a8b59b504480c7.js",
+      "source": "js/MobileGestures.js",
+      "output": "js/MobileGestures.d651e7f9704ea167.js",
       "original": {
-        "bytes": 14476,
-        "gzipBytes": 4285,
-        "brotliBytes": 3676
+        "bytes": 9933,
+        "gzipBytes": 2891,
+        "brotliBytes": 2486
       },
       "optimized": {
-        "bytes": 8981,
-        "gzipBytes": 3395,
-        "brotliBytes": 2958
+        "bytes": 6240,
+        "gzipBytes": 2421,
+        "brotliBytes": 2146
+      }
+    },
+    {
+      "source": "js/MobileSubpanels.js",
+      "output": "js/MobileSubpanels.1b126bebda2e3325.js",
+      "original": {
+        "bytes": 21917,
+        "gzipBytes": 6068,
+        "brotliBytes": 5314
+      },
+      "optimized": {
+        "bytes": 13886,
+        "gzipBytes": 4778,
+        "brotliBytes": 4239
+      }
+    },
+    {
+      "source": "js/MobileExitTabs.js",
+      "output": "js/MobileExitTabs.d193a412da764660.js",
+      "original": {
+        "bytes": 8626,
+        "gzipBytes": 2616,
+        "brotliBytes": 2265
+      },
+      "optimized": {
+        "bytes": 5377,
+        "gzipBytes": 2190,
+        "brotliBytes": 1913
+      }
+    },
+    {
+      "source": "js/MobileUI.js",
+      "output": "js/MobileUI.a305ea6158e7dd65.js",
+      "original": {
+        "bytes": 19115,
+        "gzipBytes": 5331,
+        "brotliBytes": 4625
+      },
+      "optimized": {
+        "bytes": 11818,
+        "gzipBytes": 4252,
+        "brotliBytes": 3742
+      }
+    },
+    {
+      "source": "js/MobileDropdowns.js",
+      "output": "js/MobileDropdowns.82efb2293f24f97e.js",
+      "original": {
+        "bytes": 10719,
+        "gzipBytes": 3200,
+        "brotliBytes": 2742
+      },
+      "optimized": {
+        "bytes": 6565,
+        "gzipBytes": 2581,
+        "brotliBytes": 2233
       }
     },
     {
@@ -725,25 +785,25 @@
         "css/picker-theme.css",
         "css/mobile.css"
       ],
-      "output": "css/app.d69fbb94a01f7751.css",
+      "output": "css/app.14136147486f20ca.css",
       "original": {
-        "bytes": 757639,
-        "gzipBytes": 124772,
-        "brotliBytes": 98053
+        "bytes": 791648,
+        "gzipBytes": 131099,
+        "brotliBytes": 103591
       },
       "optimized": {
-        "bytes": 635950,
-        "gzipBytes": 104682,
-        "brotliBytes": 83046
+        "bytes": 666986,
+        "gzipBytes": 110347,
+        "brotliBytes": 88300
       }
     },
     {
       "critical": true,
-      "output": "css/sign.3de025abd1dc839d.css",
+      "output": "css/sign.c596dfdef4011be8.css",
       "optimized": {
-        "bytes": 273562,
-        "gzipBytes": 59388,
-        "brotliBytes": 50569
+        "bytes": 288292,
+        "gzipBytes": 63043,
+        "brotliBytes": 54198
       }
     },
     {

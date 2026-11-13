@@ -7,12 +7,22 @@ window.SignMakerMobile = (() => {
     subPanelConfig: 'Subpanels', guideArrowConfig: 'Guide arrows', postStyleConfig: 'Post style',
     templates: 'Templates', appSettingsConfig: 'Settings', mobileMore: 'More',
   };
-  let active = null, initialized = false, frame = 0, exporting = false;
+  let active = null, initialized = false, frame = 0, exporting = false, readyObserver;
   let workspace, canvas, bar, editor, editorTitle, more, panelPicker, previous, next, count;
   let canvasHome, modalsHome, modals, history, pickerHome, utilityHomes = [];
+  let exportPreview, exportPreviewHome;
   let resizeObserver, observedPanel, lastMenu = '', lastIndex = -1, focusOrigin = null;
+  let wholePost = false, wholePostToggle, gestures;
   const getApp = () => typeof app !== 'undefined' ? app : null;
   const currentIndex = () => getApp()?.exposeToFormHandler.vars.currentlySelectedPanelIndex ?? 0;
+
+  const wantsMobileWorkspace = () => {
+    if (new URLSearchParams(window.location.search).get('mobile') === '1') return true;
+    const widths = [window.innerWidth, document.documentElement.clientWidth, window.visualViewport?.width]
+      .filter(value => Number.isFinite(value) && value > 0);
+    const touchScreen = window.navigator?.maxTouchPoints > 0 && window.screen?.width > 0 && window.screen.width <= 900;
+    return media.matches || (widths.length > 0 && Math.min(...widths) <= 900) || touchScreen;
+  };
 
   const previewMetrics = (width, height, availableWidth, availableHeight) => {
     if (![width, height, availableWidth, availableHeight].every(value => Number.isFinite(value) && value > 0)) {
@@ -62,6 +72,17 @@ window.SignMakerMobile = (() => {
     const panels = getApp()?.getPost()?.panels || [];
     const index = Math.max(0, Math.min(panels.length - 1, currentIndex() + delta));
     if (index === currentIndex()) return;
+    wholePost = false;
+    closeEditor();
+    getApp().changeEditingPanel(index, { suppressFlash: true });
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    schedule();
+  };
+  const selectPanel = index => {
+    const panel = getApp()?.getPost()?.panels[index];
+    if (!panel) return;
+    wholePost = false;
+    if (panel.hiddenFromPost) getApp().togglePanelHidden(index);
     closeEditor();
     getApp().changeEditingPanel(index, { suppressFlash: true });
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -74,10 +95,32 @@ window.SignMakerMobile = (() => {
     bar = document.getElementById('sMConfigBar');
     modals = form.querySelector('.modals');
     panelPicker = document.getElementById('panelSelect');
+    const wholePostLabel = document.createElement('label');
+    wholePostLabel.className = 'mobileWholePostOption';
+    wholePostToggle = document.createElement('input');
+    wholePostToggle.type = 'checkbox';
+    wholePostToggle.id = 'mobileShowWholePost';
+    wholePostToggle.addEventListener('change', () => {
+      wholePost = wholePostToggle.checked;
+      gestures?.cancel();
+      closeEditor();
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      schedule();
+    });
+    const wholePostText = document.createElement('span');
+    wholePostText.textContent = 'Show entire post';
+    wholePostLabel.append(wholePostText, wholePostToggle);
+    panelPicker.prepend(wholePostLabel);
+    const reorderHint = document.createElement('p');
+    reorderHint.className = 'mobilePanelReorderHint';
+    reorderHint.textContent = 'Hold a panel box to reorder it.';
+    wholePostLabel.after(reorderHint);
     history = bar.querySelector('.historyBar');
     canvasHome = markHome(canvas);
     modalsHome = markHome(modals);
     pickerHome = markHome(panelPicker);
+    exportPreview = document.getElementById('downloadPreview');
+    if (exportPreview) exportPreviewHome = markHome(exportPreview);
     workspace = document.createElement('div');
     workspace.id = 'mobileWorkspace';
     workspace.hidden = true;
@@ -168,13 +211,8 @@ window.SignMakerMobile = (() => {
       const trigger = event.target.closest('.sMConfigOption');
       if (active && trigger) focusOrigin = trigger.id ? trigger : document.getElementById('panelSelector').parentElement;
     }, true);
-    // Canvas gestures select content; they never start the desktop drag tools.
-    document.addEventListener('pointerdown', event => {
-      if (active && canvas.contains(event.target)) event.stopImmediatePropagation();
-    }, true);
-    document.addEventListener('dragstart', event => {
-      if (active && canvas.contains(event.target)) event.preventDefault();
-    }, true);
+    gestures = window.SignMakerMobileGestures?.install({ canvas, getApp, isActive: () => active,
+      isWholePost: () => wholePost, selectPanel });
     document.addEventListener('keydown', event => {
       if (active && event.key === 'Escape' && bar.dataset.currentMenu === 'mobileMore') closeEditor();
     });
@@ -182,15 +220,28 @@ window.SignMakerMobile = (() => {
       if (!active) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      getApp()?.copySignToClipboard(getApp().getMobileExportPanelIndex());
+      gestures?.cancel();
+      getApp()?.copySignToClipboard(wholePost ? undefined : getApp().getMobileExportPanelIndex());
     }, true);
     document.getElementById('export').addEventListener('click', () => {
-      if (active) getApp()?.prepareMobilePanelExport();
+      if (active) {
+        gestures?.cancel();
+        getApp()?.prepareMobilePanelExport();
+      }
     }, true);
     new MutationObserver(schedule).observe(bar, { attributes: true, attributeFilter: ['data-current-menu'] });
     new MutationObserver(schedule).observe(document.getElementById('panelContainer'), { childList: true, subtree: true });
     resizeObserver = new ResizeObserver(schedule);
     resizeObserver.observe(workspace);
+    window.SignMakerMobileSubpanels?.init();
+  };
+
+  const prepareEditor = menu => {
+    if (!active) return;
+    editor.hidden = !menu;
+    modals.hidden = menu === 'mobileMore';
+    window.SignMakerMobileExitTabs?.sync();
+    window.SignMakerMobileSubpanels?.refresh();
   };
 
   const mountPanelPicker = node => {
@@ -200,40 +251,68 @@ window.SignMakerMobile = (() => {
   const fitPreview = panel => {
     if (!panel || exporting) return;
     const post = document.getElementById('postContainer');
-    const height = panel.offsetHeight;
-    const width = panel.offsetWidth;
+    let height = panel.offsetHeight, width = panel.offsetWidth;
+    let minX = 0, minY = 0;
+    if (wholePost) {
+      const rect = post.getBoundingClientRect();
+      const scale = post.offsetWidth > 0 && rect.width > 0 ? rect.width / post.offsetWidth : 1;
+      width = post.offsetWidth;
+      height = post.offsetHeight;
+      for (const node of post.querySelectorAll('.panel:not(.panelHiddenFromPost), .post, .fdotSupport')) {
+        const bounds = node.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) continue;
+        const left = (bounds.left - rect.left) / scale, top = (bounds.top - rect.top) / scale;
+        minX = Math.min(minX, left);
+        minY = Math.min(minY, top);
+        width = Math.max(width, left + bounds.width / scale);
+        height = Math.max(height, top + bounds.height / scale);
+      }
+      width -= minX;
+      height -= minY;
+    }
     const metrics = previewMetrics(width, height, canvas.clientWidth - 24,
       Math.max(180, (window.innerHeight || 700) * (editor.hidden ? 0.6 : 0.42)));
     const scaleValue = String(metrics.scale);
     const heightValue = `${metrics.height}px`;
     if (post.style.getPropertyValue('--mobile-sign-scale') !== scaleValue) post.style.setProperty('--mobile-sign-scale', scaleValue);
+    post.style.setProperty('--mobile-post-width', `${width * metrics.scale}px`);
+    post.style.setProperty('--mobile-post-x', `${-minX}px`);
+    post.style.setProperty('--mobile-post-y', `${-minY}px`);
     if (canvas.style.height !== heightValue) canvas.style.height = heightValue;
   };
   const sync = () => {
     frame = 0;
     if (!active || exporting) return;
+    window.SignMakerMobileExitTabs?.sync();
+    window.SignMakerMobileSubpanels?.refresh();
+    canvas.classList.toggle('mobileWholePost', wholePost);
+    wholePostToggle.checked = wholePost;
+    workspace.querySelector('.mobileTapHint').textContent = wholePost
+      ? 'Tap a panel to edit it. Hold a panel until it shakes, then drag left or right to reorder.'
+      : 'Tap text, an exit tab, or an arrow to edit it.';
     const index = currentIndex();
     const panels = Array.from(document.querySelectorAll('#panelContainer .panel'));
     let selected = null;
     for (const panel of panels) {
       const current = Number(panel.dataset.panelIndex) === index;
       panel.classList.toggle('mobileCurrentPanel', current);
-      panel.inert = !current;
-      if (current) {
+      panel.inert = !wholePost && !current;
+      if (current || wholePost) {
         panel.removeAttribute('aria-hidden');
-        selected = panel;
+        if (current) selected = panel;
       } else panel.setAttribute('aria-hidden', 'true');
     }
-    if (observedPanel !== selected) {
+    const measuredNode = wholePost ? document.getElementById('postContainer') : selected;
+    if (observedPanel !== measuredNode) {
       if (observedPanel) resizeObserver.unobserve(observedPanel);
-      observedPanel = selected;
-      if (selected) resizeObserver.observe(selected);
+      observedPanel = measuredNode;
+      if (observedPanel) resizeObserver.observe(observedPanel);
     }
     const length = getApp()?.getPost()?.panels.length || 0;
-    const countLabel = length ? `Panel ${index + 1} of ${length}` : 'No panels';
+    const countLabel = wholePost ? 'Entire post' : length ? `Panel ${index + 1} of ${length}` : 'No panels';
     if (count.textContent !== countLabel) count.textContent = countLabel;
-    previous.disabled = index <= 0;
-    next.disabled = index >= length - 1;
+    previous.disabled = wholePost || index <= 0;
+    next.disabled = wholePost || index >= length - 1;
     const menu = bar.dataset.currentMenu || '';
     const changed = menu !== lastMenu || index !== lastIndex;
     editor.hidden = !menu;
@@ -265,8 +344,10 @@ window.SignMakerMobile = (() => {
   const setActive = enabled => {
     if (enabled === active) return;
     closeEditor();
+    gestures?.cancel();
     active = enabled;
     document.documentElement.toggleAttribute('data-mobile-ui', active);
+    window.SignMakerMobileExitTabs?.setActive(active);
     workspace.hidden = !active;
     if (active) {
       workspace.insertBefore(canvas, workspace.querySelector('.mobileTapHint'));
@@ -275,6 +356,7 @@ window.SignMakerMobile = (() => {
       mountPanelPicker(panelPicker);
       workspace.querySelector('.mobileHeader').append(history);
       for (const [, node] of utilityHomes) if (node !== history) more.append(node);
+      document.querySelector('#downloadContents .downloadActionButtons')?.before(exportPreview);
       bar.classList.remove('invisible');
     } else {
       canvas.classList.remove('mobileCanvas');
@@ -283,6 +365,7 @@ window.SignMakerMobile = (() => {
       restore(modalsHome, modals);
       modals.hidden = false;
       restore(pickerHome, panelPicker);
+      if (exportPreview) restore(exportPreviewHome, exportPreview);
       for (const [marker, node] of utilityHomes) restore(marker, node);
       document.querySelectorAll('.mobileCurrentPanel, #panelContainer .panel[inert]').forEach(node => {
         node.classList.remove('mobileCurrentPanel');
@@ -316,14 +399,33 @@ window.SignMakerMobile = (() => {
   };
   const init = () => {
     if (initialized) return;
-    initialized = true;
     createWorkspace();
-    const update = () => setActive(new URLSearchParams(window.location.search).get('mobile') === '1' || media.matches);
+    initialized = true;
+    const update = () => {
+      setActive(wantsMobileWorkspace());
+      schedule();
+    };
     media.addEventListener('change', update);
-    window.addEventListener('resize', schedule);
-    window.visualViewport?.addEventListener('resize', schedule);
+    window.addEventListener('resize', update);
+    window.visualViewport?.addEventListener('resize', update);
     document.fonts?.ready.then(schedule);
     update();
   };
-  return { init, get active() { return active; }, schedule, mountPanelPicker, withFullLayout, previewMetrics };
+  const connect = () => {
+    const ready = () => {
+      if (document.documentElement.dataset.appReady !== 'true') return;
+      init();
+      readyObserver?.disconnect();
+      readyObserver = null;
+    };
+    if (document.documentElement.dataset.appReady === 'true') {
+      ready();
+      return;
+    }
+    readyObserver = new MutationObserver(ready);
+    readyObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-app-ready'] });
+  };
+  return { init, connect, get active() { return active; }, get showingWholePost() { return active && wholePost; },
+    schedule, prepareEditor, mountPanelPicker, withFullLayout, previewMetrics, wantsMobileWorkspace };
 })();
+window.SignMakerMobile.connect();

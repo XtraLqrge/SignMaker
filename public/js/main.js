@@ -12708,9 +12708,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           panelElmt.dataset.panelIndex = index.toString();
           if (window.SignMakerMobile?.active) {
             const current = index === currentlySelectedPanelIndex;
+            const visible = current || window.SignMakerMobile.showingWholePost;
             panelElmt.classList.toggle('mobileCurrentPanel', current);
-            panelElmt.inert = !current;
-            if (!current) panelElmt.setAttribute('aria-hidden', 'true');
+            panelElmt.inert = !visible;
+            if (!visible) panelElmt.setAttribute('aria-hidden', 'true');
           }
           panelElmt.addEventListener("click", (event) => {
               const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);

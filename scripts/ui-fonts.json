@@ -5,6 +5,7 @@
     "arrow_drop_down",
     "arrow_drop_up",
     "attach_file",
+    "campaign",
     "check",
     "check_circle",
     "chevron_left",
@@ -17,6 +18,7 @@
     "delete",
     "delete_sweep",
     "description",
+    "display_settings",
     "download",
     "download_done",
     "drag_indicator",
@@ -28,12 +30,14 @@
     "expand_more",
     "explore",
     "folder",
+    "horizontal_rule",
     "hourglass_empty",
     "image",
     "keyboard_arrow_down",
     "keyboard_arrow_up",
     "layers",
     "light_mode",
+    "lightbulb",
     "menu_open",
     "move_down",
     "open_in_full",
@@ -46,21 +50,19 @@
     "save",
     "settings",
     "shield",
+    "text_fields",
     "tune",
     "undo",
     "upload",
     "upload_file",
     "visibility",
-    "visibility_off"
+    "visibility_off",
+    "warning",
+    "widgets"
   ],
-  "symbolRequest": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,0&icon_names=add,add_photo_alternate,arrow_drop_down,arrow_drop_up,attach_file,check,check_circle,chevron_left,chevron_right,close,close_fullscreen,content_copy,content_paste,dark_mode,delete,delete_sweep,description,download,download_done,drag_indicator,edit,edit_note,error,expand_content,expand_less,expand_more,explore,folder,hourglass_empty,image,keyboard_arrow_down,keyboard_arrow_up,layers,light_mode,menu_open,move_down,open_in_full,open_in_new,radio_button_checked,radio_button_unchecked,redo,refresh,restart_alt,save,settings,shield,tune,undo,upload,upload_file,visibility,visibility_off&display=block",
+  "symbolRequest": "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,0&icon_names=add,add_photo_alternate,arrow_drop_down,arrow_drop_up,attach_file,campaign,check,check_circle,chevron_left,chevron_right,close,close_fullscreen,content_copy,content_paste,dark_mode,delete,delete_sweep,description,display_settings,download,download_done,drag_indicator,edit,edit_note,error,expand_content,expand_less,expand_more,explore,folder,horizontal_rule,hourglass_empty,image,keyboard_arrow_down,keyboard_arrow_up,layers,light_mode,lightbulb,menu_open,move_down,open_in_full,open_in_new,radio_button_checked,radio_button_unchecked,redo,refresh,restart_alt,save,settings,shield,text_fields,tune,undo,upload,upload_file,visibility,visibility_off,warning,widgets&display=block",
   "textRequest": "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Overpass:ital,wght@0,100..900;1,100..900&display=swap",
   "files": {
-    "symbols.c05d0d02818ef06d.woff2": {
-      "source": "https://fonts.gstatic.com/l/font?kit=kJEPBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzByHX9rA6RzaxHMPdY43zj-jCxv3fzvRNO1Vy1oTrdw0HasFiArONPu98w6-d_2EURKL_fLeZaZHeT4sSKhp0S_bagdh70Epu68em5ufcpg4xZbBlGZM7KXU0CZPcXiF-2jFiMlGGkuGdVsCvZjn2H0GM&skey=b8dc2088854b122f&v=v383",
-      "bytes": 18628,
-      "sha256": "c05d0d02818ef06d666d255ec0cecc5dff62ff148c4e10fdea09a85472efe3e6"
-    },
     "text.4ee1c3b9f5a9e1e6.woff2": {
       "source": "https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwkT9nA2.woff2",
       "bytes": 43992,
@@ -184,6 +186,11 @@
     "text.32b459fc830b67d3.woff2": {
       "sha256": "32b459fc830b67d3b9e1a2fcfdf1950c8852a50901a775eab2144eb860a59b58",
       "bytes": 35704
+    },
+    "symbols.b86218c91b5064ea.woff2": {
+      "source": "https://fonts.gstatic.com/l/font?kit=kJEPBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzByHX9rA6RzaxHMPdY43zj-jCxv3fzvRNO1Vy0oTrdw0HasFiArONPu98w6-d_2EURKL_fPbA9jehzZl4L9i9sbcCzew3fRXL4SiQnIJ65gN2atbfv9Lmm-xk0F7ey5p92JWjomPXMvLHWsHfo3k0XFEAEPZ1Q6R7bodoX8g&skey=b8dc2088854b122f&v=v385",
+      "bytes": 21060,
+      "sha256": "b86218c91b5064ea63539f9e19f1881c5434e8e032c58404e03894a92a439067"
     }
   }
 }

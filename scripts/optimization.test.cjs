@@ -645,6 +645,19 @@ test('settings positioning handles closed and unknown menus without invalid sele
   }
 });
 
+test('opening the phone editor hydrates its dropdowns after its containers become visible',()=>{
+  let editorHidden=true,hydrated=0;
+  const modal=new Element('subPanelConfig');modal.style.display='';
+  const pickerButton=new Element();
+  const c=context({sMConfigBar:{dataset:{currentMenu:'subPanelConfig'}},
+    document:{querySelector:()=>null,querySelectorAll:selector=>selector==='.sMModal'?[modal]:selector.includes(':has')?[pickerButton]:[]},
+    window:{SignMakerMobile:{prepareEditor:()=>{editorHidden=false;}},SignMakerEditorRuntime:{ensure:()=>{
+      assert.equal(editorHidden,false);assert.equal(modal.style.display,'block');hydrated++;
+    }}},panelStylePopoverIsOpen:()=>false,scheduleSubpanelModalHeightSync(){},clearPanelStylePopoverPosition(){}});
+  vm.runInContext(declaration('public/js/form.js','reDisplay')+';this.open=reDisplay;',c);
+  c.open();assert.equal(hydrated,1);
+});
+
 test('phone preview fits narrow, landscape, and tall signs without scaling up artwork',()=>{
   const c=context({});vm.runInContext(declaration('public/js/MobileUI.js','previewMetrics')+'this.fit=previewMetrics;',c);
   for(const viewport of [320,390,768])for(const [width,height] of [[900,240],[400,1200],[120,70]]){
@@ -689,7 +702,10 @@ test('phone export selects the current stacked group without discarding other do
   assert.equal(fileInfo.panel,2);assert.equal(groups.length,2);assert.deepEqual(groups[0].indices,[0,1]);
 });
 
-test('phone workspace switches panels, routes its editors, and restores the desktop form',()=>{
+test('phone workspace starts without a desktop init call, follows emulated widths, and restores the desktop form',()=>{
+  const manifest=JSON.parse(read('build-manifest.json'));
+  const productionMobile=manifest.assets.find(asset=>asset.source==='js/MobileUI.js').output;
+  for(const source of [read('public/js/MobileUI.js'),read('public/'+productionMobile)]){
   class Node extends Element {
     constructor(tag='div',id='',classes=''){
       super(classes,tag.toUpperCase());this.id=id;this.attributes=new Map();this.clientWidth=390;this.offsetHeight=220;
@@ -735,6 +751,9 @@ test('phone workspace switches panels, routes its editors, and restores the desk
   const root=new Node('html'),body=new Node('body'),canvas=new Node('main'),form=new Node('form'),modals=new Node('div','','modals');
   const bar=new Node('nav','sMConfigBar'),post=new Node('div','postContainer'),panels=new Node('div','panelContainer');
   root.append(body);body.append(canvas,form);canvas.append(post);post.append(panels);form.append(modals,bar);
+  const downloadDialog=new Node('dialog','downloadContent'),downloadContents=new Node('div','downloadContents');
+  const downloadActions=new Node('div','','downloadActionButtons'),downloadPreview=new Node('div','downloadPreview');
+  downloadDialog.append(downloadContents,downloadPreview);downloadContents.append(downloadActions);body.append(downloadDialog);
   const pickerButton=new Node('div','','sMConfigOption'),picker=new Node('div','panelSelect'),hitbox=new Node('div','panelSelector');
   bar.append(pickerButton);pickerButton.append(hitbox,new Node('span','currentlySelectedPanel'),picker);
   bar.dataset.currentMenu='';
@@ -752,20 +771,30 @@ test('phone workspace switches panels, routes its editors, and restores the desk
   draw();
   const application={exposeToFormHandler:{vars:{get currentlySelectedPanelIndex(){return index;}}},getPost:()=>({panels:models}),
     changeEditingPanel:value=>{index=value;draw();},newPanel:()=>{models.push({text:'C'});index=models.length-1;draw();}};
-  const media={matches:false,addEventListener:(_,handler)=>resize=handler},frames=[];
-  const window={matchMedia:()=>media,innerHeight:800,location:{search:''},requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},
-    addEventListener(){},dispatchEvent(){},scrollTo(){}};
-  const c=context({document,window,app:application,URLSearchParams,Event,MutationObserver:class{observe(){}},ResizeObserver:class{observe(){}unobserve(){}}});
+  root.clientWidth=1200;
+  const media={matches:false,addEventListener:(_,handler)=>resize=handler},frames=[],events=new Map(),observers=[];
+  let mobileGestures;
+  const window={SignMakerMobileGestures:{install:options=>{mobileGestures=options;return {cancel(){}};}},matchMedia:()=>media,innerWidth:1200,innerHeight:800,location:{search:''},requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},
+    addEventListener:(name,handler)=>events.set(name,handler),dispatchEvent(){},scrollTo(){}};
+  const c=context({document,window,app:application,URLSearchParams,Event,
+    MutationObserver:class{constructor(callback){this.callback=callback;observers.push(this);}observe(target){this.target=target;}disconnect(){this.disconnected=true;}},
+    ResizeObserver:class{observe(){}unobserve(){}}});
   for(const id of [...routes,'panelSelector'])document.getElementById(id).addEventListener('click',()=>{
     bar.dataset.currentMenu=bar.dataset.currentMenu===id?'':id;
   });
-  vm.runInContext(read('public/js/MobileUI.js'),c);const api=window.SignMakerMobile;
+  vm.runInContext(source,c);const api=window.SignMakerMobile;
   const flush=()=>{api.schedule();for(let n=0;frames.length&&n<20;n++)frames.shift()();assert.equal(frames.length,0);};
-  api.init();flush();assert.equal(api.active,false);assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);
+  assert.equal(api.active,null);assert.equal(document.getElementById('mobileWorkspace'),null,'Wait for editor readiness before moving its controls');
+  root.dataset.appReady='true';observers.find(observer=>observer.target===root).callback();
+  flush();assert.equal(api.active,false);assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);
   assert.equal(document.getElementById('export').parentElement,bar);
-  media.matches=true;resize();flush();
+  assert.equal(downloadPreview.parentElement,downloadDialog);
+  root.clientWidth=393;window.innerWidth=393;events.get('resize')();flush();
+  assert.equal(media.matches,false,'Device emulation can resize before a media-query change event');
   assert.equal(canvas.parentElement.id,'mobileWorkspace');assert.equal(modals.closest('form'),form);
   assert.equal(document.getElementById('panelSelect').closest('form'),form);
+  assert.equal(downloadPreview.parentElement,downloadContents);
+  assert.ok(downloadContents.children.indexOf(downloadPreview)<downloadContents.children.indexOf(downloadActions),'The mobile export preview comes before the action buttons');
   assert.equal(document.getElementById('panel0').inert,false);assert.equal(document.getElementById('panel1').inert,true);
   for(const menu of ['subPanelConfig','exitTabConfig','guideArrowConfig','panelStyleConfig']){
     document.getElementById(menu).click();flush();
@@ -776,9 +805,50 @@ test('phone workspace switches panels, routes its editors, and restores the desk
   const navigation=document.querySelector('.mobilePanelNavigation');navigation.children[2].click();flush();
   assert.equal(index,1);assert.equal(document.getElementById('panel0').inert,true);assert.equal(document.getElementById('panel1').inert,false);
   assert.equal(document.getElementById('mobileEditor').hidden,true);assert.deepEqual(models,[{text:'A'},{text:'B'}]);
-  media.matches=false;resize();flush();
+  document.getElementById('panelSelector').click();flush();
+  const wholePostToggle=document.getElementById('mobileShowWholePost');
+  wholePostToggle.checked=true;wholePostToggle.events.find(([type])=>type==='change')[1]();flush();
+  assert.equal(api.showingWholePost,true);assert.equal(canvas.classList.contains('mobileWholePost'),true);
+  assert.equal(document.getElementById('panel0').inert,false);assert.equal(document.getElementById('panel1').inert,false);
+  assert.equal(document.getElementById('mobileEditor').hidden,true);
+  mobileGestures.selectPanel(0);flush();
+  assert.equal(api.showingWholePost,false);assert.equal(index,0);assert.equal(document.getElementById('panel1').inert,true);
+  root.clientWidth=1200;window.innerWidth=1200;events.get('resize')();flush();
   assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);assert.equal(document.getElementById('export').parentElement,bar);
+  assert.equal(downloadPreview.parentElement,downloadDialog,'The desktop export preview returns beside its controls');
   for(const node of panels.children)assert.equal(node.inert,false);
+  }
+});
+
+test('panel reorder destinations preserve stack membership and the selected panel identity',()=>{
+  const post={panels:[{id:'A'},{id:'A2',stackedWithPrevious:true},{id:'B'},{id:'C'}]};
+  let renders=0,updates=0;
+  const c=context({post,clamp:(v,min,max)=>Math.max(min,Math.min(max,v)),runWithUndo:callback=>callback(),
+    formHandler:{updateForm:()=>updates++},redraw:()=>renders++,getStackedPanelGroupIndices:index=>{
+      while(index>0&&post.panels[index].stackedWithPrevious)index--;
+      const group=[index];while(index+1<post.panels.length&&post.panels[index+1].stackedWithPrevious)group.push(++index);
+      return group;
+    }});
+  vm.runInContext('let currentlySelectedPanelIndex=1;'+declaration('public/js/main.js','movePanel')+
+    ';this.move=movePanel;this.selected=()=>currentlySelectedPanelIndex;',c);
+  c.move(1,4);assert.deepEqual(post.panels.map(p=>p.id),['B','C','A','A2']);assert.equal(c.selected(),3);
+  c.move(2,0);assert.deepEqual(post.panels.map(p=>p.id),['A','A2','B','C']);assert.equal(c.selected(),1);
+  assert.equal(post.panels[1].stackedWithPrevious,true);assert.equal(post.panels[0].stackedWithPrevious,false);
+  c.move(0,1);assert.equal(renders,2);assert.equal(updates,2);
+});
+
+test('phone mode detects visual viewports and touch screens even when layout media queries lag',()=>{
+  for(const input of [
+    {width:393,expected:true}, {width:900,expected:true}, {width:1200,expected:false},
+    {width:980,visual:393,expected:true}, {width:980,screen:393,touch:5,expected:true},
+    {width:1200,forced:true,expected:true},
+  ]){
+    const c=context({URLSearchParams,media:{matches:false},document:{documentElement:{clientWidth:input.width}},
+      window:{innerWidth:input.width,visualViewport:{width:input.visual},navigator:{maxTouchPoints:input.touch||0},
+        screen:{width:input.screen},location:{search:input.forced?'?mobile=1':''}}});
+    vm.runInContext(declaration('public/js/MobileUI.js','wantsMobileWorkspace')+'this.wants=wantsMobileWorkspace;',c);
+    assert.equal(c.wants(),input.expected,JSON.stringify(input));
+  }
 });
 
 test('deferred galleries can initialize before a dialog opens and stay initialized',()=>{

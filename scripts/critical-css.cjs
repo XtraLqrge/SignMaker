@@ -35,6 +35,8 @@ function criticalCSS(files, read) {
     // A saved sign waits for the complete stylesheet. A fresh Control-only
     // sign does not use shield artwork or legacy shield-number placement.
     if (['shields.css','legacy-shields.css'].includes(file.split('/').pop())) return '';
+    // Mobile mode and choice controls activate after the editor stylesheet loads.
+    if (['segmented-controls.css', 'mobile.css'].includes(file.split('/').pop())) return '';
     const source = read(file);
     if (renderFiles.has(file.split('/').pop())) return source;
     const ast = cssTree.parse(source);

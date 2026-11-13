@@ -3525,6 +3525,14 @@ const formHandler = (function () {
   let subpanelHeightSyncFrame = 0;
 
   const syncSubpanelModalHeight = () => {
+    if (window.SignMakerMobile?.active) {
+      // Drop desktop measurements when resizing into the mobile sheet layout.
+      const content = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
+      for (const property of ["height", "max-height", "overflow-y", "overflow-x"]) {
+        content?.style.removeProperty(property);
+      }
+      return;
+    }
     if (!subpanelMenuIsOpen()) {
       return;
     }
@@ -4399,6 +4407,7 @@ const formHandler = (function () {
     };
 
     const positionPanelStylePopover = () => {
+      if (window.SignMakerMobile?.active) return;
       const modalHolder = document.querySelector(".modals");
       const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
       if (!panelStylePopoverIsOpen()) return;
@@ -4509,6 +4518,8 @@ const formHandler = (function () {
         return null;
       }
 
+      if (window.SignMakerMobile?.active) return window.SignMakerMobile.mountPanelPicker(panelSelect);
+
       panelSelect.classList.add("panelSelectorFloating");
 
       if (panelSelect.parentElement !== document.body) {
@@ -4520,6 +4531,7 @@ const formHandler = (function () {
 
     const positionPanelSelectorPopover = () => {
       const panelSelect = ensurePanelSelectorPopoverPortal();
+      if (window.SignMakerMobile?.active) return;
       const configBar = document.getElementById("sMConfigBar");
       const trigger = document
         .getElementById("panelSelector")
@@ -9116,7 +9128,7 @@ const formHandler = (function () {
             ? value
             : value || linkedFamilySelect?.value || "";
 
-        triggerLabel.textContent = getUiFontDisplayName(display) || "Font";
+        triggerLabel.textContent = window.SignMakerMobileDropdowns?.fontLabel(selectEl, value, mode) || getUiFontDisplayName(display) || "Font";
 
         const previewFont =
           mode === "family"
@@ -9191,6 +9203,35 @@ const formHandler = (function () {
 
       const render = () => {
         menu.innerHTML = "";
+
+        const mobile = window.SignMakerMobileDropdowns;
+        if (mobile?.view(selectEl, 'font', { mode }).simple) {
+          for (const choice of mobile.fontChoices(selectEl, mode)) {
+            let button;
+            if (mode === 'family') {
+              button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'fontPickerItem mobileFontFamilyItem';
+              button.setAttribute('role', 'option');
+              button.classList.toggle('selected', selectEl.value === choice.value);
+              button.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                setNativeFontSelectValue(selectEl, choice.value);
+                const source = mobile.fontSource(selectEl);
+                if (source !== selectEl) setNativeFontSelectValue(source, choice.fontValue);
+                wrapper.classList.remove('open');
+                syncAllFontPickers();
+              });
+            } else button = makeFontButton(choice.value);
+            button.textContent = choice.label;
+            button.style.fontFamily = '"' + choice.fontValue + '", sans-serif';
+            menu.appendChild(button);
+          }
+          mobile.appendAdvanced(menu, selectEl, 'font', () => { render(); positionFloatingFontPickerMenu(); }, { mode });
+          updateTrigger();
+          return;
+        }
 
         const families = getFontPickerFamilies(isCustomShieldFontPicker);
 
@@ -9275,6 +9316,7 @@ const formHandler = (function () {
 
 
       menu.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === 'touch') return;
         const fontItem = event.target.closest?.(".fontPickerFontItem[data-font-value]");
         const familyItem = event.target.closest?.(".fontPickerFamilyItem[data-family-value]");
         if (!fontItem && !familyItem) {
@@ -9303,6 +9345,7 @@ const formHandler = (function () {
       window.addEventListener("scroll", positionFloatingFontPickerMenu, true);
 
       const fontPickerClassObserver = new MutationObserver(() => {
+        if (!wrapper.classList.contains('open') && window.SignMakerMobileDropdowns?.closed(selectEl)) updateTrigger();
         syncFloatingFontPickerMenuClasses();
         positionFloatingFontPickerMenu();
       });
@@ -9324,6 +9367,7 @@ const formHandler = (function () {
         position: positionFloatingFontPickerMenu,
         syncFloatingMenu: syncFloatingFontPickerMenuClasses,
         destroy: () => {
+          unregisterMobile?.();
           document.removeEventListener("click", closePickerOnOutsideClick);
           window.removeEventListener("resize", positionFloatingFontPickerMenu);
           window.removeEventListener("scroll", positionFloatingFontPickerMenu, true);
@@ -9335,6 +9379,7 @@ const formHandler = (function () {
       };
 
       selectEl._fontPickerApi = api;
+      const unregisterMobile = window.SignMakerMobileDropdowns?.register(selectEl, wrapper, sync);
       sync();
 
       return api;
@@ -10357,6 +10402,14 @@ const formHandler = (function () {
         const standardOptions = Array.from(selectEl.options || []).filter(
           (option) => option.value && option.dataset.customColor !== "true"
         );
+        const mobile = window.SignMakerMobileDropdowns;
+        if (mobile?.view(selectEl, 'color').simple) {
+          const options = mobile.entries(selectEl, 'color', standardOptions);
+          options.sort((a, b) => Number(/^(Inherit|Match\b|Panel Color|Default)/i.test(b.value)) - Number(/^(Inherit|Match\b|Panel Color|Default)/i.test(a.value)));
+          for (const option of options) menu.appendChild(makeColorButton({ value: option.value, label: getOptionLabel(option) }));
+          mobile.appendAdvanced(menu, selectEl, 'color', () => { render(); positionFloatingColorPickerPanels(); });
+          return;
+        }
         const renderedStandardColorValues = new Set();
 
         const appendStandardOption = (option) => {
@@ -10523,6 +10576,7 @@ const formHandler = (function () {
       });
 
       menu.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === 'touch') return;
         const item = event.target.closest?.(".colorPickerItem[data-color-value]");
         if (!item || event.target.closest?.(".colorPickerDeleteCustom")) {
           return;
@@ -10559,6 +10613,7 @@ const formHandler = (function () {
       window.addEventListener("scroll", positionFloatingColorPickerPanels, true);
 
       const wrapperClassObserver = new MutationObserver(() => {
+        if (!wrapper.classList.contains('open') && window.SignMakerMobileDropdowns?.closed(selectEl)) updateTrigger();
         if (!wrapper.classList.contains("addingCustomColor")) cancelCustomPreview();
         syncFloatingColorPickerPanelClasses();
         positionFloatingColorPickerPanels();
@@ -10651,6 +10706,7 @@ const formHandler = (function () {
       };
 
       selectEl._colorPickerApi = api;
+      window.SignMakerMobileDropdowns?.register(selectEl, wrapper, sync);
       sync();
       return api;
     };
@@ -13880,6 +13936,7 @@ const formHandler = (function () {
         mount,
         value,
         onChange,
+        mobileSource = null,
         placeholder = "Select arrow",
         items = ARROW_PICKER_ITEMS,
         previewOptions = {},
@@ -13920,6 +13977,7 @@ const formHandler = (function () {
         mount.replaceWith(wrapper);
 
       let currentValue = value || "";
+      let renderedItemsKey = '';
 
       const syncTrigger = () => {
         const entry = findArrowPickerEntryByValue(currentValue, items);
@@ -13937,13 +13995,18 @@ const formHandler = (function () {
 
       const renderList = () => {
         if (!wrapper.classList.contains("open")) return;
-        if (list.childElementCount === items.length) {
-          [...list.children].forEach((row,index) => row.classList.toggle("selected", items[index].value === currentValue));
+        const mobile = mobileSource ? window.SignMakerMobileDropdowns : null;
+        const visibleItems = mobile?.entries(mobileSource, 'arrow', items, { value: currentValue }) || items;
+        const simple = mobile?.view(mobileSource, 'arrow', { value: currentValue }).simple;
+        const key = visibleItems.map(item => item.value).join('\u0000') + String(simple);
+        if (renderedItemsKey === key && list.childElementCount === visibleItems.length + (simple ? 1 : 0)) {
+          [...list.children].forEach((row,index) => row.classList.toggle("selected", visibleItems[index]?.value === currentValue));
           return;
         }
+        renderedItemsKey = key;
         list.innerHTML = "";
 
-        items.forEach((item) => {
+        visibleItems.forEach((item) => {
           const row = document.createElement("button");
           row.type = "button";
           row.className = "shieldPickerItem";
@@ -13978,6 +14041,10 @@ const formHandler = (function () {
 
           list.appendChild(row);
         });
+        if (mobile) {
+          list._mobileDropdownTrigger = trigger;
+          mobile.appendAdvanced(list, mobileSource, 'arrow', () => { renderList(); placePopover(); }, { value: currentValue });
+        }
       };
 
         trigger.addEventListener("click", (event) => {
@@ -14017,10 +14084,19 @@ const formHandler = (function () {
 
       syncTrigger();
       renderList();
+      const unregisterMobile = mobileSource ? window.SignMakerMobileDropdowns?.register(mobileSource, wrapper, () => {
+        renderedItemsKey = '';
+        renderList();
+        if (wrapper.classList.contains('open')) placePopover();
+      }) : null;
+      const mobileCloseObserver = mobileSource ? new MutationObserver(() => {
+        if (!wrapper.classList.contains('open') && window.SignMakerMobileDropdowns?.closed(mobileSource)) renderedItemsKey = '';
+      }) : null;
+      mobileCloseObserver?.observe(wrapper, { attributes: true, attributeFilter: ['class'] });
 
       return {
         element: wrapper,
-        destroy: () => { pickerListeners.abort(); popover.remove(); wrapper.remove(); },
+        destroy: () => { unregisterMobile?.(); mobileCloseObserver?.disconnect(); pickerListeners.abort(); popover.remove(); wrapper.remove(); },
         getValue: () => currentValue,
         setValue: (nextValue) => {
           if (currentValue === (nextValue || "")) return;
@@ -14152,6 +14228,7 @@ const formHandler = (function () {
         const picker = createFlatArrowPicker({
           mount: proxy,
           value: typeValue,
+          mobileSource: angle,
           items: [
             { value: "", label: `Default (${STANDARD_ARROW_ITEMS.find((entry) => entry.value === sign.standardArrowType)?.label || "Down"})` },
             ...STANDARD_ARROW_ITEMS
@@ -14246,6 +14323,7 @@ const formHandler = (function () {
         select.parentElement.appendChild(proxy);
         select._arrowPickerApi = createFlatArrowPicker({
           mount: proxy,
+          mobileSource: select,
           value: select.value || "DOWN",
           items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
           createPreviewNode: standardArrowPreview,
@@ -14419,6 +14497,7 @@ const formHandler = (function () {
       select.parentElement.appendChild(proxy);
       select._arrowPickerApi = createFlatArrowPicker({
         mount: proxy, value: select.value || "DOWN", items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
+        mobileSource: select,
         createPreviewNode: standardArrowPreview,
         onChange: async (key) => {
           if (key === "None") {
@@ -15406,7 +15485,7 @@ const formHandler = (function () {
     };
 
     function reDisplay() {
-      window.SignMakerEditorRuntime?.ensure();
+      window.SignMakerMobile?.prepareEditor(sMConfigBar.dataset.currentMenu);
       const openingPanelStylePopover = panelStylePopoverIsOpen();
       const modals = [...document.querySelectorAll(".sMModal")];
       const nextModal = modals.find(modal => modal.classList.contains(sMConfigBar.dataset.currentMenu));
@@ -15431,6 +15510,8 @@ const formHandler = (function () {
           holder.style.display = open ? "block" : "";
         }
       }
+
+      window.SignMakerEditorRuntime?.ensure();
 
       if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
         scheduleSubpanelModalHeightSync();

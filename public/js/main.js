@@ -4428,6 +4428,10 @@ const ungroupSelectedBlockElement = () => {
     };
 
     const updatePostViewportLayout = () => {
+      if (window.SignMakerMobile?.active) {
+        window.SignMakerMobile.schedule();
+        return;
+      }
       const postContainerElmt = document.getElementById("postContainer");
       if (!postContainerElmt) {
         return;
@@ -4867,6 +4871,7 @@ const ungroupSelectedBlockElement = () => {
         element.removeAttribute('inert');
         element.removeAttribute('data-startup-inert');
       });
+      window.SignMakerMobile?.init();
       window.performance?.mark?.("signmaker:editor-ready");
       window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
     };
@@ -6195,7 +6200,7 @@ const ungroupSelectedBlockElement = () => {
     };
 
     const shouldDragPanelFromAccessory = (panelElmt, event) =>
-      panelElmt.classList.contains("panelDragHandle") && !event.altKey;
+      window.SignMakerMobile?.active || (panelElmt.classList.contains("panelDragHandle") && !event.altKey);
 
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
       if (!panelElmt || !holder || !tabElmt || !exitTab) return;
@@ -11747,7 +11752,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     if (element?.id === "postContainer") {
       updateRuralPostLayout();
     }
-    const staticClone = createStaticExportClone(element, selectedPanelIndexSet);
+    const cloneFullLayout = () => {
+      refreshDynamicPanelBorders(element);
+      return createStaticExportClone(element, selectedPanelIndexSet);
+    };
+    const staticClone = window.SignMakerMobile?.active
+      ? window.SignMakerMobile.withFullLayout(cloneFullLayout)
+      : createStaticExportClone(element, selectedPanelIndexSet);
     // Snapshot at the same time as the artwork clone, before asynchronous asset
     // preparation. Later edits must not change the document inside this export.
     const signDocumentJSON = includeSignDocument ? serializeSignJSON(selectedPanelIndexSet) : null;
@@ -11952,6 +11963,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           message.textContent = "";
         }
       }
+    };
+
+    const getMobileExportPanelIndex = () => {
+      const group = getExportablePanelGroups().find(group => group.indices.includes(currentlySelectedPanelIndex));
+      return group?.topIndex ?? currentlySelectedPanelIndex;
+    };
+    const prepareMobilePanelExport = () => {
+      const index = getMobileExportPanelIndex();
+      fileInfo.panel = index;
+      fileInfo.selectedPanelIndices = [index];
+      const entirePost = document.getElementById('entirePost');
+      if (entirePost) entirePost.checked = false;
     };
 
     const syncDownloadSelection = () => {
@@ -12683,6 +12706,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                       );
           panelElmt.id = "panel" + index;
           panelElmt.dataset.panelIndex = index.toString();
+          if (window.SignMakerMobile?.active) {
+            const current = index === currentlySelectedPanelIndex;
+            const visible = current || window.SignMakerMobile.showingWholePost;
+            panelElmt.classList.toggle('mobileCurrentPanel', current);
+            panelElmt.inert = !visible;
+            if (!visible) panelElmt.setAttribute('aria-hidden', 'true');
+          }
           panelElmt.addEventListener("click", (event) => {
               const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);
               
@@ -19323,6 +19353,7 @@ const serializePostWithElementTypes = (space) => {
         editTemplate, showActiveTemplateEditor, updateTemplateEditorStatus, switchTemplateEditorVariant, addTemplateEditorVariant, applyTemplateEditorFont, deleteTemplateEditorVariant, saveTemplateEditor, cancelTemplateEditor,
         copySVGSign: copySVGSign,
         copyPanelPNG: copyPanelPNG,
+        getMobileExportPanelIndex, prepareMobilePanelExport,
         updatePreview: updatePreview,
         toggleVmsPanel,
         resetPadding: (...args) => runWithUndo(() => resetPadding(...args)),

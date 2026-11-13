@@ -84,9 +84,6 @@ window.SignMakerMobile = (() => {
 
     const header = document.createElement('header');
     header.className = 'mobileHeader';
-    const heading = document.createElement('strong');
-    heading.textContent = 'SignMaker';
-    header.append(heading);
     const historyHome = markHome(history);
     utilityHomes.push([historyHome, history]);
     header.append(history);
@@ -118,10 +115,7 @@ window.SignMakerMobile = (() => {
     editorHeader.className = 'mobileEditorHeader';
     editorTitle = document.createElement('h2');
     editorTitle.id = 'mobileEditorTitle';
-    const done = document.createElement('button');
-    done.type = 'button';
-    done.textContent = 'Done';
-    done.addEventListener('click', () => closeEditor({ returnFocus: true }));
+    const done = button('Done', 'check', () => closeEditor({ returnFocus: true }));
     editorHeader.append(editorTitle, done);
     more = document.createElement('div');
     more.id = 'mobileMoreActions';
@@ -203,7 +197,8 @@ window.SignMakerMobile = (() => {
     const height = panel.offsetHeight;
     const width = panel.offsetWidth;
     const metrics = previewMetrics(width, height, canvas.clientWidth - 24,
-      Math.max(180, (window.innerHeight || 700) * (editor.hidden ? 0.6 : 0.42)));
+      Math.max(40, Math.min((window.innerHeight || 700) * (editor.hidden ? 0.45 : 0.28),
+        workspace.clientHeight - bar.offsetHeight - 240)));
     const scaleValue = String(metrics.scale);
     const heightValue = `${metrics.height}px`;
     if (post.style.getPropertyValue('--mobile-sign-scale') !== scaleValue) post.style.setProperty('--mobile-sign-scale', scaleValue);
@@ -248,13 +243,8 @@ window.SignMakerMobile = (() => {
       node.setAttribute('aria-expanded', String(node.classList.contains('selected')));
     }
     fitPreview(selected);
-    if (changed && menu && !workspace.contains(document.activeElement?.closest('input, textarea, select'))) {
-      // Keep the sign immediately above its editor without raising the keyboard.
-      const headerTop = editor.getBoundingClientRect().top;
-      if (headerTop > window.innerHeight - 150 || headerTop < 0) {
-        editor.scrollIntoView({ block: 'start', behavior: 'auto' });
-      }
-    }
+    // Each tool opens at the top of its own sheet; the preview never scrolls away.
+    if (changed) editor.scrollTop = 0;
     lastMenu = menu;
     lastIndex = index;
   };
@@ -275,6 +265,7 @@ window.SignMakerMobile = (() => {
       mountPanelPicker(panelPicker);
       workspace.querySelector('.mobileHeader').append(history);
       for (const [, node] of utilityHomes) if (node !== history) more.append(node);
+      workspace.querySelector('.mobileHeader').prepend(document.getElementById('copySign'), document.getElementById('export'));
       bar.classList.remove('invisible');
     } else {
       canvas.classList.remove('mobileCanvas');

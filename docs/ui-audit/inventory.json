@@ -1,0 +1,2510 @@
+[
+  {
+    "i": 0,
+    "name": "Settings tabs",
+    "selector": "#settings22Modal > .sMModalBar",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/01-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "settings Settings General Defaults Shortcuts",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "General",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Defaults",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      },
+      {
+        "label": "Shortcuts",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Panel style tabs",
+    "selector": ".panelStyleConfig > .sMModalBar",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/02-desktop.png",
+    "display": "grid",
+    "hidden": false,
+    "text": "tune Panel Style Appearance Padding",
+    "menu": "sMModal panelStyleConfig",
+    "buttons": [
+      {
+        "label": "Appearance",
+        "height": "35.3438px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Padding",
+        "height": "35.3438px",
+        "bg": "rgba(0, 0, 0, 0.16)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 2,
+    "name": "Guide arrow tabs",
+    "selector": ".guideArrowConfig > .sMModalBar",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/03-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "explore Guide Arrows Standard Arrows Exit Only Arrow-Per-Lane (APL)",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "Standard Arrows",
+        "height": "20px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Exit Only",
+        "height": "20px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      },
+      {
+        "label": "Arrow-Per-Lane (APL)",
+        "height": "20px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 3,
+    "name": "Template tabs",
+    "selector": ".templates > .sMModalBar",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/04-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "Templates Saved PresetsTemplate Editor",
+    "menu": "sMModal templates",
+    "buttons": [
+      {
+        "label": "Saved",
+        "height": "20px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Presets",
+        "height": "20px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      },
+      {
+        "label": "Template Editor",
+        "height": "20px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 4,
+    "name": "Exit tab editor mode",
+    "selector": ".exitTabModeSwitch",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/05-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "exitTabDefaultProfileControls",
+    "text": "Current Panel Profiles",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "Current Panel",
+        "height": "30.4844px",
+        "bg": "rgba(0, 0, 0, 0.78)",
+        "border": "0px",
+        "selected": "exitTabModeButton active"
+      },
+      {
+        "label": "Profiles",
+        "height": "30.4844px",
+        "bg": "rgba(0, 0, 0, 0.22)",
+        "border": "0px",
+        "selected": "exitTabModeButton"
+      }
+    ]
+  },
+  {
+    "i": 5,
+    "name": "Exit tab position",
+    "selector": "#exitTabPosition + .alignmentButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/06-desktop.png",
+    "display": "inline-grid",
+    "hidden": false,
+    "source": "exitTabPosition",
+    "text": "LCR",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "27px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "27px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "R",
+        "height": "27px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "selected"
+      }
+    ],
+    "captureNote": "Retained successful crop from earlier pass of the same local source."
+  },
+  {
+    "i": 6,
+    "name": "Exit marker position",
+    "selector": "#qcExitMarkerPosition + .alignmentButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/07-desktop.png",
+    "display": "inline-grid",
+    "hidden": false,
+    "source": "qcExitMarkerPosition",
+    "text": "LCR",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "27px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "27px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "27px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ],
+    "captureNote": "Retained successful crop from earlier pass of the same local source."
+  },
+  {
+    "i": 7,
+    "name": "Shared alignment widget (text)",
+    "selector": "#sdCtrlText_alignment + .alignmentButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/08-desktop.png",
+    "display": "inline-grid",
+    "hidden": false,
+    "source": "sdCtrlText_alignment",
+    "text": "LCR",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "27px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "27px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "27px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ],
+    "captureNote": "Retained successful crop from earlier pass of the same local source."
+  },
+  {
+    "i": 8,
+    "name": "Shield alignment",
+    "selector": ".sdShieldAlignmentButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/09-desktop.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "24.3906px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton activated"
+      },
+      {
+        "label": "C",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "R",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      }
+    ]
+  },
+  {
+    "i": 9,
+    "name": "Shield banner 1 position",
+    "selector": ".sdShieldPositionButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/10-desktop.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "sdShield_bannerPosition",
+    "text": "chevron_left keyboard_arrow_up keyboard_arrow_down chevron_right",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "chevron_left",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "keyboard_arrow_up",
+        "height": "24.3906px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton activated"
+      },
+      {
+        "label": "keyboard_arrow_down",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "chevron_right",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      }
+    ]
+  },
+  {
+    "i": 10,
+    "name": "Shield banner 2 position",
+    "selector": ".sdShieldPositionButtons",
+    "nth": 1,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/11-desktop.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "sdShield_bannerPosition2",
+    "text": "chevron_left keyboard_arrow_up keyboard_arrow_down chevron_right",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "chevron_left",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "keyboard_arrow_up",
+        "height": "24.3906px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton activated"
+      },
+      {
+        "label": "keyboard_arrow_down",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "chevron_right",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      }
+    ]
+  },
+  {
+    "i": 11,
+    "name": "Icon alignment",
+    "selector": ".sdIconAlignmentButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/12-desktop.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "26.1094px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "26.1094px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "R",
+        "height": "26.1094px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 12,
+    "name": "Standard arrow alignment",
+    "selector": "#sMStandardArrows .standardArrowChoices",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/13-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "LCR",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "37px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 13,
+    "name": "Standard arrow position",
+    "selector": "#sMStandardArrows .standardArrowChoices",
+    "nth": 1,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/14-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "chevron_leftkeyboard_arrow_upkeyboard_arrow_downchevron_right",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "chevron_left",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "keyboard_arrow_up",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "keyboard_arrow_down",
+        "height": "37px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "chevron_right",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 14,
+    "name": "Exit Only style",
+    "selector": ".exitOnlyModes",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/15-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "Standard Lane Split Boxed",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "Standard",
+        "height": "37px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "Lane Split",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "Boxed",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 15,
+    "name": "Exit Only alignment",
+    "selector": ".exitOnlyRow .standardArrowChoices",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/16-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "LCR",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "37px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "37px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 16,
+    "name": "Defaults: control text font",
+    "selector": "#settingsDefaultsControlTextFontButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/17-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "settingsDefaultsControlTextFont",
+    "text": "12345WR56",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "2",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "3",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "4",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "5WR",
+        "height": "28px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton active"
+      },
+      {
+        "label": "5",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "6",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      }
+    ]
+  },
+  {
+    "i": 17,
+    "name": "Defaults: action font",
+    "selector": "#settingsDefaultsActionFontButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/18-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "settingsDefaultsActionFont",
+    "text": "12345WR56",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "2",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "3",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "4",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "5WR",
+        "height": "28px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton active"
+      },
+      {
+        "label": "5",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "6",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      }
+    ]
+  },
+  {
+    "i": 18,
+    "name": "Defaults: advisory font",
+    "selector": "#settingsDefaultsAdvisoryFontButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/19-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "settingsDefaultsAdvisoryFont",
+    "text": "BCDEEEMEMF",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "B",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "C",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "D",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "E",
+        "height": "28px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton active"
+      },
+      {
+        "label": "EEM",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "EM",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "F",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      }
+    ]
+  },
+  {
+    "i": 19,
+    "name": "Defaults: alignment 1",
+    "selector": ".settingsDefaultsSegmentedButtonGroup",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/20-desktop.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "30px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      },
+      {
+        "label": "C",
+        "height": "30px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton active"
+      },
+      {
+        "label": "R",
+        "height": "30px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      }
+    ]
+  },
+  {
+    "i": 20,
+    "name": "Defaults: alignment 2",
+    "selector": ".settingsDefaultsSegmentedButtonGroup",
+    "nth": 1,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/21-desktop.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "30px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      },
+      {
+        "label": "C",
+        "height": "30px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton active"
+      },
+      {
+        "label": "R",
+        "height": "30px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      }
+    ]
+  },
+  {
+    "i": 21,
+    "name": "Defaults: rotation",
+    "selector": ".settingsDefaultsRotationButtonGroup",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/22-desktop.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "settingsDefaultsArrowRotation",
+    "text": "0 45 90 135 180 225 270 315",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "0",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "45",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "90",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "135",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "180",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "225",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "270",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "315",
+        "height": "28px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      }
+    ]
+  },
+  {
+    "i": 22,
+    "name": "Block arrow rotation",
+    "selector": ".sdArrow_rotationButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/23-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "0\u00b0 45\u00b0 90\u00b0 135\u00b0 180\u00b0 225\u00b0 270\u00b0 315\u00b0",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "0\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "45\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "90\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "135\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "180\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "225\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "270\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "315\u00b0",
+        "height": "26px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      }
+    ]
+  },
+  {
+    "i": 23,
+    "name": "Custom shield digit variant",
+    "selector": "#customShieldMakerVariantButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/24-desktop.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "",
+    "text": "1 2 3 4",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "37.1875px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton"
+      },
+      {
+        "label": "2",
+        "height": "37.1875px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton currentVariant"
+      },
+      {
+        "label": "3",
+        "height": "37.1875px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton"
+      },
+      {
+        "label": "4",
+        "height": "37.1875px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton"
+      }
+    ]
+  },
+  {
+    "i": 24,
+    "name": "Custom shield alignment",
+    "selector": "#customShieldMakerRouteAlignmentButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/25-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "38px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": "customShieldMakerAlignmentButton"
+      },
+      {
+        "label": "C",
+        "height": "38px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "customShieldMakerAlignmentButton selected"
+      },
+      {
+        "label": "R",
+        "height": "38px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": "customShieldMakerAlignmentButton"
+      }
+    ]
+  },
+  {
+    "i": 25,
+    "name": "Icon source tabs",
+    "selector": ".iconPickerTabs",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/26-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "Uploaded Icons Built-in Icons",
+    "buttons": [
+      {
+        "label": "Uploaded Icons",
+        "height": "47px",
+        "bg": "rgb(34, 98, 181)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "Built-in Icons",
+        "height": "47px",
+        "bg": "rgba(255, 255, 255, 0.08)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 26,
+    "name": "Shield source tabs",
+    "selector": "#shieldImgSelector .shieldLibrary > nav",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/27-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "Presets Custom",
+    "buttons": [
+      {
+        "label": "Presets",
+        "height": "49px",
+        "bg": "rgba(0, 0, 255, 0.7)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "Custom",
+        "height": "49px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 27,
+    "name": "Export panel selection",
+    "selector": "#downloadPanelButtons",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/28-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "selectPanelLabel",
+    "text": "12",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "40px",
+        "bg": "rgb(10, 14, 24)",
+        "border": "0px",
+        "selected": "downloadPanelSelectButton"
+      },
+      {
+        "label": "2",
+        "height": "40px",
+        "bg": "rgb(10, 14, 24)",
+        "border": "0px",
+        "selected": "downloadPanelSelectButton"
+      }
+    ]
+  },
+  {
+    "i": 28,
+    "name": "Subpanel selection",
+    "selector": "#subPanelList",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/29-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "TopdeleteBottomdeleteSubpanel 1delete",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "Top",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabButton"
+      },
+      {
+        "label": "delete",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabDeleteButton"
+      },
+      {
+        "label": "Bottom",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabButton"
+      },
+      {
+        "label": "delete",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabDeleteButton"
+      },
+      {
+        "label": "Subpanel 1",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabButton"
+      },
+      {
+        "label": "delete",
+        "height": "28px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabDeleteButton"
+      }
+    ]
+  },
+  {
+    "i": 29,
+    "name": "Exit tab selection",
+    "selector": "#exitTabList",
+    "nth": 0,
+    "mobile": false,
+    "status": "captured",
+    "file": "captures/30-desktop.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "Tab 1delete",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "Tab 1delete",
+        "height": "32px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": "exitTabButton active"
+      }
+    ]
+  },
+  {
+    "i": 0,
+    "name": "Settings tabs",
+    "selector": "#settings22Modal > .sMModalBar",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/01-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "settings Settings General Defaults Shortcuts",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "General",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Defaults",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      },
+      {
+        "label": "Shortcuts",
+        "height": "auto",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 1,
+    "name": "Panel style tabs",
+    "selector": ".panelStyleConfig > .sMModalBar",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/02-mobile.png",
+    "display": "grid",
+    "hidden": false,
+    "text": "tune Panel Style Appearance Padding",
+    "menu": "sMModal panelStyleConfig",
+    "buttons": [
+      {
+        "label": "Appearance",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Padding",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0.16)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 2,
+    "name": "Guide arrow tabs",
+    "selector": ".guideArrowConfig > .sMModalBar",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/03-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "explore Guide Arrows Standard Arrows Exit Only Arrow-Per-Lane (APL)",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "Standard Arrows",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Exit Only",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      },
+      {
+        "label": "Arrow-Per-Lane (APL)",
+        "height": "48px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 3,
+    "name": "Template tabs",
+    "selector": ".templates > .sMModalBar",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/04-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "Templates Saved PresetsTemplate Editor",
+    "menu": "sMModal templates",
+    "buttons": [
+      {
+        "label": "Saved",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab selected"
+      },
+      {
+        "label": "Presets",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      },
+      {
+        "label": "Template Editor",
+        "height": "auto",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "sMModalTab"
+      }
+    ]
+  },
+  {
+    "i": 4,
+    "name": "Exit tab editor mode",
+    "selector": ".exitTabModeSwitch",
+    "nth": 0,
+    "mobile": true,
+    "status": "hidden by current app styling",
+    "file": null,
+    "display": "none",
+    "hidden": false,
+    "source": "exitTabDefaultProfileControls",
+    "text": "Current Panel Profiles",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "Current Panel",
+        "height": "auto",
+        "bg": "rgba(0, 0, 0, 0.78)",
+        "border": "0px",
+        "selected": "exitTabModeButton active"
+      },
+      {
+        "label": "Profiles",
+        "height": "auto",
+        "bg": "rgba(0, 0, 0, 0.22)",
+        "border": "0px",
+        "selected": "exitTabModeButton"
+      }
+    ]
+  },
+  {
+    "i": 5,
+    "name": "Exit tab position",
+    "selector": "#exitTabPosition + .alignmentButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/06-mobile.png",
+    "display": "inline-grid",
+    "hidden": false,
+    "source": "exitTabPosition",
+    "text": "LCR",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "selected"
+      }
+    ]
+  },
+  {
+    "i": 6,
+    "name": "Exit marker position",
+    "selector": "#qcExitMarkerPosition + .alignmentButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/07-mobile.png",
+    "display": "inline-grid",
+    "hidden": false,
+    "source": "qcExitMarkerPosition",
+    "text": "LCR",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 7,
+    "name": "Shared alignment widget (text)",
+    "selector": "#sdCtrlText_alignment + .alignmentButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/08-mobile.png",
+    "display": "inline-grid",
+    "hidden": false,
+    "source": "sdCtrlText_alignment",
+    "text": "LCR",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ],
+    "captureNote": "Retained successful crop from earlier pass of the same local source."
+  },
+  {
+    "i": 8,
+    "name": "Shield alignment",
+    "selector": ".sdShieldAlignmentButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/09-mobile.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "24.3906px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton activated"
+      },
+      {
+        "label": "C",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "R",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      }
+    ]
+  },
+  {
+    "i": 9,
+    "name": "Shield banner 1 position",
+    "selector": ".sdShieldPositionButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/10-mobile.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "sdShield_bannerPosition",
+    "text": "chevron_left keyboard_arrow_up keyboard_arrow_down chevron_right",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "chevron_left",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "keyboard_arrow_up",
+        "height": "24.3906px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton activated"
+      },
+      {
+        "label": "keyboard_arrow_down",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "chevron_right",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      }
+    ]
+  },
+  {
+    "i": 10,
+    "name": "Shield banner 2 position",
+    "selector": ".sdShieldPositionButtons",
+    "nth": 1,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/11-mobile.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "sdShield_bannerPosition2",
+    "text": "chevron_left keyboard_arrow_up keyboard_arrow_down chevron_right",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "chevron_left",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "keyboard_arrow_up",
+        "height": "24.3906px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton activated"
+      },
+      {
+        "label": "keyboard_arrow_down",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      },
+      {
+        "label": "chevron_right",
+        "height": "24.3906px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdShieldSquareButton"
+      }
+    ]
+  },
+  {
+    "i": 11,
+    "name": "Icon alignment",
+    "selector": ".sdIconAlignmentButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/12-mobile.png",
+    "display": "inline-flex",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 12,
+    "name": "Standard arrow alignment",
+    "selector": "#sMStandardArrows .standardArrowChoices",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/13-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "LCR",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 13,
+    "name": "Standard arrow position",
+    "selector": "#sMStandardArrows .standardArrowChoices",
+    "nth": 1,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/14-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "chevron_leftkeyboard_arrow_upkeyboard_arrow_downchevron_right",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "chevron_left",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "keyboard_arrow_up",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "keyboard_arrow_down",
+        "height": "44px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "chevron_right",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 14,
+    "name": "Exit Only style",
+    "selector": ".exitOnlyModes",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/15-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "Standard Lane Split Boxed",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "Standard",
+        "height": "44px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "Lane Split",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "Boxed",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 15,
+    "name": "Exit Only alignment",
+    "selector": ".exitOnlyRow .standardArrowChoices",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/16-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "LCR",
+    "menu": "sMModal guideArrowConfig",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgb(76, 80, 88)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 16,
+    "name": "Defaults: control text font",
+    "selector": "#settingsDefaultsControlTextFontButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/17-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "settingsDefaultsControlTextFont",
+    "text": "12345WR56",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "2",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "3",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "4",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "5WR",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton active"
+      },
+      {
+        "label": "5",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "6",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      }
+    ]
+  },
+  {
+    "i": 17,
+    "name": "Defaults: action font",
+    "selector": "#settingsDefaultsActionFontButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/18-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "settingsDefaultsActionFont",
+    "text": "12345WR56",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "2",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "3",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "4",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "5WR",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton active"
+      },
+      {
+        "label": "5",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "6",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      }
+    ]
+  },
+  {
+    "i": 18,
+    "name": "Defaults: advisory font",
+    "selector": "#settingsDefaultsAdvisoryFontButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/19-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "settingsDefaultsAdvisoryFont",
+    "text": "BCDEEEMEMF",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "B",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "D",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "E",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton active"
+      },
+      {
+        "label": "EEM",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "EM",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      },
+      {
+        "label": "F",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsFontButton"
+      }
+    ]
+  },
+  {
+    "i": 19,
+    "name": "Defaults: alignment 1",
+    "selector": ".settingsDefaultsSegmentedButtonGroup",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/20-mobile.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton active"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      }
+    ]
+  },
+  {
+    "i": 20,
+    "name": "Defaults: alignment 2",
+    "selector": ".settingsDefaultsSegmentedButtonGroup",
+    "nth": 1,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/21-mobile.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton active"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsSegmentedButton"
+      }
+    ]
+  },
+  {
+    "i": 21,
+    "name": "Defaults: rotation",
+    "selector": ".settingsDefaultsRotationButtonGroup",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/22-mobile.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "settingsDefaultsArrowRotation",
+    "text": "0 45 90 135 180 225 270 315",
+    "menu": "sMModal appSettingsConfig defaultsConfig settings22Window",
+    "buttons": [
+      {
+        "label": "0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "45",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "90",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "135",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "180",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "225",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "270",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      },
+      {
+        "label": "315",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "settingsDefaultsPresetButton"
+      }
+    ]
+  },
+  {
+    "i": 22,
+    "name": "Block arrow rotation",
+    "selector": ".sdArrow_rotationButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/23-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "0\u00b0 45\u00b0 90\u00b0 135\u00b0 180\u00b0 225\u00b0 270\u00b0 315\u00b0",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "0\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "45\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "90\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "135\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "180\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "225\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "270\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      },
+      {
+        "label": "315\u00b0",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": "sdArrow_rotationPreset"
+      }
+    ]
+  },
+  {
+    "i": 23,
+    "name": "Custom shield digit variant",
+    "selector": "#customShieldMakerVariantButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/24-mobile.png",
+    "display": "grid",
+    "hidden": false,
+    "source": "",
+    "text": "1 2 3 4",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton"
+      },
+      {
+        "label": "2",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton currentVariant"
+      },
+      {
+        "label": "3",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton"
+      },
+      {
+        "label": "4",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0.18)",
+        "border": "0px",
+        "selected": "customShieldMakerVariantButton"
+      }
+    ]
+  },
+  {
+    "i": 24,
+    "name": "Custom shield alignment",
+    "selector": "#customShieldMakerRouteAlignmentButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/25-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "L C R",
+    "buttons": [
+      {
+        "label": "L",
+        "height": "44px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": "customShieldMakerAlignmentButton"
+      },
+      {
+        "label": "C",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.25)",
+        "border": "0px",
+        "selected": "customShieldMakerAlignmentButton selected"
+      },
+      {
+        "label": "R",
+        "height": "44px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": "customShieldMakerAlignmentButton"
+      }
+    ]
+  },
+  {
+    "i": 25,
+    "name": "Icon source tabs",
+    "selector": ".iconPickerTabs",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/26-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "Uploaded Icons Built-in Icons",
+    "buttons": [
+      {
+        "label": "Uploaded Icons",
+        "height": "44px",
+        "bg": "rgb(34, 98, 181)",
+        "border": "0px",
+        "selected": ""
+      },
+      {
+        "label": "Built-in Icons",
+        "height": "44px",
+        "bg": "rgba(255, 255, 255, 0.08)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 26,
+    "name": "Shield source tabs",
+    "selector": "#shieldImgSelector .shieldLibrary > nav",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/27-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "",
+    "text": "Presets Custom",
+    "buttons": [
+      {
+        "label": "Presets",
+        "height": "44px",
+        "bg": "rgba(0, 0, 255, 0.7)",
+        "border": "0px",
+        "selected": "selected"
+      },
+      {
+        "label": "Custom",
+        "height": "44px",
+        "bg": "rgb(15, 15, 15)",
+        "border": "0px",
+        "selected": ""
+      }
+    ]
+  },
+  {
+    "i": 27,
+    "name": "Export panel selection",
+    "selector": "#downloadPanelButtons",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/28-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "source": "selectPanelLabel",
+    "text": "12",
+    "buttons": [
+      {
+        "label": "1",
+        "height": "44px",
+        "bg": "rgb(10, 14, 24)",
+        "border": "0px",
+        "selected": "downloadPanelSelectButton selected"
+      },
+      {
+        "label": "2",
+        "height": "44px",
+        "bg": "rgb(10, 14, 24)",
+        "border": "0px",
+        "selected": "downloadPanelSelectButton"
+      }
+    ]
+  },
+  {
+    "i": 28,
+    "name": "Subpanel selection",
+    "selector": "#subPanelList",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/29-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "TopdeleteBottomdeleteSubpanel 1delete",
+    "menu": "sMModal subPanelConfig",
+    "buttons": [
+      {
+        "label": "Top",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabButton"
+      },
+      {
+        "label": "delete",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabDeleteButton"
+      },
+      {
+        "label": "Bottom",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabButton"
+      },
+      {
+        "label": "delete",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabDeleteButton"
+      },
+      {
+        "label": "Subpanel 1",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabButton"
+      },
+      {
+        "label": "delete",
+        "height": "44px",
+        "bg": "rgba(0, 0, 0, 0)",
+        "border": "0px",
+        "selected": "subPanelTabDeleteButton"
+      }
+    ]
+  },
+  {
+    "i": 29,
+    "name": "Exit tab selection",
+    "selector": "#exitTabList",
+    "nth": 0,
+    "mobile": true,
+    "status": "captured",
+    "file": "captures/30-mobile.png",
+    "display": "flex",
+    "hidden": false,
+    "text": "Tab 1delete",
+    "menu": "sMModal exitTabConfig",
+    "buttons": [
+      {
+        "label": "Tab 1delete",
+        "height": "44px",
+        "bg": "rgb(0, 0, 0)",
+        "border": "0px",
+        "selected": "exitTabButton active"
+      }
+    ]
+  }
+]

@@ -3525,7 +3525,14 @@ const formHandler = (function () {
   let subpanelHeightSyncFrame = 0;
 
   const syncSubpanelModalHeight = () => {
-    if (window.SignMakerMobile?.active) return;
+    if (window.SignMakerMobile?.active) {
+      // Drop desktop measurements when resizing into the mobile sheet layout.
+      const content = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
+      for (const property of ["height", "max-height", "overflow-y", "overflow-x"]) {
+        content?.style.removeProperty(property);
+      }
+      return;
+    }
     if (!subpanelMenuIsOpen()) {
       return;
     }

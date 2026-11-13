@@ -1,0 +1,236 @@
+/* Shared choice-button appearance from SignalMaker heads.css / StripeMaker menus.css.
+   Keep each editor's placement, widths, wrapping, labels and event handlers intact.
+   Existing state classes and ARIA states all use the same visual treatment. */
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) { gap: 0.12rem; }
+
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab) {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 1.4rem !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0.2rem 0.25rem !important;
+  font-size: 0.7rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: rgb(var(--inputColor)) !important;
+  color: var(--textColor) !important;
+  font-family: "Inter", sans-serif;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab):is(.selected, .active, .activated, [aria-pressed="true"], [aria-selected="true"]),
+:root #subPanelList .subPanelTabGroup.active > .subPanelTabButton {
+  background: var(--selectedColor) !important;
+  color: var(--textColor) !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab):not(.selected, .active, .activated, [aria-pressed="true"], [aria-selected="true"]):not(:disabled):hover {
+  background: var(--hoverColor) !important;
+}
+
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab):focus-visible {
+  outline: 2px solid var(--textColor);
+  outline-offset: 2px;
+}
+
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab):disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+:root :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab) > .material-symbols-outlined {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+html[data-mobile-ui] :is(
+  .alignmentButtons,
+  .sdShieldChoiceGroup:not(.sdShieldCapButtons),
+  .sdIconAlignmentButtons,
+  .standardArrowChoices,
+  .exitOnlyModes,
+  .settingsDefaultsFontButtonGroup,
+  .settingsDefaultsSegmentedButtonGroup,
+  .settingsDefaultsRotationButtonGroup,
+  .sdArrow_rotationButtons,
+  .customShieldMakerVariantButtons,
+  .customShieldMakerAlignmentButtons,
+  .iconPickerTabs,
+  .exitTabModeSwitch,
+  .shieldLibrary > nav,
+  #downloadPanelButtons,
+  .sMModalBar,
+  #subPanelList,
+  .subPanelTabGroup,
+  #exitTabList,
+  .exitTabListRow,
+  .exitTabNestedColumn
+) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab) {
+  min-height: 44px !important;
+  font-size: 13px !important;
+}

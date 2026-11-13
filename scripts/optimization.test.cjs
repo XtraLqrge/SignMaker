@@ -638,11 +638,147 @@ test('settings positioning handles closed and unknown menus without invalid sele
     if(selector.endsWith('.')||selector.includes('undefined'))throw Error('Invalid selector '+selector);
     return selector==='.modals'?holder:null;
   }};
-  const c=context({document});
+  const c=context({document,window:{}});
   vm.runInContext(['panelStylePopoverIsOpen','clearPanelStylePopoverPosition','positionPanelStylePopover'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.position=positionPanelStylePopover;',c);
   for(const menu of ['',undefined,'guideArrowConfig','subPanelConfig','templates','panelStyleConfig','appSettingsConfig']){
     bar.dataset.currentMenu=menu;assert.doesNotThrow(()=>c.position(),String(menu));
   }
+});
+
+test('phone preview fits narrow, landscape, and tall signs without scaling up artwork',()=>{
+  const c=context({});vm.runInContext(declaration('public/js/MobileUI.js','previewMetrics')+'this.fit=previewMetrics;',c);
+  for(const viewport of [320,390,768])for(const [width,height] of [[900,240],[400,1200],[120,70]]){
+    const fitted=c.fit(width,height,viewport-24,300);
+    assert.ok(fitted.scale>0&&fitted.scale<=1);
+    assert.ok(width*fitted.scale<=viewport-24+0.001);
+    assert.ok(height*fitted.scale<=300+0.001);
+    assert.ok(fitted.height>=height*fitted.scale+39);
+  }
+  assert.equal(c.fit(0,0,0,0).height,180);
+});
+
+test('phone export restores its isolated preview even if creating an export fails',()=>{
+  let active=true,exporting=false,schedules=0;
+  const canvas={style:{opacity:'0.8'},classList:new Classes('mobileCanvas')};
+  const post={style:{transform:'translateX(100px)'}};
+  const c=context({canvas,document:{getElementById:()=>post},schedule:()=>schedules++});
+  vm.runInContext('let active=true,exporting=false;'+declaration('public/js/MobileUI.js','withFullLayout')+'this.run=withFullLayout;',c);
+  const capture=()=>{
+    assert.equal(canvas.classList.contains('mobileCanvas'),false);
+    assert.equal(post.style.transform,'none');
+    return 'complete document';
+  };
+  assert.equal(c.run(capture),'complete document');
+  assert.equal(canvas.classList.contains('mobileCanvas'),true);
+  assert.equal(canvas.style.opacity,'0.8');
+  assert.equal(post.style.transform,'translateX(100px)');
+  assert.throws(()=>c.run(()=>{throw Error('capture failed');}),/capture failed/);
+  assert.equal(canvas.classList.contains('mobileCanvas'),true);
+  assert.equal(post.style.transform,'translateX(100px)');
+  assert.equal(schedules,2);
+});
+
+test('phone export selects the current stacked group without discarding other document panels',()=>{
+  const document={getElementById:()=>({checked:true})};
+  const fileInfo={panel:-1,selectedPanelIndices:[]};
+  const groups=[{topIndex:0,indices:[0,1]},{topIndex:2,indices:[2]}];
+  const c=context({document,fileInfo,getExportablePanelGroups:()=>groups});
+  vm.runInContext('let currentlySelectedPanelIndex=1;'+['getMobileExportPanelIndex','prepareMobilePanelExport'].map(name=>declaration('public/js/main.js',name)).join('\n')+'this.prepare=prepareMobilePanelExport;',c);
+  c.prepare();assert.equal(fileInfo.panel,0);assert.deepEqual([...fileInfo.selectedPanelIndices],[0]);
+  vm.runInContext('currentlySelectedPanelIndex=2',c);c.prepare();
+  assert.equal(fileInfo.panel,2);assert.equal(groups.length,2);assert.deepEqual(groups[0].indices,[0,1]);
+});
+
+test('phone workspace switches panels, routes its editors, and restores the desktop form',()=>{
+  class Node extends Element {
+    constructor(tag='div',id='',classes=''){
+      super(classes,tag.toUpperCase());this.id=id;this.attributes=new Map();this.clientWidth=390;this.offsetHeight=220;
+      this.style.removeProperty=key=>{delete this.style[key];this.properties.delete(key);};
+    }
+    setAttribute(key,value){this.attributes.set(key,String(value));}
+    removeAttribute(key){this.attributes.delete(key);}
+    toggleAttribute(key,value){value?this.setAttribute(key,''):this.removeAttribute(key);}
+    matches(selector){
+      return selector.split(',').some(part=>{
+        const chain=part.trim().split(/\s+/);let node=this;
+        const simple=(node,s)=>{
+          let valid=true;
+          s=s.replace(/:not\(([^)]+)\)/g,(_,neg)=>{if(simple(node,neg))valid=false;return '';});
+          s=s.replace(/\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]/g,(_,key,value)=>{
+            const dataKey=key.replace(/^data-/,'').replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase());
+            const actual=key.startsWith('data-')?node.dataset[dataKey]:node.attributes.get(key)??(node[key]===true?'':undefined);
+            if(actual===undefined||(value!==undefined&&actual!==value))valid=false;return '';
+          });
+          const tag=s.match(/^[a-z]+/i)?.[0];if(tag&&node.tagName!==tag.toUpperCase())return false;
+          for(const match of s.matchAll(/([.#])([\w-]+)/g))if(match[1]==='#'?node.id!==match[2]:!node.classList.contains(match[2]))return false;
+          return valid;
+        };
+        if(!simple(node,chain.pop()))return false;
+        while(chain.length){const wanted=chain.pop();do{node=node.parentElement;}while(node&&!simple(node,wanted));if(!node)return false;}
+        return true;
+      });
+    }
+    before(node){const parent=this.parentElement;node.removeFromParent();parent.children.splice(parent.children.indexOf(this),0,node);node.parentElement=parent;}
+    after(node){const parent=this.parentElement;node.removeFromParent();parent.children.splice(parent.children.indexOf(this)+1,0,node);node.parentElement=parent;}
+    removeFromParent(){if(this.parentElement)this.parentElement.children.splice(this.parentElement.children.indexOf(this),1);}
+    insertBefore(node,reference){if(reference)reference.before(node);else this.append(node);return node;}
+    prepend(node){if(this.children.length)this.children[0].before(node);else this.append(node);}
+    click(){
+      const event={target:this,preventDefault(){},stopImmediatePropagation(){this.stopped=true;}};
+      for(const capture of [true,false])for(const [type,handler,options]of this.events){
+        if(type==='click'&&!!options===capture&&!event.stopped)handler(event);
+      }
+    }
+    focus(){document.activeElement=this;}
+    scrollIntoView(){}
+  }
+  const root=new Node('html'),body=new Node('body'),canvas=new Node('main'),form=new Node('form'),modals=new Node('div','','modals');
+  const bar=new Node('nav','sMConfigBar'),post=new Node('div','postContainer'),panels=new Node('div','panelContainer');
+  root.append(body);body.append(canvas,form);canvas.append(post);post.append(panels);form.append(modals,bar);
+  const pickerButton=new Node('div','','sMConfigOption'),picker=new Node('div','panelSelect'),hitbox=new Node('div','panelSelector');
+  bar.append(pickerButton);pickerButton.append(hitbox,new Node('span','currentlySelectedPanel'),picker);
+  bar.dataset.currentMenu='';
+  const routes=['panelStyleConfig','postStyleConfig','exitTabConfig','subPanelConfig','guideArrowConfig','templates','appSettingsConfig'];
+  for(const id of [...routes,'copySign','export','importJSON','nightMode','hideConfig']){
+    const node=new Node('button',id,'sMConfigOption');node.append(new Node('span','','material-symbols-outlined'),new Node('span'));bar.append(node);
+  }
+  const history=new Node('div','','historyBar');bar.append(history);
+  for(const id of ['undoButton','redoButton','clearAllButton'])history.append(new Node('button',id));
+  const document={forms:{signMaker:form},documentElement:root,body,activeElement:null,fonts:{ready:Promise.resolve()},
+    createElement:tag=>new Node(tag),createComment:()=>new Node('comment'),getElementById:id=>root.querySelector('#'+id),
+    querySelector:selector=>root.querySelector(selector),querySelectorAll:selector=>root.querySelectorAll(selector),addEventListener(){}};
+  let index=0,resize;const models=[{text:'A'},{text:'B'}];
+  const draw=()=>{panels.children=[];for(let i=0;i<models.length;i++){const node=new Node('div','panel'+i,'panel');node.dataset.panelIndex=String(i);panels.append(node);}};
+  draw();
+  const application={exposeToFormHandler:{vars:{get currentlySelectedPanelIndex(){return index;}}},getPost:()=>({panels:models}),
+    changeEditingPanel:value=>{index=value;draw();},newPanel:()=>{models.push({text:'C'});index=models.length-1;draw();}};
+  const media={matches:false,addEventListener:(_,handler)=>resize=handler},frames=[];
+  const window={matchMedia:()=>media,innerHeight:800,location:{search:''},requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},
+    addEventListener(){},dispatchEvent(){},scrollTo(){}};
+  const c=context({document,window,app:application,URLSearchParams,Event,MutationObserver:class{observe(){}},ResizeObserver:class{observe(){}unobserve(){}}});
+  for(const id of [...routes,'panelSelector'])document.getElementById(id).addEventListener('click',()=>{
+    bar.dataset.currentMenu=bar.dataset.currentMenu===id?'':id;
+  });
+  vm.runInContext(read('public/js/MobileUI.js'),c);const api=window.SignMakerMobile;
+  const flush=()=>{api.schedule();for(let n=0;frames.length&&n<20;n++)frames.shift()();assert.equal(frames.length,0);};
+  api.init();flush();assert.equal(api.active,false);assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);
+  assert.equal(document.getElementById('export').parentElement,bar);
+  media.matches=true;resize();flush();
+  assert.equal(canvas.parentElement.id,'mobileWorkspace');assert.equal(modals.closest('form'),form);
+  assert.equal(document.getElementById('panelSelect').closest('form'),form);
+  assert.equal(document.getElementById('panel0').inert,false);assert.equal(document.getElementById('panel1').inert,true);
+  for(const menu of ['subPanelConfig','exitTabConfig','guideArrowConfig','panelStyleConfig']){
+    document.getElementById(menu).click();flush();
+    assert.equal(document.getElementById('mobileEditor').hidden,false);assert.ok(document.getElementById('mobileEditorTitle').textContent);
+  }
+  document.getElementById('mobileMore').click();flush();assert.equal(bar.dataset.currentMenu,'mobileMore');assert.equal(modals.hidden,true);
+  document.getElementById('panelSelector').click();flush();assert.equal(bar.dataset.currentMenu,'panelSelector');assert.equal(modals.hidden,false);
+  const navigation=document.querySelector('.mobilePanelNavigation');navigation.children[2].click();flush();
+  assert.equal(index,1);assert.equal(document.getElementById('panel0').inert,true);assert.equal(document.getElementById('panel1').inert,false);
+  assert.equal(document.getElementById('mobileEditor').hidden,true);assert.deepEqual(models,[{text:'A'},{text:'B'}]);
+  media.matches=false;resize();flush();
+  assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);assert.equal(document.getElementById('export').parentElement,bar);
+  for(const node of panels.children)assert.equal(node.inert,false);
 });
 
 test('deferred galleries can initialize before a dialog opens and stay initialized',()=>{

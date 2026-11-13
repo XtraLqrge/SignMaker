@@ -1,0 +1,149 @@
+#mobileWorkspace[hidden], #mobileEditor[hidden], #mobileMoreActions[hidden], #mobileMore { display: none !important; }
+
+html[data-mobile-ui] { --sm-app-zoom: 1 !important; scroll-padding: 16px 0 100px; }
+html[data-mobile-ui] body { min-width: 0; height: auto; font-size: 16px; overflow-x: clip; }
+html[data-mobile-ui] :is(.top-right-links, body > footer, #hideConfig, #alignmentGuides) { display: none !important; }
+html[data-mobile-ui] form[name="signMaker"] { display: block; width: 100%; margin: 0; }
+html[data-mobile-ui] #mobileWorkspace { display: block; width: min(100%, 720px); margin: 0 auto; padding: env(safe-area-inset-top) 0 calc(100px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+html[data-mobile-ui] .mobileHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px 4px; }
+html[data-mobile-ui] .mobileHeader > strong { font-size: 19px; letter-spacing: -0.5px; }
+html[data-mobile-ui] .mobileHeader .historyBar { display: flex !important; gap: 6px; padding: 0; background: none; }
+html[data-mobile-ui] .mobileHeader .historyButton { width: 44px; height: 44px; min-height: 44px; padding: 10px; margin: 0; }
+html[data-mobile-ui] .mobileHeader #clearAllButton { display: none; }
+html[data-mobile-ui] .mobilePanelNavigation { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px 44px; align-items: center; gap: 6px; margin: 12px 12px 0; }
+html[data-mobile-ui] .mobilePanelNavigation > span { font-size: 14px; text-align: center; font-weight: 600; }
+html[data-mobile-ui] .mobilePanelNavigation > button { height: 44px; padding: 8px; margin: 0; }
+html[data-mobile-ui] button:disabled { opacity: 0.4; }
+html[data-mobile-ui] .mobileTapHint { font-size: 13px; line-height: 1.5; text-align: center; opacity: 0.75; padding: 0 20px; margin: 0 0 20px; }
+
+/* Only the live preview is isolated. Export clones retain the full post layout. */
+html[data-mobile-ui] main.mobileCanvas { position: relative; display: block; width: 100%; height: 200px; min-height: 180px; margin: 0; padding: 0; transform: none !important; overflow: clip; }
+html[data-mobile-ui] main.mobileCanvas #postContainer { position: absolute !important; display: block !important; left: 50% !important; right: auto !important; top: 20px !important; bottom: auto !important; width: max-content !important; height: auto !important; min-height: 0 !important; margin: 0 !important; transform: translateX(-50%) scale(var(--mobile-sign-scale, 1)) !important; transform-origin: top center !important; transition: none !important; }
+html[data-mobile-ui] main.mobileCanvas #panelContainer { display: block !important; position: relative !important; width: max-content !important; height: auto !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; background: none !important; }
+html[data-mobile-ui] main.mobileCanvas .panelStack { display: contents !important; }
+html[data-mobile-ui] main.mobileCanvas .panel { position: absolute !important; left: -100000px !important; top: 0 !important; visibility: hidden !important; pointer-events: none !important; margin: 0 !important; }
+html[data-mobile-ui] main.mobileCanvas .panel.mobileCurrentPanel { display: block !important; position: relative !important; left: auto !important; top: 0 !important; visibility: visible !important; pointer-events: auto !important; padding-left: var(--panelOuterBorderWidth, 0rem) !important; padding-right: var(--panelOuterBorderWidth, 0rem) !important; margin: 0 !important; }
+html[data-mobile-ui] main.mobileCanvas :is(.post, .fdotSupport) { display: none !important; }
+html[data-mobile-ui] main.mobileCanvas, html[data-mobile-ui] main.mobileCanvas * { touch-action: pan-y !important; cursor: pointer !important; -webkit-tap-highlight-color: transparent; }
+
+/* Keep the familiar tools within thumb reach. */
+html[data-mobile-ui] nav#sMConfigBar { position: fixed !important; inset: auto 0 0 !important; display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); flex-wrap: nowrap !important; gap: 3px !important; width: 100% !important; max-width: none !important; height: auto !important; margin: 0 !important; padding: 5px max(5px, env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)) !important; transform: none !important; transition: none !important; box-sizing: border-box; z-index: 3000; box-shadow: 0 -1px 0 rgba(128,128,128,0.25); }
+html[data-mobile-ui] nav#sMConfigBar > .sMConfigOption { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; width: 100% !important; min-width: 0 !important; max-width: none !important; height: 60px !important; min-height: 60px !important; margin: 0 !important; padding: 6px 1px !important; border: 0; border-radius: 0; box-sizing: border-box; line-height: 1.2; }
+html[data-mobile-ui] nav#sMConfigBar > .sMConfigOption > span:not(.material-symbols-outlined) { display: block !important; position: static !important; font: 500 10px/1.2 Inter, sans-serif !important; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; overflow: hidden; }
+html[data-mobile-ui] nav#sMConfigBar .material-symbols-outlined { font-size: 24px !important; line-height: 1 !important; }
+html[data-mobile-ui] nav#sMConfigBar > .sMConfigOption:first-child > .material-symbols-outlined:last-of-type { display: none !important; }
+html[data-mobile-ui] nav#sMConfigBar > :is(#hideConfig, .historyBar, #copyPanelContextMenu) { display: none !important; }
+html[data-mobile-ui] #mobileMore { display: flex !important; }
+html[data-mobile-ui] #mobileMoreActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+html[data-mobile-ui] #mobileMoreActions > .sMConfigOption { display: flex !important; gap: 10px; align-items: center; justify-content: flex-start; width: 100% !important; min-width: 0 !important; height: auto !important; min-height: 56px; padding: 12px !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileMoreActions > .sMConfigOption > span:not(.material-symbols-outlined) { position: static; font-size: 13px !important; white-space: normal; }
+html[data-mobile-ui] #mobileMoreActions .configIcon { width: 24px; height: 24px; }
+
+html[data-mobile-ui] #mobileEditor { display: block; margin: 0 12px; background: var(--hotbarColor); scroll-margin-top: 12px; }
+html[data-mobile-ui] .mobileEditorHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid rgba(128,128,128,0.3); }
+html[data-mobile-ui] .mobileEditorHeader h2 { margin: 0; padding: 0; font: 600 17px/1.3 Inter, sans-serif; }
+html[data-mobile-ui] .mobileEditorHeader button { min-height: 44px; min-width: 64px; margin: 0; padding: 8px 12px; font-size: 14px; }
+html[data-mobile-ui] #mobileEditor .modals { position: static !important; inset: auto !important; display: block; width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: auto !important; max-height: none !important; transform: none !important; margin: 0 !important; padding: 0 !important; }
+html[data-mobile-ui] #mobileEditor .modals[hidden] { display: none !important; }
+html[data-mobile-ui] #mobileEditor .sMModal { position: static !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: auto !important; max-height: none !important; margin: 0 !important; transform: none !important; opacity: 1 !important; box-shadow: none; }
+html[data-mobile-ui] #mobileEditor .sMModalContent { display: block !important; width: 100% !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; padding: 12px !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor .sMModalContent > div { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: auto !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor .sMModalTitle { display: none !important; }
+html[data-mobile-ui] #mobileEditor :is(.sMModalBar, .sMModalSubBar) { width: 100% !important; min-width: 0 !important; flex-wrap: wrap !important; height: auto !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor .sMModalTab { flex: 1 1 0; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 5px; font-size: 13px !important; white-space: normal; text-align: center; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor :is(label, legend, p) { font-family: Inter, sans-serif; font-size: 13px !important; line-height: 1.4; white-space: normal !important; min-width: 0 !important; max-width: 100%; overflow-wrap: anywhere; }
+html[data-mobile-ui] #mobileEditor :is(h3,h4,h5) { font-size: 16px !important; margin: 12px 0; }
+html[data-mobile-ui] #mobileEditor :is(input, textarea, select, button) { font-family: Inter, sans-serif; box-sizing: border-box; max-width: 100%; }
+html[data-mobile-ui] #mobileEditor :is(input:not([type="hidden"]), textarea, select) { font-size: 16px !important; min-width: 0 !important; }
+html[data-mobile-ui] #mobileEditor :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea, button) { min-height: 44px; }
+html[data-mobile-ui] #mobileEditor :is(input[type="checkbox"], input[type="radio"]) { width: 22px !important; height: 22px !important; margin: 10px 4px !important; flex: 0 0 auto; }
+html[data-mobile-ui] #mobileEditor input[type="range"] { width: 100%; flex: 1 1 80px; min-width: 50px !important; padding: 0; }
+html[data-mobile-ui] #mobileEditor input[type="number"] { width: 68px; flex: 0 1 68px; }
+html[data-mobile-ui] #mobileEditor textarea { width: 100% !important; resize: vertical; }
+html[data-mobile-ui] #mobileEditor :is(.symbolPicker, .fontPicker, .colorPicker, .shieldPicker) { min-width: 0 !important; max-width: 100% !important; --sm-color-width: 100%; }
+html[data-mobile-ui] #mobileEditor :is(.symbolPickerTrigger, .fontPickerTrigger, .colorPickerTrigger, .shieldPickerTrigger) { min-height: 44px !important; min-width: 0 !important; max-width: 100%; font-size: 16px !important; }
+html[data-mobile-ui] :is(.symbolPickerMenu, .fontPickerMenu, .colorPickerMenu, .shieldPickerPopover) { max-width: calc(100vw - 24px) !important; max-height: 45dvh !important; overflow-y: auto; overscroll-behavior: contain; }
+html[data-mobile-ui] #mobileEditor .listNav { width: 100% !important; min-width: 0 !important; display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor .scrollMenu { display: flex; flex: 1 1 100%; min-width: 0 !important; max-width: 100%; overflow-x: auto; gap: 4px; }
+html[data-mobile-ui] #mobileEditor .listNavOptions { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
+html[data-mobile-ui] #mobileEditor .listNavOptions button { min-width: 44px; padding: 8px 12px; }
+
+/* Compact desktop grids become vertically ordered fields on a phone. */
+html[data-mobile-ui] #mobileEditor :is(#sMPanelAppearance, #sMPanelPadding, #sMExitTabSetting, #sMSPSettings, #sMGuideArrows, #sMExitOnlyArrows, #sMAPL, #sMSPBlocks, #sMSPTextEditor) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: auto !important; }
+html[data-mobile-ui] #mobileEditor :is(.panelAppearanceGrid, .exitTabMainSettingsGrid, .exitTabFontSettingsGrid, #sMPanelAppearance, #sMPanelPadding, #sMSPSettings) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) !important; gap: 10px 8px !important; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabMainSettingsGrid, .exitTabFontSettingsGrid) > * { grid-row: auto !important; grid-column: auto !important; width: 100% !important; min-width: 0 !important; }
+html[data-mobile-ui] #mobileEditor .exitTabMainSettingsGrid > :is(.exitTabAssetPickerRow, .exitTabMainTextInput, .exitTabMainTextLabel) { grid-column: 1 / -1 !important; }
+html[data-mobile-ui] #mobileEditor :is(.panelStyleSliderControl, .panelPaddingRow, .settingsRangeControl, .standardArrowRow, .exitArrowRow, .sdBlockMarginControl) { display: flex !important; align-items: center; flex-wrap: wrap; gap: 8px !important; width: 100% !important; min-width: 0 !important; max-width: 100%; }
+html[data-mobile-ui] #mobileEditor :is(.standardArrowRow, .exitArrowRow) > label { flex: 0 0 95px; }
+html[data-mobile-ui] #mobileEditor :is(.standardArrowPickerHost, .standardArrowEditor) { width: 100% !important; min-width: 0 !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextEditor { display: flex !important; flex-direction: column !important; align-items: stretch; gap: 10px; padding: 0 !important; }
+html[data-mobile-ui] #mobileEditor :is(#sMSPTextList, #sMSPCreate, #sMSPElement, #smSPProperties, #smSPBlockProperties) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList { overflow-x: auto; padding: 4px; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock { min-height: 44px !important; height: auto !important; max-height: none !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties > [data-property] { width: 100% !important; min-width: 0 !important; max-width: 100%; padding: 0 !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow, .sdShieldEditorRow, .sdShieldCountyRow, .sdShieldBannerRow, .sdShieldRoadNameRow) { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; width: 100% !important; min-width: 0 !important; margin: 0 0 10px !important; align-items: center; }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow, .sdShieldEditorRow, .sdShieldCountyRow, .sdShieldBannerRow, .sdShieldRoadNameRow) > * { grid-column: auto !important; grid-row: auto !important; min-width: 0 !important; max-width: 100% !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow) > label { flex: 0 0 95px; width: auto !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow) > :is(.symbolPicker, .fontPicker, .colorPicker) { flex: 1 1 120px; width: auto !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow) > input[type="text"] { flex: 1 1 100%; width: 100% !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .sdShieldTopRow > .sdShieldBasePickerHost { flex: 1 1 calc(100% - 80px); }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdShieldBasePickerHost, .sdShieldVariantPickerHost) { min-width: 0 !important; max-width: 100% !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdShieldBannerRow, .sdShieldRoadNameRow) > :is(.fontPicker, .colorPicker, .symbolPicker, input[type="text"]) { width: 100% !important; flex: 1 1 100%; }
+html[data-mobile-ui] #mobileEditor fieldset { width: 100% !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box; padding: 10px !important; margin: 0 0 12px !important; }
+html[data-mobile-ui] #mobileEditor :is(#sMAppSettings, #sMDefaults, #defaultsFields fieldset, #sMPostSettings) { width: 100% !important; min-width: 0 !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+html[data-mobile-ui] #settings22Modal .generalSettingRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 8px; min-height: 44px; }
+html[data-mobile-ui] #settings22Modal .sMModalContent { overflow: visible !important; }
+html[data-mobile-ui] #mobileEditor #panelSelect { position: static !important; inset: auto !important; transform: none !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; max-height: none !important; margin: 0 !important; padding: 12px; box-shadow: none; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor #panelList { max-height: none; width: 100%; }
+html[data-mobile-ui] #mobileEditor .panelListRow { width: 100%; min-width: 0; flex-wrap: wrap; }
+html[data-mobile-ui] #mobileEditor .panelListButton { min-height: 52px; min-width: 0; flex: 1 1 120px; }
+
+html[data-mobile-ui] #mobileEditor #sMPanelAppearance > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 12px 8px; width: 100%; }
+html[data-mobile-ui] #mobileEditor #sMPanelAppearance > div > :is(br, h4) { display: none; }
+html[data-mobile-ui] #mobileEditor #sMPanelAppearance > div > label { width: auto !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #sMPanelAppearance > div > :is(.symbolPicker, .colorPicker, .panelStyleSliderControl) { width: 100% !important; }
+html[data-mobile-ui] #mobileEditor .panelStyleSliderControl { display: grid !important; grid-template-columns: minmax(0, 1fr) 60px; }
+html[data-mobile-ui] #mobileEditor .panelPaddingRow > label { flex: 0 0 52px; width: auto !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabStyleSettingsGrid, .exitTabCheckboxPanel) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; width: 100% !important; gap: 8px; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabStyleSettingsGrid, .exitTabCheckboxPanel) > * { min-width: 0 !important; max-width: 100% !important; grid-column: auto !important; grid-row: auto !important; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabSettingsLayout, .exitTabSliderGrid) { display: flex !important; flex-direction: column; gap: 16px; width: 100% !important; min-width: 0 !important; }
+html[data-mobile-ui] #mobileEditor .exitTabSliderStack { width: 100%; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabSliderGroup, .exitOnlyRow, .standardArrowRow) { display: grid !important; grid-template-columns: minmax(0, 1fr) 60px 44px !important; width: 100% !important; min-width: 0 !important; gap: 6px !important; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabSliderGroup, .exitOnlyRow, .standardArrowRow) > * { grid-column: auto !important; grid-row: auto !important; min-width: 0 !important; }
+html[data-mobile-ui] #mobileEditor :is(.exitTabSliderGroup, .exitOnlyRow, .standardArrowRow) > :is(label:not(.exitTabSliderValue), .standardArrowLabel, .exitTabCornerRadiusLabel) { grid-column: 1 / -1 !important; width: auto !important; text-align: left !important; justify-content: flex-start; }
+html[data-mobile-ui] #mobileEditor .exitTabSliderValue { display: flex; align-items: center; min-height: 44px; width: auto !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor .exitOnlyTextRow { grid-column: 1 / -1 !important; width: 100%; }
+html[data-mobile-ui] #mobileEditor :is(.exitOnlyRow, .standardArrowRow) > :is(.colorPicker, .fontPicker, .symbolPicker, .standardArrowChoices, input[type="text"]) { grid-column: 1 / -1 !important; width: 100% !important; }
+html[data-mobile-ui] #mobileEditor :is(.standardArrowTypeRow, .exitOnlyArrowTypeRow) > .standardArrowPickerHost { grid-column: 1 / 3 !important; }
+html[data-mobile-ui] #mobileEditor .exitOnlyEditor { padding: 0; }
+html[data-mobile-ui] #mobileEditor #smSPProperties > [data-property]:not(.hidden):not(.sdCtrlTextLayout):not(.sdShieldEditorLayout) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 8px; align-items: center; }
+html[data-mobile-ui] #mobileEditor #smSPProperties > [data-property] > br { display: none; }
+html[data-mobile-ui] #mobileEditor #smSPProperties > [data-property] > :is(h3, h4, .sdIconPreview, .sdIconPickerRow) { grid-column: 1 / -1 !important; }
+html[data-mobile-ui] #mobileEditor [hidden] { display: none !important; }
+
+/* Authoring and mouse positioning tools stay out of the phone workflow. */
+html[data-mobile-ui] :is(#sMTemplateEditorTab, #sMTemplateEditor, .templateEditBtn, .templateEditorHint, #openCustomShieldMaker, [data-node-value="__customShieldMaker"], #addNestedExitTab, #exitTabDefaultProfileControls, .exitTabModeSwitch, #exitTabCurrentProfileRow, #stackedPanelList, .panelPopoverHint, .panelSpacingControl, .dragIndicator, #toggleVmsPanel, .panelStackActions, .panelDragSnapGuide, #vmsPanel, label[for="vmsPanel"], #vmsPanelSettings, [data-tab="sMAppShortcuts"], .generalSettingRow:has(#appUiScale), .generalSettingRow:has(#appToolbarPosition), .generalSettingRow:has(#appKeybindMode), .generalSettingRow:has(#showAlignmentGuides), .generalSettingRow:has(#showBlockBoundingBoxes), #alignmentGuideControls) { display: none !important; }
+
+/* Asset selection and export are the only overlays in the phone workspace. */
+html[data-mobile-ui] #modalHolder { inset: 0 !important; width: 100% !important; height: 100dvh !important; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important; box-sizing: border-box; z-index: 4000; }
+html[data-mobile-ui] :is(#modalHolder > dialog, .assetSelectorDialog) { width: min(100%, 640px) !important; min-width: 0 !important; max-width: calc(100vw - 24px) !important; max-height: calc(100dvh - 32px) !important; margin: auto !important; padding: 16px !important; transform: none !important; box-sizing: border-box; overflow-y: auto !important; overscroll-behavior: contain; font-size: 16px; }
+html[data-mobile-ui] :is(#modalHolder, .assetSelectorDialog) :is(button, input, select) { min-height: 44px; font-size: 16px; box-sizing: border-box; }
+html[data-mobile-ui] #modalHolder input:not([type="checkbox"], [type="radio"]) { max-width: 100%; }
+html[data-mobile-ui] #modalHolder h3 { font-size: 20px; padding-right: 44px; }
+html[data-mobile-ui] #downloadContent { flex-direction: column !important; gap: 16px; }
+html[data-mobile-ui] :is(#downloadContents, #downloadPreviewHolder, #downloadPreviewContainer) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; }
+html[data-mobile-ui] #downloadContents { display: flex !important; flex-direction: column; gap: 16px; padding: 0 !important; }
+html[data-mobile-ui] #downloadContent .downloadActionButtons { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+html[data-mobile-ui] #downloadContent .downloadActionButtons button { min-width: 0; min-height: 76px; padding: 12px 4px; font-size: 16px; }
+html[data-mobile-ui] #downloadContent .downloadActionLabel { font-size: 14px; white-space: nowrap; }
+html[data-mobile-ui] #downloadContent .downloadActionButtons .material-symbols-outlined { font-size: 24px; }
+html[data-mobile-ui] #downloadContent :is(img, svg) { max-width: 100%; height: auto; }
+html[data-mobile-ui] :is(.assetPickerGrid, #iconGrid, #shieldGrid, #arrowGrid) { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important; width: 100% !important; min-width: 0 !important; }
+html[data-mobile-ui] .assetSelectorHeader { gap: 8px; }
+html[data-mobile-ui] .assetSelectorHeader p { display: none; }
+html[data-mobile-ui] .assetSelectorSearch { width: 100% !important; min-width: 0 !important; }
+html[data-mobile-ui] .toolTip { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-mobile-ui] * { scroll-behavior: auto !important; }
+}

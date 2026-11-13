@@ -3525,6 +3525,7 @@ const formHandler = (function () {
   let subpanelHeightSyncFrame = 0;
 
   const syncSubpanelModalHeight = () => {
+    if (window.SignMakerMobile?.active) return;
     if (!subpanelMenuIsOpen()) {
       return;
     }
@@ -4399,6 +4400,7 @@ const formHandler = (function () {
     };
 
     const positionPanelStylePopover = () => {
+      if (window.SignMakerMobile?.active) return;
       const modalHolder = document.querySelector(".modals");
       const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
       if (!panelStylePopoverIsOpen()) return;
@@ -4509,6 +4511,8 @@ const formHandler = (function () {
         return null;
       }
 
+      if (window.SignMakerMobile?.active) return window.SignMakerMobile.mountPanelPicker(panelSelect);
+
       panelSelect.classList.add("panelSelectorFloating");
 
       if (panelSelect.parentElement !== document.body) {
@@ -4520,6 +4524,7 @@ const formHandler = (function () {
 
     const positionPanelSelectorPopover = () => {
       const panelSelect = ensurePanelSelectorPopoverPortal();
+      if (window.SignMakerMobile?.active) return;
       const configBar = document.getElementById("sMConfigBar");
       const trigger = document
         .getElementById("panelSelector")

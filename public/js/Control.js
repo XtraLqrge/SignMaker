@@ -261,7 +261,7 @@ const applyMotorwayTextFallback = (element, fontFamily) => {
 
 class TextElement {
   constructor({
-    textContent = "New Sign",
+    textContent = "",
     backgroundColor = "Inherit",
     fontFamily = "Series 5WR",
     fontSize = 100,

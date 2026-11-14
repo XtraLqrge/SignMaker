@@ -232,9 +232,11 @@ window.SignMakerMobile = (() => {
 
   const prepareEditor = menu => {
     if (!active) return;
+    editor.dataset.menu = menu || '';
     editor.hidden = !menu;
     modals.hidden = menu === 'mobileMore';
     window.SignMakerMobileExitTabs?.sync();
+    window.SignMakerMobileForms?.refresh();
     window.SignMakerMobileSubpanels?.refresh();
   };
 
@@ -278,8 +280,6 @@ window.SignMakerMobile = (() => {
   const sync = () => {
     frame = 0;
     if (!active || exporting) return;
-    window.SignMakerMobileExitTabs?.sync();
-    window.SignMakerMobileSubpanels?.refresh();
     canvas.classList.toggle('mobileWholePost', wholePost);
     wholePostToggle.checked = wholePost;
     workspace.querySelector('.mobileTapHint').textContent = wholePost
@@ -309,6 +309,7 @@ window.SignMakerMobile = (() => {
     previous.disabled = wholePost || index <= 0;
     next.disabled = wholePost || index >= length - 1;
     const menu = bar.dataset.currentMenu || '';
+    editor.dataset.menu = menu;
     const changed = menu !== lastMenu || index !== lastIndex;
     editor.hidden = !menu;
     more.hidden = menu !== 'mobileMore';
@@ -338,6 +339,7 @@ window.SignMakerMobile = (() => {
     active = enabled;
     document.documentElement.toggleAttribute('data-mobile-ui', active);
     window.SignMakerMobileExitTabs?.setActive(active);
+    window.SignMakerMobileForms?.setActive(active);
     workspace.hidden = !active;
     if (active) {
       workspace.insertBefore(canvas, workspace.querySelector('.mobileTapHint'));

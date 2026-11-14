@@ -64,7 +64,7 @@ class Node {
   checkValidity() {
     const value = Number(this.value), min = this.min === '' ? -Infinity : Number(this.min), max = this.max === '' ? Infinity : Number(this.max);
     const step = Number(this.step || 1), index = (value - (Number.isFinite(min) ? min : 0)) / step;
-    return this.disabled || this.value !== '' && Number.isFinite(value) && value >= min && value <= max && Math.abs(index - Math.round(index)) < 1e-7;
+    return this.disabled || this.value !== '' && Number.isFinite(value) && value >= min && value <= max && (this.step === 'any' || Math.abs(index - Math.round(index)) < 1e-7);
   }
 }
 function parse(source) {
@@ -155,7 +155,14 @@ for (const source of sources) {
     h.fire(input, 'change'); assert.equal(input.value, '2.5'); assert.equal(h.calls.at(-1).values.minHeight, '2.5');
     input.value = '9'; h.fire(input, 'change'); assert.equal(input.value, '5'); assert.equal(h.calls.at(-1).values.minHeight, '5');
     input.value = '-1'; h.fire(input, 'change'); assert.equal(input.value, '0');
-    input.value = '1.23'; h.fire(input, 'blur'); assert.equal(input.value, '1.25'); assert.equal(h.calls.at(-1).values.minHeight, '1.25');
+    input.value = '1.23'; h.fire(input, 'input');h.fire(input, 'blur'); assert.equal(input.value, '1.23'); assert.equal(h.calls.at(-1).values.minHeight, '1.23');
+  });
+  test(`${name}: typed decimals keep their precision and step buttons add to that exact value`, () => {
+    const h=ui(source),input=h.byId('nestedTabSpacing');
+    input.value='0.2537';h.fire(input,'input');h.fire(input,'change');h.fire(input,'blur');
+    assert.equal(input.step,'any');assert.equal(input.value,'0.2537');assert.equal(h.calls.at(-1).values.nestedTabSpacing,'0.2537');
+    h.fire(h.up(input.id),'click');assert.equal(input.value,'0.3537');h.fire(h.down(input.id),'click');assert.equal(input.value,'0.2537');
+    h.api.setActive(false);assert.equal(input.type,'range');assert.equal(input.step,'0.1');
   });
   test(`${name}: radius inheritance and the existing reset handlers still control the original field`, () => {
     const h = ui(source), input = h.byId('exitTabCornerRadius'), inherit = h.byId('exitTabUsePanelCornerRadius');

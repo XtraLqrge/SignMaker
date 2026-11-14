@@ -39,7 +39,9 @@ window.SignMakerMergeUI = (() => {
       element("sMSPGroupSelectedBlocks").disabled = (formHandler.getMergeGroupSelectionRefs?.().length || 0) < 2;
     }
     // Programmatic refills preserve the native select as the source of truth.
-    window.nativeSelectPickers?.forEach(picker => picker.sync());
+    window.nativeSelectPickers?.forEach(picker => {
+      if (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(picker.select)) picker.sync();
+    });
   };
   const convertSelect = select => {
     const runtime=window.SignMakerEditorRuntime;

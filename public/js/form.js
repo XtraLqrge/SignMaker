@@ -583,6 +583,32 @@ const formHandler = (function () {
 
     let blockMarginStepperCommitting = false;
 
+    const bindBlockSizingControls = () => {
+      for (const [sliderId, valueId, resetId] of [
+        ['sdBlock_topPadding', 'sdBlock_topPaddingVal', 'sdBlock_topPaddingReset'],
+        ['sdBlock_bottomPadding', 'sdBlock_bottomPaddingVal', 'sdBlock_bottomPaddingReset'],
+        ['sdBlock_widthSlider', 'sdBlock_width', 'sdBlock_widthReset'],
+      ]) {
+        const slider = document.getElementById(sliderId), value = document.getElementById(valueId), reset = document.getElementById(resetId);
+        if (!slider || !value || slider.dataset.blockSizingBound === 'true') continue;
+        slider.dataset.blockSizingBound = 'true';
+        slider.addEventListener('input', () => {
+          value.value = slider.value;
+          readForm({ target: slider, deferHistoryEnd: true });
+        });
+        slider.addEventListener('change', () => readForm({ target: slider }));
+        value.addEventListener('input', () => {
+          const parsed = Number(value.value);
+          if (value.value !== '' && Number.isFinite(parsed)) slider.value = Math.max(Number(slider.min), Math.min(Number(slider.max), parsed));
+        });
+        reset?.addEventListener('click', () => {
+          exposed.beginUndoableChange?.();
+          try { slider.value = '0'; value.value = '0'; readForm({ target: value }); }
+          finally { exposed.endUndoableChange?.(); }
+        });
+      }
+    };
+
     const bindBlockMarginStepperCommit = () => {
       const marginInputs = [
         document.getElementById("sdBlock_topPaddingVal"),
@@ -602,7 +628,7 @@ const formHandler = (function () {
         }
 
         const normalized = normalizeMarginInputValue(input.value, 0);
-        slider.value = Math.max(0, Math.min(3, normalized));
+        slider.value = normalized;
       };
 
       const commitInput = (input) => {
@@ -8906,7 +8932,8 @@ const formHandler = (function () {
         return;
       }
       Array.from(selectEl.options).forEach((option) => {
-        option.textContent = getUiFontDisplayName(option.value || option.textContent);
+        const label = getUiFontDisplayName(option.value || option.textContent);
+        if (option.textContent !== label) option.textContent = label;
       });
     };
 
@@ -8919,8 +8946,10 @@ const formHandler = (function () {
       );
 
       for (const selectEl of fontSelects) {
-        syncFontSelectOptionLabels(selectEl);
-        syncFontPreviewSelect(selectEl);
+        if (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(selectEl)) {
+          syncFontSelectOptionLabels(selectEl);
+          syncFontPreviewSelect(selectEl);
+        }
 
         if (selectEl.dataset.fontPreviewBound === "true") {
           continue;
@@ -9387,7 +9416,7 @@ const formHandler = (function () {
 
     const syncAllFontPickers = () => {
       document.querySelectorAll("select.fontPickerNativeSelect").forEach((selectEl) => {
-        if (selectEl._fontPickerApi) {
+        if (selectEl._fontPickerApi && (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(selectEl))) {
           selectEl._fontPickerApi.sync();
         }
       });
@@ -10070,10 +10099,9 @@ const formHandler = (function () {
     };
 
     const syncAllColorPickers = () => {
-      ensureCustomColorOptionsForAllColorSelects(document);
       cleanupOrphanedColorPickerPanels();
       document.querySelectorAll("select.colorPickerNativeSelect").forEach((selectEl) => {
-        if (selectEl._colorPickerApi) {
+        if (selectEl._colorPickerApi && (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(selectEl))) {
           selectEl._colorPickerApi.sync();
         }
       });
@@ -19260,16 +19288,7 @@ const formHandler = (function () {
       });
     }
 
-    ["sdBlock_topPadding", "sdBlock_bottomPadding"].forEach((controlId) => {
-      const slider = document.getElementById(controlId);
-      const valueInput = document.getElementById(controlId + "Val");
-      if (slider && valueInput && slider.dataset.blockMarginSliderBound !== "true") {
-        slider.dataset.blockMarginSliderBound = "true";
-        slider.addEventListener("input", () => {
-          valueInput.value = slider.value;
-        });
-      }
-    });
+    bindBlockSizingControls();
 
     document.querySelectorAll(".smallVal").forEach((valEl) => {
       const onChange = (e) => {
@@ -19282,7 +19301,7 @@ const formHandler = (function () {
               const parsed = parseFloat(valEl.value);
               const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
               valEl.value = normalized;
-              control.value = Math.max(0, Math.min(3, normalized));
+              control.value = normalized;
             } else if (
               control.type === "range" ||
               control.type === "number" ||
@@ -20641,9 +20660,9 @@ const formHandler = (function () {
     }
 
     const redrawAfterExitTabEdit = () => {
-      const keepOtherPanels =
-        document.getElementById("sMConfigBar")?.dataset.currentMenu === "exitTabConfig" &&
-        currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID;
+      const menu = document.getElementById("sMConfigBar")?.dataset.currentMenu;
+      const keepOtherPanels = ["exitTabConfig", "subPanelConfig", "panelStyleConfig", "guideArrowConfig"].includes(menu) &&
+        (menu !== "exitTabConfig" || currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID);
       exposed.redraw(keepOtherPanels
         ? { preserveOtherPanels: true, changedPanelIndex: exposed.vars.currentlySelectedPanelIndex }
         : undefined);
@@ -21727,7 +21746,7 @@ const formHandler = (function () {
     syncPanelPaddingControlsFromSign(currentPanel.sign);
 
     if (!(sdShieldReadFormFastPass && blockElemType === "sdShield")) {
-      updateForm();
+      updateForm({ elementOnly: subpanelMenuIsOpen() });
     }
     redrawAfterExitTabEdit();
     } finally {
@@ -21757,6 +21776,7 @@ const formHandler = (function () {
   let mergeLiveInputActive = false;
   let mergeLiveInputValid = true;
   let mergePendingFormRefresh = false;
+  let mergePendingFormOptions = null;
   let mergeSliderDisplaysBefore = [];
   let mergeLiveResetTimer = 0;
   document.addEventListener("input", event => {
@@ -21800,7 +21820,7 @@ const formHandler = (function () {
     if (mergeLiveInputActive || !isLiveEditorField(event.target)) return;
     exposed?.endUndoableChange?.();
     if (mergePendingFormRefresh) requestAnimationFrame(() => {
-      if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm();
+      if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(mergePendingFormOptions || {});
     });
   };
   document.addEventListener("focusout", finishLiveEdit);
@@ -21808,12 +21828,718 @@ const formHandler = (function () {
   document.addEventListener("pointercancel", finishLiveEdit);
   document.addEventListener("change", () => {
     if (!mergePendingFormRefresh) return;
-    requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(); });
+    requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(mergePendingFormOptions || {}); });
   }, true);
 
-  const updateForm = function () {
-    if (mergeLiveInputActive) { mergePendingFormRefresh = true; return; }
-    mergePendingFormRefresh = false;
+  let subpanelListCache = null;
+  const canReuseSubpanelList = (control, rows, list) => {
+    const cache = subpanelListCache;
+    return !!cache && cache.control === control && cache.list === list &&
+      cache.clipboard === !!exposed.hasSubpanelClipboard?.() && cache.rows.length === rows.length &&
+      cache.rows.every((row, i) => row.length === rows[i].length && row.every((entry, j) =>
+        entry.element === rows[i][j] && entry.label === rows[i][j].label && entry.kind === rows[i][j].constructor));
+  };
+  const rememberSubpanelList = (control, rows, list) => {
+    subpanelListCache = { control, list, clipboard: !!exposed.hasSubpanelClipboard?.(),
+      rows: rows.map(row => row.map(element => ({ element, label: element.label, kind: element.constructor }))) };
+  };
+  const syncSubpanelListSelection = (rows, list) => {
+    for (const node of list.querySelectorAll('.sMControlRow')) {
+      const row = Number(node.dataset.dataRow);
+      node.classList.toggle('selected', row === exposed.vars.currentlySelectedRowIndex);
+      node.classList.toggle('clipboardRowSelected', rowIsFullySelectedForSubpanelClipboard(row, rows));
+    }
+    for (const node of list.querySelectorAll('.textEditorBlock')) {
+      const row = Number(node.dataset.row), block = Number(node.dataset.block);
+      node.classList.toggle('selected', row === exposed.vars.currentlySelectedRowIndex && block === exposed.vars.currentlySelectedBlockIndex);
+      node.classList.toggle('clipboardSelected', subpanelClipboardSelection.selectedBlocks.has(getSubpanelBlockSelectionKey(row, block)));
+    }
+  };
+  const updateSelectedBlockEditor = function () {
+    const sMSPTextList = document.querySelector("#sMSPTextList");
+    const currentEditingTarget =
+      typeof exposed.getCurrentSubPanel === "function"
+        ? exposed.getCurrentSubPanel()
+        : exposed.getCurrentPanel()?.sign;
+    const currentBlockElements = currentEditingTarget?.blockElements;
+    const currentRows = Array.isArray(currentBlockElements?.rows)
+      ? currentBlockElements.rows
+      : [];
+
+    closeSubpanelBlockTypePicker();
+    const reuseList = canReuseSubpanelList(currentBlockElements, currentRows, sMSPTextList);
+    if (!reuseList) sMSPTextList.innerHTML = "";
+    ensureSubpanelClipboardSelectionForRows(currentRows);
+
+    document.querySelector("#SMSPSelectLabel").textContent =
+      "Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
+    document.querySelector("#SMSPElementLabel").textContent =
+      "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
+
+    const elementCount = currentRows.reduce((count, row) => count + row.length, 0);
+    const makeDeleteButton = (className, label, remove) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">delete</span>';
+      // Commit a focused field during the click, after the button has received it.
+      button.addEventListener("mousedown", event => event.preventDefault());
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        const field = document.activeElement;
+        if (field?.matches("input, select, textarea")) field.blur();
+        flushShieldFormEdit();
+        if (exposed.getActiveBlockElements() === currentBlockElements) remove();
+      });
+      return button;
+    };
+
+    if (!reuseList) {
+    for (let row = 0; row < currentRows.length; row++) {
+      const sMControlRow = document.createElement("div");
+      sMControlRow.dataset.dataRow = row.toString();
+      sMControlRow.className =
+        "sMControlRow" +
+        (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "") +
+        (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
+          ? " clipboardRowSelected"
+          : "");
+
+      if (currentRows.length > 1 && elementCount > currentRows[row].length) {
+        sMControlRow.appendChild(makeDeleteButton(
+          "sMControlRowDeleteButton", `Delete row ${row + 1}`, () => exposed.delRow(row)
+        ));
+      }
+
+      for (let item = 0; item < currentRows[row].length; item++) {
+        const blockElement = currentRows[row][item];
+
+        const currentBlockElemType =
+          Control.prototype.blockToClassElems.getElem(blockElement) ||
+          blockElement.constructor.name;
+
+        const textEditorBlock = document.createElement("div");
+        const clipboardBlockSelected = subpanelClipboardSelection.selectedBlocks.has(
+          getSubpanelBlockSelectionKey(row, item)
+        );
+
+        textEditorBlock.className =
+          "textEditorBlock " +
+          Control.prototype.blockInternalElements[currentBlockElemType] +
+          (item == exposed.vars.currentlySelectedBlockIndex &&
+            row == exposed.vars.currentlySelectedRowIndex
+            ? " selected"
+            : "") +
+          (clipboardBlockSelected ? " clipboardSelected" : "");
+        if (elementCount > 1) textEditorBlock.classList.add("hasBlockDelete");
+        textEditorBlock.dataset.row = row.toString();
+        textEditorBlock.dataset.block = item.toString();
+        textEditorBlock.draggable = true;
+
+        const blockTypeLabel = document.createElement("span");
+        blockTypeLabel.className = "textEditorBlockLabel";
+        blockTypeLabel.textContent =
+          blockElement instanceof GroupedBlockElement
+            ? blockElement.label || "Group"
+            : Control.prototype.blockElements[currentBlockElemType] || "Block";
+
+        const blockTypeSelect = document.createElement("select");
+        blockTypeSelect.className = "blockTypeInlineSelect";
+        blockTypeSelect.value = currentBlockElemType;
+        blockTypeSelect.setAttribute("aria-label", "Change block type");
+        blockTypeSelect.title = "Change block type";
+
+        for (const element in Control.prototype.blockElements) {
+          lib.appendOption(blockTypeSelect, element, {
+            selected: element === currentBlockElemType,
+            text: Control.prototype.blockElements[element],
+          });
+        }
+
+        const blockTypePicker = createInlineSubpanelBlockTypePicker({
+          nativeSelect: blockTypeSelect,
+          row,
+          item,
+          currentValue: currentBlockElemType,
+          anchor: textEditorBlock,
+        });
+
+        if (elementCount > 1) {
+          textEditorBlock.appendChild(makeDeleteButton(
+            "sMBlockDeleteButton",
+            `Delete ${blockTypeLabel.textContent} (row ${row + 1}, element ${item + 1})`,
+            () => exposed.delControlElem(row, item)
+          ));
+        }
+        textEditorBlock.appendChild(blockTypeLabel);
+        if (blockElement instanceof GroupedBlockElement) {
+          const editGroup = document.createElement("button");
+          editGroup.type = "button";
+          editGroup.className = "mergeEditGroup";
+          editGroup.title = "Edit group contents";
+          editGroup.setAttribute("aria-label", "Edit group contents");
+          editGroup.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span>';
+          editGroup.addEventListener("click", event => {
+            event.preventDefault(); event.stopPropagation();
+            exposed.enterGroupElement(row, item);
+          });
+          textEditorBlock.appendChild(editGroup);
+        }
+        textEditorBlock.appendChild(blockTypePicker);
+
+        sMControlRow.appendChild(textEditorBlock);
+        textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
+        textEditorBlock.addEventListener("dragend", handleBlockDragEnd);
+        textEditorBlock.addEventListener("click", (event) => {
+          event.stopPropagation();
+
+          if (textEditorBlock.dataset.dragging === "true") {
+            event.preventDefault();
+            return;
+          }
+
+          if (event.ctrlKey || event.metaKey || event.shiftKey) {
+            event.preventDefault();
+            handleSubpanelBlockSelectionClick(row, item, event, currentRows);
+            return;
+          }
+
+          subpanelClipboardSelection.lastAppSelectionKey = "";
+
+          if (typeof exposed.setSelectedRowAndBlock === "function") {
+            exposed.setSelectedRowAndBlock(row, item);
+          } else {
+            exposed.setSelectedRow(row);
+            exposed.setSelectedControlElem(item);
+          }
+        });
+      }
+
+      if (
+        isSubpanelClipboardSelectionAllowed() &&
+        exposed &&
+        typeof exposed.hasSubpanelClipboard === "function" &&
+        exposed.hasSubpanelClipboard()
+      ) {
+        const pasteRowButton = document.createElement("button");
+        pasteRowButton.type = "button";
+        pasteRowButton.className = "sMControlRowPasteButton";
+        pasteRowButton.title = "Paste copied elements here";
+        pasteRowButton.setAttribute("aria-label", "Paste copied elements here");
+        pasteRowButton.innerHTML =
+          '<span class="material-symbols-outlined">content_paste</span>';
+
+        pasteRowButton.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+        });
+
+        pasteRowButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          pasteCurrentSubpanelClipboardSelection(row);
+        });
+
+        sMControlRow.appendChild(pasteRowButton);
+      }
+
+      sMSPTextList.appendChild(sMControlRow);
+      sMControlRow.draggable = true;
+      sMControlRow.style.position = "relative";
+      sMControlRow.addEventListener("dragstart", handleRowDragStart);
+      sMControlRow.addEventListener("dragend", handleRowDragEnd);
+      sMControlRow.addEventListener("dragenter", handleRowDragEnter);
+      sMControlRow.addEventListener("dragover", handleRowDragOver);
+      sMControlRow.addEventListener("dragleave", handleRowDragLeave);
+      sMControlRow.addEventListener("drop", handleRowDrop);
+      sMControlRow.addEventListener("click", (event) => {
+        if (event.target.closest(".sMControlRowPasteButton")) {
+          return;
+        }
+
+        if (event.ctrlKey || event.metaKey || event.shiftKey) {
+          event.preventDefault();
+          handleSubpanelRowSelectionClick(row, event, currentRows);
+          return;
+        }
+
+        subpanelClipboardSelection.lastAppSelectionKey = "";
+
+        if (typeof exposed.setSelectedRowAndBlock === "function") {
+          exposed.setSelectedRowAndBlock(row, 0);
+        } else {
+          exposed.setSelectedRow(row);
+        }
+      });
+    }
+
+      rememberSubpanelList(currentBlockElements, currentRows, sMSPTextList);
+    }
+    syncSubpanelListSelection(currentRows, sMSPTextList);
+
+    // Attach row list container drag events for row reordering
+    sMSPTextList.addEventListener("dragover", handleRowListDragOver);
+    sMSPTextList.addEventListener("drop", handleRowListDrop);
+    sMSPTextList.addEventListener("dragleave", handleRowListDragLeave);
+
+    for (const divConfig of document.querySelectorAll(
+      "#smSPProperties > div"
+    )) {
+      if (
+        divConfig.dataset.property ==
+        Control.prototype.blockInternalElements[
+        Control.prototype.blockToClassElems.getElem(
+          exposed.getCurrentBlockElem()
+        )
+        ]
+      ) {
+        divConfig.classList.remove("hidden");
+
+      } else {
+        divConfig.classList.add("hidden");
+      }
+    }
+    const currentBlockElem = exposed.getCurrentBlockElem();
+    const blockElemType =
+      Control.prototype.blockInternalElements[
+      Control.prototype.blockToClassElems.getElem(currentBlockElem)
+      ];
+
+    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+      if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+      if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
+      if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+      if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
+      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+        currentBlockElem.smallCapitals = false;
+      }
+      if (currentBlockElem.textColor === undefined) {
+        currentBlockElem.textColor =
+          blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+      }
+    }
+
+    if (blockElemType === "sdIcon") {
+      const normalizeIconNumber = (value, fallback = 0) => {
+        const parsed = parseFloat(
+          value !== null && value !== undefined ? value : fallback
+        );
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const legacyIconSpacing = normalizeIconNumber(currentBlockElem.spacing, 0);
+      currentBlockElem.paddingHorizontal = normalizeIconNumber(
+        currentBlockElem.paddingHorizontal,
+        legacyIconSpacing
+      );
+      currentBlockElem.paddingVertical = normalizeIconNumber(
+        currentBlockElem.paddingVertical,
+        0
+      );
+      currentBlockElem.spacing = 0;
+      currentBlockElem.invertColors =
+        currentBlockElem.invertColors === true ||
+        currentBlockElem.invertColors === "true" ||
+        currentBlockElem.invertColors === 1 ||
+        currentBlockElem.invertColors === "1" ||
+        currentBlockElem.invertColors === "on";
+      setupSdIconEditorControls();
+    }
+
+    if (blockElemType === "sdArrow") {
+      const normalizePadding = (value, fallback = 0) => {
+        const parsed = parseFloat(
+          value !== null && value !== undefined ? value : fallback
+        );
+        return isNaN(parsed) ? fallback : parsed;
+      };
+
+      const fallbackPadding =
+        currentBlockElem.padding !== undefined &&
+          currentBlockElem.padding !== null
+          ? currentBlockElem.padding
+          : 0;
+
+      currentBlockElem.paddingHorizontal = normalizePadding(
+        currentBlockElem.paddingHorizontal,
+        fallbackPadding
+      );
+      currentBlockElem.paddingVertical = normalizePadding(
+        currentBlockElem.paddingVertical,
+        fallbackPadding
+      );
+
+      delete currentBlockElem.padding;
+
+      currentBlockElem.flip =
+        currentBlockElem.flip === true ||
+        currentBlockElem.flip === "true" ||
+        currentBlockElem.flip === 1 ||
+        currentBlockElem.flip === "1" ||
+        currentBlockElem.flip === "on";
+        const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
+          ? TextElement.prototype.alignment
+          : ["Left", "Center", "Right"];
+
+        currentBlockElem.alignment = validArrowAlignments.includes(
+          currentBlockElem.alignment
+        )
+          ? currentBlockElem.alignment
+          : "Center";
+    }
+
+    if (blockElemType === "sdShield") {
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+      currentBlockElem.scaleBannersWithShield =
+        ShieldElement.prototype.normalizeScaleBannersWithShield(
+          currentBlockElem.scaleBannersWithShield
+        );
+      if (currentBlockElem.shieldBacks === undefined) {
+        currentBlockElem.shieldBacks = false;
+      } else {
+        currentBlockElem.shieldBacks =
+          currentBlockElem.shieldBacks === true ||
+          currentBlockElem.shieldBacks === "true" ||
+          currentBlockElem.shieldBacks === 1 ||
+          currentBlockElem.shieldBacks === "1" ||
+          currentBlockElem.shieldBacks === "on";
+      }
+      if (currentBlockElem.indentFirstLetter === undefined) {
+        currentBlockElem.indentFirstLetter = true;
+      }
+      if (currentBlockElem.indentFirstLetter2 === undefined) {
+        currentBlockElem.indentFirstLetter2 =
+          currentBlockElem.indentFirstLetter;
+      }
+      currentBlockElem.shieldSize =
+        ShieldElement.prototype.normalizeShieldSize(
+          currentBlockElem.shieldSize
+        );
+      if (currentBlockElem.smallCaps === undefined) {
+        currentBlockElem.smallCaps = true;
+      }
+      if (currentBlockElem.smallCaps2 === undefined) {
+        currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
+      }
+      if (currentBlockElem.manualBanners === undefined) {
+        currentBlockElem.manualBanners = getDefaultManualBannersSetting();
+      }
+      if (currentBlockElem.roadName === undefined) {
+        currentBlockElem.roadName = "";
+      }
+      currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
+        currentBlockElem.bannerLetterSpacing
+      );
+      if (currentBlockElem.alignment === undefined) {
+        currentBlockElem.alignment = "Center";
+      }
+    }
+
+    if (blockElemType === "sdBlocker") {
+      currentBlockElem.orientation =
+        DividerElement.prototype.normalizeOrientation(
+          currentBlockElem.orientation
+        );
+    }
+
+    for (const propertyName in currentBlockElem) {
+      const elementId = `${blockElemType}_${propertyName}`;
+      const element = document.getElementById(elementId);
+      const displayElement = document.getElementById(elementId + "Val");
+
+      if (element) {
+        const handleCustomBanner =
+          blockElemType === "sdShield" &&
+          (propertyName === "bannerType" || propertyName === "bannerType2");
+
+        if (handleCustomBanner) {
+          const manualCheckbox = document.getElementById("sdShield_manualBanners");
+
+          if (manualCheckbox) {
+            manualCheckbox.checked = currentBlockElem.manualBanners !== false;
+          }
+
+          const customInputId =
+            propertyName === "bannerType"
+              ? "sdShield_bannerCustomText"
+              : "sdShield_bannerCustomText2";
+
+          const customInput = document.getElementById(customInputId);
+          const currentBanner =
+            currentBlockElem[propertyName] || getDefaultBannerType();
+
+          const matchedPreset = findBannerDropdownPresetValue(currentBanner);
+
+          const manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+          if (element.tagName === "SELECT") {
+            element.value = matchedPreset || getDefaultBannerType();
+            element.addEventListener("change", scheduleSdShieldReadForm, { once: true });
+          }
+
+          if (customInput) {
+            customInput.value = manualBanners ? currentBanner : "";
+            customInput.addEventListener("blur", scheduleSdShieldReadForm, { once: true });
+          }
+
+          syncManualBannerInputMode();
+          syncSdShieldBannerBackgroundColorPickerVisuals();
+
+          if (displayElement) {
+            displayElement.textContent = currentBanner;
+          }
+
+          continue;
+        }
+
+        const formReadHandler =
+          blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
+
+        // Update the sign on each edit without rebuilding the focused editor.
+        if (!element.dataset.livePreviewBound &&
+            (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
+          element.dataset.livePreviewBound = "true";
+          element.addEventListener("input", event => {
+            if (!isUsableLiveInput(element)) return;
+            readForm({ target: element, deferHistoryEnd: true });
+          });
+          element.addEventListener("blur", () => exposed?.endUndoableChange?.());
+        }
+
+
+        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
+          element.checked=currentBlockElem.numberStyle==='legacy';
+          element.addEventListener('change',formReadHandler,{once:true});
+        } else if (element.type === "checkbox") {
+          element.checked = currentBlockElem[propertyName];
+          element.addEventListener("change", formReadHandler, { once: true });
+        } else if (element.type === "radio") {
+          if (element.value === currentBlockElem[propertyName].toString()) {
+            element.checked = true;
+          }
+          element.addEventListener("change", formReadHandler, { once: true });
+        } else if (element.tagName === "SELECT") {
+          const currentSelectValue =
+            propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
+              ? normalizeUiFontValue(currentBlockElem[propertyName])
+              : currentBlockElem[propertyName];
+          currentBlockElem[propertyName] = currentSelectValue;
+          if (!Array.from(element.options).some((option) => option.value === currentSelectValue)) {
+            lib.appendOption(element, currentSelectValue);
+          }
+          element.value = currentSelectValue;
+          if (
+            blockElemType === "sdShield" &&
+            (propertyName === "bannerFontFamily1" ||
+              propertyName === "bannerFontFamily2")
+          ) {
+            element.dataset.shieldBannerFontUserChanged = "false";
+          }
+
+          element.addEventListener("change", formReadHandler, { once: true });
+          element.addEventListener("blur", formReadHandler, { once: true });
+        } else {
+          element.value = currentBlockElem[propertyName];
+          element.addEventListener(
+            element.type === "text" ? "blur" : "change",
+            formReadHandler,
+            { once: true }
+          );
+
+          if (
+            element.type === "range" &&
+            displayElement &&
+            !element.dataset.syncDisplay
+          ) {
+            element.addEventListener("input", () => {
+              displayElement.value = element.value;
+            });
+            element.dataset.syncDisplay = "true";
+          }
+        }
+      }
+
+      if (displayElement) {
+        if (
+          displayElement.tagName === "INPUT" &&
+          displayElement.type === "number"
+        ) {
+          displayElement.value = currentBlockElem[propertyName];
+        } else {
+          displayElement.textContent = currentBlockElem[propertyName];
+        }
+      }
+    }
+
+    if (blockElemType === "sdShield") {
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+      writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
+      setupSdShieldCompactControls();
+    }
+
+    if (blockElemType === "sdIcon") {
+      setupSdIconEditorControls();
+      updateSdIconExtraControls(currentBlockElem);
+    }
+
+    if (blockElemType === "sdArrow") {
+      const arrowRotationButtons = document.querySelectorAll(
+        ".sdArrow_rotationPreset"
+      );
+      const currentRotation = parseFloat(currentBlockElem.rotation) || 0;
+      arrowRotationButtons.forEach((button) => {
+        const degrees = parseFloat(button.dataset.degrees || "0") || 0;
+        button.classList.toggle(
+          "activated",
+          Math.abs((((currentRotation % 360) + 360) % 360) - degrees) < 0.5
+        );
+      });
+
+      const arrowFlipInput = document.getElementById("sdArrow_flip");
+      const arrowFlipButton = document.getElementById("sdArrow_flipButton");
+      if (arrowFlipInput && arrowFlipButton) {
+        arrowFlipInput.value = currentBlockElem.flip ? "true" : "false";
+        arrowFlipButton.classList.toggle("activated", currentBlockElem.flip);
+        arrowFlipButton.setAttribute(
+          "aria-pressed",
+          currentBlockElem.flip ? "true" : "false"
+        );
+      }
+    }
+
+    const currentBlockProperties = currentBlockElements?.blockProperties || [];
+    const selectedBlockProperties =
+      currentBlockProperties[exposed.vars.currentlySelectedRowIndex] || new Block();
+
+    const clampBlockMarginSliderValue = (value) => {
+      const parsed = parseFloat(value);
+      if (!Number.isFinite(parsed)) {
+        return 0;
+      }
+      return Math.max(-5, Math.min(10, parsed));
+    };
+
+    document.querySelector("#sdBlock_topPadding").value =
+      clampBlockMarginSliderValue(selectedBlockProperties.topPadding);
+
+    document.querySelector("#sdBlock_bottomPadding").value =
+      clampBlockMarginSliderValue(selectedBlockProperties.bottomPadding);
+
+    const topPadValEl = document.querySelector("#sdBlock_topPaddingVal");
+    const bottomPadValEl = document.querySelector("#sdBlock_bottomPaddingVal");
+    const topPadValue = selectedBlockProperties.topPadding;
+    const bottomPadValue = selectedBlockProperties.bottomPadding;
+    if (topPadValEl) {
+      if (topPadValEl.tagName === "INPUT" && topPadValEl.type === "number") {
+        topPadValEl.value = topPadValue;
+      } else {
+        topPadValEl.textContent = topPadValue;
+      }
+    }
+    if (bottomPadValEl) {
+      if (
+        bottomPadValEl.tagName === "INPUT" &&
+        bottomPadValEl.type === "number"
+      ) {
+        bottomPadValEl.value = bottomPadValue;
+      } else {
+        bottomPadValEl.textContent = bottomPadValue;
+      }
+    }
+    bindBlockMarginStepperCommit();
+
+    document.querySelector("#sdBlock_backgroundColor").value =
+      selectedBlockProperties.backgroundColor;
+
+    document
+      .querySelector("#sdBlock_backgroundColor")
+      .addEventListener("blur", readForm, { once: true });
+
+    const blockBorderColorEl = document.querySelector("#sdBlock_borderColor");
+    if (blockBorderColorEl) {
+      const storedBorderColor =
+        selectedBlockProperties.borderColor;
+      blockBorderColorEl.value =
+        storedBorderColor || Block.defaultBorderColor || "Match BG";
+      blockBorderColorEl.addEventListener("blur", readForm, { once: true });
+    }
+
+    const blockBackgroundFullWidthEl = document.querySelector(
+      "#sdBlock_backgroundFullWidth"
+    );
+    blockBackgroundFullWidthEl.checked =
+      !!selectedBlockProperties.backgroundFullWidth;
+    blockBackgroundFullWidthEl.addEventListener("change", readForm, {
+      once: true,
+    });
+
+    document.querySelector("#sdBlock_width").value =
+      selectedBlockProperties.width;
+    const blockWidthSlider = document.getElementById('sdBlock_widthSlider');
+    if (blockWidthSlider) blockWidthSlider.value = Math.max(0, Math.min(100, Number(selectedBlockProperties.width) || 0));
+    document
+      .querySelector("#sdBlock_width")
+      .addEventListener("change", readForm, { once: true });
+
+    document
+      .querySelector("#sdBlock_stretchLeft")
+      .addEventListener("change", readForm, { once: true });
+
+    document.querySelector("#sdBlock_stretchLeft").checked =
+      selectedBlockProperties.stretchLeft;
+
+    document
+      .querySelector("#sdBlock_stretchCenter")
+      .addEventListener("change", readForm, { once: true });
+    document.querySelector("#sdBlock_stretchCenter").checked =
+      selectedBlockProperties.stretchCenter;
+
+    document
+      .querySelector("#sdBlock_stretchRight")
+      .addEventListener("change", readForm, { once: true });
+    document.querySelector("#sdBlock_stretchRight").checked =
+      selectedBlockProperties.stretchRight;
+
+    /*
+    // Old Control Text
+    const controlTextElmt = document.getElementById("controlText");
+    controlTextElmt.value = sign.controlText;
+ 
+    const actionMessageElmt = document.getElementById("actionMessage");
+    actionMessageElmt.value = sign.actionMessage;
+    */
+    return { blockElemType, currentBlockElem };
+  };
+  const syncSelectedBlockEditor = () => {
+    const { blockElemType, currentBlockElem } = updateSelectedBlockEditor();
+    if (blockElemType === 'sdShield') {
+      ensureSdShieldBasePicker();
+      const base = syncShieldBasePickerValue(currentBlockElem.shieldBase || currentBlockElem.type || ShieldElement.prototype.defaultShieldBase || 'I');
+      syncSdShieldVariantPickerForBase(base, { requestedValue: currentBlockElem.shieldType || getSdShieldAutoVariantValue(), updateBlock: true });
+      updateShieldCountyVisibility(base);
+    }
+    bindTextFormattingControls(blockElemType);
+    setDependentVisibility(blockElemType);
+    const root = document.getElementById('smSPProperties');
+    applyEditorInputBehavior(root);
+    bindAllFontPreviewSelects(root);
+    window.SignMakerEditorRuntime?.ensure();
+    syncAllFontPickers(); syncAllColorPickers();
+    window.SignMakerMergeUI?.sync();
+    window.SignMakerMobileForms?.refresh();
+    window.SignMakerMobileSubpanels?.refresh();
+    scheduleSubpanelModalHeightSync();
+  };
+
+  const updateForm = function (options = {}) {
+    if (mergeLiveInputActive) {
+      if (!mergePendingFormRefresh || !options.elementOnly) mergePendingFormOptions = options;
+      mergePendingFormRefresh = true; return;
+    }
+    mergePendingFormRefresh = false; mergePendingFormOptions = null;
+    if (options.elementOnly && exposed.getCurrentBlockElem?.()) { syncSelectedBlockEditor(); return; }
     syncPostReference();
     normalizeExitTabProfiles();
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
@@ -22607,7 +23333,11 @@ const formHandler = (function () {
       tabButton.id = id;
       tabButton.type = "button";
       tabButton.className = "subPanelTabButton";
-      tabButton.textContent = label;
+      if (subPanelIndex >= 0) {
+        tabButton.dataset.mobileLabel = String(subPanelIndex + 1);
+        tabButton.dataset.desktopLabel = label;
+      }
+      tabButton.textContent = window.SignMakerMobile?.active && subPanelIndex >= 0 ? tabButton.dataset.mobileLabel : label;
 
       tabButton.addEventListener("click", function () {
         exposed.changeEditingSubPanel(subPanelIndex);
@@ -24442,660 +25172,8 @@ const formHandler = (function () {
     // Shields
     updateShieldSubform();
 
-    // Control Text Revision
-    // Control Text Revision
-    const sMSPTextList = document.querySelector("#sMSPTextList");
-    const currentEditingTarget =
-      typeof exposed.getCurrentSubPanel === "function"
-        ? exposed.getCurrentSubPanel()
-        : sign;
-    const currentBlockElements = currentEditingTarget?.blockElements;
-    const currentRows = Array.isArray(currentBlockElements?.rows)
-      ? currentBlockElements.rows
-      : [];
+    const { blockElemType, currentBlockElem } = updateSelectedBlockEditor();
 
-    closeSubpanelBlockTypePicker();
-    sMSPTextList.innerHTML = "";
-    ensureSubpanelClipboardSelectionForRows(currentRows);
-
-    document.querySelector("#SMSPSelectLabel").textContent =
-      "Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
-    document.querySelector("#SMSPElementLabel").textContent =
-      "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
-
-    const elementCount = currentRows.reduce((count, row) => count + row.length, 0);
-    const makeDeleteButton = (className, label, remove) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = className;
-      button.title = label;
-      button.setAttribute("aria-label", label);
-      button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">delete</span>';
-      // Commit a focused field during the click, after the button has received it.
-      button.addEventListener("mousedown", event => event.preventDefault());
-      button.addEventListener("click", event => {
-        event.stopPropagation();
-        const field = document.activeElement;
-        if (field?.matches("input, select, textarea")) field.blur();
-        flushShieldFormEdit();
-        if (exposed.getActiveBlockElements() === currentBlockElements) remove();
-      });
-      return button;
-    };
-
-    for (let row = 0; row < currentRows.length; row++) {
-      const sMControlRow = document.createElement("div");
-      sMControlRow.dataset.dataRow = row.toString();
-      sMControlRow.className =
-        "sMControlRow" +
-        (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "") +
-        (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
-          ? " clipboardRowSelected"
-          : "");
-
-      if (currentRows.length > 1 && elementCount > currentRows[row].length) {
-        sMControlRow.appendChild(makeDeleteButton(
-          "sMControlRowDeleteButton", `Delete row ${row + 1}`, () => exposed.delRow(row)
-        ));
-      }
-
-      for (let item = 0; item < currentRows[row].length; item++) {
-        const blockElement = currentRows[row][item];
-
-        const currentBlockElemType =
-          Control.prototype.blockToClassElems.getElem(blockElement) ||
-          blockElement.constructor.name;
-
-        const textEditorBlock = document.createElement("div");
-        const clipboardBlockSelected = subpanelClipboardSelection.selectedBlocks.has(
-          getSubpanelBlockSelectionKey(row, item)
-        );
-
-        textEditorBlock.className =
-          "textEditorBlock " +
-          Control.prototype.blockInternalElements[currentBlockElemType] +
-          (item == exposed.vars.currentlySelectedBlockIndex &&
-            row == exposed.vars.currentlySelectedRowIndex
-            ? " selected"
-            : "") +
-          (clipboardBlockSelected ? " clipboardSelected" : "");
-        if (elementCount > 1) textEditorBlock.classList.add("hasBlockDelete");
-        textEditorBlock.dataset.row = row.toString();
-        textEditorBlock.dataset.block = item.toString();
-        textEditorBlock.draggable = true;
-
-        const blockTypeLabel = document.createElement("span");
-        blockTypeLabel.className = "textEditorBlockLabel";
-        blockTypeLabel.textContent =
-          blockElement instanceof GroupedBlockElement
-            ? blockElement.label || "Group"
-            : Control.prototype.blockElements[currentBlockElemType] || "Block";
-
-        const blockTypeSelect = document.createElement("select");
-        blockTypeSelect.className = "blockTypeInlineSelect";
-        blockTypeSelect.value = currentBlockElemType;
-        blockTypeSelect.setAttribute("aria-label", "Change block type");
-        blockTypeSelect.title = "Change block type";
-
-        for (const element in Control.prototype.blockElements) {
-          lib.appendOption(blockTypeSelect, element, {
-            selected: element === currentBlockElemType,
-            text: Control.prototype.blockElements[element],
-          });
-        }
-
-        const blockTypePicker = createInlineSubpanelBlockTypePicker({
-          nativeSelect: blockTypeSelect,
-          row,
-          item,
-          currentValue: currentBlockElemType,
-          anchor: textEditorBlock,
-        });
-
-        if (elementCount > 1) {
-          textEditorBlock.appendChild(makeDeleteButton(
-            "sMBlockDeleteButton",
-            `Delete ${blockTypeLabel.textContent} (row ${row + 1}, element ${item + 1})`,
-            () => exposed.delControlElem(row, item)
-          ));
-        }
-        textEditorBlock.appendChild(blockTypeLabel);
-        if (blockElement instanceof GroupedBlockElement) {
-          const editGroup = document.createElement("button");
-          editGroup.type = "button";
-          editGroup.className = "mergeEditGroup";
-          editGroup.title = "Edit group contents";
-          editGroup.setAttribute("aria-label", "Edit group contents");
-          editGroup.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span>';
-          editGroup.addEventListener("click", event => {
-            event.preventDefault(); event.stopPropagation();
-            exposed.enterGroupElement(row, item);
-          });
-          textEditorBlock.appendChild(editGroup);
-        }
-        textEditorBlock.appendChild(blockTypePicker);
-
-        sMControlRow.appendChild(textEditorBlock);
-        textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
-        textEditorBlock.addEventListener("dragend", handleBlockDragEnd);
-        textEditorBlock.addEventListener("click", (event) => {
-          event.stopPropagation();
-
-          if (textEditorBlock.dataset.dragging === "true") {
-            event.preventDefault();
-            return;
-          }
-
-          if (event.ctrlKey || event.metaKey || event.shiftKey) {
-            event.preventDefault();
-            handleSubpanelBlockSelectionClick(row, item, event, currentRows);
-            return;
-          }
-
-          subpanelClipboardSelection.lastAppSelectionKey = "";
-
-          if (typeof exposed.setSelectedRowAndBlock === "function") {
-            exposed.setSelectedRowAndBlock(row, item);
-          } else {
-            exposed.setSelectedRow(row);
-            exposed.setSelectedControlElem(item);
-          }
-        });
-      }
-
-      if (
-        isSubpanelClipboardSelectionAllowed() &&
-        exposed &&
-        typeof exposed.hasSubpanelClipboard === "function" &&
-        exposed.hasSubpanelClipboard()
-      ) {
-        const pasteRowButton = document.createElement("button");
-        pasteRowButton.type = "button";
-        pasteRowButton.className = "sMControlRowPasteButton";
-        pasteRowButton.title = "Paste copied elements here";
-        pasteRowButton.setAttribute("aria-label", "Paste copied elements here");
-        pasteRowButton.innerHTML =
-          '<span class="material-symbols-outlined">content_paste</span>';
-
-        pasteRowButton.addEventListener("mousedown", (event) => {
-          event.stopPropagation();
-        });
-
-        pasteRowButton.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          pasteCurrentSubpanelClipboardSelection(row);
-        });
-
-        sMControlRow.appendChild(pasteRowButton);
-      }
-
-      sMSPTextList.appendChild(sMControlRow);
-      sMControlRow.draggable = true;
-      sMControlRow.style.position = "relative";
-      sMControlRow.addEventListener("dragstart", handleRowDragStart);
-      sMControlRow.addEventListener("dragend", handleRowDragEnd);
-      sMControlRow.addEventListener("dragenter", handleRowDragEnter);
-      sMControlRow.addEventListener("dragover", handleRowDragOver);
-      sMControlRow.addEventListener("dragleave", handleRowDragLeave);
-      sMControlRow.addEventListener("drop", handleRowDrop);
-      sMControlRow.addEventListener("click", (event) => {
-        if (event.target.closest(".sMControlRowPasteButton")) {
-          return;
-        }
-
-        if (event.ctrlKey || event.metaKey || event.shiftKey) {
-          event.preventDefault();
-          handleSubpanelRowSelectionClick(row, event, currentRows);
-          return;
-        }
-
-        subpanelClipboardSelection.lastAppSelectionKey = "";
-
-        if (typeof exposed.setSelectedRowAndBlock === "function") {
-          exposed.setSelectedRowAndBlock(row, 0);
-        } else {
-          exposed.setSelectedRow(row);
-        }
-      });
-    }
-
-    // Attach row list container drag events for row reordering
-    sMSPTextList.addEventListener("dragover", handleRowListDragOver);
-    sMSPTextList.addEventListener("drop", handleRowListDrop);
-    sMSPTextList.addEventListener("dragleave", handleRowListDragLeave);
-
-    for (const divConfig of document.querySelectorAll(
-      "#smSPProperties > div"
-    )) {
-      if (
-        divConfig.dataset.property ==
-        Control.prototype.blockInternalElements[
-        Control.prototype.blockToClassElems.getElem(
-          exposed.getCurrentBlockElem()
-        )
-        ]
-      ) {
-        divConfig.classList.remove("hidden");
-        selectedSettings = divConfig;
-      } else {
-        divConfig.classList.add("hidden");
-      }
-    }
-    const currentBlockElem = exposed.getCurrentBlockElem();
-    const blockElemType =
-      Control.prototype.blockInternalElements[
-      Control.prototype.blockToClassElems.getElem(currentBlockElem)
-      ];
-
-    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
-      if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
-      if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
-      if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
-      if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
-      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
-      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
-        currentBlockElem.smallCapitals = false;
-      }
-      if (currentBlockElem.textColor === undefined) {
-        currentBlockElem.textColor =
-          blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
-      }
-    }
-
-    if (blockElemType === "sdIcon") {
-      const normalizeIconNumber = (value, fallback = 0) => {
-        const parsed = parseFloat(
-          value !== null && value !== undefined ? value : fallback
-        );
-        return Number.isFinite(parsed) ? parsed : fallback;
-      };
-
-      const legacyIconSpacing = normalizeIconNumber(currentBlockElem.spacing, 0);
-      currentBlockElem.paddingHorizontal = normalizeIconNumber(
-        currentBlockElem.paddingHorizontal,
-        legacyIconSpacing
-      );
-      currentBlockElem.paddingVertical = normalizeIconNumber(
-        currentBlockElem.paddingVertical,
-        0
-      );
-      currentBlockElem.spacing = 0;
-      currentBlockElem.invertColors =
-        currentBlockElem.invertColors === true ||
-        currentBlockElem.invertColors === "true" ||
-        currentBlockElem.invertColors === 1 ||
-        currentBlockElem.invertColors === "1" ||
-        currentBlockElem.invertColors === "on";
-      setupSdIconEditorControls();
-    }
-
-    if (blockElemType === "sdArrow") {
-      const normalizePadding = (value, fallback = 0) => {
-        const parsed = parseFloat(
-          value !== null && value !== undefined ? value : fallback
-        );
-        return isNaN(parsed) ? fallback : parsed;
-      };
-
-      const fallbackPadding =
-        currentBlockElem.padding !== undefined &&
-          currentBlockElem.padding !== null
-          ? currentBlockElem.padding
-          : 0;
-
-      currentBlockElem.paddingHorizontal = normalizePadding(
-        currentBlockElem.paddingHorizontal,
-        fallbackPadding
-      );
-      currentBlockElem.paddingVertical = normalizePadding(
-        currentBlockElem.paddingVertical,
-        fallbackPadding
-      );
-
-      delete currentBlockElem.padding;
-
-      currentBlockElem.flip =
-        currentBlockElem.flip === true ||
-        currentBlockElem.flip === "true" ||
-        currentBlockElem.flip === 1 ||
-        currentBlockElem.flip === "1" ||
-        currentBlockElem.flip === "on";
-        const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
-          ? TextElement.prototype.alignment
-          : ["Left", "Center", "Right"];
-
-        currentBlockElem.alignment = validArrowAlignments.includes(
-          currentBlockElem.alignment
-        )
-          ? currentBlockElem.alignment
-          : "Center";
-    }
-
-    if (blockElemType === "sdShield") {
-      normalizeSdShieldBannerStyleFields(currentBlockElem);
-      currentBlockElem.scaleBannersWithShield =
-        ShieldElement.prototype.normalizeScaleBannersWithShield(
-          currentBlockElem.scaleBannersWithShield
-        );
-      if (currentBlockElem.shieldBacks === undefined) {
-        currentBlockElem.shieldBacks = false;
-      } else {
-        currentBlockElem.shieldBacks =
-          currentBlockElem.shieldBacks === true ||
-          currentBlockElem.shieldBacks === "true" ||
-          currentBlockElem.shieldBacks === 1 ||
-          currentBlockElem.shieldBacks === "1" ||
-          currentBlockElem.shieldBacks === "on";
-      }
-      if (currentBlockElem.indentFirstLetter === undefined) {
-        currentBlockElem.indentFirstLetter = true;
-      }
-      if (currentBlockElem.indentFirstLetter2 === undefined) {
-        currentBlockElem.indentFirstLetter2 =
-          currentBlockElem.indentFirstLetter;
-      }
-      currentBlockElem.shieldSize =
-        ShieldElement.prototype.normalizeShieldSize(
-          currentBlockElem.shieldSize
-        );
-      if (currentBlockElem.smallCaps === undefined) {
-        currentBlockElem.smallCaps = true;
-      }
-      if (currentBlockElem.smallCaps2 === undefined) {
-        currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
-      }
-      if (currentBlockElem.manualBanners === undefined) {
-        currentBlockElem.manualBanners = getDefaultManualBannersSetting();
-      }
-      if (currentBlockElem.roadName === undefined) {
-        currentBlockElem.roadName = "";
-      }
-      currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
-        currentBlockElem.bannerLetterSpacing
-      );
-      if (currentBlockElem.alignment === undefined) {
-        currentBlockElem.alignment = "Center";
-      }
-    }
-
-    if (blockElemType === "sdBlocker") {
-      currentBlockElem.orientation =
-        DividerElement.prototype.normalizeOrientation(
-          currentBlockElem.orientation
-        );
-    }
-
-    for (const propertyName in currentBlockElem) {
-      const elementId = `${blockElemType}_${propertyName}`;
-      const element = document.getElementById(elementId);
-      const displayElement = document.getElementById(elementId + "Val");
-
-      if (element) {
-        const handleCustomBanner =
-          blockElemType === "sdShield" &&
-          (propertyName === "bannerType" || propertyName === "bannerType2");
-
-        if (handleCustomBanner) {
-          const manualCheckbox = document.getElementById("sdShield_manualBanners");
-
-          if (manualCheckbox) {
-            manualCheckbox.checked = currentBlockElem.manualBanners !== false;
-          }
-
-          const customInputId =
-            propertyName === "bannerType"
-              ? "sdShield_bannerCustomText"
-              : "sdShield_bannerCustomText2";
-
-          const customInput = document.getElementById(customInputId);
-          const currentBanner =
-            currentBlockElem[propertyName] || getDefaultBannerType();
-
-          const matchedPreset = findBannerDropdownPresetValue(currentBanner);
-
-          const manualBanners = !manualCheckbox || manualCheckbox.checked;
-
-          if (element.tagName === "SELECT") {
-            element.value = matchedPreset || getDefaultBannerType();
-            element.addEventListener("change", scheduleSdShieldReadForm, { once: true });
-          }
-
-          if (customInput) {
-            customInput.value = manualBanners ? currentBanner : "";
-            customInput.addEventListener("blur", scheduleSdShieldReadForm, { once: true });
-          }
-
-          syncManualBannerInputMode();
-          syncSdShieldBannerBackgroundColorPickerVisuals();
-
-          if (displayElement) {
-            displayElement.textContent = currentBanner;
-          }
-
-          continue;
-        }
-
-        const formReadHandler =
-          blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
-
-        // Update the sign on each edit without rebuilding the focused editor.
-        if (!element.dataset.livePreviewBound &&
-            (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
-          element.dataset.livePreviewBound = "true";
-          element.addEventListener("input", event => {
-            if (!isUsableLiveInput(element)) return;
-            readForm({ target: element, deferHistoryEnd: true });
-          });
-          element.addEventListener("blur", () => exposed?.endUndoableChange?.());
-        }
-
-
-        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
-          element.checked=currentBlockElem.numberStyle==='legacy';
-          element.addEventListener('change',formReadHandler,{once:true});
-        } else if (element.type === "checkbox") {
-          element.checked = currentBlockElem[propertyName];
-          element.addEventListener("change", formReadHandler, { once: true });
-        } else if (element.type === "radio") {
-          if (element.value === currentBlockElem[propertyName].toString()) {
-            element.checked = true;
-          }
-          element.addEventListener("change", formReadHandler, { once: true });
-        } else if (element.tagName === "SELECT") {
-          const currentSelectValue =
-            propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
-              ? normalizeUiFontValue(currentBlockElem[propertyName])
-              : currentBlockElem[propertyName];
-          currentBlockElem[propertyName] = currentSelectValue;
-          if (!Array.from(element.options).some((option) => option.value === currentSelectValue)) {
-            lib.appendOption(element, currentSelectValue);
-          }
-          element.value = currentSelectValue;
-          if (
-            blockElemType === "sdShield" &&
-            (propertyName === "bannerFontFamily1" ||
-              propertyName === "bannerFontFamily2")
-          ) {
-            element.dataset.shieldBannerFontUserChanged = "false";
-          }
-
-          element.addEventListener("change", formReadHandler, { once: true });
-          element.addEventListener("blur", formReadHandler, { once: true });
-        } else {
-          element.value = currentBlockElem[propertyName];
-          element.addEventListener(
-            element.type === "text" ? "blur" : "change",
-            formReadHandler,
-            { once: true }
-          );
-
-          if (
-            element.type === "range" &&
-            displayElement &&
-            !element.dataset.syncDisplay
-          ) {
-            element.addEventListener("input", () => {
-              displayElement.value = element.value;
-            });
-            element.dataset.syncDisplay = "true";
-          }
-        }
-      }
-
-      if (displayElement) {
-        if (
-          displayElement.tagName === "INPUT" &&
-          displayElement.type === "number"
-        ) {
-          displayElement.value = currentBlockElem[propertyName];
-        } else {
-          displayElement.textContent = currentBlockElem[propertyName];
-        }
-      }
-    }
-
-    if (blockElemType === "sdShield") {
-      normalizeSdShieldBannerStyleFields(currentBlockElem);
-      writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
-      setupSdShieldCompactControls();
-    }
-
-    if (blockElemType === "sdIcon") {
-      setupSdIconEditorControls();
-      updateSdIconExtraControls(currentBlockElem);
-    }
-
-    if (blockElemType === "sdArrow") {
-      const arrowRotationButtons = document.querySelectorAll(
-        ".sdArrow_rotationPreset"
-      );
-      const currentRotation = parseFloat(currentBlockElem.rotation) || 0;
-      arrowRotationButtons.forEach((button) => {
-        const degrees = parseFloat(button.dataset.degrees || "0") || 0;
-        button.classList.toggle(
-          "activated",
-          Math.abs((((currentRotation % 360) + 360) % 360) - degrees) < 0.5
-        );
-      });
-
-      const arrowFlipInput = document.getElementById("sdArrow_flip");
-      const arrowFlipButton = document.getElementById("sdArrow_flipButton");
-      if (arrowFlipInput && arrowFlipButton) {
-        arrowFlipInput.value = currentBlockElem.flip ? "true" : "false";
-        arrowFlipButton.classList.toggle("activated", currentBlockElem.flip);
-        arrowFlipButton.setAttribute(
-          "aria-pressed",
-          currentBlockElem.flip ? "true" : "false"
-        );
-      }
-    }
-
-    const currentBlockProperties = currentBlockElements?.blockProperties || [];
-    const selectedBlockProperties =
-      currentBlockProperties[exposed.vars.currentlySelectedRowIndex] || new Block();
-
-    const clampBlockMarginSliderValue = (value) => {
-      const parsed = parseFloat(value);
-      if (!Number.isFinite(parsed)) {
-        return 0;
-      }
-      return Math.max(0, Math.min(3, parsed));
-    };
-
-    document.querySelector("#sdBlock_topPadding").value =
-      clampBlockMarginSliderValue(selectedBlockProperties.topPadding);
-    document
-      .querySelector("#sdBlock_topPadding")
-      .addEventListener("change", readForm, { once: true });
-
-    document.querySelector("#sdBlock_bottomPadding").value =
-      clampBlockMarginSliderValue(selectedBlockProperties.bottomPadding);
-    document
-      .querySelector("#sdBlock_bottomPadding")
-      .addEventListener("change", readForm, { once: true });
-
-    const topPadValEl = document.querySelector("#sdBlock_topPaddingVal");
-    const bottomPadValEl = document.querySelector("#sdBlock_bottomPaddingVal");
-    const topPadValue = selectedBlockProperties.topPadding;
-    const bottomPadValue = selectedBlockProperties.bottomPadding;
-    if (topPadValEl) {
-      if (topPadValEl.tagName === "INPUT" && topPadValEl.type === "number") {
-        topPadValEl.value = topPadValue;
-      } else {
-        topPadValEl.textContent = topPadValue;
-      }
-    }
-    if (bottomPadValEl) {
-      if (
-        bottomPadValEl.tagName === "INPUT" &&
-        bottomPadValEl.type === "number"
-      ) {
-        bottomPadValEl.value = bottomPadValue;
-      } else {
-        bottomPadValEl.textContent = bottomPadValue;
-      }
-    }
-    bindBlockMarginStepperCommit();
-
-    document.querySelector("#sdBlock_backgroundColor").value =
-      selectedBlockProperties.backgroundColor;
-
-    document
-      .querySelector("#sdBlock_backgroundColor")
-      .addEventListener("blur", readForm, { once: true });
-
-    const blockBorderColorEl = document.querySelector("#sdBlock_borderColor");
-    if (blockBorderColorEl) {
-      const storedBorderColor =
-        selectedBlockProperties.borderColor;
-      blockBorderColorEl.value =
-        storedBorderColor || Block.defaultBorderColor || "Match BG";
-      blockBorderColorEl.addEventListener("blur", readForm, { once: true });
-    }
-
-    const blockBackgroundFullWidthEl = document.querySelector(
-      "#sdBlock_backgroundFullWidth"
-    );
-    blockBackgroundFullWidthEl.checked =
-      !!selectedBlockProperties.backgroundFullWidth;
-    blockBackgroundFullWidthEl.addEventListener("change", readForm, {
-      once: true,
-    });
-
-    document.querySelector("#sdBlock_width").value =
-      selectedBlockProperties.width;
-    document
-      .querySelector("#sdBlock_width")
-      .addEventListener("change", readForm, { once: true });
-
-    document
-      .querySelector("#sdBlock_stretchLeft")
-      .addEventListener("change", readForm, { once: true });
-
-    document.querySelector("#sdBlock_stretchLeft").checked =
-      selectedBlockProperties.stretchLeft;
-
-    document
-      .querySelector("#sdBlock_stretchCenter")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchCenter").checked =
-      selectedBlockProperties.stretchCenter;
-
-    document
-      .querySelector("#sdBlock_stretchRight")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchRight").checked =
-      selectedBlockProperties.stretchRight;
-
-    /*
-    // Old Control Text
-    const controlTextElmt = document.getElementById("controlText");
-    controlTextElmt.value = sign.controlText;
- 
-    const actionMessageElmt = document.getElementById("actionMessage");
-    actionMessageElmt.value = sign.actionMessage;
-    */
     const shieldPositionsSelectElmt =
       document.getElementById("shieldsPosition");
     for (const option of shieldPositionsSelectElmt.options) {

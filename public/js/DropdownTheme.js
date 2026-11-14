@@ -159,6 +159,7 @@ window.SignMakerDropdowns = (() => {
     const reference=anchor?.isConnected?anchor:trigger;
     let rect=reference===trigger?triggerRect:reference.getBoundingClientRect();
     const settingsContent=trigger.closest(':is(#settings22Modal, #postStyleModal) .sMModalContent');
+    const mobileSheet=document.documentElement.hasAttribute?.('data-mobile-ui')?trigger.closest('#mobileEditor'):null;
     const rootStyle=getComputedStyle(document.documentElement);
     const rem=parseFloat(rootStyle.fontSize)||20;
     const fallback=trigger.closest('.modals,.compactSettingsWindow')?parseFloat(rootStyle.getPropertyValue('--sm-app-zoom'))||1:1;
@@ -189,8 +190,18 @@ window.SignMakerDropdowns = (() => {
       }
       portals.get(menu).anchorVisible=rect.bottom>contentRect.top&&rect.bottom<=contentRect.bottom+1;
     }
-    const below=Math.max(0,viewportHeight-rect.bottom-edge-gap),above=Math.max(0,rect.top-edge-gap);
-    const upwards=!settingsContent&&below<Math.min(contentHeight,240*scale)&&above>below;
+    let viewportTop=edge,viewportBottom=viewportHeight-edge;
+    if(mobileSheet){
+      const sheetRect=mobileSheet.getBoundingClientRect();
+      const header=mobileSheet.querySelector('.mobileEditorHeader')?.getBoundingClientRect();
+      viewportTop=Math.max(edge,sheetRect.top,header?.bottom||0);
+      viewportBottom=Math.min(viewportBottom,sheetRect.bottom);
+      const toolbar=document.getElementById('sMConfigBar')?.getBoundingClientRect();
+      if(toolbar)viewportBottom=Math.min(viewportBottom,toolbar.top);
+      portals.get(menu).anchorVisible=rect.top>=viewportTop-1&&rect.bottom<=viewportBottom+1;
+    }
+    const below=Math.max(0,viewportBottom-rect.bottom-gap),above=Math.max(0,rect.top-viewportTop-gap);
+    const upwards=(!settingsContent||mobileSheet)&&below<Math.min(contentHeight,240*scale)&&above>below;
     const available=upwards?above:below;
     const maxHeight=available/scale;
     const paintedHeight=Math.min(menu.scrollHeight,maxHeight)*scale;

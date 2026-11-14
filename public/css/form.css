@@ -14071,6 +14071,16 @@ span.toolTip {
   height: 1.85rem;
 }
 .guideArrowAngleScale input[type="range"] { position: relative; z-index: 1; }
+
+.textEditorBlock.sdAdvisory,
+.textEditorBlock.sdAdvisory :is(.textEditorBlockLabel, .mobileBlockVisual, .blockElementSymbol, .blockTypeInlinePickerTrigger, .shieldPickerTriggerCaret) { color: #000 !important; }
+.textEditorBlock.sdAdvisory .blockTypeChevron::before { border-color: #000 !important; }
+
+.iconPickerTools { display: contents; }
+.iconPickerDisplayField { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.sdBlockMarginControl .sdBlockReset { width: 1.8rem; height: 1.8rem; min-width: 1.8rem; margin: 0; padding: 0; }
+.sdBlockWidthControl { display: flex; align-items: center; gap: 0.4rem; margin-block: 0.4rem; }
+.sdBlockWidthControl input[type="range"] { flex: 1; min-width: 0; }
 .guideArrowAngleTicks {
   position: absolute;
   left: 0.5rem;

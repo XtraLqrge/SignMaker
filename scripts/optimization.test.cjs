@@ -7,12 +7,12 @@ const {compactJS,compactCSS,minifyJS,parse,normalize} = require('./build.cjs');
 const root=path.resolve(__dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const parsed=new Map();
-function declaration(file,name) {
+function declaration(file,name,functionOnly=false) {
   if(!parsed.has(file))parsed.set(file,{source:read(file),ast:parse(read(file))});
   const {source,ast}=parsed.get(file),stack=[ast];
   while(stack.length){
     const node=stack.pop();
-    if(node.type==='VariableDeclarator'&&node.id.name===name)return `let ${source.slice(node.start,node.end)};`;
+    if(node.type==='VariableDeclarator'&&node.id.name===name&&(!functionOnly||['FunctionExpression','ArrowFunctionExpression'].includes(node.init?.type)))return `let ${source.slice(node.start,node.end)};`;
     if(node.type==='FunctionDeclaration'&&node.id.name===name)return source.slice(node.start,node.end);
     for(const value of Object.values(node))if(value&&typeof value==='object'){
       if(Array.isArray(value))stack.push(...value.filter(x=>x?.type));else if(value.type)stack.push(value);
@@ -37,6 +37,22 @@ test('new posts use Right and one rem spacing while chosen positions stay intact
   assert.equal(new c.PostClass('invalid').polePosition,'Right');
   assert.equal(new c.PostClass().panelSpacing,1);
   for(const position of ['Left','Right','Overhead','Rural','Center'])assert.equal(new c.PostClass(position).polePosition,position);
+});
+
+test('new panels never create top or bottom content from the previous editor selection',()=>{
+  for(const selected of [-2,-1]){
+    const c=context({document:{baseURI:'https://example.test/',currentScript:{src:'https://example.test/js/Control.js'},addEventListener(){},getElementById(){return null;},querySelectorAll(){return[];},documentElement:{style:{getPropertyValue(){return '';}}}},window:{localStorage:{getItem(){return null;}},addEventListener(){}},Image:class{},requestAnimationFrame:()=>0});
+    for(const file of ['lib','Shield','Sign','ExitTab','Panel','VmsPanel','Post','Arrows','Control','SubPanels'])vm.runInContext(read('public/js/'+file+'.js'),c);
+    vm.runInContext(`const post=new Post();post.newPanel();let currentlySelectedPanelIndex=0,currentlySelectedSubPanelIndex=${selected},currentlySelectedExitTabIndex=0,currentlySelectedNestedExitTabIndex=-1,currentlySelectedRowIndex=0,currentlySelectedBlockIndex=0,currentlySelectedAPLArrowIndex=0;
+      const GLOBAL_TOP_SUBPANEL_INDEX=-2,GLOBAL_BOTTOM_SUBPANEL_INDEX=-1,fileInfo={panel:0};
+      const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),runWithUndo=fn=>fn(),getDownloadPanelSelection=()=>{},getCurrentPanel=()=>post.panels[currentlySelectedPanelIndex],getNewPanelInsertionIndex=()=>currentlySelectedPanelIndex+1,redraw=()=>{},schedulePostViewportLayoutUpdate=()=>{},formHandler={updateForm(){}};`,c);
+    for(const name of ['getGlobalBlockPositionFromIndex','getGlobalBlockKey','createDefaultGlobalBlockElement','createDefaultGlobalBlockElements','normalizeGlobalBlockElements','ensureGlobalBlockElements','getRootSubPanel','normalizeSelectionForCurrentPost','clearPanelGlobalBlockElements','createFreshPanelFromDefaults','newPanel'])vm.runInContext(declaration('public/js/main.js',name,name==='newPanel'),c);
+    vm.runInContext(`const getCurrentSubPanel=()=>getRootSubPanel();post.panels[0].sign.globalTopBlockElements=createDefaultGlobalBlockElements();post.panels[0].sign.globalBottomBlockElements=createDefaultGlobalBlockElements();newPanel();`,c);
+    const result=JSON.parse(vm.runInContext(`JSON.stringify({count:post.panels.length,selected:currentlySelectedSubPanelIndex,top:!!post.panels[1].sign.globalTopBlockElements,bottom:!!post.panels[1].sign.globalBottomBlockElements,originalTop:post.panels[0].sign.globalTopBlockElements.rows.length,originalBottom:post.panels[0].sign.globalBottomBlockElements.rows.length})`,c));
+    assert.deepEqual(result,{count:2,selected:0,top:false,bottom:false,originalTop:1,originalBottom:1});
+    vm.runInContext(`currentlySelectedPanelIndex=0;currentlySelectedSubPanelIndex=${selected};normalizeSelectionForCurrentPost();`,c);
+    assert.equal(vm.runInContext('currentlySelectedSubPanelIndex',c),selected,'Existing top/bottom content remains editable');
+  }
 });
 test('post thickness clamps to the control range and keeps saved precision inside it',()=>{
   const c=context({});vm.runInContext(read('public/js/Post.js')+';this.PostClass=Post;',c);
@@ -438,6 +454,26 @@ test('menus are scaled before animation, fit the viewport, scroll and release ob
   assert.ok(f.observed.every(record=>record.observer.disconnected));
   owner.classList.add('open');f.api.positionMenu(menu,trigger);assert.equal(menu.inert,false);
   f.api.closeMenu(menu);assert.equal(menu.inert,true);
+});
+
+test('mobile dropdowns stay between the sticky sheet header and bottom toolbar',()=>{
+  const f=dropdownFixture('public/js/DropdownTheme.js'),owner=new Element('symbolPicker open'),trigger=new Element(),menu=new Element('symbolPickerMenu');
+  const sheet=new Element(),header=new Element(),toolbar=new Element();
+  sheet.rect={left:0,right:393,top:240,bottom:782,width:393,height:542};header.rect={...sheet.rect,bottom:288,height:48};toolbar.rect={top:782,bottom:852};
+  sheet.querySelector=()=>header;f.html.hasAttribute=name=>name==='data-mobile-ui';
+  f.body.appendChild(sheet);sheet.appendChild(owner);owner.appendChild(trigger);
+  const closest=trigger.closest.bind(trigger);trigger.closest=query=>query==='#mobileEditor'?sheet:closest(query);
+  trigger.rect={left:20,right:340,top:600,bottom:644,width:320,height:44};trigger.offsetWidth=320;
+  f.html.getBoundingClientRect=()=>({});
+  // The fixture's document uses these concrete viewport and sheet measurements.
+  const documentGet=()=>toolbar;
+  const originalFile=read('public/js/DropdownTheme.js');
+  const c=context({document:{body:f.body,documentElement:f.html,addEventListener(){},getElementById:documentGet},window:{innerWidth:393,innerHeight:852,localStorage:{getItem(){return null;}}},getComputedStyle:()=>({fontSize:'20px',getPropertyValue(){return '1';}}),MutationObserver:class{observe(){}disconnect(){}}});
+  vm.runInContext(originalFile,c);const api=c.window.SignMakerDropdowns;
+  const result=api.positionMenu(menu,trigger,{minWidth:9,maxWidth:24});
+  assert.ok(result.top>=288&&result.top+result.height<=782);assert.ok(result.left>=8&&result.left+result.width<=385);assert.equal(menu.inert,false);
+  trigger.rect={...trigger.rect,top:262,bottom:306};api.positionMenu(menu,trigger);
+  assert.equal(menu.inert,true,'A partly obscured trigger cannot paint an open menu over the header');
 });
 test('closed editors defer construction and build once when their pane opens',()=>{
   const modal=new Element('sMModal appSettingsConfig'),pane=new Element('tabHidden'),field=new Element('', 'SELECT');
@@ -1589,4 +1625,147 @@ test('open settings stay eight pixels from the final toolbar bounds during UI sc
       assert.equal(root.dataset.interfaceScaleChanging,undefined);
     }
   }
+});
+
+test('row sizing sliders keep live values in sync and reset one property per undoable edit',()=>{
+  const {Node,Event,parse:parseDOM}=require('./fixtures/mobile-dom.cjs');
+  const tree=parseDOM(read('scripts/index.source.html').split('<body>')[1].split('</body>')[0]);
+  const byId=id=>tree.querySelector('#'+id),calls=[];let starts=0,ends=0;
+  const c=context({document:{getElementById:byId},exposed:{beginUndoableChange(){starts++;},endUndoableChange(){ends++;}},readForm:options=>calls.push({target:options.target.id,deferred:options.deferHistoryEnd,top:byId('sdBlock_topPaddingVal').value,bottom:byId('sdBlock_bottomPaddingVal').value,width:byId('sdBlock_width').value})});
+  vm.runInContext(declaration('public/js/form.js','bindBlockSizingControls'),c);vm.runInContext('bindBlockSizingControls();bindBlockSizingControls();',c);
+  const fire=(id,type)=>byId(id).dispatchEvent(new Event(type,{bubbles:true}));
+  byId('sdBlock_topPadding').value='-1.5';fire('sdBlock_topPadding','input');assert.equal(byId('sdBlock_topPaddingVal').value,'-1.5');assert.equal(calls.at(-1).deferred,true);
+  byId('sdBlock_bottomPaddingVal').value='7.5';fire('sdBlock_bottomPaddingVal','input');assert.equal(byId('sdBlock_bottomPadding').value,7.5);
+  byId('sdBlock_widthSlider').value='12.25';fire('sdBlock_widthSlider','input');assert.equal(byId('sdBlock_width').value,'12.25');
+  const before=calls.length;fire('sdBlock_topPaddingReset','click');assert.equal(calls.length,before+1);assert.equal(calls.at(-1).top,'0');assert.equal(calls.at(-1).bottom,'7.5');assert.equal(calls.at(-1).width,'12.25');
+  fire('sdBlock_bottomPaddingReset','click');fire('sdBlock_widthReset','click');assert.equal(calls.at(-1).width,'0');assert.equal(byId('sdBlock_widthSlider').value,'0');assert.deepEqual([starts,ends],[3,3]);
+});
+
+test('subpanel tabs use only numbers on mobile and retain desktop captions',()=>{
+  const c=context({window:{SignMakerMobile:{active:true}},document:{createElement:tag=>new Element('',tag.toUpperCase())},exposed:{vars:{currentlySelectedSubPanelIndex:1}},handleSubPanelTabDragStart(){},handleSubPanelTabDragEnd(){}});
+  vm.runInContext(declaration('public/js/form.js','createSubPanelTab'),c);
+  c.args={id:'sub_edit2',label:'Subpanel 2',subPanelIndex:1,deleteLabel:'Delete Subpanel 2'};
+  const mobile=vm.runInContext('createSubPanelTab(args)',c);assert.equal(mobile.children[0].textContent,'2');assert.equal(mobile.children[0].dataset.desktopLabel,'Subpanel 2');
+  c.window.SignMakerMobile.active=false;assert.equal(vm.runInContext('createSubPanelTab(args)',c).children[0].textContent,'Subpanel 2');
+});
+
+test('element selection refreshes its own editor without rebuilding the sign preview',()=>{
+  let refreshes=0,redraws=0;const requests=[];
+  const c=context({getCurrentSubPanel:()=>({blockElements:{rows:[[{},{}],[{}]]}}),
+    clamp:(n,min,max)=>Math.max(min,Math.min(max,n)),currentlySelectedRowIndex:0,currentlySelectedBlockIndex:0,
+    formHandler:{updateForm:options=>{refreshes++;requests.push(options);}},redraw:()=>redraws++,flashElementAfterPostTransform(){}});
+  vm.runInContext(declaration('public/js/main.js','setSelectedRowAndBlock')+';this.select=setSelectedRowAndBlock;',c);
+  for(let i=0;i<200;i++)c.select(i%2,i%2);
+  assert.equal(redraws,0);assert.equal(refreshes,200);assert.ok(requests.every(options=>options.elementOnly===true));
+  c.select(99,99);assert.equal(c.currentlySelectedRowIndex,1);assert.equal(c.currentlySelectedBlockIndex,0);
+});
+
+test('element-only form refresh bypasses inactive menus and retains deferred refresh scope',()=>{
+  let selected=0,global=0;
+  const c=context({mergeLiveInputActive:false,mergePendingFormRefresh:false,mergePendingFormOptions:null,
+    exposed:{getCurrentBlockElem:()=>({})},syncSelectedBlockEditor:()=>selected++,syncPostReference:()=>{global++;throw Error('full refresh');}});
+  vm.runInContext(declaration('public/js/form.js','updateForm')+';this.update=updateForm;',c);
+  for(let i=0;i<200;i++)c.update({elementOnly:true});assert.equal(selected,200);assert.equal(global,0);
+  c.mergeLiveInputActive=true;c.update({elementOnly:true});assert.equal(c.mergePendingFormOptions.elementOnly,true);
+  c.mergeLiveInputActive=false;c.update(c.mergePendingFormOptions);assert.equal(selected,201);assert.equal(c.mergePendingFormRefresh,false);
+  c.mergeLiveInputActive=true;c.update({elementOnly:true});c.update({});c.update({elementOnly:true});
+  assert.equal(c.mergePendingFormOptions.elementOnly,undefined,'A full refresh request wins when scopes are combined');
+});
+
+test('element label controls survive value and selection changes but rebuild for structural edits',()=>{
+  let clipboard=false;const c=context({subpanelListCache:null,exposed:{hasSubpanelClipboard:()=>clipboard}});
+  for(const name of ['rememberSubpanelList','canReuseSubpanelList'])vm.runInContext(declaration('public/js/form.js',name)+`;this.${name}=${name};`,c);
+  const control={},list={},a={textContent:'A'},b={textContent:'B'},rows=[[a,b]];
+  c.rememberSubpanelList(control,rows,list);assert.equal(c.canReuseSubpanelList(control,rows,list),true);
+  for(let i=0;i<200;i++){a.textContent='Edited '+i;a.fontSize=i;assert.equal(c.canReuseSubpanelList(control,rows,list),true);}
+  rows[0].reverse();assert.equal(c.canReuseSubpanelList(control,rows,list),false);rows[0].reverse();
+  a.label='Renamed';assert.equal(c.canReuseSubpanelList(control,rows,list),false);delete a.label;
+  clipboard=true;assert.equal(c.canReuseSubpanelList(control,rows,list),false);clipboard=false;
+  rows.push([{}]);assert.equal(c.canReuseSubpanelList(control,rows,list),false);
+});
+
+test('warm font-label synchronization performs no option text mutations',()=>{
+  const c=context({getUiFontDisplayName:value=>value});vm.runInContext(declaration('public/js/form.js','syncFontSelectOptionLabels')+';this.sync=syncFontSelectOptionLabels;',c);
+  let writes=0;const options=Array.from({length:200},(_,i)=>{let text='Font '+i;return {value:text,get textContent(){return text;},set textContent(value){writes++;text=value;}};});
+  for(let i=0;i<200;i++)c.sync({options});assert.equal(writes,0,'Repeated selection must not trigger thousands of option mutations');
+  options[3].value='Renamed';c.sync({options});assert.equal(writes,1);assert.equal(options[3].textContent,'Renamed');
+});
+
+test('font and color synchronization updates active pickers and leaves hidden editors alone',()=>{
+  const calls={font:0,color:0,hidden:0};
+  const font={active:true,_fontPickerApi:{sync:()=>calls.font++}},color={active:true,_colorPickerApi:{sync:()=>calls.color++}},hidden={active:false,_fontPickerApi:{sync:()=>calls.hidden++},_colorPickerApi:{sync:()=>calls.hidden++}};
+  const c=context({document:{querySelectorAll:selector=>selector.includes('fontPicker')?[font,hidden]:[color,hidden]},
+    window:{SignMakerEditorRuntime:{isActive:element=>element.active}},cleanupOrphanedColorPickerPanels(){}});
+  for(const name of ['syncAllFontPickers','syncAllColorPickers'])vm.runInContext(declaration('public/js/form.js',name)+`;this.${name}=${name};`,c);
+  for(let i=0;i<200;i++){c.syncAllFontPickers();c.syncAllColorPickers();}
+  assert.deepEqual(calls,{font:200,color:200,hidden:0});
+});
+
+test('retained panel groups skip their element renderer while the edited group rebuilds',()=>{
+  const c=context({});vm.runInContext(declaration('public/js/main.js','retainedPanelRootAt')+';this.root=retainedPanelRootAt;',c);
+  const single={},stack={};const roots=new Map([['0',single],['3,2,4',stack]]);
+  assert.equal(c.root(roots,0).node,single);assert.equal(c.root(roots,2).node,stack);assert.equal(c.root(roots,2).lastIndex,4);
+  assert.equal(c.root(roots,1),null);assert.equal(c.root(roots,3),null);
+  const source=read('public/js/main.js'),start=source.indexOf('const retained = retainedPanelRootAt(panelsToKeep, index);'),end=source.indexOf('const panelElmt = document.createElement("div");',start);
+  assert.ok(start>0&&end>start);assert.match(source.slice(start,end),/index = retained\.lastIndex;\s*continue;/);
+});
+
+test('the selected-element refresh preserves row nodes and writes only the selected element form',()=>{
+  const {Node,parse:parseDOM,Event}=require('./fixtures/mobile-dom.cjs');
+  const tree=parseDOM(read('scripts/index.source.html')),byId=id=>tree.querySelector('#'+id);
+  for(const select of tree.querySelectorAll('select'))Object.defineProperty(select,'options',{get:()=>select.children.filter(node=>node.tagName==='OPTION')});
+  const a={textContent:'Alpha',fontFamily:'Series EM',fontSize:100,backgroundColor:'Inherit',textColor:'Match BG',spacing:0,letterSpacing:0,alignment:'Center',lineHeight:100};
+  const b={...a,textContent:'Beta',fontFamily:'Series 5'};const rows=[[a,b]],control={rows,blockProperties:[{topPadding:0,bottomPadding:0,width:0,backgroundColor:'Inherit',borderColor:'Match BG'}]};
+  const vars={currentlySelectedRowIndex:0,currentlySelectedBlockIndex:0};let reads=0;
+  const document={getElementById:byId,querySelector:s=>tree.querySelector(s),querySelectorAll:s=>tree.querySelectorAll(s),createElement:tag=>new Node(tag)};
+  const c=context({document,Event,exposed:{vars,getCurrentSubPanel:()=>({blockElements:control}),getCurrentBlockElem:()=>rows[vars.currentlySelectedRowIndex][vars.currentlySelectedBlockIndex],hasSubpanelClipboard:()=>false},
+    Control:{prototype:{blockToClassElems:{getElem:()=> 'ControlTextElement'},blockInternalElements:{ControlTextElement:'sdCtrlText'},blockElements:{ControlTextElement:'Control Text'}}},
+    Block:class{},GroupedBlockElement:class{},subpanelListCache:null,subpanelClipboardSelection:{selectedBlocks:new Set()},
+    closeSubpanelBlockTypePicker(){},ensureSubpanelClipboardSelectionForRows(){},rowIsFullySelectedForSubpanelClipboard:()=>false,
+    getSubpanelBlockSelectionKey:(r,b)=>r+':'+b,isSubpanelClipboardSelectionAllowed:()=>false,createInlineSubpanelBlockTypePicker:()=>new Node('div'),
+    normalizeTextBlockEditorValues(){},normalizeUiFontValue:value=>value,bindBlockMarginStepperCommit(){},isUsableLiveInput:()=>true,
+    readForm:()=>{reads++;rows[vars.currentlySelectedRowIndex][vars.currentlySelectedBlockIndex].textContent=byId('sdCtrlText_textContent').value;},
+    lib:{appendOption:(select,value,settings={})=>{const option=new Node('option');option.value=value;option.textContent=settings.text||value;select.append(option);}}});
+  for(const name of ['handleBlockDragStart','handleBlockDragEnd','handleRowDragStart','handleRowDragEnd','handleRowDragEnter','handleRowDragOver','handleRowDragLeave','handleRowDrop','handleRowListDragOver','handleRowListDrop','handleRowListDragLeave'])c[name]=()=>{};
+  for(const name of ['canReuseSubpanelList','rememberSubpanelList','syncSubpanelListSelection','updateSelectedBlockEditor'])vm.runInContext(declaration('public/js/form.js',name)+`;this.${name}=${name};`,c);
+  c.updateSelectedBlockEditor();const list=byId('sMSPTextList'),row=list.querySelector('.sMControlRow'),blocks=row.querySelectorAll('.textEditorBlock');
+  assert.equal(byId('sdCtrlText_textContent').value,'Alpha');
+  byId('sdAdvisory_textContent').value='Untouched';
+  for(let i=0;i<100;i++){vars.currentlySelectedBlockIndex=i%2;c.updateSelectedBlockEditor();}
+  assert.equal(list.querySelector('.sMControlRow'),row);assert.equal(row.querySelectorAll('.textEditorBlock')[0],blocks[0]);
+  assert.equal(byId('sdCtrlText_textContent').value,'Beta');assert.equal(byId('sdCtrlText_fontFamily').value,'Series 5');assert.equal(byId('sdAdvisory_textContent').value,'Untouched');
+  assert.equal(blocks[0].classList.contains('selected'),false);assert.equal(blocks[1].classList.contains('selected'),true);
+  byId('sdCtrlText_textContent').value='Edited Beta';byId('sdCtrlText_textContent').dispatchEvent(new Event('input'));
+  assert.equal(reads,1);assert.equal(a.textContent,'Alpha');assert.equal(b.textContent,'Edited Beta');
+});
+
+test('mobile live inputs share one animation-frame render while desktop keeps its immediate flush',()=>{
+  const source=read('public/js/main.js'),start=source.indexOf('  document.addEventListener("input", event => {',source.indexOf('  let livePreviewInputPending'));
+  const registration=source.slice(start,source.indexOf('  }, true);',start)+'  }, true);'.length);
+  for(const mobile of [true,false]){
+    let input,draws=0,id=0;const frames=new Map(),listeners=new Set();
+    const c=context({livePreviewInputPending:false,livePreviewRedrawOptions:null,livePreviewRenderFrame:null,livePreviewInputCleanup:null,
+      redraw:()=>draws++,requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:frame=>frames.delete(frame),
+      document:{addEventListener:(_,fn)=>input=fn},window:{SignMakerMobile:{active:mobile},addEventListener:(_,fn)=>listeners.add(fn),removeEventListener:(_,fn)=>listeners.delete(fn)}});
+    vm.runInContext(declaration('public/js/main.js','flushPendingLivePreview')+registration,c);
+    const event={target:{matches:()=>true}};input(event);c.livePreviewRedrawOptions={};for(const fn of [...listeners])fn(event);
+    if(mobile){
+      assert.equal(draws,0);assert.equal(frames.size,1);
+      for(let i=0;i<10;i++)input({target:{matches:()=>true}});assert.equal(frames.size,1);
+      for(const fn of [...frames.values()])fn();assert.equal(draws,1);assert.equal(frames.size,0);assert.equal(listeners.size,0);
+    }else{assert.equal(draws,1);assert.equal(frames.size,0);}
+  }
+});
+
+test('adding a subpanel redraws the changed panel once without a second animation-frame rebuild',()=>{
+  let updates=0,undos=0;const draws=[],frames=[];
+  const sign={subPanels:[{}],newSubPanel(){this.subPanels.push({});}};
+  const c=context({runWithUndo:fn=>{undos++;return fn();},getCurrentPanel:()=>({sign}),currentlySelectedPanelIndex:2,
+    currentlySelectedSubPanelIndex:0,currentlySelectedRowIndex:3,currentlySelectedBlockIndex:2,currentlySelectedAPLArrowIndex:1,
+    normalizeSelectionForCurrentPost(){},formHandler:{updateForm(){updates++;}},redraw:options=>draws.push(options),requestAnimationFrame:fn=>frames.push(fn)});
+  vm.runInContext(declaration('public/js/main.js','addSubPanel')+';this.add=addSubPanel;',c);c.add();
+  assert.equal(sign.subPanels.length,2);assert.equal(c.currentlySelectedSubPanelIndex,1);
+  assert.equal(c.currentlySelectedRowIndex,0);assert.equal(c.currentlySelectedBlockIndex,0);
+  assert.equal(updates,1);assert.equal(undos,1);assert.equal(draws.length,1);assert.equal(frames.length,0);
+  assert.equal(draws[0].preserveOtherPanels,true);assert.equal(draws[0].changedPanelIndex,2);
 });

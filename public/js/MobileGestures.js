@@ -18,7 +18,14 @@ window.SignMakerMobileGestures = (() => {
     return String(Number(Math.max(min, Math.min(max, value)).toFixed(10)));
   };
   const install = ({ canvas, getApp, isActive, isWholePost, selectPanel }) => {
-    let gesture = null, suppressClickUntil = 0;
+    let gesture = null, suppressClickUntil = 0, lastScrollAt = -Infinity, touchRange = null, emittingRange = false;
+    const dispatchRange = (node, type) => {
+      emittingRange = true;
+      try { node.dispatchEvent(new Event(type, { bubbles: true })); }
+      finally { emittingRange = false; }
+    };
+    const rangeGuardActive = node => touchRange?.node === node && Date.now() < touchRange.until;
+
     const models = () => getApp()?.getPost()?.panels || [];
     const stopClick = event => { event.preventDefault(); event.stopImmediatePropagation(); };
     const clear = (cancelled = false) => {
@@ -27,7 +34,8 @@ window.SignMakerMobileGestures = (() => {
       gesture = null;
       window.clearTimeout(state.timer);
       if (state.kind === 'range') {
-        if (state.changed) state.node.dispatchEvent(new Event('change', { bubbles: true }));
+        if (touchRange?.node === state.node) { state.node.value = touchRange.value; touchRange.until = Date.now() + 700; }
+        if (state.changed) dispatchRange(state.node, 'change');
       } else {
         document.querySelectorAll('.mobilePanelWiggle, .mobilePanelMoving, .mobileDropBefore, .mobileDropAfter')
           .forEach(node => node.classList.remove('mobilePanelWiggle', 'mobilePanelMoving', 'mobileDropBefore', 'mobileDropAfter'));
@@ -52,12 +60,15 @@ window.SignMakerMobileGestures = (() => {
     const start = event => {
       if (!isActive() || event.isPrimary === false || (event.button != null && event.button !== 0)) return;
       const range = event.target.closest('input[type="range"]');
-      if (range && event.pointerType === 'touch' && !range.disabled) {
+      if (range && !range.disabled && (event.pointerType === 'touch' || Date.now() - lastScrollAt < 220)) {
         clear(true);
         // Cancelling a pointer default prevents the range jump, while pan-y still permits page scrolling.
         event.preventDefault();
+        touchRange = { node: range, value: range.value, until: Date.now() + 1500 };
         gesture = { kind: 'range', node: range, id: event.pointerId, x: event.clientX, y: event.clientY,
-          initial: Number(range.value), width: range.getBoundingClientRect().width, editing: false, changed: false };
+          initial: Number(range.value), width: range.getBoundingClientRect().width, editing: false, changed: false,
+          scrolling: Date.now() - lastScrollAt < 220 };
+
         return;
       }
       const list = event.target.closest('.panelListButton');
@@ -86,6 +97,7 @@ window.SignMakerMobileGestures = (() => {
       if (!isActive() || !state.node.isConnected) { clear(true); return; }
       const dx = event.clientX - state.x, dy = event.clientY - state.y;
       if (state.kind === 'range') {
+        if (state.scrolling) return;
         if (!state.editing) {
           if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) { clear(true); return; }
           if (Math.abs(dx) < 9 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
@@ -97,7 +109,8 @@ window.SignMakerMobileGestures = (() => {
         if (value !== state.node.value) {
           state.node.value = value;
           state.changed = true;
-          state.node.dispatchEvent(new Event('input', { bubbles: true }));
+          if (touchRange?.node === state.node) touchRange.value = value;
+          dispatchRange(state.node, 'input');
         }
         return;
       }
@@ -142,6 +155,27 @@ window.SignMakerMobileGestures = (() => {
         }
       }
     };
+    const markScrolling = () => {
+      if (!isActive()) return;
+      lastScrollAt = Date.now();
+      if (gesture?.kind === 'range' && !gesture.editing) clear(true);
+    };
+    document.addEventListener('scroll', markScrolling, { capture: true, passive: true });
+    document.addEventListener('wheel', markScrolling, { capture: true, passive: true });
+    document.addEventListener('mousedown', event => {
+      if (isActive() && rangeGuardActive(event.target.closest('input[type="range"]'))) stopClick(event);
+    }, true);
+    for (const type of ['input', 'change']) document.addEventListener(type, event => {
+      if (!isActive() || emittingRange || event.isTrusted !== true) return;
+      const range = event.target.closest('input[type="range"]');
+      if (!rangeGuardActive(range)) return;
+      // Native compatibility events must not move the thumb or reach model listeners.
+      range.value = touchRange.value;
+      stopClick(event);
+    }, true);
+    document.addEventListener('keydown', event => {
+      if (event.target.closest?.('input[type="range"]')) touchRange = null;
+    }, true);
     document.addEventListener('pointerdown', start, true);
     document.addEventListener('pointermove', move, { capture: true, passive: false });
     document.addEventListener('pointerup', event => { if (gesture?.id === event.pointerId) clear(); }, true);
@@ -166,6 +200,7 @@ window.SignMakerMobileGestures = (() => {
     document.addEventListener('touchcancel', () => clear(true), true);
     document.addEventListener('click', event => {
       if (!isActive()) return;
+      if (rangeGuardActive(event.target.closest('input[type="range"]'))) { stopClick(event); return; }
       const list = event.target.closest('.panelListButton');
       const panel = canvas.contains(event.target) ? event.target.closest('.panel') : null;
       if ((panel || list) && Date.now() < suppressClickUntil) { stopClick(event); return; }

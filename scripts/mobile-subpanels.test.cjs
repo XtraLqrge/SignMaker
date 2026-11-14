@@ -102,6 +102,17 @@ for(const source of sources){
       assert.equal(symbol.textContent,icon);assert.equal(visual.querySelector('svg'),null);
     }
   });
+  test(`${name}: advisory labels retain their own contrast treatment when a block changes type`,()=>{
+    const h=ui(source);h.control.rows[0][0].type='AdvisoryMessageElement';h.api.refresh();
+    assert.equal(h.blocks[0].classes.has('mobileAdvisoryLabel'),true);
+    h.control.rows[0][0].type='ControlTextElement';h.api.refresh();
+    assert.equal(h.blocks[0].classes.has('mobileAdvisoryLabel'),false);
+  });
+  test(`${name}: text defaults belong to their individual element types and never use New Sign`,()=>{
+    const c=modelContext(source);
+    const values=JSON.parse(vm.runInContext('JSON.stringify([new TextElement().textContent,new ControlTextElement().textContent,new ActionMessageElement().textContent,new AdvisoryMessageElement().textContent])',c));
+    assert.equal(values[0],'');assert.equal(values[1],'Control');assert.ok(values.every(value=>value!=='New Sign'));
+  });
   test(`${name}: duplicate selected elements preserves real shield types, nested groups, and row properties`,()=>{
     const c=modelContext(source);
     const result=vm.runInContext(`(()=>{

@@ -28,7 +28,7 @@ function harness(source, whole = true, models = [{}, {}, {}]) {
     const node = new Node('panel', index, { left: index * 120, right: index * 120 + 100 }); node.parent = canvas; panels.push(node);
     list.push(new Node('panelListButton', index, { top: 100 + index * 60, bottom: 150 + index * 60 }));
   });
-  let active = true, nextTimer = 0;
+  let active = true, nextTimer = 0, now = 1000000;
   const document = { documentElement: rootNode, addEventListener: (type, fn) => listeners.set(type, fn), querySelectorAll: selector => {
     if (selector === '.panelListButton') return list;
     if (selector === '#panelContainer .panel') return panels;
@@ -37,7 +37,7 @@ function harness(source, whole = true, models = [{}, {}, {}]) {
   const window = { navigator: { vibrate() {} }, innerHeight: 852, getComputedStyle: () => ({ direction: 'ltr' }),
     setTimeout: fn => { timers.set(++nextTimer, fn); return nextTimer; }, clearTimeout: id => timers.delete(id),
     scrollBy: (...args) => scrolls.push(args), addEventListener: (type, fn) => listeners.set(type, fn) };
-  vm.runInNewContext(read(source), { window, document, Event, Date });
+  vm.runInNewContext(read(source), { window, document, Event, Date: { now: () => now } });
   const api = window.SignMakerMobileGestures;
   api.install({ canvas, getApp: () => ({ getPost: () => ({ panels: models }), movePanel: (...args) => moves.push(args) }),
     isActive: () => active, isWholePost: () => whole, selectPanel: index => selections.push(index) });
@@ -47,7 +47,7 @@ function harness(source, whole = true, models = [{}, {}, {}]) {
     listeners.get(type)?.(event); return event;
   };
   return { api, window, panels, list, range, moves, selections, scrolls, rootNode, fire,
-    hold: () => { for (const fn of [...timers.values()]) fn(); timers.clear(); }, setActive: value => active = value };
+    hold: () => { for (const fn of [...timers.values()]) fn(); timers.clear(); }, setActive: value => active = value, advance: ms => { now += ms; } };
 }
 for (const source of sources) {
   const label = source.includes('.js') && source === sources[0] ? 'source' : 'production';
@@ -66,6 +66,22 @@ for (const source of sources) {
     h.fire('pointermove', h.range, { clientX: 58 }); h.fire('pointerup', h.range);
     assert.equal(h.range.value, '100'); assert.deepEqual(h.range.events, ['input', 'input', 'change']);
     assert.equal(h.api.rangeValue({ min: '-0.15', max: '0.15', step: '0.01' }, 0, 10, 100), '0.04');
+  });
+  test(`${label}: slider touches during momentum scrolling cannot edit the value`, () => {
+    const h=harness(source);h.fire('scroll',h.rootNode);h.fire('pointerdown',h.range);h.fire('pointermove',h.range,{clientX:70});h.fire('pointerup',h.range);
+    assert.equal(h.range.value,'50');assert.deepEqual(h.range.events,[]);
+    assert.equal(h.fire('mousedown',h.range).prevented,true);assert.equal(h.fire('click',h.range).prevented,true);
+    h.advance(1000);h.fire('pointerdown',h.range);h.fire('pointermove',h.range,{clientX:39});h.fire('pointerup',h.range);
+    assert.equal(h.range.value,'75');assert.deepEqual(h.range.events,['input','change']);
+  });
+  test(`${label}: native range input and compatibility clicks cannot bypass a scrolling touch`, () => {
+    const h=harness(source);h.fire('pointerdown',h.range);h.range.value='80';
+    const input=h.fire('input',h.range,{isTrusted:true});assert.equal(input.stopped,true);assert.equal(h.range.value,'50');
+    h.fire('pointermove',h.range,{clientY:80});h.fire('pointercancel',h.range);
+    h.range.value='90';assert.equal(h.fire('change',h.range,{isTrusted:true}).stopped,true);assert.equal(h.range.value,'50');
+    assert.equal(h.fire('click',h.range).stopped,true);
+    h.fire('pointerdown',h.range);h.range.value='99';h.fire('pointerup',h.range);assert.equal(h.range.value,'50');
+    h.fire('keydown',h.range);h.range.value='51';assert.equal(h.fire('input',h.range,{isTrusted:true}).stopped,undefined);assert.equal(h.range.value,'51');
   });
   test(`${label}: mouse ranges and desktop gestures retain their native behavior`, () => {
     const h = harness(source);

@@ -1557,6 +1557,13 @@ const ungroupSelectedBlockElement = () => {
           GLOBAL_TOP_SUBPANEL_INDEX,
           panel.sign.subPanels.length - 1
         );
+        if (currentlySelectedSubPanelIndex < 0) {
+          const key = getGlobalBlockKey(getGlobalBlockPositionFromIndex(currentlySelectedSubPanelIndex));
+          const control = panel.sign[key] || (key === "globalBottomBlockElements" ? panel.sign.blockElements : null);
+          if (!control?.rows?.some(row => Array.isArray(row) && row.length)) {
+            currentlySelectedSubPanelIndex = 0;
+          }
+        }
       } else {
         currentlySelectedSubPanelIndex = GLOBAL_BOTTOM_SUBPANEL_INDEX;
       }
@@ -4541,14 +4548,8 @@ const ungroupSelectedBlockElement = () => {
         return;
       }
 
-      panel.sign.globalTopBlockElements = new Control({
-        rows: [],
-        blockProperties: [],
-      });
-      panel.sign.globalBottomBlockElements = new Control({
-        rows: [],
-        blockProperties: [],
-      });
+      delete panel.sign.globalTopBlockElements;
+      delete panel.sign.globalBottomBlockElements;
       delete panel.sign.blockElements;
     };
 
@@ -5457,11 +5458,7 @@ const ungroupSelectedBlockElement = () => {
 
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
-        redraw();
-
-        requestAnimationFrame(() => {
-          redraw();
-        });
+        redraw({ preserveOtherPanels: true, changedPanelIndex: currentlySelectedPanelIndex });
       });
     };
 
@@ -6322,6 +6319,9 @@ const ungroupSelectedBlockElement = () => {
       suppressRedraw = false,
       deferMenu = false,
     } = {}) => {
+      const elementOnly = menu === 'subpanel' && panelIndex === currentlySelectedPanelIndex &&
+        Number(subPanelIndex) === currentlySelectedSubPanelIndex &&
+        JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
       const selectedPanelIndex = clamp(panelIndex, 0, post.panels.length - 1);
       currentlySelectedPanelIndex = selectedPanelIndex;
       selectedGuideArrowPanelIndex = menu === "guideArrows" ? selectedPanelIndex : -1;
@@ -6386,7 +6386,7 @@ const ungroupSelectedBlockElement = () => {
             : -1;
       }
 
-      formHandler.updateForm();
+      formHandler.updateForm({ elementOnly });
 
       if (!deferMenu && menu === "exitTabs" &&
           typeof formHandler.ensureExitTabMenuOpen === "function") {
@@ -6401,6 +6401,11 @@ const ungroupSelectedBlockElement = () => {
       } else if (!deferMenu && menu === "subpanel" &&
           typeof formHandler.ensureSubpanelMenuOpen === "function") {
         formHandler.ensureSubpanelMenuOpen();
+      }
+
+      if (elementOnly) {
+        if (flashTarget) flashElementAfterPostTransform(() => flashTarget);
+        return;
       }
 
       if (menu === "guideArrows") {
@@ -7771,7 +7776,7 @@ const ungroupSelectedBlockElement = () => {
 
       currentlySelectedRowIndex = normalizedRow;
       currentlySelectedBlockIndex = 0;
-      formHandler.updateForm();
+      formHandler.updateForm({ elementOnly: true });
     };
     
     const setSelectedRowAndBlock = (row, block) => {
@@ -7792,8 +7797,7 @@ const ungroupSelectedBlockElement = () => {
         Math.max(0, blocksInRow.length - 1)
       );
 
-      formHandler.updateForm();
-      redraw();
+      formHandler.updateForm({ elementOnly: true });
       flashElementAfterPostTransform(() => {
         const panel = document.getElementById("panel" + currentlySelectedPanelIndex);
         const master = panel?.querySelector(`.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`);
@@ -12520,13 +12524,22 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     // microtask this also batches native events, and unlike drawing in rAF it
     // leaves time for image/font layout callbacks before the frame is painted.
     const finishInput = finished => {
-      if (finished === event) flushPendingLivePreview();
+      if (finished === event && !window.SignMakerMobile?.active) flushPendingLivePreview();
     };
     window.addEventListener("input", finishInput);
     livePreviewInputCleanup = () => window.removeEventListener("input", finishInput);
-    // Controls which stop propagation still get a bounded, one-frame flush.
+    // Mobile batches input and commit events into one render per animation frame.
+    // Controls which stop propagation also get this bounded flush.
     livePreviewRenderFrame = requestAnimationFrame(flushPendingLivePreview);
   }, true);
+
+  const retainedPanelRootAt = (roots, index) => {
+    for (const [key, node] of roots) {
+      const indices = key.split(',').map(Number);
+      if (Math.min(...indices) === index) return { node, lastIndex: Math.max(...indices) };
+    }
+    return null;
+  };
 
   const redraw = function (options = {}) {
     if (livePreviewInputPending) {
@@ -12659,6 +12672,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
 
       for (let index = 0; index < post.panels.length; index++) {
+          const retained = retainedPanelRootAt(panelsToKeep, index);
+          if (retained) {
+            panelContainerElmt.appendChild(retained.node);
+            currentPanelStackElmt = null;
+            index = retained.lastIndex;
+            continue;
+          }
           const panel = post.panels[index];
           ensureExitTabLayoutIds(panel);
 
@@ -17707,16 +17727,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           
           refreshDynamicPanelBorders(panelElmt);
           }
-      panelsToKeep.forEach((oldPanel, indicesKey) => {
-        const newPanel = Array.from(panelContainerElmt.children).find((child) => {
-          const indices = Array.from(child.classList.contains("panel")
-            ? [child]
-            : child.querySelectorAll(".panel[data-panel-index]"))
-            .map((panel) => Number(panel.dataset.panelIndex));
-          return indices.join(",") === indicesKey;
-        });
-        if (newPanel) newPanel.replaceWith(oldPanel);
-      });
       retainRenderedArrows(panelContainerElmt, previousArrowFrames);
       panelContainerElmt.querySelectorAll(".panel[data-panel-index]").forEach((panelElmt) => {
         const panel = post.panels[Number(panelElmt.dataset.panelIndex)];

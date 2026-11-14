@@ -374,14 +374,14 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.a8f0455b2cf079f5.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.e0368fa4c89ded5a.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.4459be5a02da03ad.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.3360e705354df239.js","js/MobileSubpanels.b892d9c0499f1a2d.js","js/MobileExitTabs.d193a412da764660.js","js/MobileUI.df9b09ff6e8b173c.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.07d4ec4d260b714d.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.8ec2ddbe056ed93d.js"]' data-editor-css="css/app.d4cf7bcf6b2372d1.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.2d850bc41032c123.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c58d1a84759c8f4c.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.163f6b41bf562f61.js","js/MobileUI.6ede4a9bfaaaeab7.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.605f1b2c61c941f5.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.2f8a2c12c88c1fc7.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.503233568ee3f25d.js"></script>
@@ -393,10 +393,10 @@ remember
 <script defer src="js/VmsPanel.34d9648ce7eb7499.js"></script>
 <script defer src="js/Post.9f6684dc6741e278.js"></script>
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
-<script defer src="js/Control.7965129efa81ae54.js"></script>
+<script defer src="js/Control.ff64d1423c396b4e.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
 <script defer src="js/SignDocument.049462d0df09a6fc.js"></script>
-<script defer src="js/main.a7d9fb1e6ad21ffe.js"></script>
+<script defer src="js/main.0a42c5b5f951b676.js"></script>
   
   
   
@@ -422,6 +422,7 @@ remember
 
 
 
+  
   
 
   
@@ -1569,7 +1570,7 @@ remember
               <button id="globalBottom" onclick="app.changeEditingSubPanel(-1);" class="">
                 Bottom
               </button>
-              <button id="sub_edit1" class="active">Subpanel 1</button>
+              <button id="sub_edit1" class="active" data-mobile-label="1" data-desktop-label="Subpanel 1">Subpanel 1</button>
             </div>
             <div class="listNavOptions">
               <button onclick="app.newSubPanel();">+</button>
@@ -1786,7 +1787,7 @@ remember
                 <div data-property="sdCtrlText" class="sdCtrlTextLayout">
                     <div class="sdCtrlTextTopRow">
                       <label for="sdCtrlText_textContent">Content:</label>
-                      <input type="text" id="sdCtrlText_textContent" class="sdTextEditorContentCompact" placeholder="New Sign" value="New Sign">
+                      <input type="text" id="sdCtrlText_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
                       <label for="sdCtrlText_fontFamily">Font:</label>
                       <select id="sdCtrlText_fontFamily" class="sdTextEditorFontCompact"></select>
                     </div>
@@ -1960,7 +1961,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <div data-property="sdAdvisory" class="hidden sdCtrlTextLayout">
                   <div class="sdCtrlTextTopRow">
                     <label for="sdAdvisory_textContent">Content:</label>
-                    <input type="text" id="sdAdvisory_textContent" class="sdTextEditorContentCompact" placeholder="New Sign" value="New Sign">
+                    <input type="text" id="sdAdvisory_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
                     <label for="sdAdvisory_fontFamily">Font:</label>
                     <select id="sdAdvisory_fontFamily" class="sdTextEditorFontCompact"></select>
                   </div>
@@ -2206,7 +2207,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <div data-property="sdActionMessage" class="hidden sdCtrlTextLayout">
                   <div class="sdCtrlTextTopRow">
                     <label for="sdActionMessage_textContent">Content:</label>
-                    <input type="text" id="sdActionMessage_textContent" class="sdTextEditorContentCompact" placeholder="New Sign" value="New Sign">
+                    <input type="text" id="sdActionMessage_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
                     <label for="sdActionMessage_fontFamily">Font:</label>
                     <select id="sdActionMessage_fontFamily" class="sdTextEditorFontCompact"></select>
                   </div>
@@ -2292,17 +2293,22 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="smSPBlockProperties">
                 <h4>Row Properties</h4>
                 <div class="sdBlockMarginControls">
-                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"></div>
-                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding">Top margin (rem)</label><input type="range" min="-5" max="10" value="0" step="0.1" id="sdBlock_topPadding"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding">Bottom margin (rem)</label><input type="range" min="-5" max="10" value="0" step="0.1" id="sdBlock_bottomPadding"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
                 </div>
+                <div class="sdBlockColors">
                 <label for="sdBlock_backgroundColor">BG:</label>
                 <select id="sdBlock_backgroundColor"></select>
                 <label for="sdBlock_borderColor">Border:</label>
                 <select id="sdBlock_borderColor"></select>
-                <br>
+                </div>
+                <div class="sdBlockMarginControl sdBlockWidthControl">
                 <label for="sdBlock_width" data-tooltip="Width of the block, set to 0 to automatically resize">Width
                   (rem):</label>
+                <input type="range" id="sdBlock_widthSlider" min="0" max="100" step="0.05" value="0" aria-label="Row width">
                 <input type="number" id="sdBlock_width" placeholder="0" max="100" min="0" step=".05" value="0">
+                <button type="button" id="sdBlock_widthReset" class="sdBlockReset" aria-label="Reset row width"><span class="material-symbols-outlined">refresh</span></button>
+                </div>
                 <label for="sdBlock_backgroundFullWidth">BG Full Width:</label>
                 <input type="checkbox" id="sdBlock_backgroundFullWidth">
                 <br>
@@ -2590,28 +2596,34 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
+      <div class="iconPickerTools">
       <div class="iconPickerTabs" role="tablist" aria-label="Icon source">
-        <button id="iconPickerUploadedTab" type="button" role="tab" aria-selected="true" aria-controls="iconGrid" data-icon-page="uploaded">Uploaded Icons</button>
-        <button id="iconPickerBuiltInTab" type="button" role="tab" aria-selected="false" aria-controls="iconGrid" data-icon-page="built-in">Built-in Icons</button>
+        <button id="iconPickerUploadedTab" type="button" role="tab" aria-selected="true" aria-controls="iconGrid" data-icon-page="uploaded" data-mobile-label="Uploaded" data-desktop-label="Uploaded Icons">Uploaded Icons</button>
+        <button id="iconPickerBuiltInTab" type="button" role="tab" aria-selected="false" aria-controls="iconGrid" data-icon-page="built-in" data-mobile-label="Built-in" data-desktop-label="Built-in Icons">Built-in Icons</button>
       </div>
       <div class="customIconUploadToolbar iconPickerToolbar">
         <button id="uploadCustomIconButton" class="customIconUploadButton" type="button">
           <span class="material-symbols-outlined">upload_file</span>
-          <span>Upload Icon</span>
+          <span data-mobile-label="Upload" data-desktop-label="Upload Icon">Upload Icon</span>
         </button>
         <input id="uploadCustomIconFile" type="file" accept=".svg,.png,image/svg+xml,image/png" hidden>
         <div class="iconPickerDisplayControls">
+          <div class="iconPickerDisplayField">
           <label for="iconPickerSort">Sort</label>
           <select id="iconPickerSort">
             <option value="recent">Recently added</option>
             <option value="alphabetical">Alphabetical</option>
           </select>
+          </div>
+          <div class="iconPickerDisplayField">
           <label for="iconPickerView">View</label>
           <select id="iconPickerView">
             <option value="grid">Grid view</option>
             <option value="list">List view</option>
           </select>
+          </div>
         </div>
+      </div>
       </div>
       <input type="search" id="iconSearch" class="assetSelectorSearch" placeholder="Search icons...">
       <div id="iconGrid" class="iconGrid assetPickerGrid" role="tabpanel" aria-labelledby="iconPickerUploadedTab" data-view="grid"></div>

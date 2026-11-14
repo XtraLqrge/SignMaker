@@ -116,12 +116,16 @@ window.SignMakerMobileSubpanels = (() => {
     return full;
   };
   let measuringContext;
+  const rowMeasurements = new WeakMap();
   const fitRowLabels = row => {
     const blocks = Array.from(row.querySelectorAll('.textEditorBlock'));
     if (!blocks.length || row.classList.contains('mobileEditorDragging')) return;
-    const style = window.getComputedStyle?.(row);
     const width = row.clientWidth || row.getBoundingClientRect().width;
     if (!width) return;
+    const key = JSON.stringify([width, mode, blocks.map(block => [block.querySelector('.textEditorBlockLabel')?.textContent || block.title, !!block.querySelector('.mergeEditGroup')])]);
+    if (rowMeasurements.get(row) === key) return;
+    rowMeasurements.set(row, key);
+    const style = window.getComputedStyle?.(row);
     const gap = parseFloat(style?.columnGap) || 8;
     const padding = (parseFloat(style?.paddingLeft) || 10) + (parseFloat(style?.paddingRight) || 10);
     const available = width - padding;
@@ -209,9 +213,10 @@ window.SignMakerMobileSubpanels = (() => {
         const element = currentControl?.rows[Number(node.dataset.row)]?.[Number(node.dataset.block)];
         if (!element) return;
         const kind = Control.prototype.blockToClassElems.getElem(element) || element.constructor.name;
+        node.classList.toggle('mobileAdvisoryLabel', kind === 'AdvisoryMessageElement');
         const title = element.label || Control.prototype.blockElements[kind] || 'Element';
         node.setAttribute('aria-label', title); node.title = title;
-        const key = ['ShieldElement', 'ArrowElement', 'TollLogoElement', 'IconElement'].includes(kind) ? kind + JSON.stringify(element) : kind;
+        const key = kind + JSON.stringify([element.shieldBase, element.type, element.shieldType, element.routeNumber, element.shieldBacks, element.arrow, element.rotation, element.flip, element.logo, element.icon]);
         if (visualKeys.get(node) !== key) {
           node.querySelector('.mobileBlockVisual')?.remove();
           node.prepend(makeVisual(element, kind, bridge().getCurrentPanel()));
@@ -361,7 +366,7 @@ window.SignMakerMobileSubpanels = (() => {
     observer.observe(document.getElementById('sMConfigBar'), { attributes: true, attributeFilter: ['data-current-menu'] });
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refresh).observe(document.getElementById('sMSPTextList'));
     window.addEventListener('resize', refresh);
-    document.fonts?.ready?.then(refresh);
+    document.fonts?.ready?.then(() => { document.querySelectorAll('#sMSPTextList .sMControlRow').forEach(row => rowMeasurements.delete(row)); refresh(); });
     document.addEventListener('pointerdown', start, true);
     document.addEventListener('pointermove', move, { capture: true, passive: false });
     document.addEventListener('pointerup', event => { if (event.pointerId === gesture?.id) finish(false); }, true);

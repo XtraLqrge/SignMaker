@@ -3,20 +3,14 @@ window.SignMakerMobileExitTabs = (() => {
   let enabled = false, root, observer;
   const records = new Map(), pairedChecks = [];
   const number = (value, fallback) => value !== '' && Number.isFinite(Number(value)) ? Number(value) : fallback;
-  const bounds = input => ({ min: number(input.min, -Infinity), max: number(input.max, Infinity), step: Math.max(0.000001, number(input.step, 1)) });
+  const bounds = input => ({ min: number(input.min, -Infinity), max: number(input.max, Infinity), step: records.get(input)?.increment || Math.max(0.000001, number(input.step, 1)) });
   const clean = value => String(Number(value.toFixed(10)));
   const normalize = (value, min, max, step, fallback = 0) => {
     let next = Math.max(min, Math.min(max, number(value, fallback)));
-    const base = Number.isFinite(min) ? min : 0;
-    next = base + Math.round((next - base) / step) * step;
-    return clean(Math.max(min, Math.min(max, next)));
+    return String(next);
   };
-  const stepValue = (value, direction, min, max, step) => {
-    const base = Number.isFinite(min) ? min : 0;
-    const index = (number(value, Number.isFinite(min) ? min : 0) - base) / step;
-    const nextIndex = direction > 0 ? Math.floor(index + 1e-8) + 1 : Math.ceil(index - 1e-8) - 1;
-    return clean(Math.max(min, Math.min(max, base + nextIndex * step)));
-  };
+  const stepValue = (value, direction, min, max, step) =>
+    clean(Math.max(min, Math.min(max, number(value, Number.isFinite(min) ? min : 0) + direction * step)));
   const remember = node => {
     const marker = document.createComment('desktop input position'); node.before(marker); return marker;
   };
@@ -26,6 +20,7 @@ window.SignMakerMobileExitTabs = (() => {
     if (!enabled) return;
     for (const record of records.values()) {
       const { input, up, down } = record;
+      if (input.step !== "any") { record.increment = Math.max(0.000001, number(input.step, record.increment)); input.step = "any"; }
       if (!up) continue;
       const caption = record.titleNode?.textContent.trim();
       if (caption && input.getAttribute('aria-label') !== caption) {
@@ -41,7 +36,7 @@ window.SignMakerMobileExitTabs = (() => {
     }
   };
   const bind = input => {
-    const record = { input, lastGood: input.value, originalType: input.type };
+    const record = { input, lastGood: input.value, originalType: input.type, originalStep: input.getAttribute('step'), increment: Math.max(0.000001, number(input.step, 1)) };
     input.addEventListener('input', () => {
       if (!enabled || !valid(input)) return;
       record.lastGood = input.value;
@@ -92,7 +87,7 @@ window.SignMakerMobileExitTabs = (() => {
     const title = field.querySelector(`label[for="${input.id}"]`);
     record.titleNode = title;
     const caption = title?.textContent.trim() || input.getAttribute('aria-label') || input.id;
-    input.type = 'number';
+    input.type = 'number'; input.step = 'any';
     input.inputMode = 'decimal';
     input.setAttribute('aria-label', caption);
     const wrapper = document.createElement('div'); wrapper.className = 'mobileExitStepper';
@@ -141,6 +136,7 @@ window.SignMakerMobileExitTabs = (() => {
     record.field.classList.remove('mobileExitNumberField');
     if (record.generated) record.field.remove();
     input.type = record.originalType;
+    if (record.originalStep === null && record.increment === 1) input.removeAttribute('step'); else input.setAttribute('step', String(record.increment));
     input.removeAttribute('inputmode');
   };
   const setActive = active => {

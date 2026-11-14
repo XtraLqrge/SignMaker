@@ -826,6 +826,10 @@ test('phone workspace starts without a desktop init call, follows emulated width
   assert.equal(document.getElementById('export').parentElement,bar);
   assert.equal(downloadPreview.parentElement,downloadDialog);
   root.clientWidth=393;window.innerWidth=393;events.get('resize')();flush();
+  assert.equal(api.active,false,'Desktop zoom and narrow windows never activate the phone workspace');
+  assert.equal(document.getElementById('mobileWorkspace'),null,'Desktop leaves all editor controls in their original DOM positions');
+  assert.equal(document.getElementById('export').parentElement,bar);
+  root.clientWidth=393;window.innerWidth=393;window.navigator={maxTouchPoints:5,userAgent:'iPhone'};window.screen={width:393};events.get('resize')();flush();
   assert.equal(media.matches,false,'Device emulation can resize before a media-query change event');
   assert.equal(canvas.parentElement.id,'mobileWorkspace');assert.equal(modals.closest('form'),form);
   assert.equal(document.getElementById('panelSelect').closest('form'),form);
@@ -849,7 +853,7 @@ test('phone workspace starts without a desktop init call, follows emulated width
   assert.equal(document.getElementById('mobileEditor').hidden,true);
   mobileGestures.selectPanel(0);flush();
   assert.equal(api.showingWholePost,false);assert.equal(index,0);assert.equal(document.getElementById('panel1').inert,true);
-  root.clientWidth=1200;window.innerWidth=1200;events.get('resize')();flush();
+  root.clientWidth=1200;window.innerWidth=1200;window.navigator={maxTouchPoints:0,userAgent:'Desktop'};events.get('resize')();flush();
   assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);assert.equal(document.getElementById('export').parentElement,bar);
   assert.equal(downloadPreview.parentElement,downloadDialog,'The desktop export preview returns beside its controls');
   for(const node of panels.children)assert.equal(node.inert,false);
@@ -873,14 +877,18 @@ test('panel reorder destinations preserve stack membership and the selected pane
   c.move(0,1);assert.equal(renders,2);assert.equal(updates,2);
 });
 
-test('phone mode detects visual viewports and touch screens even when layout media queries lag',()=>{
+test('phone mode retains touch-device behavior while desktop zoom and narrow windows stay desktop',()=>{
   for(const input of [
-    {width:393,expected:true}, {width:900,expected:true}, {width:1200,expected:false},
-    {width:980,visual:393,expected:true}, {width:980,screen:393,touch:5,expected:true},
+    {width:393,expected:false}, {width:900,expected:false}, {width:1200,expected:false},
+    {width:980,visual:393,expected:false}, {width:400,visual:200,matched:true,expected:false},
+    {width:393,ua:'iPhone',expected:true}, {width:900,ua:'Android',expected:true},
+    {width:980,visual:393,ua:'iPhone',expected:true}, {width:980,screen:393,touch:5,coarse:true,expected:true},
+    {width:820,screen:1024,touch:5,coarse:true,expected:true},
+    {width:600,screen:1920,touch:5,coarse:false,expected:false},
     {width:1200,forced:true,expected:true},
   ]){
-    const c=context({URLSearchParams,media:{matches:false},document:{documentElement:{clientWidth:input.width}},
-      window:{innerWidth:input.width,visualViewport:{width:input.visual},navigator:{maxTouchPoints:input.touch||0},
+    const c=context({URLSearchParams,media:{matches:!!input.matched},document:{documentElement:{clientWidth:input.width}},
+      window:{matchMedia:()=>({matches:!!input.coarse}),innerWidth:input.width,visualViewport:{width:input.visual},navigator:{maxTouchPoints:input.touch||0,userAgent:input.ua||'Desktop'},
         screen:{width:input.screen},location:{search:input.forced?'?mobile=1':''}}});
     vm.runInContext(declaration('public/js/MobileUI.js','wantsMobileWorkspace')+'this.wants=wantsMobileWorkspace;',c);
     assert.equal(c.wants(),input.expected,JSON.stringify(input));
@@ -1631,7 +1639,8 @@ test('row sizing sliders keep live values in sync and reset one property per und
   const {Node,Event,parse:parseDOM}=require('./fixtures/mobile-dom.cjs');
   const tree=parseDOM(read('scripts/index.source.html').split('<body>')[1].split('</body>')[0]);
   const byId=id=>tree.querySelector('#'+id),calls=[];let starts=0,ends=0;
-  const c=context({document:{getElementById:byId},exposed:{beginUndoableChange(){starts++;},endUndoableChange(){ends++;}},readForm:options=>calls.push({target:options.target.id,deferred:options.deferHistoryEnd,top:byId('sdBlock_topPaddingVal').value,bottom:byId('sdBlock_bottomPaddingVal').value,width:byId('sdBlock_width').value})});
+  const c=context({document:{getElementById:byId,querySelectorAll:selector=>tree.querySelectorAll(selector)},exposed:{beginUndoableChange(){starts++;},endUndoableChange(){ends++;}},readForm:options=>calls.push({target:options.target.id,deferred:options.deferHistoryEnd,top:byId('sdBlock_topPaddingVal').value,bottom:byId('sdBlock_bottomPaddingVal').value,width:byId('sdBlock_width').value})});
+  vm.runInContext(declaration('public/js/MobileUI.js','syncDeviceInputs')+';syncDeviceInputs(true);',c);
   vm.runInContext(declaration('public/js/form.js','bindBlockSizingControls'),c);vm.runInContext('bindBlockSizingControls();bindBlockSizingControls();',c);
   const fire=(id,type)=>byId(id).dispatchEvent(new Event(type,{bubbles:true}));
   byId('sdBlock_topPadding').value='-1.5';fire('sdBlock_topPadding','input');assert.equal(byId('sdBlock_topPaddingVal').value,'-1.5');assert.equal(calls.at(-1).deferred,true);
@@ -1768,4 +1777,30 @@ test('adding a subpanel redraws the changed panel once without a second animatio
   assert.equal(c.currentlySelectedRowIndex,0);assert.equal(c.currentlySelectedBlockIndex,0);
   assert.equal(updates,1);assert.equal(undos,1);assert.equal(draws.length,1);assert.equal(frames.length,0);
   assert.equal(draws[0].preserveOtherPanels,true);assert.equal(draws[0].changedPanelIndex,2);
+});
+
+test('trackpad zoom bypasses desktop horizontal-wheel handlers without changing phone scrolling',()=>{
+  const source=read('public/js/form.js'),start=source.indexOf('      scrollableElement.addEventListener("wheel", (event) => {');
+  const code=source.slice(start,source.indexOf('\n      });',start)+'\n      });'.length);
+  let listener;const moves=[];const c=context({window:{SignMakerMobile:{active:false}},scrollCooldown:false,
+    scrollableElement:{addEventListener:(_,fn)=>listener=fn,scrollBy:options=>moves.push(options)}});
+  vm.runInContext(code,c);
+  const fire=options=>{const event={deltaY:60,preventDefault(){this.prevented=true;},...options};listener(event);return event;};
+  assert.equal(fire({ctrlKey:true}).prevented,undefined);assert.equal(fire({metaKey:true}).prevented,undefined);assert.equal(moves.length,0);
+  assert.equal(fire({}).prevented,true);assert.equal(moves.length,1);
+  c.window.SignMakerMobile.active=true;assert.equal(fire({ctrlKey:true}).prevented,true);assert.equal(moves.length,2);
+});
+
+test('row range bounds and precision match the desktop baseline while mobile retains its current values',()=>{
+  const {parse:parseDOM}=require('./fixtures/mobile-dom.cjs'),tree=parseDOM(read('scripts/index.source.html'));
+  const document={getElementById:id=>tree.querySelector('#'+id),querySelectorAll:selector=>tree.querySelectorAll(selector)};
+  const c=context({document});vm.runInContext(declaration('public/js/MobileUI.js','syncDeviceInputs')+';this.sync=syncDeviceInputs;',c);
+  for(const side of ['top','bottom']){
+    const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'0');assert.equal(slider.max,'3');assert.equal(slider.step,'.01');
+    document.getElementById(slider.id+'Val').value='-2.5';
+  }
+  c.sync(true);
+  for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'-5');assert.equal(slider.max,'10');assert.equal(slider.step,'0.1');assert.equal(slider.value,'-2.5');}
+  c.sync(false);
+  for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'0');assert.equal(slider.max,'3');assert.equal(slider.step,'.01');}
 });

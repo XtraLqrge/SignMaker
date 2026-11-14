@@ -2002,8 +2002,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="smSPBlockProperties">
                 <h4>Row Properties</h4>
                 <div class="sdBlockMarginControls">
-                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding">Top margin (rem)</label><input type="range" min="-5" max="10" value="0" step="0.1" id="sdBlock_topPadding"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
-                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding">Bottom margin (rem)</label><input type="range" min="-5" max="10" value="0" step="0.1" id="sdBlock_bottomPadding"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding" data-mobile-label="Top margin (rem)" data-desktop-label="Top Margin (rem):">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding" data-mobile-label="Bottom margin (rem)" data-desktop-label="Bottom Margin (rem):">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
                 </div>
                 <div class="sdBlockColors">
                 <label for="sdBlock_backgroundColor">BG:</label>
@@ -2011,7 +2011,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <label for="sdBlock_borderColor">Border:</label>
                 <select id="sdBlock_borderColor"></select>
                 </div>
-                <div class="sdBlockMarginControl sdBlockWidthControl">
+                <br class="desktopRowWidthBreak">
+                <div class="sdBlockWidthControl">
                 <label for="sdBlock_width" data-tooltip="Width of the block, set to 0 to automatically resize">Width
                   (rem):</label>
                 <input type="range" id="sdBlock_widthSlider" min="0" max="100" step="0.05" value="0" aria-label="Row width">

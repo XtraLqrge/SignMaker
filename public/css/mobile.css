@@ -1,3 +1,12 @@
+:where(html[data-mobile-ui]) .textEditorBlock.sdAdvisory,
+:where(html[data-mobile-ui]) .textEditorBlock.sdAdvisory :is(.textEditorBlockLabel, .mobileBlockVisual, .blockElementSymbol, .blockTypeInlinePickerTrigger, .shieldPickerTriggerCaret) { color: #000 !important; }
+:where(html[data-mobile-ui]) .textEditorBlock.sdAdvisory .blockTypeChevron::before { border-color: #000 !important; }
+
+:where(html[data-mobile-ui]) .iconPickerTools { display: contents; }
+:where(html[data-mobile-ui]) .iconPickerDisplayField { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+:where(html[data-mobile-ui]) .sdBlockMarginControl .sdBlockReset { width: 1.8rem; height: 1.8rem; min-width: 1.8rem; margin: 0; padding: 0; }
+:where(html[data-mobile-ui]) .sdBlockWidthControl { display: flex; align-items: center; gap: 0.4rem; margin-block: 0.4rem; }
+:where(html[data-mobile-ui]) .sdBlockWidthControl input[type="range"] { flex: 1; min-width: 0; }
 #mobileWorkspace[hidden], #mobileEditor[hidden], #mobileMoreActions[hidden], #mobileMore { display: none !important; }
 
 .mobileDropdownAdvanced { display: block; width: 100%; min-height: 44px; padding: 10px 14px; border: 0; border-top: 1px solid rgba(128,128,128,0.3); background: rgb(var(--inputColor)); color: var(--textColor); font: 500 16px/1.4 Inter, sans-serif; text-align: left; cursor: pointer; }
@@ -513,10 +522,10 @@ html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shield
 
 /* Row sizing retains sliders and independent reset actions. */
 html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockMarginControls { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockMarginControl { display: grid !important; grid-template-columns: minmax(0, 1fr) 50px 30px !important; align-items: center; gap: 5px !important; width: 100% !important; min-width: 0 !important; margin: 0 0 10px !important; }
-html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockMarginControl > label { grid-column: 1 / -1 !important; width: auto !important; margin: 0 !important; text-align: left; font-size: 12px !important; }
-html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockMarginControl input[type="range"] { display: block !important; grid-column: 1 !important; width: 100% !important; min-width: 0 !important; height: 38px !important; min-height: 38px !important; margin: 0 !important; }
-html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockMarginControl input[type="number"] { grid-column: 2 !important; width: 50px !important; min-width: 0 !important; height: 38px !important; min-height: 38px !important; margin: 0 !important; padding: 4px; }
+html[data-mobile-ui] #mobileEditor #smSPBlockProperties :is(.sdBlockMarginControl, .sdBlockWidthControl) { display: grid !important; grid-template-columns: minmax(0, 1fr) 50px 30px !important; align-items: center; gap: 5px !important; width: 100% !important; min-width: 0 !important; margin: 0 0 10px !important; }
+html[data-mobile-ui] #mobileEditor #smSPBlockProperties :is(.sdBlockMarginControl, .sdBlockWidthControl) > label { grid-column: 1 / -1 !important; width: auto !important; margin: 0 !important; text-align: left; font-size: 12px !important; }
+html[data-mobile-ui] #mobileEditor #smSPBlockProperties :is(.sdBlockMarginControl, .sdBlockWidthControl) input[type="range"] { display: block !important; grid-column: 1 !important; width: 100% !important; min-width: 0 !important; height: 38px !important; min-height: 38px !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPBlockProperties :is(.sdBlockMarginControl, .sdBlockWidthControl) input[type="number"] { grid-column: 2 !important; width: 50px !important; min-width: 0 !important; height: 38px !important; min-height: 38px !important; margin: 0 !important; padding: 4px; }
 html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockReset { grid-column: 3 !important; width: 30px !important; min-width: 30px !important; height: 38px !important; min-height: 38px !important; margin: 0 !important; padding: 3px !important; }
 html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockReset .material-symbols-outlined { font-size: 22px; }
 html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockColors { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -562,3 +571,10 @@ html[data-mobile-ui] #tollLogoGrid .assetGridLabel { position: absolute !importa
 
 /* Tool tabs use their own button states against the sheet background. */
 html[data-mobile-ui] #mobileEditor :is(.sMModalBar, .sMModalSubBar) { background: transparent !important; }
+
+/* Additional phone controls do not participate in desktop layout. */
+:where(html:not([data-mobile-ui])) :is(.sdBlockReset, #sdBlock_widthSlider) { display: none !important; }
+:where(html:not([data-mobile-ui])) :is(.sdBlockColors, .sdBlockWidthControl, .iconPickerTools, .iconPickerDisplayField) { display: contents; }
+html[data-mobile-ui] .desktopRowWidthBreak { display: none; }
+
+html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockWidthControl input[type="number"] { max-width: 3rem !important; }

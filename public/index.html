@@ -374,14 +374,14 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.e0368fa4c89ded5a.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.17125701d45278ca.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.2d850bc41032c123.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c58d1a84759c8f4c.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.163f6b41bf562f61.js","js/MobileUI.6ede4a9bfaaaeab7.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.605f1b2c61c941f5.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.2f8a2c12c88c1fc7.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.ea060f895a56aff6.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c58d1a84759c8f4c.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.163f6b41bf562f61.js","js/MobileUI.979716bfcafe9be7.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.605f1b2c61c941f5.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.f75855e57b63066b.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.503233568ee3f25d.js"></script>
@@ -2293,8 +2293,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="smSPBlockProperties">
                 <h4>Row Properties</h4>
                 <div class="sdBlockMarginControls">
-                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding">Top margin (rem)</label><input type="range" min="-5" max="10" value="0" step="0.1" id="sdBlock_topPadding"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
-                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding">Bottom margin (rem)</label><input type="range" min="-5" max="10" value="0" step="0.1" id="sdBlock_bottomPadding"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding" data-mobile-label="Top margin (rem)" data-desktop-label="Top Margin (rem):">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding" data-mobile-label="Bottom margin (rem)" data-desktop-label="Bottom Margin (rem):">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
                 </div>
                 <div class="sdBlockColors">
                 <label for="sdBlock_backgroundColor">BG:</label>
@@ -2302,7 +2302,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <label for="sdBlock_borderColor">Border:</label>
                 <select id="sdBlock_borderColor"></select>
                 </div>
-                <div class="sdBlockMarginControl sdBlockWidthControl">
+                <br class="desktopRowWidthBreak">
+                <div class="sdBlockWidthControl">
                 <label for="sdBlock_width" data-tooltip="Width of the block, set to 0 to automatically resize">Width
                   (rem):</label>
                 <input type="range" id="sdBlock_widthSlider" min="0" max="100" step="0.05" value="0" aria-label="Row width">

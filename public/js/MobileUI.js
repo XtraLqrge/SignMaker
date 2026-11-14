@@ -18,10 +18,15 @@ window.SignMakerMobile = (() => {
 
   const wantsMobileWorkspace = () => {
     if (new URLSearchParams(window.location.search).get('mobile') === '1') return true;
+    const navigator = window.navigator || {};
+    const touchScreen = navigator.maxTouchPoints > 0 && window.screen?.width > 0 && window.screen.width <= 1280;
+    const mobileDevice = navigator.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+      (touchScreen && window.matchMedia('(pointer: coarse)').matches);
+    if (!mobileDevice) return false;
     const widths = [window.innerWidth, document.documentElement.clientWidth, window.visualViewport?.width]
       .filter(value => Number.isFinite(value) && value > 0);
-    const touchScreen = window.navigator?.maxTouchPoints > 0 && window.screen?.width > 0 && window.screen.width <= 900;
-    return media.matches || (widths.length > 0 && Math.min(...widths) <= 900) || touchScreen;
+    return media.matches || (widths.length > 0 && Math.min(...widths) <= 900) || (touchScreen && window.screen.width <= 900);
+
   };
 
   const previewMetrics = (width, height, availableWidth, availableHeight) => {
@@ -332,12 +337,21 @@ window.SignMakerMobile = (() => {
     if (active && !frame && !exporting) frame = window.requestAnimationFrame(sync);
   }
 
+  const syncDeviceInputs = enabled => {
+    for (const input of document.querySelectorAll('[data-mobile-min]')) {
+      const value = document.getElementById(input.id + 'Val')?.value ?? input.value;
+      for (const key of ['min', 'max', 'step']) input.setAttribute(key, input.dataset[(enabled ? 'mobile' : 'desktop') + key[0].toUpperCase() + key.slice(1)]);
+      input.value = value;
+    }
+  };
+
   const setActive = enabled => {
     if (enabled === active) return;
     closeEditor();
     gestures?.cancel();
     active = enabled;
     document.documentElement.toggleAttribute('data-mobile-ui', active);
+    syncDeviceInputs(active);
     window.SignMakerMobileExitTabs?.setActive(active);
     window.SignMakerMobileForms?.setActive(active);
     workspace.hidden = !active;
@@ -392,10 +406,14 @@ window.SignMakerMobile = (() => {
   };
   const init = () => {
     if (initialized) return;
-    createWorkspace();
     initialized = true;
     const update = () => {
-      setActive(wantsMobileWorkspace());
+      const enabled = wantsMobileWorkspace();
+      if (!workspace) {
+        if (!enabled) { active = false; return; }
+        createWorkspace();
+      }
+      setActive(enabled);
       schedule();
     };
     media.addEventListener('change', update);

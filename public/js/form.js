@@ -16897,6 +16897,7 @@ const formHandler = (function () {
     );
     horizontalScrollOnWheel.forEach((scrollableElement) => {
       scrollableElement.addEventListener("wheel", (event) => {
+        if (!window.SignMakerMobile?.active && (event.ctrlKey || event.metaKey)) return;
         if (scrollCooldown) {
           return;
         }

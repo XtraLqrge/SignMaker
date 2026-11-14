@@ -1,7 +1,7 @@
 /* Shared choice-button appearance from SignalMaker heads.css / StripeMaker menus.css.
    Keep each editor's placement, widths, wrapping, labels and event handlers intact.
    Existing state classes and ARIA states all use the same visual treatment. */
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,
@@ -25,7 +25,7 @@
   .exitTabNestedColumn
 ) { gap: 0.12rem; }
 
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,
@@ -70,7 +70,7 @@
   cursor: pointer;
 }
 
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,
@@ -93,14 +93,14 @@
   .exitTabListRow,
   .exitTabNestedColumn
 ) > :is(button:not(.subPanelTabDeleteButton), .sMModalTab):is(.selected, .active, .activated, [aria-pressed="true"], [aria-selected="true"]),
-:root #subPanelList .subPanelTabGroup.active > .subPanelTabButton {
+:root:where([data-mobile-ui]) #subPanelList .subPanelTabGroup.active > .subPanelTabButton {
   background: var(--selectedColor) !important;
   color: var(--textColor) !important;
   box-shadow: none !important;
   text-decoration: none !important;
 }
 
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,
@@ -126,7 +126,7 @@
   background: var(--hoverColor) !important;
 }
 
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,
@@ -153,7 +153,7 @@
   outline-offset: 2px;
 }
 
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,
@@ -180,7 +180,7 @@
   opacity: 0.5;
 }
 
-:root :is(
+:root:where([data-mobile-ui]) :is(
   .alignmentButtons,
   .sdShieldChoiceGroup:not(.sdShieldCapButtons),
   .sdIconAlignmentButtons,

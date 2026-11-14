@@ -21,6 +21,7 @@ function ui(source) {
     getElementById: byId, querySelector: s => tree.querySelector(s), querySelectorAll: s => { globalScans++; return tree.querySelectorAll(s); },
     createElement: tag => new Node(tag), createComment: text => new Node('#comment', text) };
   const originals = tree.querySelectorAll('input').map(input => [input, input.parentElement, input.type]);
+  for(const input of tree.querySelectorAll('[data-mobile-min]'))for(const key of ['min','max','step'])input.setAttribute(key,input.dataset['mobile'+key[0].toUpperCase()+key.slice(1)]);
   const properties = byId('smSPProperties'), bar = byId('sMConfigBar');
   const values = { sdCtrlText: ['Control', 'Series EM'], sdActionMessage: ['1 MILE', 'Series E'], sdAdvisory: ['Advisory', 'Series E'] };
   for (const [prefix, [text, font]] of Object.entries(values)) { byId(prefix + '_textContent').value = text; byId(prefix + '_fontFamily').value = font; }

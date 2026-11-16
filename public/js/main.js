@@ -1336,9 +1336,8 @@ const ungroupSelectedBlockElement = () => {
   const exitOnlyArrowRatios = new Map();
   const getEmbeddedExitOnlyArrowMask = (src) => {
     if (!exitOnlyArrowMasks.has(src)) {
-      exitOnlyArrowMasks.set(src, fetch(src)
-        .then((response) => response.ok ? response.text() : null)
-        .then((svg) => svg ? `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")` : null)
+      exitOnlyArrowMasks.set(src, exportResourceDataURL(src)
+        .then((url) => `url("${url}")`)
         .then((mask) => {
           if (mask) embeddedExitOnlyArrowMasks.set(src, mask);
           return mask;
@@ -4609,6 +4608,12 @@ const ungroupSelectedBlockElement = () => {
 
       newPanel.stackedWithPrevious = false;
       delete newPanel.stackedPanelPlacement;
+
+      const previousPanel = previousPanels[currentlySelectedPanelIndex];
+      if (previousPanel) {
+        newPanel.corner = previousPanel.corner;
+        newPanel.borderRadius = previousPanel.borderRadius;
+      }
 
       if (clearGlobals) {
         clearPanelGlobalBlockElements(newPanel);
@@ -9176,7 +9181,7 @@ const ungroupSelectedBlockElement = () => {
           APL_ARROW_TYPES[kind] ? kind : "UP";
 
         const normalizeArrowMode = (mode) =>
-          mode === "apl" ? "apl" : "standard";
+          ["apl", "diagrammatic", "roundabout"].includes(mode) ? mode : "standard";
 
         const setCurrentPanelArrowMode = function (mode) {
           return runWithUndo(() => {
@@ -9189,6 +9194,7 @@ const ungroupSelectedBlockElement = () => {
 
             const nextMode = normalizeArrowMode(mode);
             sign.arrowMode = nextMode;
+            if (nextMode === "roundabout") window.SignMakerRoundabout.ensureSubpanels(sign);
 
             if (nextMode === "apl") {
               sign.guideArrow = "None";
@@ -11396,7 +11402,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     const clone = element.cloneNode(true);
     clone.classList.remove("showBlockBoundingBoxes");
-    clone.querySelectorAll("#alignmentGuides").forEach(guide=>guide.remove());
+    clone.querySelectorAll(".diagrammaticEditing").forEach(node=>node.classList.remove("diagrammaticEditing"));
+    clone.querySelectorAll("#alignmentGuides, .diagrammaticLiveLayer, .diagrammaticSubpanelHandle").forEach(guide=>guide.remove());
     Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
       (hiddenPanelClone) => hiddenPanelClone.remove()
     );
@@ -11634,6 +11641,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
+      clone.querySelectorAll('.diagrammaticLiveLayer, .diagrammaticSubpanelHandle').forEach(node=>node.remove());
+      clone.querySelectorAll('.diagrammaticEditing').forEach(node=>node.classList.remove('diagrammaticEditing'));
 
       if (clone.classList.contains("panelHiddenFromPost")) {
         return;
@@ -14336,6 +14345,89 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             scheduleRuralPostLayoutUpdate();
           }
           
+          const markSelectedRenderedSubpanel = (targetElmt, subPanelIndex) => {
+            targetElmt.classList.toggle(
+              "selectedRenderedSubpanel",
+              index === currentlySelectedPanelIndex &&
+                subPanelIndex === currentlySelectedSubPanelIndex
+            );
+          };
+
+          const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) => {
+            const bindControl = (master, groupPath = []) => {
+              master.dataset.panelIndex = String(index);
+              master.dataset.subpanel = String(subPanelIndex);
+              const samePath = JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
+              const rows = Array.from(master.children).filter(element => element.classList.contains("blockElementRow"));
+              rows.forEach((rowElmt, rowIndex) => {
+                rowElmt.dataset.signRow = String(rowIndex);
+                rowElmt.classList.toggle("selectedRenderedBlockRow", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex);
+                rowElmt.addEventListener("click", event => {
+                  if (event.target.closest("[data-sign-row][data-sign-block]")?.closest(".blockElementMaster") === master) return;
+                  event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex:0, groupPath, menu:"subpanel", flashTarget:rowElmt });
+                });
+              });
+              master.querySelectorAll("[data-sign-row][data-sign-block]").forEach(blockElmt => {
+                if (blockElmt.closest(".blockElementMaster") !== master) return;
+                const rowIndex = Number(blockElmt.dataset.signRow), blockIndex = Number(blockElmt.dataset.signBlock);
+                blockElmt.classList.toggle("selectedRenderedBlockElement", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex && blockIndex === currentlySelectedBlockIndex);
+                blockElmt.addEventListener("click", event => {
+                  event.preventDefault(); event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
+                });
+                const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
+                if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
+              });
+            };
+            if (blockMasterElmt) bindControl(blockMasterElmt);
+          };
+
+          if (normalizeArrowMode(panel.sign.arrowMode) === "roundabout") {
+            const model=window.SignMakerRoundabout.render(signElmt,panel.sign);
+            window.SignMakerRoundabout.directions.forEach((direction,subPanelIndex)=>{
+              const subPanel=panel.sign.subPanels[subPanelIndex];
+              if(!subPanel||!model.exits[direction])return;
+              const frame=document.createElement('div');frame.className=`subPanelDisplay roundaboutDestination roundabout-${direction}`;
+              frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
+              markSelectedRenderedSubpanel(frame,subPanelIndex);
+              const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
+              const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
+              const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
+              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
+              signElmt.append(frame);
+            });
+            signElmt.addEventListener('click',event=>{event.stopPropagation();selectRenderedPanelArea({panelIndex:index,menu:'guideArrows',guideMode:'roundabout',suppressRedraw:true});});
+            refreshDynamicPanelBorders(panelElmt);
+            continue;
+          }
+
+          if (normalizeArrowMode(panel.sign.arrowMode) === "diagrammatic") {
+            signElmt.classList.add("diagrammaticSign");
+            window.SignMakerDiagrammatics.render(signElmt, panel.sign);
+            panel.sign.subPanels.forEach((subPanel,subPanelIndex)=>{
+              const bounds=subPanel.diagrammaticBounds;
+              if(!bounds||![bounds.x,bounds.y,bounds.width,bounds.height].every(Number.isFinite))return;
+              const frame=document.createElement('div');frame.className='subPanelDisplay diagrammaticSubpanel';
+              frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
+              window.SignMakerDiagrammatics.attachSubpanel(frame,panel.sign,subPanelIndex);
+              markSelectedRenderedSubpanel(frame,subPanelIndex);
+              const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
+              const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
+              const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
+              frame.addEventListener('pointerdown',e=>e.stopPropagation());
+              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
+              signElmt.append(frame);
+            });
+            signElmt.addEventListener("click", (event) => {
+              event.stopPropagation();
+              selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
+                guideMode: "diagrammatic", suppressRedraw: true });
+            });
+            refreshDynamicPanelBorders(panelElmt);
+            continue;
+          }
+
           const g_top = document.createElement("div");
           g_top.className = `globalTop`;
           g_top.dataset.subpanelIndex = String(GLOBAL_TOP_SUBPANEL_INDEX);
@@ -14496,44 +14588,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           g_bottom.dataset.globalPosition = "Bottom";
           signElmt.appendChild(g_bottom);
 
-          const markSelectedRenderedSubpanel = (targetElmt, subPanelIndex) => {
-            targetElmt.classList.toggle(
-              "selectedRenderedSubpanel",
-              index === currentlySelectedPanelIndex &&
-                subPanelIndex === currentlySelectedSubPanelIndex
-            );
-          };
-
-          const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) => {
-            const bindControl = (master, groupPath = []) => {
-              master.dataset.panelIndex = String(index);
-              master.dataset.subpanel = String(subPanelIndex);
-              const samePath = JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
-              const rows = Array.from(master.children).filter(element => element.classList.contains("blockElementRow"));
-              rows.forEach((rowElmt, rowIndex) => {
-                rowElmt.dataset.signRow = String(rowIndex);
-                rowElmt.classList.toggle("selectedRenderedBlockRow", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex);
-                rowElmt.addEventListener("click", event => {
-                  if (event.target.closest("[data-sign-row][data-sign-block]")?.closest(".blockElementMaster") === master) return;
-                  event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex:0, groupPath, menu:"subpanel", flashTarget:rowElmt });
-                });
-              });
-              master.querySelectorAll("[data-sign-row][data-sign-block]").forEach(blockElmt => {
-                if (blockElmt.closest(".blockElementMaster") !== master) return;
-                const rowIndex = Number(blockElmt.dataset.signRow), blockIndex = Number(blockElmt.dataset.signBlock);
-                blockElmt.classList.toggle("selectedRenderedBlockElement", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex && blockIndex === currentlySelectedBlockIndex);
-                blockElmt.addEventListener("click", event => {
-                  event.preventDefault(); event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
-                });
-                const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
-                if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
-              });
-            };
-            if (blockMasterElmt) bindControl(blockMasterElmt);
-          };
-        
           const renderGlobalBlockElements = () => {
             const renderGlobalBlocksForPosition = (position, targetElmt) => {
               const key = getGlobalBlockKey(position);
@@ -16649,16 +16703,16 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             const src = ArrowElement.prototype.arrows[key].src;
             const fixed = key.startsWith("TYPE_C_") || key === "TYPE_E";
             const angle = fixed ? 0 : ((Math.round(Number(sign.exitArrowAngle) || 0) % 360) + 360) % 360;
-            const size = Math.max(1, Math.min(5, Number(sign.exitArrowSize) || 3));
-            const padding = Math.max(0, Math.min(5, Number(sign.exitArrowPadding) || 0));
-            const spacing = Math.max(0, Math.min(25, Number(sign.exitArrowSpacing) || 0));
+            const size = clamp(Number(sign.exitArrowSize) || 3, 1, 5);
+            const padding = clamp(Number(sign.exitArrowPadding) || 0, 0, 4);
+            const spacing = clamp(Number(sign.exitArrowSpacing) || 0, 0, 25);
             const diagonalAmount = Math.abs(Math.sin(angle * Math.PI / 90));
             const extendedScale = key === "TYPE_A_EXTENDED" ? 1.15 : 1;
             const verticalPadding = padding * (2 - 1.5 * diagonalAmount) + (key === "TYPE_B" ? 0.08 : 0);
             const horizontalReduction = key === "TYPE_B" ? 0.43 :
                 ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.55 : 0.6;
             const noHorizontalPadding = ["TYPE_D", "TYPE_E"].includes(key);
-            const standardEdgePadding = 0.2;
+            const horizontalPaddingScale = clamp(Number(sign.exitArrowHorizontalPadding ?? 0.2) || 0, 0, 4) * 5;
             const horizontalPadding = noHorizontalPadding ? 0 :
                 ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key)
                     ? Math.max(0, 0.65 - horizontalReduction * size / 3 * diagonalAmount)
@@ -16666,9 +16720,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     : 1;
             const standardHorizontalPadding = noHorizontalPadding ? 0 :
                 ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key)
-                    ? Math.max(0, 0.45 + standardEdgePadding - (key === "TYPE_B" ? 0.25 :
+                    ? Math.max(0, 0.65 - (key === "TYPE_B" ? 0.25 :
                         ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 : 0.6) * size / 3 * diagonalAmount)
-                    : key.startsWith("TYPE_C_") ? 0.55 + standardEdgePadding : 1;
+                    : key.startsWith("TYPE_C_") ? 0.75 : 1;
             const coloredEdgePadding = variant === "boxed" ? standardHorizontalPadding :
                 horizontalPadding + (noHorizontalPadding ? 0 :
                     variant === "laneSplit" ? 0.18 : ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.12 : 0);
@@ -16705,8 +16759,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 getExitOnlyContrastColor(getResolvedCssColorValue(panel.color) || "var(--green)"));
             guideArrowsElmt.style.setProperty("--exitOnlyTopBorder", sign.exitTopBorder ? borderWidth : "0px");
             guideArrowsElmt.style.setProperty("--exitOnlyVerticalPadding", `${verticalPadding}rem`);
-            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding}rem`);
-            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding * horizontalPaddingScale}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${(noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)) * horizontalPaddingScale}rem`);
             guideArrowsElmt.style.setProperty("--exitOnlyEdgeRadius", "var(--signBorderRadius, 0.75rem)");
             otherSymbolsElmt.style.display = "none";
             sideLeftArrowElmt.remove();
@@ -17853,6 +17907,40 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         removeAPLArrowAt,
         initializeAPLArrowsForCurrentPanel,
         setCurrentPanelArrowMode,
+        addDiagrammaticSubpanel: bounds => runWithUndo(()=>{
+          const sign=getCurrentPanel()?.sign;if(!sign||sign.arrowMode!=='diagrammatic')return;
+          if(!bounds||!['x','y','width','height'].every(k=>Number.isFinite(bounds[k])))return;
+          const x=clamp(bounds.x,0,.99),y=clamp(bounds.y,0,.99);
+          let subPanelIndex=sign.subPanels.findIndex(subPanel=>{
+            const b=subPanel.diagrammaticBounds;
+            return !b||![b.x,b.y,b.width,b.height].every(Number.isFinite);
+          });
+          const created=subPanelIndex<0;
+          if(created){sign.newSubPanel();subPanelIndex=sign.subPanels.length-1;}
+          const subPanel=sign.subPanels[subPanelIndex],rows=subPanel.blockElements.rows;
+          if(created||(rows.length===1&&rows[0].length===1&&rows[0][0] instanceof ControlTextElement&&rows[0][0].textContent==='Control'&&!subPanel.shields?.length)){
+            rows[0][0].textContent=String(subPanelIndex+1);
+          }
+          sign.subPanels[subPanelIndex].diagrammaticBounds={x,y,width:clamp(bounds.width,.01,1-x),height:clamp(bounds.height,.01,1-y)};
+          selectRenderedPanelArea({panelIndex:currentlySelectedPanelIndex,subPanelIndex,menu:'subpanel',suppressRedraw:true});
+          formHandler.updateForm();redraw();
+        }),
+        editRoundabout: change => runWithUndo(() => {
+          const sign=getCurrentPanel()?.sign;if(!sign)return;
+          sign.roundabout=window.SignMakerRoundabout.normalize(sign.roundabout);
+          change(sign.roundabout);formHandler.updateForm();redraw();
+        }),
+        editRoundaboutDestination: subPanelIndex => {
+          if(![0,1,2].includes(subPanelIndex))return;
+          selectRenderedPanelArea({panelIndex:currentlySelectedPanelIndex,subPanelIndex,menu:'subpanel'});
+        },
+        editDiagrammatic: (change, {redraw: shouldRedraw = true} = {}) => runWithUndo(() => {
+          const sign = getCurrentPanel()?.sign;
+          if (!sign) return;
+          sign.diagrammatic = window.SignMakerDiagrammatics.normalize(sign.diagrammatic);
+          change(sign.diagrammatic, sign);
+          if (shouldRedraw) { formHandler.updateForm(); redraw(); }
+        }),
         addAPLSubPanelLeftAndOpen,
         addAPLSubPanelRightAndOpen,
       vars: {

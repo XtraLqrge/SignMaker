@@ -374,18 +374,18 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.17125701d45278ca.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.692ca7b0969e0637.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.ea060f895a56aff6.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c58d1a84759c8f4c.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.163f6b41bf562f61.js","js/MobileUI.979716bfcafe9be7.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.605f1b2c61c941f5.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.f75855e57b63066b.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/DiagrammaticRoadEngine.95a9fec722cbf541.js","js/Diagrammatics.e3528ba4efd0da96.js","js/Roundabout.08d36150961b04b3.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.3d3e62d7e02760ce.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.f1a20ba0cb160ef3.js","js/MobileSubpanels.c58d1a84759c8f4c.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.163f6b41bf562f61.js","js/MobileUI.979716bfcafe9be7.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.605f1b2c61c941f5.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.82d712c9a5cf6e84.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.503233568ee3f25d.js"></script>
-<script defer src="js/Sign.3640c7bc4cd48652.js"></script>
+<script defer src="js/Sign.b4cf5e050be75cfa.js"></script>
 <script defer src="js/ExitTab.28a7fed807403f99.js"></script>
 <script defer src="js/Panel.5e4c31f252743c95.js"></script>
 <script defer src="js/PanelBorders.0b690deb621e6bc7.js"></script>
@@ -396,12 +396,15 @@ remember
 <script defer src="js/Control.ff64d1423c396b4e.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
 <script defer src="js/SignDocument.049462d0df09a6fc.js"></script>
-<script defer src="js/main.0a42c5b5f951b676.js"></script>
+<script defer src="js/main.97d59579d7b2227e.js"></script>
   
   
   
   
   
+
+
+
   
   
   
@@ -2376,6 +2379,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           </div>
           <div data-tab="sMExitOnlyArrows" class="sMModalTab">Exit Only</div>
           <div data-tab="sMAPL" class="sMModalTab">Arrow-Per-Lane (APL)</div>
+          <div data-tab="sMDiagrammatics" class="sMModalTab">Diagrammatics</div>
+          <div data-tab="sMRoundabout" class="sMModalTab">Roundabout</div>
         </nav>
         <div class="sMModalContent">
           <div id="sMStandardArrows">
@@ -2402,7 +2407,10 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div class="exitOnlyRow exitOnlyArrowTypeRow"><label for="exitArrowType">Arrow:</label><div class="standardArrowPickerHost"><select id="exitArrowType" aria-label="Exit only arrow type"></select></div><input type="number" id="exitArrowCount" min="0" max="6" step="1" value="1" aria-label="Exit only arrow count"></div>
               <div class="exitOnlyRow"><label for="exitArrowAngle">Angle:</label><div class="guideArrowAngleScale"><input type="range" id="exitArrowAngle" min="0" max="315" step="45" value="0"><div class="guideArrowAngleTicks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><input type="number" id="exitArrowAngleValue" step="1" value="0" aria-label="Exit only arrow angle"><button type="button" class="guideArrowReset" data-exit-reset="Angle" aria-label="Reset exit only arrow angle"><span class="material-symbols-outlined">refresh</span></button><button type="button" id="exitArrowFlip" class="standardArrowFlipButton" aria-pressed="false" hidden>Flip</button></div>
               <div class="exitOnlyRow"><label for="exitArrowSize">Size:</label><input type="range" id="exitArrowSize" min="1" max="5" step="0.1" value="3"><input type="number" id="exitArrowSizeValue" min="1" max="5" step="0.1" value="3.0" aria-label="Exit only arrow size"><button type="button" class="guideArrowReset" data-exit-reset="Size" aria-label="Reset exit only arrow size"><span class="material-symbols-outlined">refresh</span></button></div>
-              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding:</label><input type="range" id="exitArrowPadding" min="0" max="1" step="0.05" value="0.2"><input type="number" id="exitArrowPaddingValue" min="0" max="5" step="0.01" value="0.20" aria-label="Exit only arrow padding"><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only arrow padding"><span class="material-symbols-outlined">refresh</span></button></div>
+              <!-- XTRA DO NOT CHANGE THIS I SWEAR TO GOD -->
+              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding up/down:</label><input type="range" id="exitArrowPadding" min="0" max="4" step="0.05" value="0.2"><input type="number" id="exitArrowPaddingValue" min="0" max="4" step="0.01" value="0.20" aria-label="Exit only padding up/down"><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only padding up/down"><span class="material-symbols-outlined">refresh</span></button></div>
+              <!-- XTRA DO NOT CHANGE THIS I SWEAR TO GOD -->
+              <div class="exitOnlyRow"><label for="exitArrowHorizontalPadding">Padding left/right:</label><input type="range" id="exitArrowHorizontalPadding" min="0" max="4" step="0.05" value="0.2"><input type="number" id="exitArrowHorizontalPaddingValue" min="0" max="4" step="0.01" value="0.20" aria-label="Exit only padding left/right"><button type="button" class="guideArrowReset" data-exit-reset="HorizontalPadding" aria-label="Reset exit only padding left/right"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><label for="exitArrowSpacing">Spacing:</label><input type="range" id="exitArrowSpacing" min="4" max="12" step="0.10" value="8.5"><input type="number" id="exitArrowSpacingValue" min="0" max="25" step="0.01" value="8.50" aria-label="Space between exit only arrows"><button type="button" class="guideArrowReset" data-exit-reset="Spacing" aria-label="Reset exit only arrow spacing"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><span class="standardArrowLabel">Alignment:</span><div class="standardArrowChoices" role="group" aria-label="Exit only arrow alignment"><button type="button" data-exit-alignment="Left">L</button><button type="button" data-exit-alignment="Center">C</button><button type="button" data-exit-alignment="Right">R</button></div></div>
               <h4>Text</h4>
@@ -2484,6 +2492,33 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="aplArrowList" class="scrollMenu">
               </div>
             </div>
+          </div>
+          <div id="sMDiagrammatics" class="tabHidden">
+            <h3>Diagrammatics</h3>
+            <div id="diagrammaticRoadControls"></div>
+            <div class="diagrammaticSettings"><label for="diagrammaticWidth">Width (rem)</label><input id="diagrammaticWidth" type="number" min="1" max="80" step="0.25" value="40"></div>
+            <div class="diagrammaticSettings"><label for="diagrammaticHeight">Height (rem)</label><input id="diagrammaticHeight" type="number" min="1" max="80" step="0.25" value="25"></div>
+            <label class="diagrammaticEnable"><input id="diagrammaticConsistentGaps" type="checkbox" checked> Consistent gaps on turns</label>
+            <p>Draw on the sign. Right-click a lane node for curves, tapers, connections, and overlap order. Drag the preview background to pan all panels; use + / − to zoom and F to fit.</p>
+            <p>2009 MUTCD. Elements are hidden while diagrammatic arrows are enabled.</p>
+          </div>
+          <div id="sMRoundabout" class="tabHidden">
+            <h3>Roundabout</h3>
+            <fieldset id="roundaboutOptions">
+              <label for="roundaboutType">Arrow type</label>
+              <select id="roundaboutType"><option value="normal">D1-5 — Roundabout</option><option value="bypass">D1-5a — Right-turn bypass</option></select>
+              <div><label for="roundaboutSize">Assembly size (rem)</label><input id="roundaboutSize" type="number" min="6" max="60" step="0.5" value="18"></div>
+              <fieldset class="roundaboutPadding"><legend>Sign padding (rem)</legend>
+                <label for="roundaboutPadding-top">Top</label><input id="roundaboutPadding-top" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-right">Right</label><input id="roundaboutPadding-right" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-bottom">Bottom</label><input id="roundaboutPadding-bottom" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-left">Left</label><input id="roundaboutPadding-left" type="number" min="0" max="20" step="0.25" value="1.5">
+              </fieldset>
+              <div><label><input id="roundaboutExit-left" type="checkbox" checked> Left exit — Subpanel 1</label> <button id="roundaboutEdit-left" type="button">Edit destination</button></div>
+              <div><label><input id="roundaboutExit-thru" type="checkbox" checked> Thru exit — Subpanel 2</label> <button id="roundaboutEdit-thru" type="button">Edit destination</button></div>
+              <div><label><input id="roundaboutExit-right" type="checkbox" checked> Right exit — Subpanel 3</label> <button id="roundaboutEdit-right" type="button">Edit destination</button></div>
+            </fieldset>
+            <p>2023 MUTCD. Click a destination on the sign to edit its subpanel. Disabled exits retain their content.</p>
           </div>
         </div>
       </div>

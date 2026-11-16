@@ -4766,3 +4766,19 @@ img.exitOnlyArrow:last-child {
 .bE-electronicSign.bE-multilineTextElement > .bE-textLine:empty {
   min-height: 1em;
 }
+
+.sign.roundaboutSign {
+  display: grid !important;
+  grid-template-columns: minmax(6rem, max-content) minmax(var(--roundabout-size, 18rem), max-content) minmax(6rem, max-content);
+  grid-template-rows: auto calc(var(--roundabout-size, 18rem) * .475) calc(var(--roundabout-size, 18rem) * .475);
+  gap: 1rem 0;
+  align-items: center;
+  justify-items: center;
+  padding: 1.5rem !important;
+}
+.roundaboutDrawing { grid-column: 2; grid-row: 2 / 4; width: var(--roundabout-size, 18rem); height: calc(var(--roundabout-size, 18rem) * .95); align-self: start; }
+.roundaboutDestination { border: 0 !important; padding: 0 !important; margin: 0 !important; min-width: 0 !important; }
+.roundabout-thru { grid-column: 2; grid-row: 1; }
+.roundabout-left { grid-column: 1; grid-row: 2 / 4; align-self: start; margin-top: calc(var(--roundabout-size, 18rem) * .5) !important; transform:translateY(-50%); }
+.roundabout-right { grid-column: 3; grid-row: 2 / 4; align-self: start; margin-top: calc(var(--roundabout-size, 18rem) * .5) !important; transform:translateY(-50%); }
+.roundaboutBypass .roundabout-right { margin-top: calc(var(--roundabout-size, 18rem) * .73203125) !important; }

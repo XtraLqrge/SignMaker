@@ -1,0 +1,196 @@
+button {
+  display: flex;
+  appearance: none;
+  justify-content: center;
+  align-items: center;
+  border: 0;
+  width: max-content;
+  background-color: rgb(var(--inputColor));
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  color: var(--textColor);
+  cursor: pointer;
+}
+
+#configBar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  width: max-content;
+  max-width: calc(100vw - 1rem);
+  background: var(--hotbarColor);
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.configOption {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  background: rgba(var(--baseColor), 0.25);
+  color: var(--textColor);
+  font-family: "Overpass", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.15s ease-in-out background-color;
+}
+
+.configOption .material-symbols-outlined { font-size: 20px; }
+.configOption .dropdownIcon { font-size: 16px; }
+:root[data-theme="dark"] .configOption:not(.selected) { background: rgba(var(--baseColor), 0.1); }
+.configOption.selected { background: var(--selectedColor); }
+.configOption:not(.selected):not(:disabled):hover { background: var(--hoverColor); }
+.configOption:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+.configOption:disabled { cursor: default; opacity: 0.5; }
+
+/* SignalMaker's bottom-toolbar history controls. */
+.historyBar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+}
+.historyButton {
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(var(--baseColor), 0.25);
+  color: var(--textColor);
+  border: 0;
+  cursor: pointer;
+  transition: 0.15s ease-in-out;
+}
+.historyButton:hover:enabled { background: var(--hoverColor); }
+.historyButton .material-symbols-outlined { font-size: 1rem; line-height: 1; }
+:root[data-theme="dark"] .historyButton { background: rgba(var(--baseColor), 0.1); }
+:root[data-theme="dark"] .historyButton:hover:enabled { background: var(--hoverColor); }
+.historyButton:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+.historyButton:disabled { cursor: default; opacity: 0.5; }
+
+.modals {
+  position: fixed;
+  inset: 1.5rem auto auto 1.5rem;
+  width: fit-content;
+  max-width: min(80vh, calc(100vw - 3rem));
+}
+
+.editor {
+  background: var(--hotbarColor);
+  min-width: min(45vh, calc(100vw - 3rem));
+  width: max-content;
+  max-width: min(80vh, calc(100vw - 3rem));
+  overflow: hidden;
+}
+
+.editorBar {
+  display: flex;
+  align-items: center;
+  background-color: rgba(var(--baseColor), 0.5);
+}
+
+.editorTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(var(--baseColor), 0.75);
+  font-size: 16px;
+}
+
+.editorTitle .material-symbols-outlined { font-size: 20px; }
+:root[data-theme="dark"] .editorBar { background-color: rgb(50, 75, 255); }
+:root[data-theme="dark"] .editorTitle { background-color: rgb(50, 50, 200); }
+
+.editorContent {
+  width: 100%;
+  padding: 1rem;
+  max-height: 80vh;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
+.headsMenu {
+  position: fixed;
+  width: min(12rem, calc(100vw - 1rem));
+  padding: 0.5rem;
+  background-color: var(--hotbarColor);
+  box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.2);
+  font-family: "Overpass", sans-serif;
+  z-index: 3;
+}
+
+.headsMenu h2 { font-size: 0.85rem; }
+.headsMenu p { margin-top: 0.5rem; font-size: 0.75rem; }
+
+@media (max-width: 768px) {
+  #configBar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    transform: none;
+    overflow-x: auto;
+    padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+    scrollbar-width: none;
+  }
+
+  #configBar::-webkit-scrollbar { display: none; }
+  .configLabel, .configOption .dropdownIcon { display: none; }
+  .configOption { min-width: 1.5rem; }
+
+  .modals {
+    inset: auto 0 calc(3.2rem + env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .editor { width: 100%; min-width: 0; max-width: 100%; }
+  .editorContent { max-height: 48dvh; padding: 0.75rem; }
+}
+
+/* Action instructions fixed at the top right; original live regions stay readable
+   by assistive technology. Match SignalMaker's blue editor surfaces. */
+#actionInstruction {
+  position: fixed;
+  top: max(.75rem, env(safe-area-inset-top));
+  right: max(.75rem, env(safe-area-inset-right));
+  z-index: 4900;
+  max-width: min(22rem, calc(100vw - 1.5rem));
+  padding: .4rem .55rem;
+  background: var(--hotbarColor);
+  color: var(--textColor);
+  border: 1px solid rgba(var(--baseColor), .5);
+  font: 400 .7rem/1.4 "Inter", sans-serif;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+}
+.actionInstructionSource {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}

@@ -60,6 +60,8 @@ class Sign {
     arrowMode = "Standard",
     arrows = [],
     aplArrows = [],
+    diagrammatic,
+    roundabout,
     guideArrow,
     guideArrowLanes = 1,
     standardArrowType = "DOWN",
@@ -83,6 +85,7 @@ class Sign {
     exitArrowFlip = false,
     exitArrowSize = 3,
     exitArrowPadding = 0.2,
+    exitArrowHorizontalPadding = 0.2,
     exitArrowSpacing = 8.5,
     exitArrowAlignment = "Center",
     exitTextFont = "Series E",
@@ -170,6 +173,8 @@ class Sign {
     this.shieldDistance = shieldDistance;
     this.advisoryText = advisoryText;
     this.arrowMode = arrowMode;
+    this.diagrammatic = cloneSignModelValue(diagrammatic || {});
+    this.roundabout = cloneSignModelValue(roundabout || {});
     this.arrows = arrows;
     this.aplArrows = aplArrows;
     this.exitguideArrows = exitguideArrows;
@@ -180,6 +185,7 @@ class Sign {
     this.exitArrowFlip = !!exitArrowFlip;
     this.exitArrowSize = exitArrowSize;
     this.exitArrowPadding = exitArrowPadding;
+    this.exitArrowHorizontalPadding = exitArrowHorizontalPadding;
     this.exitArrowSpacing = exitArrowSpacing;
     this.exitArrowAlignment = guideArrow === "Half Exit Only" &&
       !["Left", "Right"].includes(exitArrowAlignment) ? "Right" : exitArrowAlignment;

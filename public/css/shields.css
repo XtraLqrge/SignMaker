@@ -2938,11 +2938,11 @@
 }
 
 /* Florida official artwork may render larger than the user Shield Size value.
-   Banner typography must still follow the user-entered size only. */
+   Banner typography follows the user-entered size only when Scale banners is on. */
 .bE-shieldElement.floridaOfficialShieldUserBannerScale .bannerA,
 .bE-shieldElement.floridaOfficialShieldUserBannerScale .bannerB {
   font-size:
-    calc(var(--fontSize) * var(--requestedShieldScale, 1)) !important;
+    calc(var(--fontSize) * var(--bannerScale, 1)) !important;
 }
 
 .bE-shieldElement.floridaOfficialShieldUserBannerScale
@@ -2950,7 +2950,7 @@
 .bE-shieldElement.floridaOfficialShieldUserBannerScale
   .bannerB:not(.TOLL, .noIndent, .exportRealFirstLetter):first-letter {
   font-size:
-    calc((var(--fontSize) + 0.3rem) * var(--requestedShieldScale, 1)) !important;
+    calc((var(--fontSize) + 0.3rem) * var(--bannerScale, 1)) !important;
 }
 
 .bE-shieldElement.floridaOfficialShieldUserBannerScale
@@ -2958,7 +2958,7 @@
 .bE-shieldElement.floridaOfficialShieldUserBannerScale
   .bannerB.specialShieldPlaque {
   font-size:
-    calc(var(--fontSize) * var(--requestedShieldScale, 1) * 0.85) !important;
+    calc(var(--fontSize) * var(--bannerScale, 1) * 0.85) !important;
 }
 
 .bE-shieldElement.floridaOfficialShieldUserBannerScale
@@ -2966,7 +2966,7 @@
 .bE-shieldElement.floridaOfficialShieldUserBannerScale
   .bannerB.specialShieldPlaque:not(.noIndent):not(.exportRealFirstLetter):first-letter {
   font-size:
-    calc((var(--fontSize) + 0.3rem) * var(--requestedShieldScale, 1) * 0.85) !important;
+    calc((var(--fontSize) + 0.3rem) * var(--bannerScale, 1) * 0.85) !important;
 }
 
 /* Ontario primary is intentionally enlarged to the same 4/3 visual scale used

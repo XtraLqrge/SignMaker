@@ -14579,7 +14579,8 @@ const formHandler = (function () {
       for (const [name, value, digits] of [
         ["Angle", normalizeStandardAngle(sign.exitArrowAngle), 0],
         ["Size", clampStandardValue(sign.exitArrowSize, 1, 5, 10, 3), 1],
-        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 5, 100, 0.2), 2],
+        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 4, 100, 0.2), 2],
+        ["HorizontalPadding", clampStandardValue(sign.exitArrowHorizontalPadding, 0, 4, 100, 0.2), 2],
         ["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2]
       ]) {
         exitArrowField(name).value = Math.min(Number(exitArrowField(name).max), value);
@@ -14700,7 +14701,8 @@ const formHandler = (function () {
       for (const [field, name, min, max, precision, digits, fallback] of [
         [exitArrowField, "Angle", 0, 359, 1, 0, 0],
         [exitArrowField, "Size", 1, 5, 10, 1, 3],
-        [exitArrowField, "Padding", 0, 5, 100, 2, 0.2],
+        [exitArrowField, "Padding", 0, 4, 100, 2, 0.2],
+        [exitArrowField, "HorizontalPadding", 0, 4, 100, 2, 0.2],
         [exitArrowField, "Spacing", 0, 25, 100, 2, 8.5],
         [exitTextField, "Size", 50, 100, 1, 0, 70],
         [exitTextField, "Spacing", -0.15, 0.5, 100, 2, 0]
@@ -14744,7 +14746,7 @@ const formHandler = (function () {
           const defaults = isText
             ? { Size: 70, Spacing: 0 }
             : { Angle: getDefaultGuideArrowAngle(exitArrowField("Type").value,
-                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, HorizontalPadding: 0.2, Spacing: 8.5 };
           const digits = name === "Angle" || (isText && name === "Size") ? 0 : name === "Size" ? 1 : 2;
           field(name).value = String(defaults[name]);
           field(`${name}Value`).value = defaults[name].toFixed(digits);
@@ -15989,6 +15991,8 @@ const formHandler = (function () {
           return "standard";
         }
 
+        if (["diagrammatic", "roundabout"].includes(sign.arrowMode)) return sign.arrowMode;
+
         const hasAPLArrows =
           Array.isArray(sign.aplArrows) && sign.aplArrows.length > 0;
 
@@ -16019,7 +16023,11 @@ const formHandler = (function () {
         }
 
         const activeGuideArrow = exposed.getCurrentPanel()?.sign?.guideArrow || "None";
-        const targetTab = resolvedMode === "apl"
+        const targetTab = resolvedMode === "roundabout"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMRoundabout"]'
+          : resolvedMode === "diagrammatic"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMDiagrammatics"]'
+          : resolvedMode === "apl"
           ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
           : activeGuideArrow.includes("Exit Only")
             ? '.guideArrowConfig .sMModalTab[data-tab="sMExitOnlyArrows"]'
@@ -16412,6 +16420,11 @@ const formHandler = (function () {
             return;
           }
 
+          const arrowModeForTab = {sMDiagrammatics: "diagrammatic", sMRoundabout: "roundabout"}[button.dataset.tab];
+          if (arrowModeForTab && exposed.getCurrentPanel()?.sign?.arrowMode !== arrowModeForTab) {
+            exposed.setCurrentPanelArrowMode(arrowModeForTab);
+          }
+
           if (button.dataset.tab === "sMAPL") {
             const panel = post?.panels?.[exposed.vars.currentlySelectedPanelIndex];
             const subPanelCount = panel?.sign?.subPanels?.length || 0;
@@ -16495,6 +16508,9 @@ const formHandler = (function () {
                     target.value = type;
                     target._arrowPickerApi?.setValue(type);
                   }
+                }
+                if (["diagrammatic", "roundabout"].includes(sign?.arrowMode)) {
+                  exposed.setCurrentPanelArrowMode("standard");
                 }
                 guideArrowSelect.value = next;
                 readForm();
@@ -21608,7 +21624,9 @@ const formHandler = (function () {
 
         currentPanel.sign.guideArrow = guideArrow_result;
 
-        if (guideArrow_result !== "None") {
+        if (["diagrammatic", "roundabout"].includes(currentPanel.sign.arrowMode)) {
+          // Diagrammatics owns the face; retain the saved standard settings.
+        } else if (guideArrow_result !== "None") {
           currentPanel.sign.arrowMode = "standard";
         } else if (currentPanel.sign.arrowMode !== "apl") {
           currentPanel.sign.arrowMode = "standard";
@@ -21631,7 +21649,8 @@ const formHandler = (function () {
           sign.exitArrowAngle = normalizeStandardAngle(exitArrowField("AngleValue").value);
           sign.exitArrowFlip = exitArrowField("Flip").getAttribute("aria-pressed") === "true";
           sign.exitArrowSize = clampStandardValue(exitArrowField("SizeValue").value, 1, 5, 10, 3);
-          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 4, 100, 0.2);
+          sign.exitArrowHorizontalPadding = clampStandardValue(exitArrowField("HorizontalPaddingValue").value, 0, 4, 100, 0.2);
           sign.exitArrowSpacing = clampStandardValue(exitArrowField("SpacingValue").value, 0, 25, 100, 8.5);
           sign.exitTextFont = exitTextField("Font").value || "Series E";
           sign.exitTextSize = clampStandardValue(exitTextField("SizeValue").value, 50, 100, 1, 70);
@@ -22542,6 +22561,8 @@ const formHandler = (function () {
     mergePendingFormRefresh = false; mergePendingFormOptions = null;
     if (options.elementOnly && exposed.getCurrentBlockElem?.()) { syncSelectedBlockEditor(); return; }
     syncPostReference();
+    window.SignMakerDiagrammatics.syncEditor(exposed.getCurrentPanel()?.sign);
+    window.SignMakerRoundabout.syncEditor(exposed.getCurrentPanel()?.sign);
     normalizeExitTabProfiles();
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {

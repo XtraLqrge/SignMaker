@@ -1,0 +1,17 @@
+/* SignMaker v2.19 IconPicker star actions, using StripeMaker's inherited palette.
+   GPL-3.0. Sibling buttons preserve keyboard access and separate choosing/favoriting. */
+:is(#signPicker,#markingPicker) .pickerFavoriteCard { position:relative; display:flex; min-width:0; }
+:is(#signPicker,#markingPicker) .pickerFavoriteCard > .iconGridItem { width:100%; margin:0; }
+.pickerFavoriteHeading { grid-column:1 / -1; margin:.25rem 0 0; font-size:.85rem; }
+:is(#signPicker,#markingPicker) .pickerFavoriteButton {
+  position:absolute; top:.3rem; right:.3rem; display:flex; align-items:center; justify-content:center;
+  width:1.8rem; height:1.8rem; min-width:1.8rem; margin:0; padding:0; border:0;
+  background:rgba(25,29,38,.9); color:white; opacity:0; cursor:pointer;
+}
+:is(#signPicker,#markingPicker) .pickerFavoriteCard:hover .pickerFavoriteButton,
+:is(#signPicker,#markingPicker) .pickerFavoriteCard:focus-within .pickerFavoriteButton,
+:is(#signPicker,#markingPicker) .pickerFavoriteButton[aria-pressed="true"] { opacity:1; }
+:is(#signPicker,#markingPicker) .pickerFavoriteButton:hover { background:#4d4424; }
+.pickerFavoriteButton svg { width:1.3rem; height:1.3rem; fill:none; stroke:#ffd44d; stroke-width:1.8; stroke-linejoin:round; pointer-events:none; }
+.pickerFavoriteButton[aria-pressed="true"] svg { fill:#ffd44d; }
+@media (hover:none) { :is(#signPicker,#markingPicker) .pickerFavoriteButton { opacity:1; } }

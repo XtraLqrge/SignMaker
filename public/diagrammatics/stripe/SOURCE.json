@@ -1,0 +1,18 @@
+{
+  "repository": "/Users/nick/Documents/Apps/MUTCDMakers/StripeMaker",
+  "commit": "717c5609bf8edd323cd5cd1b0b61806c0bdd7139",
+  "sha256": {
+    "js/history.js": "588158f7bb85ff916d0d1f39c060e7ffa95ca15827d473a42d327d0a67606333",
+    "js/select-picker.js": "05a8e7be39222dfc398e7084d2cf89863ec955aa836ad69178777c947e31960a",
+    "js/road-widths.js": "69c9b03f63dad7509b3b0d73ad2511da77fa65d65a354ad7c249eeee7ee30535",
+    "js/marking-trim.js": "64784ec4079f20d807692e1470c631bc6d0e1c4a9e86309fab4d46596c1b22b4",
+    "js/line-styles.js": "fb1a2f7e668d6bb9ad69cb3791a47983a43cfdc8d9d96a446880a02bc8313f90",
+    "js/item-transform.js": "8f0b5c2b8cbc45400726b9d7600df57442a0a5a2cff9c3544b13264aef6ae935",
+    "js/longitudinal.js": "b0c8dc2c5b10af0fa3fa532e468c28cbdbc32c5e77c2c8f94af0f679bd764453",
+    "js/curve-links.js": "2b440b680426387be59316b19c08728d6a4a407c199b5ce820bb76c3954bb172",
+    "js/circular-arc.js": "821b33dfe5854c311cc4b491ba5831b2c0271b5ea9c8b2ceb0e4cb7828fcb54b",
+    "js/clothoid.js": "935773c1addfea8b93ec0e003ab3d3f9bfc73aa7668dbfb00f9ce0908192b16f",
+    "js/elements.js": "103f2558abd47ee9783ed72460401e1680bfef1b889eb79ed46d32879e989e60"
+  },
+  "adaptation": "Native sign adapter reuses road geometry and editing. elements.js delegates paintRoad to DiagrammaticRoadRenderer, calls diagrammaticRender after drawing, adds stem ordering commands, and filters unrelated context-menu actions. Diagrammatics.js adapts sheets.js pointer-anchored zoom, wheel device detection, Safari gestures, and drag/pinch panning to the sign viewport. The Add command map includes a native Place subpanel action; the adapter routes editing keys and counter-scales handle UI for whole-preview zoom. Diagrammatic-only attached-arc constraints preserve the host tangent and connected mouth when radius, sweep, or free-end position changes. New diagrammatic drawing points snap to eight compass directions; off-axis connection targets cannot override the angular constraint."
+}

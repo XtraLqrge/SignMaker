@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg:svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:svg="http://www.w3.org/2000/svg" version="1.1" id="Shield" inkscape:output_extension="org.inkscape.output.svg.inkscape" inkscape:version="0.45" sodipodi:docbase="M:\WP\Templates" sodipodi:docname="New_Mexico_X.svg" sodipodi:modified="true" sodipodi:version="0.32" x="0px" y="0px" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve">
+<svg:style type="text/css">
+	.st0{fill:#FFFFFF;}
+	.st1{fill:#FF0000;}
+</svg:style>
+<svg:g id="Background">
+	<svg:path class="st0" d="M256.1,506.4c-66.9,0-129.7-26-177-73.3C31.8,385.9,5.7,323,5.7,256.2V256c0-66.9,26-129.8,73.2-177.1   C126.2,31.6,189,5.6,255.9,5.6h0.2c66.8,0,129.7,26,176.9,73.3c47.2,47.3,73.3,110.1,73.3,177v0.2c0,66.9-26,129.8-73.2,177.1   C385.8,480.4,323,506.4,256.1,506.4z" />
+	</svg:g>
+<svg:g id="Red">
+	<svg:path id="path2144" class="st1" d="M256,72C154.5,72,72,154.5,72,256s82.4,184,184,184s184-82.4,184-184S357.5,72,256,72z    M256,85.3c94.2,0,170.7,76.5,170.7,170.7S350.2,426.7,256,426.7S85.3,350.2,85.3,256S161.8,85.3,256,85.3z" />
+	<svg:rect id="rect2151" x="36.3" y="293.4" class="st1" width="45.3" height="13.3" />
+	<svg:rect id="rect2153" x="21.3" y="264" class="st1" width="53.3" height="13.3" />
+	<svg:rect id="rect2155" x="21.3" y="234.7" class="st1" width="53.3" height="13.3" />
+	<svg:rect id="rect2157" x="36.3" y="205.3" class="st1" width="45.3" height="13.3" />
+	<svg:rect id="rect1919" x="430.4" y="205.3" class="st1" width="45.3" height="13.3" />
+	<svg:rect id="rect1921" x="437.3" y="234.7" class="st1" width="53.3" height="13.3" />
+	<svg:rect id="rect1923" x="437.3" y="264" class="st1" width="53.3" height="13.3" />
+	<svg:rect id="rect1925" x="430.4" y="293.4" class="st1" width="45.3" height="13.3" />
+	<svg:rect id="rect1931" x="205.3" y="36.3" class="st1" width="13.3" height="45.3" />
+	<svg:rect id="rect1933" x="234.7" y="21.3" class="st1" width="13.3" height="53.3" />
+	<svg:rect id="rect1935" x="264" y="21.3" class="st1" width="13.3" height="53.3" />
+	<svg:rect id="rect1937" x="293.4" y="36.3" class="st1" width="13.3" height="45.3" />
+	<svg:rect id="rect1943" x="293.4" y="430.4" class="st1" width="13.3" height="45.3" />
+	<svg:rect id="rect1945" x="264" y="437.3" class="st1" width="13.3" height="53.3" />
+	<svg:rect id="rect1947" x="234.7" y="437.3" class="st1" width="13.3" height="53.3" />
+	<svg:rect id="rect1949" x="205.3" y="430.4" class="st1" width="13.3" height="45.3" />
+</svg:g>
+</svg:svg>

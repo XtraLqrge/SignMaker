@@ -1,0 +1,475 @@
+/* SignalMaker's workspace, field, and popover-menu styles (GPL-3.0). */
+#workspace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem 4.5rem;
+}
+
+#previewStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.modals { z-index: 1; }
+.editorContent { max-height: calc(100dvh - 8rem); }
+
+input, select {
+  appearance: auto;
+  margin: 0;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 0.7rem;
+}
+
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+label { font-size: 0.75rem; }
+.fieldRow { display: flex; align-items: center; gap: 0.4rem; margin: 0.35rem 0; }
+.fieldRow > label { flex: 0 0 8.5rem; text-align: right; }
+.fieldRow.elementAddRow > label { flex: 0 0 auto; }
+.elementAddRow > .dimensionInputs { flex: 1; min-width: 0; }
+.elementAddRow .nativeSelectTrigger { min-width: 0; width: 100%; }
+.elementAddRow > button { flex: 0 0 auto; padding: .25rem; }
+.fieldRow > input:not([type="checkbox"]), .fieldRow > select { flex: 1; width: 100%; }
+.editorContent button, .headsMenu button { padding: 0.25rem 0.4rem; font-size: 0.7rem; }
+.editorContent button:hover, .headsMenu button:enabled:hover { background: var(--selectedColor); }
+button:disabled { cursor: default; opacity: 0.5; }
+h3 { font-family: "Overpass", sans-serif; font-size: 0.8rem; font-weight: 600; }
+hr { border: 0; border-top: 1px solid rgba(var(--baseColor), 0.45); margin: 0.75rem 0; }
+
+.headsMenu { width: min(16rem, calc(100vw - 1rem)); max-height: calc(100dvh - 5rem); overflow-y: auto; }
+.headActions { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem; }
+.headActions button { flex: 1; padding: 0.25rem; }
+.headPopoverHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 0.25rem; width: 100%; }
+.headPopoverHint { font-size: 0.65rem; opacity: 0.8; font-family: inherit; }
+
+@media (max-width: 768px) {
+  #workspace { padding: 1rem 0.5rem 4rem; }
+  .editorContent { max-height: 42dvh; }
+  .fieldRow > label { flex-basis: 8rem; }
+  .headsMenu { max-height: 55dvh; }
+}
+
+/* SignalMaker's Heads list rows, reused for the Sheets list. */
+#sheetList { display: flex; flex-direction: column; gap: 0.2rem; width: 100%; list-style: none; padding: 0 0.15rem 0 0; margin: 0.5rem 0; max-height: 8.5rem; overflow-y: auto; }
+#sheetList:empty { display: none; }
+#sheetList li { flex: 0 0 auto; }
+.headListButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+  background: rgba(var(--baseColor), 0.3);
+  border: 1px solid transparent;
+  border-radius: 0;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.headListButton.active { border-color: var(--selectedColor); background: rgba(var(--baseColor), 0.6); }
+.headListButton.panelWiggle { animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate; animation-delay: var(--wiggle-delay, 0s); }
+.headListButton.dragging { opacity: 0.5; cursor: grabbing; animation: none !important; }
+.headListButton.dropBefore::before, .headListButton.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  height: 0.15rem;
+  background: var(--selectedColor);
+  border-radius: 0.15rem;
+  pointer-events: none;
+}
+.headListButton.dropBefore::before { top: -0.1rem; }
+.headListButton.dropAfter::after { bottom: -0.1rem; }
+@keyframes textEditorBlockWiggle {
+  from { transform: rotate(-2deg) scale(1.02); }
+  to { transform: rotate(2deg) scale(1.02); }
+}
+.dragGhost { position: fixed; margin: 0; z-index: 10; pointer-events: none; opacity: 0.8; }
+.sheetName { min-width: 0; }
+.sheetScale { flex: 0 0 auto; font-size: 0.65rem; opacity: 0.8; white-space: nowrap; }
+#sheetStatus:empty { display: none; }
+
+/* Sheet viewer: the stage keeps its padded fit area; the image pans beyond it. */
+#workspace { position: relative; overflow: hidden; -webkit-user-select: none; user-select: none; }
+#workspace.hasSheet { cursor: grab; touch-action: none; }
+#workspace.hasSheet.panning { cursor: grabbing; }
+.sheetImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  user-select: none;
+  /* A constant 3 px white border at any zoom. */
+  outline: calc(3px / var(--zoom, 1)) solid #fff;
+}
+.sheetImage canvas { position: absolute; display: block; }
+/* A blank sheet takes the theme's sheet color: light in light mode, dark in dark mode. */
+.sheetImage.blankSheet { background: var(--blankSheetColor); }
+.sheetImage.blankSheet img, .sheetImage.blankSheet canvas { visibility: hidden; }
+.sheetImage img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; pointer-events: none; }
+#openSheetGuide { gap: 0.25rem; }
+#openSheetGuide .material-symbols-outlined { font-size: 1rem; }
+
+/* Set Scale: SignalMaker's yellow editor-overlay handles, as point markers. */
+.scaleOverlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.scaleOverlay svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.scaleLineShadow { stroke: #252628; stroke-width: 4px; }
+.scaleLine { stroke: #ffdf00; stroke-width: 2px; }
+button.scaleHandle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: 2px solid #ffdf00;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #665900, inset 0 0 0 1px #665900;
+  cursor: move;
+  touch-action: none;
+  pointer-events: auto;
+}
+button.scaleHandle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translate(-50%, -50%);
+  background: #ffdf00;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #665900;
+}
+button.scaleHandle::before, .roadNode::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+button.scaleHandle:focus-visible, button.roadNode:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+#scaleEditor { width: 20rem; }
+.scaleHint, .elementsHint { font-size: 0.75rem; line-height: 1.35; }
+.scaleReadout { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.scaleReadout output { min-width: 4.5rem; text-align: right; }
+.scaleReadout .material-symbols-outlined { font-size: 1rem; }
+.scaleReadout input { width: 5rem; }
+.scaleResult { margin-top: 0.35rem; font-size: 0.7rem; opacity: 0.8; }
+
+/* SignMaker v2.2's dialog pattern (GPL-3.0), sized for reading. */
+#sheetGuide::backdrop { background-color: rgb(0, 0, 0, 0.3); }
+#sheetGuide {
+  border: 0;
+  padding: 1rem;
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  background: var(--hotbarColor);
+  color: var(--textColor);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+#sheetGuide h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+#sheetGuide h4 { margin: 0.75rem 0 0.25rem; font-family: "Overpass", sans-serif; font-size: 0.8rem; }
+#sheetGuide p { margin: 0 0 0.5rem; }
+#sheetGuide ol, #sheetGuide ul { margin: 0; padding-left: 1.25rem; }
+#sheetGuide li { margin-bottom: 0.35rem; }
+#sheetGuide a { color: inherit; }
+#sheetGuide .options { display: flex; justify-content: flex-end; margin-top: 0.75rem; }
+#sheetGuide .options button { padding: 0.25rem 1rem; font-size: 0.75rem; }
+#sheetGuide .options button:hover { background: var(--selectedColor); }
+
+/* Elements: roads live in sheet pixels so markings are true size; outlines and
+   handles stay a constant screen size. */
+.roadLayer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: var(--drawing-opacity, 1); }
+.roadBand { fill: var(--pavement-color, #3a3b3d); stroke: var(--pavement-color, #3a3b3d); stroke-width: calc(1px / var(--zoom, 1)); }
+.roadBand.preview, .roadMarkings .preview { opacity: 0.75; }
+.roadMarking { fill: none; }
+.roadOutline { fill: none; stroke: none; }
+/* The selected road's outline and curve handles take its node color (--roadColor). */
+#workspace.elementsActive .roadOutline { stroke: var(--roadColor, #ffdf00); stroke-width: calc(2px / var(--zoom, 1)); }
+.roadSnap { fill: none; stroke: #ffdf00; stroke-width: 2px; filter: drop-shadow(0 0 1px #252628); }
+/* Lane nodes: a circle with an arrow in the lane's direction of travel. */
+.roadNode {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23252628' fill-opacity='.55' stroke='%23252628' stroke-width='4'/%3E%3Ccircle cx='12' cy='12' r='10' fill='none' stroke='%23ffdf00' stroke-width='2'/%3E%3Cpath d='M6.5 12h10M12.5 7.5L17 12l-4.5 4.5' fill='none' stroke='%23ffdf00' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  border: 0;
+  border-radius: 50%;
+  cursor: move;
+  touch-action: none;
+  pointer-events: auto;
+}
+.roadNode::before { inset: -6px; }
+.roadNode.selected { width: 26px; height: 26px; }
+.roadNode.laneSelected { width: 30px; height: 30px; filter: drop-shadow(0 0 3px #ffdf00); }
+#laneFields h3 { margin: 0 0 0.25rem; }
+.fieldHint { margin: -0.25rem 0 0.35rem 8.9rem; font-size: 0.65rem; opacity: 0.8; }
+.roadNode.preview { opacity: 0.85; pointer-events: none; }
+.roadOverlay.drawing .roadNode { pointer-events: none; }
+.roadOverlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.roadOverlay svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.roadControlLine { stroke: var(--roadColor, #ffdf00); stroke-width: 1.5px; filter: drop-shadow(0 0 1px #252628); }
+/* A wedge badge marks a tapered lane end, narrowing toward the lane's
+   zero-width end. */
+.roadTaper {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  pointer-events: none;
+}
+.roadTaper {
+  width: 13px;
+  height: 13px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23252628' stroke='%23ffdf00' stroke-width='2'/%3E%3Cpath d='M5 6.5L19 11v2L5 17.5z' fill='%23ffdf00'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.roadOverlay.drawing .roadTaper { opacity: 0.6; }
+/* Gore icons sit on the gore's center line and drag along it. The wedge points
+   back at the gore point. */
+.goreHandle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23252628' stroke='%23ffdf00' stroke-width='2'/%3E%3Cpath d='M4.5 12L19 6.5M4.5 12L19 17.5' fill='none' stroke='%23ffdf00' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M13 9.5l-3 2.5 3 2.5M17.5 8l-3 4 3 4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linejoin='miter'/%3E%3C/svg%3E") center / contain no-repeat;
+  border: 0;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+}
+.goreHandle::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+.goreHandle:active { cursor: grabbing; }
+.goreHandle:not(.marked) { opacity: 0.8; }
+.goreHandle.selected { width: 24px; height: 24px; filter: drop-shadow(0 0 3px #ffdf00); }
+.goreHandle:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+/* Add-lane buttons: a + triangle pointing out from the selected road's edge. */
+.laneAdd {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 2.5L22 12L3 21.5Z' fill='%23252628' stroke='%23ffdf00' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M5.5 12h7M9 8.5v7' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.laneAdd::before { content: ""; position: absolute; inset: -6px; }
+.laneAdd:hover { filter: drop-shadow(0 0 3px #ffdf00); }
+.laneAdd:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+.roadOverlay.drawing .laneAdd { display: none; }
+.roadOverlay.drawing .goreHandle { pointer-events: none; opacity: 0.4; }
+.dimensionInputs { display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0; }
+.dimensionInputs input[type="range"] { flex: 1; min-width: 2.5rem; padding: 0; cursor: pointer; }
+.dimensionInputs input[type="number"] { width: 3.5rem; }
+#goreFields h3 { margin: 0 0 0.25rem; }
+button.roadControl {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  background: var(--roadColor, #ffdf00);
+  border: 2px solid #665900;
+  border-radius: 50%;
+  cursor: move;
+  touch-action: none;
+  pointer-events: auto;
+}
+button.roadControl::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+button.roadControl:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+#workspace.hasSheet.drawing { cursor: crosshair; }
+/* Medians: the outline being drawn, then a handle on each point of the selected
+   median. Points shared with another median are drawn hollow-centered. */
+.medianPreview { fill: none; stroke: #ffdf00; stroke-width: 1.5px; filter: drop-shadow(0 0 1px #252628); }
+.medianPreview.closing { stroke-dasharray: 4 4; }
+.medianPreviewPoints circle { fill: #ffdf00; stroke: #665900; stroke-width: 1.5px; }
+button.medianPoint {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  background: #ffdf00;
+  border: 2px solid #665900;
+  cursor: move;
+  touch-action: none;
+  pointer-events: auto;
+}
+button.medianPoint.shared { background: radial-gradient(circle, #665900 0 2px, #ffdf00 2.5px); }
+button.medianPoint::before { content: ""; position: absolute; inset: -10px; }
+button.medianPoint:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+#medianFields h3 { margin: 0 0 0.25rem; }
+/* Lane node menu: SignalMaker's copy context menu, opened beside the node with a
+   pointer aimed at it, like a macOS popover. */
+.nodeMenu {
+  position: fixed;
+  z-index: 6;
+  min-width: 9rem;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 0.25rem;
+  background: var(--hotbarColor);
+  border: 1px solid rgba(var(--baseColor), 0.4);
+  box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.2);
+  font-family: "Overpass", sans-serif;
+  list-style: none;
+}
+.nodeMenu::before {
+  content: "";
+  position: absolute;
+  top: var(--pointer-y, 1rem);
+  left: -6px;
+  width: 10px;
+  height: 10px;
+  background: var(--hotbarColor);
+  border: 1px solid rgba(var(--baseColor), 0.4);
+  border-top-color: transparent;
+  border-right-color: transparent;
+  transform: translateY(-50%) rotate(45deg);
+}
+.nodeMenu[data-side="left"]::before { left: auto; right: -6px; transform: translateY(-50%) rotate(-135deg); }
+.nodeMenu li { margin: 0; padding: 0; }
+.nodeMenu li[role="separator"] { margin: 0.2rem 0.25rem; border-top: 1px solid rgba(var(--baseColor), 0.45); }
+.nodeMenu button {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.4rem 0.25rem 1.2rem;
+  font-size: 0.7rem;
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+}
+.nodeMenu button:hover, .nodeMenu button:focus-visible { background: var(--selectedColor); }
+.nodeMenu button[aria-checked="true"]::before { content: "✓"; position: absolute; left: 0.35rem; }
+#elementsEditor, #levelsEditor { width: 20rem; }
+#elementsEditor .headActions { margin: 0 0 0.5rem; }
+.editorContent button[aria-pressed="true"] { background: var(--selectedColor); }
+
+/* Download popover. The sheet's title header uses osifont, an ISO 3098 CAD
+   lettering font like the lettering on engineering plan sheets and roll plots. */
+@font-face {
+  font-family: "osifont";
+  src: url("../fonts/osifont.woff") format("woff");
+  font-display: swap;
+}
+#downloadSheetName { overflow-wrap: anywhere; }
+/* SignalMaker's choice buttons, for PNG or PDF. */
+.headChoiceButtons { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: stretch; gap: 0.12rem; min-width: 0; margin-top: 0.25rem; }
+.headChoiceButtons button { width: 100%; min-width: 0; white-space: nowrap; }
+.headChoiceButtons button[aria-pressed="true"] { background: var(--selectedColor); }
+.downloadLabel { display: block; margin-top: 0.5rem; }
+#downloadMenu .dimensionInputs, #settingsMenu .dimensionInputs { margin: 0.25rem 0; }
+#downloadStatus:empty { display: none; }
+.downloadAreaOverlay { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.downloadAreaOverlay.drawing { pointer-events: auto; cursor: crosshair; touch-action: none; }
+.downloadAreaOverlay:focus-visible { outline: 2px solid var(--textColor); outline-offset: -2px; }
+.downloadAreaOverlay svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+
+/* SignalMaker's action status (Undone. / Redone.) above the toolbar. */
+#actionStatus {
+  position: fixed;
+  bottom: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 1rem);
+  margin: 0;
+  background: var(--hotbarColor);
+  font-size: 0.7rem;
+  z-index: 4;
+}
+#actionStatus:not(:empty) { padding: 0.35rem 0.6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .headListButton.panelWiggle { animation: none; }
+}
+@media (max-width: 768px) {
+  #scaleEditor, #elementsEditor, #levelsEditor, #intersectionEditor { width: 100%; }
+}
+.headsMenu .headActions button { white-space: nowrap; }
+/* SignalMaker's head list and field conventions (GPL-3.0). */
+#intersectionSheetFields .fieldRow > label { flex-basis:8.5rem; }
+#intersectionSheetFields h3 { margin:.75rem 0 .4rem; }
+#intersectionSheetFields fieldset { border:1px solid rgba(var(--baseColor),.45); margin:.5rem 0; padding:.4rem; min-width:0; }
+#intersectionSheetFields legend { font-size:.7rem; }
+/* The sheet's intersection panel matches the Elements panel. */
+#intersectionEditor { width: 20rem; }
+#intersectionEditor .headActions { margin: 0 0 0.5rem; }
+#intersectionEditor .fieldRow > input { min-width:0; }
+.intersectionFeet * { vector-effect:non-scaling-stroke; }
+.intersectionDestination { display:flex; align-items:center; gap:.4rem; margin:.35rem 0; font-size:.65rem; }
+#intersectionList { list-style:none; padding:0; margin:.5rem 0; display:flex; flex-direction:column; gap:.2rem; max-height:8.5rem; overflow:auto; }
+#intersectionList .headListButton { cursor:pointer; }
+.intersectionOverlay { position:absolute; inset:0; pointer-events:none; }
+.intersectionOverlay > svg { width:100%; height:100%; overflow:visible; touch-action:none; }
+.intersectionHandle { fill:#ffc72c; stroke:#3a3b3d; stroke-width:1; cursor:grab; pointer-events:all; touch-action:none; }
+.intersectionHandle:active { cursor:grabbing; }
+.intersectionHandle:focus-visible, .intersectionHit:focus-visible { outline:none; stroke:var(--textColor); stroke-width:3; }
+.intersectionMovement { fill:none; pointer-events:none; }
+.intersectionControlLine { fill:none; stroke:#ffc72c; stroke-width:.7; stroke-dasharray:3 3; pointer-events:none; }
+.intersectionApproachLabel { fill:var(--textColor); font:600 8px "Overpass",sans-serif; pointer-events:all; cursor:pointer; touch-action:none; }
+.intersectionApproachLabel[aria-pressed="true"],
+.intersectionApproachLabel:focus-visible { outline:2px solid var(--textColor); outline-offset:2px; }
+.intersectionOutline { fill:none; stroke:#ffc72c; stroke-width:2; pointer-events:none; }
+.intersectionHit { fill:transparent; stroke:none; cursor:move; pointer-events:fill; touch-action:none; }
+.intersectionLaneHit { fill:none; stroke:transparent; stroke-width:8; pointer-events:stroke; cursor:crosshair; touch-action:none; }
+.intersectionLaneHit.dropTarget { stroke:rgb(255 199 44 / .3); }
+.intersectionLaneHit:focus-visible { outline:none; stroke:rgb(255 199 44 / .45); }
+.intersectionConnectionHit { fill:none; stroke:transparent; stroke-width:9; pointer-events:stroke; cursor:pointer; }
+.intersectionConnectionHit:focus-visible { outline:none; stroke:rgb(255 199 44 / .45); }
+
+.intersectionAdd { cursor:pointer; pointer-events:all; touch-action:none; }
+.intersectionAdd circle { fill:#3a3b3d; stroke:#ffc72c; stroke-width:1.5; }
+.intersectionAdd path { fill:none; stroke:#ffc72c; stroke-width:1.5; }
+.intersectionAdd:hover circle, .intersectionAdd:focus-visible circle { fill:#ffc72c; }
+.intersectionAdd:hover path, .intersectionAdd:focus-visible path { stroke:#3a3b3d; }
+.intersectionAdd:focus-visible { outline:none; }
+#intersectionSheetFields fieldset .fieldRow > label { flex-basis:7.5rem; }
+.intersectionLaneUnknown { fill:#ffc72c; font:700 7px "Overpass",sans-serif; pointer-events:none; }
+
+/* Selection mode (js/selection.js): selected items outlined, and the box. */
+.selectionOutline { fill: rgba(255, 223, 0, 0.12); stroke: #ffdf00; stroke-width: 2px; stroke-dasharray: 6 3; filter: drop-shadow(0 0 1px #252628); }
+.selectionBox { fill: rgba(255, 223, 0, 0.1); stroke: #ffdf00; stroke-width: 1px; stroke-dasharray: 4 3; }
+#workspace.selecting { cursor: default; }
+#selectEditor { width: 20rem; }
+.nodeMenu button:disabled { opacity: 0.45; cursor: default; }
+.bikeActions { align-items: center; flex-wrap: wrap; }
+.bikeActions[hidden] { display: none; }
+.bikeBuffered { display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; font-size: 0.75rem; }
+
+/* Settings › Shortcuts (js/shortcuts.js), and F1's Show/Hide All Menus. */
+.shortcutSettings summary { cursor: pointer; margin: 0.5rem 0 0.25rem; font-size: 0.8rem; }
+.shortcutList { display: grid; gap: 0.25rem; max-height: 14rem; overflow-y: auto; }
+.shortcutList label { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; }
+.shortcutList input { width: 7.5rem; text-align: center; cursor: pointer; }
+#settingsMenu { max-height: calc(100vh - 6rem); overflow-y: auto; }
+body.menusHidden #configBar, body.menusHidden .editor, body.menusHidden .headsMenu { display: none !important; }
+
+/* Rotation uses the existing marking handle, with room for its action icon. */
+.markingOverlay .selectionRotate { width: 24px; height: 24px; display: grid; place-items: center; color: #252628; cursor: grab; }
+.selectionRotate .material-symbols-outlined { font-size: 18px; }
+
+/* Project controls reuse SignalMaker's compact fields and wrapping action rows. */
+#sheetsMenu { width:min(24rem, calc(100vw - 1rem)); }
+#sheetsMenu .fieldRow > label { flex-basis:6rem; }
+#sheetsMenu .headActions { flex-wrap:wrap; }
+#sheetsMenu .headActions button { flex:1 1 auto; }
+#projectName, #sheetName { min-width:0; }

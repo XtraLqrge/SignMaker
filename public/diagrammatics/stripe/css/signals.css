@@ -1,0 +1,130 @@
+/* SignalMaker editor/field/list conventions (GPL-3.0). */
+#simulatorEditor.signalEditing { width: 32rem; }
+#signalEditorFields { border-top: 1px solid var(--textColor); margin-top: .6rem; padding-top: .4rem; }
+#signalEditorFields details { margin: .6rem 0; }
+#signalEditorFields summary { cursor: pointer; font-weight: 600; font-size: .85rem; padding: .35rem 0; }
+#signalEditorFields h4 { margin: .65rem 0 .35rem; }
+#signalEditorFields .headActions { flex-wrap: wrap; }
+#signalEditorFields .fieldRow > label { flex-basis: 12rem; }
+.signalGridScroll { overflow-x: auto; max-width: 100%; }
+.signalPhaseGrid { border-collapse: collapse; width: 100%; font-size: .75rem; }
+.signalPhaseGrid th, .signalPhaseGrid td { border: 1px solid rgb(var(--inputColor)); padding: .15rem; text-align: center; }
+.signalPhaseGrid th:first-child { min-width: 8rem; text-align: left; }
+.signalPhaseGrid button { width: 100%; min-width: 2rem; padding: .25rem; font-size: .75rem; }
+.signalPhaseGrid th:first-child button { text-align: left; }
+.signalPhaseGrid button[aria-pressed="true"], .signalPhaseGrid tr.selected th { outline: 2px solid var(--selectedColor); outline-offset: -2px; }
+.signalPhaseGrid .signalCell.red { background: #781d23; color: #fff; }
+.signalPhaseGrid .signalCell.protected { background: #00653d; color: #fff; }
+.signalPhaseGrid .signalCell.permissive { background: #ebc72b; color: #17181a; }
+.signalErrors { white-space: pre-line; border-left: 3px solid #c83d3d; padding-left: .5rem; font-size: .8rem; }
+.signalOverlay { z-index: 8; }
+.signalOverlay svg { overflow: hidden; }
+.signalEquipment { pointer-events: all; cursor: grab; }
+.signalEquipment[data-signal-part="ped"] { cursor: pointer; }
+.signalEquipment:focus-visible { outline: 2px solid var(--selectedColor); }
+.signalMovementHit { pointer-events: stroke; cursor: pointer; }
+.signalMovementHit:focus-visible { stroke: #ffdf0080; outline: none; }
+.simulatorOverlay button.simulatorSignal { pointer-events: auto; cursor: pointer; }
+@media (max-width: 768px) { #simulatorEditor.signalEditing { width: 100%; } #signalEditorFields .fieldRow > label { flex-basis: 45%; } }
+
+#simulatorEditor.signalEditing > .editorContent > :not(#signalEditorFields):not(#simulatorStatus):not(:has(#playSimulation)):not(:has(#clearSimulation)):not(:has(#simulationPlaybackRate)):not(:has(#addTrafficSignal)) { display: none; }
+#signalLiveStatus { white-space: pre-line; margin: .5rem 0; line-height: 1.4; }
+#signalEditorFields .fieldHint { margin: .4rem 0; }
+
+/* AnyLogic-style matrix, using SignalMaker's existing square select picker. */
+.signalPhaseGrid thead input[type="number"] { width: 3.8rem; min-width: 3.8rem; padding: .15rem; font-size: .75rem; }
+.signalPhaseGrid .signalCell .nativeSelectTrigger { min-width: 3.8rem; height: 1.65rem; font-weight: 600; }
+.signalPhaseGrid .signalCell.red .nativeSelectTrigger { background: #781d23; color: #fff; }
+.signalPhaseGrid .signalCell.protected .nativeSelectTrigger { background: #00653d; color: #fff; }
+.signalPhaseGrid .signalCell.permissive .nativeSelectTrigger { background: #ebc72b; color: #17181a; }
+.signalPhaseGrid .signalSelectedCell { outline: 2px solid var(--selectedColor); outline-offset: -2px; }
+.signalPhaseGrid .signalPhaseOmitted { opacity: .5; }
+.signalOverlay.signalPassive .signalEquipment { pointer-events: none; cursor: default; }
+.signalPhaseLabel { user-select: none; }
+/* Compact color cells keep all eight cabinet phases together at desktop size;
+   the menu retains full state names for keyboard and screen-reader users. */
+.signalPhaseGrid { table-layout: fixed; min-width: 28rem; }
+.signalPhaseGrid th:first-child { width: 8rem; }
+.signalPhaseGrid thead input[type="number"] { width: 100%; min-width: 0; box-sizing: border-box; }
+.signalPhaseGrid .signalCell .nativeSelectTrigger { min-width: 0; }
+.signalCell .symbolPickerLabel { font-size: 0; }
+.signalCell .symbolPickerLabel::after { font-size: .75rem; }
+.signalCell.red .symbolPickerLabel::after { content: 'R'; }
+.signalCell.protected .symbolPickerLabel::after { content: 'G'; }
+.signalCell.permissive .symbolPickerLabel::after { content: 'FY'; }
+.signalMatrixActions { align-items: center; gap: .3rem; }
+#signalEditorFields .signalMatrixActions button { flex: 0 0 1.6rem; min-height: 1.6rem; font-size: 1rem; }
+.signalMatrixActions .fieldHint { margin: 0 .3rem; }
+.signalDetectorPhase { user-select: none; }
+
+/* Indication glyphs are the same SVG artwork used by SignalMaker heads. */
+.signalIndicationIcon { width: 1.05rem; height: 1.05rem; display: block; flex: 0 0 auto; }
+.nativeSelectIcon { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.signalPhaseGrid .nativeSelectTrigger { justify-content: center; gap: .12rem; }
+.signalCell .symbolPickerLabel { display: none; }
+.signalCell .symbolPickerLabel::after { content: none !important; }
+.signalPhaseGrid .signalCell.green .nativeSelectTrigger { background: #00653d; color: #fff; }
+.signalPhaseGrid .signalCell.flash-red-arrow .nativeSelectTrigger { background: #781d23; color: #fff; }
+.signalIndicationLegend { display: flex; flex-wrap: wrap; gap: .35rem .7rem; }
+.signalIndicationLegend > span { display: inline-flex; align-items: center; gap: .3rem; }
+.signalYieldLabel, .signalFlashLabel { display: block; font-size: .6rem; font-weight: 600; line-height: 1.1; pointer-events: none; }
+.signalFlashingLamp { animation: signal-indication-flash 1s steps(1, end) infinite; }
+@keyframes signal-indication-flash { 0%, 49.99% { opacity: 1; } 50%, 100% { opacity: .08; } }
+@media (prefers-reduced-motion: reduce) { .signalFlashingLamp { animation: none; } }
+.signalMovementFlashing { animation: signal-movement-flash 1s steps(1, end) infinite; }
+@keyframes signal-movement-flash { 0%, 49.99% { stroke-opacity: 1; } 50%, 100% { stroke-opacity: .08; } }
+@media (prefers-reduced-motion: reduce) { .signalMovementFlashing { animation: none; } }
+
+/* SignalMaker heads.css indication controls (GPL-3.0), scoped to the independent
+   right editor. Housing and backplate remain the fixed SignalMaker defaults. */
+#signalHeadEditor { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 12; width: 25rem; min-width: 0; max-width: calc(100vw - 3rem); }
+#signalHeadEditor[hidden] { display: none; }
+#signalHeadEditor .editorBar { justify-content: space-between; }
+#signalHeadEditor .editorBar > button { margin-right: .5rem; padding: .15rem .5rem; }
+#signalHeadEditor .editorContent { max-height: calc(100vh - 8rem); }
+#signalHeadEditor .fieldRow > label, #signalHeadEditor .fieldLabel { flex: 0 0 6rem; text-align: right; }
+#signalHeadEditor .headChoiceButtons { display: grid; grid-auto-flow: row; grid-template-columns: repeat(2,minmax(0,1fr)); flex: 1 1 0; align-items: stretch; gap: .12rem; min-width: 0; }
+#signalHeadEditor .headChoiceButtons button { width: 100%; min-width: 0; min-height: 1.4rem; height: auto; white-space: normal; padding: .2rem .25rem; }
+#signalHeadEditor .headChoiceButtons button.selected { background: var(--selectedColor); }
+#signalHeadEditor .indicationHeading { display: flex; align-items: center; justify-content: space-between; gap: .25rem; margin-top: .75rem; }
+#signalHeadEditor h3, #signalHeadEditor legend { font-family: 'Overpass',sans-serif; font-size: .8rem; font-weight: 600; }
+#signalHeadEditor fieldset { min-width: 0; margin: .6rem 0 0; padding: .4rem; border: 1px solid rgba(var(--baseColor),.45); }
+#signalHeadEditor legend { padding: 0 .25rem; }
+#signalHeadEditor .aplArrowEditorBlock { position: relative; }
+#signalHeadEditor .aplArrowListItem { display: grid; grid-template-columns: 3rem minmax(0,1fr) 3.75rem 3rem; gap: .25rem; align-items: center; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; margin: .35rem 0; }
+#signalHeadEditor .aplArrowListItem > * { min-width: 0; box-sizing: border-box; }
+#signalHeadEditor .aplArrowDragHandle { cursor: grab; touch-action: none; }
+#signalHeadEditor .signalLensInline { margin: 0; }
+#signalHeadEditor .signalLensInline > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#signalHeadEditor .aplArrowEditorBlock.dropBefore::before, #signalHeadEditor .aplArrowEditorBlock.dropAfter::after { content: ''; position: absolute; left: 10%; right: 10%; height: .15rem; background: var(--selectedColor); pointer-events: none; }
+#signalHeadEditor .aplArrowEditorBlock.dropBefore::before { top: 0; }
+#signalHeadEditor .aplArrowEditorBlock.dropAfter::after { bottom: 0; }
+.signalHeadDesignPreview { height: 9rem; display: flex; justify-content: center; margin-bottom: .5rem; }
+.signalHeadDesignPreview svg { height: 100%; max-width: 100%; }
+.signalHeadLink { pointer-events: none; }
+.signalMovementLinkTarget { stroke-width: 6; }
+@media (max-width: 1150px) and (min-width: 769px) { body.signalHeadEditorOpen #simulatorEditor.signalEditing, #signalHeadEditor { width: calc(50vw - 2rem); min-width: 0; } }
+@media (max-width: 768px) {
+  #signalHeadEditor { top: 1rem; right: 1rem; width: calc(100vw - 2rem); max-width: none; }
+  #signalHeadEditor .editorContent { max-height: 40vh; }
+  body.signalHeadEditorOpen .modals:has(#simulatorEditor:not([hidden])) { top: calc(40vh + 4.5rem); }
+  body.signalHeadEditorOpen #simulatorEditor > .editorContent { max-height: calc(60vh - 10rem); }
+}
+
+#signalHeadEditor .fieldHint { margin: .5rem 0; text-align: left; }
+
+/* Compact playback bar uses SignalMaker's editor bar and square buttons. */
+#simulatorEditor > .editorBar { justify-content: space-between; }
+.simulatorPanelActions { display: flex; align-items: center; gap: .25rem; margin-right: .5rem; }
+.simulatorPanelActions button { font-size: .7rem; padding: .25rem .4rem; }
+#simulatorEditor.simulatorMinimized { width: max-content; min-width: 0; max-width: calc(100vw - 3rem); }
+#simulatorContent[hidden] { display: none; }
+
+/* SignalMaker list drag feedback, applied to phase columns. */
+.signalPhaseGrid [data-phase-header]:enabled { cursor: grab; touch-action: none; }
+.signalPhaseGrid .signalPhaseDragging { opacity: .45; }
+.signalPhaseGrid thead th { position: relative; }
+.signalPhaseGrid .phaseDropBefore::before, .signalPhaseGrid .phaseDropAfter::after { content: ''; position: absolute; top: 10%; bottom: 10%; width: .15rem; background: var(--selectedColor); pointer-events: none; }
+.signalPhaseGrid .phaseDropBefore::before { left: 0; }
+.signalPhaseGrid .phaseDropAfter::after { right: 0; }
+.signalPhaseGrid .phaseDropInvalid { outline: 2px solid #c83d3d; outline-offset: -2px; cursor: not-allowed; }

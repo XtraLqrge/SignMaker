@@ -246,3 +246,43 @@ test('deleting a derived shield later still returns to the original source',()=>
   h.c.dialog._editingCustomShieldId=h.child.id;h.c.ensure();h.c.variants(h.child.value);h.c.remove();
   assert.equal(h.active.shieldBase,'US');assert.equal(h.get('sdShield_shieldBase').value,'US');assert.equal(h.c.customShieldMakerRecords.length,0);
 });
+
+function coloradoShieldRenderer() {
+  const makeNode=tag=>{const node=new Node(tag);node.style.setProperty=(key,value)=>{node.style[key]=value;};return node;};
+  const document={baseURI:'https://signmaker.test/',currentScript:{src:'https://signmaker.test/js/Control.js'},addEventListener(){},
+    getElementById(){return null;},querySelectorAll(){return[];},createElement:makeNode,documentElement:makeNode('html')};
+  document.documentElement.style.getPropertyValue=()=>'';
+  const window={localStorage:{getItem(){return null;}},addEventListener(){},getComputedStyle:()=>({fontFamily:'Series D',letterSpacing:'0px',getPropertyValue(){return '';}})};
+  const c=vm.createContext({document,window,URL,console,Image:class{},requestAnimationFrame:()=>0});
+  for(const name of ['lib','Shield','Sign','ExitTab','Panel','VmsPanel','Post','Arrows','Control','SubPanels'])vm.runInContext(read('public/js/'+name+'.js'),c,{filename:name+'.js'});
+  return c;
+}
+test('Colorado is a submenu with exactly the standard shield, E-470, and Northwest Parkway',()=>{
+  const c=vm.createContext({SHIELD_PICKER_CUSTOM_MAKER_VALUE:'__customShieldMaker'});
+  vm.runInContext(form('SHIELD_PICKER_TREE')+';this.tree=SHIELD_PICKER_TREE;',c);
+  const us=c.tree.find(node=>node.id==='us'),colorado=us.children.find(node=>node.id==='us-colorado');
+  assert.ok(colorado);assert.equal(colorado.label,'Colorado');assert.equal(us.children.some(node=>node.value==='CO'),false);
+  assert.deepEqual(Array.from(colorado.children,node=>[node.value,node.label]),[['CO','Colorado'],['CO-E470','E-470'],['CO-NWP','Northwest Parkway']]);
+  for(const entry of colorado.children){assert.ok(entry.asset.startsWith('img/shields/United States/CO/'));assert.ok(fs.existsSync(path.join(root,'public',entry.asset)));}
+});
+test('Colorado shields resolve through the moved folder in both current and legacy registries',()=>{
+  const c=coloradoShieldRenderer();
+  const result=JSON.parse(vm.runInContext(`JSON.stringify(['CO','CO-E470','CO-NWP'].map(value=>{
+    const config=ShieldElement.prototype.getBlockShieldConfig(value);
+    return {value:config.value,legacy:Shield.prototype.getDirectoryFromShield(value,'2 Digit'),
+      image:ShieldElement.prototype.getRenderedShieldAssetPath(config,'3Digit'),static:config.suppressRouteNumber};
+  }))`,c));
+  for(const item of result){const expected='img/shields/United States/CO/'+(item.value==='CO'?'CO-2Digit':item.value)+'.svg';assert.equal(item.image,expected);assert.equal(item.legacy,expected);assert.equal(item.static,item.value!=='CO');}
+});
+test('static Colorado logos never render route-number overlays and keep their shield identity after JSON restoration',()=>{
+  const c=coloradoShieldRenderer();
+  for(const value of ['CO-E470','CO-NWP'])for(const number of ['90','470','']) {
+    c.value=value;c.number=number;
+    const element=vm.runInContext('Control.fromData({rows:[[{blockElemType:"ShieldElement",shieldBase:value,routeNumber:number}]]}).rows[0][0].createElement()',c);
+    assert.equal(element.querySelector('.routeNumber'),null);
+    assert.equal(element.querySelector('img').src,'img/shields/United States/CO/'+value+'.svg');
+  }
+  const standard=vm.runInContext('new ShieldElement({shieldBase:"CO",routeNumber:"470"}).createElement()',c);
+  assert.ok(standard.querySelector('.routeNumber'));assert.equal(standard.querySelector('.routeNumber').innerHTML.replace(/<[^>]+>/g,''),'470');
+  assert.equal(standard.querySelector('img').src,'img/shields/United States/CO/CO-2Digit.svg');
+});

@@ -77,10 +77,13 @@
 /export-assets/155cc5a7e9e49168.js
   Cache-Control: public, max-age=31536000, immutable
 
-/export-assets/e3e370a91b552ff5.js
+/export-assets/18889fa47e79d0ed.js
   Cache-Control: public, max-age=31536000, immutable
 
 /export-assets/5639c7da2531cd01.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/export-assets/192409a973483311.js
   Cache-Control: public, max-age=31536000, immutable
 
 /export-assets/1f4452438dad0257.js
@@ -170,10 +173,10 @@
 /js/lib.fe59e1d3b9e31c9f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/ShieldFallbacks.f15522022d253d8e.js
+/js/ShieldFallbacks.2e935e76679a9d08.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Shield.503233568ee3f25d.js
+/js/Shield.0ab7f934b53b4d2c.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Sign.3640c7bc4cd48652.js
@@ -215,13 +218,13 @@
 /js/HtmlToImage.27f73655f8a42531.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/ExportAssets.1d472f4b14d1d257.js
+/js/ExportAssets.e6fae1b6a3abc2c8.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/PresetTemplates.fff3bc65509984e9.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.b7f508cebd2a6cdc.js
+/js/main.6dd9ad61749b2432.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.f1278edc85d1f9aa.js
@@ -236,7 +239,7 @@
 /js/IconPicker.f07693de1a9e8c8f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.4f5c2573a24fba21.js
+/js/form.494cff79d89d9a03.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.905b66ca7e8b07ba.js

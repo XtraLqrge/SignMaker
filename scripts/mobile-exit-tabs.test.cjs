@@ -177,7 +177,7 @@ for (const source of sources) {
     assert.equal(h.byId('exitTabTransparent').parentElement.classList.contains('assetHiddenSetting'), true);
   });
   test(`${name}: returning to desktop restores original input positions, labels, types, and checkbox order`, () => {
-    const h = ui(source), originalRadiusLabel = 'Set Corner Radius (rem):';
+    const h = ui(source), originalRadiusLabel = 'Use panel corner radius:';
     h.api.setActive(false);
     assert.equal(h.tree.querySelectorAll('.mobileExitStepper').length, 0);
     for (const original of h.originals) {

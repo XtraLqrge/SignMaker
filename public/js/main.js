@@ -1342,7 +1342,7 @@ const ungroupSelectedBlockElement = () => {
           if (mask) embeddedExitOnlyArrowMasks.set(src, mask);
           return mask;
         })
-        .catch(() => null));
+        .catch(() => { exitOnlyArrowMasks.delete(src); return null; }));
     }
     return exitOnlyArrowMasks.get(src);
   };
@@ -4184,6 +4184,25 @@ const ungroupSelectedBlockElement = () => {
       : Array.from(rootElmt.querySelectorAll(".sign"));
 
     for (const signElmt of signs) {
+      if (signElmt.closest('.panel.warningDiamond')) {
+        const container = signElmt.parentElement;
+        let face = container.querySelector(':scope > .warningDiamondFace');
+        if (!face) {
+          face = document.createElement('div');
+          face.className = 'warningDiamondFace';
+          face.setAttribute('aria-hidden', 'true');
+          container.prepend(face);
+        }
+        const panel = signElmt.closest('.panel');
+        const index = Number(panel.dataset.panelIndex);
+        const color = getResolvedCssColorValue(post.panels[index]?.color) || 'var(--yellow)';
+        face.style.backgroundColor = color;
+        face.style.borderColor = getComputedStyle(signElmt).color;
+        // A centered upright rectangle fits a diamond whose diagonal is w+h.
+        const extent = Math.ceil(signElmt.offsetWidth + signElmt.offsetHeight);
+        container.style.setProperty('--warningDiamondExtent', extent + 'px');
+        continue;
+      }
       applyPanelBorderGradient(signElmt);
     }
     PanelBorders.refreshAll(rootElmt);
@@ -4518,6 +4537,7 @@ const ungroupSelectedBlockElement = () => {
       const targetTranslateX = targetVisibleShift / mainVisualScale;
 
       const targetScale =
+        document.documentElement.dataset.shrinkSignsForPanels !== "false" &&
         visiblePostWidthAtNormalScale > availableViewportWidth
           ? Math.max(
               MIN_POST_VIEW_SCALE,
@@ -4656,6 +4676,7 @@ const ungroupSelectedBlockElement = () => {
             "open",
             "data-current-menu",
             "data-position",
+            "data-shrink-signs-for-panels",
           ],
         });
       }
@@ -6253,6 +6274,7 @@ const ungroupSelectedBlockElement = () => {
           panelElmt.draggable = wasPanelDraggable;
           if (!moved) return;
           delete panelElmt.dataset.exitTabDragActive;
+          window.SignMakerDragFeedback?.end();
           tabElmt.classList.remove("draggingExitTab");
           holder.style.zIndex = previousZIndex;
           if (dragContainer) dragContainer.style.zIndex = previousContainerZIndex;
@@ -6283,6 +6305,7 @@ const ungroupSelectedBlockElement = () => {
             beginUndoableChange();
             panelElmt.dataset.exitTabDragActive = "true";
             tabElmt.classList.add("draggingExitTab");
+            window.SignMakerDragFeedback?.begin([tabElmt]);
             holder.style.zIndex = "5";
             if (dragContainer) dragContainer.style.zIndex = "4";
           }
@@ -9643,7 +9666,7 @@ const ungroupSelectedBlockElement = () => {
             );
 
           const arrowKind = normalizeAPLArrowKind(
-            kind ||
+            kind || window.SignMakerGuideDefaults?.apl.kind ||
               (normalizedPlacement === "divider"
                 ? getDefaultAPLDividerKind(normalizedDividerIndex)
                 : getDefaultAPLArrowKindForSubPanel(normalizedSubPanelIndex, {
@@ -9685,11 +9708,12 @@ const ungroupSelectedBlockElement = () => {
           delete newArrow.dividerAfterSubPanelIndex;
         }
 
-        newArrow.spacingAfterRem = inheritedSpacing;
-        newArrow.spacingBeforeRem = inheritedSpacing;
+        const defaults = window.SignMakerGuideDefaults?.apl || {};
+        newArrow.spacingAfterRem = defaults.spacing ?? inheritedSpacing;
+        newArrow.spacingBeforeRem = defaults.spacing ?? inheritedSpacing;
         newArrow.aplSpacingInitialized = true;
-        newArrow.arrowSizeRem = getDefaultAPLArrowSizeRem(newArrow.type);
-        newArrow.exitOnly = false;
+        newArrow.arrowSizeRem = defaults.size ?? getDefaultAPLArrowSizeRem(newArrow.type);
+        newArrow.exitOnly = defaults.exitOnly === true;
         newArrow.dividerAfter = false;
         newArrow.groupedWithDivider = false;
 
@@ -10015,11 +10039,11 @@ const ungroupSelectedBlockElement = () => {
             type,
             flip,
             placement,
-            spacingAfterRem: DEFAULT_APL_ARROW_SPACING_REM,
-            spacingBeforeRem: DEFAULT_APL_ARROW_SPACING_REM,
+            spacingAfterRem: window.SignMakerGuideDefaults?.apl.spacing ?? DEFAULT_APL_ARROW_SPACING_REM,
+            spacingBeforeRem: window.SignMakerGuideDefaults?.apl.spacing ?? DEFAULT_APL_ARROW_SPACING_REM,
             aplSpacingInitialized: true,
-            arrowSizeRem: getDefaultAPLArrowSizeRem(type),
-            exitOnly: false,
+            arrowSizeRem: window.SignMakerGuideDefaults?.apl.size ?? getDefaultAPLArrowSizeRem(type),
+            exitOnly: window.SignMakerGuideDefaults?.apl.exitOnly === true,
             dividerAfter: false,
             groupedWithDivider: false,
           });
@@ -10454,7 +10478,7 @@ const ungroupSelectedBlockElement = () => {
     const restore = () => {
       button.disabled = false;
       button.classList.remove("activated");
-      button.dataset.tooltip = "Copy Sign";
+      button.dataset.tooltip = "Copy Sign (right-click to choose a panel)";
       icon.textContent = "content_copy";
     };
 
@@ -10567,16 +10591,69 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     }catch(error){setCopyButtonState('error');alert('Unable to copy the sign: '+error.message);return false;}
     finally {copySignInProgress=false;}
   };
+  const closeCopyPanelContextMenu = (restoreFocus = false) => {
+    const menu = document.getElementById("copyPanelContextMenu");
+    if (!menu || menu.classList.contains("hidden")) return;
+    menu.classList.add("hidden");
+    document.getElementById("copySign")?.setAttribute("aria-expanded", "false");
+    if (restoreFocus) document.getElementById("copySign")?.focus({preventScroll: true});
+  };
+
   const openCopyPanelContextMenu = event => {
-    event.preventDefault();event.stopPropagation();
-    const menu=document.getElementById('copyPanelContextMenu');if(!menu)return;
-    menu.innerHTML='';
-    for(const group of getExportablePanelGroups()){
-      const button=document.createElement('button');button.type='button';button.textContent='Copy Panel '+group.label;
-      button.addEventListener('click',()=>{menu.classList.add('hidden');copySignToClipboard(group.topIndex);});menu.appendChild(button);
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = document.getElementById("copyPanelContextMenu");
+    const trigger = document.getElementById("copySign");
+    if (!menu || !trigger || copySignInProgress) return;
+    // A transformed toolbar makes fixed coordinates relative to the toolbar.
+    // Portal to the body so pointer coordinates work at every placement/scale.
+    document.body.appendChild(menu);
+    menu.replaceChildren();
+    const groups = getExportablePanelGroups();
+    for (const group of groups) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.setAttribute("role", "menuitem");
+      button.tabIndex = -1;
+      button.textContent = "Copy Panel " + group.label + (group.indices.length > 1 ? " (stacked)" : "");
+      button.dataset.panelIndex = String(group.topIndex);
+      button.addEventListener("click", () => {
+        closeCopyPanelContextMenu(true);
+        copySignToClipboard(group.topIndex);
+      });
+      menu.appendChild(button);
     }
-    menu.style.left=Math.max(8,Math.min(event.clientX,window.innerWidth-230))+'px';
-    menu.style.top=Math.max(8,Math.min(event.clientY,window.innerHeight-250))+'px';menu.classList.remove('hidden');
+    if (!groups.length) {
+      const empty = document.createElement("button");
+      empty.type = "button";
+      empty.disabled = true;
+      empty.setAttribute("role", "menuitem");
+      empty.textContent = "No visible panels to copy";
+      menu.appendChild(empty);
+    }
+    menu.onkeydown = keyEvent => {
+      const items = [...menu.querySelectorAll("button:not(:disabled)")];
+      const index = items.indexOf(document.activeElement);
+      let next;
+      if (keyEvent.key === "ArrowDown") next = (index + 1) % items.length;
+      if (keyEvent.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+      if (keyEvent.key === "Home") next = 0;
+      if (keyEvent.key === "End") next = items.length - 1;
+      if (next !== undefined) { keyEvent.preventDefault(); items[next]?.focus(); }
+      if (keyEvent.key === "Tab") closeCopyPanelContextMenu(true);
+    };
+    menu.style.left = "0px";
+    menu.style.top = "0px";
+    menu.classList.remove("hidden");
+    const bounds = menu.getBoundingClientRect();
+    const anchor = trigger.getBoundingClientRect();
+    const keyboard = event.type === "keydown" || (!event.clientX && !event.clientY);
+    const x = keyboard ? anchor.left : event.clientX;
+    const y = keyboard ? anchor.bottom : event.clientY;
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8)) + "px";
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8)) + "px";
+    trigger.setAttribute("aria-expanded", "true");
+    (menu.querySelector("button:not(:disabled)") || menu).focus({preventScroll: true});
   };
 
   const copyBlobToClipboard = async (blobOrPromise, mimeType, fileName = "copiedSign") => {
@@ -11514,7 +11591,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       ) {
         const paintedRects = Array.from(
           sourceElement.querySelectorAll(
-            ".sign, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace"
+            ".sign, .warningDiamondFace, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace"
           )
         )
           .filter(isElementVisibleForExport)
@@ -12714,6 +12791,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             ? "customPanelColor"
             : getColorClassToken(panel.color, "green");
           panelElmt.className = `panel ${panelColorClass} ${panel.corner.toLowerCase()}`;
+          panelElmt.classList.toggle("warningDiamond", panel.warningDiamond === true);
           const panelBorderThickness = Panel.getBorderThickness(panel);
           panelElmt.classList.toggle("panelBorderHidden", panelBorderThickness === 0);
           panelElmt.style.setProperty("--panelBorderWidth", `${panelBorderThickness}rem`);
@@ -14377,6 +14455,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 blockElmt.addEventListener("click", event => {
                   event.preventDefault(); event.stopPropagation();
                   selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
+                });
+                blockElmt.addEventListener("contextmenu", event => {
+                  event.preventDefault(); event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
+                  window.SignMakerBlockMenu?.open(event);
                 });
                 const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
                 if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
@@ -16613,6 +16696,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             arrow.classList.toggle("selectedGuideArrow", arrow === frame));
                           formHandler.selectStandardArrowIndividual(i);
                           const restorePanelDrag = () => {
+                            window.SignMakerDragFeedback?.end();
                             panelElmt.draggable = panelWasDraggable;
                             guideArrowPointerDragActive = false;
                           };
@@ -16620,7 +16704,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             if (moveEvent.pointerId !== event.pointerId) return;
                             if (arrowCount < 2) return;
                             const delta = (moveEvent.clientX - origin) / (rem * (canvasScale || 1));
-                            if (Math.abs(delta) > 0.1) moved = true;
+                            if (!moved && Math.abs(delta) > 0.1) {
+                              moved = true;
+                              window.SignMakerDragFeedback?.begin([...arrowContElmt.querySelectorAll(".standardGuideArrowFrame")]);
+                            }
                             frame.style.left = `${Math.max(-100, Math.min(100, initial + delta))}rem`;
                           };
                           frame.addEventListener("pointermove", move);
@@ -16983,13 +17070,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 shape.style.maskImage = embeddedExitOnlyArrowMasks.get(src) || mask;
                 shape.style.webkitMaskImage = shape.style.maskImage;
                 frame.appendChild(shape);
-                image.style.visibility = "hidden";
+                // Keep the ordinary image visible until the embedded mask is
+                // ready; file:// Safari cannot fetch or mask a local SVG URL.
+                shape.style.visibility = "hidden";
+                image.style.filter = arrowTone.includes("black") ? "brightness(0)" : "brightness(0) invert(1)";
                 frame._arrowMaskReady = getEmbeddedExitOnlyArrowMask(src).then((embeddedMask) => {
                     if (embeddedMask) {
                         shape.style.maskImage = embeddedMask;
                         shape.style.webkitMaskImage = embeddedMask;
                     }
-                    return waitForRenderedArrowMask(embeddedMask, src);
+                    return waitForRenderedArrowMask(embeddedMask, src).then(() => {
+                        if (embeddedMask) { shape.style.visibility = "visible"; image.style.visibility = "hidden"; }
+                    });
                 });
                 let lastRatio = 0;
                 const resize = (ratio) => {
@@ -17163,7 +17255,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             moveEvent.preventDefault();
                             moveEvent.stopPropagation();
                             if (laneRect.width <= arrowRect.width) return;
-                            if (Math.abs(moveEvent.clientX - initialX) > 3) moved = true;
+                            if (!moved && Math.abs(moveEvent.clientX - initialX) > 3) {
+                              moved = true;
+                              window.SignMakerDragFeedback?.begin([plainArrow]);
+                            }
                             if (!moved) return;
                             const rawCenter = Math.max(laneRect.left + arrowRect.width / 2,
                                 Math.min(laneRect.right - arrowRect.width / 2,
@@ -17175,6 +17270,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             plainArrow.style.transform = "translate(-50%, -50%)";
                         };
                         const restore = () => {
+                            window.SignMakerDragFeedback?.end();
                             window.removeEventListener("pointermove", move, true);
                             window.removeEventListener("pointerup", finish, true);
                             window.removeEventListener("pointercancel", cancel, true);
@@ -19473,7 +19569,7 @@ const serializePostWithElementTypes = (space) => {
         downloadJSONSign, copyJSONSign, serializeSignJSON, importSignJSON, importSignSVG, importJSONFile,
         copyPNGSign: copyPNGSign,
         copySignToClipboard,
-        openCopyPanelContextMenu,
+        openCopyPanelContextMenu, closeCopyPanelContextMenu,
         editTemplate, showActiveTemplateEditor, updateTemplateEditorStatus, switchTemplateEditorVariant, addTemplateEditorVariant, applyTemplateEditorFont, deleteTemplateEditorVariant, saveTemplateEditor, cancelTemplateEditor,
         copySVGSign: copySVGSign,
         copyPanelPNG: copyPanelPNG,

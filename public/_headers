@@ -14,156 +14,6 @@
 /img/*
   Cache-Control: public, max-age=86400
 
-/export-assets/e78c7be0801a2585.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/41d52caa39665585.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/1f841177679cdc18.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/ded10921fc4b35fa.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/525887e80f158b47.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/85a4eb0ffbf3ad29.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/1fa8c6fec18d48ce.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/53464c629769c3dc.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/265b5e40a7771b46.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/4bdad975e05bce78.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/f432e6655f6a5c99.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/a760ae81a7fb0329.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/16d1a162c12d711b.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/a058c44cb4401eec.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/b1cb88db665b9a3b.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/f10036d3c4fbe804.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/4ee583241f9948f7.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/fdccaba919aa2200.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/84e440ea9c61d3b4.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/0e7f91fc4c56c724.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/92e70d6a6e06b6e8.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/50ca62f9a8101828.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/efb3471981a677d0.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/afd60fdcf5c4e3e6.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/0c2f184b621d517f.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/d20da5f4ea647fa4.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/3fc77fe1d3682f56.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/5c22f404bbca85d7.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/67bc0be2a2303170.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/4d16ef4c32d5f5e4.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/02df614f842216e7.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/c09b34dcaf4580b9.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/f8531080ba09395c.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/0375d69c38af7f14.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/a4129e9bab796463.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/3b915bd484dce64f.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/819266745383263b.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/4c5a3be44c871a7b.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/28820c221b1079bd.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/e845c2e5bffa4b15.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/4e60e93dea68c362.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/13f043ac033fce85.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/2325fc3682d1af51.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/8503cc15920427e4.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/cdee2cb570567f13.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/8eb84e81fb4c294d.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/3350cddf32b0480a.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/379302696db0cb96.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/b44c837218a15fc3.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/export-assets/04f42995135f9896.js
-  Cache-Control: public, max-age=31536000, immutable
-
 /js/EditorRuntime.22e3b656e2676515.js
   Cache-Control: public, max-age=31536000, immutable
 
@@ -176,7 +26,7 @@
 /js/Shield.503233568ee3f25d.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Sign.b4cf5e050be75cfa.js
+/js/Sign.e1a0e096aa562c79.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/ExitTab.5509e16b3358304f.js
@@ -188,7 +38,7 @@
 /js/PanelBorders.0b690deb621e6bc7.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/PanelDrag.5ad70d87d3493110.js
+/js/PanelDrag.ab4bab4047ff9b6f.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/VmsPanel.34d9648ce7eb7499.js
@@ -215,13 +65,13 @@
 /js/HtmlToImage.27f73655f8a42531.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/ExportAssets.b8b151dcbed30267.js
+/js/ExportAssets.8981632db194b3b5.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/PresetTemplates.fff3bc65509984e9.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.8fafd624bb223568.js
+/js/main.6f9aaad10da034ff.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.f1278edc85d1f9aa.js
@@ -239,19 +89,28 @@
 /js/Roundabout.08d36150961b04b3.js
   Cache-Control: public, max-age=31536000, immutable
 
+/js/DragFeedback.c8d142298bb8170a.js
+  Cache-Control: public, max-age=31536000, immutable
+
 /js/FDOTSupports.353487bdf39bc15f.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IconPicker.f07693de1a9e8c8f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.ce1d18696f921b85.js
+/js/form.e75210b16066e53e.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.905b66ca7e8b07ba.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/CustomShields.85049f03f2f32351.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/GuideArrowDefaults.20da3f527035a54a.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/BlockContextMenu.da04750cc8a3f445.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MobileGestures.f1a20ba0cb160ef3.js
@@ -275,20 +134,23 @@
 /js/MobileDropdowns.82efb2293f24f97e.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MergeUI.1b34d00665ea8199.js
+/js/MergeUI.9ec01c73c294f303.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Settings22.d5c85ec51307e808.js
+/js/Settings22.8ddace09caa004d7.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/DropdownTheme.f1d44178025090c0.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.7a1d479d9deb4de4.css
+/css/app.21e073537ebb2c1a.css
   Cache-Control: public, max-age=31536000, immutable
 
-/css/sign.f27e7a7d249f6b49.css
+/css/sign.779da058268439f8.css
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Startup.9d75b1c853e51bc9.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/export-assets/*
   Cache-Control: public, max-age=31536000, immutable

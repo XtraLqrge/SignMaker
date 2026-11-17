@@ -14,6 +14,31 @@ window.SignMakerDiagrammatics=(()=>{
       artwork:typeof value?.artwork==='string'?value.artwork:''
     };
   };
+  // A portable file holds the road graph and the drawing size it was made at;
+  // artwork is redrawn from the graph on import.
+  const FORMAT='signmaker-diagrammatic';
+  const toJSON=value=>{
+    const {width,height,unitsPerRem,consistentGapsOnTurns,roadGraph}=normalize(value);
+    return JSON.stringify({format:FORMAT,version:1,width,height,unitsPerRem,consistentGapsOnTurns,roadGraph},null,2);
+  };
+  const fromJSON=text=>{
+    let data;try{data=JSON.parse(text);}catch{throw new Error('The file is not valid JSON.');}
+    if(data?.format!==FORMAT)throw new Error('The file is not a diagrammatic export.');
+    const graph=data.roadGraph,finite=n=>typeof n==='number'&&Number.isFinite(n);
+    if(!graph||!Array.isArray(graph.roads)||!Array.isArray(graph.joints))throw new Error('The file has no road graph.');
+    const joints=new Set();
+    for(const joint of graph.joints){
+      if(!finite(joint?.id)||!finite(joint.x)||!finite(joint.y)||joints.has(joint.id))throw new Error('The file has an invalid node.');
+      joints.add(joint.id);joint.links??=[];
+    }
+    const roads=new Set();
+    for(const road of graph.roads)
+      if(!finite(road?.id)||roads.has(road.id)||!Number.isInteger(road.lanes)||road.lanes<1||!finite(road.laneWidth)||!Array.isArray(road.ends)||road.ends.length!==2||!road.ends.every(end=>joints.has(end?.joint)))throw new Error('The file has an invalid arrow stem.');
+      else roads.add(road.id);
+    graph.overlapOrder=Array.isArray(graph.overlapOrder)?graph.overlapOrder.filter(id=>roads.has(id)):[];
+    const {roadGraph,...model}=normalize({...data,artwork:''});
+    return {...model,roadGraph:graph};
+  };
   let engine=null,installed=false,activeSubpanelDrag=null;
 const SVG='http://www.w3.org/2000/svg';
 const svg=(tag,attrs={})=>{const n=document.createElementNS(SVG,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);return n;};
@@ -233,11 +258,11 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     }});
     let sign=null,sheet=null,committing=false,graphKey='',pendingSave=false;
     const snapshot=()=>Object.fromEntries(['width','height','inchesPerPixel','roads','joints','autoTapers','overlapOrder'].map(k=>[k,structuredClone(sheet[k])]));
+    const drawArtwork=()=>{const drawing=sheet.roadLayer.cloneNode(true);drawing.querySelectorAll('.roadSelection,.roadMarkings').forEach(n=>n.remove());return new XMLSerializer().serializeToString(drawing);};
     const commit=()=>{
       if(!sheet||!sign||committing||api()?.getCurrentPanel()?.sign!==sign)return;
       const graph=snapshot(),key=JSON.stringify(graph);
-      graphKey=key;const drawing=sheet.roadLayer.cloneNode(true);drawing.querySelectorAll('.roadSelection,.roadMarkings').forEach(n=>n.remove());
-      const artwork=new XMLSerializer().serializeToString(drawing);
+      graphKey=key;const artwork=drawArtwork();
       if(key===JSON.stringify(sign.diagrammatic?.roadGraph)&&artwork===sign.diagrammatic?.artwork)return;
       committing=true;
       try { api().editDiagrammatic(model=>{model.roadGraph=graph;model.artwork=artwork;},{redraw:false});
@@ -423,7 +448,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     for(let n=controlsHost.parentElement;n;n=n.parentElement)watched.add(n);
     for(const n of watched)if(n)visibilityObserver.observe(n,{attributes:true,attributeFilter:['style','class','hidden','data-current-menu','inert']});
     window.addEventListener('resize',syncVisibility);
-    return {app:appState,live,controlsHost,commit,
+    return {app:appState,live,controlsHost,commit,drawArtwork,
       mount(host,nextSign){
         host.append(live);
         const model=normalize(nextSign.diagrammatic);
@@ -450,12 +475,28 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     if(!installed){installed=true;
       document.getElementById('diagrammaticWidth').addEventListener('change',e=>api()?.editDiagrammatic(m=>{m.width=normalize({width:e.target.value}).width;}));
       document.getElementById('diagrammaticHeight').addEventListener('change',e=>api()?.editDiagrammatic(m=>{m.height=normalize({height:e.target.value}).height;}));
-      document.getElementById('diagrammaticConsistentGaps').addEventListener('change',e=>api()?.editDiagrammatic(m=>{m.consistentGapsOnTurns=e.target.checked;}));}
+      document.getElementById('diagrammaticConsistentGaps').addEventListener('change',e=>api()?.editDiagrammatic(m=>{m.consistentGapsOnTurns=e.target.checked;}));
+      document.getElementById('diagrammaticExportJSON').addEventListener('click',()=>{
+        const sign=api()?.getCurrentPanel()?.sign;if(!sign)return;
+        engine?.commit();
+        const url=URL.createObjectURL(new Blob([toJSON(sign.diagrammatic)],{type:'application/json'})),link=document.createElement('a');
+        link.href=url;link.download='diagrammatic.json';document.body.append(link);link.click();link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+      });
+      const importInput=document.getElementById('diagrammaticImportFile');
+      document.getElementById('diagrammaticImportJSON').addEventListener('click',()=>importInput.click());
+      importInput.addEventListener('change',async()=>{
+        const file=importInput.files?.[0];if(!file)return;
+        // Draw the artwork inside the same edit so one undo removes the import.
+        try{const imported=fromJSON(await file.text());api()?.editDiagrammatic((m,sign)=>{Object.assign(m,imported);if(engine?.live.isConnected){engine.mount(engine.live.parentElement,sign);m.artwork=engine.drawArtwork();}});}
+        catch(error){window.alert('Unable to import diagrammatic: '+error.message);}
+        finally{importInput.value='';}
+      });}
     document.getElementById('diagrammaticHeight').value=normalize(sign?.diagrammatic).height;
     document.getElementById('diagrammaticConsistentGaps').checked=normalize(sign?.diagrammatic).consistentGapsOnTurns;
     document.getElementById('diagrammaticWidth').value=normalize(sign?.diagrammatic).width;
     document.getElementById('diagrammaticRoadControls').hidden=sign?.arrowMode!=='diagrammatic';
     if(sign?.arrowMode==='diagrammatic')engine?.sync(sign);else engine?.detach();
   };
-  return {normalize,alignedDashes,attachSubpanel,render,syncEditor,get engine(){return engine;}};
+  return {normalize,toJSON,fromJSON,alignedDashes,attachSubpanel,render,syncEditor,get engine(){return engine;}};
 })();

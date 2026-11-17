@@ -2214,6 +2214,11 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
             <div class="diagrammaticSettings"><label for="diagrammaticWidth">Width (rem)</label><input id="diagrammaticWidth" type="number" min="1" max="80" step="0.25" value="40"></div>
             <div class="diagrammaticSettings"><label for="diagrammaticHeight">Height (rem)</label><input id="diagrammaticHeight" type="number" min="1" max="80" step="0.25" value="25"></div>
             <label class="diagrammaticEnable"><input id="diagrammaticConsistentGaps" type="checkbox" checked> Consistent gaps on turns</label>
+            <div class="diagrammaticTransfer">
+              <button id="diagrammaticExportJSON" type="button" title="Export arrow stems as JSON" aria-label="Export arrow stems as JSON"><span class="material-symbols-outlined" aria-hidden="true">download</span><span>Export JSON</span></button>
+              <button id="diagrammaticImportJSON" type="button" title="Import arrow stems from JSON" aria-label="Import arrow stems from JSON"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span>Import JSON</span></button>
+              <input id="diagrammaticImportFile" type="file" accept=".json,application/json" hidden>
+            </div>
             <p>Draw on the sign. Right-click a lane node for curves, tapers, connections, and overlap order. Drag the preview background to pan all panels; use + / − to zoom and F to fit.</p>
           </div>
           <div id="sMRoundabout" class="tabHidden">

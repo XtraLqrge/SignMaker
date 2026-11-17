@@ -236,7 +236,18 @@ const assert=require('node:assert/strict');
  assert.deepEqual(allPanned,allAfter,'pan is disabled outside diagrammatic editing');
  await page.screenshot({path:'/tmp/diagrammatic-whole-preview.png'});
  await page.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.recenter());
+ // JSON export/import restores the drawing in one undoable step.
+ if(!await page.locator('#diagrammaticExportJSON').isVisible()){await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();}
+ const saved=await page.evaluate(()=>app.exposeToFormHandler.getCurrentPanel().sign.diagrammatic);
+ const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#diagrammaticExportJSON').click()]);
+ const exported=require('node:path').join(require('node:os').tmpdir(),'diagrammatic-export.json');await download.saveAs(exported);
+ await page.evaluate(()=>app.exposeToFormHandler.editDiagrammatic(m=>{m.roadGraph={roads:[],joints:[],overlapOrder:[]};m.artwork='';}));
+ await page.locator('#diagrammaticImportFile').setInputFiles(exported);
+ await page.waitForFunction(n=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===n,saved.roadGraph.roads.length);
+ const restored=await page.evaluate(()=>app.exposeToFormHandler.getCurrentPanel().sign.diagrammatic);
+ assert.deepEqual(restored.roadGraph,saved.roadGraph);assert.equal(restored.artwork,saved.artwork);
+ await page.locator('#undoButton').click();await page.waitForFunction(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===0);
  assert.deepEqual(errors,[]);
- console.log('Passed: original edge splits, merges, tapers, curve handles, undo/redo, direct editing, crossing masks, black lane lines, overlap order, whole-panel zoom/pan, Delete/Escape, fixed-size handles, numbered subpanel placement/editing, reload and element suppression.');
+ console.log('Passed: original edge splits, merges, tapers, curve handles, undo/redo, direct editing, crossing masks, black lane lines, overlap order, whole-panel zoom/pan, Delete/Escape, fixed-size handles, numbered subpanel placement/editing, reload, element suppression and JSON export/import.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

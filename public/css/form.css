@@ -15061,6 +15061,8 @@ nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
 .sMModal.guideArrowConfig[data-current-menu="sMDiagrammatics"] { width: 28rem !important; }
 .diagrammaticSettings { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; margin: .75rem 0; }
 #sMDiagrammatics .diagrammaticEnable { display:flex; align-items:center; gap:.5rem; width:auto; text-align:left; }
+#sMDiagrammatics .diagrammaticTransfer { display:flex; gap:.5rem; margin:.75rem 0; }
+#sMDiagrammatics .diagrammaticTransfer button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:.35rem; }
 .diagrammaticSign { box-sizing:content-box; padding:0 !important; }
 .diagrammaticDrawing { display:block; width:100%; height:auto; }
 .diagrammaticStart { margin:2rem; }

@@ -41,3 +41,17 @@ test('diagrammatic dimensions accept sizes below the old limits',()=>{
  const model=c.window.SignMakerDiagrammatics.normalize({width:4,height:3});
  assert.equal(model.width,4);assert.equal(model.height,3);
 });
+test('diagrammatic JSON round-trips the road graph and drawing size',()=>{
+ const {toJSON,fromJSON}=c.window.SignMakerDiagrammatics;
+ const roadGraph={roads:[{id:3,lanes:2,laneWidth:12,arcAngle:45,ends:[{joint:1,sign:1,length:null},{joint:2,sign:1,length:null}]}],joints:[{id:1,x:10,y:20,links:[]},{id:2,x:300,y:40,links:[]}],overlapOrder:[3,9],autoTapers:true};
+ const imported=fromJSON(toJSON({width:36,height:20,unitsPerRem:40,consistentGapsOnTurns:false,roadGraph,artwork:'<svg/>'}));
+ assert.deepEqual(JSON.parse(JSON.stringify(imported)),{version:2,width:36,height:20,consistentGapsOnTurns:false,unitsPerRem:40,artwork:'',roadGraph:{...roadGraph,overlapOrder:[3]}});
+});
+test('diagrammatic JSON import rejects files that are not a usable road graph',()=>{
+ const {fromJSON}=c.window.SignMakerDiagrammatics,file=graph=>JSON.stringify({format:'signmaker-diagrammatic',version:1,roadGraph:graph});
+ assert.throws(()=>fromJSON('{'),/not valid JSON/);
+ assert.throws(()=>fromJSON(JSON.stringify({panels:[]})),/not a diagrammatic export/);
+ assert.throws(()=>fromJSON(file({roads:[]})),/no road graph/);
+ assert.throws(()=>fromJSON(file({roads:[{id:1,lanes:1,laneWidth:12,ends:[{joint:1},{joint:5}]}],joints:[{id:1,x:0,y:0}]})),/invalid arrow stem/);
+ assert.throws(()=>fromJSON(file({roads:[],joints:[{id:1,x:'0',y:0}]})),/invalid node/);
+});

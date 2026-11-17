@@ -73,5 +73,20 @@
     "path": "img/shields/United States/Florida/FLTP-Toll.svg",
     "bytes": 170137,
     "sha256": "408592f09bfec575903ecd71a600c2119833a64af58ff9b331ac08427f6e5d94"
+  },
+  {
+    "path": "img/shields/United States/CO/CO-2Digit.svg",
+    "bytes": 1433,
+    "sha256": "d7ae4c4e138b2569c9d16a09d69b561c8cb8299d80eb7f7fb300381a5a24aac4"
+  },
+  {
+    "path": "img/shields/United States/CO/CO-E470.svg",
+    "bytes": 4906,
+    "sha256": "10350725a03841095ac62f7fbdd5950d6ff800f6ae1266d4cec7b28a884b9c79"
+  },
+  {
+    "path": "img/shields/United States/CO/CO-NWP.svg",
+    "bytes": 3332,
+    "sha256": "1b0bce719277b578689b736168ffa48cd5e0cb1973321ce115507f5efb344183"
   }
 ]

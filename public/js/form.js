@@ -11051,7 +11051,15 @@ const formHandler = (function () {
           { value: "AZ", label: "Arizona", asset: "img/shields/United States/AZ/AZ-2Digit.svg" },
           { value: "AR", label: "Arkansas", asset: "img/shields/United States/AR-2Digit.svg" },
           { value: "CA", label: "California", asset: "img/shields/United States/CA-2Digit.svg" },
-          { value: "CO", label: "Colorado", asset: "img/shields/United States/CO-2Digit.svg" },
+          {
+            id: "us-colorado",
+            label: "Colorado",
+            children: [
+              { value: "CO", label: "Colorado", asset: "img/shields/United States/CO/CO-2Digit.svg" },
+              { value: "CO-E470", label: "E-470", asset: "img/shields/United States/CO/CO-E470.svg" },
+              { value: "CO-NWP", label: "Northwest Parkway", asset: "img/shields/United States/CO/CO-NWP.svg" },
+            ],
+          },
           { value: "CT", label: "Connecticut", asset: "img/shields/United States/CT-2Digit.svg" },
           { value: "DE", label: "Delaware", asset: "img/shields/United States/DE-2Digit.svg" },
           { value: "DC", label: "District of Columbia", asset: "img/shields/United States/DC-2Digit.svg" },

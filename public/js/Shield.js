@@ -450,7 +450,25 @@ Shield.prototype.shieldDirectory = {
       name: "California",
       variants: ["2 Digit", "3 Digit"],
     },
-    CO: { type: "shield", name: "Colorado", variants: ["2 Digit", "3 Digit"] },
+    Colorado: {
+      type: "category",
+      folder: "CO",
+      CO: { type: "shield", name: "Colorado", variants: ["2 Digit", "3 Digit"] },
+      "CO-E470": {
+        type: "shield",
+        name: "E-470",
+        variants: ["Image"],
+        assetPath: "img/shields/United States/CO/CO-E470.svg",
+        suppressRouteNumber: true,
+      },
+      "CO-NWP": {
+        type: "shield",
+        name: "Northwest Parkway",
+        variants: ["Image"],
+        assetPath: "img/shields/United States/CO/CO-NWP.svg",
+        suppressRouteNumber: true,
+      },
+    },
     CT: {
       type: "shield",
       name: "Connecticut",

@@ -11,7 +11,7 @@
     "js/DragFeedback.c8d142298bb8170a.js",
     "js/FDOTSupports.353487bdf39bc15f.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
-    "js/form.cc01a01f9cdd9fcb.js",
+    "js/form.1d982f945ece7354.js",
     "js/IndexDB.905b66ca7e8b07ba.js",
     "js/CustomShields.85049f03f2f32351.js",
     "js/GuideArrowDefaults.20da3f527035a54a.js",
@@ -30,8 +30,8 @@
   "deferredStyles": "css/app.21e073537ebb2c1a.css",
   "startupJS": {
     "bytes": 627196,
-    "gzipBytes": 171985,
-    "brotliBytes": 142778
+    "gzipBytes": 171976,
+    "brotliBytes": 142614
   },
   "criticalCSS": {
     "bytes": 274727,
@@ -180,9 +180,9 @@
       "bytes": 39475
     },
     {
-      "output": "export-assets/98511a643ff865c7.js",
+      "output": "export-assets/4747497bc812db9f.js",
       "exportOnly": true,
-      "bytes": 1558302
+      "bytes": 1675926
     },
     {
       "output": "export-assets/a393e051c55c08f6.js",
@@ -195,9 +195,9 @@
       "bytes": 99516
     },
     {
-      "output": "export-assets/9ef69c98e2679220.js",
+      "output": "export-assets/368a6b111741b20e.js",
       "exportOnly": true,
-      "bytes": 2295847
+      "bytes": 2291707
     },
     {
       "output": "export-assets/f42e8f8e4180c2b3.js",
@@ -348,16 +348,16 @@
     },
     {
       "source": "js/Shield.js",
-      "output": "js/Shield.0ab7f934b53b4d2c.js",
+      "output": "js/Shield.1b2d25b4f6699f96.js",
       "original": {
-        "bytes": 39906,
+        "bytes": 39931,
         "gzipBytes": 8995,
-        "brotliBytes": 7798
+        "brotliBytes": 7797
       },
       "optimized": {
         "bytes": 29516,
-        "gzipBytes": 8087,
-        "brotliBytes": 7038
+        "gzipBytes": 8076,
+        "brotliBytes": 7020
       }
     },
     {
@@ -544,16 +544,16 @@
     },
     {
       "source": "js/ExportAssets.js",
-      "output": "js/ExportAssets.fe5dbf5e5ef72c23.js",
+      "output": "js/ExportAssets.df65f86375408534.js",
       "original": {
-        "bytes": 134836,
-        "gzipBytes": 11177,
-        "brotliBytes": 8930
+        "bytes": 134704,
+        "gzipBytes": 11170,
+        "brotliBytes": 8929
       },
       "optimized": {
-        "bytes": 133174,
-        "gzipBytes": 10983,
-        "brotliBytes": 8691
+        "bytes": 133042,
+        "gzipBytes": 10977,
+        "brotliBytes": 8705
       }
     },
     {
@@ -572,16 +572,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.ee93e90d3f4722b6.js",
+      "output": "js/main.cef3433b80228076.js",
       "original": {
         "bytes": 773256,
-        "gzipBytes": 136634,
-        "brotliBytes": 107880
+        "gzipBytes": 136637,
+        "brotliBytes": 107923
       },
       "optimized": {
         "bytes": 336165,
-        "gzipBytes": 89684,
-        "brotliBytes": 73406
+        "gzipBytes": 89686,
+        "brotliBytes": 73260
       }
     },
     {
@@ -698,16 +698,16 @@
     },
     {
       "source": "js/form.js",
-      "output": "js/form.cc01a01f9cdd9fcb.js",
+      "output": "js/form.1d982f945ece7354.js",
       "original": {
-        "bytes": 952344,
-        "gzipBytes": 163258,
-        "brotliBytes": 124827
+        "bytes": 952712,
+        "gzipBytes": 163304,
+        "brotliBytes": 124902
       },
       "optimized": {
-        "bytes": 487143,
-        "gzipBytes": 112142,
-        "brotliBytes": 88249
+        "bytes": 487347,
+        "gzipBytes": 112196,
+        "brotliBytes": 88293
       }
     },
     {

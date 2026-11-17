@@ -129,11 +129,12 @@ coordinate comparison or a fabrication certification.
 
 ## Deep audit and repairs
 
-The current catalog has 20 variants: the 17 above plus explicitly labeled
-legacy FDOT Old, Selmon, and CFX Old designs. Legacy saves resolve to those
-original assets instead of silently changing their design. The Selmon logo
-suppresses route numerals. Legacy artwork remains unverified against current
-construction sheets; restoring it is a compatibility measure.
+The current catalog has 19 variants: the 17 above plus explicitly labeled
+legacy FDOT Old and CFX Old designs. Legacy saves resolve to those original
+assets instead of silently changing their design. Legacy artwork remains
+unverified against current construction sheets; restoring it is a
+compatibility measure. The Selmon Expressway logo is a separate shield
+(`FL-Selmon`), not an FDOT Toll variant, and suppresses route numerals.
 
 - Turnpike silhouettes: removed the erroneous internal route-line cutout;
   retained the lake opening shown on the source drawing.

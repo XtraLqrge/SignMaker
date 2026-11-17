@@ -10891,6 +10891,7 @@ const formHandler = (function () {
         "FLToll",
         "FLCFX",
         "FLTP",
+        "FL-Selmon",
       ],
 
       "us-georgia": [
@@ -11087,6 +11088,11 @@ const formHandler = (function () {
                 value: "FLTP",
                 label: "Florida's Turnpike",
                 asset: "img/shields/United States/Florida/FDOT/FLTP-48.svg",
+              },
+              {
+                value: "FL-Selmon",
+                label: "Selmon Expressway",
+                asset: "img/shields/United States/FL/FL-Selmon.png",
               },
             ],
           },
@@ -11617,6 +11623,7 @@ const formHandler = (function () {
         "FLToll",
         "FLCFX",
         "FLTP",
+        "FL-Selmon",
         "GA",
         "GAALT",
         "GABYP",
@@ -11737,6 +11744,11 @@ const formHandler = (function () {
             "FLTP",
             "Florida's Turnpike",
             "img/shields/United States/Florida/FDOT/FLTP-48.svg"
+          ),
+          node(
+            "FL-Selmon",
+            "Selmon Expressway",
+            "img/shields/United States/FL/FL-Selmon.png"
           ),
         ]),
 

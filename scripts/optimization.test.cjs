@@ -330,7 +330,7 @@ test('production HTML references existing, content-addressed assets',()=>{
   assert.equal(manifest.localStylesheetCount,1);
   assert.ok(!html.includes('src="js/HtmlToImage'));
   for(const asset of manifest.assets.filter(asset=>asset.source)){
-    let source=read('public/'+asset.source);
+    let source=asset.source==='js/DiagrammaticRoadEngine.js'?require('./build-diagrammatics.cjs')(root):read('public/'+asset.source);
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
     if(asset.source==='js/main.js')source=source.replace('js/ExportAssets.js',manifest.assets.find(a=>a.source==='js/ExportAssets.js').output);
     if(asset.source==='js/Control.js')source=source.replace('IconFallbacks.js?v=773d7c4b80c1',path.basename(manifest.assets.find(a=>a.source==='js/IconFallbacks.js').output));

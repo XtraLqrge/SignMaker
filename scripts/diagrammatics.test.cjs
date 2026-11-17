@@ -5,21 +5,13 @@ test('road graph survives normalization without losing arbitrary StripeMaker geo
  const saved=c.window.SignMakerDiagrammatics.normalize({roadGraph:graph});
  assert.deepEqual(JSON.parse(JSON.stringify(saved.roadGraph)),graph);saved.roadGraph.roads[0].lanes=4;assert.equal(graph.roads[0].lanes,3);
 });
-test('vendored road geometry dependencies match the recorded StripeMaker sources',()=>{
+test('the road engine bundles only the trimmed diagrammatic sources',()=>{
  const source=JSON.parse(fs.readFileSync('public/diagrammatics/stripe/SOURCE.json'));
- for(const [file,hash]of Object.entries(source.sha256)){
-  let source=fs.readFileSync('public/diagrammatics/stripe/'+file,'utf8');
-  if(file==='js/elements.js')source=source.replace(/\n      if\(window\.DiagrammaticRoadRenderer\) return window\.DiagrammaticRoadRenderer\(sheet,road,shape,layers,className,\n        k=>boundary\(shape,k\), !road\.ends \|\| !attachments\(sheet,jointOf\(sheet,road\.ends\[1\]\.joint\)\)\.some\(item=>item\.road!==road&&item\.e===0\)\);/,'');
-  source=source.replace(/\n      if\(window\.StripeMaker\.diagrammatic\) items=items\.filter[^\n]+/,'');
-  source=source.replace(/      window\.StripeMaker\.diagrammaticRender\?\.\(sheet\);\n/,'').replace(/        \.\.\.\(window\.StripeMaker\.diagrammaticOrder \? \[[\s\S]*?\] : \[\]\),\n/,'');
-  source=source.replace(/    \/\/ BEGIN SIGNMAKER ATTACHED ARC CONSTRAINTS[\s\S]*?    \/\/ END SIGNMAKER ATTACHED ARC CONSTRAINTS\n/,'')
-   .replace(/      \/\/ BEGIN SIGNMAKER ARC RADIUS HANDLE[\s\S]*?      \/\/ END SIGNMAKER ARC RADIUS HANDLE\n/,'')
-   .replace(/^.*\/\* SIGNMAKER \*\/ (?:diagrammaticSyncArcJoins|if\().*\n/gm,'')
-   .replace('/* SIGNMAKER */ anchor:diagrammaticArcAnchor(sheets.selected,road,solved),','');
-  source=source.replace(/      \/\/ BEGIN SIGNMAKER DRAWING (DIRECTION|TARGET)[\s\S]*?      \/\/ END SIGNMAKER DRAWING \1\n/g,'');
-  source=source.replace("subpanel:'placeDiagrammaticSubpanel',",'');
-  assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,file);
- }
+ for(const file of source.files)assert.ok(fs.existsSync('public/diagrammatics/stripe/'+file),file);
+ const controls=fs.readFileSync('public/diagrammatics/controls.source.html','utf8');
+ for(const id of ['markingsEditor','bikeSetup','medianFields','goreFields','roadOpposite','laneType'])assert.ok(!controls.includes(`id="${id}"`),id);
+ const engine=require('./build-diagrammatics.cjs')(process.cwd());
+ for(const hook of ['longitudinal','intersections','markings','levels'])assert.ok(!engine.includes('StripeMaker.'+hook),hook);
 });
 test('independent diagrammatic dimensions preserve legacy proportions and gap preference',()=>{
  const normalize=c.window.SignMakerDiagrammatics.normalize;

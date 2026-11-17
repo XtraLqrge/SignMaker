@@ -1,4 +1,4 @@
-<!-- Native control template; not a standalone editor. Hidden controls retain engine bindings. -->
+<!-- Native control template for the diagrammatic arrow editor; not a standalone editor. -->
 <div class="modals">
     <section id="elementsEditor" class="editor" aria-labelledby="elementsTitle" hidden>
       <div class="editorBar">
@@ -10,45 +10,15 @@
       <div class="editorContent">
         <div class="fieldRow elementAddRow">
           <label for="elementToAdd">Add</label>
-          <select id="elementToAdd"><option value="road">Road</option><option value="median">Median</option><option value="bike">Standalone bike lane</option><option value="track">Standalone two-way bike track</option><option value="roadBike">Bike lane on selected road</option><option value="roadTrack">Two-way track on selected road</option><option value="match">Match line</option></select>
+          <select id="elementToAdd"><option value="road">Arrow stem</option></select>
           <button type="button" id="addElement" aria-label="Add selected element" title="Add selected element"><span class="material-symbols-outlined" aria-hidden="true">add</span></button>
         </div>
-        <div hidden>
-          <button type="button" id="addRoad" aria-pressed="false">Add Road</button>
-          <button type="button" id="addMedian" aria-pressed="false">Add Median</button>
-          <button type="button" id="openMatchLines">Match Lines</button>
-        </div>
-        <div hidden><button type="button" id="addStandaloneBikeLane" aria-pressed="false">Add Standalone Bike Lane</button></div>
+        <div hidden><button type="button" id="addRoad" aria-pressed="false">Add Road</button></div>
         <div class="headActions"><button type="button" id="deleteRoad" disabled>Delete</button></div>
-        <div id="standaloneBikeTypeRow" class="fieldRow" hidden><label for="standaloneBikeType">Standalone bike lane</label><select id="standaloneBikeType"><option value="bike">One-way bike lane</option><option value="twoWayBike">Two-way bike track</option></select></div>
         <p id="elementsHint" class="elementsHint" aria-live="polite"></p>
-        <div id="bikeSetup" hidden>
-          <h3>Bike lane conflicts</h3>
-          <div id="bikeSetupLaneRow" class="fieldRow"><label for="bikeSetupLane">Bike lane</label><select id="bikeSetupLane"></select></div>
-          <div id="bikeConflictRow" class="fieldRow"><label for="bikeConflict">Situation</label><select id="bikeConflict" aria-describedby="bikeConflictHelp bikeConflictStatus"><option value="auto">Automatic</option><option value="drop">Lane drops to right turn</option><option value="separate">Right-turn lane added</option><option value="freeflow">Free-flow ramp crossing</option><option value="channelized">Curbed turn crossing</option></select></div>
-          <div id="bikeSpeedRow" class="fieldRow"><label for="bikeSpeed">Design speed (mph)</label><select id="bikeSpeed"><option value="0">Use drawn taper</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option></select></div>
-          <div id="bikeConflictLengthRow" class="fieldRow" hidden><label for="bikeConflictLength">Conflict length (ft)</label><input id="bikeConflictLength" type="number" min="1" step="1" value="100" aria-describedby="bikeConflictLengthHelp" /></div>
-          <p id="bikeConflictLengthHelp" class="fieldHint">Includes both dotted sections and the crossover gap; limited to the road length.</p>
-          <div id="bikeCrossoverRow" class="fieldRow" hidden><label for="bikeCrossover">Continue markings through crossover</label><input id="bikeCrossover" type="checkbox" aria-describedby="bikeCrossoverHelp" /></div>
-          <p id="bikeCrossoverHelp" class="fieldHint" hidden>Continues both dotted edges and any colored pavement you placed through the crossover gap.</p>
-          <p id="bikeConflictHelp" class="fieldHint"></p>
-          <div class="headActions"><button id="bikeAddTurn" type="button">Add Outside Turn Lane</button></div>
-          <p class="fieldHint">Add green pavement with the Markings tool. Its placement can span connected road segments.</p>
-          <p id="bikeConflictStatus" class="elementsHint" role="status"></p>
-          <hr />
-        </div>
         <div class="fieldRow">
           <label for="roadLanes">Lanes</label>
           <input id="roadLanes" type="number" min="1" max="999" step="1" value="1" />
-        </div>
-        <div class="fieldRow">
-          <label for="roadOpposite">Opposite lanes</label>
-          <input id="roadOpposite" type="number" min="0" max="999" step="1" value="0" aria-describedby="oppositeHint" />
-        </div>
-        <p id="oppositeHint" class="fieldHint">0 = one-way</p>
-        <div id="medianRow" class="fieldRow" hidden>
-          <label for="roadMedian">Median (ft)</label>
-          <input id="roadMedian" type="number" min="0" max="200" step="1" value="0" />
         </div>
         <div class="fieldRow">
           <label for="roadLaneWidth">Lane width (ft)</label>
@@ -81,40 +51,18 @@
           <div id="keepSymmetricRow" class="fieldRow"><label for="keepSymmetric">Keep symmetric</label><input id="keepSymmetric" type="checkbox" checked /></div>
           <div class="headActions"><button id="applyCurveMirror" type="button" hidden>Apply Mirror</button><button id="editCurveAxis" type="button" hidden>Edit Symmetry Line…</button><button id="unlinkCurve" type="button" hidden>Unlink Curves</button><button id="cancelCurveLink" type="button" hidden>Cancel</button></div>
         </div>
-        <div id="splitRow" class="headActions" hidden>
-          <button type="button" id="splitRoad">Split into One-Way Roads</button>
-        </div>
-        <div class="headActions bikeActions">
-          <button type="button" id="addBikeLane" hidden disabled>Add Bike Lane</button>
-          <button type="button" id="addBikeTrack" hidden disabled>Add Two-Way Track</button>
-          <label class="bikeBuffered" title="Toggle the buffer on the selected road's bike lanes."><input id="bufferedBike" type="checkbox" checked /> Buffered</label>
-        </div>
         <div class="fieldRow"><label for="keepWidthAtJoins">Keep lanes wide through turns</label><input id="keepWidthAtJoins" type="checkbox" aria-describedby="keepWidthAtJoinsHint" /></div>
-        <p id="keepWidthAtJoinsHint" class="fieldHint">Keep the full driveway width through the curve, right up to the main road’s edge.</p>
+        <p id="keepWidthAtJoinsHint" class="fieldHint">Keep the full stem width through the curve, right up to the main stem’s edge.</p>
         <div class="fieldRow"><label for="perLaneWidths">Per Lane widths</label><input id="perLaneWidths" type="checkbox" /></div>
         <p id="perLaneWidthsHint" class="fieldHint" hidden>Select a lane node to adjust its widths.</p>
         <div id="laneFields" hidden>
           <hr />
           <h3 id="laneTitle">Lane</h3>
-          <div class="fieldRow">
-            <label for="laneType">Lane type</label>
-            <select id="laneType">
-              <option value="travel">Travel lane</option>
-              <option value="bike">Bike lane</option>
-              <option value="bufferedBike">Buffered bike lane</option>
-              <option value="twoWayBike">Two-way bike track</option>
-            </select>
-          </div>
-          <div id="bikeWidthRow" class="fieldRow" hidden>
-            <label for="bikeWidth">Bike lane width (ft)</label>
-            <input id="bikeWidth" type="number" min="4" max="14" step="0.5" value="5" />
-          </div>
-
           <div id="laneWidthFields" hidden>
           <div class="fieldRow"><label for="selectedLaneWidth">Lane width (ft)</label><input id="selectedLaneWidth" type="number" min="8" max="50" step="0.5" value="12" /></div>
           <div class="fieldRow"><label for="laneStartWidth">Start width (ft)</label><input id="laneStartWidth" type="number" min="8" max="50" step="0.5" value="12" /></div>
           <div class="fieldRow"><label for="laneEndWidth">End width (ft)</label><input id="laneEndWidth" type="number" min="8" max="50" step="0.5" value="12" /></div>
-          <p class="fieldHint">Select a lane node to edit its lane. Start and end widths affect only this road.</p>
+          <p class="fieldHint">Select a lane node to edit its lane. Start and end widths affect only this stem.</p>
           </div>
           <div class="fieldRow">
             <label for="laneTaper">Taper</label>
@@ -129,165 +77,6 @@
             <input id="laneTaperLength" type="number" min="10" max="2000" step="10" value="300" />
           </div>
           <p id="laneTaperState" class="elementsHint" aria-live="polite"></p>
-        </div>
-        <div id="goreFields" hidden>
-          <hr />
-          <h3 id="goreTitle">Gore</h3>
-          <p id="goreState" class="elementsHint"></p>
-          <div class="fieldRow">
-            <label for="goreLength">Marked length (ft)</label>
-            <input id="goreLength" type="number" min="0" step="5" value="0" />
-          </div>
-          <div class="fieldRow">
-            <label for="goreSpacing">Stripe spacing (ft)</label>
-            <div class="dimensionInputs">
-              <input id="goreSpacing" type="range" min="10" max="40" step="5" value="20" />
-              <input id="goreSpacingValue" type="number" min="10" max="40" step="5" value="20" aria-label="Stripe spacing in feet" />
-            </div>
-          </div>
-          <div class="headActions">
-            <button type="button" id="removeGore">Remove Marking</button>
-          </div>
-        </div>
-        <div id="medianFields" hidden>
-          <hr />
-          <h3 id="medianTitle">Median</h3>
-          <div class="fieldRow">
-            <label for="medianType">Surface</label>
-            <select id="medianType">
-              <option value="grass">Grass</option>
-              <option value="concrete">Concrete (raised, curbed)</option>
-              <option value="painted">Painted</option>
-            </select>
-          </div>
-          <div id="paintedFields">
-            <div class="fieldRow">
-              <label for="medianColor">Color</label>
-              <select id="medianColor">
-                <option value="yellow">Yellow (opposing traffic)</option>
-                <option value="white">White (same direction)</option>
-                <option value="none">No paint (asphalt)</option>
-              </select>
-            </div>
-            <div class="fieldRow">
-              <label for="medianLean">Stripe direction</label>
-              <select id="medianLean">
-                <option value="right">╱ Lean right</option>
-                <option value="left">╲ Lean left</option>
-              </select>
-            </div>
-            <div id="medianHideEdgesRow" class="fieldRow" hidden><label for="medianHideEdges">Hide adjacent edge lines</label><input id="medianHideEdges" type="checkbox" /></div>
-            <div class="fieldRow">
-              <label for="medianSpacing">Stripe spacing (ft)</label>
-              <div class="dimensionInputs">
-                <input id="medianSpacing" type="range" min="10" max="40" step="5" value="20" />
-                <input id="medianSpacingValue" type="number" min="10" max="40" step="5" value="20" aria-label="Stripe spacing in feet" />
-              </div>
-            </div>
-          </div>
-          <p id="medianState" class="elementsHint"></p>
-        </div>
-      </div>
-    </section>
-    <section id="markingsEditor" class="editor" aria-labelledby="markingsTitle" hidden>
-      <div class="editorBar">
-        <h2 id="markingsTitle" class="editorTitle" tabindex="-1">
-          <span class="material-symbols-outlined" aria-hidden="true">edit_road</span>
-          Markings
-        </h2>
-      </div>
-      <div class="editorContent">
-        <!-- SignalMaker's Templates tabs (headChoiceButtons role="tablist"). -->
-        <div class="headChoiceButtons" role="tablist" aria-label="Marking direction"><button type="button" id="markingsLongitudinalTab" role="tab" aria-controls="markingsLongitudinal" aria-selected="false" tabindex="-1">Longitudinal</button><button type="button" id="markingsLateralTab" role="tab" aria-controls="markingsLateral" aria-selected="true" class="selected">Lateral</button></div>
-        <div id="markingsLongitudinal" role="tabpanel" aria-labelledby="markingsLongitudinalTab" hidden>
-          <div class="headActions"><button type="button" id="chooseLine">Choose Marking</button><button type="button" id="deleteLine" disabled>Delete</button></div>
-          <div id="lineCurrent" class="markingCurrent"><img id="linePreview" alt="" /><p id="lineName"></p></div>
-          <p id="lineStatus" class="elementsHint" role="status"></p>
-          <div id="lineColorRow" class="fieldRow"><label for="lineColor">Color</label><select id="lineColor"></select></div>
-          <div id="lineWidthRow" class="fieldRow" hidden><label for="lineWidth">Width</label><select id="lineWidth"><option value="8">8 in</option><option value="12">12 in</option><option value="18">18 in</option></select></div>
-          <div id="lineSideRow" class="fieldRow" hidden><label for="lineSide">Solid line</label><select id="lineSide"><option value="left">On the left</option><option value="right">On the right</option></select></div>
-          <div class="fieldRow"><label for="lineContrast">High contrast</label><input id="lineContrast" type="checkbox" aria-describedby="lineContrastHint" /></div>
-          <div id="customLineFields" hidden><img id="customLinePreview" alt="Preview of custom lane line" /><div id="customLineStripes"></div><div class="headActions"><button id="addCustomStripe" type="button">Add Stripe</button></div><p class="fieldHint">Patterns alternate stripe and gap lengths in feet, for example 10, 30 or 2, 4, 6, 4. Leave empty for solid.</p><div class="fieldRow"><label for="customContrastColor">Contrast color</label><input id="customContrastColor" type="color" value="#000000" /></div><div class="fieldRow"><label for="customContrastWidth">Contrast border (in)</label><input id="customContrastWidth" type="number" min="0" max="120" step="0.25" value="1.5" /></div></div>
-          <p id="lineContrastHint" class="fieldHint"></p>
-          <p class="signInstructions">Lines through an intersection follow its movements: draw them in the intersection first, then mark their edges (shown dashed here).</p>
-        </div>
-        <div id="markingsLateral" role="tabpanel" aria-labelledby="markingsLateralTab">
-          <div class="headActions"><button type="button" id="chooseMarking">Choose Marking</button><button type="button" id="deleteMarking" disabled>Delete</button></div>
-          <div id="markingCurrent"><img id="markingPreview" alt="" /><p id="markingName"></p></div>
-          <p id="markingStatus" class="elementsHint" role="status"></p>
-          <div id="customImageFields" hidden>
-            <div class="headActions"><button id="uploadCustomMarking" type="button">Upload Image</button></div>
-            <p id="customImageName" class="fieldHint"></p>
-            <div class="fieldRow"><label for="customImageWidth">Width (ft)</label><input id="customImageWidth" type="number" min="0.1" max="1000" step="0.1" value="8" /></div>
-            <div class="fieldRow"><label for="customImageLength">Length (ft)</label><input id="customImageLength" type="number" min="0.1" max="1000" step="0.1" value="8" /></div>
-            <div class="fieldRow"><label for="customImageOffset">Sideways offset (ft)</label><input id="customImageOffset" type="number" min="-1000" max="1000" step="0.1" value="0" /></div>
-          </div>
-          <input id="customMarkingFile" type="file" accept="image/*,.svg" aria-label="Upload custom marking image" hidden />
-          <div id="markingWordFields" hidden>
-            <div class="fieldRow"><label for="markingText">Message</label><textarea id="markingText" rows="3" spellcheck="false" autocapitalize="characters" placeholder="Type a message" aria-describedby="markingTextHint"></textarea></div>
-            <p id="markingTextHint" class="fieldHint">Enter starts a new line. The first line is nearest the driver.</p>
-            <div class="fieldRow">
-              <label for="markingGap">Line spacing (ft)</label>
-              <div class="dimensionInputs">
-                <input id="markingGap" type="range" min="32" max="80" step="1" value="32" />
-                <input id="markingGapValue" type="number" min="32" max="80" step="1" value="32" aria-label="Line spacing in feet" />
-              </div>
-            </div>
-          </div>
-          <div id="markingShieldFields" hidden>
-            <div id="markingRouteRow" class="fieldRow"><label for="markingRoute">Route number</label><input id="markingRoute" type="text" inputmode="numeric" pattern="[0-9]{1,3}" maxlength="3" required /></div>
-            <div class="fieldRow"><label for="markingSize">Size</label><select id="markingSize"><option value="limited">Large</option><option value="arterial">Small</option></select></div>
-          </div>
-          <div id="markingSpeedFields" class="fieldRow" hidden><label for="markingSpeed">Speed limit</label><select id="markingSpeed"><option value="fast">45 mph or greater</option><option value="slow">Less than 45 mph</option></select></div>
-          <div id="markingCrosswalkColorRow" class="fieldRow" hidden><label for="markingCrosswalkColor">Color</label><select id="markingCrosswalkColor"><option value="white">White</option><option value="yellow">Yellow</option></select></div>
-          <div id="markingEnhancedRow" class="fieldRow" hidden><label for="markingEnhanced">Enhanced crosswalk</label><input id="markingEnhanced" type="checkbox" /></div>
-          <div id="markingForceBarsRow" class="fieldRow" hidden><label for="markingForceBars">Force bars</label><input id="markingForceBars" type="checkbox" /></div>
-          <div id="markingBarAngleRow" class="fieldRow" hidden><label for="markingBarAngle">Angle (°)</label><div class="dimensionInputs"><input id="markingBarAngle" type="range" min="-90" max="90" step="1" value="0" title="0° is perpendicular to the crossing" /><input id="markingBarAngleValue" type="number" min="-90" max="90" step="1" value="0" aria-label="Crosswalk bar angle in degrees" title="0° is perpendicular to the crossing" /></div></div>
-          <div id="markingAestheticToggleRow" class="fieldRow" hidden><label for="markingAesthetic">Aesthetic treatment</label><input id="markingAesthetic" type="checkbox" /></div>
-          <div id="markingVariantFields" class="fieldRow" hidden><label for="markingVariant">Treatment</label><select id="markingVariant"></select></div>
-          <div id="markingBlockMessageFields" class="fieldRow" hidden><label for="markingBlockMessage">Message</label><select id="markingBlockMessage"><option value="doNotBlock">DO NOT BLOCK</option><option value="keepClear">KEEP CLEAR</option></select></div>
-          <div id="markingExtentFields" class="fieldRow" hidden><label for="markingExtent">Marked length (ft)</label><div class="dimensionInputs"><input id="markingExtent" type="range" min="10" max="500" step="1" value="40" /><input id="markingExtentValue" type="number" min="10" max="500" step="1" value="40" aria-label="Marked length in feet" /></div></div>
-          <div id="markingTickCountFields" class="fieldRow" hidden><label for="markingTickCount">Pairs of ticks</label><input id="markingTickCount" type="number" min="2" max="100" step="1" value="12" /></div>
-          <div id="markingTableFields" class="fieldRow" hidden><label for="markingTableWidth">Table center length (ft)</label><div class="dimensionInputs"><input id="markingTableWidth" type="range" min="6" max="30" step="0.5" value="10" /><input id="markingTableWidthValue" type="number" min="6" max="30" step="0.5" value="10" aria-label="Table center length in feet" /></div></div>
-          <div id="markingAestheticFields" class="fieldRow" hidden><label for="markingAestheticTone">Surface color</label><select id="markingAestheticTone"><option value="brick">Brick red</option><option value="rust">Rust</option><option value="brown">Brown</option><option value="burgundy">Burgundy</option><option value="clay">Clay</option><option value="tan">Tan</option><option value="custom">Custom…</option></select></div>
-          <div id="markingAestheticColorRow" class="fieldRow" hidden><label for="markingAestheticColor">Custom color</label><input id="markingAestheticColor" type="color" value="#873f32" /></div>
-          <div id="markingAestheticImageFields" hidden>
-            <div class="headActions"><button id="uploadCrosswalkImage" type="button">Upload Image</button><button id="removeCrosswalkImage" type="button">Remove Image</button></div>
-            <input id="crosswalkImageFile" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload crosswalk treatment image" hidden />
-            <p id="crosswalkImageName" class="elementsHint"></p>
-            <div class="fieldRow"><label for="crosswalkImageFit">Image fit</label><select id="crosswalkImageFit"><option value="cover">Cover from center (crop overflow)</option><option value="stretch">Stretch to fill</option></select></div>
-          </div>
-          <p id="markingTreatmentHint" class="fieldHint"></p>
-          <div id="markingCrosswalkFields" hidden>
-            <div class="fieldRow">
-              <label for="markingCrosswalkWidth">Width (ft)</label>
-              <div class="dimensionInputs">
-                <input id="markingCrosswalkWidth" type="range" min="6" max="30" step="0.5" value="10" />
-                <input id="markingCrosswalkWidthValue" type="number" min="6" max="30" step="0.5" value="10" aria-label="Crosswalk width in feet" />
-              </div>
-            </div>
-          </div>
-          <div id="markingDotRow" class="fieldRow" hidden><label for="markingDot">Roundabout dot</label><input id="markingDot" type="checkbox" /></div>
-          <div id="markingLineFields" hidden>
-            <div class="fieldRow"><label for="markingAllLanes">Extend across all lanes</label><input id="markingAllLanes" type="checkbox" aria-describedby="markingAllLanesHint" /></div>
-            <p id="markingAllLanesHint" class="fieldHint">Or hold Shift while placing. Skips bike lanes.</p>
-          </div>
-          <div class="fieldRow"><label for="markingContrast">High contrast</label><input id="markingContrast" type="checkbox" /></div>
-          <div id="markingContrastStyleRow" class="fieldRow" hidden><label for="markingContrastStyle">Contrast style</label><select id="markingContrastStyle"><option value="border">Border</option><option value="block">Block</option></select></div>
-          <div id="markingRepeatFields" hidden>
-            <hr />
-            <h3>Repeat</h3>
-            <div class="fieldRow">
-              <label for="markingSpacing">Spacing (ft)</label>
-              <div class="dimensionInputs">
-                <input id="markingSpacing" type="range" min="10" max="500" step="5" value="100" />
-                <input id="markingSpacingValue" type="number" min="10" max="500" step="5" value="100" aria-label="Repeat spacing in feet" />
-              </div>
-            </div>
-            <div id="markingRepeatLengthRow" class="fieldRow"><label for="markingRepeatLength">Range (ft)</label><input id="markingRepeatLength" type="number" min="0" step="5" value="0" /></div>
-            <p id="markingRepeatHint" class="fieldHint"></p>
-          </div>
-          <p class="signInstructions">Hover over a lane to preview, then click to add. Hold Shift for all lanes in that direction. Drag a marking to move it.</p>
         </div>
       </div>
     </section>

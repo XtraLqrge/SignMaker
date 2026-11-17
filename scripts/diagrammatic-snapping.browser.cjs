@@ -11,7 +11,7 @@ const {chromium,webkit}=require('playwright'),assert=require('node:assert/strict
  const angleOf=d=>{const p=[...d.matchAll(/[ML]([-\d.e+]+),([-\d.e+]+)/g)].map(m=>({x:+m[1],y:+m[2]})),n=p.length/2;return Math.atan2((p[n-1].y+p[n].y-p[0].y-p.at(-1).y)/2,(p[n-1].x+p[n].x-p[0].x-p.at(-1).x)/2);};
  const assertAngle=(angle,expected)=>assert.ok(Math.abs(Math.atan2(Math.sin(angle-expected),Math.cos(angle-expected)))<1e-6,`${angle} must snap to ${expected}`);
  for(let k=0;k<8;k++){
-  await page.evaluate(()=>{const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected;s.roads=[];s.joints=[];s.gores=[];e.app.roadEditor.focusRoad(null);e.commit();});
+  await page.evaluate(()=>{const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected;s.roads=[];s.joints=[];e.app.roadEditor.focusRoad(null);e.commit();});
   await page.locator('.diagrammaticEngineControls #addElement').click();await point({x:800,y:500});
   const expected=k*Math.PI/4,raw=expected+.16,target=await position({x:800+220*Math.cos(raw),y:500+220*Math.sin(raw)});
   await page.mouse.move(target.x,target.y);await page.locator('.diagrammaticLiveLayer .diagrammaticRoad.preview').waitFor();

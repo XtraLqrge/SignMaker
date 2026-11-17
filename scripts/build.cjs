@@ -56,7 +56,8 @@ function compactCSS(source) {
   return output;
 }
 function build() {
-  require("./build-diagrammatics.cjs")(root);
+  // The road engine is generated from the vendored StripeMaker sources, not stored.
+  const roadEngine = require("./build-diagrammatics.cjs")(root);
   if (fs.existsSync(manifestPath)) {
     const previous = JSON.parse(fs.readFileSync(manifestPath,'utf8'));
     for (const asset of previous.assets || []) {
@@ -84,7 +85,7 @@ function build() {
   const adapted = new Map();
   const adapt = relative => {
     if (adapted.has(relative)) return adapted.get(relative);
-    let source = fs.readFileSync(path.join(publicRoot,relative),'utf8');
+    let source = relative === 'js/DiagrammaticRoadEngine.js' ? roadEngine : fs.readFileSync(path.join(publicRoot,relative),'utf8');
     if (relative === 'js/main.js') source = source.replace('js/HtmlToImage.js', emitJS('js/HtmlToImage.js'));
     if (relative === 'js/main.js') source = source.replace('js/ExportAssets.js', emitJS('js/ExportAssets.js'));
     if (relative === 'js/ExportAssets.js') source = source.replace('/* EXPORT_ASSET_INDEX */ {}', JSON.stringify(exportAssets.index));

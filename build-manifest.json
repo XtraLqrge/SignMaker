@@ -5,8 +5,8 @@
   "deferredEditor": [
     "js/AlignmentButtons.f1278edc85d1f9aa.js",
     "js/NativeSelect.7b59a44862f35bb2.js",
-    "js/DiagrammaticRoadEngine.95a9fec722cbf541.js",
-    "js/Diagrammatics.e3528ba4efd0da96.js",
+    "js/DiagrammaticRoadEngine.a0ac2546d7522c5d.js",
+    "js/Diagrammatics.b117140221a389df.js",
     "js/Roundabout.08d36150961b04b3.js",
     "js/FDOTSupports.353487bdf39bc15f.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
@@ -591,30 +591,30 @@
     },
     {
       "source": "js/DiagrammaticRoadEngine.js",
-      "output": "js/DiagrammaticRoadEngine.95a9fec722cbf541.js",
+      "output": "js/DiagrammaticRoadEngine.a0ac2546d7522c5d.js",
       "original": {
-        "bytes": 516416,
-        "gzipBytes": 140117,
-        "brotliBytes": 113165
+        "bytes": 211897,
+        "gzipBytes": 58504,
+        "brotliBytes": 48878
       },
       "optimized": {
-        "bytes": 342549,
-        "gzipBytes": 111884,
-        "brotliBytes": 93216
+        "bytes": 138753,
+        "gzipBytes": 47458,
+        "brotliBytes": 40488
       }
     },
     {
       "source": "js/Diagrammatics.js",
-      "output": "js/Diagrammatics.e3528ba4efd0da96.js",
+      "output": "js/Diagrammatics.b117140221a389df.js",
       "original": {
-        "bytes": 37521,
-        "gzipBytes": 11021,
-        "brotliBytes": 9754
+        "bytes": 36143,
+        "gzipBytes": 10580,
+        "brotliBytes": 9375
       },
       "optimized": {
-        "bytes": 28065,
-        "gzipBytes": 9317,
-        "brotliBytes": 8237
+        "bytes": 26845,
+        "gzipBytes": 8925,
+        "brotliBytes": 7883
       }
     },
     {

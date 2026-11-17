@@ -149,15 +149,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal)=>{
     `;
     controls.append(css,body);document.getElementById('diagrammaticRoadControls').append(controlsHost);
     body.querySelector('#elementsEditor').hidden=false;
-    // Keep the road geometry engine, but expose only diagrammatic stem editing.
-    body.querySelectorAll('#elementToAdd option:not([value="road"]), #laneType option:not([value="travel"])').forEach(n=>n.remove());
-    body.querySelector('#elementToAdd option').textContent='Arrow stem';
     body.querySelector('#addElement').setAttribute('aria-label','Add arrow stem');
-    const unsupported=['#standaloneBikeTypeRow','#bikeSetup','.bikeActions','#bikeWidthRow','#medianRow','#splitRow','#goreFields','#medianFields','#oppositeHint'];
-    for(const id of ['roadOpposite','laneType'])body.querySelector('#'+id)?.closest('.fieldRow')?.setAttribute('data-diagrammatic-excluded','');
-    for(const selector of unsupported)body.querySelectorAll(selector).forEach(n=>n.setAttribute('data-diagrammatic-excluded',''));
-    body.querySelectorAll('[data-diagrammatic-excluded] input,[data-diagrammatic-excluded] select,[data-diagrammatic-excluded] button').forEach(n=>n.disabled=true);
-    css.textContent+='[data-diagrammatic-excluded] { display:none !important; }';
     const live=document.createElement('div');live.className='diagrammaticLiveLayer';
     const canvas=live.attachShadow({mode:'open'}),style=document.createElement('style');
     style.textContent=window.SignMakerRoadEngineSources.css+`
@@ -173,7 +165,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal)=>{
       .diagrammaticPlacement { position:absolute; border:1px dashed white; background:#ffffff22; pointer-events:none; z-index:20; }
       #workspace.placingSubpanel { cursor:crosshair; }
       #workspace.placingSubpanel .roadOverlay { visibility:hidden; }
-      .roadMarkings,.goreHandle { display:none !important; } .roadLayer { width:100%;height:100%; }
+      .roadMarkings { display:none !important; } .roadLayer { width:100%;height:100%; }
     `;
     const workspace=document.createElement('div');workspace.id='workspace';const stage=document.createElement('div');stage.id='previewStage';
     const content=document.createElement('div');content.className='diagrammaticSheet';stage.append(content);workspace.append(stage);canvas.append(style,workspace);
@@ -216,11 +208,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal)=>{
       };
       const value=target[key];return typeof value==='function'?value.bind(target):value;
     }});
-    const appState={diagrammatic:true,diagrammaticRender:sheet=>{
-      layerStems(sheet);
-      const hint=body.querySelector('#elementsHint');
-      if(hint?.textContent.startsWith('Add a road'))hint.textContent='Add an arrow stem, or click one to edit it. Right-click a lane node for curves, tapers, and overlap order.';
-    },traffic:{reversed:false,sign:1,incoming:e=>e,path:p=>p,angle:a=>a},settings:{get:()=>false}};
+    const appState={diagrammatic:true,diagrammaticRender:layerStems,traffic:{reversed:false,sign:1,incoming:e=>e,path:p=>p,angle:a=>a},settings:{get:()=>false}};
     const scopedWindow=new Proxy(window,{get(target,key){
       if(key==='StripeMaker')return appState;if(key==='DiagrammaticRoadRenderer')return renderer;
       if(key==='addEventListener')return(type,fn,options)=>{
@@ -230,7 +218,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal)=>{
       const value=target[key];return typeof value==='function'?value.bind(target):value;
     }});
     let sign=null,sheet=null,committing=false,graphKey='',pendingSave=false;
-    const snapshot=()=>Object.fromEntries(['width','height','inchesPerPixel','roads','joints','gores','medians','autoTapers','overlapOrder','lines','surfaces','bridges'].map(k=>[k,structuredClone(sheet[k])]));
+    const snapshot=()=>Object.fromEntries(['width','height','inchesPerPixel','roads','joints','autoTapers','overlapOrder'].map(k=>[k,structuredClone(sheet[k])]));
     const commit=()=>{
       if(!sheet||!sign||committing||api()?.getCurrentPanel()?.sign!==sign)return;
       const graph=snapshot(),key=JSON.stringify(graph);
@@ -427,7 +415,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal)=>{
         const model=normalize(nextSign.diagrammatic);
         if(sign!==nextSign||sheet?.width!==model.width*model.unitsPerRem||sheet?.height!==model.height*model.unitsPerRem||sheet?.consistentGapsOnTurns!==model.consistentGapsOnTurns||JSON.stringify(nextSign.diagrammatic?.roadGraph||null)!==graphKey){
           sign=nextSign;const graph=normalize(sign.diagrammatic).roadGraph;
-          sheet={id:1,name:'Diagrammatic sign',width:1600,height:1000,inchesPerPixel:6,roads:[],joints:[],gores:[],medians:[],intersections:[],lines:[],markings:[],surfaces:[],bridges:[],autoTapers:true,overlapOrder:[],...structuredClone(graph||{}),width:model.width*model.unitsPerRem,height:model.height*model.unitsPerRem,consistentGapsOnTurns:model.consistentGapsOnTurns,content,view:{x:0,y:0,scale:stage.getBoundingClientRect().width/1600}};
+          sheet={id:1,name:'Diagrammatic sign',width:1600,height:1000,inchesPerPixel:6,roads:[],joints:[],autoTapers:true,overlapOrder:[],...structuredClone(graph||{}),width:model.width*model.unitsPerRem,height:model.height*model.unitsPerRem,consistentGapsOnTurns:model.consistentGapsOnTurns,content,view:{x:0,y:0,scale:stage.getBoundingClientRect().width/1600}};
           content.replaceChildren();graphKey=JSON.stringify(graph||snapshot());events.dispatchEvent(new Event('sheetchange'));
         }
         resize();syncVisibility();scheduleCommit();

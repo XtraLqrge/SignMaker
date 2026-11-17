@@ -11,7 +11,7 @@ const {chromium,webkit}=require('playwright'),assert=require('node:assert/strict
   s.roads=[{id:1,lanes:3,laneWidth:12,ends:[{joint:1,sign:1,length:null},{joint:2,sign:1,length:null}]},{id:2,lanes:3,laneWidth:12,arcAngle:90*turn,ends:[{joint:2,sign:1,length:null},{joint:3,sign:1,length:null}]}];
   s.joints=[{id:1,x:250,y:300,root:1,dir:{x:1,y:0},links:[]},{id:2,x:650,y:300,root:1,dir:{x:1,y:0},links:[{a:1,b:2,ai:0,bi:0}]},{id:3,x:950,y:300+300*turn,root:2,dir:{x:0,y:turn},links:[]}];
   if(reverse){for(const r of s.roads){r.ends.reverse();if(r.arcAngle!=null)r.arcAngle=-r.arcAngle;}for(const j of s.joints){j.dir.x*=-1;j.dir.y*=-1;}}
-  s.gores=[];s.overlapOrder=[];e.app.roadEditor.focusRoad(s.roads[1]);e.commit();
+  s.overlapOrder=[];e.app.roadEditor.focusRoad(s.roads[1]);e.commit();
  },{reverse,turn});
  const state=()=>page.evaluate(()=>{
   const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected,r=s.roads[1],joint=s.joints.find(j=>j.id===2);

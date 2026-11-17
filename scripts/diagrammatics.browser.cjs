@@ -14,7 +14,7 @@ const assert=require('node:assert/strict');
  await page.waitForFunction(()=>window.SignMakerDiagrammatics?.engine?.app.roadEditor);
  assert.equal(await page.locator('iframe').count(),0);
  assert.deepEqual(await page.locator('.diagrammaticEngineControls #elementToAdd option').evaluateAll(ns=>ns.map(n=>n.value)),['road','subpanel']);
- assert.deepEqual(await page.locator('.diagrammaticEngineControls #laneType option').evaluateAll(ns=>ns.map(n=>n.value)),['travel']);
+ assert.equal(await page.locator('.diagrammaticEngineControls #laneType, .diagrammaticEngineControls #roadOpposite, .diagrammaticEngineControls #markingsEditor').count(),0);
  const clickPoint=async point=>{
   await frame.locator('.diagrammaticLiveLayer #workspace').click({trial:true});
   const local=await frame.evaluate(p=>{const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected,r=e.live.getBoundingClientRect();return{x:p.x*r.width/s.width,y:p.y*r.height/s.height};},point);
@@ -25,7 +25,7 @@ const assert=require('node:assert/strict');
   await frame.evaluate(()=>{const s=SignMakerDiagrammatics.engine.app.sheets.selected;
    s.roads=[{id:1,lanes:2,laneWidth:12,ends:[{joint:1,sign:1,length:null},{joint:2,sign:1,length:null}]}];
    s.joints=[{id:1,x:400,y:500,root:1,dir:{x:1,y:0},links:[]},{id:2,x:1300,y:500,root:1,dir:{x:1,y:0},links:[]}];
-   s.gores=[];SignMakerDiagrammatics.engine.app.roadEditor.focusRoad(null);SignMakerDiagrammatics.engine.commit();
+   SignMakerDiagrammatics.engine.app.roadEditor.focusRoad(null);SignMakerDiagrammatics.engine.commit();
   });
   if(!await page.locator('#roadLanes').isVisible()){await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();}
   await frame.locator('#roadLanes').fill('1');await frame.locator('#roadLanes').press('Tab');
@@ -95,7 +95,7 @@ const assert=require('node:assert/strict');
  // Crossing clearance, black lane lines, layer order, and view-only zoom.
  await page.evaluate(()=>{
   const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected;
-  s.overlapOrder=[];s.gores=[];
+  s.overlapOrder=[];
   s.roads=[{id:11,lanes:3,laneWidth:12,ends:[{joint:11,sign:1,length:null},{joint:12,sign:1,length:null}]},{id:12,lanes:3,laneWidth:12,ends:[{joint:13,sign:1,length:null},{joint:14,sign:1,length:null}]}];
   s.joints=[{id:11,x:350,y:500,root:11,dir:{x:1,y:0},links:[]},{id:12,x:1250,y:500,root:11,dir:{x:1,y:0},links:[]},{id:13,x:800,y:800,root:12,dir:{x:0,y:-1},links:[]},{id:14,x:800,y:200,root:12,dir:{x:0,y:-1},links:[]}];
   e.app.roadEditor.focusRoad(null);e.commit();

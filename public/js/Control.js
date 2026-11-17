@@ -216,6 +216,20 @@ const encodeMotorwayRouteText = (value) => {
   return text.match(/NE|SE|NW|SW|[ABEMNSW0-9 \n]/g)?.map((part) => directions[part] || part).join("") || "";
 };
 
+// A typed "\n" breaks a banner onto more lines. The first line stays a plain
+// text node so it keeps the single-line box and position; the rest stack
+// tightly below it in their own block.
+const setMultilineBannerText = (element, text) => {
+  const [firstLine, ...moreLines] = String(text ?? "").split("\n");
+  if (!element || !moreLines.length) return;
+  element.classList.add("multilineBanner");
+  element.textContent = firstLine || " ";
+  const extraLines = document.createElement("span");
+  extraLines.className = "bannerExtraLines";
+  extraLines.textContent = moreLines.join("\n");
+  element.appendChild(extraLines);
+};
+
 const applyMotorwayTextFallback = (element, fontFamily) => {
   if (!element || !/^Motorway (?:Permanent|Temporary)$/.test(fontFamily)) return;
 
@@ -4522,15 +4536,17 @@ ShieldElement.prototype.createBannerElement = function (
     bannerEl.classList.add("multilineRoadName");
   }
 
-  const displayBannerValue = isRoadNameBanner
-    ? normalizedBannerValue.replace(/\\n/g, "\n")
-    : normalizedBannerValue;
+  const displayBannerValue = normalizedBannerValue.replace(/\\n/g, "\n");
 
   bannerEl.textContent = bannerInfo.isBlankPlaceholder
     ? "W"
     : normalizedBannerValue
       ? displayBannerValue
       : " ";
+
+  if (!isRoadNameBanner && !bannerInfo.isBlankPlaceholder) {
+    setMultilineBannerText(bannerEl, displayBannerValue);
+  }
 
   if (/^Motorway (?:Permanent|Temporary)$/.test(renderedFont)) {
     bannerEl.style.setProperty("--bannerFontFamily", `"${getMotorwayFallbackFont(renderedFont)}"`);

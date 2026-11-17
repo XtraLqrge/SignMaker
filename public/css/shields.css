@@ -3249,3 +3249,12 @@
 .bE-shieldElement .stackedBannerSlot.detourStackedBanner.bannerSlot-left .detourPlaque.orangeElmt {
   margin-right: calc(0.5rem * var(--shieldScale, 1)) !important;
 }
+
+/* Banners with a typed "\n": the first line keeps its single-line box and
+   position, and the extra lines stack tightly below it. */
+.bannerA .bannerExtraLines,
+.bannerB .bannerExtraLines {
+  display: block;
+  line-height: 1;
+  white-space: pre-line;
+}

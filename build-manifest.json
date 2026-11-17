@@ -8,7 +8,7 @@
     "js/DiagrammaticRoadEngine.95a9fec722cbf541.js",
     "js/Diagrammatics.e3528ba4efd0da96.js",
     "js/Roundabout.08d36150961b04b3.js",
-    "js/FDOTSupports.26d110c7592ad794.js",
+    "js/FDOTSupports.353487bdf39bc15f.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
     "js/form.3d3e62d7e02760ce.js",
     "js/IndexDB.905b66ca7e8b07ba.js",
@@ -23,11 +23,11 @@
     "js/Settings22.d5c85ec51307e808.js",
     "js/DropdownTheme.f1d44178025090c0.js"
   ],
-  "deferredStyles": "css/app.82d712c9a5cf6e84.css",
+  "deferredStyles": "css/app.f06078cc32d10c09.css",
   "startupJS": {
-    "bytes": 620884,
-    "gzipBytes": 169961,
-    "brotliBytes": 141128
+    "bytes": 621425,
+    "gzipBytes": 170208,
+    "brotliBytes": 141333
   },
   "criticalCSS": {
     "bytes": 269426,
@@ -46,29 +46,29 @@
   },
   "assets": [
     {
-      "output": "export-assets/6a552ed6e3f57e4b.js",
+      "output": "export-assets/e78c7be0801a2585.js",
       "exportOnly": true,
-      "bytes": 1169475
+      "bytes": 1701039
     },
     {
-      "output": "export-assets/153c7eb86ecb8917.js",
+      "output": "export-assets/41d52caa39665585.js",
       "exportOnly": true,
-      "bytes": 1407150
+      "bytes": 2598626
     },
     {
-      "output": "export-assets/d802489114604235.js",
+      "output": "export-assets/1f841177679cdc18.js",
       "exportOnly": true,
-      "bytes": 63040
+      "bytes": 102008
     },
     {
-      "output": "export-assets/ee61bf53c833243c.js",
+      "output": "export-assets/ded10921fc4b35fa.js",
       "exportOnly": true,
-      "bytes": 1045239
+      "bytes": 1733027
     },
     {
-      "output": "export-assets/082f11d96e257335.js",
+      "output": "export-assets/525887e80f158b47.js",
       "exportOnly": true,
-      "bytes": 1045309
+      "bytes": 1733193
     },
     {
       "output": "export-assets/85a4eb0ffbf3ad29.js",
@@ -76,19 +76,19 @@
       "bytes": 939
     },
     {
-      "output": "export-assets/93f4fff87521491c.js",
+      "output": "export-assets/1fa8c6fec18d48ce.js",
       "exportOnly": true,
-      "bytes": 5822
+      "bytes": 6086
     },
     {
-      "output": "export-assets/9888b72ed68d54ee.js",
+      "output": "export-assets/53464c629769c3dc.js",
       "exportOnly": true,
-      "bytes": 12991
+      "bytes": 13967
     },
     {
-      "output": "export-assets/45d16a4621920322.js",
+      "output": "export-assets/265b5e40a7771b46.js",
       "exportOnly": true,
-      "bytes": 1794
+      "bytes": 1866
     },
     {
       "output": "export-assets/4bdad975e05bce78.js",
@@ -146,154 +146,154 @@
       "bytes": 19516
     },
     {
-      "output": "export-assets/c3a3f946f503482d.js",
+      "output": "export-assets/92e70d6a6e06b6e8.js",
       "exportOnly": true,
-      "bytes": 1385
+      "bytes": 1429
     },
     {
-      "output": "export-assets/335b521fa1b43168.js",
+      "output": "export-assets/50ca62f9a8101828.js",
       "exportOnly": true,
-      "bytes": 1363979
+      "bytes": 2621731
     },
     {
-      "output": "export-assets/4112be7cb98df6a2.js",
+      "output": "export-assets/efb3471981a677d0.js",
       "exportOnly": true,
-      "bytes": 3186
+      "bytes": 3282
     },
     {
-      "output": "export-assets/69e60a42636bc1d2.js",
+      "output": "export-assets/afd60fdcf5c4e3e6.js",
       "exportOnly": true,
-      "bytes": 10526
+      "bytes": 10946
     },
     {
-      "output": "export-assets/3f22fa3fbcbed942.js",
+      "output": "export-assets/0c2f184b621d517f.js",
       "exportOnly": true,
-      "bytes": 39475
+      "bytes": 68211
     },
     {
-      "output": "export-assets/98511a643ff865c7.js",
+      "output": "export-assets/d20da5f4ea647fa4.js",
       "exportOnly": true,
-      "bytes": 1558302
+      "bytes": 3109398
     },
     {
-      "output": "export-assets/a393e051c55c08f6.js",
+      "output": "export-assets/3fc77fe1d3682f56.js",
       "exportOnly": true,
-      "bytes": 11991
+      "bytes": 12647
     },
     {
-      "output": "export-assets/9ae494f4ba7abd11.js",
+      "output": "export-assets/5c22f404bbca85d7.js",
       "exportOnly": true,
-      "bytes": 99516
+      "bytes": 156540
     },
     {
-      "output": "export-assets/9ef69c98e2679220.js",
+      "output": "export-assets/67bc0be2a2303170.js",
       "exportOnly": true,
-      "bytes": 2295847
+      "bytes": 4583179
     },
     {
-      "output": "export-assets/f42e8f8e4180c2b3.js",
+      "output": "export-assets/4d16ef4c32d5f5e4.js",
       "exportOnly": true,
-      "bytes": 13494
+      "bytes": 15330
     },
     {
-      "output": "export-assets/0579b4107f530f3b.js",
+      "output": "export-assets/02df614f842216e7.js",
       "exportOnly": true,
-      "bytes": 482730
+      "bytes": 955174
     },
     {
-      "output": "export-assets/a9bae82cb3772801.js",
+      "output": "export-assets/c09b34dcaf4580b9.js",
       "exportOnly": true,
-      "bytes": 189602
+      "bytes": 256402
     },
     {
-      "output": "export-assets/c0d0e7aa02bb2a58.js",
+      "output": "export-assets/f8531080ba09395c.js",
       "exportOnly": true,
-      "bytes": 306502
+      "bytes": 603730
     },
     {
-      "output": "export-assets/f90bdf1a9d50c446.js",
+      "output": "export-assets/0375d69c38af7f14.js",
       "exportOnly": true,
-      "bytes": 5069850
+      "bytes": 10137842
     },
     {
-      "output": "export-assets/34a374af3696e92b.js",
+      "output": "export-assets/a4129e9bab796463.js",
       "exportOnly": true,
-      "bytes": 12522
+      "bytes": 13014
     },
     {
-      "output": "export-assets/98c089437fef3196.js",
+      "output": "export-assets/3b915bd484dce64f.js",
       "exportOnly": true,
-      "bytes": 118330
+      "bytes": 235682
     },
     {
-      "output": "export-assets/cc2f4d522cd0209e.js",
+      "output": "export-assets/819266745383263b.js",
       "exportOnly": true,
-      "bytes": 241762
+      "bytes": 481770
     },
     {
-      "output": "export-assets/635bcbd39a473e51.js",
+      "output": "export-assets/4c5a3be44c871a7b.js",
       "exportOnly": true,
-      "bytes": 17926
+      "bytes": 18466
     },
     {
-      "output": "export-assets/b154fd7fafdc688f.js",
+      "output": "export-assets/28820c221b1079bd.js",
       "exportOnly": true,
-      "bytes": 59426
+      "bytes": 114358
     },
     {
-      "output": "export-assets/5c87f0541e88a186.js",
+      "output": "export-assets/e845c2e5bffa4b15.js",
       "exportOnly": true,
-      "bytes": 551410
+      "bytes": 1099966
     },
     {
-      "output": "export-assets/e9f7263d15d1e501.js",
+      "output": "export-assets/4e60e93dea68c362.js",
       "exportOnly": true,
-      "bytes": 25798
+      "bytes": 48826
     },
     {
-      "output": "export-assets/42804b9f9592c3b8.js",
+      "output": "export-assets/13f043ac033fce85.js",
       "exportOnly": true,
-      "bytes": 813902
+      "bytes": 1325558
     },
     {
-      "output": "export-assets/864106014905de69.js",
+      "output": "export-assets/2325fc3682d1af51.js",
       "exportOnly": true,
-      "bytes": 200070
+      "bytes": 399530
     },
     {
-      "output": "export-assets/b4893fa76b57e42f.js",
+      "output": "export-assets/8503cc15920427e4.js",
       "exportOnly": true,
-      "bytes": 1898342
+      "bytes": 3794526
     },
     {
-      "output": "export-assets/d67f7a3647a75184.js",
+      "output": "export-assets/cdee2cb570567f13.js",
       "exportOnly": true,
-      "bytes": 776090
+      "bytes": 1550530
     },
     {
-      "output": "export-assets/32bcdec3296f7a8f.js",
+      "output": "export-assets/8eb84e81fb4c294d.js",
       "exportOnly": true,
-      "bytes": 512662
+      "bytes": 1017730
     },
     {
-      "output": "export-assets/88063ab8547dfec5.js",
+      "output": "export-assets/3350cddf32b0480a.js",
       "exportOnly": true,
-      "bytes": 1974718
+      "bytes": 3895038
     },
     {
-      "output": "export-assets/ab994c631f16bc09.js",
+      "output": "export-assets/379302696db0cb96.js",
       "exportOnly": true,
-      "bytes": 197180
+      "bytes": 388500
     },
     {
-      "output": "export-assets/1b1367fec96502c0.js",
+      "output": "export-assets/b44c837218a15fc3.js",
       "exportOnly": true,
-      "bytes": 46050
+      "bytes": 67782
     },
     {
-      "output": "export-assets/2ec869622a76ef92.js",
+      "output": "export-assets/04f42995135f9896.js",
       "exportOnly": true,
-      "bytes": 7884515
+      "bytes": 15688835
     },
     {
       "source": "js/EditorRuntime.js",
@@ -479,16 +479,16 @@
     },
     {
       "source": "js/Control.js",
-      "output": "js/Control.ff64d1423c396b4e.js",
+      "output": "js/Control.54d7d9936a2132f2.js",
       "original": {
-        "bytes": 305969,
-        "gzipBytes": 61949,
-        "brotliBytes": 50723
+        "bytes": 306672,
+        "gzipBytes": 62189,
+        "brotliBytes": 50925
       },
       "optimized": {
-        "bytes": 197176,
-        "gzipBytes": 50032,
-        "brotliBytes": 41272
+        "bytes": 197492,
+        "gzipBytes": 50128,
+        "brotliBytes": 41354
       }
     },
     {
@@ -535,30 +535,30 @@
     },
     {
       "source": "js/ExportAssets.js",
-      "output": "js/ExportAssets.d10ac42faf0cac6f.js",
+      "output": "js/ExportAssets.b8b151dcbed30267.js",
       "original": {
-        "bytes": 389684,
-        "gzipBytes": 128567,
-        "brotliBytes": 31741
+        "bytes": 596493,
+        "gzipBytes": 180600,
+        "brotliBytes": 34265
       },
       "optimized": {
-        "bytes": 384102,
-        "gzipBytes": 128397,
-        "brotliBytes": 31481
+        "bytes": 589343,
+        "gzipBytes": 180202,
+        "brotliBytes": 33982
       }
     },
     {
       "source": "js/main.js",
-      "output": "js/main.97d59579d7b2227e.js",
+      "output": "js/main.86f8a6f814e617e5.js",
       "original": {
-        "bytes": 765368,
-        "gzipBytes": 134458,
-        "brotliBytes": 106335
+        "bytes": 765552,
+        "gzipBytes": 134679,
+        "brotliBytes": 106459
       },
       "optimized": {
-        "bytes": 330950,
-        "gzipBytes": 87944,
-        "brotliBytes": 72000
+        "bytes": 331175,
+        "gzipBytes": 88095,
+        "brotliBytes": 72123
       }
     },
     {
@@ -633,16 +633,16 @@
     },
     {
       "source": "js/FDOTSupports.js",
-      "output": "js/FDOTSupports.26d110c7592ad794.js",
+      "output": "js/FDOTSupports.353487bdf39bc15f.js",
       "original": {
-        "bytes": 19782,
-        "gzipBytes": 5925,
-        "brotliBytes": 5227
+        "bytes": 26003,
+        "gzipBytes": 7638,
+        "brotliBytes": 6751
       },
       "optimized": {
-        "bytes": 12056,
-        "gzipBytes": 4862,
-        "brotliBytes": 4276
+        "bytes": 16191,
+        "gzipBytes": 6277,
+        "brotliBytes": 5570
       }
     },
     {
@@ -846,16 +846,16 @@
         "css/mobile.css",
         "css/segmented-controls.css"
       ],
-      "output": "css/app.82d712c9a5cf6e84.css",
+      "output": "css/app.f06078cc32d10c09.css",
       "original": {
-        "bytes": 839644,
-        "gzipBytes": 137728,
-        "brotliBytes": 108109
+        "bytes": 839900,
+        "gzipBytes": 137810,
+        "brotliBytes": 108148
       },
       "optimized": {
-        "bytes": 709418,
-        "gzipBytes": 115572,
-        "brotliBytes": 91933
+        "bytes": 709521,
+        "gzipBytes": 115597,
+        "brotliBytes": 91957
       }
     },
     {

@@ -11064,8 +11064,12 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     const restoreCallbacks = [];
 
     for (const bannerEl of bannerElements) {
-      if (plainTextOnly && bannerEl.children.length) continue;
-      const text = bannerEl.textContent || "";
+      // Extra "\n" lines live in their own span; only the first line gets the letter.
+      const extraLines = bannerEl.querySelector(":scope > .bannerExtraLines");
+      if (plainTextOnly && bannerEl.children.length !== (extraLines ? 1 : 0)) continue;
+      const text = extraLines
+        ? Array.from(bannerEl.childNodes, (node) => node === extraLines ? "" : node.textContent).join("")
+        : bannerEl.textContent || "";
 
       if (!text.trim()) {
         continue;
@@ -11126,6 +11130,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
       if (afterFirst) {
         bannerEl.appendChild(document.createTextNode(afterFirst));
+      }
+
+      if (extraLines) {
+        bannerEl.appendChild(extraLines);
       }
 
       restoreCallbacks.push(() => {
@@ -14113,18 +14121,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                       bannerElmt.className += " TOLL";
                   }
                   
-                  if (shield.bannerType != "None") {
-                      bannerElmt.appendChild(document.createTextNode(shield.bannerType));
-                  } else {
-                      bannerElmt.appendChild(document.createTextNode(" "));
-                  }
-                  
-                  if (shield.bannerType2 != "None") {
-                      bannerElmt2.appendChild(
-                                              document.createTextNode(shield.bannerType2)
-                                              );
-                  } else {
-                      bannerElmt2.appendChild(document.createTextNode(" "));
+                  // A typed "\n" breaks the banner onto another line.
+                  for (const [elmt, text] of [[bannerElmt, shield.bannerType], [bannerElmt2, shield.bannerType2]]) {
+                      const value = text != "None" ? String(text ?? "").replace(/\\n/g, "\n") : " ";
+                      elmt.appendChild(document.createTextNode(value));
+                      setMultilineBannerText(elmt, value);
                   }
                   
                   // Font change

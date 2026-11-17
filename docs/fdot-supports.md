@@ -8,9 +8,14 @@ measures geometry when an FDOT preset is active.
 
 The 26 presets fall into ground, overhead, and street or wire supports.
 The renderer builds an orthographic front elevation as an SVG behind the
-panels. Overhead trusses use level chords, verticals, front-plane diagonals,
-upright connections, and symmetric base plates. Material shading indicates
-depth. Catwalk floors and luminaires use the same projection.
+panels. Overhead trusses are the FDOT triangular three-chord truss seen head
+on: two front chords with verticals and one diagonal per panel, and a back
+chord at mid-depth. The Warren webs of the top and bottom inclined faces show
+through the front panels. They meet the back chord at panel points and the
+front chords at mid-panel. Depth shading is lightest on the front face, a
+middle tone on the inclined webs and uprights, and darkest on the back chord.
+Upright connections show the chord plates edge-on, with bolts and gussets.
+Catwalk floors and luminaires use the same projection.
 [FDOT Standard Plans, FY 2026–27](https://www.fdot.gov/design/standardplans/current)
 
 | FDOT drawing | Presets / details used |

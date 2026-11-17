@@ -1,6 +1,6 @@
 /* Visual elevations based on FDOT FY 2026-27 Standard Plans.
  * See docs/fdot-supports.md for the drawing/sheet behind each family.
- * Overhead geometry follows the orthographic front elevations, with material shading.
+ * Overhead trusses are drawn head on, with depth shading on the three-chord section.
  * Span width fits the signs. Vertical dimensions use a fixed mounting layout.
  */
 window.SignMakerFDOTSupports = (() => {
@@ -68,6 +68,23 @@ window.SignMakerFDOTSupports = (() => {
     hitContext.clearRect(0, 0, 1, 1);
     hitContext.drawImage(layer, sourceX, sourceY, 1, 1, 0, 0, 1, 1);
     return hitContext.getImageData(0, 0, 1, 1).data[3] > 0;
+  }
+
+  let colorContext;
+  function rgbOf(color) {
+    colorContext ||= document.createElement("canvas").getContext("2d");
+    if (!colorContext) return [128, 128, 128];
+    colorContext.fillStyle = "#000";
+    colorContext.fillStyle = color || "#000";
+    const value = colorContext.fillStyle;
+    if (value[0] === "#") return [1, 3, 5].map((i) => parseInt(value.slice(i, i+2), 16));
+    return (value.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
+  }
+
+  function mixColor(a, b, amount) {
+    const from = rgbOf(a);
+    const to = rgbOf(b);
+    return `rgb(${from.map((v, i) => Math.round(v+(to[i]-v)*amount)).join(",")})`;
   }
 
   function prepare(post, container, panels) {
@@ -150,6 +167,13 @@ window.SignMakerFDOTSupports = (() => {
     const n = (v) => Number(v.toFixed(3));
     const geometry = [support.id, width, rem, px, pw, t, mid, light, dark].join("|");
     if (renderedGeometry.get(layer) === geometry) return;
+    // Depth tones: near members are lighter, far members darker.
+    const tone = (id, hi, base, lo) => ({ id, hi, base, lo, edge: mixColor(lo, "#000", 0.25) });
+    const tones = {
+      near: tone("near", mixColor(light, "#fff", 0.45), mixColor(mid, light, 0.6), mid),
+      middle: tone("middle", mid, mixColor(mid, dark, 0.35), mixColor(mid, dark, 0.8)),
+      far: tone("far", mixColor(mid, dark, 0.45), mixColor(mid, dark, 0.85), mixColor(dark, "#000", 0.35)),
+    };
     const parts = [];
     const rect = (x, y, width, height, fill = "url(#metal)", extra = "") =>
       parts.push(`<rect x="${n(x)}" y="${n(y)}" width="${n(Math.max(0, width))}" height="${n(Math.max(0, height))}" fill="${fill}" ${extra}/>`);
@@ -259,37 +283,110 @@ window.SignMakerFDOTSupports = (() => {
         } else column(x, py+0.15, bottom, t*(support.base || support.kind === "offset" ? 0.65 : 0.4), support.base || (support.kind === "offset" ? "bolted" : null));
       }
     } else if (support.kind === "truss") {
+      // 700-040/041 sheets 3-4: a triangular three-chord truss. The two front chords
+      // sit C apart, and the back chord is behind them at mid-depth (30° side elevation).
+      // Seen head on, the back chord and the inclined-face webs show through the
+      // front panels. Shading darkens with distance from the viewer.
       const top = 1.15;
       const lower = 5.5;
+      const back = (top+lower)/2;
       const chord = t*0.46;
-      const web = Math.max(0.1, t*0.16);
+      const web = Math.max(0.11, t*0.2);
       const targetCount = Math.max(3, Math.ceil((right-left)/5));
       // Use an even panel count for a symmetric span elevation (700-041 sheet 4).
       const count = support.side ? targetCount : Math.ceil(targetCount/2)*2;
       const bay = (right-left)/count;
       const uprights = support.side ? [support.side === "left" ? left : right] : [left, right];
-      uprights.forEach((x) => column(x, top-0.5, bottom, t, "anchor"));
-      // 700-040/041 sheet 4 explicitly omits out-of-plane members in FRONT ELEVATION.
-      // Cantilever diagonals rise toward the upright; span diagonals reverse at midspan.
-      // The rear chord and triangular cross section belong to the side view.
-      parts.push(`<g data-fdot-part="front-truss" data-panels="${count}" data-depth="${n(lower-top)}">`);
-      parts.push('<g data-fdot-part="front-diagonals">');
-      for (let i=0; i<count; i++) {
-        const x = left+i*bay;
-        const risesRight = support.side ? support.side === "right" : i >= count/2;
-        bar(x, risesRight ? lower : top, x+bay, risesRight ? top : lower, web);
+      const isUpright = (x) => uprights.some((u) => Math.abs(u-x) < 0.01);
+      // Chords run 'OD/2 + 1"' past an upright centerline and 7" past a truss plug.
+      const ends = [left, right].map((x, i) => x+(i ? 1 : -1)*(isUpright(x) ? t/2+0.08 : 0.18));
+      const plate = (x, y, width, height, tone) =>
+        rect(x-width/2, y-height/2, width, height, tone.base, `stroke="${tone.edge}" stroke-width="0.025"`);
+      const nodeBolt = (x, y, tone, r = 0.05) =>
+        parts.push(`<circle cx="${n(x)}" cy="${n(y)}" r="${n(r)}" fill="${tone.lo}" stroke="${tone.hi}" stroke-width="0.02"/>`);
+      const member = (x1, y1, x2, y2, width, tone, kind = "angle") => {
+        const length = Math.hypot(x2-x1, y2-y1);
+        const angle = Math.atan2(y2-y1, x2-x1)*180/Math.PI;
+        rect(0, -width/2, length, width, `url(#${kind}-${tone.id})`,
+          `rx="${n(kind === "pipe" ? width*0.12 : 0.01)}" stroke="${tone.edge}" stroke-width="0.03" transform="translate(${n(x1)} ${n(y1)}) rotate(${n(angle)})"`);
+      };
+      const panelPoints = Array.from({ length: count+1 }, (_, i) => left+i*bay);
+
+      parts.push(`<g data-fdot-part="truss" data-panels="${count}" data-depth="${n(lower-top)}">`);
+      // Farthest: the back chord, its end plates and its web gussets.
+      parts.push('<g data-fdot-part="back-chord">');
+      for (const x of uprights) {
+        const outward = x === left ? -1 : 1;
+        plate(x-outward*0.25*chord, back, t+chord*1.5, 0.09, tones.far);
       }
+      member(ends[0], back, ends[1], back, chord, tones.far, "pipe");
+      for (const x of panelPoints) if (!isUpright(x)) plate(x, back, 0.5, 0.3, tones.far);
       parts.push('</g>');
-      for (let i=0; i<=count; i++) {
-        const x = left+i*bay;
-        bar(x, top, x, lower, web);
+      // Middle: Warren webs in the top and bottom inclined faces (Section B-B / C-C).
+      // They meet the back chord at panel points and the front chords at mid-panel.
+      parts.push('<g data-fdot-part="inclined-webs">');
+      for (let i=0; i<count; i++) {
+        const xm = left+(i+0.5)*bay;
         for (const y of [top, lower]) {
-          rect(x-0.25, y-0.18, 0.5, 0.36, mid);
-          bolt(x, y);
+          member(panelPoints[i], back, xm, y, web, tones.middle);
+          member(xm, y, panelPoints[i+1], back, web, tones.middle);
+          plate(xm, y+(y === top ? 0.14 : -0.14), 0.55, 0.22, tones.middle);
         }
       }
-      bar(left-0.18, top, right+0.18, top, chord);
-      bar(left-0.18, lower, right+0.18, lower, chord);
+      parts.push('</g>');
+      // The upright centerline is between the front and back chords (sheet 3).
+      uprights.forEach((x) => column(x, top-0.75, bottom, t, "anchor"));
+      // Upright-truss connections: chord plates seen edge-on, with bolts and TE gussets.
+      parts.push('<g data-fdot-part="upright-connections">');
+      for (const x of uprights) {
+        const outward = x === left ? -1 : 1;
+        for (const sign of [-1, 1]) {
+          const gx = x+sign*t*0.16;
+          rect(gx-0.03, top-0.72, 0.06, 0.66, tones.near.lo);
+          rect(gx-0.03, lower+0.06, 0.06, 1.1, tones.near.lo);
+        }
+        for (const y of [top, lower]) {
+          const width = t+chord*1.5;
+          const cx = x-outward*0.25*chord;
+          rect(cx-width/2, y-chord/2-0.1, width, 0.1, `url(#plate-${tones.near.id})`, `stroke="${tones.near.edge}" stroke-width="0.02"`);
+          rect(cx-width/2, y+chord/2, width, 0.1, `url(#plate-${tones.near.id})`, `stroke="${tones.near.edge}" stroke-width="0.02"`);
+          for (let b=0; b<5; b++) {
+            const bx = x+(b-2)*t*0.13;
+            rect(bx-0.025, y-chord/2-0.2, 0.05, chord+0.4, tones.near.lo);
+            for (const ny of [y-chord/2-0.2, y+chord/2+0.12]) rect(bx-0.06, ny, 0.12, 0.08, tones.near.base, `stroke="${tones.near.edge}" stroke-width="0.015"`);
+          }
+        }
+      }
+      parts.push('</g>');
+      // Nearest: the front face, with verticals at the panel points and one diagonal
+      // per panel. Cantilever diagonals rise toward the upright; span diagonals reverse
+      // at midspan. Upright ends have no vertical (detail J / H).
+      parts.push('<g data-fdot-part="front-face">');
+      for (let i=0; i<count; i++) {
+        const x = panelPoints[i];
+        const risesRight = support.side ? support.side === "right" : i >= count/2;
+        member(x, risesRight ? lower : top, x+bay, risesRight ? top : lower, web, tones.near);
+      }
+      for (const x of panelPoints) {
+        if (!isUpright(x)) member(x, lower, x, top, web, tones.near);
+        for (const y of [top, lower]) {
+          const dir = y === top ? 1 : -1;
+          plate(x, y+dir*0.2, 0.6, 0.4, tones.near);
+          nodeBolt(x-0.15, y+dir*0.26, tones.near);
+          nodeBolt(x+0.15, y+dir*0.26, tones.near);
+        }
+      }
+      member(ends[0], top, ends[1], top, chord, tones.near, "pipe");
+      member(ends[0], lower, ends[1], lower, chord, tones.near, "pipe");
+      // Truss plugs close the free chord ends.
+      for (const [i, x] of [left, right].entries()) {
+        if (isUpright(x)) continue;
+        for (const y of [top, back, lower]) {
+          const tone = y === back ? tones.far : tones.near;
+          rect(ends[i]-(i ? 0.07 : 0), y-chord*0.58, 0.07, chord*1.16, tone.lo, `stroke="${tone.edge}" stroke-width="0.02"`);
+        }
+      }
+      parts.push('</g>');
       parts.push('</g>');
       windBeams(px+0.65, px+pw-0.65, py+ph*0.25, py+ph*0.78);
       if (support.catwalk) {
@@ -354,7 +451,12 @@ window.SignMakerFDOTSupports = (() => {
       }
     }
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" data-view="${frontView ? "front" : "shaded-elevation"}" width="${width}" height="${h*rem}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="metal"><stop stop-color="${mid}"/><stop offset="0.35" stop-color="${light}"/><stop offset="0.6" stop-color="${mid}"/><stop offset="1" stop-color="${dark}"/></linearGradient><linearGradient id="metalHorizontal" x2="0" y2="1"><stop stop-color="${light}"/><stop offset="0.5" stop-color="${mid}"/><stop offset="1" stop-color="${dark}"/></linearGradient><linearGradient id="concrete"><stop stop-color="#d8d8d2"/><stop offset="0.6" stop-color="#c9c9c2"/><stop offset="1" stop-color="#a8a8a1"/></linearGradient></defs>${parts.join("")}</svg>`;
+    const toneDefs = support.kind === "truss" ? Object.values(tones).map(({ id, hi, base, lo }) =>
+      `<linearGradient id="pipe-${id}" x2="0" y2="1"><stop stop-color="${base}"/><stop offset="0.3" stop-color="${hi}"/><stop offset="0.6" stop-color="${base}"/><stop offset="1" stop-color="${lo}"/></linearGradient>` +
+      `<linearGradient id="angle-${id}" x2="0" y2="1"><stop stop-color="${hi}"/><stop offset="0.24" stop-color="${hi}"/><stop offset="0.24" stop-color="${lo}"/><stop offset="0.34" stop-color="${base}"/><stop offset="1" stop-color="${base}"/></linearGradient>` +
+      `<linearGradient id="plate-${id}" x2="0" y2="1"><stop stop-color="${hi}"/><stop offset="1" stop-color="${lo}"/></linearGradient>`
+    ).join("") : "";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" data-view="${frontView ? "front" : "shaded-elevation"}" width="${width}" height="${h*rem}" viewBox="0 0 ${w} ${h}"><defs>${toneDefs}<linearGradient id="metal"><stop stop-color="${mid}"/><stop offset="0.35" stop-color="${light}"/><stop offset="0.6" stop-color="${mid}"/><stop offset="1" stop-color="${dark}"/></linearGradient><linearGradient id="metalHorizontal" x2="0" y2="1"><stop stop-color="${light}"/><stop offset="0.5" stop-color="${mid}"/><stop offset="1" stop-color="${dark}"/></linearGradient><linearGradient id="concrete"><stop stop-color="#d8d8d2"/><stop offset="0.6" stop-color="#c9c9c2"/><stop offset="1" stop-color="#a8a8a1"/></linearGradient></defs>${parts.join("")}</svg>`;
     layer.setAttribute("src", `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
     layer.dataset.fdotIndex = support.index;
     layer.style.width = `${width}px`;

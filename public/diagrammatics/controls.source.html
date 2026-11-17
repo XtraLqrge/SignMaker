@@ -25,7 +25,7 @@
           <input id="roadLaneWidth" type="number" min="8" max="50" step="0.5" value="12" />
         </div>
         <div id="roadCurveFields" hidden>
-          <div class="fieldRow"><label for="roadCurveType">Curve</label><select id="roadCurveType"><option value="freeform">Freeform</option><option value="arc">Circular arc</option><option value="clothoid">Clothoid</option></select></div>
+          <div class="fieldRow"><label for="roadCurveType">Curve</label><select id="roadCurveType"><option value="arc">Circular arc</option><option value="freeform">Freeform</option><option value="clothoid">Clothoid</option></select></div>
           <div id="roadArcFields" hidden>
             <div id="roadArcFitRow" class="fieldRow" hidden><label for="roadArcFit">Fit split/merge arcs</label><input id="roadArcFit" type="checkbox" aria-describedby="roadArcFitHint" /></div>
             <div class="fieldRow"><label for="roadArcAngle">Curve angle (°)</label><div class="dimensionInputs"><input id="roadArcAngle" type="range" min="-360" max="360" step="0.1" value="90" /><input id="roadArcAngleValue" type="number" min="-360" max="360" step="any" value="90" aria-label="Curve angle in degrees" /></div></div>
@@ -51,19 +51,9 @@
           <div id="keepSymmetricRow" class="fieldRow"><label for="keepSymmetric">Keep symmetric</label><input id="keepSymmetric" type="checkbox" checked /></div>
           <div class="headActions"><button id="applyCurveMirror" type="button" hidden>Apply Mirror</button><button id="editCurveAxis" type="button" hidden>Edit Symmetry Line…</button><button id="unlinkCurve" type="button" hidden>Unlink Curves</button><button id="cancelCurveLink" type="button" hidden>Cancel</button></div>
         </div>
-        <div class="fieldRow"><label for="keepWidthAtJoins">Keep lanes wide through turns</label><input id="keepWidthAtJoins" type="checkbox" aria-describedby="keepWidthAtJoinsHint" /></div>
-        <p id="keepWidthAtJoinsHint" class="fieldHint">Keep the full stem width through the curve, right up to the main stem’s edge.</p>
-        <div class="fieldRow"><label for="perLaneWidths">Per Lane widths</label><input id="perLaneWidths" type="checkbox" /></div>
-        <p id="perLaneWidthsHint" class="fieldHint" hidden>Select a lane node to adjust its widths.</p>
         <div id="laneFields" hidden>
           <hr />
           <h3 id="laneTitle">Lane</h3>
-          <div id="laneWidthFields" hidden>
-          <div class="fieldRow"><label for="selectedLaneWidth">Lane width (ft)</label><input id="selectedLaneWidth" type="number" min="8" max="50" step="0.5" value="12" /></div>
-          <div class="fieldRow"><label for="laneStartWidth">Start width (ft)</label><input id="laneStartWidth" type="number" min="8" max="50" step="0.5" value="12" /></div>
-          <div class="fieldRow"><label for="laneEndWidth">End width (ft)</label><input id="laneEndWidth" type="number" min="8" max="50" step="0.5" value="12" /></div>
-          <p class="fieldHint">Select a lane node to edit its lane. Start and end widths affect only this stem.</p>
-          </div>
           <div class="fieldRow">
             <label for="laneTaper">Taper</label>
             <select id="laneTaper">

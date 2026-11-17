@@ -28,6 +28,11 @@ test('turn dashes share right-edge stations across lanes of different lengths',(
  assert.equal(draw(inner,right,10),'M0,5L7.5,5 M15,5L15,12.5 ');
  assert.equal(draw([{x:0,y:0},{x:0,y:0}], [{x:0,y:0},{x:0,y:0}],10),'');
 });
+test('dashes continue from the roads feeding into a joined road',()=>{
+ const draw=c.window.SignMakerDiagrammatics.alignedDashes,line=[{x:0,y:0},{x:30,y:0}];
+ // 15 of a 10-on/10-off pattern already ran upstream: finish that gap first.
+ assert.equal(draw(line,line,10,15),'M5,0L15,0 M25,0L30,0 ');
+});
 test('old diagrams retain their drawing scale when independent dimensions are introduced',()=>{
  const model=c.window.SignMakerDiagrammatics.normalize({width:48,roadGraph:{width:1600,height:1000}});
  assert.equal(model.width*model.unitsPerRem,1600);assert.ok(Math.abs(model.height*model.unitsPerRem-1000)<1e-9);

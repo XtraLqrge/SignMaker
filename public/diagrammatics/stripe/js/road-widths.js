@@ -40,10 +40,8 @@
         const legacy = re === 0 && receiver.widthProfiles?.[link.ai]?.from > 0 &&
           joint.links.some(l => l.b === receiver.id && l.a !== road.id && !l.pair && !l.beside && typeof l.ai === 'number');
         // Saved end-to-start node joins use the same a=host, b=joining
-        // convention as edge feeds. Honor explicit per-end edits on legacy
-        // node links; new connections explicitly opt into following the host.
-        const nodeFeed = e === 1 && re === 0 &&
-          !(road.perLaneWidths && road.laneEndWidths?.[`${e}:${lane}`] != null);
+        // convention as edge feeds.
+        const nodeFeed = e === 1 && re === 0;
         if (re >= 0 && (link.feed || legacy || nodeFeed)) {
           const width = endWidth(sheet, receiver, re, link.ai, visiting);
           visiting.delete(key);
@@ -52,9 +50,8 @@
       }
       visiting.delete(key);
     }
-    const own = (road.perLaneWidths ? road.laneEndWidths?.[`${e}:${lane}`] : null) ?? laneWidth(road, lane);
     if (road.widthProfiles?.[lane]) return profileAt(road.widthProfiles[lane], e);
-    return own;
+    return laneWidth(road, lane);
   }
   function widthAt(width, start, end, fraction) {
     // Meet the shared width square at the joint, and recover the chosen road
@@ -64,7 +61,7 @@
     const endpoint = fraction < .5 ? start : end;
     return endpoint + (width - endpoint) * blend;
   }
-  const laneWidth = (road, lane) => (road.perLaneWidths ? road.laneWidths?.[lane] : null) ?? road.laneWidth;
+  const laneWidth = road => road.laneWidth;
   const profileAt = (p, f) => widthAt(p.width, p.start, p.end, p.from + (p.to - p.from) * f);
   function splitWidths(sheet, road, fraction) {
     const before = [], after = [];
@@ -82,9 +79,6 @@
       const t = Math.max(0, Math.min(1, fraction));
       return ends[0] + (ends[1] - ends[0]) * t;
     }
-    // A wide turn meets the receiving road by geometric clipping, not by
-    // narrowing its cross-section into the receiving lane.
-    if (road.keepWidthAtJoins) return laneWidth(road,lane);
     if (road.widthProfiles?.[lane]) {
       const p = road.widthProfiles[lane];
       // Preserve a cut road's profile, adding only the correction needed by a

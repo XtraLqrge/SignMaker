@@ -22,9 +22,11 @@ const {chromium,webkit}=require('playwright'),assert=require('node:assert/strict
   const hostEdge=edges[0],arcEdge=edges[1],n=hostEdge.length/2,m=arcEdge.length/2;
   const host=at===0?[hostEdge[n-1],hostEdge[n]]:[hostEdge[0],hostEdge.at(-1)];
   const mouth=at===0?[arcEdge[0],arcEdge.at(-1)]:[arcEdge[m-1],arcEdge[m]];
-  return {roads:structuredClone(s.roads),joints:structuredClone(s.joints),tangent:arc.point(at).tangent,heading:joint.dir,radius:arc.radius,gaps:host.map((p,i)=>Math.hypot(p.x-mouth[i].x,p.y-mouth[i].y)),hostPath:bands[0].getAttribute('d')};
+  return {roads:structuredClone(s.roads),joints:structuredClone(s.joints),tangent:arc.point(at).tangent,heading:joint.dir,radius:arc.radius,gaps:host.map((p,i)=>({x:mouth[i].x-p.x,y:mouth[i].y-p.y})),hostPath:bands[0].getAttribute('d')};
  });
- const assertJoin=s=>{assert.ok(s.gaps.every(g=>g<.01),`pavement corners must meet: ${s.gaps}`);assert.ok(Math.hypot(s.tangent.x-s.heading.x,s.tangent.y-s.heading.y)<1e-6);};
+ // Joined ends overlap by a quarter graphic inch each (2.4 sheet px here) along
+ // the shared heading, so the corners differ only by that seam-hiding overlap.
+ const assertJoin=s=>{assert.ok(s.gaps.every(g=>Math.abs(Math.hypot(g.x,g.y)-2.4)<.01&&Math.abs(g.x*s.heading.y-g.y*s.heading.x)<.01),`pavement corners must meet: ${JSON.stringify(s.gaps)}`);assert.ok(Math.hypot(s.tangent.x-s.heading.x,s.tangent.y-s.heading.y)<1e-6);};
  for(const reverse of [false,true])for(const turn of [1,-1]){
   await seed(reverse,turn);const initial=await state();assertJoin(initial);
   await page.locator('#roadArcRadius').fill('200');await page.locator('#roadArcRadius').press('Tab');

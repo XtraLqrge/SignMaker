@@ -11649,6 +11649,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
+      // Freeze sizes while source and clone nodes still pair up one-to-one;
+      // removing editor-only nodes first would offset every later pairing.
+      freezeStaticCloneLayoutMetrics(sourceElement, clone);
       clone.querySelectorAll('.diagrammaticLiveLayer, .diagrammaticSubpanelHandle').forEach(node=>node.remove());
       clone.querySelectorAll('.diagrammaticEditing').forEach(node=>node.classList.remove('diagrammaticEditing'));
 
@@ -11704,8 +11707,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
       const isSinglePanelClone =
         sourceElement.classList && sourceElement.classList.contains("panel");
-
-      freezeStaticCloneLayoutMetrics(sourceElement, clone);
 
       clone.classList.add("exportStaticCaptureClone");
       clone.style.position = "absolute";

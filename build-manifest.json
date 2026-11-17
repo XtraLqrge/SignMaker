@@ -5,8 +5,8 @@
   "deferredEditor": [
     "js/AlignmentButtons.f1278edc85d1f9aa.js",
     "js/NativeSelect.7b59a44862f35bb2.js",
-    "js/DiagrammaticRoadEngine.a0ac2546d7522c5d.js",
-    "js/Diagrammatics.b117140221a389df.js",
+    "js/DiagrammaticRoadEngine.c3276cf74ac0dc2e.js",
+    "js/Diagrammatics.55bfbbaa4144a498.js",
     "js/Roundabout.08d36150961b04b3.js",
     "js/FDOTSupports.353487bdf39bc15f.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
@@ -25,9 +25,9 @@
   ],
   "deferredStyles": "css/app.f06078cc32d10c09.css",
   "startupJS": {
-    "bytes": 621425,
-    "gzipBytes": 170208,
-    "brotliBytes": 141333
+    "bytes": 621567,
+    "gzipBytes": 170289,
+    "brotliBytes": 141421
   },
   "criticalCSS": {
     "bytes": 269426,
@@ -549,16 +549,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.86f8a6f814e617e5.js",
+      "output": "js/main.65bf08300744bdb3.js",
       "original": {
-        "bytes": 765552,
-        "gzipBytes": 134679,
-        "brotliBytes": 106459
+        "bytes": 765704,
+        "gzipBytes": 134742,
+        "brotliBytes": 106541
       },
       "optimized": {
-        "bytes": 331175,
-        "gzipBytes": 88095,
-        "brotliBytes": 72123
+        "bytes": 331317,
+        "gzipBytes": 88176,
+        "brotliBytes": 72211
       }
     },
     {
@@ -591,30 +591,30 @@
     },
     {
       "source": "js/DiagrammaticRoadEngine.js",
-      "output": "js/DiagrammaticRoadEngine.a0ac2546d7522c5d.js",
+      "output": "js/DiagrammaticRoadEngine.c3276cf74ac0dc2e.js",
       "original": {
-        "bytes": 211897,
-        "gzipBytes": 58504,
-        "brotliBytes": 48878
+        "bytes": 204043,
+        "gzipBytes": 56591,
+        "brotliBytes": 47403
       },
       "optimized": {
-        "bytes": 138753,
-        "gzipBytes": 47458,
-        "brotliBytes": 40488
+        "bytes": 133502,
+        "gzipBytes": 45915,
+        "brotliBytes": 39328
       }
     },
     {
       "source": "js/Diagrammatics.js",
-      "output": "js/Diagrammatics.b117140221a389df.js",
+      "output": "js/Diagrammatics.55bfbbaa4144a498.js",
       "original": {
-        "bytes": 36143,
-        "gzipBytes": 10580,
-        "brotliBytes": 9375
+        "bytes": 37108,
+        "gzipBytes": 11016,
+        "brotliBytes": 9739
       },
       "optimized": {
-        "bytes": 26845,
-        "gzipBytes": 8925,
-        "brotliBytes": 7883
+        "bytes": 27153,
+        "gzipBytes": 9088,
+        "brotliBytes": 8037
       }
     },
     {

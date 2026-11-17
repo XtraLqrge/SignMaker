@@ -20,8 +20,9 @@ const svg=(tag,attrs={})=>{const n=document.createElementNS(SVG,tag);for(const [
 const path=points=>points.map((p,i)=>`${i?'L':'M'}${p.x},${p.y}`).join(' ');
 // Use the right edge's stations for every separator so dash ends line up
 // across a turn, rather than drifting with each lane's different arc length.
-const alignedDashes=(points,reference,dash)=>{
-  let distance=0,d='';
+// `start` continues the pattern from the roads feeding into this one.
+const alignedDashes=(points,reference,dash,start=0)=>{
+  let distance=start,d='';
   for(let i=1;i<reference.length;i++){
     const length=Math.hypot(reference[i].x-reference[i-1].x,reference[i].y-reference[i-1].y);
     if(length<1e-9)continue;
@@ -38,17 +39,30 @@ const alignedDashes=(points,reference,dash)=>{
   }
   return d;
 };
-const renderer=(sheet,road,shape,layers,className,boundary,terminal)=>{
+const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[false,false],dashPhase=0}={})=>{
   const band=svg('g',{'class':`diagrammaticRoad ${className}`,'data-road-id':road.id??''}),group=svg('g');
   const left=boundary(0),right=boundary(road.lanes);
-  band.append(svg('path',{d:path([...left,...right.slice().reverse()])+' Z',fill:'white','data-silhouette':''}));
   // 2009 MUTCD Table 2E-4(M): 5-inch graphic lanes, 1x6-inch dashes / 6-inch gaps.
   // StripeMaker's actual lane widths remain in its native road units; the
   // graphic uses their ratio to derive the sign's lane-line scale.
   const lanePx=12*(road.laneWidth||12)/sheet.inchesPerPixel,unit=lanePx/5;
+  // Joined ends overlap the next road slightly, so anti-aliasing leaves no
+  // seam where two white stems meet.
+  const extend=(edge,e)=>{
+    if(!joined[e]||edge.length<2)return edge;
+    // Follow the curve's own end tangent; the last sampled chord of an arc
+    // would tilt the overlap off the shared heading.
+    const [tip,inner]=e?[edge.at(-1),edge.at(-2)]:[edge[0],edge[1]],tangent=(e?shape.line.at(-1):shape.line[0])?.tangent;
+    const out=tangent?{x:tangent.x*(e?1:-1),y:tangent.y*(e?1:-1)}:{x:tip.x-inner.x,y:tip.y-inner.y},length=Math.hypot(out.x,out.y)||1,reach=unit*.25;
+    const moved={x:tip.x+out.x/length*reach,y:tip.y+out.y/length*reach};
+    return e?[...edge.slice(0,-1),moved]:[moved,...edge.slice(1)];
+  };
+  const outline=edge=>extend(extend(edge,0),1);
+  band.append(svg('path',{d:path([...outline(left),...[...outline(right)].reverse()])+' Z',fill:'white','data-silhouette':''}));
   for(let k=1;k<road.lanes;k++){
     const points=boundary(k),aligned=sheet.consistentGapsOnTurns!==false&&points.length===right.length;
-    band.append(svg('path',{d:aligned?alignedDashes(points,right,unit*6):path(points),fill:'none',stroke:'black','stroke-width':unit,...(aligned?{'data-aligned-gaps':''}:{'stroke-dasharray':`${unit*6} ${unit*6}`})}));
+    band.append(svg('path',{d:aligned?alignedDashes(points,right,unit*6,dashPhase):path(points),fill:'none',stroke:'black','stroke-width':unit,
+      ...(aligned?{'data-aligned-gaps':''}:{'stroke-dasharray':`${unit*6} ${unit*6}`,'stroke-dashoffset':dashPhase})}));
   }
   if(terminal&&shape.line.length>1){
     const end=shape.line.at(-1),prev=shape.line.at(-2),a=left.at(-1),b=right.at(-1),width=Math.hypot(b.x-a.x,b.y-a.y);

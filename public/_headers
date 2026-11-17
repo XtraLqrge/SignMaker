@@ -179,7 +179,7 @@
 /js/Sign.b4cf5e050be75cfa.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/ExitTab.28a7fed807403f99.js
+/js/ExitTab.5509e16b3358304f.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Panel.5e4c31f252743c95.js
@@ -203,7 +203,7 @@
 /js/IconFallbacks.d438a3a04387fedd.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Control.54d7d9936a2132f2.js
+/js/Control.4364320639fe7a3a.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/SubPanels.d4d392b29959e7d4.js
@@ -218,7 +218,10 @@
 /js/ExportAssets.b8b151dcbed30267.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.65bf08300744bdb3.js
+/js/PresetTemplates.fff3bc65509984e9.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/main.8fafd624bb223568.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.f1278edc85d1f9aa.js
@@ -242,7 +245,7 @@
 /js/IconPicker.f07693de1a9e8c8f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.3d3e62d7e02760ce.js
+/js/form.ce1d18696f921b85.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.905b66ca7e8b07ba.js
@@ -254,22 +257,25 @@
 /js/MobileGestures.f1a20ba0cb160ef3.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MobileSubpanels.c58d1a84759c8f4c.js
+/js/MobileSubpanels.c64e39f0eb70dce2.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MobileExitTabs.2cc9631b990c501f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MobileForms.163f6b41bf562f61.js
+/js/MobileForms.6384dbf6104f922e.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MobileUI.979716bfcafe9be7.js
+/js/MobileShieldMaker.3aef7ec77a808b44.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/MobileUI.de661de95cdf6194.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MobileDropdowns.82efb2293f24f97e.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MergeUI.605f1b2c61c941f5.js
+/js/MergeUI.1b34d00665ea8199.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Settings22.d5c85ec51307e808.js
@@ -278,10 +284,10 @@
 /js/DropdownTheme.f1d44178025090c0.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.f06078cc32d10c09.css
+/css/app.bea2928d39e3d983.css
   Cache-Control: public, max-age=31536000, immutable
 
-/css/sign.692ca7b0969e0637.css
+/css/sign.f27e7a7d249f6b49.css
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Startup.9d75b1c853e51bc9.js

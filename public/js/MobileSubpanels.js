@@ -122,7 +122,7 @@ window.SignMakerMobileSubpanels = (() => {
     if (!blocks.length || row.classList.contains('mobileEditorDragging')) return;
     const width = row.clientWidth || row.getBoundingClientRect().width;
     if (!width) return;
-    const key = JSON.stringify([width, mode, blocks.map(block => [block.querySelector('.textEditorBlockLabel')?.textContent || block.title, !!block.querySelector('.mergeEditGroup')])]);
+    const key = JSON.stringify([width, mode, blocks.map(block => [block.querySelector('.textEditorBlockLabel')?.textContent || block.title, !!block.querySelector('.mergeEditGroup'), !!block.querySelector('.sMBlockDeleteButton')])]);
     if (rowMeasurements.get(row) === key) return;
     rowMeasurements.set(row, key);
     const style = window.getComputedStyle?.(row);
@@ -139,8 +139,9 @@ window.SignMakerMobileSubpanels = (() => {
       const textWidth = measuringContext ? (measuringContext.font = `${font?.fontWeight || 600} ${size}px ${font?.fontFamily || 'Inter, sans-serif'}`,
         measuringContext.measureText(title).width) : title.length * size * 0.6;
       const grouped = !!block.querySelector('.mergeEditGroup');
-      const minimum = mode === 'blocks' ? 90 : grouped ? 104 : 68;
-      const controls = mode === 'blocks' ? 42 : grouped ? 82 : 34;
+      const remove = block.querySelector('.sMBlockDeleteButton') ? 26 : 0;
+      const minimum = (mode === 'blocks' ? 90 : 68) + remove;
+      const controls = (mode === 'blocks' ? 42 : grouped ? 62 : 34) + remove;
       minimums.push(minimum);
       widths.push(Math.max(minimum, Math.ceil(textWidth + controls)));
     }
@@ -271,7 +272,7 @@ window.SignMakerMobileSubpanels = (() => {
   };
   const start = event => {
     if (!active() || event.isPrimary === false || (event.button != null && event.button !== 0)) return;
-    if (event.target.closest('input, select, textarea, .blockTypeInlinePicker, .mergeEditGroup, .sMControlRowPasteButton, #mobileJiggleToolbar')) return;
+    if (event.target.closest('input, select, textarea, .blockTypeInlinePicker, .mergeEditGroup, .sMBlockDeleteButton, .sMControlRowPasteButton, #mobileJiggleToolbar')) return;
     const item = nodeAt(event.target);
     if (!item) return;
     event.stopImmediatePropagation(); cancelGesture();
@@ -385,6 +386,7 @@ window.SignMakerMobileSubpanels = (() => {
       if (!active()) return;
       const item = nodeAt(event.target); if (!item) return;
       if (Date.now() < ignoreClickUntil && !event.target.classList.contains('mobileJiggleCheck')) { stop(event); return; }
+      if (event.target.closest('.sMBlockDeleteButton')) { cancelGesture(); return; }
       if (!mode) return;
       if (event.target.classList.contains('mobileJiggleCheck')) { event.stopImmediatePropagation(); return; }
       if ((mode === 'subpanels') !== (item.kind === 'subpanel')) { exit(); return; }

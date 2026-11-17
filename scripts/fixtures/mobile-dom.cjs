@@ -23,8 +23,11 @@ class Node {
     else if (['id', 'name', 'type', 'value', 'min', 'max', 'step'].includes(key)) this[key] = value;
     else if (['disabled', 'hidden', 'checked'].includes(key)) this[key] = true;
   }
-  getAttribute(key) { return this.attrs.get(key) ?? null; }
-  removeAttribute(key) { this.attrs.delete(key); if(['id','min','max','step'].includes(key)) this[key]=''; }
+  getAttribute(key) {
+    if (key.startsWith('data-')) return this.dataset[key.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] ?? null;
+    return this.attrs.get(key) ?? null;
+  }
+  removeAttribute(key) { if(key.startsWith('data-')) delete this.dataset[key.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())]; this.attrs.delete(key); if(['id','min','max','step'].includes(key)) this[key]=''; }
   matches(selector) {
     const simple = (node, query) => {
       if (node.nodeType !== 1) return false;
@@ -47,7 +50,7 @@ class Node {
   }
   get isConnected() { return this.tagName === 'HTML' || !!this.parentElement?.isConnected; }
   contains(target) { for(let node=target;node;node=node.parentElement) if(node===this) return true; return false; }
-  hasAttribute(key) { return this.attrs.has(key); }
+  hasAttribute(key) { return this.getAttribute(key) !== null; }
   removeEventListener(type, handler, capture=false) { this.events.set(type, (this.events.get(type)||[]).filter(item=>item.handler!==handler||item.capture!==capture)); }
   closest(selector) { for (let node = this; node; node = node.parentElement) if (node.matches(selector)) return node; return null; }
   querySelectorAll(selector) { return this.childNodes.flatMap(node => [...(node.matches(selector) ? [node] : []), ...node.querySelectorAll(selector)]); }

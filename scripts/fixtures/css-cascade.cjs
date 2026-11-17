@@ -64,13 +64,18 @@ function matches(selector, node) {
   };
   return check(parts.length, node);
 }
-function cascade(source) {
+function cascade(source, { respectLayers = false } = {}) {
   const ast = css.toPlainObject(css.parse(source)), rules = [];
-  const collect = nodes => {
+  const layers = new Map();
+  const collect = (nodes, layer = null) => {
     for (const node of nodes) {
       if (node.type === 'Rule' && node.prelude?.type === 'SelectorList') {
-        for (const selector of list(node.prelude)) rules.push({ selector, specificity: specificity(selector), declarations: list(node.block).filter(item => item.type === 'Declaration') });
-      } else if (node.type === 'Atrule' && node.block && node.name === 'layer') collect(list(node.block));
+        for (const selector of list(node.prelude)) rules.push({ selector, layer, specificity: specificity(selector), declarations: list(node.block).filter(item => item.type === 'Declaration') });
+      } else if (node.type === 'Atrule' && node.block && node.name === 'layer') {
+        const name = css.generate(css.fromPlainObject(node.prelude));
+        if (!layers.has(name)) layers.set(name, layers.size);
+        collect(list(node.block), layers.get(name));
+      }
     }
   };
   collect(list(ast));
@@ -80,7 +85,10 @@ function cascade(source) {
       const declarations = rule.declarations.filter(declaration => declaration.property === property);
       if (!declarations.length || !matches(rule.selector, node)) continue;
       for (const declaration of declarations) {
-        const score = (declaration.important ? 1e12 : 0) + rule.specificity;
+        const layerPriority = !respectLayers ? 0 : declaration.important
+          ? (rule.layer === null ? 0 : (1000 - rule.layer) * 1e8)
+          : (rule.layer === null ? 1000 : rule.layer) * 1e8;
+        const score = (declaration.important ? 1e12 : 0) + layerPriority + rule.specificity;
         if (!winner || score >= winner.score) winner = { score, value: css.generate(css.fromPlainObject(declaration.value)) };
       }
     }

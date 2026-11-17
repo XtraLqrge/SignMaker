@@ -18067,11 +18067,15 @@ const serializePostWithElementTypes = (space) => {
       id: "default-simple-exit",
       name: "Simple Exit",
       build: buildSimpleExitTemplate,
+      document: "simple_exit",
+      presetRevision: 1,
     },
     {
       id: "default-mileage-sign",
       name: "Mileage Sign",
       build: buildMileageTemplate,
+      document: "mileage_sign",
+      presetRevision: 1,
     },
     {
       id: "default-tolled-exit",
@@ -18083,7 +18087,25 @@ const serializePostWithElementTypes = (space) => {
       name: "Control Cities Advance Junction",
       build: buildControlCitiesAdvanceJunctionTemplate,
     },
+    { id: "default-standard-apl", name: "Standard APL", document: "standard_apl", presetRevision: 1 },
+    { id: "default-vms", name: "VMS", document: "vms", presetRevision: 1 },
   ];
+
+  let presetDocumentsPromise;
+  const loadPresetDocuments = () => {
+    if (window.SignMakerPresetTemplates) return Promise.resolve(window.SignMakerPresetTemplates);
+    if (!presetDocumentsPromise) {
+      presetDocumentsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = new URL("js/PresetTemplates.js", document.baseURI).href;
+        script.onload = () => window.SignMakerPresetTemplates
+          ? resolve(window.SignMakerPresetTemplates) : reject(new Error("Preset documents are missing."));
+        script.onerror = () => { script.remove(); reject(new Error("Unable to load preset documents.")); };
+        document.head.appendChild(script);
+      }).catch(error => { presetDocumentsPromise = null; throw error; });
+    }
+    return presetDocumentsPromise;
+  };
 
   const initTemplateDB = async function () {
     if (!templateDB) {
@@ -18133,24 +18155,24 @@ const serializePostWithElementTypes = (space) => {
     if (!defaultTemplatesPromise) {
       defaultTemplatesPromise = (async () => {
         const existingTemplates = await db.getAllTemplates();
-        const existingIds = new Set(
-          existingTemplates.map((template) => String(template.id))
-        );
-
+        const existingById = new Map(existingTemplates.map(template => [String(template.id), template]));
+        const documents = await loadPresetDocuments();
         for (const definition of DEFAULT_TEMPLATE_DEFINITIONS) {
-          if (existingIds.has(definition.id)) {
-            continue;
-          }
-
+          const existing = existingById.get(definition.id);
+          if (existing && (!definition.document || existing.presetRevision === definition.presetRevision)) continue;
+          const snapshot = definition.document ? documents[definition.document]?.post : null;
+          if (definition.document && !snapshot?.panels?.length) throw new Error(`Invalid preset: ${definition.document}`);
           await db.saveTemplate({
+            ...existing,
             id: definition.id,
             name: definition.name,
-            data: createDefaultTemplateData(definition.build),
+            data: snapshot ? JSON.stringify(snapshot) : createDefaultTemplateData(definition.build),
             templateScope: "panel",
-            variants: [],
+            variants: existing?.variants || [],
             isDefault: true,
-            dateCreated: DEFAULT_TEMPLATE_DATE,
-            dateModified: DEFAULT_TEMPLATE_DATE,
+            ...(definition.document ? { presetRevision: definition.presetRevision } : {}),
+            dateCreated: existing?.dateCreated || DEFAULT_TEMPLATE_DATE,
+            dateModified: definition.document ? "2026-11-16T00:00:00.000Z" : DEFAULT_TEMPLATE_DATE,
           });
         }
       })().catch((error) => {
@@ -18298,7 +18320,7 @@ const serializePostWithElementTypes = (space) => {
   const getTemplateSnapshot = (template, variantId) => {
     const variant = getTemplateVariant(template, variantId);
     const builtIn = DEFAULT_TEMPLATE_DEFINITIONS.find(definition => definition.id === String(template?.id));
-    const serializedData = variant?.data || (builtIn
+    const serializedData = variant?.data || (builtIn && !builtIn.document
       ? createDefaultTemplateData(builtIn.build) : template?.data);
     if (typeof serializedData !== "string") {
       throw new Error("Template data is missing.");
@@ -18572,6 +18594,7 @@ const serializePostWithElementTypes = (space) => {
     button.type = "button";
     button.className = className;
     button.title = title || label;
+    button.setAttribute("aria-label", title || label);
 
     const iconElement = document.createElement("span");
     iconElement.className = "material-symbols-outlined";
@@ -18581,6 +18604,11 @@ const serializePostWithElementTypes = (space) => {
     if (label) {
       const labelElement = document.createElement("span");
       labelElement.textContent = label;
+      labelElement.className = "templateDesktopLabel";
+      const mobileLabel = document.createElement("span");
+      mobileLabel.className = "templateMobileLabel";
+      mobileLabel.textContent = label.replace("Replace ", "");
+      button.appendChild(mobileLabel);
       button.appendChild(labelElement);
     }
     return button;
@@ -19224,16 +19252,6 @@ const serializePostWithElementTypes = (space) => {
         });
       }
 
-      if (templates.length === 0) {
-        const emptyMessage = document.createElement("p");
-        emptyMessage.className = "templateEmptyMessage";
-        emptyMessage.textContent = searchValue
-          ? "No templates match your search"
-          : "No templates";
-        templatesList.appendChild(emptyMessage);
-        return;
-      }
-
       const sortMode = getTemplateSortMode();
       templates.sort((a, b) => {
         if (sortMode === "last-used") {
@@ -19306,7 +19324,7 @@ const serializePostWithElementTypes = (space) => {
         nameRow.appendChild(editButton);
         if (!template.isDefault && !String(template.id).startsWith("default-")) {
           const renameButton = createTemplateActionButton(
-            "templateRenameBtn",
+            "templateRenameBtn templateDesktopRename",
             "edit_note",
             "",
             "Rename Template"
@@ -19376,6 +19394,12 @@ const serializePostWithElementTypes = (space) => {
           loadTemplate(template.id, "add", selectedVariantId())
         );
         actions.appendChild(addButton);
+
+        if (!template.isDefault && !String(template.id).startsWith("default-")) {
+          const rename = createTemplateActionButton("templateRenameBtn templateMobileRename", "edit_note", "", "Rename Template");
+          rename.addEventListener("click", () => renameTemplate(template.id));
+          actions.appendChild(rename);
+        }
 
         if (!template.isDefault && !String(template.id).startsWith("default-")) {
           const deleteButton = createTemplateActionButton(

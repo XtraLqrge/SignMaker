@@ -333,6 +333,7 @@ test('production HTML references existing, content-addressed assets',()=>{
     let source=asset.source==='js/DiagrammaticRoadEngine.js'?require('./build-diagrammatics.cjs')(root):read('public/'+asset.source);
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
     if(asset.source==='js/main.js')source=source.replace('js/ExportAssets.js',manifest.assets.find(a=>a.source==='js/ExportAssets.js').output);
+    if(asset.source==='js/main.js')source=source.replace('js/PresetTemplates.js',manifest.assets.find(a=>a.source==='js/PresetTemplates.js').output);
     if(asset.source==='js/Control.js')source=source.replace('IconFallbacks.js?v=773d7c4b80c1',path.basename(manifest.assets.find(a=>a.source==='js/IconFallbacks.js').output));
     if(asset.source==='js/Shield.js')source=source.replace('"ShieldFallbacks.js"',JSON.stringify(path.basename(manifest.assets.find(a=>a.source==='js/ShieldFallbacks.js').output)));
     if(asset.source==='js/ExportAssets.js'){

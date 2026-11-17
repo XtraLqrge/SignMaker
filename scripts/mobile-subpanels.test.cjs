@@ -174,6 +174,26 @@ for(const source of sources){
     h.api.perform('duplicate');assert.deepEqual(h.control.rows.map(row=>row.map(element=>element.name)),[['A','B'],['A','B'],['C']]);
     assert.notEqual(h.control.rows[0][0],h.control.rows[1][0]);assert.deepEqual(h.history(),[1,1]);
   });
+  test(`${name}: delete icons receive taps without starting a hold or being consumed by jiggle selection`,()=>{
+    const h=ui(source),button=new Node('button','','sMBlockDeleteButton');h.blocks[0].append(button);
+    assert.notEqual(h.fire('pointerdown',button).stopped,true);h.hold();assert.equal(h.api.mode,'');
+    h.api.enter('block');assert.notEqual(h.fire('click',button).stopped,true);assert.deepEqual(h.moves,[]);
+    assert.equal(h.control.rows[0].length,2,'The selection listener leaves deletion to the existing delete handler');
+  });
+  test(`${name}: Inherit renders a transparent toll-logo background and explicit colors remain supported`,()=>{
+    const c=modelContext(source);
+    c.document.createElement=tag=>{
+      const node=new Node(tag);node.styles={};node.style.setProperty=(key,value)=>node.styles[key]=value;node.appendChild=child=>node.append(child);return node;
+    };
+    const result=JSON.parse(vm.runInContext(`JSON.stringify([
+      new TollLogoElement({background:false,backgroundColor:'Inherit'}),
+      new TollLogoElement({background:true,backgroundColor:'Inherit'}),
+      new TollLogoElement({background:true,backgroundColor:'White'}),
+      new TollLogoElement({background:true,backgroundColor:'#123456'})
+    ].map(element=>{const rendered=element.createElement();return {background:rendered.classList.contains('hasBackground'),color:rendered.styles['--tollBgColor']};}))`,c));
+    assert.deepEqual(result.slice(0,2),[{background:false,color:'transparent'},{background:false,color:'transparent'}]);
+    assert.equal(result[2].background,true);assert.equal(result[3].background,true);assert.equal(result[3].color,'#123456');
+  });
   test(`${name}: held elements, rows, and subpanel labels use the existing reorder methods`,()=>{
     for(const [kind,select,start,end,expected] of [
       ['block',h=>h.blocks[0],{clientX:80,clientY:130},{clientX:280,clientY:130},['block',0,0,0,2]],

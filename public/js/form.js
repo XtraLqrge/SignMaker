@@ -1393,7 +1393,7 @@ const formHandler = (function () {
         borderThickness: 0.2,
         minHeight: 2,
         fontSize: 18,
-        fontFamily: "Series EEM",
+        fontFamily: "Series E",
         characterSpacing: 0,
         horizontalPadding: 0,
         exitTextSizePercent: 70,
@@ -4141,6 +4141,47 @@ const formHandler = (function () {
     };
   };
 
+  const parseCustomShieldMakerConfig = (json) => {
+    const document = JSON.parse(json);
+    if (document?.format !== "signmaker-custom-shield" || document.schemaVersion !== 1 ||
+        !document.shield || typeof document.shield !== "object" || Array.isArray(document.shield)) {
+      throw new Error("Choose a Custom Shield Maker JSON export (version 1).");
+    }
+    const source = document.shield;
+    const styles = [source.routeStyle, ...Object.values(source.routeStyleByVariant || {})];
+    const anchors = [source.anchor, ...Object.values(source.anchorByVariant || {})];
+    for (const style of styles.filter(Boolean)) {
+      for (const key of ["fontSize", "fontWeight", "letterSpacing", "topOffset", "horizontalOffset"]) {
+        if (style[key] !== undefined && (style[key] === null || !Number.isFinite(Number(style[key])))) throw new Error(`Invalid shield ${key}.`);
+      }
+    }
+    for (const anchor of anchors.filter(Boolean)) {
+      for (const key of ["x", "y", "seedTop", "seedHorizontal"]) {
+        if (anchor[key] !== undefined && (anchor[key] === null || !Number.isFinite(Number(anchor[key])))) throw new Error(`Invalid shield anchor ${key}.`);
+      }
+    }
+    const record = normalizeCustomShieldMakerRecord({ ...source, id: createCustomShieldMakerId(), dateCreated: new Date().toISOString() });
+    const images = Object.values(record.imageDataByVariant);
+    if (!images.length || images.some(image => !/^data:image\/(?:svg\+xml|png|webp)(?:;[^,]*)?,.+/is.test(image))) {
+      throw new Error("The shield JSON must contain embedded SVG, PNG, or WebP variant artwork.");
+    }
+    return record;
+  };
+
+  const createCustomShieldMakerConfig = async (record, embedImage) => {
+    const shield = JSON.parse(JSON.stringify(record));
+    const images = new Map();
+    const embed = image => {
+      if (!images.has(image)) images.set(image, Promise.resolve(embedImage(image)));
+      return images.get(image);
+    };
+    shield.imageDataByVariant = Object.fromEntries(await Promise.all(
+      Object.entries(shield.imageDataByVariant || {}).map(async ([key, image]) => [key, await embed(image)])
+    ));
+    shield.imageData = shield.imageDataByVariant[shield.activeVariant] || Object.values(shield.imageDataByVariant)[0] || await embed(shield.imageData);
+    return { format: "signmaker-custom-shield", schemaVersion: 1, shield };
+  };
+
   const loadCustomShieldMakerRecords = async () => {
     let records = [];
 
@@ -4330,10 +4371,11 @@ const formHandler = (function () {
   const isCustomShieldMakerValue = (value) =>
     typeof value === "string" && value.startsWith(CUSTOM_SHIELD_MAKER_VALUE_PREFIX);
 
-  const traverseControlShieldElements = (control, callback) => {
-    if (!control || !Array.isArray(control.rows)) {
+  const traverseControlShieldElements = (control, callback, visited = new Set()) => {
+    if (!control || !Array.isArray(control.rows) || visited.has(control)) {
       return;
     }
+    visited.add(control);
 
     for (const row of control.rows) {
       if (!Array.isArray(row)) {
@@ -4341,6 +4383,9 @@ const formHandler = (function () {
       }
 
       for (const blockElement of row) {
+        if (blockElement?.blockElements) {
+          traverseControlShieldElements(blockElement.blockElements, callback, visited);
+        }
         if (
           blockElement &&
           (blockElement instanceof ShieldElement ||
@@ -4353,48 +4398,58 @@ const formHandler = (function () {
     }
   };
 
-  const revertCustomShieldMakerUsageToInterstate = (value) => {
+  const getCustomShieldMakerFallbackBase = (record) => {
+    const bases = ShieldElement.prototype.blockShieldBases || [];
+    const normalize = value => ShieldElement.prototype.normalizeShieldCode(String(value || "")).toUpperCase();
+    const source = bases.find(base => base.value !== record.value &&
+      normalize(base.value) === normalize(record.sourceShieldBase));
+    if (source) return source.value;
+
+    const builtIn = bases.filter(base => !base.customShieldMaker);
+    return (builtIn.find(base => base.value === ShieldElement.prototype.defaultShieldBase) ||
+      builtIn.find(base => base.value === "I") || builtIn[0])?.value || "I";
+  };
+
+  const revertCustomShieldMakerUsageToSource = (value, fallbackBase) => {
     const targetValue = String(value || "");
     const currentPost = exposed && typeof exposed.getPost === "function"
       ? exposed.getPost()
       : post;
+    const variants = getSdShieldVariantValues(fallbackBase);
+    const defaultVariant = getSdShieldDefaultVariantValue(fallbackBase);
+    const allowed = new Set([...variants, defaultVariant]);
+    const restoreShield = shield => {
+      if (!shield || (shield.shieldBase !== targetValue && shield.type !== targetValue)) return;
+      const remembered = getRememberedSdShieldVariantSelection(shield, fallbackBase);
+      shield.shieldBase = fallbackBase;
+      shield.type = fallbackBase;
+      shield.shieldType = allowed.has(remembered) ? remembered
+        : allowed.has(shield.shieldType) ? shield.shieldType : defaultVariant;
+    };
 
-    if (!currentPost || !Array.isArray(currentPost.panels)) {
-      return;
+    // Preserve the source for saved shields derived from the one being removed.
+    for (const record of customShieldMakerRecords) {
+      if (record.sourceShieldBase === targetValue) record.sourceShieldBase = fallbackBase;
     }
+    restoreShield(exposed?.getCurrentBlockElem?.());
 
-    for (const panel of currentPost.panels) {
+    for (const panel of Array.isArray(currentPost?.panels) ? currentPost.panels : []) {
       const sign = panel?.sign;
       if (!sign) {
         continue;
       }
 
       [sign.blockElements, sign.globalTopBlockElements, sign.globalBottomBlockElements].forEach(
-        (control) => traverseControlShieldElements(control, (shield) => {
-          if (shield.shieldBase === targetValue || shield.type === targetValue) {
-            shield.shieldBase = "I";
-            shield.type = "I";
-            shield.shieldType = shield.shieldType || "Auto";
-          }
-        })
+        (control) => traverseControlShieldElements(control, restoreShield)
       );
 
       if (Array.isArray(sign.subPanels)) {
         for (const subPanel of sign.subPanels) {
-          traverseControlShieldElements(subPanel.blockElements, (shield) => {
-            if (shield.shieldBase === targetValue || shield.type === targetValue) {
-              shield.shieldBase = "I";
-              shield.type = "I";
-              shield.shieldType = shield.shieldType || "Auto";
-            }
-          });
+          traverseControlShieldElements(subPanel.blockElements, restoreShield);
 
           if (Array.isArray(subPanel.shields)) {
             for (const shield of subPanel.shields) {
-              if (shield.shieldBase === targetValue || shield.type === targetValue) {
-                shield.shieldBase = "I";
-                shield.type = "I";
-              }
+              restoreShield(shield);
             }
           }
         }
@@ -4402,10 +4457,7 @@ const formHandler = (function () {
 
       if (Array.isArray(sign.shields)) {
         for (const shield of sign.shields) {
-          if (shield.shieldBase === targetValue || shield.type === targetValue) {
-            shield.shieldBase = "I";
-            shield.type = "I";
-          }
+          restoreShield(shield);
         }
       }
     }
@@ -5079,8 +5131,7 @@ const formHandler = (function () {
       ShieldElement.prototype.defaultBannerFontFamily = storedBannerFont;
     }
 
-    // Exit tabs now use a font dropdown. Until the defaults page supports that
-    // directly, new exit tabs should always start with the Series EEM preset.
+    // New exit tabs use the default profile's Highway Gothic font.
     ExitTab.prototype.defaultFHWAFont = true;
 
     // Keep vanilla exit tab defaults stable. Saved/default profiles now control these values.
@@ -6702,6 +6753,9 @@ const formHandler = (function () {
     const closeButton = document.getElementById("customShieldMakerClose");
     const uploadButton = document.getElementById("customShieldMakerUploadButton");
     const fileInput = document.getElementById("customShieldMakerFile");
+    const exportButton = document.getElementById("customShieldMakerExportButton");
+    const importButton = document.getElementById("customShieldMakerImportButton");
+    const importInput = document.getElementById("customShieldMakerImportFile");
     const previewImg = document.getElementById("customShieldMakerPreviewImg");
     const emptyPreview = document.getElementById("customShieldMakerEmptyPreview");
     const routeNumber = document.getElementById("customShieldMakerRouteNumber");
@@ -6744,50 +6798,130 @@ const formHandler = (function () {
     const nameInput = document.getElementById("customShieldMakerNameInput");
     const saveButton = document.getElementById("customShieldMakerSaveButton");
     const deleteButton = document.getElementById("customShieldMakerDeleteButton");
+    let customShieldMakerActiveSlider = null;
+    const finishCustomShieldMakerSliderEdit = () => {
+      if (!customShieldMakerActiveSlider) return;
+      customShieldMakerActiveSlider = null;
+      recordCustomShieldMakerHistoryCheckpoint();
+    };
+    const beginCustomShieldMakerSliderEdit = slider => {
+      if (customShieldMakerActiveSlider === slider) return;
+      finishCustomShieldMakerSliderEdit();
+      customShieldMakerActiveSlider = slider;
+    };
+    const setCustomShieldMakerRangeValue = (slider, value) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return;
+      const next = Math.round(parsed);
+      const mobile = (typeof window !== "undefined" && window.SignMakerMobile?.active) ||
+        (typeof document !== "undefined" && document.documentElement?.hasAttribute("data-mobile-ui"));
+      const step = slider.id === "customShieldMakerRouteFontSize" ? (mobile ? 5 : 10) : 1;
+      slider.dataset.shieldMin ??= slider.min;
+      slider.dataset.shieldMax ??= slider.max;
+      const min = Math.min(Number(slider.dataset.shieldMin), next);
+      // An existing whole-number size such as 235 stays exact while dragging
+      // and the arrow buttons move by the UI's slider step from that value.
+      const offset = ((min - next) % step + step) % step;
+      slider.min = String(min - offset);
+      slider.max = String(Math.max(Number(slider.dataset.shieldMax), next));
+      slider.step = String(step);
+      slider.value = String(next);
+    };
+    const finishCustomShieldMakerInputOnOutsidePointer = event => {
+      const field = customShieldMakerActiveSlider?.closest(".customShieldMakerSliderField");
+      if (!field || field.contains(event.target)) return;
+      // Commit before Save or a picker handles the click, including browsers
+      // where tapping a button does not automatically move input focus.
+      if (field.contains(document.activeElement)) document.activeElement.blur();
+      finishCustomShieldMakerSliderEdit();
+    };
+    document.addEventListener("pointerdown", finishCustomShieldMakerInputOnOutsidePointer, true);
     const bindCustomShieldMakerRangePair = (slider, valueInput) => {
-      if (!slider || !valueInput || slider.dataset.customShieldRangePairBound === "true") {
-        return;
-      }
-
+      if (!slider || !valueInput || slider.dataset.customShieldRangePairBound === "true") return;
       slider.dataset.customShieldRangePairBound = "true";
-
+      const field = slider.closest(".customShieldMakerSliderField");
+      const updateStepButtons = value => {
+        for (const button of field?.querySelectorAll("[data-shield-step]") || []) button.disabled = slider.disabled ||
+          (Number(button.dataset.shieldStep) > 0 ? value >= Number(slider.max) : value <= Number(slider.min));
+      };
       const syncValueFromSlider = () => {
+        valueInput.min = slider.min; valueInput.max = slider.max;
+        valueInput.step = slider.step;
         valueInput.value = slider.value;
+        updateStepButtons(Number(slider.value));
       };
-
       const commitSliderFromValue = () => {
-        const parsed = parseFloat(valueInput.value);
-        if (!Number.isFinite(parsed)) {
-          valueInput.value = slider.value;
-          return;
-        }
-        const min = parseFloat(slider.min);
-        const max = parseFloat(slider.max);
-        const resolved = Math.max(
-          Number.isFinite(min) ? min : parsed,
-          Math.min(Number.isFinite(max) ? max : parsed, parsed)
-        );
-        slider.value = resolved;
-        valueInput.value = resolved;
-        slider.dispatchEvent(new Event("input", { bubbles: true }));
+        if (valueInput.value === "" || !Number.isFinite(Number(valueInput.value))) { syncValueFromSlider(); return; }
+        const value = Math.max(Number(slider.min), Math.min(Number(slider.max), Math.round(Number(valueInput.value))));
+        const changed = Number(slider.value) !== value;
+        setCustomShieldMakerRangeValue(slider, value);
+        syncValueFromSlider();
+        if (changed) slider.dispatchEvent(new Event("input", { bubbles: true }));
       };
-
-      slider.addEventListener("input", syncValueFromSlider);
+      const begin = () => beginCustomShieldMakerSliderEdit(slider);
+      slider.addEventListener("pointerdown", begin);
+      slider.addEventListener("focus", begin);
+      slider.addEventListener("input", () => { begin(); syncValueFromSlider(); });
+      valueInput.addEventListener("focus", begin);
       valueInput.addEventListener("input", () => {
         if (!isUsableLiveInput(valueInput)) return;
-        const typed = valueInput.value;
-        commitSliderFromValue();
-        valueInput.value = typed;
+        // Keep the draft in the text box until blur/change commits it.
+        const value = Number(valueInput.value);
+        if (!Number.isInteger(value)) valueInput.value = String(Math.round(value));
+        updateStepButtons(Math.round(value));
       });
-      valueInput.addEventListener("change", commitSliderFromValue);
+      valueInput.addEventListener("change", () => {
+        commitSliderFromValue();
+        if (!field?.contains(document.activeElement)) finishCustomShieldMakerSliderEdit();
+      });
       valueInput.addEventListener("blur", commitSliderFromValue);
-      syncValueFromSlider();
+      const stepInput = direction => {
+        if (valueInput.disabled || slider.disabled) return;
+        begin();
+        const typed = valueInput.value === "" ? NaN : Number(valueInput.value);
+        const base = Number.isFinite(typed) ? Math.round(typed) : Number(slider.value);
+        valueInput.value = String(base + direction * Number(slider.step));
+        commitSliderFromValue();
+      };
+      valueInput.addEventListener("keydown", event => {
+        if ([".", ",", "e", "E", "+"].includes(event.key)) event.preventDefault();
+        if (event.key === "Enter") { event.preventDefault(); valueInput.blur(); }
+        if (["ArrowUp", "ArrowDown"].includes(event.key)) { event.preventDefault(); stepInput(event.key === "ArrowUp" ? 1 : -1); }
+      });
+      field?.addEventListener("focusout", event => {
+        if (!field.contains(event.relatedTarget)) finishCustomShieldMakerSliderEdit();
+      });
+      for (const button of field?.querySelectorAll("[data-shield-step]") || []) {
+        button.addEventListener("pointerdown", event => event.preventDefault());
+        button.addEventListener("click", () => {
+          if (button.disabled || valueInput.disabled) return;
+          valueInput.focus();
+          stepInput(Number(button.dataset.shieldStep));
+        });
+      }
+      const reset = field?.querySelector(".customShieldMakerReset");
+      reset?.addEventListener("click", () => {
+        commitSliderFromValue();
+        finishCustomShieldMakerSliderEdit();
+        setCustomShieldMakerRangeValue(slider, Number(reset.dataset.shieldReset));
+        syncValueFromSlider();
+        slider.dispatchEvent(new Event("input", { bubbles: true }));
+        finishCustomShieldMakerSliderEdit();
+      });
+      slider._syncCustomShieldMakerInput = () => {
+        setCustomShieldMakerRangeValue(slider, slider.value);
+        if (document.activeElement !== valueInput) syncValueFromSlider();
+      };
+      slider._syncCustomShieldMakerInput();
     };
 
     bindCustomShieldMakerRangePair(fontSizeInput, fontSizeValueInput);
     bindCustomShieldMakerRangePair(letterSpacingInput, letterSpacingValueInput);
     bindCustomShieldMakerRangePair(topOffsetInput, topOffsetValueInput);
     bindCustomShieldMakerRangePair(horizontalOffsetInput, horizontalOffsetValueInput);
+    dialog._syncCustomShieldMakerInputs = () => {
+      for (const slider of [fontSizeInput, letterSpacingInput, topOffsetInput, horizontalOffsetInput]) slider?._syncCustomShieldMakerInput?.();
+    };
 
     const variantButtons = Array.from(
       document.querySelectorAll("#customShieldMakerVariantButtons [data-variant-digit]")
@@ -6820,21 +6954,11 @@ const formHandler = (function () {
       return String(Number(parsed.toFixed(4)));
     };
 
-    const previewEmFromDisplayValue = (value, fallback = 0) => {
-      const parsed = normalizeNumericInput(value, fallback);
-      const adjusted = parsed / 100;
-      return `${formatCustomShieldNumber(adjusted, fallback / 100)}em`;
-    };
-
     const displayValueFromActualEm = (value, fallback = "0") => {
       const parsed = normalizeNumericInput(value, Number(fallback) / 100);
       return formatCustomShieldNumber(parsed * 100, fallback);
     };
     
-    const displayDeltaToEm = (displayDelta) => {
-      return `${formatCustomShieldNumber(displayDelta / 100, "0")}em`;
-    };
-
     const getDisplayInputValue = (input, fallback = 0) => {
       return normalizeNumericInput(input?.value, fallback);
     };
@@ -7094,9 +7218,9 @@ const formHandler = (function () {
     };
 
     const setInputValueIfPresent = (input, value) => {
-      if (input) {
-        input.value = formatCustomShieldNumber(value, "0");
-      }
+      if (!input) return;
+      if (input.type === "range") setCustomShieldMakerRangeValue(input, value);
+      else input.value = formatCustomShieldNumber(value, "0");
     };
 
     const updateCustomShieldMakerVariantButtons = () => {
@@ -7125,7 +7249,7 @@ const formHandler = (function () {
       }
 
       if (uploadButtonText) {
-        uploadButtonText.textContent = `Upload ${activeVariant} Digit SVG or PNG`;
+        uploadButtonText.textContent = `Upload ${activeVariant} Digit Image`;
       }
 
       const hasDedicatedImage = !!state.imageDataByVariant[activeVariant];
@@ -7293,16 +7417,6 @@ const formHandler = (function () {
       return matchedStyles;
     };
 
-    const getPreviewFontWeight = () => {
-      const displayedWeight = normalizeNumericInput(fontWeightInput?.value, 0);
-      const requestedWeight = displayedWeight / 10;
-
-      return {
-        requestedWeight,
-        cssWeight: Math.min(1000, Math.max(1, requestedWeight)),
-      };
-    };
-    
     const renderCustomShieldMakerRouteText = (routeText) => {
       if (!routeNumber) {
         return;
@@ -7344,17 +7458,6 @@ const formHandler = (function () {
         characterSpan.className = classNames.join(" ");
         characterSpan.textContent = character === " " ? "\u00A0" : character;
         routeNumber.appendChild(characterSpan);
-      });
-    };
-
-    const applyCustomShieldMakerLetterSpacing = (spacingValue) => {
-      if (!routeNumber) {
-        return;
-      }
-
-      routeNumber.style.gap = "0";
-      Array.from(routeNumber.children).forEach((characterSpan, index) => {
-        characterSpan.style.marginLeft = index === 0 ? "0" : spacingValue;
       });
     };
 
@@ -7525,7 +7628,7 @@ const formHandler = (function () {
       };
     };
 
-    const seedCustomShieldMakerFromCurrentShield = () => {
+    const seedCustomShieldMakerFromCurrentShield = async () => {
       if (
         typeof ShieldElement === "undefined" ||
         typeof ShieldElement.prototype?.getBlockShieldConfig !== "function"
@@ -7560,6 +7663,12 @@ const formHandler = (function () {
 
       const sampleImg = sampleElement.querySelector(".shieldImg");
       const sampleRoute = sampleElement.querySelector(".routeNumber");
+      // Measure loaded artwork and fonts, as they are measured on the sign.
+      if (sampleImg?.decode) await sampleImg.decode().catch(() => {});
+      if (sampleRoute && document.fonts?.load) {
+        const font = window.getComputedStyle(sampleRoute);
+        await document.fonts.load(`${font.fontSize} ${font.fontFamily}`, sampleShield.routeNumber).catch(() => {});
+      }
 
       if (sampleImg && previewImg) {
         const sampleImageSource =
@@ -7589,7 +7698,7 @@ const formHandler = (function () {
       }
 
       if (routeInput) {
-        routeInput.value = "";
+        routeInput.value = sourceRouteNumber;
       }
 
       if (alignmentSelect) {
@@ -7609,10 +7718,7 @@ const formHandler = (function () {
         const matchedRouteCss = getMatchedRouteNumberCss(sampleRoute);
 
         const fallbackFontSizeEm = computedFontSizePx / parentFontSizePx;
-        const routeFontSizeEm = parseCssEmValue(
-          matchedRouteCss["font-size"],
-          fallbackFontSizeEm
-        );
+        const routeFontSizeEm = fallbackFontSizeEm;
 
         const fallbackTopEm =
           Number.isFinite(parseFloat(computedRoute.top)) && computedFontSizePx
@@ -7656,7 +7762,7 @@ const formHandler = (function () {
         setSelectValueSafely(fontSelect, fontName, "Series D");
 
         if (fontSizeInput) {
-          fontSizeInput.value = displayValueFromActualEm(routeFontSizeEm, "220");
+          setInputValueIfPresent(fontSizeInput, displayValueFromActualEm(isMotorwayFont(fontName) ? routeFontSizeEm / 0.8 : routeFontSizeEm, "220"));
         }
 
         if (fontWeightInput) {
@@ -7665,22 +7771,14 @@ const formHandler = (function () {
             : "0";
         }
 
-        if (letterSpacingInput) {
-          letterSpacingInput.value = displayValueFromActualEm(
-            routeLetterSpacingEm,
-            "0"
-          );
-        }
+        setInputValueIfPresent(letterSpacingInput, displayValueFromActualEm(routeLetterSpacingEm, "0"));
 
         if (topOffsetInput) {
-          topOffsetInput.value = displayValueFromActualEm(routeTopEm, "0");
+          setInputValueIfPresent(topOffsetInput, displayValueFromActualEm(routeTopEm, "0"));
         }
 
         if (horizontalOffsetInput) {
-          horizontalOffsetInput.value = displayValueFromActualEm(
-            routeHorizontalEm,
-            "0"
-          );
+          setInputValueIfPresent(horizontalOffsetInput, displayValueFromActualEm(routeHorizontalEm, "0"));
         }
         
         const sampleImgRect = sampleImg?.getBoundingClientRect();
@@ -7736,14 +7834,26 @@ const formHandler = (function () {
       sampleRoot.remove();
     };
 
+    const fitCustomShieldMakerPreview = () => {
+      if (!dialog.open) return;
+      const frame = dialog.querySelector(".customShieldMakerPreviewFrame");
+      const stage = dialog.querySelector(".customShieldMakerPreviewStage");
+      if (!frame || !stage?.offsetWidth || !stage.offsetHeight) return;
+      const scale = Math.min(4.75, (frame.clientWidth - 24) / stage.offsetWidth, (frame.clientHeight - 20) / stage.offsetHeight);
+      frame.style.setProperty("--customShieldPreviewScale", String(Math.max(Number.EPSILON, scale)));
+    };
+
     const updateCustomShieldMakerPreview = () => {
       if (!routeNumber) {
         return;
       }
 
       const syncPairedValueInput = (slider, valueInput) => {
-        if (slider && valueInput && document.activeElement !== valueInput) {
-          valueInput.value = slider.value;
+        if (slider && valueInput) {
+          valueInput.min = slider.min;
+          valueInput.max = slider.max;
+          valueInput.step = slider.step;
+          if (document.activeElement !== valueInput) valueInput.value = slider.value;
         }
       };
       syncPairedValueInput(fontSizeInput, fontSizeValueInput);
@@ -7754,90 +7864,23 @@ const formHandler = (function () {
       const routeText = String(routeInput?.value || "").trim();
       updateCustomShieldMakerCustomColorControls();
 
-      const selectedColor = getCustomShieldMakerRouteColorValue();
-      const selectedFont = fontSelect?.value || "Series D";
-      const selectedAlignment = alignmentSelect?.value || "center";
-      const cssColor =
-        typeof lib !== "undefined" && lib.colors && lib.colors[selectedColor]
-          ? lib.colors[selectedColor]
-          : selectedColor;
-
-      const anchor = dialog._customShieldMakerAnchor || {
-        x: 50,
-        y: 50,
-        seedTop: 0,
-        seedHorizontal: 0,
-      };
-
-      const anchorX =
-        selectedAlignment === "left"
-          ? 0
-          : selectedAlignment === "right"
-            ? 100
-            : anchor.x;
-
-      const translateX =
-        selectedAlignment === "left"
-          ? "0%"
-          : selectedAlignment === "right"
-            ? "-100%"
-            : "-50%";
-
-      const { requestedWeight, cssWeight } = getPreviewFontWeight();
-
-      const letterSpacingValue = previewEmFromDisplayValue(
-        letterSpacingInput?.value,
-        0
-      );
-
+      fontSelect?._fontPickerApi?.sync();
       renderCustomShieldMakerRouteText(routeText);
-
       routeNumber.hidden = routeText.length === 0;
-      routeNumber.dataset.alignment = selectedAlignment;
-      routeNumber.style.color = String(cssColor).toLowerCase();
-      const renderedSelectedFont = typeof resolveTextFontFamilyForRender === "function"
-        ? resolveTextFontFamilyForRender(selectedFont, { backgroundColor: "Blue" }, { color: "Blue" })
-        : selectedFont;
-      const normalizedRenderedSelectedFont = String(renderedSelectedFont || "")
-        .replace(/["']/g, "")
-        .trim();
-      const usesSeriesDSpacingFix = normalizedRenderedSelectedFont === "Series D";
-      routeNumber.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
-      document
-        .getElementById("customShieldMakerShieldShell")
-        ?.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
-      routeNumber.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
-      routeNumber.style.fontSize = previewEmFromDisplayValue(
-        isMotorwayFont(renderedSelectedFont)
-          ? getDisplayInputValue(fontSizeInput, 220) * 0.8
-          : fontSizeInput?.value,
-        220
-      );
-      routeNumber.style.fontWeight = String(cssWeight);
-      routeNumber.style.fontVariationSettings = `"wght" ${requestedWeight}`;
-      routeNumber.style.letterSpacing = "0";
-      applyCustomShieldMakerLetterSpacing(letterSpacingValue);
-      const topDeltaValue = displayDeltaToEm(
-        getDisplayInputValue(topOffsetInput, 0) - anchor.seedTop
-      );
-
-      const horizontalDeltaValue = displayDeltaToEm(
-        getDisplayInputValue(horizontalOffsetInput, 0) - anchor.seedHorizontal
-      );
-
-      routeNumber.style.top = `calc(${anchor.y}% + ${topDeltaValue})`;
-      routeNumber.style.left = `calc(${anchorX}% + ${horizontalDeltaValue})`;
-      routeNumber.style.right = "auto";
-      routeNumber.style.transform = `translate(${translateX}, -50%)`;
-      routeNumber.style.margin = "0";
-      routeNumber.style.alignItems = "center";
-      routeNumber.style.textAlign = selectedAlignment;
-      routeNumber.style.justifyContent =
-        selectedAlignment === "left"
-          ? "flex-start"
-          : selectedAlignment === "right"
-            ? "flex-end"
-            : "center";
+      const style = getCustomShieldMakerEditorStyle();
+      routeNumber.dataset.alignment = style.alignment;
+      // Use the same renderer and units as the saved shield on the sign.
+      applyCustomShieldMakerRouteStyle(routeNumber, {
+        customRouteStyle: style,
+        customAnchor: getCustomShieldMakerEditorAnchor(),
+        routeNumber: routeText,
+      });
+      const renderedFont = typeof resolveTextFontFamilyForRender === "function"
+        ? resolveTextFontFamilyForRender(style.fontFamily, { backgroundColor: "Blue" }, { color: "Blue" }) : style.fontFamily;
+      const seriesD = String(renderedFont).replace(/["']/g, "").trim() === "Series D";
+      routeNumber.classList.toggle("seriesDSpacingFix", seriesD);
+      document.getElementById("customShieldMakerShieldShell")?.classList.toggle("seriesDSpacingFix", seriesD);
+      fitCustomShieldMakerPreview();
     };
 
     const getDefaultCustomShieldMakerName = () =>
@@ -7899,11 +7942,11 @@ const formHandler = (function () {
         if (nameInput) nameInput.value = snapshot.name || "";
         if (routeInput) routeInput.value = snapshot.routeNumber || "";
         if (fontSelect) fontSelect.value = snapshot.fontFamily || "Series D";
-        if (fontSizeInput) fontSizeInput.value = snapshot.fontSize || "";
+        setInputValueIfPresent(fontSizeInput, snapshot.fontSize);
         if (fontWeightInput) fontWeightInput.value = snapshot.fontWeight || "";
-        if (letterSpacingInput) letterSpacingInput.value = snapshot.letterSpacing || "";
-        if (topOffsetInput) topOffsetInput.value = snapshot.topOffset || "";
-        if (horizontalOffsetInput) horizontalOffsetInput.value = snapshot.horizontalOffset || "";
+        setInputValueIfPresent(letterSpacingInput, snapshot.letterSpacing);
+        setInputValueIfPresent(topOffsetInput, snapshot.topOffset);
+        setInputValueIfPresent(horizontalOffsetInput, snapshot.horizontalOffset);
         if (alignmentSelect) {
           alignmentSelect.value = normalizeCustomShieldMakerAlignment(
             snapshot.alignment
@@ -7949,6 +7992,7 @@ const formHandler = (function () {
     };
 
     const resetCustomShieldMakerHistory = () => {
+      customShieldMakerActiveSlider = null;
       const snapshot = getCustomShieldMakerHistorySnapshot();
       customShieldMakerUndoStack = [snapshot];
       customShieldMakerRedoStack = [];
@@ -7956,7 +8000,7 @@ const formHandler = (function () {
     };
 
     const recordCustomShieldMakerHistoryCheckpoint = () => {
-      if (customShieldMakerRestoringHistory || !dialog.open) {
+      if (customShieldMakerRestoringHistory || !dialog.open || customShieldMakerActiveSlider) {
         return;
       }
 
@@ -7978,6 +8022,7 @@ const formHandler = (function () {
     };
 
     const undoCustomShieldMakerEdit = () => {
+      finishCustomShieldMakerSliderEdit();
       if (customShieldMakerUndoStack.length <= 1) {
         return;
       }
@@ -7990,6 +8035,7 @@ const formHandler = (function () {
     };
 
     const redoCustomShieldMakerEdit = () => {
+      finishCustomShieldMakerSliderEdit();
       if (!customShieldMakerRedoStack.length) {
         return;
       }
@@ -8036,7 +8082,6 @@ const formHandler = (function () {
             "hidden",
             "image",
             "radio",
-            "range",
             "reset",
             "submit",
           ].includes(inputType))
@@ -8078,7 +8123,17 @@ const formHandler = (function () {
       true
     );
 
+    const ensureCustomShieldMakerPickers = () => {
+      createFontPicker({ selectEl: fontSelect, mode: "allFontsGrouped", force: true });
+      createColorPicker(colorSelect, { force: true });
+      window.SignMakerEditorRuntime?.ensureElement(fontSelect);
+      window.SignMakerEditorRuntime?.ensureElement(colorSelect);
+    };
+    dialog._ensureCustomShieldMakerPickers = ensureCustomShieldMakerPickers;
+
     const showCustomShieldMakerDialog = () => {
+      dialog._syncCustomShieldMakerInputs();
+      ensureCustomShieldMakerPickers();
       updateCustomShieldMakerPreview();
       setCustomShieldMakerDeleteVisibility();
 
@@ -8092,6 +8147,7 @@ const formHandler = (function () {
         dialog.showModal();
       }
 
+      fitCustomShieldMakerPreview();
       resetCustomShieldMakerHistory();
     };
 
@@ -8319,15 +8375,21 @@ const formHandler = (function () {
           (currentBlockElem.shieldBase === record.value || currentBlockElem.type === record.value)
         );
 
-        deleteCustomShieldMakerRecord(editingId);
-        revertCustomShieldMakerUsageToInterstate(record.value);
-        dialog._editingCustomShieldId = null;
-        setCustomShieldMakerDeleteVisibility();
-
+        const fallbackBase = getCustomShieldMakerFallbackBase(record);
+        revertCustomShieldMakerUsageToSource(record.value, fallbackBase);
+        // Move the live selection before refreshing a registry without this shield.
         if (currentBlockUsedDeletedShield && typeof syncShieldBasePickerValue === "function") {
-          syncShieldBasePickerValue("I", { updateBlock: true });
+          ensureSdShieldBasePicker();
+          syncShieldBasePickerValue(fallbackBase, { updateBlock: true });
+          syncSdShieldVariantPickerForBase(fallbackBase, {
+            requestedValue: currentBlockElem.shieldType,
+            updateBlock: true,
+          });
         }
 
+        deleteCustomShieldMakerRecord(editingId);
+        dialog._editingCustomShieldId = null;
+        setCustomShieldMakerDeleteVisibility();
         refreshAfterCustomShieldMutation();
         closeCustomShieldMaker();
       } finally {
@@ -8347,7 +8409,7 @@ const formHandler = (function () {
       showCustomShieldMakerDialog();
     };
 
-    const openCustomShieldMaker = () => {
+    const openCustomShieldMaker = async () => {
       populateCustomShieldMakerSelects();
 
       if (!dialog._editingCustomShieldId) {
@@ -8356,7 +8418,7 @@ const formHandler = (function () {
         }
 
         if (dialog.dataset.customShieldMakerUserUploaded !== "true") {
-          seedCustomShieldMakerFromCurrentShield();
+          await seedCustomShieldMakerFromCurrentShield();
         }
       }
 
@@ -8396,6 +8458,57 @@ const formHandler = (function () {
       openCustomShieldMaker();
     });
     saveButton?.addEventListener("click", saveCustomShieldMakerRecordFromEditor);
+    exportButton?.addEventListener("click", async () => {
+      const record = collectCustomShieldMakerRecordFromEditor();
+      if (!record) return;
+      exportButton.disabled = true;
+      try {
+        const configuration = await createCustomShieldMakerConfig(record, async image => {
+          if (String(image).startsWith("data:image/")) return image;
+          const fallback = window.getSignMakerAssetFallback?.(image);
+          if (fallback?.startsWith("data:image/")) return fallback;
+          const response = await fetch(image);
+          if (!response.ok) throw new Error("Unable to embed variant artwork.");
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Unable to read variant artwork."));
+            reader.readAsDataURL(blob);
+          });
+        });
+        const blob = new Blob([JSON.stringify(configuration, null, 2)], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = (record.name.replace(/[^a-z0-9_-]+/gi, "_") || "custom_shield") + ".json";
+        document.body.appendChild(link); link.click(); link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        window.alert("Unable to export shield: " + error.message);
+      } finally { exportButton.disabled = false; }
+    });
+    importButton?.addEventListener("click", () => importInput?.click());
+    importInput?.addEventListener("change", async () => {
+      const file = importInput.files?.[0];
+      if (!file) return;
+      try {
+        const record = parseCustomShieldMakerConfig(await file.text());
+        applyCustomShieldMakerRecordToEditor(record);
+        // Import opens a new draft. Saving it never overwrites the source shield.
+        dialog._editingCustomShieldId = null;
+        setCustomShieldMakerDeleteVisibility();
+        updateCustomShieldMakerPreview();
+        resetCustomShieldMakerHistory();
+      } catch (error) { window.alert("Unable to import shield: " + error.message); }
+      finally { importInput.value = ""; }
+    });
+    previewImg?.addEventListener("load", fitCustomShieldMakerPreview);
+    window.addEventListener("resize", fitCustomShieldMakerPreview);
+    if (window.ResizeObserver) {
+      const previewObserver = new ResizeObserver(fitCustomShieldMakerPreview);
+      for (const element of [dialog.querySelector(".customShieldMakerPreviewFrame"), dialog.querySelector(".customShieldMakerPreviewStage")]) if (element) previewObserver.observe(element);
+    }
     deleteButton?.addEventListener("click", deleteCurrentCustomShieldMakerRecord);
     closeButton?.addEventListener("click", closeCustomShieldMaker);
     dialog.addEventListener("close", hideCustomShieldMaker);
@@ -8413,8 +8526,8 @@ const formHandler = (function () {
 
       const isValidFile =
         file.type === "image/svg+xml" ||
-        file.type === "image/png" ||
-        /\.(svg|png)$/i.test(file.name);
+        file.type === "image/png" || file.type === "image/webp" ||
+        /\.(svg|png|webp)$/i.test(file.name);
 
       if (!isValidFile) {
         event.target.value = "";
@@ -9087,11 +9200,11 @@ const formHandler = (function () {
       }
     };
 
-    const createFontPicker = ({ selectEl, mode, linkedFamilySelect = null }) => {
+    const createFontPicker = ({ selectEl, mode, linkedFamilySelect = null, force = false }) => {
       if (!selectEl) {
         return null;
       }
-      if(!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
+      if(!force&&!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
 
       syncFontSelectOptionLabels(selectEl);
 
@@ -9104,6 +9217,7 @@ const formHandler = (function () {
 
       const wrapper = document.createElement("div");
       wrapper.className = `fontPicker fontPicker-${mode}`;
+      if (selectEl.id === "customShieldMakerRouteFont") wrapper.classList.add("customShieldMakerFontPicker");
       wrapper.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
 
       const trigger = document.createElement("button");
@@ -10109,11 +10223,11 @@ const formHandler = (function () {
 
     const fitColorPickerTriggerLabelText=(trigger,label)=>{label.style.removeProperty('font-size');label.style.removeProperty('font-family');window.SignMakerDropdowns.refresh(trigger);};
 
-    const createColorPicker = (selectEl) => {
+    const createColorPicker = (selectEl, { force = false } = {}) => {
       if (!isColorSelectElement(selectEl)) {
         return null;
       }
-      if (!selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
+      if (!force && !selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
 
       ensureCustomColorOptionsForSelect(selectEl);
 
@@ -10124,6 +10238,7 @@ const formHandler = (function () {
 
       const wrapper = document.createElement("div");
       wrapper.className = "colorPicker";
+      if (selectEl.id === "customShieldMakerRouteColor") wrapper.classList.add("customShieldMakerColorPicker");
       wrapper.dataset.sourceSelectId = selectEl.id || "";
 
       const trigger = document.createElement("button");
@@ -13406,6 +13521,8 @@ const formHandler = (function () {
         pickerHost._shieldVariantPickerApi ||
         null;
 
+      if (pickerApi && !pickerHost.contains(pickerApi.element)) pickerApi = null;
+
       if (!pickerApi) {
         const placeholderSelect = document.createElement("select");
         placeholderSelect.id = "sdShield_shieldType_pickerProxy";
@@ -13502,6 +13619,8 @@ const formHandler = (function () {
 
       let pickerApi =
         nativeSelect._shieldPickerApi || pickerHost._shieldPickerApi || null;
+
+      if (pickerApi && !pickerHost.contains(pickerApi.element)) pickerApi = null;
 
       if (!pickerApi) {
         const placeholderSelect = document.createElement("select");
@@ -15544,6 +15663,7 @@ const formHandler = (function () {
       window.SignMakerEditorRuntime?.ensure();
 
       if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
+        window.SignMakerMobileForms?.prepareElement();
         scheduleSubpanelModalHeightSync();
       }
 
@@ -17509,8 +17629,8 @@ const formHandler = (function () {
 
       const settingsDefaultsFieldDefaults = {
         settingsDefaultsControlTextText: "Control",
-        settingsDefaultsControlTextFontFamily: "Clearview",
-        settingsDefaultsControlTextFont: "Series 5WR",
+        settingsDefaultsControlTextFontFamily: "Highway Gothic",
+        settingsDefaultsControlTextFont: "Series EM",
         settingsDefaultsControlTextSize: "100",
         settingsDefaultsControlTextColor: ControlTextElement.defaultTextColor,
         settingsDefaultsControlTextBg: "Inherit",
@@ -17530,8 +17650,8 @@ const formHandler = (function () {
         settingsDefaultsAdvisoryBg: "Yellow",
 
         settingsDefaultsActionText: "Action",
-        settingsDefaultsActionFontFamily: "Clearview",
-        settingsDefaultsActionFont: "Series 5WR",
+        settingsDefaultsActionFontFamily: "Highway Gothic",
+        settingsDefaultsActionFont: "Series E",
         settingsDefaultsActionSize: "70",
         settingsDefaultsActionColor: ControlTextElement.defaultTextColor,
         settingsDefaultsActionBg: "Inherit",
@@ -17692,8 +17812,7 @@ const formHandler = (function () {
           parseNumberOrFallback(defaults.settingsDefaultsExitTabNestedSpacing, 0)
         );
 
-        // Exit tabs now use a font dropdown. Keep new tabs on Series EEM until
-        // the settings-defaults page is updated to store an actual font family.
+        // Exit-tab font defaults are stored in profiles.
         ExitTab.prototype.defaultFHWAFont = true;
         ExitTab.prototype.defaultShowLeft = !!defaults.settingsDefaultsExitTabLeft;
         ExitTab.prototype.defaultFullBorder = !!defaults.settingsDefaultsExitTabFullBorder;
@@ -19553,13 +19672,19 @@ const formHandler = (function () {
       `${block}_borderColor`,
       `${block}_borderRadius`,
     ]);
-    toggleTargets(`${block}_background`, [
+    const backgroundTargets = [
       `${block}_backgroundColor`,
       `${block}_borderRadius`,
       `${block}_horizontalPadding`,
       `${block}_verticalPadding`,
       `${block}_hasOnlyBlock`,
-    ]);
+    ];
+    if (block === 'sdTollLogo' && window.SignMakerMobile?.active) {
+      for (const id of backgroundTargets) {
+        el(id)?.classList.remove('hidden');
+        document.querySelectorAll(`label[for="${id}"]`).forEach(label => label.classList.remove('hidden'));
+      }
+    } else toggleTargets(`${block}_background`, backgroundTargets);
   };
 
   const normalizeTextEditorWholeNumber = (value, min, max, fallback) => {
@@ -21413,6 +21538,10 @@ const formHandler = (function () {
       }
     }
 
+    if (blockElemType === 'sdTollLogo' && window.SignMakerMobile?.active) {
+      currentBlockElem.background = currentBlockElem.backgroundColor !== 'Inherit';
+    }
+
     if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
       const parsedSpacing = parseFloat(currentBlockElem.spacing);
       currentBlockElem.spacing = Number.isFinite(parsedSpacing)
@@ -22393,6 +22522,10 @@ const formHandler = (function () {
       }
     }
 
+    if (blockElemType === 'sdTollLogo' && window.SignMakerMobile?.active && !currentBlockElem.background) {
+      document.getElementById('sdTollLogo_backgroundColor').value = 'Inherit';
+    }
+
     if (blockElemType === "sdShield") {
       normalizeSdShieldBannerStyleFields(currentBlockElem);
       writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
@@ -22548,7 +22681,7 @@ const formHandler = (function () {
     window.SignMakerEditorRuntime?.ensure();
     syncAllFontPickers(); syncAllColorPickers();
     window.SignMakerMergeUI?.sync();
-    window.SignMakerMobileForms?.refresh();
+    window.SignMakerMobileForms?.prepareElement();
     window.SignMakerMobileSubpanels?.refresh();
     scheduleSubpanelModalHeightSync();
   };
@@ -25447,6 +25580,7 @@ const formHandler = (function () {
     window.SignMakerMergeUI?.sync();
     window.SignMakerEditorRuntime?.ensure();
     window.SignMakerSettings22?.sync();
+    window.SignMakerMobileForms?.prepareElement();
   };
     
     /* END OF UPDATEFORM */

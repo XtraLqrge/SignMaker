@@ -12,6 +12,12 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'vendor/terser.min.cjs')
 const {criticalCSS} = require('./critical-css.cjs');
 const root = path.resolve(__dirname, '..');
 const publicRoot = path.join(root, 'public');
+const writePresetDocuments = () => {
+  const directory = path.join(publicRoot, 'presets');
+  const documents = Object.fromEntries(fs.readdirSync(directory).filter(file => file.endsWith('.json')).sort().map(file => [path.basename(file, '.json'), JSON.parse(fs.readFileSync(path.join(directory, file), 'utf8'))]));
+  fs.writeFileSync(path.join(publicRoot, 'js/PresetTemplates.js'), 'window.SignMakerPresetTemplates = ' + JSON.stringify(documents) + ';\n');
+};
+
 const manifestPath = path.join(root, 'build-manifest.json');
 const digest = text => crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
 const parse = text => acorn.parse(text, {ecmaVersion:'latest', sourceType:'script'});
@@ -58,6 +64,7 @@ function compactCSS(source) {
 function build() {
   // The road engine is generated from the vendored StripeMaker sources, not stored.
   const roadEngine = require("./build-diagrammatics.cjs")(root);
+  writePresetDocuments();
   if (fs.existsSync(manifestPath)) {
     const previous = JSON.parse(fs.readFileSync(manifestPath,'utf8'));
     for (const asset of previous.assets || []) {
@@ -88,6 +95,7 @@ function build() {
     let source = relative === 'js/DiagrammaticRoadEngine.js' ? roadEngine : fs.readFileSync(path.join(publicRoot,relative),'utf8');
     if (relative === 'js/main.js') source = source.replace('js/HtmlToImage.js', emitJS('js/HtmlToImage.js'));
     if (relative === 'js/main.js') source = source.replace('js/ExportAssets.js', emitJS('js/ExportAssets.js'));
+    if (relative === 'js/main.js') source = source.replace('js/PresetTemplates.js', emitJS('js/PresetTemplates.js'));
     if (relative === 'js/ExportAssets.js') source = source.replace('/* EXPORT_ASSET_INDEX */ {}', JSON.stringify(exportAssets.index));
     if (relative === 'js/ExportAssets.js') source = source.replace('/* EXPORT_FONT_FACES */ []', JSON.stringify(exportAssets.fontFaces));
     if (relative === 'js/Control.js') source = source.replace('IconFallbacks.js?v=773d7c4b80c1', path.basename(emitJS('js/IconFallbacks.js')));
@@ -109,7 +117,7 @@ function build() {
   const fontSource=fs.readFileSync(path.join(publicRoot,'js/FontLoader.js'),'utf8');
   const fontHelper=compactJS(fontSource).replace(/<\/script/gi,'<\\/script');
   html=html.replace(/<script\b[^>]*src="js\/FontLoader\.js[^"\s]*"[^>]*><\/script>/,()=>'<script data-font-loader>\n'+fontHelper+'</script>');
-  const editorNames = new Set(['DiagrammaticRoadEngine','Diagrammatics','Roundabout','AlignmentButtons','NativeSelect','FDOTSupports','IconPicker','form','IndexDB','CustomShields','MergeUI','Settings22','DropdownTheme','MobileGestures','MobileSubpanels','MobileExitTabs','MobileForms','MobileUI','MobileDropdowns']);
+  const editorNames = new Set(['DiagrammaticRoadEngine','Diagrammatics','Roundabout','AlignmentButtons','NativeSelect','FDOTSupports','IconPicker','form','IndexDB','CustomShields','MergeUI','Settings22','DropdownTheme','MobileGestures','MobileSubpanels','MobileExitTabs','MobileForms','MobileShieldMaker','MobileUI','MobileDropdowns']);
   const core=[], editor=[];
   html = html.replace(/<script\b[^>]*\bsrc="(js\/[^"?]+)(?:\?[^"\s]*)?"[^>]*><\/script>/g, (tag,relative) => {
     if (relative === 'js/Startup.js') return '<!-- STARTUP_SCRIPT -->';

@@ -1557,6 +1557,13 @@ const ungroupSelectedBlockElement = () => {
           GLOBAL_TOP_SUBPANEL_INDEX,
           panel.sign.subPanels.length - 1
         );
+        if (currentlySelectedSubPanelIndex < 0) {
+          const key = getGlobalBlockKey(getGlobalBlockPositionFromIndex(currentlySelectedSubPanelIndex));
+          const control = panel.sign[key] || (key === "globalBottomBlockElements" ? panel.sign.blockElements : null);
+          if (!control?.rows?.some(row => Array.isArray(row) && row.length)) {
+            currentlySelectedSubPanelIndex = 0;
+          }
+        }
       } else {
         currentlySelectedSubPanelIndex = GLOBAL_BOTTOM_SUBPANEL_INDEX;
       }
@@ -4428,6 +4435,10 @@ const ungroupSelectedBlockElement = () => {
     };
 
     const updatePostViewportLayout = () => {
+      if (window.SignMakerMobile?.active) {
+        window.SignMakerMobile.schedule();
+        return;
+      }
       const postContainerElmt = document.getElementById("postContainer");
       if (!postContainerElmt) {
         return;
@@ -4537,14 +4548,8 @@ const ungroupSelectedBlockElement = () => {
         return;
       }
 
-      panel.sign.globalTopBlockElements = new Control({
-        rows: [],
-        blockProperties: [],
-      });
-      panel.sign.globalBottomBlockElements = new Control({
-        rows: [],
-        blockProperties: [],
-      });
+      delete panel.sign.globalTopBlockElements;
+      delete panel.sign.globalBottomBlockElements;
       delete panel.sign.blockElements;
     };
 
@@ -4867,6 +4872,7 @@ const ungroupSelectedBlockElement = () => {
         element.removeAttribute('inert');
         element.removeAttribute('data-startup-inert');
       });
+      window.SignMakerMobile?.init();
       window.performance?.mark?.("signmaker:editor-ready");
       window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
     };
@@ -5452,11 +5458,7 @@ const ungroupSelectedBlockElement = () => {
 
         normalizeSelectionForCurrentPost();
         formHandler.updateForm();
-        redraw();
-
-        requestAnimationFrame(() => {
-          redraw();
-        });
+        redraw({ preserveOtherPanels: true, changedPanelIndex: currentlySelectedPanelIndex });
       });
     };
 
@@ -6195,7 +6197,7 @@ const ungroupSelectedBlockElement = () => {
     };
 
     const shouldDragPanelFromAccessory = (panelElmt, event) =>
-      panelElmt.classList.contains("panelDragHandle") && !event.altKey;
+      window.SignMakerMobile?.active || (panelElmt.classList.contains("panelDragHandle") && !event.altKey);
 
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
       if (!panelElmt || !holder || !tabElmt || !exitTab) return;
@@ -6317,6 +6319,9 @@ const ungroupSelectedBlockElement = () => {
       suppressRedraw = false,
       deferMenu = false,
     } = {}) => {
+      const elementOnly = menu === 'subpanel' && panelIndex === currentlySelectedPanelIndex &&
+        Number(subPanelIndex) === currentlySelectedSubPanelIndex &&
+        JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
       const selectedPanelIndex = clamp(panelIndex, 0, post.panels.length - 1);
       currentlySelectedPanelIndex = selectedPanelIndex;
       selectedGuideArrowPanelIndex = menu === "guideArrows" ? selectedPanelIndex : -1;
@@ -6381,7 +6386,7 @@ const ungroupSelectedBlockElement = () => {
             : -1;
       }
 
-      formHandler.updateForm();
+      formHandler.updateForm({ elementOnly });
 
       if (!deferMenu && menu === "exitTabs" &&
           typeof formHandler.ensureExitTabMenuOpen === "function") {
@@ -6396,6 +6401,11 @@ const ungroupSelectedBlockElement = () => {
       } else if (!deferMenu && menu === "subpanel" &&
           typeof formHandler.ensureSubpanelMenuOpen === "function") {
         formHandler.ensureSubpanelMenuOpen();
+      }
+
+      if (elementOnly) {
+        if (flashTarget) flashElementAfterPostTransform(() => flashTarget);
+        return;
       }
 
       if (menu === "guideArrows") {
@@ -7766,7 +7776,7 @@ const ungroupSelectedBlockElement = () => {
 
       currentlySelectedRowIndex = normalizedRow;
       currentlySelectedBlockIndex = 0;
-      formHandler.updateForm();
+      formHandler.updateForm({ elementOnly: true });
     };
     
     const setSelectedRowAndBlock = (row, block) => {
@@ -7787,8 +7797,7 @@ const ungroupSelectedBlockElement = () => {
         Math.max(0, blocksInRow.length - 1)
       );
 
-      formHandler.updateForm();
-      redraw();
+      formHandler.updateForm({ elementOnly: true });
       flashElementAfterPostTransform(() => {
         const panel = document.getElementById("panel" + currentlySelectedPanelIndex);
         const master = panel?.querySelector(`.blockElementMaster[data-subpanel="${currentlySelectedSubPanelIndex}"]`);
@@ -11747,7 +11756,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     if (element?.id === "postContainer") {
       updateRuralPostLayout();
     }
-    const staticClone = createStaticExportClone(element, selectedPanelIndexSet);
+    const cloneFullLayout = () => {
+      refreshDynamicPanelBorders(element);
+      return createStaticExportClone(element, selectedPanelIndexSet);
+    };
+    const staticClone = window.SignMakerMobile?.active
+      ? window.SignMakerMobile.withFullLayout(cloneFullLayout)
+      : createStaticExportClone(element, selectedPanelIndexSet);
     // Snapshot at the same time as the artwork clone, before asynchronous asset
     // preparation. Later edits must not change the document inside this export.
     const signDocumentJSON = includeSignDocument ? serializeSignJSON(selectedPanelIndexSet) : null;
@@ -11952,6 +11967,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           message.textContent = "";
         }
       }
+    };
+
+    const getMobileExportPanelIndex = () => {
+      const group = getExportablePanelGroups().find(group => group.indices.includes(currentlySelectedPanelIndex));
+      return group?.topIndex ?? currentlySelectedPanelIndex;
+    };
+    const prepareMobilePanelExport = () => {
+      const index = getMobileExportPanelIndex();
+      fileInfo.panel = index;
+      fileInfo.selectedPanelIndices = [index];
+      const entirePost = document.getElementById('entirePost');
+      if (entirePost) entirePost.checked = false;
     };
 
     const syncDownloadSelection = () => {
@@ -12497,13 +12524,22 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     // microtask this also batches native events, and unlike drawing in rAF it
     // leaves time for image/font layout callbacks before the frame is painted.
     const finishInput = finished => {
-      if (finished === event) flushPendingLivePreview();
+      if (finished === event && !window.SignMakerMobile?.active) flushPendingLivePreview();
     };
     window.addEventListener("input", finishInput);
     livePreviewInputCleanup = () => window.removeEventListener("input", finishInput);
-    // Controls which stop propagation still get a bounded, one-frame flush.
+    // Mobile batches input and commit events into one render per animation frame.
+    // Controls which stop propagation also get this bounded flush.
     livePreviewRenderFrame = requestAnimationFrame(flushPendingLivePreview);
   }, true);
+
+  const retainedPanelRootAt = (roots, index) => {
+    for (const [key, node] of roots) {
+      const indices = key.split(',').map(Number);
+      if (Math.min(...indices) === index) return { node, lastIndex: Math.max(...indices) };
+    }
+    return null;
+  };
 
   const redraw = function (options = {}) {
     if (livePreviewInputPending) {
@@ -12636,6 +12672,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
 
       for (let index = 0; index < post.panels.length; index++) {
+          const retained = retainedPanelRootAt(panelsToKeep, index);
+          if (retained) {
+            panelContainerElmt.appendChild(retained.node);
+            currentPanelStackElmt = null;
+            index = retained.lastIndex;
+            continue;
+          }
           const panel = post.panels[index];
           ensureExitTabLayoutIds(panel);
 
@@ -12683,6 +12726,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                       );
           panelElmt.id = "panel" + index;
           panelElmt.dataset.panelIndex = index.toString();
+          if (window.SignMakerMobile?.active) {
+            const current = index === currentlySelectedPanelIndex;
+            const visible = current || window.SignMakerMobile.showingWholePost;
+            panelElmt.classList.toggle('mobileCurrentPanel', current);
+            panelElmt.inert = !visible;
+            if (!visible) panelElmt.setAttribute('aria-hidden', 'true');
+          }
           panelElmt.addEventListener("click", (event) => {
               const clickedPanelIndex = Number(event.currentTarget.dataset.panelIndex);
               
@@ -17677,16 +17727,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           
           refreshDynamicPanelBorders(panelElmt);
           }
-      panelsToKeep.forEach((oldPanel, indicesKey) => {
-        const newPanel = Array.from(panelContainerElmt.children).find((child) => {
-          const indices = Array.from(child.classList.contains("panel")
-            ? [child]
-            : child.querySelectorAll(".panel[data-panel-index]"))
-            .map((panel) => Number(panel.dataset.panelIndex));
-          return indices.join(",") === indicesKey;
-        });
-        if (newPanel) newPanel.replaceWith(oldPanel);
-      });
       retainRenderedArrows(panelContainerElmt, previousArrowFrames);
       panelContainerElmt.querySelectorAll(".panel[data-panel-index]").forEach((panelElmt) => {
         const panel = post.panels[Number(panelElmt.dataset.panelIndex)];
@@ -17937,11 +17977,15 @@ const serializePostWithElementTypes = (space) => {
       id: "default-simple-exit",
       name: "Simple Exit",
       build: buildSimpleExitTemplate,
+      document: "simple_exit",
+      presetRevision: 1,
     },
     {
       id: "default-mileage-sign",
       name: "Mileage Sign",
       build: buildMileageTemplate,
+      document: "mileage_sign",
+      presetRevision: 1,
     },
     {
       id: "default-tolled-exit",
@@ -17953,7 +17997,25 @@ const serializePostWithElementTypes = (space) => {
       name: "Control Cities Advance Junction",
       build: buildControlCitiesAdvanceJunctionTemplate,
     },
+    { id: "default-standard-apl", name: "Standard APL", document: "standard_apl", presetRevision: 1 },
+    { id: "default-vms", name: "VMS", document: "vms", presetRevision: 1 },
   ];
+
+  let presetDocumentsPromise;
+  const loadPresetDocuments = () => {
+    if (window.SignMakerPresetTemplates) return Promise.resolve(window.SignMakerPresetTemplates);
+    if (!presetDocumentsPromise) {
+      presetDocumentsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = new URL("js/PresetTemplates.js", document.baseURI).href;
+        script.onload = () => window.SignMakerPresetTemplates
+          ? resolve(window.SignMakerPresetTemplates) : reject(new Error("Preset documents are missing."));
+        script.onerror = () => { script.remove(); reject(new Error("Unable to load preset documents.")); };
+        document.head.appendChild(script);
+      }).catch(error => { presetDocumentsPromise = null; throw error; });
+    }
+    return presetDocumentsPromise;
+  };
 
   const initTemplateDB = async function () {
     if (!templateDB) {
@@ -18003,24 +18065,24 @@ const serializePostWithElementTypes = (space) => {
     if (!defaultTemplatesPromise) {
       defaultTemplatesPromise = (async () => {
         const existingTemplates = await db.getAllTemplates();
-        const existingIds = new Set(
-          existingTemplates.map((template) => String(template.id))
-        );
-
+        const existingById = new Map(existingTemplates.map(template => [String(template.id), template]));
+        const documents = await loadPresetDocuments();
         for (const definition of DEFAULT_TEMPLATE_DEFINITIONS) {
-          if (existingIds.has(definition.id)) {
-            continue;
-          }
-
+          const existing = existingById.get(definition.id);
+          if (existing && (!definition.document || existing.presetRevision === definition.presetRevision)) continue;
+          const snapshot = definition.document ? documents[definition.document]?.post : null;
+          if (definition.document && !snapshot?.panels?.length) throw new Error(`Invalid preset: ${definition.document}`);
           await db.saveTemplate({
+            ...existing,
             id: definition.id,
             name: definition.name,
-            data: createDefaultTemplateData(definition.build),
+            data: snapshot ? JSON.stringify(snapshot) : createDefaultTemplateData(definition.build),
             templateScope: "panel",
-            variants: [],
+            variants: existing?.variants || [],
             isDefault: true,
-            dateCreated: DEFAULT_TEMPLATE_DATE,
-            dateModified: DEFAULT_TEMPLATE_DATE,
+            ...(definition.document ? { presetRevision: definition.presetRevision } : {}),
+            dateCreated: existing?.dateCreated || DEFAULT_TEMPLATE_DATE,
+            dateModified: definition.document ? "2026-11-16T00:00:00.000Z" : DEFAULT_TEMPLATE_DATE,
           });
         }
       })().catch((error) => {
@@ -18168,7 +18230,7 @@ const serializePostWithElementTypes = (space) => {
   const getTemplateSnapshot = (template, variantId) => {
     const variant = getTemplateVariant(template, variantId);
     const builtIn = DEFAULT_TEMPLATE_DEFINITIONS.find(definition => definition.id === String(template?.id));
-    const serializedData = variant?.data || (builtIn
+    const serializedData = variant?.data || (builtIn && !builtIn.document
       ? createDefaultTemplateData(builtIn.build) : template?.data);
     if (typeof serializedData !== "string") {
       throw new Error("Template data is missing.");
@@ -18442,6 +18504,7 @@ const serializePostWithElementTypes = (space) => {
     button.type = "button";
     button.className = className;
     button.title = title || label;
+    button.setAttribute("aria-label", title || label);
 
     const iconElement = document.createElement("span");
     iconElement.className = "material-symbols-outlined";
@@ -18451,6 +18514,11 @@ const serializePostWithElementTypes = (space) => {
     if (label) {
       const labelElement = document.createElement("span");
       labelElement.textContent = label;
+      labelElement.className = "templateDesktopLabel";
+      const mobileLabel = document.createElement("span");
+      mobileLabel.className = "templateMobileLabel";
+      mobileLabel.textContent = label.replace("Replace ", "");
+      button.appendChild(mobileLabel);
       button.appendChild(labelElement);
     }
     return button;
@@ -19094,16 +19162,6 @@ const serializePostWithElementTypes = (space) => {
         });
       }
 
-      if (templates.length === 0) {
-        const emptyMessage = document.createElement("p");
-        emptyMessage.className = "templateEmptyMessage";
-        emptyMessage.textContent = searchValue
-          ? "No templates match your search"
-          : "No templates";
-        templatesList.appendChild(emptyMessage);
-        return;
-      }
-
       const sortMode = getTemplateSortMode();
       templates.sort((a, b) => {
         if (sortMode === "last-used") {
@@ -19176,7 +19234,7 @@ const serializePostWithElementTypes = (space) => {
         nameRow.appendChild(editButton);
         if (!template.isDefault && !String(template.id).startsWith("default-")) {
           const renameButton = createTemplateActionButton(
-            "templateRenameBtn",
+            "templateRenameBtn templateDesktopRename",
             "edit_note",
             "",
             "Rename Template"
@@ -19246,6 +19304,12 @@ const serializePostWithElementTypes = (space) => {
           loadTemplate(template.id, "add", selectedVariantId())
         );
         actions.appendChild(addButton);
+
+        if (!template.isDefault && !String(template.id).startsWith("default-")) {
+          const rename = createTemplateActionButton("templateRenameBtn templateMobileRename", "edit_note", "", "Rename Template");
+          rename.addEventListener("click", () => renameTemplate(template.id));
+          actions.appendChild(rename);
+        }
 
         if (!template.isDefault && !String(template.id).startsWith("default-")) {
           const deleteButton = createTemplateActionButton(
@@ -19323,6 +19387,7 @@ const serializePostWithElementTypes = (space) => {
         editTemplate, showActiveTemplateEditor, updateTemplateEditorStatus, switchTemplateEditorVariant, addTemplateEditorVariant, applyTemplateEditorFont, deleteTemplateEditorVariant, saveTemplateEditor, cancelTemplateEditor,
         copySVGSign: copySVGSign,
         copyPanelPNG: copyPanelPNG,
+        getMobileExportPanelIndex, prepareMobilePanelExport,
         updatePreview: updatePreview,
         toggleVmsPanel,
         resetPadding: (...args) => runWithUndo(() => resetPadding(...args)),

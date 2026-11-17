@@ -261,7 +261,7 @@ const applyMotorwayTextFallback = (element, fontFamily) => {
 
 class TextElement {
   constructor({
-    textContent = "New Sign",
+    textContent = "",
     backgroundColor = "Inherit",
     fontFamily = "Series 5WR",
     fontSize = 100,
@@ -1067,13 +1067,13 @@ class ActionMessageElement extends TextElement {
       resolvedOptions,
       "fontFamily",
       "settingsDefaultsActionFont",
-      "Series EEM"
+      "Series E"
     ));
 
     const resolvedFont =
       Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
         ? storedOrFallbackFont
-        : "Series EEM";
+        : "Series E";
 
     resolvedOptions.textContent = getStoredDefaultsOption(
       resolvedOptions,
@@ -1175,13 +1175,13 @@ class AdvisoryMessageElement extends TextElement {
       resolvedOptions,
       "fontFamily",
       "settingsDefaultsAdvisoryFont",
-      "Series EEM"
+      "Series E"
     ));
 
     const resolvedFont =
       Array.isArray(availableFonts) && availableFonts.includes(storedOrFallbackFont)
         ? storedOrFallbackFont
-        : "Series EEM";
+        : "Series E";
 
     resolvedOptions.textContent = getStoredDefaultsOption(
       resolvedOptions,
@@ -6755,7 +6755,7 @@ class TollLogoElement {
     container.style.setProperty("--spacing", spacing + "rem");
     container.style.setProperty(
       "--tollBgColor",
-      lib.colors[this.backgroundColor] || this.backgroundColor.toLowerCase()
+      this.backgroundColor === 'Inherit' ? 'transparent' : lib.colors[this.backgroundColor] || this.backgroundColor.toLowerCase()
     );
     container.style.setProperty("--borderRadius", this.borderRadius + "px");
     container.style.setProperty(
@@ -6770,7 +6770,7 @@ class TollLogoElement {
     container.style.setProperty("border-radius", "var(--borderRadius, 0px)", "important");
     container.style.setProperty("aspect-ratio", "auto", "important");
 
-    if (this.background) {
+    if (this.background && this.backgroundColor !== 'Inherit') {
       container.classList.add("hasBackground");
     }
 

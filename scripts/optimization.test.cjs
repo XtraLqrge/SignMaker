@@ -7,12 +7,12 @@ const {compactJS,compactCSS,minifyJS,parse,normalize} = require('./build.cjs');
 const root=path.resolve(__dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const parsed=new Map();
-function declaration(file,name) {
+function declaration(file,name,functionOnly=false) {
   if(!parsed.has(file))parsed.set(file,{source:read(file),ast:parse(read(file))});
   const {source,ast}=parsed.get(file),stack=[ast];
   while(stack.length){
     const node=stack.pop();
-    if(node.type==='VariableDeclarator'&&node.id.name===name)return `let ${source.slice(node.start,node.end)};`;
+    if(node.type==='VariableDeclarator'&&node.id.name===name&&(!functionOnly||['FunctionExpression','ArrowFunctionExpression'].includes(node.init?.type)))return `let ${source.slice(node.start,node.end)};`;
     if(node.type==='FunctionDeclaration'&&node.id.name===name)return source.slice(node.start,node.end);
     for(const value of Object.values(node))if(value&&typeof value==='object'){
       if(Array.isArray(value))stack.push(...value.filter(x=>x?.type));else if(value.type)stack.push(value);
@@ -37,6 +37,22 @@ test('new posts use Right and one rem spacing while chosen positions stay intact
   assert.equal(new c.PostClass('invalid').polePosition,'Right');
   assert.equal(new c.PostClass().panelSpacing,1);
   for(const position of ['Left','Right','Overhead','Rural','Center'])assert.equal(new c.PostClass(position).polePosition,position);
+});
+
+test('new panels never create top or bottom content from the previous editor selection',()=>{
+  for(const selected of [-2,-1]){
+    const c=context({document:{baseURI:'https://example.test/',currentScript:{src:'https://example.test/js/Control.js'},addEventListener(){},getElementById(){return null;},querySelectorAll(){return[];},documentElement:{style:{getPropertyValue(){return '';}}}},window:{localStorage:{getItem(){return null;}},addEventListener(){}},Image:class{},requestAnimationFrame:()=>0});
+    for(const file of ['lib','Shield','Sign','ExitTab','Panel','VmsPanel','Post','Arrows','Control','SubPanels'])vm.runInContext(read('public/js/'+file+'.js'),c);
+    vm.runInContext(`const post=new Post();post.newPanel();let currentlySelectedPanelIndex=0,currentlySelectedSubPanelIndex=${selected},currentlySelectedExitTabIndex=0,currentlySelectedNestedExitTabIndex=-1,currentlySelectedRowIndex=0,currentlySelectedBlockIndex=0,currentlySelectedAPLArrowIndex=0;
+      const GLOBAL_TOP_SUBPANEL_INDEX=-2,GLOBAL_BOTTOM_SUBPANEL_INDEX=-1,fileInfo={panel:0};
+      const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),runWithUndo=fn=>fn(),getDownloadPanelSelection=()=>{},getCurrentPanel=()=>post.panels[currentlySelectedPanelIndex],getNewPanelInsertionIndex=()=>currentlySelectedPanelIndex+1,redraw=()=>{},schedulePostViewportLayoutUpdate=()=>{},formHandler={updateForm(){}};`,c);
+    for(const name of ['getGlobalBlockPositionFromIndex','getGlobalBlockKey','createDefaultGlobalBlockElement','createDefaultGlobalBlockElements','normalizeGlobalBlockElements','ensureGlobalBlockElements','getRootSubPanel','normalizeSelectionForCurrentPost','clearPanelGlobalBlockElements','createFreshPanelFromDefaults','newPanel'])vm.runInContext(declaration('public/js/main.js',name,name==='newPanel'),c);
+    vm.runInContext(`const getCurrentSubPanel=()=>getRootSubPanel();post.panels[0].sign.globalTopBlockElements=createDefaultGlobalBlockElements();post.panels[0].sign.globalBottomBlockElements=createDefaultGlobalBlockElements();newPanel();`,c);
+    const result=JSON.parse(vm.runInContext(`JSON.stringify({count:post.panels.length,selected:currentlySelectedSubPanelIndex,top:!!post.panels[1].sign.globalTopBlockElements,bottom:!!post.panels[1].sign.globalBottomBlockElements,originalTop:post.panels[0].sign.globalTopBlockElements.rows.length,originalBottom:post.panels[0].sign.globalBottomBlockElements.rows.length})`,c));
+    assert.deepEqual(result,{count:2,selected:0,top:false,bottom:false,originalTop:1,originalBottom:1});
+    vm.runInContext(`currentlySelectedPanelIndex=0;currentlySelectedSubPanelIndex=${selected};normalizeSelectionForCurrentPost();`,c);
+    assert.equal(vm.runInContext('currentlySelectedSubPanelIndex',c),selected,'Existing top/bottom content remains editable');
+  }
 });
 test('post thickness clamps to the control range and keeps saved precision inside it',()=>{
   const c=context({});vm.runInContext(read('public/js/Post.js')+';this.PostClass=Post;',c);
@@ -317,6 +333,7 @@ test('production HTML references existing, content-addressed assets',()=>{
     let source=read('public/'+asset.source);
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
     if(asset.source==='js/main.js')source=source.replace('js/ExportAssets.js',manifest.assets.find(a=>a.source==='js/ExportAssets.js').output);
+    if(asset.source==='js/main.js')source=source.replace('js/PresetTemplates.js',manifest.assets.find(a=>a.source==='js/PresetTemplates.js').output);
     if(asset.source==='js/Control.js')source=source.replace('IconFallbacks.js?v=773d7c4b80c1',path.basename(manifest.assets.find(a=>a.source==='js/IconFallbacks.js').output));
     if(asset.source==='js/Shield.js')source=source.replace('"ShieldFallbacks.js"',JSON.stringify(path.basename(manifest.assets.find(a=>a.source==='js/ShieldFallbacks.js').output)));
     if(asset.source==='js/ExportAssets.js'){
@@ -438,6 +455,26 @@ test('menus are scaled before animation, fit the viewport, scroll and release ob
   assert.ok(f.observed.every(record=>record.observer.disconnected));
   owner.classList.add('open');f.api.positionMenu(menu,trigger);assert.equal(menu.inert,false);
   f.api.closeMenu(menu);assert.equal(menu.inert,true);
+});
+
+test('mobile dropdowns stay between the sticky sheet header and bottom toolbar',()=>{
+  const f=dropdownFixture('public/js/DropdownTheme.js'),owner=new Element('symbolPicker open'),trigger=new Element(),menu=new Element('symbolPickerMenu');
+  const sheet=new Element(),header=new Element(),toolbar=new Element();
+  sheet.rect={left:0,right:393,top:240,bottom:782,width:393,height:542};header.rect={...sheet.rect,bottom:288,height:48};toolbar.rect={top:782,bottom:852};
+  sheet.querySelector=()=>header;f.html.hasAttribute=name=>name==='data-mobile-ui';
+  f.body.appendChild(sheet);sheet.appendChild(owner);owner.appendChild(trigger);
+  const closest=trigger.closest.bind(trigger);trigger.closest=query=>query==='#mobileEditor'?sheet:closest(query);
+  trigger.rect={left:20,right:340,top:600,bottom:644,width:320,height:44};trigger.offsetWidth=320;
+  f.html.getBoundingClientRect=()=>({});
+  // The fixture's document uses these concrete viewport and sheet measurements.
+  const documentGet=()=>toolbar;
+  const originalFile=read('public/js/DropdownTheme.js');
+  const c=context({document:{body:f.body,documentElement:f.html,addEventListener(){},getElementById:documentGet},window:{innerWidth:393,innerHeight:852,localStorage:{getItem(){return null;}}},getComputedStyle:()=>({fontSize:'20px',getPropertyValue(){return '1';}}),MutationObserver:class{observe(){}disconnect(){}}});
+  vm.runInContext(originalFile,c);const api=c.window.SignMakerDropdowns;
+  const result=api.positionMenu(menu,trigger,{minWidth:9,maxWidth:24});
+  assert.ok(result.top>=288&&result.top+result.height<=782);assert.ok(result.left>=8&&result.left+result.width<=385);assert.equal(menu.inert,false);
+  trigger.rect={...trigger.rect,top:262,bottom:306};api.positionMenu(menu,trigger);
+  assert.equal(menu.inert,true,'A partly obscured trigger cannot paint an open menu over the header');
 });
 test('closed editors defer construction and build once when their pane opens',()=>{
   const modal=new Element('sMModal appSettingsConfig'),pane=new Element('tabHidden'),field=new Element('', 'SELECT');
@@ -638,10 +675,224 @@ test('settings positioning handles closed and unknown menus without invalid sele
     if(selector.endsWith('.')||selector.includes('undefined'))throw Error('Invalid selector '+selector);
     return selector==='.modals'?holder:null;
   }};
-  const c=context({document});
+  const c=context({document,window:{}});
   vm.runInContext(['panelStylePopoverIsOpen','clearPanelStylePopoverPosition','positionPanelStylePopover'].map(name=>declaration('public/js/form.js',name)).join('\n')+'this.position=positionPanelStylePopover;',c);
   for(const menu of ['',undefined,'guideArrowConfig','subPanelConfig','templates','panelStyleConfig','appSettingsConfig']){
     bar.dataset.currentMenu=menu;assert.doesNotThrow(()=>c.position(),String(menu));
+  }
+});
+
+test('opening the phone editor hydrates its dropdowns after its containers become visible',()=>{
+  let editorHidden=true,hydrated=0;
+  const modal=new Element('subPanelConfig');modal.style.display='';
+  const pickerButton=new Element();
+  const c=context({sMConfigBar:{dataset:{currentMenu:'subPanelConfig'}},
+    document:{querySelector:()=>null,querySelectorAll:selector=>selector==='.sMModal'?[modal]:selector.includes(':has')?[pickerButton]:[]},
+    window:{SignMakerMobile:{prepareEditor:()=>{editorHidden=false;}},SignMakerEditorRuntime:{ensure:()=>{
+      assert.equal(editorHidden,false);assert.equal(modal.style.display,'block');hydrated++;
+    }}},panelStylePopoverIsOpen:()=>false,scheduleSubpanelModalHeightSync(){},clearPanelStylePopoverPosition(){}});
+  vm.runInContext(declaration('public/js/form.js','reDisplay')+';this.open=reDisplay;',c);
+  c.open();assert.equal(hydrated,1);
+});
+
+test('phone preview fits narrow, landscape, and tall signs without scaling up artwork',()=>{
+  const c=context({});vm.runInContext(declaration('public/js/MobileUI.js','previewMetrics')+'this.fit=previewMetrics;',c);
+  for(const viewport of [320,390,768])for(const [width,height] of [[900,240],[400,1200],[120,70]]){
+    const fitted=c.fit(width,height,viewport-24,300);
+    assert.ok(fitted.scale>0&&fitted.scale<=1);
+    assert.ok(width*fitted.scale<=viewport-24+0.001);
+    assert.ok(height*fitted.scale<=300+0.001);
+    assert.ok(fitted.height>=height*fitted.scale+39);
+  }
+  assert.equal(c.fit(0,0,0,0).height,180);
+});
+
+test('phone export restores its isolated preview even if creating an export fails',()=>{
+  let active=true,exporting=false,schedules=0;
+  const canvas={style:{opacity:'0.8'},classList:new Classes('mobileCanvas')};
+  const post={style:{transform:'translateX(100px)'}};
+  const c=context({canvas,document:{getElementById:()=>post},schedule:()=>schedules++});
+  vm.runInContext('let active=true,exporting=false;'+declaration('public/js/MobileUI.js','withFullLayout')+'this.run=withFullLayout;',c);
+  const capture=()=>{
+    assert.equal(canvas.classList.contains('mobileCanvas'),false);
+    assert.equal(post.style.transform,'none');
+    return 'complete document';
+  };
+  assert.equal(c.run(capture),'complete document');
+  assert.equal(canvas.classList.contains('mobileCanvas'),true);
+  assert.equal(canvas.style.opacity,'0.8');
+  assert.equal(post.style.transform,'translateX(100px)');
+  assert.throws(()=>c.run(()=>{throw Error('capture failed');}),/capture failed/);
+  assert.equal(canvas.classList.contains('mobileCanvas'),true);
+  assert.equal(post.style.transform,'translateX(100px)');
+  assert.equal(schedules,2);
+});
+
+test('phone export selects the current stacked group without discarding other document panels',()=>{
+  const document={getElementById:()=>({checked:true})};
+  const fileInfo={panel:-1,selectedPanelIndices:[]};
+  const groups=[{topIndex:0,indices:[0,1]},{topIndex:2,indices:[2]}];
+  const c=context({document,fileInfo,getExportablePanelGroups:()=>groups});
+  vm.runInContext('let currentlySelectedPanelIndex=1;'+['getMobileExportPanelIndex','prepareMobilePanelExport'].map(name=>declaration('public/js/main.js',name)).join('\n')+'this.prepare=prepareMobilePanelExport;',c);
+  c.prepare();assert.equal(fileInfo.panel,0);assert.deepEqual([...fileInfo.selectedPanelIndices],[0]);
+  vm.runInContext('currentlySelectedPanelIndex=2',c);c.prepare();
+  assert.equal(fileInfo.panel,2);assert.equal(groups.length,2);assert.deepEqual(groups[0].indices,[0,1]);
+});
+
+test('phone workspace starts without a desktop init call, follows emulated widths, and restores the desktop form',()=>{
+  const manifest=JSON.parse(read('build-manifest.json'));
+  const productionMobile=manifest.assets.find(asset=>asset.source==='js/MobileUI.js').output;
+  for(const source of [read('public/js/MobileUI.js'),read('public/'+productionMobile)]){
+  class Node extends Element {
+    constructor(tag='div',id='',classes=''){
+      super(classes,tag.toUpperCase());this.id=id;this.attributes=new Map();this.clientWidth=390;this.offsetHeight=220;
+      this.style.removeProperty=key=>{delete this.style[key];this.properties.delete(key);};
+    }
+    setAttribute(key,value){this.attributes.set(key,String(value));}
+    removeAttribute(key){this.attributes.delete(key);}
+    toggleAttribute(key,value){value?this.setAttribute(key,''):this.removeAttribute(key);}
+    matches(selector){
+      return selector.split(',').some(part=>{
+        const chain=part.trim().split(/\s+/);let node=this;
+        const simple=(node,s)=>{
+          let valid=true;
+          s=s.replace(/:not\(([^)]+)\)/g,(_,neg)=>{if(simple(node,neg))valid=false;return '';});
+          s=s.replace(/\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]/g,(_,key,value)=>{
+            const dataKey=key.replace(/^data-/,'').replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase());
+            const actual=key.startsWith('data-')?node.dataset[dataKey]:node.attributes.get(key)??(node[key]===true?'':undefined);
+            if(actual===undefined||(value!==undefined&&actual!==value))valid=false;return '';
+          });
+          const tag=s.match(/^[a-z]+/i)?.[0];if(tag&&node.tagName!==tag.toUpperCase())return false;
+          for(const match of s.matchAll(/([.#])([\w-]+)/g))if(match[1]==='#'?node.id!==match[2]:!node.classList.contains(match[2]))return false;
+          return valid;
+        };
+        if(!simple(node,chain.pop()))return false;
+        while(chain.length){const wanted=chain.pop();do{node=node.parentElement;}while(node&&!simple(node,wanted));if(!node)return false;}
+        return true;
+      });
+    }
+    before(node){const parent=this.parentElement;node.removeFromParent();parent.children.splice(parent.children.indexOf(this),0,node);node.parentElement=parent;}
+    after(node){const parent=this.parentElement;node.removeFromParent();parent.children.splice(parent.children.indexOf(this)+1,0,node);node.parentElement=parent;}
+    removeFromParent(){if(this.parentElement)this.parentElement.children.splice(this.parentElement.children.indexOf(this),1);}
+    insertBefore(node,reference){if(reference)reference.before(node);else this.append(node);return node;}
+    prepend(node){if(this.children.length)this.children[0].before(node);else this.append(node);}
+    click(){
+      const event={target:this,preventDefault(){},stopImmediatePropagation(){this.stopped=true;}};
+      for(const capture of [true,false])for(const [type,handler,options]of this.events){
+        if(type==='click'&&!!options===capture&&!event.stopped)handler(event);
+      }
+    }
+    focus(){document.activeElement=this;}
+    scrollIntoView(){}
+  }
+  const root=new Node('html'),body=new Node('body'),canvas=new Node('main'),form=new Node('form'),modals=new Node('div','','modals');
+  const bar=new Node('nav','sMConfigBar'),post=new Node('div','postContainer'),panels=new Node('div','panelContainer');
+  root.append(body);body.append(canvas,form);canvas.append(post);post.append(panels);form.append(modals,bar);
+  const downloadDialog=new Node('dialog','downloadContent'),downloadContents=new Node('div','downloadContents');
+  const downloadActions=new Node('div','','downloadActionButtons'),downloadPreview=new Node('div','downloadPreview');
+  downloadDialog.append(downloadContents,downloadPreview);downloadContents.append(downloadActions);body.append(downloadDialog);
+  const pickerButton=new Node('div','','sMConfigOption'),picker=new Node('div','panelSelect'),hitbox=new Node('div','panelSelector');
+  bar.append(pickerButton);pickerButton.append(hitbox,new Node('span','currentlySelectedPanel'),picker);
+  bar.dataset.currentMenu='';
+  const routes=['panelStyleConfig','postStyleConfig','exitTabConfig','subPanelConfig','guideArrowConfig','templates','appSettingsConfig'];
+  for(const id of [...routes,'copySign','export','importJSON','nightMode','hideConfig']){
+    const node=new Node('button',id,'sMConfigOption');node.append(new Node('span','','material-symbols-outlined'),new Node('span'));bar.append(node);
+  }
+  const history=new Node('div','','historyBar');bar.append(history);
+  for(const id of ['undoButton','redoButton','clearAllButton'])history.append(new Node('button',id));
+  const document={forms:{signMaker:form},documentElement:root,body,activeElement:null,fonts:{ready:Promise.resolve()},
+    createElement:tag=>new Node(tag),createComment:()=>new Node('comment'),getElementById:id=>root.querySelector('#'+id),
+    querySelector:selector=>root.querySelector(selector),querySelectorAll:selector=>root.querySelectorAll(selector),addEventListener(){}};
+  let index=0,resize;const models=[{text:'A'},{text:'B'}];
+  const draw=()=>{panels.children=[];for(let i=0;i<models.length;i++){const node=new Node('div','panel'+i,'panel');node.dataset.panelIndex=String(i);panels.append(node);}};
+  draw();
+  const application={exposeToFormHandler:{vars:{get currentlySelectedPanelIndex(){return index;}}},getPost:()=>({panels:models}),
+    changeEditingPanel:value=>{index=value;draw();},newPanel:()=>{models.push({text:'C'});index=models.length-1;draw();}};
+  root.clientWidth=1200;
+  const media={matches:false,addEventListener:(_,handler)=>resize=handler},frames=[],events=new Map(),observers=[];
+  let mobileGestures;
+  const window={SignMakerMobileGestures:{install:options=>{mobileGestures=options;return {cancel(){}};}},matchMedia:()=>media,innerWidth:1200,innerHeight:800,location:{search:''},requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},
+    addEventListener:(name,handler)=>events.set(name,handler),dispatchEvent(){},scrollTo(){}};
+  const c=context({document,window,app:application,URLSearchParams,Event,
+    MutationObserver:class{constructor(callback){this.callback=callback;observers.push(this);}observe(target){this.target=target;}disconnect(){this.disconnected=true;}},
+    ResizeObserver:class{observe(){}unobserve(){}}});
+  for(const id of [...routes,'panelSelector'])document.getElementById(id).addEventListener('click',()=>{
+    bar.dataset.currentMenu=bar.dataset.currentMenu===id?'':id;
+  });
+  vm.runInContext(source,c);const api=window.SignMakerMobile;
+  const flush=()=>{api.schedule();for(let n=0;frames.length&&n<20;n++)frames.shift()();assert.equal(frames.length,0);};
+  assert.equal(api.active,null);assert.equal(document.getElementById('mobileWorkspace'),null,'Wait for editor readiness before moving its controls');
+  root.dataset.appReady='true';observers.find(observer=>observer.target===root).callback();
+  flush();assert.equal(api.active,false);assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);
+  assert.equal(document.getElementById('export').parentElement,bar);
+  assert.equal(downloadPreview.parentElement,downloadDialog);
+  root.clientWidth=393;window.innerWidth=393;events.get('resize')();flush();
+  assert.equal(api.active,false,'Desktop zoom and narrow windows never activate the phone workspace');
+  assert.equal(document.getElementById('mobileWorkspace'),null,'Desktop leaves all editor controls in their original DOM positions');
+  assert.equal(document.getElementById('export').parentElement,bar);
+  root.clientWidth=393;window.innerWidth=393;window.navigator={maxTouchPoints:5,userAgent:'iPhone'};window.screen={width:393};events.get('resize')();flush();
+  assert.equal(media.matches,false,'Device emulation can resize before a media-query change event');
+  assert.equal(canvas.parentElement.id,'mobileWorkspace');assert.equal(modals.closest('form'),form);
+  assert.equal(document.getElementById('panelSelect').closest('form'),form);
+  assert.equal(downloadPreview.parentElement,downloadContents);
+  assert.ok(downloadContents.children.indexOf(downloadPreview)<downloadContents.children.indexOf(downloadActions),'The mobile export preview comes before the action buttons');
+  assert.equal(document.getElementById('panel0').inert,false);assert.equal(document.getElementById('panel1').inert,true);
+  for(const menu of ['subPanelConfig','exitTabConfig','guideArrowConfig','panelStyleConfig']){
+    document.getElementById(menu).click();flush();
+    assert.equal(document.getElementById('mobileEditor').hidden,false);assert.ok(document.getElementById('mobileEditorTitle').textContent);
+  }
+  document.getElementById('mobileMore').click();flush();assert.equal(bar.dataset.currentMenu,'mobileMore');assert.equal(modals.hidden,true);
+  document.getElementById('panelSelector').click();flush();assert.equal(bar.dataset.currentMenu,'panelSelector');assert.equal(modals.hidden,false);
+  const navigation=document.querySelector('.mobilePanelNavigation');navigation.children[2].click();flush();
+  assert.equal(index,1);assert.equal(document.getElementById('panel0').inert,true);assert.equal(document.getElementById('panel1').inert,false);
+  assert.equal(document.getElementById('mobileEditor').hidden,true);assert.deepEqual(models,[{text:'A'},{text:'B'}]);
+  document.getElementById('panelSelector').click();flush();
+  const wholePostToggle=document.getElementById('mobileShowWholePost');
+  wholePostToggle.checked=true;wholePostToggle.events.find(([type])=>type==='change')[1]();flush();
+  assert.equal(api.showingWholePost,true);assert.equal(canvas.classList.contains('mobileWholePost'),true);
+  assert.equal(document.getElementById('panel0').inert,false);assert.equal(document.getElementById('panel1').inert,false);
+  assert.equal(document.getElementById('mobileEditor').hidden,true);
+  mobileGestures.selectPanel(0);flush();
+  assert.equal(api.showingWholePost,false);assert.equal(index,0);assert.equal(document.getElementById('panel1').inert,true);
+  root.clientWidth=1200;window.innerWidth=1200;window.navigator={maxTouchPoints:0,userAgent:'Desktop'};events.get('resize')();flush();
+  assert.equal(canvas.parentElement,body);assert.equal(modals.parentElement,form);assert.equal(document.getElementById('export').parentElement,bar);
+  assert.equal(downloadPreview.parentElement,downloadDialog,'The desktop export preview returns beside its controls');
+  for(const node of panels.children)assert.equal(node.inert,false);
+  }
+});
+
+test('panel reorder destinations preserve stack membership and the selected panel identity',()=>{
+  const post={panels:[{id:'A'},{id:'A2',stackedWithPrevious:true},{id:'B'},{id:'C'}]};
+  let renders=0,updates=0;
+  const c=context({post,clamp:(v,min,max)=>Math.max(min,Math.min(max,v)),runWithUndo:callback=>callback(),
+    formHandler:{updateForm:()=>updates++},redraw:()=>renders++,getStackedPanelGroupIndices:index=>{
+      while(index>0&&post.panels[index].stackedWithPrevious)index--;
+      const group=[index];while(index+1<post.panels.length&&post.panels[index+1].stackedWithPrevious)group.push(++index);
+      return group;
+    }});
+  vm.runInContext('let currentlySelectedPanelIndex=1;'+declaration('public/js/main.js','movePanel')+
+    ';this.move=movePanel;this.selected=()=>currentlySelectedPanelIndex;',c);
+  c.move(1,4);assert.deepEqual(post.panels.map(p=>p.id),['B','C','A','A2']);assert.equal(c.selected(),3);
+  c.move(2,0);assert.deepEqual(post.panels.map(p=>p.id),['A','A2','B','C']);assert.equal(c.selected(),1);
+  assert.equal(post.panels[1].stackedWithPrevious,true);assert.equal(post.panels[0].stackedWithPrevious,false);
+  c.move(0,1);assert.equal(renders,2);assert.equal(updates,2);
+});
+
+test('phone mode retains touch-device behavior while desktop zoom and narrow windows stay desktop',()=>{
+  for(const input of [
+    {width:393,expected:false}, {width:900,expected:false}, {width:1200,expected:false},
+    {width:980,visual:393,expected:false}, {width:400,visual:200,matched:true,expected:false},
+    {width:393,ua:'iPhone',expected:true}, {width:900,ua:'Android',expected:true},
+    {width:980,visual:393,ua:'iPhone',expected:true}, {width:980,screen:393,touch:5,coarse:true,expected:true},
+    {width:820,screen:1024,touch:5,coarse:true,expected:true},
+    {width:600,screen:1920,touch:5,coarse:false,expected:false},
+    {width:1200,forced:true,expected:true},
+  ]){
+    const c=context({URLSearchParams,media:{matches:!!input.matched},document:{documentElement:{clientWidth:input.width}},
+      window:{matchMedia:()=>({matches:!!input.coarse}),innerWidth:input.width,visualViewport:{width:input.visual},navigator:{maxTouchPoints:input.touch||0,userAgent:input.ua||'Desktop'},
+        screen:{width:input.screen},location:{search:input.forced?'?mobile=1':''}}});
+    vm.runInContext(declaration('public/js/MobileUI.js','wantsMobileWorkspace')+'this.wants=wantsMobileWorkspace;',c);
+    assert.equal(c.wants(),input.expected,JSON.stringify(input));
   }
 });
 
@@ -1383,4 +1634,174 @@ test('open settings stay eight pixels from the final toolbar bounds during UI sc
       assert.equal(root.dataset.interfaceScaleChanging,undefined);
     }
   }
+});
+
+test('row sizing sliders keep live values in sync and reset one property per undoable edit',()=>{
+  const {Node,Event,parse:parseDOM}=require('./fixtures/mobile-dom.cjs');
+  const tree=parseDOM(read('scripts/index.source.html').split('<body>')[1].split('</body>')[0]);
+  const byId=id=>tree.querySelector('#'+id),calls=[];let starts=0,ends=0;
+  const c=context({document:{getElementById:byId,querySelectorAll:selector=>tree.querySelectorAll(selector)},exposed:{beginUndoableChange(){starts++;},endUndoableChange(){ends++;}},readForm:options=>calls.push({target:options.target.id,deferred:options.deferHistoryEnd,top:byId('sdBlock_topPaddingVal').value,bottom:byId('sdBlock_bottomPaddingVal').value,width:byId('sdBlock_width').value})});
+  vm.runInContext(declaration('public/js/MobileUI.js','syncDeviceInputs')+';syncDeviceInputs(true);',c);
+  vm.runInContext(declaration('public/js/form.js','bindBlockSizingControls'),c);vm.runInContext('bindBlockSizingControls();bindBlockSizingControls();',c);
+  const fire=(id,type)=>byId(id).dispatchEvent(new Event(type,{bubbles:true}));
+  byId('sdBlock_topPadding').value='-1.5';fire('sdBlock_topPadding','input');assert.equal(byId('sdBlock_topPaddingVal').value,'-1.5');assert.equal(calls.at(-1).deferred,true);
+  byId('sdBlock_bottomPaddingVal').value='7.5';fire('sdBlock_bottomPaddingVal','input');assert.equal(byId('sdBlock_bottomPadding').value,7.5);
+  byId('sdBlock_widthSlider').value='12.25';fire('sdBlock_widthSlider','input');assert.equal(byId('sdBlock_width').value,'12.25');
+  const before=calls.length;fire('sdBlock_topPaddingReset','click');assert.equal(calls.length,before+1);assert.equal(calls.at(-1).top,'0');assert.equal(calls.at(-1).bottom,'7.5');assert.equal(calls.at(-1).width,'12.25');
+  fire('sdBlock_bottomPaddingReset','click');fire('sdBlock_widthReset','click');assert.equal(calls.at(-1).width,'0');assert.equal(byId('sdBlock_widthSlider').value,'0');assert.deepEqual([starts,ends],[3,3]);
+});
+
+test('subpanel tabs use only numbers on mobile and retain desktop captions',()=>{
+  const c=context({window:{SignMakerMobile:{active:true}},document:{createElement:tag=>new Element('',tag.toUpperCase())},exposed:{vars:{currentlySelectedSubPanelIndex:1}},handleSubPanelTabDragStart(){},handleSubPanelTabDragEnd(){}});
+  vm.runInContext(declaration('public/js/form.js','createSubPanelTab'),c);
+  c.args={id:'sub_edit2',label:'Subpanel 2',subPanelIndex:1,deleteLabel:'Delete Subpanel 2'};
+  const mobile=vm.runInContext('createSubPanelTab(args)',c);assert.equal(mobile.children[0].textContent,'2');assert.equal(mobile.children[0].dataset.desktopLabel,'Subpanel 2');
+  c.window.SignMakerMobile.active=false;assert.equal(vm.runInContext('createSubPanelTab(args)',c).children[0].textContent,'Subpanel 2');
+});
+
+test('element selection refreshes its own editor without rebuilding the sign preview',()=>{
+  let refreshes=0,redraws=0;const requests=[];
+  const c=context({getCurrentSubPanel:()=>({blockElements:{rows:[[{},{}],[{}]]}}),
+    clamp:(n,min,max)=>Math.max(min,Math.min(max,n)),currentlySelectedRowIndex:0,currentlySelectedBlockIndex:0,
+    formHandler:{updateForm:options=>{refreshes++;requests.push(options);}},redraw:()=>redraws++,flashElementAfterPostTransform(){}});
+  vm.runInContext(declaration('public/js/main.js','setSelectedRowAndBlock')+';this.select=setSelectedRowAndBlock;',c);
+  for(let i=0;i<200;i++)c.select(i%2,i%2);
+  assert.equal(redraws,0);assert.equal(refreshes,200);assert.ok(requests.every(options=>options.elementOnly===true));
+  c.select(99,99);assert.equal(c.currentlySelectedRowIndex,1);assert.equal(c.currentlySelectedBlockIndex,0);
+});
+
+test('element-only form refresh bypasses inactive menus and retains deferred refresh scope',()=>{
+  let selected=0,global=0;
+  const c=context({mergeLiveInputActive:false,mergePendingFormRefresh:false,mergePendingFormOptions:null,
+    exposed:{getCurrentBlockElem:()=>({})},syncSelectedBlockEditor:()=>selected++,syncPostReference:()=>{global++;throw Error('full refresh');}});
+  vm.runInContext(declaration('public/js/form.js','updateForm')+';this.update=updateForm;',c);
+  for(let i=0;i<200;i++)c.update({elementOnly:true});assert.equal(selected,200);assert.equal(global,0);
+  c.mergeLiveInputActive=true;c.update({elementOnly:true});assert.equal(c.mergePendingFormOptions.elementOnly,true);
+  c.mergeLiveInputActive=false;c.update(c.mergePendingFormOptions);assert.equal(selected,201);assert.equal(c.mergePendingFormRefresh,false);
+  c.mergeLiveInputActive=true;c.update({elementOnly:true});c.update({});c.update({elementOnly:true});
+  assert.equal(c.mergePendingFormOptions.elementOnly,undefined,'A full refresh request wins when scopes are combined');
+});
+
+test('element label controls survive value and selection changes but rebuild for structural edits',()=>{
+  let clipboard=false;const c=context({subpanelListCache:null,exposed:{hasSubpanelClipboard:()=>clipboard}});
+  for(const name of ['rememberSubpanelList','canReuseSubpanelList'])vm.runInContext(declaration('public/js/form.js',name)+`;this.${name}=${name};`,c);
+  const control={},list={},a={textContent:'A'},b={textContent:'B'},rows=[[a,b]];
+  c.rememberSubpanelList(control,rows,list);assert.equal(c.canReuseSubpanelList(control,rows,list),true);
+  for(let i=0;i<200;i++){a.textContent='Edited '+i;a.fontSize=i;assert.equal(c.canReuseSubpanelList(control,rows,list),true);}
+  rows[0].reverse();assert.equal(c.canReuseSubpanelList(control,rows,list),false);rows[0].reverse();
+  a.label='Renamed';assert.equal(c.canReuseSubpanelList(control,rows,list),false);delete a.label;
+  clipboard=true;assert.equal(c.canReuseSubpanelList(control,rows,list),false);clipboard=false;
+  rows.push([{}]);assert.equal(c.canReuseSubpanelList(control,rows,list),false);
+});
+
+test('warm font-label synchronization performs no option text mutations',()=>{
+  const c=context({getUiFontDisplayName:value=>value});vm.runInContext(declaration('public/js/form.js','syncFontSelectOptionLabels')+';this.sync=syncFontSelectOptionLabels;',c);
+  let writes=0;const options=Array.from({length:200},(_,i)=>{let text='Font '+i;return {value:text,get textContent(){return text;},set textContent(value){writes++;text=value;}};});
+  for(let i=0;i<200;i++)c.sync({options});assert.equal(writes,0,'Repeated selection must not trigger thousands of option mutations');
+  options[3].value='Renamed';c.sync({options});assert.equal(writes,1);assert.equal(options[3].textContent,'Renamed');
+});
+
+test('font and color synchronization updates active pickers and leaves hidden editors alone',()=>{
+  const calls={font:0,color:0,hidden:0};
+  const font={active:true,_fontPickerApi:{sync:()=>calls.font++}},color={active:true,_colorPickerApi:{sync:()=>calls.color++}},hidden={active:false,_fontPickerApi:{sync:()=>calls.hidden++},_colorPickerApi:{sync:()=>calls.hidden++}};
+  const c=context({document:{querySelectorAll:selector=>selector.includes('fontPicker')?[font,hidden]:[color,hidden]},
+    window:{SignMakerEditorRuntime:{isActive:element=>element.active}},cleanupOrphanedColorPickerPanels(){}});
+  for(const name of ['syncAllFontPickers','syncAllColorPickers'])vm.runInContext(declaration('public/js/form.js',name)+`;this.${name}=${name};`,c);
+  for(let i=0;i<200;i++){c.syncAllFontPickers();c.syncAllColorPickers();}
+  assert.deepEqual(calls,{font:200,color:200,hidden:0});
+});
+
+test('retained panel groups skip their element renderer while the edited group rebuilds',()=>{
+  const c=context({});vm.runInContext(declaration('public/js/main.js','retainedPanelRootAt')+';this.root=retainedPanelRootAt;',c);
+  const single={},stack={};const roots=new Map([['0',single],['3,2,4',stack]]);
+  assert.equal(c.root(roots,0).node,single);assert.equal(c.root(roots,2).node,stack);assert.equal(c.root(roots,2).lastIndex,4);
+  assert.equal(c.root(roots,1),null);assert.equal(c.root(roots,3),null);
+  const source=read('public/js/main.js'),start=source.indexOf('const retained = retainedPanelRootAt(panelsToKeep, index);'),end=source.indexOf('const panelElmt = document.createElement("div");',start);
+  assert.ok(start>0&&end>start);assert.match(source.slice(start,end),/index = retained\.lastIndex;\s*continue;/);
+});
+
+test('the selected-element refresh preserves row nodes and writes only the selected element form',()=>{
+  const {Node,parse:parseDOM,Event}=require('./fixtures/mobile-dom.cjs');
+  const tree=parseDOM(read('scripts/index.source.html')),byId=id=>tree.querySelector('#'+id);
+  for(const select of tree.querySelectorAll('select'))Object.defineProperty(select,'options',{get:()=>select.children.filter(node=>node.tagName==='OPTION')});
+  const a={textContent:'Alpha',fontFamily:'Series EM',fontSize:100,backgroundColor:'Inherit',textColor:'Match BG',spacing:0,letterSpacing:0,alignment:'Center',lineHeight:100};
+  const b={...a,textContent:'Beta',fontFamily:'Series 5'};const rows=[[a,b]],control={rows,blockProperties:[{topPadding:0,bottomPadding:0,width:0,backgroundColor:'Inherit',borderColor:'Match BG'}]};
+  const vars={currentlySelectedRowIndex:0,currentlySelectedBlockIndex:0};let reads=0;
+  const document={getElementById:byId,querySelector:s=>tree.querySelector(s),querySelectorAll:s=>tree.querySelectorAll(s),createElement:tag=>new Node(tag)};
+  const c=context({document,Event,exposed:{vars,getCurrentSubPanel:()=>({blockElements:control}),getCurrentBlockElem:()=>rows[vars.currentlySelectedRowIndex][vars.currentlySelectedBlockIndex],hasSubpanelClipboard:()=>false},
+    Control:{prototype:{blockToClassElems:{getElem:()=> 'ControlTextElement'},blockInternalElements:{ControlTextElement:'sdCtrlText'},blockElements:{ControlTextElement:'Control Text'}}},
+    Block:class{},GroupedBlockElement:class{},subpanelListCache:null,subpanelClipboardSelection:{selectedBlocks:new Set()},
+    closeSubpanelBlockTypePicker(){},ensureSubpanelClipboardSelectionForRows(){},rowIsFullySelectedForSubpanelClipboard:()=>false,
+    getSubpanelBlockSelectionKey:(r,b)=>r+':'+b,isSubpanelClipboardSelectionAllowed:()=>false,createInlineSubpanelBlockTypePicker:()=>new Node('div'),
+    normalizeTextBlockEditorValues(){},normalizeUiFontValue:value=>value,bindBlockMarginStepperCommit(){},isUsableLiveInput:()=>true,
+    readForm:()=>{reads++;rows[vars.currentlySelectedRowIndex][vars.currentlySelectedBlockIndex].textContent=byId('sdCtrlText_textContent').value;},
+    lib:{appendOption:(select,value,settings={})=>{const option=new Node('option');option.value=value;option.textContent=settings.text||value;select.append(option);}}});
+  for(const name of ['handleBlockDragStart','handleBlockDragEnd','handleRowDragStart','handleRowDragEnd','handleRowDragEnter','handleRowDragOver','handleRowDragLeave','handleRowDrop','handleRowListDragOver','handleRowListDrop','handleRowListDragLeave'])c[name]=()=>{};
+  for(const name of ['canReuseSubpanelList','rememberSubpanelList','syncSubpanelListSelection','updateSelectedBlockEditor'])vm.runInContext(declaration('public/js/form.js',name)+`;this.${name}=${name};`,c);
+  c.updateSelectedBlockEditor();const list=byId('sMSPTextList'),row=list.querySelector('.sMControlRow'),blocks=row.querySelectorAll('.textEditorBlock');
+  assert.equal(byId('sdCtrlText_textContent').value,'Alpha');
+  byId('sdAdvisory_textContent').value='Untouched';
+  for(let i=0;i<100;i++){vars.currentlySelectedBlockIndex=i%2;c.updateSelectedBlockEditor();}
+  assert.equal(list.querySelector('.sMControlRow'),row);assert.equal(row.querySelectorAll('.textEditorBlock')[0],blocks[0]);
+  assert.equal(byId('sdCtrlText_textContent').value,'Beta');assert.equal(byId('sdCtrlText_fontFamily').value,'Series 5');assert.equal(byId('sdAdvisory_textContent').value,'Untouched');
+  assert.equal(blocks[0].classList.contains('selected'),false);assert.equal(blocks[1].classList.contains('selected'),true);
+  byId('sdCtrlText_textContent').value='Edited Beta';byId('sdCtrlText_textContent').dispatchEvent(new Event('input'));
+  assert.equal(reads,1);assert.equal(a.textContent,'Alpha');assert.equal(b.textContent,'Edited Beta');
+});
+
+test('mobile live inputs share one animation-frame render while desktop keeps its immediate flush',()=>{
+  const source=read('public/js/main.js'),start=source.indexOf('  document.addEventListener("input", event => {',source.indexOf('  let livePreviewInputPending'));
+  const registration=source.slice(start,source.indexOf('  }, true);',start)+'  }, true);'.length);
+  for(const mobile of [true,false]){
+    let input,draws=0,id=0;const frames=new Map(),listeners=new Set();
+    const c=context({livePreviewInputPending:false,livePreviewRedrawOptions:null,livePreviewRenderFrame:null,livePreviewInputCleanup:null,
+      redraw:()=>draws++,requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:frame=>frames.delete(frame),
+      document:{addEventListener:(_,fn)=>input=fn},window:{SignMakerMobile:{active:mobile},addEventListener:(_,fn)=>listeners.add(fn),removeEventListener:(_,fn)=>listeners.delete(fn)}});
+    vm.runInContext(declaration('public/js/main.js','flushPendingLivePreview')+registration,c);
+    const event={target:{matches:()=>true}};input(event);c.livePreviewRedrawOptions={};for(const fn of [...listeners])fn(event);
+    if(mobile){
+      assert.equal(draws,0);assert.equal(frames.size,1);
+      for(let i=0;i<10;i++)input({target:{matches:()=>true}});assert.equal(frames.size,1);
+      for(const fn of [...frames.values()])fn();assert.equal(draws,1);assert.equal(frames.size,0);assert.equal(listeners.size,0);
+    }else{assert.equal(draws,1);assert.equal(frames.size,0);}
+  }
+});
+
+test('adding a subpanel redraws the changed panel once without a second animation-frame rebuild',()=>{
+  let updates=0,undos=0;const draws=[],frames=[];
+  const sign={subPanels:[{}],newSubPanel(){this.subPanels.push({});}};
+  const c=context({runWithUndo:fn=>{undos++;return fn();},getCurrentPanel:()=>({sign}),currentlySelectedPanelIndex:2,
+    currentlySelectedSubPanelIndex:0,currentlySelectedRowIndex:3,currentlySelectedBlockIndex:2,currentlySelectedAPLArrowIndex:1,
+    normalizeSelectionForCurrentPost(){},formHandler:{updateForm(){updates++;}},redraw:options=>draws.push(options),requestAnimationFrame:fn=>frames.push(fn)});
+  vm.runInContext(declaration('public/js/main.js','addSubPanel')+';this.add=addSubPanel;',c);c.add();
+  assert.equal(sign.subPanels.length,2);assert.equal(c.currentlySelectedSubPanelIndex,1);
+  assert.equal(c.currentlySelectedRowIndex,0);assert.equal(c.currentlySelectedBlockIndex,0);
+  assert.equal(updates,1);assert.equal(undos,1);assert.equal(draws.length,1);assert.equal(frames.length,0);
+  assert.equal(draws[0].preserveOtherPanels,true);assert.equal(draws[0].changedPanelIndex,2);
+});
+
+test('trackpad zoom bypasses desktop horizontal-wheel handlers without changing phone scrolling',()=>{
+  const source=read('public/js/form.js'),start=source.indexOf('      scrollableElement.addEventListener("wheel", (event) => {');
+  const code=source.slice(start,source.indexOf('\n      });',start)+'\n      });'.length);
+  let listener;const moves=[];const c=context({window:{SignMakerMobile:{active:false}},scrollCooldown:false,
+    scrollableElement:{addEventListener:(_,fn)=>listener=fn,scrollBy:options=>moves.push(options)}});
+  vm.runInContext(code,c);
+  const fire=options=>{const event={deltaY:60,preventDefault(){this.prevented=true;},...options};listener(event);return event;};
+  assert.equal(fire({ctrlKey:true}).prevented,undefined);assert.equal(fire({metaKey:true}).prevented,undefined);assert.equal(moves.length,0);
+  assert.equal(fire({}).prevented,true);assert.equal(moves.length,1);
+  c.window.SignMakerMobile.active=true;assert.equal(fire({ctrlKey:true}).prevented,true);assert.equal(moves.length,2);
+});
+
+test('row range bounds and precision match the desktop baseline while mobile retains its current values',()=>{
+  const {parse:parseDOM}=require('./fixtures/mobile-dom.cjs'),tree=parseDOM(read('scripts/index.source.html'));
+  const document={getElementById:id=>tree.querySelector('#'+id),querySelectorAll:selector=>tree.querySelectorAll(selector)};
+  const c=context({document});vm.runInContext(declaration('public/js/MobileUI.js','syncDeviceInputs')+';this.sync=syncDeviceInputs;',c);
+  for(const side of ['top','bottom']){
+    const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'0');assert.equal(slider.max,'3');assert.equal(slider.step,'.01');
+    document.getElementById(slider.id+'Val').value='-2.5';
+  }
+  c.sync(true);
+  for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'-5');assert.equal(slider.max,'10');assert.equal(slider.step,'0.1');assert.equal(slider.value,'-2.5');}
+  c.sync(false);
+  for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'0');assert.equal(slider.max,'3');assert.equal(slider.step,'.01');}
 });

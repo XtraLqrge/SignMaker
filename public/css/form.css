@@ -282,11 +282,11 @@ html[data-config-position="bottom"] .modals {
   max-height: 87.5%;
 }
 
-#export {
+:where(html:not([data-mobile-ui])) #export {
   background-color: rgba(255, 0, 0, 0.25);
 }
 
-#export.hover {
+:where(html:not([data-mobile-ui])) #export.hover {
   background-color: rgba(255, 0, 0, 0.5);
 }
 

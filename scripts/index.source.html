@@ -128,10 +128,17 @@
   <script defer src="js/CustomShields.js" type="text/javascript"></script>
 <script defer src="js/SignDocument.js"></script>
   <script defer src="js/main.js?v=20261104-subpanels6" type="text/javascript"></script>
+<script defer src="js/MobileGestures.js" type="text/javascript"></script>
+<script defer src="js/MobileSubpanels.js" type="text/javascript"></script>
+<script defer src="js/MobileExitTabs.js" type="text/javascript"></script>
+  <script defer src="js/MobileForms.js" type="text/javascript"></script>
+  <script defer src="js/MobileShieldMaker.js" type="text/javascript"></script>
+  <script defer src="js/MobileUI.js" type="text/javascript"></script>
+<script defer src="js/MobileDropdowns.js" type="text/javascript"></script>
   <link href="css/merge-features.css?v=20261104-subpanels6" rel="stylesheet" type="text/css">
   <link href="css/legacy-shields.css?v=20261104" rel="stylesheet" type="text/css">
   <script defer src="js/MergeUI.js?v=20261104-subpanels6" type="text/javascript"></script>
-<link href="css/template-editor.css?v=20261104-ui2" rel="stylesheet" type="text/css"><link href="css/ui-upgrade.css?v=20261104-pickers7" rel="stylesheet" type="text/css"><script defer src="js/Settings22.js?v=20261104-general8" type="text/javascript"></script><script defer src="js/DropdownTheme.js?v=20261104-general8" type="text/javascript"></script><link rel="stylesheet" href="css/settings22.css?v=20261104-settings22"><link rel="stylesheet" href="css/editor-compact.css?v=20261104-compact4"><link rel="stylesheet" href="css/dropdown-layout.css?v=20261104-general8"><link rel="stylesheet" href="css/picker-theme.css"></head>
+<link href="css/template-editor.css?v=20261104-ui2" rel="stylesheet" type="text/css"><link href="css/ui-upgrade.css?v=20261104-pickers7" rel="stylesheet" type="text/css"><script defer src="js/Settings22.js?v=20261104-general8" type="text/javascript"></script><script defer src="js/DropdownTheme.js?v=20261104-general8" type="text/javascript"></script><link rel="stylesheet" href="css/settings22.css?v=20261104-settings22"><link rel="stylesheet" href="css/editor-compact.css?v=20261104-compact4"><link rel="stylesheet" href="css/dropdown-layout.css?v=20261104-general8"><link rel="stylesheet" href="css/picker-theme.css"><link rel="stylesheet" href="css/mobile.css"><link rel="stylesheet" href="css/segmented-controls.css"><link rel="stylesheet" href="css/custom-shield-maker.css"></head>
 
 <body>
     <div class="top-right-links">
@@ -312,12 +319,16 @@
           <div class="customShieldMakerNameRow">
             <label class="customShieldMakerField customShieldMakerNameField" for="customShieldMakerNameInput">
               <span>Name:</span>
-              <input id="customShieldMakerNameInput" type="text" value="" placeholder="Custom Shield">
+              <input id="customShieldMakerNameInput" aria-label="Shield name" type="text" value="" placeholder="Custom Shield">
             </label>
 
-            <button id="customShieldMakerSaveButton" class="customShieldMakerSaveButton" type="button">
+            <button id="customShieldMakerSaveButton" aria-label="Save shield" title="Save shield" class="customShieldMakerSaveButton" type="button">
               <span class="material-symbols-outlined">save</span>
               <span>Save Shield</span>
+            </button>
+            <button id="customShieldMakerDeleteButton" class="customShieldMakerDeleteButton" type="button" hidden>
+              <span class="material-symbols-outlined">delete</span>
+              <span>Delete Saved Shield</span>
             </button>
           </div>
           <section class="customShieldMakerPreviewPanel" aria-label="Custom shield preview">
@@ -328,7 +339,7 @@
                   <span id="customShieldMakerRouteNumber" class="routeNumber"></span>
                 </div>
               </div>
-              <div id="customShieldMakerEmptyPreview">Upload an SVG or PNG shield</div>
+              <div id="customShieldMakerEmptyPreview">Upload an SVG, PNG, or WebP shield</div>
             </div>
 
             <div class="customShieldMakerVariantSection" aria-label="Custom shield variant settings">
@@ -345,11 +356,16 @@
               <div id="customShieldMakerVariantStatus" class="customShieldMakerVariantStatus">Route number length selects the variant being edited.</div>
             </div>
 
+            <div class="customShieldMakerTransferRow">
             <button id="customShieldMakerUploadButton" type="button">
               <span class="material-symbols-outlined">upload_file</span>
-              <span id="customShieldMakerUploadButtonText">Upload SVG or PNG</span>
+              <span id="customShieldMakerUploadButtonText">Upload SVG, PNG, or WebP</span>
             </button>
-            <input id="customShieldMakerFile" type="file" accept=".svg,.png,image/svg+xml,image/png" hidden>
+            <button id="customShieldMakerExportButton" type="button" title="Export shield JSON" aria-label="Export shield JSON"><span class="material-symbols-outlined" aria-hidden="true">download</span><span>Export</span></button>
+            <button id="customShieldMakerImportButton" type="button" title="Import shield JSON" aria-label="Import shield JSON"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span>Import</span></button>
+            </div>
+            <input id="customShieldMakerImportFile" type="file" accept=".json,application/json" hidden>
+            <input id="customShieldMakerFile" type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" hidden>
             <div class="customShieldMakerPreviewDropdowns">
               <label class="customShieldMakerField" for="customShieldMakerRouteColor">
                 <span>Color</span>
@@ -386,6 +402,7 @@
           </section>
 
           <section class="customShieldMakerControls" aria-label="Route number settings">
+            <input id="customShieldMakerRouteFontWeight" type="hidden" value="10">
             <label class="customShieldMakerField" for="customShieldMakerRouteInput">
               <span>Route Number</span>
               <input id="customShieldMakerRouteInput" type="text" value="" placeholder="Optional">
@@ -393,31 +410,26 @@
 
             <label class="customShieldMakerField" for="customShieldMakerRouteFontSize">
               <span>Font Size</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteFontSize" type="range" min="50" max="350" step="1" value="220"><input id="customShieldMakerRouteFontSizeVal" class="customShieldMakerSliderValue" type="number" min="50" max="350" step="1" value="220"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteFontSize" type="range" min="50" max="350" step="10" value="220"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteFontSizeVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="50" max="350" step="1" value="220"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Font Size"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Font Size"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="220" aria-label="Reset Font Size" title="Reset Font Size"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteLetterSpacing">
               <span>Letter Spacing</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteLetterSpacing" type="range" min="-100" max="100" step="1" value="0"><input id="customShieldMakerRouteLetterSpacingVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteLetterSpacing" type="range" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteLetterSpacingVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Letter Spacing"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Letter Spacing"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="0" aria-label="Reset Letter Spacing" title="Reset Letter Spacing"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteTopOffset">
               <span>Top Offset</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteTopOffset" type="range" min="-100" max="100" step="1" value="0"><input id="customShieldMakerRouteTopOffsetVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteTopOffset" type="range" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteTopOffsetVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Top Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Top Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="0" aria-label="Reset Top Offset" title="Reset Top Offset"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteHorizontalOffset">
               <span>Right/Left Offset</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteHorizontalOffset" type="range" min="-100" max="100" step="1" value="0"><input id="customShieldMakerRouteHorizontalOffsetVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteHorizontalOffset" type="range" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteHorizontalOffsetVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Right/Left Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Right/Left Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="0" aria-label="Reset Right/Left Offset" title="Reset Right/Left Offset"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
           </section>
 
-          <footer class="customShieldMakerFooter">
-            <button id="customShieldMakerDeleteButton" class="customShieldMakerDeleteButton" type="button" hidden>
-              <span class="material-symbols-outlined">delete</span>
-              <span>Delete Saved Shield</span>
-            </button>
-          </footer>
+
         </div>
       </div>
     </dialog>
@@ -468,6 +480,7 @@
                       <span class="settingsRangeValue" id="settingsInterfaceTextSizeValue">100%</span>
                     </div></div></div>
               <div class="generalSettingRow"><label for="appDropdownAnimations">Interface animations:</label><div class="generalSettingControl"><input type="checkbox" id="appDropdownAnimations" checked></div></div>
+              <div class="generalSettingRow"><label for="appAdvancedDropdowns">Advanced dropdowns:</label><div class="generalSettingControl"><input type="checkbox" id="appAdvancedDropdowns"></div></div>
               <div class="generalSettingRow"><label for="disableFlash">Disable Selection Flash:</label><div class="generalSettingControl"><input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showBlockBoundingBoxes">Show Block Bounds:</label><div class="generalSettingControl"><input type="checkbox" id="showBlockBoundingBoxes" name="showBlockBoundingBoxes" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showAlignmentGuides" data-tooltip="Draws evenly spaced vertical guides below the rendered signs.">Alignment Guides:</label><div class="generalSettingControl"><input type="checkbox" id="showAlignmentGuides" name="showAlignmentGuides" onchange="formHandler.readForm(event);"></div></div>
@@ -1272,7 +1285,7 @@
               <button id="globalBottom" onclick="app.changeEditingSubPanel(-1);" class="">
                 Bottom
               </button>
-              <button id="sub_edit1" class="active">Subpanel 1</button>
+              <button id="sub_edit1" class="active" data-mobile-label="1" data-desktop-label="Subpanel 1">Subpanel 1</button>
             </div>
             <div class="listNavOptions">
               <button onclick="app.newSubPanel();">+</button>
@@ -1489,7 +1502,7 @@
                 <div data-property="sdCtrlText" class="sdCtrlTextLayout">
                     <div class="sdCtrlTextTopRow">
                       <label for="sdCtrlText_textContent">Content:</label>
-                      <input type="text" id="sdCtrlText_textContent" class="sdTextEditorContentCompact" placeholder="New Sign" value="New Sign">
+                      <input type="text" id="sdCtrlText_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
                       <label for="sdCtrlText_fontFamily">Font:</label>
                       <select id="sdCtrlText_fontFamily" class="sdTextEditorFontCompact"></select>
                     </div>
@@ -1663,7 +1676,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <div data-property="sdAdvisory" class="hidden sdCtrlTextLayout">
                   <div class="sdCtrlTextTopRow">
                     <label for="sdAdvisory_textContent">Content:</label>
-                    <input type="text" id="sdAdvisory_textContent" class="sdTextEditorContentCompact" placeholder="New Sign" value="New Sign">
+                    <input type="text" id="sdAdvisory_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
                     <label for="sdAdvisory_fontFamily">Font:</label>
                     <select id="sdAdvisory_fontFamily" class="sdTextEditorFontCompact"></select>
                   </div>
@@ -1909,7 +1922,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <div data-property="sdActionMessage" class="hidden sdCtrlTextLayout">
                   <div class="sdCtrlTextTopRow">
                     <label for="sdActionMessage_textContent">Content:</label>
-                    <input type="text" id="sdActionMessage_textContent" class="sdTextEditorContentCompact" placeholder="New Sign" value="New Sign">
+                    <input type="text" id="sdActionMessage_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
                     <label for="sdActionMessage_fontFamily">Font:</label>
                     <select id="sdActionMessage_fontFamily" class="sdTextEditorFontCompact"></select>
                   </div>
@@ -1995,17 +2008,23 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="smSPBlockProperties">
                 <h4>Row Properties</h4>
                 <div class="sdBlockMarginControls">
-                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"></div>
-                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding" data-mobile-label="Top margin (rem)" data-desktop-label="Top Margin (rem):">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding" data-mobile-label="Bottom margin (rem)" data-desktop-label="Bottom Margin (rem):">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
                 </div>
+                <div class="sdBlockColors">
                 <label for="sdBlock_backgroundColor">BG:</label>
                 <select id="sdBlock_backgroundColor"></select>
                 <label for="sdBlock_borderColor">Border:</label>
                 <select id="sdBlock_borderColor"></select>
-                <br>
+                </div>
+                <br class="desktopRowWidthBreak">
+                <div class="sdBlockWidthControl">
                 <label for="sdBlock_width" data-tooltip="Width of the block, set to 0 to automatically resize">Width
                   (rem):</label>
+                <input type="range" id="sdBlock_widthSlider" min="0" max="100" step="0.05" value="0" aria-label="Row width">
                 <input type="number" id="sdBlock_width" placeholder="0" max="100" min="0" step=".05" value="0">
+                <button type="button" id="sdBlock_widthReset" class="sdBlockReset" aria-label="Reset row width"><span class="material-symbols-outlined">refresh</span></button>
+                </div>
                 <label for="sdBlock_backgroundFullWidth">BG Full Width:</label>
                 <input type="checkbox" id="sdBlock_backgroundFullWidth">
                 <br>
@@ -2204,11 +2223,11 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <input type="text" id="templateNameInput" placeholder="Enter template name..." onkeypress="if(event.key === 'Enter') app.savePostTemplate(this.value);">
                 <button type="button" id="savePanelTemplateBtn" onclick="app.savePanelTemplate(document.getElementById('templateNameInput').value);">
                   <span class="material-symbols-outlined">save</span>
-                  Save Panel
+                  <span class="templateDesktopLabel">Save Panel</span><span class="templateMobileLabel">Panel</span>
                 </button>
                 <button type="button" id="savePostTemplateBtn" onclick="app.savePostTemplate(document.getElementById('templateNameInput').value);">
                   <span class="material-symbols-outlined">save</span>
-                  Save Post
+                  <span class="templateDesktopLabel">Save Post</span><span class="templateMobileLabel">Post</span>
                 </button>
               </div>
               <div class="templateSearchSortRow">
@@ -2221,7 +2240,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               </div>
               <label class="templateWarningSetting" for="templateLoadWarning">
                 <input type="checkbox" id="templateLoadWarning" onchange="app.setTemplateLoadWarningEnabled(this.checked);">
-                Confirm before replacing a post or panel
+                <span>Confirm before replacing a post or panel</span>
               </label>
             </div>
             <hr>
@@ -2293,28 +2312,34 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
+      <div class="iconPickerTools">
       <div class="iconPickerTabs" role="tablist" aria-label="Icon source">
-        <button id="iconPickerUploadedTab" type="button" role="tab" aria-selected="true" aria-controls="iconGrid" data-icon-page="uploaded">Uploaded Icons</button>
-        <button id="iconPickerBuiltInTab" type="button" role="tab" aria-selected="false" aria-controls="iconGrid" data-icon-page="built-in">Built-in Icons</button>
+        <button id="iconPickerUploadedTab" type="button" role="tab" aria-selected="true" aria-controls="iconGrid" data-icon-page="uploaded" data-mobile-label="Uploaded" data-desktop-label="Uploaded Icons">Uploaded Icons</button>
+        <button id="iconPickerBuiltInTab" type="button" role="tab" aria-selected="false" aria-controls="iconGrid" data-icon-page="built-in" data-mobile-label="Built-in" data-desktop-label="Built-in Icons">Built-in Icons</button>
       </div>
       <div class="customIconUploadToolbar iconPickerToolbar">
         <button id="uploadCustomIconButton" class="customIconUploadButton" type="button">
           <span class="material-symbols-outlined">upload_file</span>
-          <span>Upload Icon</span>
+          <span data-mobile-label="Upload" data-desktop-label="Upload Icon">Upload Icon</span>
         </button>
-        <input id="uploadCustomIconFile" type="file" accept=".svg,.png,image/svg+xml,image/png" hidden>
+        <input id="uploadCustomIconFile" type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" hidden>
         <div class="iconPickerDisplayControls">
+          <div class="iconPickerDisplayField">
           <label for="iconPickerSort">Sort</label>
           <select id="iconPickerSort">
             <option value="recent">Recently added</option>
             <option value="alphabetical">Alphabetical</option>
           </select>
+          </div>
+          <div class="iconPickerDisplayField">
           <label for="iconPickerView">View</label>
           <select id="iconPickerView">
             <option value="grid">Grid view</option>
             <option value="list">List view</option>
           </select>
+          </div>
         </div>
+      </div>
       </div>
       <input type="search" id="iconSearch" class="assetSelectorSearch" placeholder="Search icons...">
       <div id="iconGrid" class="iconGrid assetPickerGrid" role="tabpanel" aria-labelledby="iconPickerUploadedTab" data-view="grid"></div>

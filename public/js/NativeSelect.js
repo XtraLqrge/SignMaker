@@ -63,7 +63,15 @@
     let pointer = null;
     let pointerClick = false;
     let colorInput = null;
-    const entries = () => [...select.options].filter(option => !option.hidden && (!headerFooter || option.value));
+    const mobileKind = colorForValue ? 'color' : textStyleForValue && /font/i.test(select.id) ? 'font' : null;
+    const mobileMode = () => [...select.options].some(option => option.value === 'Highway Gothic') ? 'family' : 'allFontsGrouped';
+    const mobileOptions = () => ({ mode: mobileMode() });
+    const entries = () => {
+      const options = [...select.options].filter(option => !option.hidden && (!headerFooter || option.value));
+      return mobileKind && window.SignMakerMobileDropdowns
+        ? window.SignMakerMobileDropdowns.entries(select, mobileKind, options, mobileOptions()) : options;
+    };
+    const customAllowed = () => customColors && !window.SignMakerMobileDropdowns?.view(select, mobileKind, mobileOptions()).simple;
     function updateLabel(element, option) {
       element.textContent = option?.textContent ?? '';
       if (textStyleForValue) Object.assign(element.style, textStyleForValue(option?.value));
@@ -87,6 +95,10 @@
       if (menu) menu.inert = true;
       trigger.setAttribute('aria-expanded', 'false');
       trigger.removeAttribute('aria-activedescendant');
+      if (mobileKind && window.SignMakerMobileDropdowns?.closed(select)) {
+        syncedState = '';
+        sync();
+      }
       if (restoreFocus && trigger.isConnected && !trigger.disabled) trigger.focus({ preventScroll: true });
     }
     function position(event){
@@ -98,7 +110,7 @@
 }
     function highlight(index) {
       const options = entries();
-      const count = options.length + (customColors ? 1 : 0);
+      const count = menuRows.length || options.length;
       active = count ? (index + count) % count : 0;
       const row = menuRows[active];
       if (!row) return;
@@ -110,7 +122,7 @@
     // Skip the work when nothing the trigger shows has changed.
     let syncedState = '';
     function sync() {
-      const state = `${select.value}\u0000${select.disabled}\u0000${select.options.length}\u0000${select.selectedOptions[0]?.textContent ?? ''}`;
+      const state = `${select.value}\u0000${select.disabled}\u0000${select.options.length}\u0000${select.selectedOptions[0]?.textContent ?? ''}\u0000${window.SignMakerMobileDropdowns?.revision ?? 0}`;
       if (!open && state === syncedState) return;
       syncedState = state;
       const options = entries();
@@ -179,7 +191,7 @@
         // Opening can scroll the trigger into view under a stationary pointer.
         if (startX === event.clientX && startY === event.clientY) return;
         const target = hit(event);
-        if (menu.contains(target) && (target.closest('[data-picker-remove], [data-picker-custom]'))) {
+        if (menu.contains(target) && (target.closest('[data-picker-remove], [data-picker-custom], [data-mobile-dropdown-advanced]'))) {
           event.preventDefault();
           runAction(target);
           return;
@@ -194,6 +206,7 @@
         close(true);
       }, true);
       listen(document, 'pointerdown', event => {
+        if (event.target.closest?.('#mobileAdvancedDropdownPrompt')) return;
         if (open && !wrapper.contains(event.target) && !menu.contains(event.target)) close();
       }, true);
       listen(window, 'resize', position);
@@ -211,7 +224,9 @@
           : '';
         return heading + `<button type="button" id="${id}-${index}" class="symbolPickerItem${option.value === select.value ? ' selected' : ''}" role="option" aria-selected="${option.value === select.value}" tabindex="-1" data-native-index="${index}" ${grouped ? 'data-grouped-option' : ''} ${option.disabled ? 'disabled' : ''}>${swatchMarkup}<span class="symbolPickerLabel">${escape(option.textContent)}</span>${removeMarkup(option, index)}<span class="symbolPickerCheck" aria-hidden="true">${option.value === select.value ? '✓' : ''}</span></button>`;
       }).join('') +
-        (customColors ? `<button type="button" id="${id}-custom" class="symbolPickerItem symbolPickerCustom" role="option" tabindex="-1" data-picker-custom>Custom…</button>` : '');
+        (customAllowed() ? `<button type="button" id="${id}-custom" class="symbolPickerItem symbolPickerCustom" role="option" tabindex="-1" data-picker-custom>Custom…</button>` : '');
+      menu._mobileDropdownTrigger = trigger;
+      if (mobileKind) window.SignMakerMobileDropdowns?.appendAdvanced(menu, select, mobileKind, show, mobileOptions());
       menuRows = menu.querySelectorAll('[role="option"]');
     }
     function show() {
@@ -236,6 +251,8 @@
     }
     // Picker actions run on pointerup (a drag-release) or click, before row choice.
     function runAction(target) {
+      const advanced = target?.closest('[data-mobile-dropdown-advanced]');
+      if (advanced) { advanced.click(); return true; }
       const remove = target?.closest('[data-picker-remove]');
       if (remove) {
         const option = entries()[Number(remove.dataset.pickerRemove)];
@@ -275,6 +292,7 @@
       if (!option || option.disabled || trigger.disabled) return;
       close(true);
       if (select.value === option.value) return;
+      if (mobileKind === 'font' && ![...select.options].some(entry => entry.value === option.value)) select.add(new Option(option.textContent, option.value));
       select.value = option.value;
       sync();
       select.dispatchEvent(new Event('input', { bubbles: true }));
@@ -318,10 +336,10 @@
       if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
         event.preventDefault();
         if (!open) { show(); return; }
-        highlight(event.key === 'Home' ? 0 : event.key === 'End' ? entries().length - (customColors ? 0 : 1) : active + (event.key === 'ArrowDown' ? 1 : -1));
+        highlight(event.key === 'Home' ? 0 : event.key === 'End' ? menuRows.length - 1 : active + (event.key === 'ArrowDown' ? 1 : -1));
       } else if (['Enter', ' '].includes(event.key)) {
         event.preventDefault();
-        if (open && customColors && active === entries().length) runAction(menu.querySelector('[data-picker-custom]'));
+        if (open && active >= entries().length) runAction(menuRows[active]);
         else if (open) choose(active); else show();
       } else if (event.key.length === 1) {
         const index = entries().findIndex(option => option.textContent.toLowerCase().startsWith(event.key.toLowerCase()));
@@ -342,8 +360,10 @@
       select.classList.remove('nativeSelectSource');
       window.nativeSelectPickers.delete(picker);
       pickersBySelect.delete(select);
+      unregisterMobile?.();
     };
     const picker = { sync, close, destroy, select, wrapper };
+    const unregisterMobile = mobileKind ? window.SignMakerMobileDropdowns?.register(select, wrapper, sync) : null;
     window.nativeSelectPickers.add(picker);
     pickersBySelect.set(select, picker);
     return picker;

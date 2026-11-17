@@ -583,6 +583,32 @@ const formHandler = (function () {
 
     let blockMarginStepperCommitting = false;
 
+    const bindBlockSizingControls = () => {
+      for (const [sliderId, valueId, resetId] of [
+        ['sdBlock_topPadding', 'sdBlock_topPaddingVal', 'sdBlock_topPaddingReset'],
+        ['sdBlock_bottomPadding', 'sdBlock_bottomPaddingVal', 'sdBlock_bottomPaddingReset'],
+        ['sdBlock_widthSlider', 'sdBlock_width', 'sdBlock_widthReset'],
+      ]) {
+        const slider = document.getElementById(sliderId), value = document.getElementById(valueId), reset = document.getElementById(resetId);
+        if (!slider || !value || slider.dataset.blockSizingBound === 'true') continue;
+        slider.dataset.blockSizingBound = 'true';
+        slider.addEventListener('input', () => {
+          value.value = slider.value;
+          readForm({ target: slider, deferHistoryEnd: true });
+        });
+        slider.addEventListener('change', () => readForm({ target: slider }));
+        value.addEventListener('input', () => {
+          const parsed = Number(value.value);
+          if (value.value !== '' && Number.isFinite(parsed)) slider.value = Math.max(Number(slider.min), Math.min(Number(slider.max), parsed));
+        });
+        reset?.addEventListener('click', () => {
+          exposed.beginUndoableChange?.();
+          try { slider.value = '0'; value.value = '0'; readForm({ target: value }); }
+          finally { exposed.endUndoableChange?.(); }
+        });
+      }
+    };
+
     const bindBlockMarginStepperCommit = () => {
       const marginInputs = [
         document.getElementById("sdBlock_topPaddingVal"),
@@ -602,7 +628,7 @@ const formHandler = (function () {
         }
 
         const normalized = normalizeMarginInputValue(input.value, 0);
-        slider.value = Math.max(0, Math.min(3, normalized));
+        slider.value = normalized;
       };
 
       const commitInput = (input) => {
@@ -1367,7 +1393,7 @@ const formHandler = (function () {
         borderThickness: 0.2,
         minHeight: 2,
         fontSize: 18,
-        fontFamily: "Series EEM",
+        fontFamily: "Series E",
         characterSpacing: 0,
         horizontalPadding: 0,
         exitTextSizePercent: 70,
@@ -3525,6 +3551,14 @@ const formHandler = (function () {
   let subpanelHeightSyncFrame = 0;
 
   const syncSubpanelModalHeight = () => {
+    if (window.SignMakerMobile?.active) {
+      // Drop desktop measurements when resizing into the mobile sheet layout.
+      const content = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
+      for (const property of ["height", "max-height", "overflow-y", "overflow-x"]) {
+        content?.style.removeProperty(property);
+      }
+      return;
+    }
     if (!subpanelMenuIsOpen()) {
       return;
     }
@@ -4107,6 +4141,47 @@ const formHandler = (function () {
     };
   };
 
+  const parseCustomShieldMakerConfig = (json) => {
+    const document = JSON.parse(json);
+    if (document?.format !== "signmaker-custom-shield" || document.schemaVersion !== 1 ||
+        !document.shield || typeof document.shield !== "object" || Array.isArray(document.shield)) {
+      throw new Error("Choose a Custom Shield Maker JSON export (version 1).");
+    }
+    const source = document.shield;
+    const styles = [source.routeStyle, ...Object.values(source.routeStyleByVariant || {})];
+    const anchors = [source.anchor, ...Object.values(source.anchorByVariant || {})];
+    for (const style of styles.filter(Boolean)) {
+      for (const key of ["fontSize", "fontWeight", "letterSpacing", "topOffset", "horizontalOffset"]) {
+        if (style[key] !== undefined && (style[key] === null || !Number.isFinite(Number(style[key])))) throw new Error(`Invalid shield ${key}.`);
+      }
+    }
+    for (const anchor of anchors.filter(Boolean)) {
+      for (const key of ["x", "y", "seedTop", "seedHorizontal"]) {
+        if (anchor[key] !== undefined && (anchor[key] === null || !Number.isFinite(Number(anchor[key])))) throw new Error(`Invalid shield anchor ${key}.`);
+      }
+    }
+    const record = normalizeCustomShieldMakerRecord({ ...source, id: createCustomShieldMakerId(), dateCreated: new Date().toISOString() });
+    const images = Object.values(record.imageDataByVariant);
+    if (!images.length || images.some(image => !/^data:image\/(?:svg\+xml|png|webp)(?:;[^,]*)?,.+/is.test(image))) {
+      throw new Error("The shield JSON must contain embedded SVG, PNG, or WebP variant artwork.");
+    }
+    return record;
+  };
+
+  const createCustomShieldMakerConfig = async (record, embedImage) => {
+    const shield = JSON.parse(JSON.stringify(record));
+    const images = new Map();
+    const embed = image => {
+      if (!images.has(image)) images.set(image, Promise.resolve(embedImage(image)));
+      return images.get(image);
+    };
+    shield.imageDataByVariant = Object.fromEntries(await Promise.all(
+      Object.entries(shield.imageDataByVariant || {}).map(async ([key, image]) => [key, await embed(image)])
+    ));
+    shield.imageData = shield.imageDataByVariant[shield.activeVariant] || Object.values(shield.imageDataByVariant)[0] || await embed(shield.imageData);
+    return { format: "signmaker-custom-shield", schemaVersion: 1, shield };
+  };
+
   const loadCustomShieldMakerRecords = async () => {
     let records = [];
 
@@ -4296,10 +4371,11 @@ const formHandler = (function () {
   const isCustomShieldMakerValue = (value) =>
     typeof value === "string" && value.startsWith(CUSTOM_SHIELD_MAKER_VALUE_PREFIX);
 
-  const traverseControlShieldElements = (control, callback) => {
-    if (!control || !Array.isArray(control.rows)) {
+  const traverseControlShieldElements = (control, callback, visited = new Set()) => {
+    if (!control || !Array.isArray(control.rows) || visited.has(control)) {
       return;
     }
+    visited.add(control);
 
     for (const row of control.rows) {
       if (!Array.isArray(row)) {
@@ -4307,6 +4383,9 @@ const formHandler = (function () {
       }
 
       for (const blockElement of row) {
+        if (blockElement?.blockElements) {
+          traverseControlShieldElements(blockElement.blockElements, callback, visited);
+        }
         if (
           blockElement &&
           (blockElement instanceof ShieldElement ||
@@ -4319,48 +4398,58 @@ const formHandler = (function () {
     }
   };
 
-  const revertCustomShieldMakerUsageToInterstate = (value) => {
+  const getCustomShieldMakerFallbackBase = (record) => {
+    const bases = ShieldElement.prototype.blockShieldBases || [];
+    const normalize = value => ShieldElement.prototype.normalizeShieldCode(String(value || "")).toUpperCase();
+    const source = bases.find(base => base.value !== record.value &&
+      normalize(base.value) === normalize(record.sourceShieldBase));
+    if (source) return source.value;
+
+    const builtIn = bases.filter(base => !base.customShieldMaker);
+    return (builtIn.find(base => base.value === ShieldElement.prototype.defaultShieldBase) ||
+      builtIn.find(base => base.value === "I") || builtIn[0])?.value || "I";
+  };
+
+  const revertCustomShieldMakerUsageToSource = (value, fallbackBase) => {
     const targetValue = String(value || "");
     const currentPost = exposed && typeof exposed.getPost === "function"
       ? exposed.getPost()
       : post;
+    const variants = getSdShieldVariantValues(fallbackBase);
+    const defaultVariant = getSdShieldDefaultVariantValue(fallbackBase);
+    const allowed = new Set([...variants, defaultVariant]);
+    const restoreShield = shield => {
+      if (!shield || (shield.shieldBase !== targetValue && shield.type !== targetValue)) return;
+      const remembered = getRememberedSdShieldVariantSelection(shield, fallbackBase);
+      shield.shieldBase = fallbackBase;
+      shield.type = fallbackBase;
+      shield.shieldType = allowed.has(remembered) ? remembered
+        : allowed.has(shield.shieldType) ? shield.shieldType : defaultVariant;
+    };
 
-    if (!currentPost || !Array.isArray(currentPost.panels)) {
-      return;
+    // Preserve the source for saved shields derived from the one being removed.
+    for (const record of customShieldMakerRecords) {
+      if (record.sourceShieldBase === targetValue) record.sourceShieldBase = fallbackBase;
     }
+    restoreShield(exposed?.getCurrentBlockElem?.());
 
-    for (const panel of currentPost.panels) {
+    for (const panel of Array.isArray(currentPost?.panels) ? currentPost.panels : []) {
       const sign = panel?.sign;
       if (!sign) {
         continue;
       }
 
       [sign.blockElements, sign.globalTopBlockElements, sign.globalBottomBlockElements].forEach(
-        (control) => traverseControlShieldElements(control, (shield) => {
-          if (shield.shieldBase === targetValue || shield.type === targetValue) {
-            shield.shieldBase = "I";
-            shield.type = "I";
-            shield.shieldType = shield.shieldType || "Auto";
-          }
-        })
+        (control) => traverseControlShieldElements(control, restoreShield)
       );
 
       if (Array.isArray(sign.subPanels)) {
         for (const subPanel of sign.subPanels) {
-          traverseControlShieldElements(subPanel.blockElements, (shield) => {
-            if (shield.shieldBase === targetValue || shield.type === targetValue) {
-              shield.shieldBase = "I";
-              shield.type = "I";
-              shield.shieldType = shield.shieldType || "Auto";
-            }
-          });
+          traverseControlShieldElements(subPanel.blockElements, restoreShield);
 
           if (Array.isArray(subPanel.shields)) {
             for (const shield of subPanel.shields) {
-              if (shield.shieldBase === targetValue || shield.type === targetValue) {
-                shield.shieldBase = "I";
-                shield.type = "I";
-              }
+              restoreShield(shield);
             }
           }
         }
@@ -4368,10 +4457,7 @@ const formHandler = (function () {
 
       if (Array.isArray(sign.shields)) {
         for (const shield of sign.shields) {
-          if (shield.shieldBase === targetValue || shield.type === targetValue) {
-            shield.shieldBase = "I";
-            shield.type = "I";
-          }
+          restoreShield(shield);
         }
       }
     }
@@ -4399,6 +4485,7 @@ const formHandler = (function () {
     };
 
     const positionPanelStylePopover = () => {
+      if (window.SignMakerMobile?.active) return;
       const modalHolder = document.querySelector(".modals");
       const activeMenu=document.getElementById("sMConfigBar")?.dataset.currentMenu;
       if (!panelStylePopoverIsOpen()) return;
@@ -4509,6 +4596,8 @@ const formHandler = (function () {
         return null;
       }
 
+      if (window.SignMakerMobile?.active) return window.SignMakerMobile.mountPanelPicker(panelSelect);
+
       panelSelect.classList.add("panelSelectorFloating");
 
       if (panelSelect.parentElement !== document.body) {
@@ -4520,6 +4609,7 @@ const formHandler = (function () {
 
     const positionPanelSelectorPopover = () => {
       const panelSelect = ensurePanelSelectorPopoverPortal();
+      if (window.SignMakerMobile?.active) return;
       const configBar = document.getElementById("sMConfigBar");
       const trigger = document
         .getElementById("panelSelector")
@@ -5041,8 +5131,7 @@ const formHandler = (function () {
       ShieldElement.prototype.defaultBannerFontFamily = storedBannerFont;
     }
 
-    // Exit tabs now use a font dropdown. Until the defaults page supports that
-    // directly, new exit tabs should always start with the Series EEM preset.
+    // New exit tabs use the default profile's Highway Gothic font.
     ExitTab.prototype.defaultFHWAFont = true;
 
     // Keep vanilla exit tab defaults stable. Saved/default profiles now control these values.
@@ -6664,6 +6753,9 @@ const formHandler = (function () {
     const closeButton = document.getElementById("customShieldMakerClose");
     const uploadButton = document.getElementById("customShieldMakerUploadButton");
     const fileInput = document.getElementById("customShieldMakerFile");
+    const exportButton = document.getElementById("customShieldMakerExportButton");
+    const importButton = document.getElementById("customShieldMakerImportButton");
+    const importInput = document.getElementById("customShieldMakerImportFile");
     const previewImg = document.getElementById("customShieldMakerPreviewImg");
     const emptyPreview = document.getElementById("customShieldMakerEmptyPreview");
     const routeNumber = document.getElementById("customShieldMakerRouteNumber");
@@ -6706,50 +6798,130 @@ const formHandler = (function () {
     const nameInput = document.getElementById("customShieldMakerNameInput");
     const saveButton = document.getElementById("customShieldMakerSaveButton");
     const deleteButton = document.getElementById("customShieldMakerDeleteButton");
+    let customShieldMakerActiveSlider = null;
+    const finishCustomShieldMakerSliderEdit = () => {
+      if (!customShieldMakerActiveSlider) return;
+      customShieldMakerActiveSlider = null;
+      recordCustomShieldMakerHistoryCheckpoint();
+    };
+    const beginCustomShieldMakerSliderEdit = slider => {
+      if (customShieldMakerActiveSlider === slider) return;
+      finishCustomShieldMakerSliderEdit();
+      customShieldMakerActiveSlider = slider;
+    };
+    const setCustomShieldMakerRangeValue = (slider, value) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return;
+      const next = Math.round(parsed);
+      const mobile = (typeof window !== "undefined" && window.SignMakerMobile?.active) ||
+        (typeof document !== "undefined" && document.documentElement?.hasAttribute("data-mobile-ui"));
+      const step = slider.id === "customShieldMakerRouteFontSize" ? (mobile ? 5 : 10) : 1;
+      slider.dataset.shieldMin ??= slider.min;
+      slider.dataset.shieldMax ??= slider.max;
+      const min = Math.min(Number(slider.dataset.shieldMin), next);
+      // An existing whole-number size such as 235 stays exact while dragging
+      // and the arrow buttons move by the UI's slider step from that value.
+      const offset = ((min - next) % step + step) % step;
+      slider.min = String(min - offset);
+      slider.max = String(Math.max(Number(slider.dataset.shieldMax), next));
+      slider.step = String(step);
+      slider.value = String(next);
+    };
+    const finishCustomShieldMakerInputOnOutsidePointer = event => {
+      const field = customShieldMakerActiveSlider?.closest(".customShieldMakerSliderField");
+      if (!field || field.contains(event.target)) return;
+      // Commit before Save or a picker handles the click, including browsers
+      // where tapping a button does not automatically move input focus.
+      if (field.contains(document.activeElement)) document.activeElement.blur();
+      finishCustomShieldMakerSliderEdit();
+    };
+    document.addEventListener("pointerdown", finishCustomShieldMakerInputOnOutsidePointer, true);
     const bindCustomShieldMakerRangePair = (slider, valueInput) => {
-      if (!slider || !valueInput || slider.dataset.customShieldRangePairBound === "true") {
-        return;
-      }
-
+      if (!slider || !valueInput || slider.dataset.customShieldRangePairBound === "true") return;
       slider.dataset.customShieldRangePairBound = "true";
-
+      const field = slider.closest(".customShieldMakerSliderField");
+      const updateStepButtons = value => {
+        for (const button of field?.querySelectorAll("[data-shield-step]") || []) button.disabled = slider.disabled ||
+          (Number(button.dataset.shieldStep) > 0 ? value >= Number(slider.max) : value <= Number(slider.min));
+      };
       const syncValueFromSlider = () => {
+        valueInput.min = slider.min; valueInput.max = slider.max;
+        valueInput.step = slider.step;
         valueInput.value = slider.value;
+        updateStepButtons(Number(slider.value));
       };
-
       const commitSliderFromValue = () => {
-        const parsed = parseFloat(valueInput.value);
-        if (!Number.isFinite(parsed)) {
-          valueInput.value = slider.value;
-          return;
-        }
-        const min = parseFloat(slider.min);
-        const max = parseFloat(slider.max);
-        const resolved = Math.max(
-          Number.isFinite(min) ? min : parsed,
-          Math.min(Number.isFinite(max) ? max : parsed, parsed)
-        );
-        slider.value = resolved;
-        valueInput.value = resolved;
-        slider.dispatchEvent(new Event("input", { bubbles: true }));
+        if (valueInput.value === "" || !Number.isFinite(Number(valueInput.value))) { syncValueFromSlider(); return; }
+        const value = Math.max(Number(slider.min), Math.min(Number(slider.max), Math.round(Number(valueInput.value))));
+        const changed = Number(slider.value) !== value;
+        setCustomShieldMakerRangeValue(slider, value);
+        syncValueFromSlider();
+        if (changed) slider.dispatchEvent(new Event("input", { bubbles: true }));
       };
-
-      slider.addEventListener("input", syncValueFromSlider);
+      const begin = () => beginCustomShieldMakerSliderEdit(slider);
+      slider.addEventListener("pointerdown", begin);
+      slider.addEventListener("focus", begin);
+      slider.addEventListener("input", () => { begin(); syncValueFromSlider(); });
+      valueInput.addEventListener("focus", begin);
       valueInput.addEventListener("input", () => {
         if (!isUsableLiveInput(valueInput)) return;
-        const typed = valueInput.value;
-        commitSliderFromValue();
-        valueInput.value = typed;
+        // Keep the draft in the text box until blur/change commits it.
+        const value = Number(valueInput.value);
+        if (!Number.isInteger(value)) valueInput.value = String(Math.round(value));
+        updateStepButtons(Math.round(value));
       });
-      valueInput.addEventListener("change", commitSliderFromValue);
+      valueInput.addEventListener("change", () => {
+        commitSliderFromValue();
+        if (!field?.contains(document.activeElement)) finishCustomShieldMakerSliderEdit();
+      });
       valueInput.addEventListener("blur", commitSliderFromValue);
-      syncValueFromSlider();
+      const stepInput = direction => {
+        if (valueInput.disabled || slider.disabled) return;
+        begin();
+        const typed = valueInput.value === "" ? NaN : Number(valueInput.value);
+        const base = Number.isFinite(typed) ? Math.round(typed) : Number(slider.value);
+        valueInput.value = String(base + direction * Number(slider.step));
+        commitSliderFromValue();
+      };
+      valueInput.addEventListener("keydown", event => {
+        if ([".", ",", "e", "E", "+"].includes(event.key)) event.preventDefault();
+        if (event.key === "Enter") { event.preventDefault(); valueInput.blur(); }
+        if (["ArrowUp", "ArrowDown"].includes(event.key)) { event.preventDefault(); stepInput(event.key === "ArrowUp" ? 1 : -1); }
+      });
+      field?.addEventListener("focusout", event => {
+        if (!field.contains(event.relatedTarget)) finishCustomShieldMakerSliderEdit();
+      });
+      for (const button of field?.querySelectorAll("[data-shield-step]") || []) {
+        button.addEventListener("pointerdown", event => event.preventDefault());
+        button.addEventListener("click", () => {
+          if (button.disabled || valueInput.disabled) return;
+          valueInput.focus();
+          stepInput(Number(button.dataset.shieldStep));
+        });
+      }
+      const reset = field?.querySelector(".customShieldMakerReset");
+      reset?.addEventListener("click", () => {
+        commitSliderFromValue();
+        finishCustomShieldMakerSliderEdit();
+        setCustomShieldMakerRangeValue(slider, Number(reset.dataset.shieldReset));
+        syncValueFromSlider();
+        slider.dispatchEvent(new Event("input", { bubbles: true }));
+        finishCustomShieldMakerSliderEdit();
+      });
+      slider._syncCustomShieldMakerInput = () => {
+        setCustomShieldMakerRangeValue(slider, slider.value);
+        if (document.activeElement !== valueInput) syncValueFromSlider();
+      };
+      slider._syncCustomShieldMakerInput();
     };
 
     bindCustomShieldMakerRangePair(fontSizeInput, fontSizeValueInput);
     bindCustomShieldMakerRangePair(letterSpacingInput, letterSpacingValueInput);
     bindCustomShieldMakerRangePair(topOffsetInput, topOffsetValueInput);
     bindCustomShieldMakerRangePair(horizontalOffsetInput, horizontalOffsetValueInput);
+    dialog._syncCustomShieldMakerInputs = () => {
+      for (const slider of [fontSizeInput, letterSpacingInput, topOffsetInput, horizontalOffsetInput]) slider?._syncCustomShieldMakerInput?.();
+    };
 
     const variantButtons = Array.from(
       document.querySelectorAll("#customShieldMakerVariantButtons [data-variant-digit]")
@@ -6782,21 +6954,11 @@ const formHandler = (function () {
       return String(Number(parsed.toFixed(4)));
     };
 
-    const previewEmFromDisplayValue = (value, fallback = 0) => {
-      const parsed = normalizeNumericInput(value, fallback);
-      const adjusted = parsed / 100;
-      return `${formatCustomShieldNumber(adjusted, fallback / 100)}em`;
-    };
-
     const displayValueFromActualEm = (value, fallback = "0") => {
       const parsed = normalizeNumericInput(value, Number(fallback) / 100);
       return formatCustomShieldNumber(parsed * 100, fallback);
     };
     
-    const displayDeltaToEm = (displayDelta) => {
-      return `${formatCustomShieldNumber(displayDelta / 100, "0")}em`;
-    };
-
     const getDisplayInputValue = (input, fallback = 0) => {
       return normalizeNumericInput(input?.value, fallback);
     };
@@ -7056,9 +7218,9 @@ const formHandler = (function () {
     };
 
     const setInputValueIfPresent = (input, value) => {
-      if (input) {
-        input.value = formatCustomShieldNumber(value, "0");
-      }
+      if (!input) return;
+      if (input.type === "range") setCustomShieldMakerRangeValue(input, value);
+      else input.value = formatCustomShieldNumber(value, "0");
     };
 
     const updateCustomShieldMakerVariantButtons = () => {
@@ -7087,7 +7249,7 @@ const formHandler = (function () {
       }
 
       if (uploadButtonText) {
-        uploadButtonText.textContent = `Upload ${activeVariant} Digit SVG or PNG`;
+        uploadButtonText.textContent = `Upload ${activeVariant} Digit Image`;
       }
 
       const hasDedicatedImage = !!state.imageDataByVariant[activeVariant];
@@ -7255,16 +7417,6 @@ const formHandler = (function () {
       return matchedStyles;
     };
 
-    const getPreviewFontWeight = () => {
-      const displayedWeight = normalizeNumericInput(fontWeightInput?.value, 0);
-      const requestedWeight = displayedWeight / 10;
-
-      return {
-        requestedWeight,
-        cssWeight: Math.min(1000, Math.max(1, requestedWeight)),
-      };
-    };
-    
     const renderCustomShieldMakerRouteText = (routeText) => {
       if (!routeNumber) {
         return;
@@ -7306,17 +7458,6 @@ const formHandler = (function () {
         characterSpan.className = classNames.join(" ");
         characterSpan.textContent = character === " " ? "\u00A0" : character;
         routeNumber.appendChild(characterSpan);
-      });
-    };
-
-    const applyCustomShieldMakerLetterSpacing = (spacingValue) => {
-      if (!routeNumber) {
-        return;
-      }
-
-      routeNumber.style.gap = "0";
-      Array.from(routeNumber.children).forEach((characterSpan, index) => {
-        characterSpan.style.marginLeft = index === 0 ? "0" : spacingValue;
       });
     };
 
@@ -7487,7 +7628,7 @@ const formHandler = (function () {
       };
     };
 
-    const seedCustomShieldMakerFromCurrentShield = () => {
+    const seedCustomShieldMakerFromCurrentShield = async () => {
       if (
         typeof ShieldElement === "undefined" ||
         typeof ShieldElement.prototype?.getBlockShieldConfig !== "function"
@@ -7522,6 +7663,12 @@ const formHandler = (function () {
 
       const sampleImg = sampleElement.querySelector(".shieldImg");
       const sampleRoute = sampleElement.querySelector(".routeNumber");
+      // Measure loaded artwork and fonts, as they are measured on the sign.
+      if (sampleImg?.decode) await sampleImg.decode().catch(() => {});
+      if (sampleRoute && document.fonts?.load) {
+        const font = window.getComputedStyle(sampleRoute);
+        await document.fonts.load(`${font.fontSize} ${font.fontFamily}`, sampleShield.routeNumber).catch(() => {});
+      }
 
       if (sampleImg && previewImg) {
         const sampleImageSource =
@@ -7551,7 +7698,7 @@ const formHandler = (function () {
       }
 
       if (routeInput) {
-        routeInput.value = "";
+        routeInput.value = sourceRouteNumber;
       }
 
       if (alignmentSelect) {
@@ -7571,10 +7718,7 @@ const formHandler = (function () {
         const matchedRouteCss = getMatchedRouteNumberCss(sampleRoute);
 
         const fallbackFontSizeEm = computedFontSizePx / parentFontSizePx;
-        const routeFontSizeEm = parseCssEmValue(
-          matchedRouteCss["font-size"],
-          fallbackFontSizeEm
-        );
+        const routeFontSizeEm = fallbackFontSizeEm;
 
         const fallbackTopEm =
           Number.isFinite(parseFloat(computedRoute.top)) && computedFontSizePx
@@ -7618,7 +7762,7 @@ const formHandler = (function () {
         setSelectValueSafely(fontSelect, fontName, "Series D");
 
         if (fontSizeInput) {
-          fontSizeInput.value = displayValueFromActualEm(routeFontSizeEm, "220");
+          setInputValueIfPresent(fontSizeInput, displayValueFromActualEm(isMotorwayFont(fontName) ? routeFontSizeEm / 0.8 : routeFontSizeEm, "220"));
         }
 
         if (fontWeightInput) {
@@ -7627,22 +7771,14 @@ const formHandler = (function () {
             : "0";
         }
 
-        if (letterSpacingInput) {
-          letterSpacingInput.value = displayValueFromActualEm(
-            routeLetterSpacingEm,
-            "0"
-          );
-        }
+        setInputValueIfPresent(letterSpacingInput, displayValueFromActualEm(routeLetterSpacingEm, "0"));
 
         if (topOffsetInput) {
-          topOffsetInput.value = displayValueFromActualEm(routeTopEm, "0");
+          setInputValueIfPresent(topOffsetInput, displayValueFromActualEm(routeTopEm, "0"));
         }
 
         if (horizontalOffsetInput) {
-          horizontalOffsetInput.value = displayValueFromActualEm(
-            routeHorizontalEm,
-            "0"
-          );
+          setInputValueIfPresent(horizontalOffsetInput, displayValueFromActualEm(routeHorizontalEm, "0"));
         }
         
         const sampleImgRect = sampleImg?.getBoundingClientRect();
@@ -7698,14 +7834,26 @@ const formHandler = (function () {
       sampleRoot.remove();
     };
 
+    const fitCustomShieldMakerPreview = () => {
+      if (!dialog.open) return;
+      const frame = dialog.querySelector(".customShieldMakerPreviewFrame");
+      const stage = dialog.querySelector(".customShieldMakerPreviewStage");
+      if (!frame || !stage?.offsetWidth || !stage.offsetHeight) return;
+      const scale = Math.min(4.75, (frame.clientWidth - 24) / stage.offsetWidth, (frame.clientHeight - 20) / stage.offsetHeight);
+      frame.style.setProperty("--customShieldPreviewScale", String(Math.max(Number.EPSILON, scale)));
+    };
+
     const updateCustomShieldMakerPreview = () => {
       if (!routeNumber) {
         return;
       }
 
       const syncPairedValueInput = (slider, valueInput) => {
-        if (slider && valueInput && document.activeElement !== valueInput) {
-          valueInput.value = slider.value;
+        if (slider && valueInput) {
+          valueInput.min = slider.min;
+          valueInput.max = slider.max;
+          valueInput.step = slider.step;
+          if (document.activeElement !== valueInput) valueInput.value = slider.value;
         }
       };
       syncPairedValueInput(fontSizeInput, fontSizeValueInput);
@@ -7716,90 +7864,23 @@ const formHandler = (function () {
       const routeText = String(routeInput?.value || "").trim();
       updateCustomShieldMakerCustomColorControls();
 
-      const selectedColor = getCustomShieldMakerRouteColorValue();
-      const selectedFont = fontSelect?.value || "Series D";
-      const selectedAlignment = alignmentSelect?.value || "center";
-      const cssColor =
-        typeof lib !== "undefined" && lib.colors && lib.colors[selectedColor]
-          ? lib.colors[selectedColor]
-          : selectedColor;
-
-      const anchor = dialog._customShieldMakerAnchor || {
-        x: 50,
-        y: 50,
-        seedTop: 0,
-        seedHorizontal: 0,
-      };
-
-      const anchorX =
-        selectedAlignment === "left"
-          ? 0
-          : selectedAlignment === "right"
-            ? 100
-            : anchor.x;
-
-      const translateX =
-        selectedAlignment === "left"
-          ? "0%"
-          : selectedAlignment === "right"
-            ? "-100%"
-            : "-50%";
-
-      const { requestedWeight, cssWeight } = getPreviewFontWeight();
-
-      const letterSpacingValue = previewEmFromDisplayValue(
-        letterSpacingInput?.value,
-        0
-      );
-
+      fontSelect?._fontPickerApi?.sync();
       renderCustomShieldMakerRouteText(routeText);
-
       routeNumber.hidden = routeText.length === 0;
-      routeNumber.dataset.alignment = selectedAlignment;
-      routeNumber.style.color = String(cssColor).toLowerCase();
-      const renderedSelectedFont = typeof resolveTextFontFamilyForRender === "function"
-        ? resolveTextFontFamilyForRender(selectedFont, { backgroundColor: "Blue" }, { color: "Blue" })
-        : selectedFont;
-      const normalizedRenderedSelectedFont = String(renderedSelectedFont || "")
-        .replace(/["']/g, "")
-        .trim();
-      const usesSeriesDSpacingFix = normalizedRenderedSelectedFont === "Series D";
-      routeNumber.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
-      document
-        .getElementById("customShieldMakerShieldShell")
-        ?.classList.toggle("seriesDSpacingFix", usesSeriesDSpacingFix);
-      routeNumber.style.fontFamily = `"${renderedSelectedFont}", sans-serif`;
-      routeNumber.style.fontSize = previewEmFromDisplayValue(
-        isMotorwayFont(renderedSelectedFont)
-          ? getDisplayInputValue(fontSizeInput, 220) * 0.8
-          : fontSizeInput?.value,
-        220
-      );
-      routeNumber.style.fontWeight = String(cssWeight);
-      routeNumber.style.fontVariationSettings = `"wght" ${requestedWeight}`;
-      routeNumber.style.letterSpacing = "0";
-      applyCustomShieldMakerLetterSpacing(letterSpacingValue);
-      const topDeltaValue = displayDeltaToEm(
-        getDisplayInputValue(topOffsetInput, 0) - anchor.seedTop
-      );
-
-      const horizontalDeltaValue = displayDeltaToEm(
-        getDisplayInputValue(horizontalOffsetInput, 0) - anchor.seedHorizontal
-      );
-
-      routeNumber.style.top = `calc(${anchor.y}% + ${topDeltaValue})`;
-      routeNumber.style.left = `calc(${anchorX}% + ${horizontalDeltaValue})`;
-      routeNumber.style.right = "auto";
-      routeNumber.style.transform = `translate(${translateX}, -50%)`;
-      routeNumber.style.margin = "0";
-      routeNumber.style.alignItems = "center";
-      routeNumber.style.textAlign = selectedAlignment;
-      routeNumber.style.justifyContent =
-        selectedAlignment === "left"
-          ? "flex-start"
-          : selectedAlignment === "right"
-            ? "flex-end"
-            : "center";
+      const style = getCustomShieldMakerEditorStyle();
+      routeNumber.dataset.alignment = style.alignment;
+      // Use the same renderer and units as the saved shield on the sign.
+      applyCustomShieldMakerRouteStyle(routeNumber, {
+        customRouteStyle: style,
+        customAnchor: getCustomShieldMakerEditorAnchor(),
+        routeNumber: routeText,
+      });
+      const renderedFont = typeof resolveTextFontFamilyForRender === "function"
+        ? resolveTextFontFamilyForRender(style.fontFamily, { backgroundColor: "Blue" }, { color: "Blue" }) : style.fontFamily;
+      const seriesD = String(renderedFont).replace(/["']/g, "").trim() === "Series D";
+      routeNumber.classList.toggle("seriesDSpacingFix", seriesD);
+      document.getElementById("customShieldMakerShieldShell")?.classList.toggle("seriesDSpacingFix", seriesD);
+      fitCustomShieldMakerPreview();
     };
 
     const getDefaultCustomShieldMakerName = () =>
@@ -7861,11 +7942,11 @@ const formHandler = (function () {
         if (nameInput) nameInput.value = snapshot.name || "";
         if (routeInput) routeInput.value = snapshot.routeNumber || "";
         if (fontSelect) fontSelect.value = snapshot.fontFamily || "Series D";
-        if (fontSizeInput) fontSizeInput.value = snapshot.fontSize || "";
+        setInputValueIfPresent(fontSizeInput, snapshot.fontSize);
         if (fontWeightInput) fontWeightInput.value = snapshot.fontWeight || "";
-        if (letterSpacingInput) letterSpacingInput.value = snapshot.letterSpacing || "";
-        if (topOffsetInput) topOffsetInput.value = snapshot.topOffset || "";
-        if (horizontalOffsetInput) horizontalOffsetInput.value = snapshot.horizontalOffset || "";
+        setInputValueIfPresent(letterSpacingInput, snapshot.letterSpacing);
+        setInputValueIfPresent(topOffsetInput, snapshot.topOffset);
+        setInputValueIfPresent(horizontalOffsetInput, snapshot.horizontalOffset);
         if (alignmentSelect) {
           alignmentSelect.value = normalizeCustomShieldMakerAlignment(
             snapshot.alignment
@@ -7911,6 +7992,7 @@ const formHandler = (function () {
     };
 
     const resetCustomShieldMakerHistory = () => {
+      customShieldMakerActiveSlider = null;
       const snapshot = getCustomShieldMakerHistorySnapshot();
       customShieldMakerUndoStack = [snapshot];
       customShieldMakerRedoStack = [];
@@ -7918,7 +8000,7 @@ const formHandler = (function () {
     };
 
     const recordCustomShieldMakerHistoryCheckpoint = () => {
-      if (customShieldMakerRestoringHistory || !dialog.open) {
+      if (customShieldMakerRestoringHistory || !dialog.open || customShieldMakerActiveSlider) {
         return;
       }
 
@@ -7940,6 +8022,7 @@ const formHandler = (function () {
     };
 
     const undoCustomShieldMakerEdit = () => {
+      finishCustomShieldMakerSliderEdit();
       if (customShieldMakerUndoStack.length <= 1) {
         return;
       }
@@ -7952,6 +8035,7 @@ const formHandler = (function () {
     };
 
     const redoCustomShieldMakerEdit = () => {
+      finishCustomShieldMakerSliderEdit();
       if (!customShieldMakerRedoStack.length) {
         return;
       }
@@ -7998,7 +8082,6 @@ const formHandler = (function () {
             "hidden",
             "image",
             "radio",
-            "range",
             "reset",
             "submit",
           ].includes(inputType))
@@ -8040,7 +8123,17 @@ const formHandler = (function () {
       true
     );
 
+    const ensureCustomShieldMakerPickers = () => {
+      createFontPicker({ selectEl: fontSelect, mode: "allFontsGrouped", force: true });
+      createColorPicker(colorSelect, { force: true });
+      window.SignMakerEditorRuntime?.ensureElement(fontSelect);
+      window.SignMakerEditorRuntime?.ensureElement(colorSelect);
+    };
+    dialog._ensureCustomShieldMakerPickers = ensureCustomShieldMakerPickers;
+
     const showCustomShieldMakerDialog = () => {
+      dialog._syncCustomShieldMakerInputs();
+      ensureCustomShieldMakerPickers();
       updateCustomShieldMakerPreview();
       setCustomShieldMakerDeleteVisibility();
 
@@ -8054,6 +8147,7 @@ const formHandler = (function () {
         dialog.showModal();
       }
 
+      fitCustomShieldMakerPreview();
       resetCustomShieldMakerHistory();
     };
 
@@ -8281,15 +8375,21 @@ const formHandler = (function () {
           (currentBlockElem.shieldBase === record.value || currentBlockElem.type === record.value)
         );
 
-        deleteCustomShieldMakerRecord(editingId);
-        revertCustomShieldMakerUsageToInterstate(record.value);
-        dialog._editingCustomShieldId = null;
-        setCustomShieldMakerDeleteVisibility();
-
+        const fallbackBase = getCustomShieldMakerFallbackBase(record);
+        revertCustomShieldMakerUsageToSource(record.value, fallbackBase);
+        // Move the live selection before refreshing a registry without this shield.
         if (currentBlockUsedDeletedShield && typeof syncShieldBasePickerValue === "function") {
-          syncShieldBasePickerValue("I", { updateBlock: true });
+          ensureSdShieldBasePicker();
+          syncShieldBasePickerValue(fallbackBase, { updateBlock: true });
+          syncSdShieldVariantPickerForBase(fallbackBase, {
+            requestedValue: currentBlockElem.shieldType,
+            updateBlock: true,
+          });
         }
 
+        deleteCustomShieldMakerRecord(editingId);
+        dialog._editingCustomShieldId = null;
+        setCustomShieldMakerDeleteVisibility();
         refreshAfterCustomShieldMutation();
         closeCustomShieldMaker();
       } finally {
@@ -8309,7 +8409,7 @@ const formHandler = (function () {
       showCustomShieldMakerDialog();
     };
 
-    const openCustomShieldMaker = () => {
+    const openCustomShieldMaker = async () => {
       populateCustomShieldMakerSelects();
 
       if (!dialog._editingCustomShieldId) {
@@ -8318,7 +8418,7 @@ const formHandler = (function () {
         }
 
         if (dialog.dataset.customShieldMakerUserUploaded !== "true") {
-          seedCustomShieldMakerFromCurrentShield();
+          await seedCustomShieldMakerFromCurrentShield();
         }
       }
 
@@ -8358,6 +8458,57 @@ const formHandler = (function () {
       openCustomShieldMaker();
     });
     saveButton?.addEventListener("click", saveCustomShieldMakerRecordFromEditor);
+    exportButton?.addEventListener("click", async () => {
+      const record = collectCustomShieldMakerRecordFromEditor();
+      if (!record) return;
+      exportButton.disabled = true;
+      try {
+        const configuration = await createCustomShieldMakerConfig(record, async image => {
+          if (String(image).startsWith("data:image/")) return image;
+          const fallback = window.getSignMakerAssetFallback?.(image);
+          if (fallback?.startsWith("data:image/")) return fallback;
+          const response = await fetch(image);
+          if (!response.ok) throw new Error("Unable to embed variant artwork.");
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Unable to read variant artwork."));
+            reader.readAsDataURL(blob);
+          });
+        });
+        const blob = new Blob([JSON.stringify(configuration, null, 2)], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = (record.name.replace(/[^a-z0-9_-]+/gi, "_") || "custom_shield") + ".json";
+        document.body.appendChild(link); link.click(); link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        window.alert("Unable to export shield: " + error.message);
+      } finally { exportButton.disabled = false; }
+    });
+    importButton?.addEventListener("click", () => importInput?.click());
+    importInput?.addEventListener("change", async () => {
+      const file = importInput.files?.[0];
+      if (!file) return;
+      try {
+        const record = parseCustomShieldMakerConfig(await file.text());
+        applyCustomShieldMakerRecordToEditor(record);
+        // Import opens a new draft. Saving it never overwrites the source shield.
+        dialog._editingCustomShieldId = null;
+        setCustomShieldMakerDeleteVisibility();
+        updateCustomShieldMakerPreview();
+        resetCustomShieldMakerHistory();
+      } catch (error) { window.alert("Unable to import shield: " + error.message); }
+      finally { importInput.value = ""; }
+    });
+    previewImg?.addEventListener("load", fitCustomShieldMakerPreview);
+    window.addEventListener("resize", fitCustomShieldMakerPreview);
+    if (window.ResizeObserver) {
+      const previewObserver = new ResizeObserver(fitCustomShieldMakerPreview);
+      for (const element of [dialog.querySelector(".customShieldMakerPreviewFrame"), dialog.querySelector(".customShieldMakerPreviewStage")]) if (element) previewObserver.observe(element);
+    }
     deleteButton?.addEventListener("click", deleteCurrentCustomShieldMakerRecord);
     closeButton?.addEventListener("click", closeCustomShieldMaker);
     dialog.addEventListener("close", hideCustomShieldMaker);
@@ -8375,8 +8526,8 @@ const formHandler = (function () {
 
       const isValidFile =
         file.type === "image/svg+xml" ||
-        file.type === "image/png" ||
-        /\.(svg|png)$/i.test(file.name);
+        file.type === "image/png" || file.type === "image/webp" ||
+        /\.(svg|png|webp)$/i.test(file.name);
 
       if (!isValidFile) {
         event.target.value = "";
@@ -8894,7 +9045,8 @@ const formHandler = (function () {
         return;
       }
       Array.from(selectEl.options).forEach((option) => {
-        option.textContent = getUiFontDisplayName(option.value || option.textContent);
+        const label = getUiFontDisplayName(option.value || option.textContent);
+        if (option.textContent !== label) option.textContent = label;
       });
     };
 
@@ -8907,8 +9059,10 @@ const formHandler = (function () {
       );
 
       for (const selectEl of fontSelects) {
-        syncFontSelectOptionLabels(selectEl);
-        syncFontPreviewSelect(selectEl);
+        if (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(selectEl)) {
+          syncFontSelectOptionLabels(selectEl);
+          syncFontPreviewSelect(selectEl);
+        }
 
         if (selectEl.dataset.fontPreviewBound === "true") {
           continue;
@@ -9046,11 +9200,11 @@ const formHandler = (function () {
       }
     };
 
-    const createFontPicker = ({ selectEl, mode, linkedFamilySelect = null }) => {
+    const createFontPicker = ({ selectEl, mode, linkedFamilySelect = null, force = false }) => {
       if (!selectEl) {
         return null;
       }
-      if(!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
+      if(!force&&!selectEl._fontPickerApi&&window.SignMakerEditorRuntime?.defer(selectEl,'font',()=>createFontPicker({selectEl,mode,linkedFamilySelect})))return null;
 
       syncFontSelectOptionLabels(selectEl);
 
@@ -9063,6 +9217,7 @@ const formHandler = (function () {
 
       const wrapper = document.createElement("div");
       wrapper.className = `fontPicker fontPicker-${mode}`;
+      if (selectEl.id === "customShieldMakerRouteFont") wrapper.classList.add("customShieldMakerFontPicker");
       wrapper.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
 
       const trigger = document.createElement("button");
@@ -9116,7 +9271,7 @@ const formHandler = (function () {
             ? value
             : value || linkedFamilySelect?.value || "";
 
-        triggerLabel.textContent = getUiFontDisplayName(display) || "Font";
+        triggerLabel.textContent = window.SignMakerMobileDropdowns?.fontLabel(selectEl, value, mode) || getUiFontDisplayName(display) || "Font";
 
         const previewFont =
           mode === "family"
@@ -9191,6 +9346,35 @@ const formHandler = (function () {
 
       const render = () => {
         menu.innerHTML = "";
+
+        const mobile = window.SignMakerMobileDropdowns;
+        if (mobile?.view(selectEl, 'font', { mode }).simple) {
+          for (const choice of mobile.fontChoices(selectEl, mode)) {
+            let button;
+            if (mode === 'family') {
+              button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'fontPickerItem mobileFontFamilyItem';
+              button.setAttribute('role', 'option');
+              button.classList.toggle('selected', selectEl.value === choice.value);
+              button.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                setNativeFontSelectValue(selectEl, choice.value);
+                const source = mobile.fontSource(selectEl);
+                if (source !== selectEl) setNativeFontSelectValue(source, choice.fontValue);
+                wrapper.classList.remove('open');
+                syncAllFontPickers();
+              });
+            } else button = makeFontButton(choice.value);
+            button.textContent = choice.label;
+            button.style.fontFamily = '"' + choice.fontValue + '", sans-serif';
+            menu.appendChild(button);
+          }
+          mobile.appendAdvanced(menu, selectEl, 'font', () => { render(); positionFloatingFontPickerMenu(); }, { mode });
+          updateTrigger();
+          return;
+        }
 
         const families = getFontPickerFamilies(isCustomShieldFontPicker);
 
@@ -9275,6 +9459,7 @@ const formHandler = (function () {
 
 
       menu.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === 'touch') return;
         const fontItem = event.target.closest?.(".fontPickerFontItem[data-font-value]");
         const familyItem = event.target.closest?.(".fontPickerFamilyItem[data-family-value]");
         if (!fontItem && !familyItem) {
@@ -9303,6 +9488,7 @@ const formHandler = (function () {
       window.addEventListener("scroll", positionFloatingFontPickerMenu, true);
 
       const fontPickerClassObserver = new MutationObserver(() => {
+        if (!wrapper.classList.contains('open') && window.SignMakerMobileDropdowns?.closed(selectEl)) updateTrigger();
         syncFloatingFontPickerMenuClasses();
         positionFloatingFontPickerMenu();
       });
@@ -9324,6 +9510,7 @@ const formHandler = (function () {
         position: positionFloatingFontPickerMenu,
         syncFloatingMenu: syncFloatingFontPickerMenuClasses,
         destroy: () => {
+          unregisterMobile?.();
           document.removeEventListener("click", closePickerOnOutsideClick);
           window.removeEventListener("resize", positionFloatingFontPickerMenu);
           window.removeEventListener("scroll", positionFloatingFontPickerMenu, true);
@@ -9335,6 +9522,7 @@ const formHandler = (function () {
       };
 
       selectEl._fontPickerApi = api;
+      const unregisterMobile = window.SignMakerMobileDropdowns?.register(selectEl, wrapper, sync);
       sync();
 
       return api;
@@ -9342,7 +9530,7 @@ const formHandler = (function () {
 
     const syncAllFontPickers = () => {
       document.querySelectorAll("select.fontPickerNativeSelect").forEach((selectEl) => {
-        if (selectEl._fontPickerApi) {
+        if (selectEl._fontPickerApi && (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(selectEl))) {
           selectEl._fontPickerApi.sync();
         }
       });
@@ -10025,10 +10213,9 @@ const formHandler = (function () {
     };
 
     const syncAllColorPickers = () => {
-      ensureCustomColorOptionsForAllColorSelects(document);
       cleanupOrphanedColorPickerPanels();
       document.querySelectorAll("select.colorPickerNativeSelect").forEach((selectEl) => {
-        if (selectEl._colorPickerApi) {
+        if (selectEl._colorPickerApi && (!window.SignMakerEditorRuntime || window.SignMakerEditorRuntime.isActive(selectEl))) {
           selectEl._colorPickerApi.sync();
         }
       });
@@ -10036,11 +10223,11 @@ const formHandler = (function () {
 
     const fitColorPickerTriggerLabelText=(trigger,label)=>{label.style.removeProperty('font-size');label.style.removeProperty('font-family');window.SignMakerDropdowns.refresh(trigger);};
 
-    const createColorPicker = (selectEl) => {
+    const createColorPicker = (selectEl, { force = false } = {}) => {
       if (!isColorSelectElement(selectEl)) {
         return null;
       }
-      if (!selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
+      if (!force && !selectEl._colorPickerApi && window.SignMakerEditorRuntime?.defer(selectEl, 'color', () => createColorPicker(selectEl))) return null;
 
       ensureCustomColorOptionsForSelect(selectEl);
 
@@ -10051,6 +10238,7 @@ const formHandler = (function () {
 
       const wrapper = document.createElement("div");
       wrapper.className = "colorPicker";
+      if (selectEl.id === "customShieldMakerRouteColor") wrapper.classList.add("customShieldMakerColorPicker");
       wrapper.dataset.sourceSelectId = selectEl.id || "";
 
       const trigger = document.createElement("button");
@@ -10357,6 +10545,14 @@ const formHandler = (function () {
         const standardOptions = Array.from(selectEl.options || []).filter(
           (option) => option.value && option.dataset.customColor !== "true"
         );
+        const mobile = window.SignMakerMobileDropdowns;
+        if (mobile?.view(selectEl, 'color').simple) {
+          const options = mobile.entries(selectEl, 'color', standardOptions);
+          options.sort((a, b) => Number(/^(Inherit|Match\b|Panel Color|Default)/i.test(b.value)) - Number(/^(Inherit|Match\b|Panel Color|Default)/i.test(a.value)));
+          for (const option of options) menu.appendChild(makeColorButton({ value: option.value, label: getOptionLabel(option) }));
+          mobile.appendAdvanced(menu, selectEl, 'color', () => { render(); positionFloatingColorPickerPanels(); });
+          return;
+        }
         const renderedStandardColorValues = new Set();
 
         const appendStandardOption = (option) => {
@@ -10523,6 +10719,7 @@ const formHandler = (function () {
       });
 
       menu.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === 'touch') return;
         const item = event.target.closest?.(".colorPickerItem[data-color-value]");
         if (!item || event.target.closest?.(".colorPickerDeleteCustom")) {
           return;
@@ -10559,6 +10756,7 @@ const formHandler = (function () {
       window.addEventListener("scroll", positionFloatingColorPickerPanels, true);
 
       const wrapperClassObserver = new MutationObserver(() => {
+        if (!wrapper.classList.contains('open') && window.SignMakerMobileDropdowns?.closed(selectEl)) updateTrigger();
         if (!wrapper.classList.contains("addingCustomColor")) cancelCustomPreview();
         syncFloatingColorPickerPanelClasses();
         positionFloatingColorPickerPanels();
@@ -10651,6 +10849,7 @@ const formHandler = (function () {
       };
 
       selectEl._colorPickerApi = api;
+      window.SignMakerMobileDropdowns?.register(selectEl, wrapper, sync);
       sync();
       return api;
     };
@@ -13322,6 +13521,8 @@ const formHandler = (function () {
         pickerHost._shieldVariantPickerApi ||
         null;
 
+      if (pickerApi && !pickerHost.contains(pickerApi.element)) pickerApi = null;
+
       if (!pickerApi) {
         const placeholderSelect = document.createElement("select");
         placeholderSelect.id = "sdShield_shieldType_pickerProxy";
@@ -13418,6 +13619,8 @@ const formHandler = (function () {
 
       let pickerApi =
         nativeSelect._shieldPickerApi || pickerHost._shieldPickerApi || null;
+
+      if (pickerApi && !pickerHost.contains(pickerApi.element)) pickerApi = null;
 
       if (!pickerApi) {
         const placeholderSelect = document.createElement("select");
@@ -13880,6 +14083,7 @@ const formHandler = (function () {
         mount,
         value,
         onChange,
+        mobileSource = null,
         placeholder = "Select arrow",
         items = ARROW_PICKER_ITEMS,
         previewOptions = {},
@@ -13920,6 +14124,7 @@ const formHandler = (function () {
         mount.replaceWith(wrapper);
 
       let currentValue = value || "";
+      let renderedItemsKey = '';
 
       const syncTrigger = () => {
         const entry = findArrowPickerEntryByValue(currentValue, items);
@@ -13937,13 +14142,18 @@ const formHandler = (function () {
 
       const renderList = () => {
         if (!wrapper.classList.contains("open")) return;
-        if (list.childElementCount === items.length) {
-          [...list.children].forEach((row,index) => row.classList.toggle("selected", items[index].value === currentValue));
+        const mobile = mobileSource ? window.SignMakerMobileDropdowns : null;
+        const visibleItems = mobile?.entries(mobileSource, 'arrow', items, { value: currentValue }) || items;
+        const simple = mobile?.view(mobileSource, 'arrow', { value: currentValue }).simple;
+        const key = visibleItems.map(item => item.value).join('\u0000') + String(simple);
+        if (renderedItemsKey === key && list.childElementCount === visibleItems.length + (simple ? 1 : 0)) {
+          [...list.children].forEach((row,index) => row.classList.toggle("selected", visibleItems[index]?.value === currentValue));
           return;
         }
+        renderedItemsKey = key;
         list.innerHTML = "";
 
-        items.forEach((item) => {
+        visibleItems.forEach((item) => {
           const row = document.createElement("button");
           row.type = "button";
           row.className = "shieldPickerItem";
@@ -13978,6 +14188,10 @@ const formHandler = (function () {
 
           list.appendChild(row);
         });
+        if (mobile) {
+          list._mobileDropdownTrigger = trigger;
+          mobile.appendAdvanced(list, mobileSource, 'arrow', () => { renderList(); placePopover(); }, { value: currentValue });
+        }
       };
 
         trigger.addEventListener("click", (event) => {
@@ -14017,10 +14231,19 @@ const formHandler = (function () {
 
       syncTrigger();
       renderList();
+      const unregisterMobile = mobileSource ? window.SignMakerMobileDropdowns?.register(mobileSource, wrapper, () => {
+        renderedItemsKey = '';
+        renderList();
+        if (wrapper.classList.contains('open')) placePopover();
+      }) : null;
+      const mobileCloseObserver = mobileSource ? new MutationObserver(() => {
+        if (!wrapper.classList.contains('open') && window.SignMakerMobileDropdowns?.closed(mobileSource)) renderedItemsKey = '';
+      }) : null;
+      mobileCloseObserver?.observe(wrapper, { attributes: true, attributeFilter: ['class'] });
 
       return {
         element: wrapper,
-        destroy: () => { pickerListeners.abort(); popover.remove(); wrapper.remove(); },
+        destroy: () => { unregisterMobile?.(); mobileCloseObserver?.disconnect(); pickerListeners.abort(); popover.remove(); wrapper.remove(); },
         getValue: () => currentValue,
         setValue: (nextValue) => {
           if (currentValue === (nextValue || "")) return;
@@ -14152,6 +14375,7 @@ const formHandler = (function () {
         const picker = createFlatArrowPicker({
           mount: proxy,
           value: typeValue,
+          mobileSource: angle,
           items: [
             { value: "", label: `Default (${STANDARD_ARROW_ITEMS.find((entry) => entry.value === sign.standardArrowType)?.label || "Down"})` },
             ...STANDARD_ARROW_ITEMS
@@ -14246,6 +14470,7 @@ const formHandler = (function () {
         select.parentElement.appendChild(proxy);
         select._arrowPickerApi = createFlatArrowPicker({
           mount: proxy,
+          mobileSource: select,
           value: select.value || "DOWN",
           items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
           createPreviewNode: standardArrowPreview,
@@ -14419,6 +14644,7 @@ const formHandler = (function () {
       select.parentElement.appendChild(proxy);
       select._arrowPickerApi = createFlatArrowPicker({
         mount: proxy, value: select.value || "DOWN", items: [{ value: "None", label: "None" }, ...STANDARD_ARROW_ITEMS],
+        mobileSource: select,
         createPreviewNode: standardArrowPreview,
         onChange: async (key) => {
           if (key === "None") {
@@ -15406,7 +15632,7 @@ const formHandler = (function () {
     };
 
     function reDisplay() {
-      window.SignMakerEditorRuntime?.ensure();
+      window.SignMakerMobile?.prepareEditor(sMConfigBar.dataset.currentMenu);
       const openingPanelStylePopover = panelStylePopoverIsOpen();
       const modals = [...document.querySelectorAll(".sMModal")];
       const nextModal = modals.find(modal => modal.classList.contains(sMConfigBar.dataset.currentMenu));
@@ -15432,7 +15658,10 @@ const formHandler = (function () {
         }
       }
 
+      window.SignMakerEditorRuntime?.ensure();
+
       if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
+        window.SignMakerMobileForms?.prepareElement();
         scheduleSubpanelModalHeightSync();
       }
 
@@ -16788,6 +17017,7 @@ const formHandler = (function () {
     );
     horizontalScrollOnWheel.forEach((scrollableElement) => {
       scrollableElement.addEventListener("wheel", (event) => {
+        if (!window.SignMakerMobile?.active && (event.ctrlKey || event.metaKey)) return;
         if (scrollCooldown) {
           return;
         }
@@ -17383,8 +17613,8 @@ const formHandler = (function () {
 
       const settingsDefaultsFieldDefaults = {
         settingsDefaultsControlTextText: "Control",
-        settingsDefaultsControlTextFontFamily: "Clearview",
-        settingsDefaultsControlTextFont: "Series 5WR",
+        settingsDefaultsControlTextFontFamily: "Highway Gothic",
+        settingsDefaultsControlTextFont: "Series EM",
         settingsDefaultsControlTextSize: "100",
         settingsDefaultsControlTextColor: ControlTextElement.defaultTextColor,
         settingsDefaultsControlTextBg: "Inherit",
@@ -17404,8 +17634,8 @@ const formHandler = (function () {
         settingsDefaultsAdvisoryBg: "Yellow",
 
         settingsDefaultsActionText: "Action",
-        settingsDefaultsActionFontFamily: "Clearview",
-        settingsDefaultsActionFont: "Series 5WR",
+        settingsDefaultsActionFontFamily: "Highway Gothic",
+        settingsDefaultsActionFont: "Series E",
         settingsDefaultsActionSize: "70",
         settingsDefaultsActionColor: ControlTextElement.defaultTextColor,
         settingsDefaultsActionBg: "Inherit",
@@ -17566,8 +17796,7 @@ const formHandler = (function () {
           parseNumberOrFallback(defaults.settingsDefaultsExitTabNestedSpacing, 0)
         );
 
-        // Exit tabs now use a font dropdown. Keep new tabs on Series EEM until
-        // the settings-defaults page is updated to store an actual font family.
+        // Exit-tab font defaults are stored in profiles.
         ExitTab.prototype.defaultFHWAFont = true;
         ExitTab.prototype.defaultShowLeft = !!defaults.settingsDefaultsExitTabLeft;
         ExitTab.prototype.defaultFullBorder = !!defaults.settingsDefaultsExitTabFullBorder;
@@ -19179,16 +19408,7 @@ const formHandler = (function () {
       });
     }
 
-    ["sdBlock_topPadding", "sdBlock_bottomPadding"].forEach((controlId) => {
-      const slider = document.getElementById(controlId);
-      const valueInput = document.getElementById(controlId + "Val");
-      if (slider && valueInput && slider.dataset.blockMarginSliderBound !== "true") {
-        slider.dataset.blockMarginSliderBound = "true";
-        slider.addEventListener("input", () => {
-          valueInput.value = slider.value;
-        });
-      }
-    });
+    bindBlockSizingControls();
 
     document.querySelectorAll(".smallVal").forEach((valEl) => {
       const onChange = (e) => {
@@ -19201,7 +19421,7 @@ const formHandler = (function () {
               const parsed = parseFloat(valEl.value);
               const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
               valEl.value = normalized;
-              control.value = Math.max(0, Math.min(3, normalized));
+              control.value = normalized;
             } else if (
               control.type === "range" ||
               control.type === "number" ||
@@ -19436,13 +19656,19 @@ const formHandler = (function () {
       `${block}_borderColor`,
       `${block}_borderRadius`,
     ]);
-    toggleTargets(`${block}_background`, [
+    const backgroundTargets = [
       `${block}_backgroundColor`,
       `${block}_borderRadius`,
       `${block}_horizontalPadding`,
       `${block}_verticalPadding`,
       `${block}_hasOnlyBlock`,
-    ]);
+    ];
+    if (block === 'sdTollLogo' && window.SignMakerMobile?.active) {
+      for (const id of backgroundTargets) {
+        el(id)?.classList.remove('hidden');
+        document.querySelectorAll(`label[for="${id}"]`).forEach(label => label.classList.remove('hidden'));
+      }
+    } else toggleTargets(`${block}_background`, backgroundTargets);
   };
 
   const normalizeTextEditorWholeNumber = (value, min, max, fallback) => {
@@ -20560,9 +20786,9 @@ const formHandler = (function () {
     }
 
     const redrawAfterExitTabEdit = () => {
-      const keepOtherPanels =
-        document.getElementById("sMConfigBar")?.dataset.currentMenu === "exitTabConfig" &&
-        currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID;
+      const menu = document.getElementById("sMConfigBar")?.dataset.currentMenu;
+      const keepOtherPanels = ["exitTabConfig", "subPanelConfig", "panelStyleConfig", "guideArrowConfig"].includes(menu) &&
+        (menu !== "exitTabConfig" || currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID);
       exposed.redraw(keepOtherPanels
         ? { preserveOtherPanels: true, changedPanelIndex: exposed.vars.currentlySelectedPanelIndex }
         : undefined);
@@ -21296,6 +21522,10 @@ const formHandler = (function () {
       }
     }
 
+    if (blockElemType === 'sdTollLogo' && window.SignMakerMobile?.active) {
+      currentBlockElem.background = currentBlockElem.backgroundColor !== 'Inherit';
+    }
+
     if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
       const parsedSpacing = parseFloat(currentBlockElem.spacing);
       currentBlockElem.spacing = Number.isFinite(parsedSpacing)
@@ -21646,7 +21876,7 @@ const formHandler = (function () {
     syncPanelPaddingControlsFromSign(currentPanel.sign);
 
     if (!(sdShieldReadFormFastPass && blockElemType === "sdShield")) {
-      updateForm();
+      updateForm({ elementOnly: subpanelMenuIsOpen() });
     }
     redrawAfterExitTabEdit();
     } finally {
@@ -21676,6 +21906,7 @@ const formHandler = (function () {
   let mergeLiveInputActive = false;
   let mergeLiveInputValid = true;
   let mergePendingFormRefresh = false;
+  let mergePendingFormOptions = null;
   let mergeSliderDisplaysBefore = [];
   let mergeLiveResetTimer = 0;
   document.addEventListener("input", event => {
@@ -21719,7 +21950,7 @@ const formHandler = (function () {
     if (mergeLiveInputActive || !isLiveEditorField(event.target)) return;
     exposed?.endUndoableChange?.();
     if (mergePendingFormRefresh) requestAnimationFrame(() => {
-      if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm();
+      if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(mergePendingFormOptions || {});
     });
   };
   document.addEventListener("focusout", finishLiveEdit);
@@ -21727,12 +21958,722 @@ const formHandler = (function () {
   document.addEventListener("pointercancel", finishLiveEdit);
   document.addEventListener("change", () => {
     if (!mergePendingFormRefresh) return;
-    requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(); });
+    requestAnimationFrame(() => { if (mergePendingFormRefresh && !mergeLiveInputActive) updateForm(mergePendingFormOptions || {}); });
   }, true);
 
-  const updateForm = function () {
-    if (mergeLiveInputActive) { mergePendingFormRefresh = true; return; }
-    mergePendingFormRefresh = false;
+  let subpanelListCache = null;
+  const canReuseSubpanelList = (control, rows, list) => {
+    const cache = subpanelListCache;
+    return !!cache && cache.control === control && cache.list === list &&
+      cache.clipboard === !!exposed.hasSubpanelClipboard?.() && cache.rows.length === rows.length &&
+      cache.rows.every((row, i) => row.length === rows[i].length && row.every((entry, j) =>
+        entry.element === rows[i][j] && entry.label === rows[i][j].label && entry.kind === rows[i][j].constructor));
+  };
+  const rememberSubpanelList = (control, rows, list) => {
+    subpanelListCache = { control, list, clipboard: !!exposed.hasSubpanelClipboard?.(),
+      rows: rows.map(row => row.map(element => ({ element, label: element.label, kind: element.constructor }))) };
+  };
+  const syncSubpanelListSelection = (rows, list) => {
+    for (const node of list.querySelectorAll('.sMControlRow')) {
+      const row = Number(node.dataset.dataRow);
+      node.classList.toggle('selected', row === exposed.vars.currentlySelectedRowIndex);
+      node.classList.toggle('clipboardRowSelected', rowIsFullySelectedForSubpanelClipboard(row, rows));
+    }
+    for (const node of list.querySelectorAll('.textEditorBlock')) {
+      const row = Number(node.dataset.row), block = Number(node.dataset.block);
+      node.classList.toggle('selected', row === exposed.vars.currentlySelectedRowIndex && block === exposed.vars.currentlySelectedBlockIndex);
+      node.classList.toggle('clipboardSelected', subpanelClipboardSelection.selectedBlocks.has(getSubpanelBlockSelectionKey(row, block)));
+    }
+  };
+  const updateSelectedBlockEditor = function () {
+    const sMSPTextList = document.querySelector("#sMSPTextList");
+    const currentEditingTarget =
+      typeof exposed.getCurrentSubPanel === "function"
+        ? exposed.getCurrentSubPanel()
+        : exposed.getCurrentPanel()?.sign;
+    const currentBlockElements = currentEditingTarget?.blockElements;
+    const currentRows = Array.isArray(currentBlockElements?.rows)
+      ? currentBlockElements.rows
+      : [];
+
+    closeSubpanelBlockTypePicker();
+    const reuseList = canReuseSubpanelList(currentBlockElements, currentRows, sMSPTextList);
+    if (!reuseList) sMSPTextList.innerHTML = "";
+    ensureSubpanelClipboardSelectionForRows(currentRows);
+
+    document.querySelector("#SMSPSelectLabel").textContent =
+      "Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
+    document.querySelector("#SMSPElementLabel").textContent =
+      "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
+
+    const elementCount = currentRows.reduce((count, row) => count + row.length, 0);
+    const makeDeleteButton = (className, label, remove) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">delete</span>';
+      // Commit a focused field during the click, after the button has received it.
+      button.addEventListener("mousedown", event => event.preventDefault());
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        const field = document.activeElement;
+        if (field?.matches("input, select, textarea")) field.blur();
+        flushShieldFormEdit();
+        if (exposed.getActiveBlockElements() === currentBlockElements) remove();
+      });
+      return button;
+    };
+
+    if (!reuseList) {
+    for (let row = 0; row < currentRows.length; row++) {
+      const sMControlRow = document.createElement("div");
+      sMControlRow.dataset.dataRow = row.toString();
+      sMControlRow.className =
+        "sMControlRow" +
+        (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "") +
+        (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
+          ? " clipboardRowSelected"
+          : "");
+
+      if (currentRows.length > 1 && elementCount > currentRows[row].length) {
+        sMControlRow.appendChild(makeDeleteButton(
+          "sMControlRowDeleteButton", `Delete row ${row + 1}`, () => exposed.delRow(row)
+        ));
+      }
+
+      for (let item = 0; item < currentRows[row].length; item++) {
+        const blockElement = currentRows[row][item];
+
+        const currentBlockElemType =
+          Control.prototype.blockToClassElems.getElem(blockElement) ||
+          blockElement.constructor.name;
+
+        const textEditorBlock = document.createElement("div");
+        const clipboardBlockSelected = subpanelClipboardSelection.selectedBlocks.has(
+          getSubpanelBlockSelectionKey(row, item)
+        );
+
+        textEditorBlock.className =
+          "textEditorBlock " +
+          Control.prototype.blockInternalElements[currentBlockElemType] +
+          (item == exposed.vars.currentlySelectedBlockIndex &&
+            row == exposed.vars.currentlySelectedRowIndex
+            ? " selected"
+            : "") +
+          (clipboardBlockSelected ? " clipboardSelected" : "");
+        if (elementCount > 1) textEditorBlock.classList.add("hasBlockDelete");
+        textEditorBlock.dataset.row = row.toString();
+        textEditorBlock.dataset.block = item.toString();
+        textEditorBlock.draggable = true;
+
+        const blockTypeLabel = document.createElement("span");
+        blockTypeLabel.className = "textEditorBlockLabel";
+        blockTypeLabel.textContent =
+          blockElement instanceof GroupedBlockElement
+            ? blockElement.label || "Group"
+            : Control.prototype.blockElements[currentBlockElemType] || "Block";
+
+        const blockTypeSelect = document.createElement("select");
+        blockTypeSelect.className = "blockTypeInlineSelect";
+        blockTypeSelect.value = currentBlockElemType;
+        blockTypeSelect.setAttribute("aria-label", "Change block type");
+        blockTypeSelect.title = "Change block type";
+
+        for (const element in Control.prototype.blockElements) {
+          lib.appendOption(blockTypeSelect, element, {
+            selected: element === currentBlockElemType,
+            text: Control.prototype.blockElements[element],
+          });
+        }
+
+        const blockTypePicker = createInlineSubpanelBlockTypePicker({
+          nativeSelect: blockTypeSelect,
+          row,
+          item,
+          currentValue: currentBlockElemType,
+          anchor: textEditorBlock,
+        });
+
+        if (elementCount > 1) {
+          textEditorBlock.appendChild(makeDeleteButton(
+            "sMBlockDeleteButton",
+            `Delete ${blockTypeLabel.textContent} (row ${row + 1}, element ${item + 1})`,
+            () => exposed.delControlElem(row, item)
+          ));
+        }
+        textEditorBlock.appendChild(blockTypeLabel);
+        if (blockElement instanceof GroupedBlockElement) {
+          const editGroup = document.createElement("button");
+          editGroup.type = "button";
+          editGroup.className = "mergeEditGroup";
+          editGroup.title = "Edit group contents";
+          editGroup.setAttribute("aria-label", "Edit group contents");
+          editGroup.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span>';
+          editGroup.addEventListener("click", event => {
+            event.preventDefault(); event.stopPropagation();
+            exposed.enterGroupElement(row, item);
+          });
+          textEditorBlock.appendChild(editGroup);
+        }
+        textEditorBlock.appendChild(blockTypePicker);
+
+        sMControlRow.appendChild(textEditorBlock);
+        textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
+        textEditorBlock.addEventListener("dragend", handleBlockDragEnd);
+        textEditorBlock.addEventListener("click", (event) => {
+          event.stopPropagation();
+
+          if (textEditorBlock.dataset.dragging === "true") {
+            event.preventDefault();
+            return;
+          }
+
+          if (event.ctrlKey || event.metaKey || event.shiftKey) {
+            event.preventDefault();
+            handleSubpanelBlockSelectionClick(row, item, event, currentRows);
+            return;
+          }
+
+          subpanelClipboardSelection.lastAppSelectionKey = "";
+
+          if (typeof exposed.setSelectedRowAndBlock === "function") {
+            exposed.setSelectedRowAndBlock(row, item);
+          } else {
+            exposed.setSelectedRow(row);
+            exposed.setSelectedControlElem(item);
+          }
+        });
+      }
+
+      if (
+        isSubpanelClipboardSelectionAllowed() &&
+        exposed &&
+        typeof exposed.hasSubpanelClipboard === "function" &&
+        exposed.hasSubpanelClipboard()
+      ) {
+        const pasteRowButton = document.createElement("button");
+        pasteRowButton.type = "button";
+        pasteRowButton.className = "sMControlRowPasteButton";
+        pasteRowButton.title = "Paste copied elements here";
+        pasteRowButton.setAttribute("aria-label", "Paste copied elements here");
+        pasteRowButton.innerHTML =
+          '<span class="material-symbols-outlined">content_paste</span>';
+
+        pasteRowButton.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+        });
+
+        pasteRowButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          pasteCurrentSubpanelClipboardSelection(row);
+        });
+
+        sMControlRow.appendChild(pasteRowButton);
+      }
+
+      sMSPTextList.appendChild(sMControlRow);
+      sMControlRow.draggable = true;
+      sMControlRow.style.position = "relative";
+      sMControlRow.addEventListener("dragstart", handleRowDragStart);
+      sMControlRow.addEventListener("dragend", handleRowDragEnd);
+      sMControlRow.addEventListener("dragenter", handleRowDragEnter);
+      sMControlRow.addEventListener("dragover", handleRowDragOver);
+      sMControlRow.addEventListener("dragleave", handleRowDragLeave);
+      sMControlRow.addEventListener("drop", handleRowDrop);
+      sMControlRow.addEventListener("click", (event) => {
+        if (event.target.closest(".sMControlRowPasteButton")) {
+          return;
+        }
+
+        if (event.ctrlKey || event.metaKey || event.shiftKey) {
+          event.preventDefault();
+          handleSubpanelRowSelectionClick(row, event, currentRows);
+          return;
+        }
+
+        subpanelClipboardSelection.lastAppSelectionKey = "";
+
+        if (typeof exposed.setSelectedRowAndBlock === "function") {
+          exposed.setSelectedRowAndBlock(row, 0);
+        } else {
+          exposed.setSelectedRow(row);
+        }
+      });
+    }
+
+      rememberSubpanelList(currentBlockElements, currentRows, sMSPTextList);
+    }
+    syncSubpanelListSelection(currentRows, sMSPTextList);
+
+    // Attach row list container drag events for row reordering
+    sMSPTextList.addEventListener("dragover", handleRowListDragOver);
+    sMSPTextList.addEventListener("drop", handleRowListDrop);
+    sMSPTextList.addEventListener("dragleave", handleRowListDragLeave);
+
+    for (const divConfig of document.querySelectorAll(
+      "#smSPProperties > div"
+    )) {
+      if (
+        divConfig.dataset.property ==
+        Control.prototype.blockInternalElements[
+        Control.prototype.blockToClassElems.getElem(
+          exposed.getCurrentBlockElem()
+        )
+        ]
+      ) {
+        divConfig.classList.remove("hidden");
+
+      } else {
+        divConfig.classList.add("hidden");
+      }
+    }
+    const currentBlockElem = exposed.getCurrentBlockElem();
+    const blockElemType =
+      Control.prototype.blockInternalElements[
+      Control.prototype.blockToClassElems.getElem(currentBlockElem)
+      ];
+
+    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
+      if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
+      if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
+      if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
+      if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
+      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
+      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
+        currentBlockElem.smallCapitals = false;
+      }
+      if (currentBlockElem.textColor === undefined) {
+        currentBlockElem.textColor =
+          blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
+      }
+    }
+
+    if (blockElemType === "sdIcon") {
+      const normalizeIconNumber = (value, fallback = 0) => {
+        const parsed = parseFloat(
+          value !== null && value !== undefined ? value : fallback
+        );
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const legacyIconSpacing = normalizeIconNumber(currentBlockElem.spacing, 0);
+      currentBlockElem.paddingHorizontal = normalizeIconNumber(
+        currentBlockElem.paddingHorizontal,
+        legacyIconSpacing
+      );
+      currentBlockElem.paddingVertical = normalizeIconNumber(
+        currentBlockElem.paddingVertical,
+        0
+      );
+      currentBlockElem.spacing = 0;
+      currentBlockElem.invertColors =
+        currentBlockElem.invertColors === true ||
+        currentBlockElem.invertColors === "true" ||
+        currentBlockElem.invertColors === 1 ||
+        currentBlockElem.invertColors === "1" ||
+        currentBlockElem.invertColors === "on";
+      setupSdIconEditorControls();
+    }
+
+    if (blockElemType === "sdArrow") {
+      const normalizePadding = (value, fallback = 0) => {
+        const parsed = parseFloat(
+          value !== null && value !== undefined ? value : fallback
+        );
+        return isNaN(parsed) ? fallback : parsed;
+      };
+
+      const fallbackPadding =
+        currentBlockElem.padding !== undefined &&
+          currentBlockElem.padding !== null
+          ? currentBlockElem.padding
+          : 0;
+
+      currentBlockElem.paddingHorizontal = normalizePadding(
+        currentBlockElem.paddingHorizontal,
+        fallbackPadding
+      );
+      currentBlockElem.paddingVertical = normalizePadding(
+        currentBlockElem.paddingVertical,
+        fallbackPadding
+      );
+
+      delete currentBlockElem.padding;
+
+      currentBlockElem.flip =
+        currentBlockElem.flip === true ||
+        currentBlockElem.flip === "true" ||
+        currentBlockElem.flip === 1 ||
+        currentBlockElem.flip === "1" ||
+        currentBlockElem.flip === "on";
+        const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
+          ? TextElement.prototype.alignment
+          : ["Left", "Center", "Right"];
+
+        currentBlockElem.alignment = validArrowAlignments.includes(
+          currentBlockElem.alignment
+        )
+          ? currentBlockElem.alignment
+          : "Center";
+    }
+
+    if (blockElemType === "sdShield") {
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+      currentBlockElem.scaleBannersWithShield =
+        ShieldElement.prototype.normalizeScaleBannersWithShield(
+          currentBlockElem.scaleBannersWithShield
+        );
+      if (currentBlockElem.shieldBacks === undefined) {
+        currentBlockElem.shieldBacks = false;
+      } else {
+        currentBlockElem.shieldBacks =
+          currentBlockElem.shieldBacks === true ||
+          currentBlockElem.shieldBacks === "true" ||
+          currentBlockElem.shieldBacks === 1 ||
+          currentBlockElem.shieldBacks === "1" ||
+          currentBlockElem.shieldBacks === "on";
+      }
+      if (currentBlockElem.indentFirstLetter === undefined) {
+        currentBlockElem.indentFirstLetter = true;
+      }
+      if (currentBlockElem.indentFirstLetter2 === undefined) {
+        currentBlockElem.indentFirstLetter2 =
+          currentBlockElem.indentFirstLetter;
+      }
+      currentBlockElem.shieldSize =
+        ShieldElement.prototype.normalizeShieldSize(
+          currentBlockElem.shieldSize
+        );
+      if (currentBlockElem.smallCaps === undefined) {
+        currentBlockElem.smallCaps = true;
+      }
+      if (currentBlockElem.smallCaps2 === undefined) {
+        currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
+      }
+      if (currentBlockElem.manualBanners === undefined) {
+        currentBlockElem.manualBanners = getDefaultManualBannersSetting();
+      }
+      if (currentBlockElem.roadName === undefined) {
+        currentBlockElem.roadName = "";
+      }
+      currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
+        currentBlockElem.bannerLetterSpacing
+      );
+      if (currentBlockElem.alignment === undefined) {
+        currentBlockElem.alignment = "Center";
+      }
+    }
+
+    if (blockElemType === "sdBlocker") {
+      currentBlockElem.orientation =
+        DividerElement.prototype.normalizeOrientation(
+          currentBlockElem.orientation
+        );
+    }
+
+    for (const propertyName in currentBlockElem) {
+      const elementId = `${blockElemType}_${propertyName}`;
+      const element = document.getElementById(elementId);
+      const displayElement = document.getElementById(elementId + "Val");
+
+      if (element) {
+        const handleCustomBanner =
+          blockElemType === "sdShield" &&
+          (propertyName === "bannerType" || propertyName === "bannerType2");
+
+        if (handleCustomBanner) {
+          const manualCheckbox = document.getElementById("sdShield_manualBanners");
+
+          if (manualCheckbox) {
+            manualCheckbox.checked = currentBlockElem.manualBanners !== false;
+          }
+
+          const customInputId =
+            propertyName === "bannerType"
+              ? "sdShield_bannerCustomText"
+              : "sdShield_bannerCustomText2";
+
+          const customInput = document.getElementById(customInputId);
+          const currentBanner =
+            currentBlockElem[propertyName] || getDefaultBannerType();
+
+          const matchedPreset = findBannerDropdownPresetValue(currentBanner);
+
+          const manualBanners = !manualCheckbox || manualCheckbox.checked;
+
+          if (element.tagName === "SELECT") {
+            element.value = matchedPreset || getDefaultBannerType();
+            element.addEventListener("change", scheduleSdShieldReadForm, { once: true });
+          }
+
+          if (customInput) {
+            customInput.value = manualBanners ? currentBanner : "";
+            customInput.addEventListener("blur", scheduleSdShieldReadForm, { once: true });
+          }
+
+          syncManualBannerInputMode();
+          syncSdShieldBannerBackgroundColorPickerVisuals();
+
+          if (displayElement) {
+            displayElement.textContent = currentBanner;
+          }
+
+          continue;
+        }
+
+        const formReadHandler =
+          blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
+
+        // Update the sign on each edit without rebuilding the focused editor.
+        if (!element.dataset.livePreviewBound &&
+            (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
+          element.dataset.livePreviewBound = "true";
+          element.addEventListener("input", event => {
+            if (!isUsableLiveInput(element)) return;
+            readForm({ target: element, deferHistoryEnd: true });
+          });
+          element.addEventListener("blur", () => exposed?.endUndoableChange?.());
+        }
+
+
+        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
+          element.checked=currentBlockElem.numberStyle==='legacy';
+          element.addEventListener('change',formReadHandler,{once:true});
+        } else if (element.type === "checkbox") {
+          element.checked = currentBlockElem[propertyName];
+          element.addEventListener("change", formReadHandler, { once: true });
+        } else if (element.type === "radio") {
+          if (element.value === currentBlockElem[propertyName].toString()) {
+            element.checked = true;
+          }
+          element.addEventListener("change", formReadHandler, { once: true });
+        } else if (element.tagName === "SELECT") {
+          const currentSelectValue =
+            propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
+              ? normalizeUiFontValue(currentBlockElem[propertyName])
+              : currentBlockElem[propertyName];
+          currentBlockElem[propertyName] = currentSelectValue;
+          if (!Array.from(element.options).some((option) => option.value === currentSelectValue)) {
+            lib.appendOption(element, currentSelectValue);
+          }
+          element.value = currentSelectValue;
+          if (
+            blockElemType === "sdShield" &&
+            (propertyName === "bannerFontFamily1" ||
+              propertyName === "bannerFontFamily2")
+          ) {
+            element.dataset.shieldBannerFontUserChanged = "false";
+          }
+
+          element.addEventListener("change", formReadHandler, { once: true });
+          element.addEventListener("blur", formReadHandler, { once: true });
+        } else {
+          element.value = currentBlockElem[propertyName];
+          element.addEventListener(
+            element.type === "text" ? "blur" : "change",
+            formReadHandler,
+            { once: true }
+          );
+
+          if (
+            element.type === "range" &&
+            displayElement &&
+            !element.dataset.syncDisplay
+          ) {
+            element.addEventListener("input", () => {
+              displayElement.value = element.value;
+            });
+            element.dataset.syncDisplay = "true";
+          }
+        }
+      }
+
+      if (displayElement) {
+        if (
+          displayElement.tagName === "INPUT" &&
+          displayElement.type === "number"
+        ) {
+          displayElement.value = currentBlockElem[propertyName];
+        } else {
+          displayElement.textContent = currentBlockElem[propertyName];
+        }
+      }
+    }
+
+    if (blockElemType === 'sdTollLogo' && window.SignMakerMobile?.active && !currentBlockElem.background) {
+      document.getElementById('sdTollLogo_backgroundColor').value = 'Inherit';
+    }
+
+    if (blockElemType === "sdShield") {
+      normalizeSdShieldBannerStyleFields(currentBlockElem);
+      writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
+      setupSdShieldCompactControls();
+    }
+
+    if (blockElemType === "sdIcon") {
+      setupSdIconEditorControls();
+      updateSdIconExtraControls(currentBlockElem);
+    }
+
+    if (blockElemType === "sdArrow") {
+      const arrowRotationButtons = document.querySelectorAll(
+        ".sdArrow_rotationPreset"
+      );
+      const currentRotation = parseFloat(currentBlockElem.rotation) || 0;
+      arrowRotationButtons.forEach((button) => {
+        const degrees = parseFloat(button.dataset.degrees || "0") || 0;
+        button.classList.toggle(
+          "activated",
+          Math.abs((((currentRotation % 360) + 360) % 360) - degrees) < 0.5
+        );
+      });
+
+      const arrowFlipInput = document.getElementById("sdArrow_flip");
+      const arrowFlipButton = document.getElementById("sdArrow_flipButton");
+      if (arrowFlipInput && arrowFlipButton) {
+        arrowFlipInput.value = currentBlockElem.flip ? "true" : "false";
+        arrowFlipButton.classList.toggle("activated", currentBlockElem.flip);
+        arrowFlipButton.setAttribute(
+          "aria-pressed",
+          currentBlockElem.flip ? "true" : "false"
+        );
+      }
+    }
+
+    const currentBlockProperties = currentBlockElements?.blockProperties || [];
+    const selectedBlockProperties =
+      currentBlockProperties[exposed.vars.currentlySelectedRowIndex] || new Block();
+
+    const clampBlockMarginSliderValue = (value) => {
+      const parsed = parseFloat(value);
+      if (!Number.isFinite(parsed)) {
+        return 0;
+      }
+      return Math.max(-5, Math.min(10, parsed));
+    };
+
+    document.querySelector("#sdBlock_topPadding").value =
+      clampBlockMarginSliderValue(selectedBlockProperties.topPadding);
+
+    document.querySelector("#sdBlock_bottomPadding").value =
+      clampBlockMarginSliderValue(selectedBlockProperties.bottomPadding);
+
+    const topPadValEl = document.querySelector("#sdBlock_topPaddingVal");
+    const bottomPadValEl = document.querySelector("#sdBlock_bottomPaddingVal");
+    const topPadValue = selectedBlockProperties.topPadding;
+    const bottomPadValue = selectedBlockProperties.bottomPadding;
+    if (topPadValEl) {
+      if (topPadValEl.tagName === "INPUT" && topPadValEl.type === "number") {
+        topPadValEl.value = topPadValue;
+      } else {
+        topPadValEl.textContent = topPadValue;
+      }
+    }
+    if (bottomPadValEl) {
+      if (
+        bottomPadValEl.tagName === "INPUT" &&
+        bottomPadValEl.type === "number"
+      ) {
+        bottomPadValEl.value = bottomPadValue;
+      } else {
+        bottomPadValEl.textContent = bottomPadValue;
+      }
+    }
+    bindBlockMarginStepperCommit();
+
+    document.querySelector("#sdBlock_backgroundColor").value =
+      selectedBlockProperties.backgroundColor;
+
+    document
+      .querySelector("#sdBlock_backgroundColor")
+      .addEventListener("blur", readForm, { once: true });
+
+    const blockBorderColorEl = document.querySelector("#sdBlock_borderColor");
+    if (blockBorderColorEl) {
+      const storedBorderColor =
+        selectedBlockProperties.borderColor;
+      blockBorderColorEl.value =
+        storedBorderColor || Block.defaultBorderColor || "Match BG";
+      blockBorderColorEl.addEventListener("blur", readForm, { once: true });
+    }
+
+    const blockBackgroundFullWidthEl = document.querySelector(
+      "#sdBlock_backgroundFullWidth"
+    );
+    blockBackgroundFullWidthEl.checked =
+      !!selectedBlockProperties.backgroundFullWidth;
+    blockBackgroundFullWidthEl.addEventListener("change", readForm, {
+      once: true,
+    });
+
+    document.querySelector("#sdBlock_width").value =
+      selectedBlockProperties.width;
+    const blockWidthSlider = document.getElementById('sdBlock_widthSlider');
+    if (blockWidthSlider) blockWidthSlider.value = Math.max(0, Math.min(100, Number(selectedBlockProperties.width) || 0));
+    document
+      .querySelector("#sdBlock_width")
+      .addEventListener("change", readForm, { once: true });
+
+    document
+      .querySelector("#sdBlock_stretchLeft")
+      .addEventListener("change", readForm, { once: true });
+
+    document.querySelector("#sdBlock_stretchLeft").checked =
+      selectedBlockProperties.stretchLeft;
+
+    document
+      .querySelector("#sdBlock_stretchCenter")
+      .addEventListener("change", readForm, { once: true });
+    document.querySelector("#sdBlock_stretchCenter").checked =
+      selectedBlockProperties.stretchCenter;
+
+    document
+      .querySelector("#sdBlock_stretchRight")
+      .addEventListener("change", readForm, { once: true });
+    document.querySelector("#sdBlock_stretchRight").checked =
+      selectedBlockProperties.stretchRight;
+
+    /*
+    // Old Control Text
+    const controlTextElmt = document.getElementById("controlText");
+    controlTextElmt.value = sign.controlText;
+ 
+    const actionMessageElmt = document.getElementById("actionMessage");
+    actionMessageElmt.value = sign.actionMessage;
+    */
+    return { blockElemType, currentBlockElem };
+  };
+  const syncSelectedBlockEditor = () => {
+    const { blockElemType, currentBlockElem } = updateSelectedBlockEditor();
+    if (blockElemType === 'sdShield') {
+      ensureSdShieldBasePicker();
+      const base = syncShieldBasePickerValue(currentBlockElem.shieldBase || currentBlockElem.type || ShieldElement.prototype.defaultShieldBase || 'I');
+      syncSdShieldVariantPickerForBase(base, { requestedValue: currentBlockElem.shieldType || getSdShieldAutoVariantValue(), updateBlock: true });
+      updateShieldCountyVisibility(base);
+    }
+    bindTextFormattingControls(blockElemType);
+    setDependentVisibility(blockElemType);
+    const root = document.getElementById('smSPProperties');
+    applyEditorInputBehavior(root);
+    bindAllFontPreviewSelects(root);
+    window.SignMakerEditorRuntime?.ensure();
+    syncAllFontPickers(); syncAllColorPickers();
+    window.SignMakerMergeUI?.sync();
+    window.SignMakerMobileForms?.prepareElement();
+    window.SignMakerMobileSubpanels?.refresh();
+    scheduleSubpanelModalHeightSync();
+  };
+
+  const updateForm = function (options = {}) {
+    if (mergeLiveInputActive) {
+      if (!mergePendingFormRefresh || !options.elementOnly) mergePendingFormOptions = options;
+      mergePendingFormRefresh = true; return;
+    }
+    mergePendingFormRefresh = false; mergePendingFormOptions = null;
+    if (options.elementOnly && exposed.getCurrentBlockElem?.()) { syncSelectedBlockEditor(); return; }
     syncPostReference();
     normalizeExitTabProfiles();
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
@@ -22526,7 +23467,11 @@ const formHandler = (function () {
       tabButton.id = id;
       tabButton.type = "button";
       tabButton.className = "subPanelTabButton";
-      tabButton.textContent = label;
+      if (subPanelIndex >= 0) {
+        tabButton.dataset.mobileLabel = String(subPanelIndex + 1);
+        tabButton.dataset.desktopLabel = label;
+      }
+      tabButton.textContent = window.SignMakerMobile?.active && subPanelIndex >= 0 ? tabButton.dataset.mobileLabel : label;
 
       tabButton.addEventListener("click", function () {
         exposed.changeEditingSubPanel(subPanelIndex);
@@ -24361,660 +25306,8 @@ const formHandler = (function () {
     // Shields
     updateShieldSubform();
 
-    // Control Text Revision
-    // Control Text Revision
-    const sMSPTextList = document.querySelector("#sMSPTextList");
-    const currentEditingTarget =
-      typeof exposed.getCurrentSubPanel === "function"
-        ? exposed.getCurrentSubPanel()
-        : sign;
-    const currentBlockElements = currentEditingTarget?.blockElements;
-    const currentRows = Array.isArray(currentBlockElements?.rows)
-      ? currentBlockElements.rows
-      : [];
+    const { blockElemType, currentBlockElem } = updateSelectedBlockEditor();
 
-    closeSubpanelBlockTypePicker();
-    sMSPTextList.innerHTML = "";
-    ensureSubpanelClipboardSelectionForRows(currentRows);
-
-    document.querySelector("#SMSPSelectLabel").textContent =
-      "Selected: Row " + (exposed.vars.currentlySelectedRowIndex + 1);
-    document.querySelector("#SMSPElementLabel").textContent =
-      "Selected: Block " + (exposed.vars.currentlySelectedBlockIndex + 1);
-
-    const elementCount = currentRows.reduce((count, row) => count + row.length, 0);
-    const makeDeleteButton = (className, label, remove) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = className;
-      button.title = label;
-      button.setAttribute("aria-label", label);
-      button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">delete</span>';
-      // Commit a focused field during the click, after the button has received it.
-      button.addEventListener("mousedown", event => event.preventDefault());
-      button.addEventListener("click", event => {
-        event.stopPropagation();
-        const field = document.activeElement;
-        if (field?.matches("input, select, textarea")) field.blur();
-        flushShieldFormEdit();
-        if (exposed.getActiveBlockElements() === currentBlockElements) remove();
-      });
-      return button;
-    };
-
-    for (let row = 0; row < currentRows.length; row++) {
-      const sMControlRow = document.createElement("div");
-      sMControlRow.dataset.dataRow = row.toString();
-      sMControlRow.className =
-        "sMControlRow" +
-        (row == exposed.vars.currentlySelectedRowIndex ? " selected" : "") +
-        (rowIsFullySelectedForSubpanelClipboard(row, currentRows)
-          ? " clipboardRowSelected"
-          : "");
-
-      if (currentRows.length > 1 && elementCount > currentRows[row].length) {
-        sMControlRow.appendChild(makeDeleteButton(
-          "sMControlRowDeleteButton", `Delete row ${row + 1}`, () => exposed.delRow(row)
-        ));
-      }
-
-      for (let item = 0; item < currentRows[row].length; item++) {
-        const blockElement = currentRows[row][item];
-
-        const currentBlockElemType =
-          Control.prototype.blockToClassElems.getElem(blockElement) ||
-          blockElement.constructor.name;
-
-        const textEditorBlock = document.createElement("div");
-        const clipboardBlockSelected = subpanelClipboardSelection.selectedBlocks.has(
-          getSubpanelBlockSelectionKey(row, item)
-        );
-
-        textEditorBlock.className =
-          "textEditorBlock " +
-          Control.prototype.blockInternalElements[currentBlockElemType] +
-          (item == exposed.vars.currentlySelectedBlockIndex &&
-            row == exposed.vars.currentlySelectedRowIndex
-            ? " selected"
-            : "") +
-          (clipboardBlockSelected ? " clipboardSelected" : "");
-        if (elementCount > 1) textEditorBlock.classList.add("hasBlockDelete");
-        textEditorBlock.dataset.row = row.toString();
-        textEditorBlock.dataset.block = item.toString();
-        textEditorBlock.draggable = true;
-
-        const blockTypeLabel = document.createElement("span");
-        blockTypeLabel.className = "textEditorBlockLabel";
-        blockTypeLabel.textContent =
-          blockElement instanceof GroupedBlockElement
-            ? blockElement.label || "Group"
-            : Control.prototype.blockElements[currentBlockElemType] || "Block";
-
-        const blockTypeSelect = document.createElement("select");
-        blockTypeSelect.className = "blockTypeInlineSelect";
-        blockTypeSelect.value = currentBlockElemType;
-        blockTypeSelect.setAttribute("aria-label", "Change block type");
-        blockTypeSelect.title = "Change block type";
-
-        for (const element in Control.prototype.blockElements) {
-          lib.appendOption(blockTypeSelect, element, {
-            selected: element === currentBlockElemType,
-            text: Control.prototype.blockElements[element],
-          });
-        }
-
-        const blockTypePicker = createInlineSubpanelBlockTypePicker({
-          nativeSelect: blockTypeSelect,
-          row,
-          item,
-          currentValue: currentBlockElemType,
-          anchor: textEditorBlock,
-        });
-
-        if (elementCount > 1) {
-          textEditorBlock.appendChild(makeDeleteButton(
-            "sMBlockDeleteButton",
-            `Delete ${blockTypeLabel.textContent} (row ${row + 1}, element ${item + 1})`,
-            () => exposed.delControlElem(row, item)
-          ));
-        }
-        textEditorBlock.appendChild(blockTypeLabel);
-        if (blockElement instanceof GroupedBlockElement) {
-          const editGroup = document.createElement("button");
-          editGroup.type = "button";
-          editGroup.className = "mergeEditGroup";
-          editGroup.title = "Edit group contents";
-          editGroup.setAttribute("aria-label", "Edit group contents");
-          editGroup.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span>';
-          editGroup.addEventListener("click", event => {
-            event.preventDefault(); event.stopPropagation();
-            exposed.enterGroupElement(row, item);
-          });
-          textEditorBlock.appendChild(editGroup);
-        }
-        textEditorBlock.appendChild(blockTypePicker);
-
-        sMControlRow.appendChild(textEditorBlock);
-        textEditorBlock.addEventListener("dragstart", handleBlockDragStart);
-        textEditorBlock.addEventListener("dragend", handleBlockDragEnd);
-        textEditorBlock.addEventListener("click", (event) => {
-          event.stopPropagation();
-
-          if (textEditorBlock.dataset.dragging === "true") {
-            event.preventDefault();
-            return;
-          }
-
-          if (event.ctrlKey || event.metaKey || event.shiftKey) {
-            event.preventDefault();
-            handleSubpanelBlockSelectionClick(row, item, event, currentRows);
-            return;
-          }
-
-          subpanelClipboardSelection.lastAppSelectionKey = "";
-
-          if (typeof exposed.setSelectedRowAndBlock === "function") {
-            exposed.setSelectedRowAndBlock(row, item);
-          } else {
-            exposed.setSelectedRow(row);
-            exposed.setSelectedControlElem(item);
-          }
-        });
-      }
-
-      if (
-        isSubpanelClipboardSelectionAllowed() &&
-        exposed &&
-        typeof exposed.hasSubpanelClipboard === "function" &&
-        exposed.hasSubpanelClipboard()
-      ) {
-        const pasteRowButton = document.createElement("button");
-        pasteRowButton.type = "button";
-        pasteRowButton.className = "sMControlRowPasteButton";
-        pasteRowButton.title = "Paste copied elements here";
-        pasteRowButton.setAttribute("aria-label", "Paste copied elements here");
-        pasteRowButton.innerHTML =
-          '<span class="material-symbols-outlined">content_paste</span>';
-
-        pasteRowButton.addEventListener("mousedown", (event) => {
-          event.stopPropagation();
-        });
-
-        pasteRowButton.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          pasteCurrentSubpanelClipboardSelection(row);
-        });
-
-        sMControlRow.appendChild(pasteRowButton);
-      }
-
-      sMSPTextList.appendChild(sMControlRow);
-      sMControlRow.draggable = true;
-      sMControlRow.style.position = "relative";
-      sMControlRow.addEventListener("dragstart", handleRowDragStart);
-      sMControlRow.addEventListener("dragend", handleRowDragEnd);
-      sMControlRow.addEventListener("dragenter", handleRowDragEnter);
-      sMControlRow.addEventListener("dragover", handleRowDragOver);
-      sMControlRow.addEventListener("dragleave", handleRowDragLeave);
-      sMControlRow.addEventListener("drop", handleRowDrop);
-      sMControlRow.addEventListener("click", (event) => {
-        if (event.target.closest(".sMControlRowPasteButton")) {
-          return;
-        }
-
-        if (event.ctrlKey || event.metaKey || event.shiftKey) {
-          event.preventDefault();
-          handleSubpanelRowSelectionClick(row, event, currentRows);
-          return;
-        }
-
-        subpanelClipboardSelection.lastAppSelectionKey = "";
-
-        if (typeof exposed.setSelectedRowAndBlock === "function") {
-          exposed.setSelectedRowAndBlock(row, 0);
-        } else {
-          exposed.setSelectedRow(row);
-        }
-      });
-    }
-
-    // Attach row list container drag events for row reordering
-    sMSPTextList.addEventListener("dragover", handleRowListDragOver);
-    sMSPTextList.addEventListener("drop", handleRowListDrop);
-    sMSPTextList.addEventListener("dragleave", handleRowListDragLeave);
-
-    for (const divConfig of document.querySelectorAll(
-      "#smSPProperties > div"
-    )) {
-      if (
-        divConfig.dataset.property ==
-        Control.prototype.blockInternalElements[
-        Control.prototype.blockToClassElems.getElem(
-          exposed.getCurrentBlockElem()
-        )
-        ]
-      ) {
-        divConfig.classList.remove("hidden");
-        selectedSettings = divConfig;
-      } else {
-        divConfig.classList.add("hidden");
-      }
-    }
-    const currentBlockElem = exposed.getCurrentBlockElem();
-    const blockElemType =
-      Control.prototype.blockInternalElements[
-      Control.prototype.blockToClassElems.getElem(currentBlockElem)
-      ];
-
-    if (["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)) {
-      if (currentBlockElem.spacing === undefined) currentBlockElem.spacing = 0;
-      if (currentBlockElem.letterSpacing === undefined) currentBlockElem.letterSpacing = 0;
-      if (currentBlockElem.smallCapitals === undefined) currentBlockElem.smallCapitals = false;
-      if (currentBlockElem.smallLettersSize === undefined) currentBlockElem.smallLettersSize = 75;
-      normalizeTextBlockEditorValues(blockElemType, currentBlockElem);
-      if (currentBlockElem.smallCapitals && currentBlockElem.useBannerFormatting) {
-        currentBlockElem.smallCapitals = false;
-      }
-      if (currentBlockElem.textColor === undefined) {
-        currentBlockElem.textColor =
-          blockElemType === "sdAdvisory" ? "Black" : ControlTextElement.defaultTextColor;
-      }
-    }
-
-    if (blockElemType === "sdIcon") {
-      const normalizeIconNumber = (value, fallback = 0) => {
-        const parsed = parseFloat(
-          value !== null && value !== undefined ? value : fallback
-        );
-        return Number.isFinite(parsed) ? parsed : fallback;
-      };
-
-      const legacyIconSpacing = normalizeIconNumber(currentBlockElem.spacing, 0);
-      currentBlockElem.paddingHorizontal = normalizeIconNumber(
-        currentBlockElem.paddingHorizontal,
-        legacyIconSpacing
-      );
-      currentBlockElem.paddingVertical = normalizeIconNumber(
-        currentBlockElem.paddingVertical,
-        0
-      );
-      currentBlockElem.spacing = 0;
-      currentBlockElem.invertColors =
-        currentBlockElem.invertColors === true ||
-        currentBlockElem.invertColors === "true" ||
-        currentBlockElem.invertColors === 1 ||
-        currentBlockElem.invertColors === "1" ||
-        currentBlockElem.invertColors === "on";
-      setupSdIconEditorControls();
-    }
-
-    if (blockElemType === "sdArrow") {
-      const normalizePadding = (value, fallback = 0) => {
-        const parsed = parseFloat(
-          value !== null && value !== undefined ? value : fallback
-        );
-        return isNaN(parsed) ? fallback : parsed;
-      };
-
-      const fallbackPadding =
-        currentBlockElem.padding !== undefined &&
-          currentBlockElem.padding !== null
-          ? currentBlockElem.padding
-          : 0;
-
-      currentBlockElem.paddingHorizontal = normalizePadding(
-        currentBlockElem.paddingHorizontal,
-        fallbackPadding
-      );
-      currentBlockElem.paddingVertical = normalizePadding(
-        currentBlockElem.paddingVertical,
-        fallbackPadding
-      );
-
-      delete currentBlockElem.padding;
-
-      currentBlockElem.flip =
-        currentBlockElem.flip === true ||
-        currentBlockElem.flip === "true" ||
-        currentBlockElem.flip === 1 ||
-        currentBlockElem.flip === "1" ||
-        currentBlockElem.flip === "on";
-        const validArrowAlignments = Array.isArray(TextElement.prototype.alignment)
-          ? TextElement.prototype.alignment
-          : ["Left", "Center", "Right"];
-
-        currentBlockElem.alignment = validArrowAlignments.includes(
-          currentBlockElem.alignment
-        )
-          ? currentBlockElem.alignment
-          : "Center";
-    }
-
-    if (blockElemType === "sdShield") {
-      normalizeSdShieldBannerStyleFields(currentBlockElem);
-      currentBlockElem.scaleBannersWithShield =
-        ShieldElement.prototype.normalizeScaleBannersWithShield(
-          currentBlockElem.scaleBannersWithShield
-        );
-      if (currentBlockElem.shieldBacks === undefined) {
-        currentBlockElem.shieldBacks = false;
-      } else {
-        currentBlockElem.shieldBacks =
-          currentBlockElem.shieldBacks === true ||
-          currentBlockElem.shieldBacks === "true" ||
-          currentBlockElem.shieldBacks === 1 ||
-          currentBlockElem.shieldBacks === "1" ||
-          currentBlockElem.shieldBacks === "on";
-      }
-      if (currentBlockElem.indentFirstLetter === undefined) {
-        currentBlockElem.indentFirstLetter = true;
-      }
-      if (currentBlockElem.indentFirstLetter2 === undefined) {
-        currentBlockElem.indentFirstLetter2 =
-          currentBlockElem.indentFirstLetter;
-      }
-      currentBlockElem.shieldSize =
-        ShieldElement.prototype.normalizeShieldSize(
-          currentBlockElem.shieldSize
-        );
-      if (currentBlockElem.smallCaps === undefined) {
-        currentBlockElem.smallCaps = true;
-      }
-      if (currentBlockElem.smallCaps2 === undefined) {
-        currentBlockElem.smallCaps2 = currentBlockElem.smallCaps;
-      }
-      if (currentBlockElem.manualBanners === undefined) {
-        currentBlockElem.manualBanners = getDefaultManualBannersSetting();
-      }
-      if (currentBlockElem.roadName === undefined) {
-        currentBlockElem.roadName = "";
-      }
-      currentBlockElem.bannerLetterSpacing = normalizeShieldBannerLetterSpacing(
-        currentBlockElem.bannerLetterSpacing
-      );
-      if (currentBlockElem.alignment === undefined) {
-        currentBlockElem.alignment = "Center";
-      }
-    }
-
-    if (blockElemType === "sdBlocker") {
-      currentBlockElem.orientation =
-        DividerElement.prototype.normalizeOrientation(
-          currentBlockElem.orientation
-        );
-    }
-
-    for (const propertyName in currentBlockElem) {
-      const elementId = `${blockElemType}_${propertyName}`;
-      const element = document.getElementById(elementId);
-      const displayElement = document.getElementById(elementId + "Val");
-
-      if (element) {
-        const handleCustomBanner =
-          blockElemType === "sdShield" &&
-          (propertyName === "bannerType" || propertyName === "bannerType2");
-
-        if (handleCustomBanner) {
-          const manualCheckbox = document.getElementById("sdShield_manualBanners");
-
-          if (manualCheckbox) {
-            manualCheckbox.checked = currentBlockElem.manualBanners !== false;
-          }
-
-          const customInputId =
-            propertyName === "bannerType"
-              ? "sdShield_bannerCustomText"
-              : "sdShield_bannerCustomText2";
-
-          const customInput = document.getElementById(customInputId);
-          const currentBanner =
-            currentBlockElem[propertyName] || getDefaultBannerType();
-
-          const matchedPreset = findBannerDropdownPresetValue(currentBanner);
-
-          const manualBanners = !manualCheckbox || manualCheckbox.checked;
-
-          if (element.tagName === "SELECT") {
-            element.value = matchedPreset || getDefaultBannerType();
-            element.addEventListener("change", scheduleSdShieldReadForm, { once: true });
-          }
-
-          if (customInput) {
-            customInput.value = manualBanners ? currentBanner : "";
-            customInput.addEventListener("blur", scheduleSdShieldReadForm, { once: true });
-          }
-
-          syncManualBannerInputMode();
-          syncSdShieldBannerBackgroundColorPickerVisuals();
-
-          if (displayElement) {
-            displayElement.textContent = currentBanner;
-          }
-
-          continue;
-        }
-
-        const formReadHandler =
-          blockElemType === "sdShield" ? scheduleSdShieldReadForm : readForm;
-
-        // Update the sign on each edit without rebuilding the focused editor.
-        if (!element.dataset.livePreviewBound &&
-            (element.tagName === "TEXTAREA" || ["text", "number", "range"].includes(element.type))) {
-          element.dataset.livePreviewBound = "true";
-          element.addEventListener("input", event => {
-            if (!isUsableLiveInput(element)) return;
-            readForm({ target: element, deferHistoryEnd: true });
-          });
-          element.addEventListener("blur", () => exposed?.endUndoableChange?.());
-        }
-
-
-        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
-          element.checked=currentBlockElem.numberStyle==='legacy';
-          element.addEventListener('change',formReadHandler,{once:true});
-        } else if (element.type === "checkbox") {
-          element.checked = currentBlockElem[propertyName];
-          element.addEventListener("change", formReadHandler, { once: true });
-        } else if (element.type === "radio") {
-          if (element.value === currentBlockElem[propertyName].toString()) {
-            element.checked = true;
-          }
-          element.addEventListener("change", formReadHandler, { once: true });
-        } else if (element.tagName === "SELECT") {
-          const currentSelectValue =
-            propertyName === "fontFamily" && ["sdCtrlText", "sdActionMessage", "sdAdvisory"].includes(blockElemType)
-              ? normalizeUiFontValue(currentBlockElem[propertyName])
-              : currentBlockElem[propertyName];
-          currentBlockElem[propertyName] = currentSelectValue;
-          if (!Array.from(element.options).some((option) => option.value === currentSelectValue)) {
-            lib.appendOption(element, currentSelectValue);
-          }
-          element.value = currentSelectValue;
-          if (
-            blockElemType === "sdShield" &&
-            (propertyName === "bannerFontFamily1" ||
-              propertyName === "bannerFontFamily2")
-          ) {
-            element.dataset.shieldBannerFontUserChanged = "false";
-          }
-
-          element.addEventListener("change", formReadHandler, { once: true });
-          element.addEventListener("blur", formReadHandler, { once: true });
-        } else {
-          element.value = currentBlockElem[propertyName];
-          element.addEventListener(
-            element.type === "text" ? "blur" : "change",
-            formReadHandler,
-            { once: true }
-          );
-
-          if (
-            element.type === "range" &&
-            displayElement &&
-            !element.dataset.syncDisplay
-          ) {
-            element.addEventListener("input", () => {
-              displayElement.value = element.value;
-            });
-            element.dataset.syncDisplay = "true";
-          }
-        }
-      }
-
-      if (displayElement) {
-        if (
-          displayElement.tagName === "INPUT" &&
-          displayElement.type === "number"
-        ) {
-          displayElement.value = currentBlockElem[propertyName];
-        } else {
-          displayElement.textContent = currentBlockElem[propertyName];
-        }
-      }
-    }
-
-    if (blockElemType === "sdShield") {
-      normalizeSdShieldBannerStyleFields(currentBlockElem);
-      writeSdShieldBannerFontSizeDisplayFields(currentBlockElem);
-      setupSdShieldCompactControls();
-    }
-
-    if (blockElemType === "sdIcon") {
-      setupSdIconEditorControls();
-      updateSdIconExtraControls(currentBlockElem);
-    }
-
-    if (blockElemType === "sdArrow") {
-      const arrowRotationButtons = document.querySelectorAll(
-        ".sdArrow_rotationPreset"
-      );
-      const currentRotation = parseFloat(currentBlockElem.rotation) || 0;
-      arrowRotationButtons.forEach((button) => {
-        const degrees = parseFloat(button.dataset.degrees || "0") || 0;
-        button.classList.toggle(
-          "activated",
-          Math.abs((((currentRotation % 360) + 360) % 360) - degrees) < 0.5
-        );
-      });
-
-      const arrowFlipInput = document.getElementById("sdArrow_flip");
-      const arrowFlipButton = document.getElementById("sdArrow_flipButton");
-      if (arrowFlipInput && arrowFlipButton) {
-        arrowFlipInput.value = currentBlockElem.flip ? "true" : "false";
-        arrowFlipButton.classList.toggle("activated", currentBlockElem.flip);
-        arrowFlipButton.setAttribute(
-          "aria-pressed",
-          currentBlockElem.flip ? "true" : "false"
-        );
-      }
-    }
-
-    const currentBlockProperties = currentBlockElements?.blockProperties || [];
-    const selectedBlockProperties =
-      currentBlockProperties[exposed.vars.currentlySelectedRowIndex] || new Block();
-
-    const clampBlockMarginSliderValue = (value) => {
-      const parsed = parseFloat(value);
-      if (!Number.isFinite(parsed)) {
-        return 0;
-      }
-      return Math.max(0, Math.min(3, parsed));
-    };
-
-    document.querySelector("#sdBlock_topPadding").value =
-      clampBlockMarginSliderValue(selectedBlockProperties.topPadding);
-    document
-      .querySelector("#sdBlock_topPadding")
-      .addEventListener("change", readForm, { once: true });
-
-    document.querySelector("#sdBlock_bottomPadding").value =
-      clampBlockMarginSliderValue(selectedBlockProperties.bottomPadding);
-    document
-      .querySelector("#sdBlock_bottomPadding")
-      .addEventListener("change", readForm, { once: true });
-
-    const topPadValEl = document.querySelector("#sdBlock_topPaddingVal");
-    const bottomPadValEl = document.querySelector("#sdBlock_bottomPaddingVal");
-    const topPadValue = selectedBlockProperties.topPadding;
-    const bottomPadValue = selectedBlockProperties.bottomPadding;
-    if (topPadValEl) {
-      if (topPadValEl.tagName === "INPUT" && topPadValEl.type === "number") {
-        topPadValEl.value = topPadValue;
-      } else {
-        topPadValEl.textContent = topPadValue;
-      }
-    }
-    if (bottomPadValEl) {
-      if (
-        bottomPadValEl.tagName === "INPUT" &&
-        bottomPadValEl.type === "number"
-      ) {
-        bottomPadValEl.value = bottomPadValue;
-      } else {
-        bottomPadValEl.textContent = bottomPadValue;
-      }
-    }
-    bindBlockMarginStepperCommit();
-
-    document.querySelector("#sdBlock_backgroundColor").value =
-      selectedBlockProperties.backgroundColor;
-
-    document
-      .querySelector("#sdBlock_backgroundColor")
-      .addEventListener("blur", readForm, { once: true });
-
-    const blockBorderColorEl = document.querySelector("#sdBlock_borderColor");
-    if (blockBorderColorEl) {
-      const storedBorderColor =
-        selectedBlockProperties.borderColor;
-      blockBorderColorEl.value =
-        storedBorderColor || Block.defaultBorderColor || "Match BG";
-      blockBorderColorEl.addEventListener("blur", readForm, { once: true });
-    }
-
-    const blockBackgroundFullWidthEl = document.querySelector(
-      "#sdBlock_backgroundFullWidth"
-    );
-    blockBackgroundFullWidthEl.checked =
-      !!selectedBlockProperties.backgroundFullWidth;
-    blockBackgroundFullWidthEl.addEventListener("change", readForm, {
-      once: true,
-    });
-
-    document.querySelector("#sdBlock_width").value =
-      selectedBlockProperties.width;
-    document
-      .querySelector("#sdBlock_width")
-      .addEventListener("change", readForm, { once: true });
-
-    document
-      .querySelector("#sdBlock_stretchLeft")
-      .addEventListener("change", readForm, { once: true });
-
-    document.querySelector("#sdBlock_stretchLeft").checked =
-      selectedBlockProperties.stretchLeft;
-
-    document
-      .querySelector("#sdBlock_stretchCenter")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchCenter").checked =
-      selectedBlockProperties.stretchCenter;
-
-    document
-      .querySelector("#sdBlock_stretchRight")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchRight").checked =
-      selectedBlockProperties.stretchRight;
-
-    /*
-    // Old Control Text
-    const controlTextElmt = document.getElementById("controlText");
-    controlTextElmt.value = sign.controlText;
- 
-    const actionMessageElmt = document.getElementById("actionMessage");
-    actionMessageElmt.value = sign.actionMessage;
-    */
     const shieldPositionsSelectElmt =
       document.getElementById("shieldsPosition");
     for (const option of shieldPositionsSelectElmt.options) {
@@ -25266,6 +25559,7 @@ const formHandler = (function () {
     window.SignMakerMergeUI?.sync();
     window.SignMakerEditorRuntime?.ensure();
     window.SignMakerSettings22?.sync();
+    window.SignMakerMobileForms?.prepareElement();
   };
     
     /* END OF UPDATEFORM */

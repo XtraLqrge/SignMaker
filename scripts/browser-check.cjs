@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const url=process.argv.slice(2).find(argument=>!argument.startsWith('--'))||'http://localhost:8765';
 const mobile=process.argv.includes('--mobile')||process.env.MOBILE==='1';
-const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
+const viewport=mobile?{width:393,height:852}:{width:1440,height:1000};
 (async()=>{
   const browser=await chromium.launch({headless:process.env.HEADED!=='1'});
   const errors=[],failedRequests=[];
@@ -24,6 +24,16 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
     await page.goto(url,{waitUntil:'load'});
     const ready=()=>page.waitForFunction(()=>document.documentElement.dataset.appReady==='true',null,{timeout:60000});
     await ready();
+    if(mobile){
+      await page.waitForFunction(()=>window.SignMakerMobile?.active===true,null,{timeout:10000});
+      assert.equal(await page.locator('html').getAttribute('data-mobile-ui'),'');
+      const toolbar=await page.locator('#sMConfigBar').boundingBox();
+      assert.ok(toolbar.x>=0&&toolbar.x+toolbar.width<=viewport.width+1,'Phone toolbar fits the viewport');
+      assert.ok(Math.abs(toolbar.y+toolbar.height-viewport.height)<=1,'Phone toolbar sits at the bottom');
+      assert.ok(toolbar.height<100,'Phone toolbar uses one compact row');
+      assert.equal(await page.locator('#mobileWorkspace main.mobileCanvas').count(),1);
+      assert.equal(await page.locator('#panelContainer .panel:visible').count(),1,'One panel is visible');
+    }
     assert.equal(await page.locator('#presetShieldList img').count(),0,'Closed shield gallery loads no thumbnails');
     assert.equal(await page.locator('input > option').count(),0,'Hidden asset inputs have no option children');
     assert.equal(await page.locator('[data-startup-inert]').count(),0,'The initialized editor is interactive');
@@ -42,9 +52,17 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
     assert.ok(!metrics.resources.some(entry=>/\/icons\/AIRPORT\.svg/.test(entry.name)),'Unused exit profiles do not prepare icons');
     await page.evaluate(()=>document.getElementById('closeWelcome')?.click());
     const openMenu=async id=>{
-      if(await page.locator('#sMConfigBar').getAttribute('data-current-menu')!==id)await page.locator('#'+id).click();
+      if(await page.locator('#sMConfigBar').getAttribute('data-current-menu')===id)return;
+      if(mobile&&!await page.locator('#'+id).isVisible())await page.locator('#mobileMore').click();
+      await page.locator('#'+id).click();
     };
     await openMenu('subPanelConfig');
+    if(mobile){
+      const preview=await page.locator('main.mobileCanvas').boundingBox();
+      const editor=await page.locator('#mobileEditor').boundingBox();
+      assert.ok(editor.y>=preview.y+preview.height,'Editor follows the panel in the page');
+      assert.equal(await page.locator('#mobileEditor .subPanelConfig').isVisible(),true);
+    }
     assert.equal(await page.locator('#SMSPElementLabel').evaluate(element=>element.parentElement.classList.contains('SMSPNewElementHolder')),true,'Selected block label belongs to the action bar');
     const caret=page.locator('.blockTypeInlinePickerTrigger>.shieldPickerTriggerCaret').first();
     assert.ok(await caret.evaluate(element=>parseFloat(getComputedStyle(element).width)<=parseFloat(getComputedStyle(document.documentElement).fontSize)*0.81),'Element-label chevrons stay compact');
@@ -66,7 +84,7 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
     await type.click();await page.locator('.blockTypePickerPopover.open').waitFor({state:'hidden'});
     await type.click();await page.locator('#sMSPCreateRow').click();await page.locator('.blockTypePickerPopover.open').waitFor({state:'hidden'});
     await openMenu('appSettingsConfig');
-    for(const tab of ['sMAppSettings','sMDefaults','sMAppShortcuts']){
+    for(const tab of mobile?['sMAppSettings','sMDefaults']:['sMAppSettings','sMDefaults','sMAppShortcuts']){
       await page.locator(`#settings22Modal [data-tab="${tab}"]`).click();
       assert.equal(await page.locator('#settings22Modal').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,tab+' overflows');
       await page.locator('#settings22Modal').screenshot({path:path.join(output,tab+'.png')});
@@ -75,6 +93,8 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
     await page.locator('#appDropdownAnimations').uncheck();
     assert.equal(await page.locator('html').getAttribute('data-dropdown-animations'),'false');
     await page.locator('#appDropdownAnimations').check();
+    let movedOffset;
+    if(!mobile){
     // Pointer dragging supports one panel as well as multi-panel posts.
     await page.evaluate(()=>{
       app.getPost().polePosition='Right';
@@ -89,16 +109,23 @@ const viewport=mobile?{width:390,height:844}:{width:1440,height:1000};
     const x=start.x+start.width/2,y=start.y+start.height/2;
     await page.mouse.move(x,y);await page.mouse.down();
     await page.mouse.move(x,y+40,{steps:8});await page.mouse.up();
-    const movedOffset=await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem);
+    movedOffset=await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem);
     assert.notEqual(movedOffset,startOffset);assert.ok(Math.abs(movedOffset)<=6);
     await page.evaluate(()=>app.undo());await page.waitForFunction(offset=>app.getPost().panels[0].verticalOffsetRem===offset,startOffset);
     await page.evaluate(()=>app.redo());await page.waitForFunction(offset=>app.getPost().panels[0].verticalOffsetRem===offset,movedOffset);
+    }
     const panelsBefore=await page.evaluate(()=>app.getPost().panels.length);
     await page.evaluate(()=>app.newPanel());assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
+    if(mobile){
+      await page.waitForFunction(()=>document.querySelector('#panelContainer .mobileCurrentPanel')?.dataset.panelIndex===String(app.exposeToFormHandler.vars.currentlySelectedPanelIndex));
+      assert.equal(await page.locator('#panelContainer .panel:visible').count(),1);
+      await page.locator('#panelContainer .mobileCurrentPanel .subPanelDisplay').first().click();
+      assert.equal(await page.locator('#sMConfigBar').getAttribute('data-current-menu'),'subPanelConfig');
+    }
     await page.evaluate(()=>app.undo());await page.waitForFunction(count=>app.getPost().panels.length===count,panelsBefore);
     await page.evaluate(()=>app.redo());await page.waitForFunction(count=>app.getPost().panels.length===count,panelsBefore+1);
     await page.reload();await ready();assert.equal(await page.evaluate(()=>app.getPost().panels.length),panelsBefore+1);
-    assert.equal(await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem),movedOffset,'Panel height survives reload');
+    if(!mobile)assert.equal(await page.evaluate(()=>app.getPost().panels[0].verticalOffsetRem),movedOffset,'Panel height survives reload');
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed. Timings and screenshots: '+output);
   }finally{

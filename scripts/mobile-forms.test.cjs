@@ -11,13 +11,34 @@ const manifest = JSON.parse(read('build-manifest.json'));
 const sources = ['public/js/MobileForms.js', 'public/' + manifest.assets.find(asset => asset.source === 'js/MobileForms.js').output];
 const sourceStyle = cascade(read('public/css/form.css') + '\n' + read('public/css/mobile.css'));
 const productionStyle = cascade(read('public/' + manifest.deferredStyles));
+const linkedStyles = [...read('scripts/index.source.html').matchAll(/<link\b[^>]*>/g)].map(match => match[0])
+  .filter(tag => /rel=["']stylesheet["']/.test(tag)).map(tag => tag.match(/href=["']([^"']+)/)?.[1].split('?')[0])
+  .filter(file => file?.startsWith('css/'));
+const shieldStyles = [
+  cascade(linkedStyles.map(file => read('public/' + file)).join('\n'), { respectLayers: true }),
+  cascade(read('public/' + manifest.deferredStyles), { respectLayers: true }),
+];
 
-function ui(source) {
+const { parse: parseJS } = require('./build.cjs');
+const sourceFunctions = new Map();
+function actualFunction(file, name) {
+  const key=file+':'+name;if(sourceFunctions.has(key))return sourceFunctions.get(key);
+  const code=read(file),stack=[parseJS(code)];
+  while(stack.length){
+    const node=stack.pop();
+    if(node.type==='FunctionDeclaration'&&node.id?.name===name){const value=code.slice(node.start,node.end);sourceFunctions.set(key,value);return value;}
+    if(node.type==='VariableDeclarator'&&node.id?.name===name){const value='const '+code.slice(node.start,node.end)+';';sourceFunctions.set(key,value);return value;}
+    for(const value of Object.values(node))if(Array.isArray(value))stack.push(...value.filter(x=>x?.type));else if(value?.type)stack.push(value);
+  }
+  throw Error('Missing actual controller function '+name);
+}
+
+function ui(source, { startActive=true } = {}) {
   const tree = parse('<body>' + read('scripts/index.source.html').split('<body>')[1].split('</body>')[0] + '</body>');
   const byId = id => tree.querySelector('#' + id), frames = new Map(); let serial = 0, globalScans = 0;
   tree.setAttribute('data-mobile-ui', '');
   const editor = new Node('section');editor.id='mobileEditor';editor.setAttribute('data-menu','subPanelConfig');tree.querySelector('form').append(editor);editor.append(tree.querySelector('.modals'));
-  const document = { activeElement: null, forms: { signMaker: tree.querySelector('form') },
+  const document = { activeElement: null, documentElement: tree, forms: { signMaker: tree.querySelector('form') },
     getElementById: byId, querySelector: s => tree.querySelector(s), querySelectorAll: s => { globalScans++; return tree.querySelectorAll(s); },
     createElement: tag => new Node(tag), createComment: text => new Node('#comment', text) };
   const originals = tree.querySelectorAll('input').map(input => [input, input.parentElement, input.type]);
@@ -36,7 +57,7 @@ function ui(source) {
     const picker = new Node('div'); picker.className = select.id.endsWith('_alignment') ? 'alignmentButtons' : select.id.toLowerCase().includes('font') ? 'fontPicker' : 'colorPicker';
     select.after(picker); select.classList.add('nativeSelectSource');
   }
-  const window = { requestAnimationFrame: fn => { frames.set(++serial, fn); return serial; }, cancelAnimationFrame: id => frames.delete(id) };
+  const window = { SignMakerMobile: { active: true }, requestAnimationFrame: fn => { frames.set(++serial, fn); return serial; }, cancelAnimationFrame: id => frames.delete(id) };
   let callback, observations = [], queued = [];
   const c = vm.createContext({ window, document, Event, console, MutationObserver: class {
     constructor(fn) { callback = fn; } observe(target, options) { observations.push({ target, options }); }
@@ -45,19 +66,37 @@ function ui(source) {
   // Exercise the existing form controller's actual one-editor selection loop.
   const form = read('public/js/form.js'), start = form.indexOf('    for (const divConfig of document.querySelectorAll(\n      "#smSPProperties > div"');
   const selectionLoop = form.slice(start, form.indexOf('    const currentBlockElem = exposed.getCurrentBlockElem();', start));
+  vm.runInContext(form.slice(form.indexOf('  const setDependentVisibility ='), form.indexOf('  const normalizeTextEditorWholeNumber =')), c);
   assert.ok(start >= 0);
   c.selection = 'sdCtrlText';
   c.Control = { prototype: { blockInternalElements: new Proxy({}, {get: (_, key) => key}), blockToClassElems: { getElem: element => element.type } } };
   c.exposed = { getCurrentBlockElem: () => ({ type: c.selection }) };
+  c.app = { exposeToFormHandler: c.exposed };
   vm.runInContext('let selectedSettings;', c);
   const choose = prefix => { c.selection = prefix; vm.runInContext(selectionLoop, c); };
   bar.dataset.currentMenu = 'subPanelConfig'; choose('sdCtrlText');
-  vm.runInContext(read(source), c); const api = window.SignMakerMobileForms; api.setActive(true);
+  vm.runInContext(read(source), c); const api = window.SignMakerMobileForms; if(startActive)api.setActive(true);
   const fire = (node, type) => node.dispatchEvent(new Event(type, { bubbles: true }));
   const buttons = id => byId(id).closest('.mobileNumberControl').querySelectorAll('button');
   const emit = mutations => callback(mutations);
   const flush = () => { let count=0; while(frames.size) { if(++count>5)throw Error('Mobile form refresh did not settle'); const jobs=[...frames.values()];frames.clear();jobs.forEach(fn=>fn()); } return count; };
   return { api, tree, byId, document, originals, fire, emit, flush, frames, properties, bar, scans: () => globalScans, observations: () => observations,
+    controllerOpen(prefix) {
+      choose(prefix); c.prefix=prefix;vm.runInContext('setDependentVisibility(prefix)',c);
+      if(!c.actualControllersLoaded){
+        c.active=true;c.editor=editor;c.modals=tree.querySelector('.modals');c.sMConfigBar=bar;
+        c.panelStylePopoverIsOpen=()=>false;c.scheduleSubpanelModalHeightSync=()=>{};c.clearPanelStylePopoverPosition=()=>{};
+        c.setConfigPopover=(holder,display)=>{holder.style.display=display;};
+        window.SignMakerEditorRuntime={ensure(){}};
+        const queryAll=document.querySelectorAll;
+        document.querySelectorAll=selector=>selector==='.sMConfigOption:has(#panelSelector)'?[byId('panelSelector').parentElement]:queryAll(selector);
+        vm.runInContext(actualFunction('public/js/MobileUI.js','prepareEditor')+';window.SignMakerMobile.prepareEditor=prepareEditor;'+actualFunction('public/js/form.js','reDisplay'),c);
+        c.actualControllersLoaded=true;
+      }
+      bar.dataset.currentMenu='subPanelConfig';vm.runInContext('reDisplay()',c);
+    },
+    mobile(value) { window.SignMakerMobile.active=value;if(value)tree.setAttribute('data-mobile-ui','');else tree.removeAttribute('data-mobile-ui'); },
+    dependent(prefix) { c.prefix = prefix; vm.runInContext('setDependentVisibility(prefix)', c); },
     select(prefix) { choose(prefix); api.refresh(); },
     open(menu) { bar.dataset.currentMenu = menu; editor.setAttribute('data-menu',menu);api.refresh(); },
     reveal(id) { const node=byId(id); for(let p=node;p;p=p.parentElement) {p.classList.remove('tabHidden');} emit([{target:node, type:'attributes',attributeName:'hidden'}]);flush(); },
@@ -67,6 +106,19 @@ function ui(source) {
 for (const source of sources) {
   const name = source === sources[0] ? 'source' : 'production';
   const style = name === 'source' ? sourceStyle : productionStyle;
+  const shieldStyle = shieldStyles[name === 'source' ? 0 : 1];
+  test(`${name}: actual menu-open handlers prepare every selected editor without an activation call or observer delivery`,()=>{
+    const h=ui(source,{startActive:false});h.tree.querySelector('.modals').hidden=true;
+    for(const prefix of ['sdTollLogo','sdBlocker','sdIcon','sdArrow','sdElectronicSign','sdGroupedBlock']){
+      h.controllerOpen(prefix);
+      const pane=h.tree.querySelector(`[data-property="${prefix}"]`);
+      assert.equal(pane.classList.contains('mobileElementForm'),true,prefix);
+      for(const input of pane.querySelectorAll('input[type="number"]'))if(!input.classList.contains('hidden'))assert.ok(input.closest('.mobileNumberControl'),input.id);
+      assert.equal(h.tree.querySelector('.modals').hidden,false);assert.equal(h.frames.size,0);
+    }
+    h.mobile(false);h.api.setActive(false);h.api.prepareElement();
+    for(const pane of h.properties.children)assert.equal(pane.classList.contains('mobileElementForm'),false);
+  });
   test(`${name}: control, action, and advisory editors keep matching compact field structure`, () => {
     const h = ui(source);
     for (const prefix of ['sdCtrlText', 'sdActionMessage', 'sdAdvisory']) {
@@ -158,15 +210,60 @@ for (const source of sources) {
     assert.equal(input.value, '2.37'); h.fire(h.up(input.id), 'click'); assert.equal(input.value, '2.87');
     input.value = '99'; h.fire(input, 'change'); assert.equal(input.value, '10');
   });
-  test(`${name}: the icon preview is a separate contained block and sizing controls stay together`, () => {
+  test(`${name}: the icon preview occupies its own picker column and sizing controls stay together`, () => {
     const h=ui(source);h.select('sdIcon');const root=h.byId('sdIcon_iconSize').closest('.mobileIconForm'),preview=h.byId('sdIcon_previewBox');
-    assert.equal(style(root,'display'),'flex');assert.equal(style(root,'flex-direction'),'column');
-    assert.equal(style(preview,'position'),'static');assert.equal(style(preview,'width'),'88px');assert.equal(style(preview,'height'),'88px');
+    assert.equal(style(root,'display'),'grid');assert.equal(style(root,'grid-template-columns'),'minmax(0,1fr) 56px');
+    assert.equal(style(preview,'position'),'static');assert.equal(style(preview,'width'),'56px');assert.equal(style(preview,'height'),'56px');
     assert.equal(root.querySelector('.mobileIconFields').contains(preview),false);
     for(const id of ['sdIcon_iconSize','sdIcon_paddingHorizontalVal','sdIcon_paddingVerticalVal'])assert.ok(h.byId(id).closest('.mobileIconFields'));
     assert.ok(h.byId('sdIcon_invertColors').closest('.mobileCheckField'));assert.ok(h.byId('sdIcon_border').closest('.mobileCheckField'));
     assert.ok(h.byId('sdIcon_alignment').closest('.mobileFieldWide'));
     for(const row of root.querySelectorAll('.mobileOriginalRow'))assert.equal(style(row,'display'),'none');
+  });
+  test(`${name}: arrow, divider, toll, variable, and group fields stay with their labels and restore desktop positions`, () => {
+    const h=ui(source);h.dependent('sdTollLogo');
+    const editors={sdArrow:['rotationVal','size','paddingHorizontal','paddingVertical','alignment'],
+      sdBlocker:['dividerWidth','dividerMeasurement','dividerHeight','orientation','dividerColor','alignment','fullBleed','visible'],
+      sdTollLogo:['logoHeight','spacing','backgroundColor','horizontalPadding','verticalPadding','borderRadius','squareIcon','hasOnlyBlock'],
+      sdElectronicSign:['textContent','fontFamily','fontSize','textColor','lineHeightVal','paddingVal','setWidth','alignment','glow'],
+      sdGroupedBlock:['label','alignment','backgroundColor','padding','borderRadius','border','borderColor']};
+    for(const [prefix,keys] of Object.entries(editors)){
+      h.select(prefix);const pane=h.tree.querySelector(`[data-property="${prefix}"]`);
+      assert.equal(pane.classList.contains('mobileElementForm'),true,prefix);
+      assert.equal(style(pane,'display'),'block',prefix);
+      assert.equal(h.properties.children.filter(node=>node.hasAttribute('data-property')&&style(node,'display')!=='none').length,1);
+      for(const key of keys){
+        const input=h.byId(prefix+'_'+key),card=input.closest('.mobileField');assert.ok(card,input.id);
+        assert.equal(card.querySelector('label').htmlFor,input.id,input.id);
+        assert.equal(style(card.querySelector('label'),'grid-area'),'auto',input.id);
+        if(input.type==='number')assert.ok(input.closest('.mobileNumberControl'),input.id);
+      }
+    }
+    h.select('sdArrow');const rotation=h.byId('sdArrow_rotationVal');rotation.value='42.37';h.fire(rotation,'change');assert.equal(rotation.value,'42.37');
+    assert.equal(style(h.tree.querySelector('.sdArrow_rotationButtons'),'grid-template-columns'),'repeat(4,minmax(0,1fr))');
+    h.api.setActive(false);
+    for(const [input,parent,type] of h.originals){assert.equal(input.parentElement,parent,input.id);assert.equal(input.type,type,input.id);}
+    for(const pane of h.properties.children)assert.equal(pane.classList.contains('mobileElementForm'),false);
+  });
+  test(`${name}: toll background fields stay visible for Inherit and explicit colors without a background toggle`, () => {
+    const h=ui(source),checkbox=h.byId('sdTollLogo_background');checkbox.checked=false;h.dependent('sdTollLogo');h.select('sdTollLogo');
+    for(const value of ['Inherit','White','Blue','Inherit']){
+      h.byId('sdTollLogo_backgroundColor').value=value;h.dependent('sdTollLogo');h.api.refresh();
+      for(const key of ['backgroundColor','borderRadius','horizontalPadding','verticalPadding','hasOnlyBlock']){
+        const input=h.byId('sdTollLogo_'+key);assert.equal(input.classList.contains('hidden'),false);assert.equal(input.closest('.mobileField').hidden,false);
+      }
+      assert.equal(style(checkbox,'display'),'none');
+    }
+    h.api.setActive(false);
+  });
+  test(`${name}: condensed group labels keep their actions inside and arrow labels have a distinct background`, () => {
+    const h=ui(source),row=new Node('div'),group=new Node('div'),remove=new Node('button'),pencil=new Node('button'),arrow=new Node('div');
+    group.className='textEditorBlock sdGroupedBlock hasBlockDelete';remove.className='sMBlockDeleteButton';pencil.className='mergeEditGroup';group.append(remove,pencil);
+    arrow.className='textEditorBlock sdArrow';row.className='sMControlRow';row.append(group,arrow);h.byId('sMSPTextList').append(row);
+    assert.equal(style(group,'display'),'inline-flex');assert.equal(style(group,'width'),'94px');assert.equal(style(pencil,'display'),'none');
+    assert.equal(style(remove,'display'),'inline-flex');assert.equal(style(remove,'order'),'-1');
+    group.classList.add('mobileFullLabel');assert.equal(style(group,'width'),'max-content');assert.equal(style(pencil,'display'),'inline-flex');
+    assert.equal(style(arrow,'background'),'#216475');
   });
   test(`${name}: shield and route stay wide above a separate size and variant row`, () => {
     const h=ui(source);h.select('sdShield');const grid=h.byId('sdShield_routeNumber').closest('.mobileShieldTopGrid');
@@ -193,7 +290,11 @@ for (const source of sources) {
       assert.equal(style(grid,'grid-template-columns'),'minmax(0,1fr) 104px 28px 58px');
       assert.equal(style(text,'height'),'32px');
       const cap=h.byId('sdShield_indentFirstLetter'+suffix).closest('.mobileField');
-      assert.equal(style(cap.querySelector('label'),'visibility'),'hidden');
+      assert.equal(cap.querySelector('label').textContent,'EFL');
+      assert.equal(style(cap.querySelector('label'),'text-align'),'center');
+      assert.equal(style(cap.querySelector('button'),'align-items'),'center');
+      assert.equal(style(cap.querySelector('button'),'padding'),'0');
+      for(const letter of cap.querySelector('button').children)assert.equal(style(letter,'align-self'),'center');
       assert.equal(style(cap.querySelector('.sdShieldBigA'),'font-size'),'17px');
       assert.equal(style(cap.querySelector('button').children[1],'font-size'),'11px');
       const font=h.byId('sdShield_bannerFontFamily'+index),color=h.byId('sdShield_bannerBackgroundColor'+index),styles=font.closest('.mobileShieldBannerStyles');
@@ -201,6 +302,57 @@ for (const source of sources) {
       const caption=new Node('span');caption.className='fontPickerTriggerLabel';font.nextElementSibling.append(caption);
       assert.equal(style(caption,'white-space'),'nowrap');
     }
+  });
+  test(`${name}: shield alignment and options keep their labels with compact visible controls`, () => {
+    const h=ui(source);h.select('sdShield');
+    const alignment=h.byId('sdShield_alignment'),card=alignment.closest('.mobileField'),grid=card.parentElement;
+    assert.equal(card.querySelector('label').textContent,'Alignment');
+    assert.equal(shieldStyle(grid,'grid-template-columns'),'repeat(2,minmax(0,1fr))');
+    for(const button of card.querySelectorAll('button')) {
+      assert.equal(shieldStyle(button,'height'),'32px');assert.equal(shieldStyle(button,'min-height'),'32px');
+      assert.equal(shieldStyle(button,'max-height'),'32px');
+    }
+    for(const suffix of ['to','scaleBannersWithShield','numberStyle','shieldBacks']) {
+      const input=h.byId('sdShield_'+suffix),field=input.closest('.mobileField');
+      assert.equal(field.parentElement,grid);assert.equal(field.querySelector('label').htmlFor,input.id);
+    }
+    const backs=h.byId('sdShield_shieldBacks'),field=backs.closest('.mobileField');
+    backs.hidden=true;h.api.refresh();assert.equal(field.hidden,true);
+    backs.hidden=false;h.api.refresh();assert.equal(field.hidden,false);
+  });
+  test(`${name}: shield pickers share the real layered heights, padding, and label alignment`, () => {
+    const h=ui(source);h.select('sdShield');
+    for(const [id,kind] of [['sdShield_shieldBase','shield'],['sdShield_shieldType','shieldVariant'],['sdShield_bannerFontFamily1','font'],['sdShield_bannerBackgroundColor1','color']]) {
+      const source=h.byId(id),host=source.nextElementSibling,picker=host.className.endsWith('PickerHost')?host.children[0]:host;
+      let trigger=picker.querySelector('button');
+      if(!trigger){trigger=new Node('button');trigger.className=kind+'PickerTrigger';picker.append(trigger);}
+      let label=trigger.querySelector('span');
+      if(!label){label=new Node('span');label.className=kind+'PickerTriggerLabel';trigger.append(label);}
+      const caret=new Node('span');caret.className=kind+'PickerTriggerCaret';trigger.append(caret);
+      assert.equal(source.closest('.mobileField').querySelector('label').htmlFor,id);
+      assert.equal(shieldStyle(picker,'width'),'100%');assert.equal(shieldStyle(picker,'height'),'32px');
+      assert.equal(shieldStyle(trigger,'height'),'32px');assert.equal(shieldStyle(trigger,'max-height'),'32px');
+      assert.equal(shieldStyle(trigger,'padding'),'4px 7px');assert.equal(shieldStyle(trigger,'align-items'),'center');
+      assert.equal(shieldStyle(label,'font-size'),'13px');assert.equal(shieldStyle(label,'text-align'),'left');
+      assert.equal(shieldStyle(caret,'width'),'14px');assert.equal(shieldStyle(caret,'height'),'14px');
+    }
+  });
+  test(`${name}: deferred banner pickers never leave orphan labels and restore their original source row`, () => {
+    const h=ui(source),color=h.byId('sdShield_bannerBackgroundColor1'),picker=color.nextElementSibling,original=color.parentElement;
+    picker.remove();h.select('sdShield');
+    assert.equal(color.closest('.mobileField'),null);
+    const row=h.byId('sdShield_bannerFontFamily1').closest('.mobileShieldBannerStyles');
+    assert.equal(row.querySelectorAll('label').length,1);assert.equal(row.querySelector('label').textContent,'Font');
+    assert.equal(shieldStyle(row.children[0],'grid-column'),'1/-1');
+    color.after(picker);h.emit([{target:original,type:'childList',addedNodes:[picker],removedNodes:[]}]);h.flush();
+    const field=color.closest('.mobileField');assert.ok(field);assert.equal(field.parentElement,row);
+    assert.equal(field.querySelector('label').textContent,'Background');
+    picker.hidden=true;h.emit([{target:picker,type:'attributes',attributeName:'hidden'}]);h.flush();assert.equal(field.hidden,true);
+    picker.hidden=false;h.emit([{target:picker,type:'attributes',attributeName:'hidden'}]);h.flush();assert.equal(field.hidden,false);
+    picker.remove();h.api.refresh();assert.equal(field.hidden,true);
+    color.after(picker);h.emit([{target:field,type:'childList',addedNodes:[picker],removedNodes:[]}]);h.flush();assert.equal(field.hidden,false);
+    h.mobile(false);h.api.setActive(false);
+    assert.equal(color.parentElement,original);assert.equal(color.nextElementSibling,picker);
   });
   test(`${name}: all element labels are shorter with a smaller corner radius`, () => {
     const h=ui(source),row=new Node('div'),label=new Node('div');row.className='sMControlRow';label.className='textEditorBlock';row.append(label);h.byId('sMSPTextList').append(row);
@@ -237,7 +389,7 @@ for (const source of sources) {
     for(const theme of ['light','dark']){
       h.tree.setAttribute('data-theme',theme);assert.equal(style(tab,'outline'),'none');assert.equal(style(button,'font-weight'),'700');assert.equal(style(button,'text-decoration'),'underline');assert.equal(style(button,'background'),'transparent');
     }
-    assert.equal(style(h.byId('mobileEditor'),'border-radius'),'0');h.open('guideArrowConfig');assert.notEqual(style(h.byId('mobileEditor'),'border-radius'),'0');
+    assert.equal(style(h.byId('mobileEditor'),'border-radius'),'0');h.open('guideArrowConfig');assert.equal(style(h.byId('mobileEditor'),'border-radius'),'0');
   });
   test(`${name}: tool tab bars have no blue backing in either theme`, () => {
     const h=ui(source);for(const theme of ['light','dark']){

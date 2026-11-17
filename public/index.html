@@ -374,29 +374,29 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.17125701d45278ca.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.0336fd94ec2141a9.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.ea060f895a56aff6.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c58d1a84759c8f4c.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.163f6b41bf562f61.js","js/MobileUI.979716bfcafe9be7.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.605f1b2c61c941f5.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.f75855e57b63066b.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.4f5c2573a24fba21.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c64e39f0eb70dce2.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.6384dbf6104f922e.js","js/MobileShieldMaker.3aef7ec77a808b44.js","js/MobileUI.de661de95cdf6194.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.1b34d00665ea8199.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.f80f226b0e9a99a8.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.503233568ee3f25d.js"></script>
 <script defer src="js/Sign.3640c7bc4cd48652.js"></script>
-<script defer src="js/ExitTab.28a7fed807403f99.js"></script>
+<script defer src="js/ExitTab.5509e16b3358304f.js"></script>
 <script defer src="js/Panel.5e4c31f252743c95.js"></script>
 <script defer src="js/PanelBorders.0b690deb621e6bc7.js"></script>
 <script defer src="js/PanelDrag.5ad70d87d3493110.js"></script>
 <script defer src="js/VmsPanel.34d9648ce7eb7499.js"></script>
 <script defer src="js/Post.9f6684dc6741e278.js"></script>
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
-<script defer src="js/Control.ff64d1423c396b4e.js"></script>
+<script defer src="js/Control.6aff623ed0796bef.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
 <script defer src="js/SignDocument.049462d0df09a6fc.js"></script>
-<script defer src="js/main.0a42c5b5f951b676.js"></script>
+<script defer src="js/main.b7f508cebd2a6cdc.js"></script>
   
   
   
@@ -422,6 +422,7 @@ remember
 
 
 
+  
   
   
 
@@ -609,12 +610,16 @@ remember
           <div class="customShieldMakerNameRow">
             <label class="customShieldMakerField customShieldMakerNameField" for="customShieldMakerNameInput">
               <span>Name:</span>
-              <input id="customShieldMakerNameInput" type="text" value="" placeholder="Custom Shield">
+              <input id="customShieldMakerNameInput" aria-label="Shield name" type="text" value="" placeholder="Custom Shield">
             </label>
 
-            <button id="customShieldMakerSaveButton" class="customShieldMakerSaveButton" type="button">
+            <button id="customShieldMakerSaveButton" aria-label="Save shield" title="Save shield" class="customShieldMakerSaveButton" type="button">
               <span class="material-symbols-outlined">save</span>
               <span>Save Shield</span>
+            </button>
+            <button id="customShieldMakerDeleteButton" class="customShieldMakerDeleteButton" type="button" hidden>
+              <span class="material-symbols-outlined">delete</span>
+              <span>Delete Saved Shield</span>
             </button>
           </div>
           <section class="customShieldMakerPreviewPanel" aria-label="Custom shield preview">
@@ -625,7 +630,7 @@ remember
                   <span id="customShieldMakerRouteNumber" class="routeNumber"></span>
                 </div>
               </div>
-              <div id="customShieldMakerEmptyPreview">Upload an SVG or PNG shield</div>
+              <div id="customShieldMakerEmptyPreview">Upload an SVG, PNG, or WebP shield</div>
             </div>
 
             <div class="customShieldMakerVariantSection" aria-label="Custom shield variant settings">
@@ -642,11 +647,16 @@ remember
               <div id="customShieldMakerVariantStatus" class="customShieldMakerVariantStatus">Route number length selects the variant being edited.</div>
             </div>
 
+            <div class="customShieldMakerTransferRow">
             <button id="customShieldMakerUploadButton" type="button">
               <span class="material-symbols-outlined">upload_file</span>
-              <span id="customShieldMakerUploadButtonText">Upload SVG or PNG</span>
+              <span id="customShieldMakerUploadButtonText">Upload SVG, PNG, or WebP</span>
             </button>
-            <input id="customShieldMakerFile" type="file" accept=".svg,.png,image/svg+xml,image/png" hidden>
+            <button id="customShieldMakerExportButton" type="button" title="Export shield JSON" aria-label="Export shield JSON"><span class="material-symbols-outlined" aria-hidden="true">download</span><span>Export</span></button>
+            <button id="customShieldMakerImportButton" type="button" title="Import shield JSON" aria-label="Import shield JSON"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span>Import</span></button>
+            </div>
+            <input id="customShieldMakerImportFile" type="file" accept=".json,application/json" hidden>
+            <input id="customShieldMakerFile" type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" hidden>
             <div class="customShieldMakerPreviewDropdowns">
               <label class="customShieldMakerField" for="customShieldMakerRouteColor">
                 <span>Color</span>
@@ -683,6 +693,7 @@ remember
           </section>
 
           <section class="customShieldMakerControls" aria-label="Route number settings">
+            <input id="customShieldMakerRouteFontWeight" type="hidden" value="10">
             <label class="customShieldMakerField" for="customShieldMakerRouteInput">
               <span>Route Number</span>
               <input id="customShieldMakerRouteInput" type="text" value="" placeholder="Optional">
@@ -690,31 +701,26 @@ remember
 
             <label class="customShieldMakerField" for="customShieldMakerRouteFontSize">
               <span>Font Size</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteFontSize" type="range" min="50" max="350" step="1" value="220"><input id="customShieldMakerRouteFontSizeVal" class="customShieldMakerSliderValue" type="number" min="50" max="350" step="1" value="220"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteFontSize" type="range" min="50" max="350" step="10" value="220"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteFontSizeVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="50" max="350" step="1" value="220"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Font Size"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Font Size"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="220" aria-label="Reset Font Size" title="Reset Font Size"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteLetterSpacing">
               <span>Letter Spacing</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteLetterSpacing" type="range" min="-100" max="100" step="1" value="0"><input id="customShieldMakerRouteLetterSpacingVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteLetterSpacing" type="range" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteLetterSpacingVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Letter Spacing"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Letter Spacing"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="0" aria-label="Reset Letter Spacing" title="Reset Letter Spacing"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteTopOffset">
               <span>Top Offset</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteTopOffset" type="range" min="-100" max="100" step="1" value="0"><input id="customShieldMakerRouteTopOffsetVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteTopOffset" type="range" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteTopOffsetVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Top Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Top Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="0" aria-label="Reset Top Offset" title="Reset Top Offset"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
 
             <label class="customShieldMakerField" for="customShieldMakerRouteHorizontalOffset">
               <span>Right/Left Offset</span>
-              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteHorizontalOffset" type="range" min="-100" max="100" step="1" value="0"><input id="customShieldMakerRouteHorizontalOffsetVal" class="customShieldMakerSliderValue" type="number" min="-100" max="100" step="1" value="0"></div>
+              <div class="customShieldMakerSliderField"><input id="customShieldMakerRouteHorizontalOffset" type="range" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepper mobileExitStepper"><input id="customShieldMakerRouteHorizontalOffsetVal" class="customShieldMakerSliderValue" type="number" inputmode="numeric" min="-100" max="100" step="1" value="0"><div class="customShieldMakerStepButtons mobileExitStepButtons"><button type="button" data-shield-step="1" aria-label="Increase Right/Left Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_up</span></button><button type="button" data-shield-step="-1" aria-label="Decrease Right/Left Offset"><span class="material-symbols-outlined" aria-hidden="true">keyboard_arrow_down</span></button></div></div><button type="button" class="customShieldMakerReset" data-shield-reset="0" aria-label="Reset Right/Left Offset" title="Reset Right/Left Offset"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span></button></div>
             </label>
           </section>
 
-          <footer class="customShieldMakerFooter">
-            <button id="customShieldMakerDeleteButton" class="customShieldMakerDeleteButton" type="button" hidden>
-              <span class="material-symbols-outlined">delete</span>
-              <span>Delete Saved Shield</span>
-            </button>
-          </footer>
+
         </div>
       </div>
     </dialog>
@@ -2508,11 +2514,11 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <input type="text" id="templateNameInput" placeholder="Enter template name..." onkeypress="if(event.key === 'Enter') app.savePostTemplate(this.value);">
                 <button type="button" id="savePanelTemplateBtn" onclick="app.savePanelTemplate(document.getElementById('templateNameInput').value);">
                   <span class="material-symbols-outlined">save</span>
-                  Save Panel
+                  <span class="templateDesktopLabel">Save Panel</span><span class="templateMobileLabel">Panel</span>
                 </button>
                 <button type="button" id="savePostTemplateBtn" onclick="app.savePostTemplate(document.getElementById('templateNameInput').value);">
                   <span class="material-symbols-outlined">save</span>
-                  Save Post
+                  <span class="templateDesktopLabel">Save Post</span><span class="templateMobileLabel">Post</span>
                 </button>
               </div>
               <div class="templateSearchSortRow">
@@ -2525,7 +2531,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               </div>
               <label class="templateWarningSetting" for="templateLoadWarning">
                 <input type="checkbox" id="templateLoadWarning" onchange="app.setTemplateLoadWarningEnabled(this.checked);">
-                Confirm before replacing a post or panel
+                <span>Confirm before replacing a post or panel</span>
               </label>
             </div>
             <hr>
@@ -2607,7 +2613,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           <span class="material-symbols-outlined">upload_file</span>
           <span data-mobile-label="Upload" data-desktop-label="Upload Icon">Upload Icon</span>
         </button>
-        <input id="uploadCustomIconFile" type="file" accept=".svg,.png,image/svg+xml,image/png" hidden>
+        <input id="uploadCustomIconFile" type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" hidden>
         <div class="iconPickerDisplayControls">
           <div class="iconPickerDisplayField">
           <label for="iconPickerSort">Sort</label>

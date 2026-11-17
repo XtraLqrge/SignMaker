@@ -241,7 +241,7 @@ window.SignMakerMobile = (() => {
     editor.hidden = !menu;
     modals.hidden = menu === 'mobileMore';
     window.SignMakerMobileExitTabs?.sync();
-    window.SignMakerMobileForms?.refresh();
+    window.SignMakerMobileForms?.prepareElement();
     window.SignMakerMobileSubpanels?.refresh();
   };
 
@@ -327,6 +327,7 @@ window.SignMakerMobile = (() => {
     for (const node of bar.querySelectorAll('.sMConfigOption')) {
       node.setAttribute('aria-expanded', String(node.classList.contains('selected')));
     }
+    if (changed && menu === 'subPanelConfig') window.SignMakerMobileForms?.prepareElement();
     fitPreview(selected);
     // Each tool opens at the top of its own sheet; the preview never scrolls away.
     if (changed) editor.scrollTop = 0;
@@ -354,6 +355,7 @@ window.SignMakerMobile = (() => {
     syncDeviceInputs(active);
     window.SignMakerMobileExitTabs?.setActive(active);
     window.SignMakerMobileForms?.setActive(active);
+    window.SignMakerMobileShieldMaker?.setActive(active);
     workspace.hidden = !active;
     if (active) {
       workspace.insertBefore(canvas, workspace.querySelector('.mobileTapHint'));

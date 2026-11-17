@@ -3,6 +3,7 @@ window.SignMakerMobileForms = (() => {
   let active = false, observer, frame = 0, refreshing = false, serial = 0;
   let currentRoots = [], currentPane = null, dialogs = [], bar, properties;
   const layouts = new Map(), numbers = new Map();
+  const mobile = () => window.SignMakerMobile?.active === true || document.documentElement?.hasAttribute('data-mobile-ui');
   const prepared = new Set(), dirty = new Set(), modalCache = new Map();
   const excluded = '.exitTabConfig, #smSPBlockProperties, .mobileNumberControl, .mobileRangeSource';
   const finite = (value, fallback) => value !== '' && Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -122,6 +123,7 @@ window.SignMakerMobileForms = (() => {
     for (const [key, title, rangeKey, resetKey] of [
       ['iconSize', 'Size', 'iconSizeSlider', 'sizeReset'], ['backgroundColor', 'Background'],
       ['invertColors', 'Invert colors'], ['border', 'Border'],
+      ['borderColor', 'Border color'], ['borderRadius', 'Corner radius (px)'],
       ['paddingHorizontalVal', 'Horizontal padding', 'paddingHorizontal', 'paddingHorizontalReset'],
       ['paddingVerticalVal', 'Vertical padding', 'paddingVertical', 'paddingVerticalReset'],
     ]) {
@@ -130,11 +132,85 @@ window.SignMakerMobileForms = (() => {
     }
     const alignment = get('alignment'), buttons = root.querySelector('.sdIconAlignmentButtons');
     if (alignment && buttons) pack(record, grid, { input: alignment, nodes: [buttons], visible: buttons, title: 'Alignment', wide: true });
-    root.classList.add('mobileIconForm'); layouts.set(root, record);
+    root.classList.add('mobileIconForm', 'mobileElementForm'); layouts.set(root, record);
+  };
+  const elementFields = {
+    sdArrow: [
+      ['rotationVal', 'Rotation (°)', 'rotation'], ['size', 'Size (rem)'],
+      ['paddingHorizontal', 'Horizontal padding (rem)'], ['paddingVertical', 'Vertical padding (rem)'],
+      ['alignment', 'Alignment'], ['flip', 'Mirror', null, 'flipButton'],
+    ],
+    sdBlocker: [
+      ['dividerWidth', 'Width'], ['dividerMeasurement', 'Units'],
+      ['dividerHeight', 'Height (rem)'], ['orientation', 'Orientation'],
+      ['dividerColor', 'Color'], ['alignment', 'Alignment'], ['fullBleed', 'Full bleed'], ['visible', 'Visible'],
+    ],
+    sdTollLogo: [
+      ['logoHeight', 'Size (rem)'], ['spacing', 'Spacing (rem)'],
+      ['backgroundColor', 'Background'], ['alignment', 'Alignment'],
+      ['horizontalPadding', 'Horizontal padding (rem)'], ['verticalPadding', 'Vertical padding (rem)'],
+      ['borderRadius', 'Corner radius (px)'], ['squareIcon', 'Square icon'], ['hasOnlyBlock', 'Show ONLY block'],
+    ],
+    sdElectronicSign: [
+      ['textContent', 'Content', null, null, true], ['fontFamily', 'Font', null, null, true],
+      ['fontSize', 'Text size (%)'], ['textColor', 'Text color'],
+      ['lineHeightVal', 'Line height (%)', 'lineHeight'], ['setWidth', 'Width (rem)'],
+      ['paddingVal', 'Padding (rem)', 'padding'], ['alignment', 'Alignment'], ['glow', 'Glow'],
+    ],
+    sdGroupedBlock: [
+      ['label', 'Name', null, null, true], ['alignment', 'Alignment'], ['backgroundColor', 'Background'],
+      ['padding', 'Padding (rem)'], ['borderRadius', 'Corner radius (rem)'],
+      ['border', 'Border'], ['borderColor', 'Border color'],
+    ],
+  };
+  const organizeElement = root => {
+    if (layouts.has(root)) return;
+    const prefix = root.dataset.property, fields = elementFields[prefix];
+    if (!fields) return;
+    const record = specialRecord(root), get = suffix => document.getElementById(prefix + '_' + suffix);
+    if (prefix === 'sdArrow' || prefix === 'sdTollLogo') {
+      const picker = group(record, root, 'mobileAssetChoice');
+      for (const suffix of ['chooseBtn', 'selectedLabel', prefix === 'sdArrow' ? 'arrow' : 'logo']) {
+        const node = get(suffix); if (node) move(record, node, picker);
+      }
+    }
+    const grid = group(record, root, 'mobileFieldsGrid');
+    for (const [key, title, rangeKey, buttonKey, wide] of fields) {
+      const input = get(key), range = rangeKey && get(rangeKey), button = buttonKey && get(buttonKey);
+      pack(record, grid, { input, title, label: labelFor(range || input),
+        nodes: [range, button].filter(Boolean), visible: button || input, wide });
+      if (prefix === 'sdArrow' && key === 'size') {
+        const presets = root.querySelector('.sdArrow_rotationButtons');
+        if (presets) { move(record, presets, grid); addClass(record, presets, 'mobileFieldWide'); }
+      }
+    }
+    if (prefix === 'sdGroupedBlock') {
+      const button = document.getElementById('sMSPEditSelectedGroup');
+      if (button) { move(record, button, grid); addClass(record, button, 'mobileFieldWide'); }
+    }
+    record.rows = Array.from(root.children).filter(node => !record.extras.includes(node) && node.nodeType === 1);
+    record.rows.forEach(node => node.classList.add('mobileOriginalRow'));
+    root.classList.add('mobileElementForm'); layouts.set(root, record);
+  };
+  const packShieldPickers = record => {
+    for (const { parent, input, title } of record.pickers) {
+      if (!input) continue;
+      const picker = pickerFor(input);
+      const card = input.closest('.mobileField');
+      if (card) {
+        const field = record.fields.find(field => field.card === card);
+        if (field) field.input = picker;
+        continue;
+      }
+      // Deferred pickers can arrive after the mobile editor opens. Keep their
+      // sources in place until there is a visible control to label and move.
+      if (picker) pack(record, parent, { input, title, visible: picker });
+    }
   };
   const organizeShield = root => {
-    if (layouts.has(root)) return;
+    if (layouts.has(root)) { packShieldPickers(layouts.get(root)); return; }
     const record = specialRecord(root), get = suffix => document.getElementById('sdShield_' + suffix);
+    record.pickers = [];
     const top = root.querySelector('.sdShieldTopRow');
     if (!top) return;
     addClass(record, top, 'mobileShieldTopRow');
@@ -144,6 +220,19 @@ window.SignMakerMobileForms = (() => {
     const details = group(record, top, 'mobileShieldDetailsGrid');
     pack(record, details, { input: get('shieldSize'), nodes: [get('shieldSizeSlider')], title: 'Size', label: labelFor(get('shieldSize')) });
     pack(record, details, { input: get('shieldType'), nodes: [root.querySelector('.sdShieldVariantPickerHost')], title: 'Variant', label: labelFor(get('shieldType')), track: false });
+    const county = root.querySelector('.sdShieldCountyRow');
+    if (county) pack(record, county, { input: get('countyText'), title: 'County text', label: labelFor(get('countyText')) });
+    const second = root.querySelector('.sdShieldSecondRow');
+    if (second) {
+      const options = group(record, second, 'mobileShieldOptionsGrid');
+      const alignment = get('alignment'), buttons = second.querySelector('.sdShieldAlignmentButtons');
+      pack(record, options, { input: alignment, nodes: [buttons], visible: buttons, title: 'Alignment', label: labelFor(alignment) });
+      for (const [suffix, title] of [['to', 'Show TO'], ['scaleBannersWithShield', 'Scale banners'], ['numberStyle', 'Legacy route numbers'], ['shieldBacks', 'Shield backs']]) {
+        const input = get(suffix);
+        pack(record, options, { input, title, label: labelFor(input) });
+      }
+      second.querySelectorAll('.sdShieldOption').forEach(node => addClass(record, node, 'mobileOriginalRow'));
+    }
     root.querySelectorAll('.sdShieldBannerRow').forEach((row, index) => {
       addClass(record, row, 'mobileShieldBannerRow');
       const suffix = index ? '2' : '', primary = group(record, row, 'mobileShieldBannerGrid');
@@ -157,8 +246,8 @@ window.SignMakerMobileForms = (() => {
       addClass(record, capCard, 'mobileShieldCapField');
       pack(record, primary, { input: size, title: 'Size', label: labelFor(size) });
       const styles = group(record, row, 'mobileShieldBannerStyles');
-      pack(record, styles, { input: get('bannerFontFamily' + (index + 1)), title: 'Font' });
-      pack(record, styles, { input: get('bannerBackgroundColor' + (index + 1)), title: 'Color' });
+      record.pickers.push({ parent: styles, input: get('bannerFontFamily' + (index + 1)), title: 'Font' });
+      record.pickers.push({ parent: styles, input: get('bannerBackgroundColor' + (index + 1)), title: 'Background' });
     });
     const road = root.querySelector('.sdShieldRoadNameRow');
     if (road) {
@@ -167,9 +256,11 @@ window.SignMakerMobileForms = (() => {
       pack(record, primary, { input: get('roadName'), title: 'Road name', label: labelFor(get('roadName')) });
       pack(record, primary, { input: get('roadNameFontSizeDisplay'), title: 'Size', label: labelFor(get('roadNameFontSizeDisplay')) });
       const styles = group(record, road, 'mobileShieldBannerStyles');
-      pack(record, styles, { input: get('roadNameFontFamily'), title: 'Font' });
+      record.pickers.push({ parent: styles, input: get('roadNameFontFamily'), title: 'Font' });
+      packShieldPickers(record);
       pack(record, styles, { input: get('bannerLetterSpacingVal'), nodes: [get('bannerLetterSpacing')], title: 'Letter spacing', label: labelFor(get('bannerLetterSpacing')) });
     }
+    packShieldPickers(record);
     root.classList.add('mobileShieldForm'); layouts.set(root, record);
   };
   const valid = input => input.value !== '' && Number.isFinite(Number(input.value)) && !input.validity?.badInput;
@@ -277,6 +368,7 @@ window.SignMakerMobileForms = (() => {
     if (properties?.contains(node) && !currentPane?.contains(node)) return false;
     for (let parent = node; parent; parent = parent.parentElement) {
       if ((!parent.classList.contains('mobileField') && hidden(parent)) || parent.classList.contains('tabHidden') || parent.classList.contains('mobileOriginalRow')) return false;
+      if (parent === currentPane && bar?.dataset.currentMenu === 'subPanelConfig') return true;
       if (currentRoots.includes(parent)) return true;
     }
     return false;
@@ -300,6 +392,7 @@ window.SignMakerMobileForms = (() => {
     root.querySelectorAll('.sdIconEditorLayout').forEach(node => { if (available(node)) organizeIcon(node); });
     root.querySelectorAll('.sdShieldEditorLayout').forEach(node => { if (available(node)) organizeShield(node); });
     root.querySelectorAll('.sdCtrlTextLayout').forEach(node => { if (available(node)) organizeText(node); });
+    root.querySelectorAll('#smSPProperties > [data-property]').forEach(node => { if (available(node)) organizeElement(node); });
     root.querySelectorAll(rowSelector).forEach(node => { if (available(node)) organizeRow(node); });
     for (const range of root.querySelectorAll('input[type="range"]')) {
       if (!available(range) || range.closest(excluded)) continue;
@@ -312,6 +405,27 @@ window.SignMakerMobileForms = (() => {
       if (available(input) && !input.closest(excluded)) mountNumber(input);
     }
   };
+  const selectedPane = () => {
+    const api = bar?.dataset.currentMenu === 'subPanelConfig' && typeof app !== 'undefined' ? app.exposeToFormHandler : null;
+    const rows = api?.getActiveBlockElements?.()?.rows;
+    const element = rows ? rows[api.vars.currentlySelectedRowIndex]?.[api.vars.currentlySelectedBlockIndex] : api?.getCurrentBlockElem?.();
+    const kind = element && typeof Control !== 'undefined' ? Control.prototype.blockToClassElems.getElem(element) : null;
+    const prefix = kind && Control.prototype.blockInternalElements[kind];
+    return (prefix && Array.from(properties?.children || []).find(node => node.dataset.property === prefix)) ||
+      Array.from(properties?.children || []).find(node => node.hasAttribute('data-property') && !hidden(node)) || null;
+  };
+  const preparePane = pane => {
+    if (!pane || hidden(pane)) return;
+    if (pane.matches('.sdIconEditorLayout')) organizeIcon(pane);
+    else if (pane.matches('.sdShieldEditorLayout')) organizeShield(pane);
+    else if (pane.matches('.sdCtrlTextLayout')) organizeText(pane);
+    else organizeElement(pane);
+  };
+  const prepareElement = () => {
+    if (!mobile()) return;
+    if (!active) { setActive(true); return; }
+    refresh();
+  };
   const refresh = () => {
     if (frame) window.cancelAnimationFrame(frame);
     frame = 0;
@@ -319,7 +433,7 @@ window.SignMakerMobileForms = (() => {
     refreshing = true;
     try {
       const roots = rootsForEditor();
-      const pane = Array.from(properties?.children || []).find(node => node.hasAttribute('data-property') && !hidden(node)) || null;
+      const pane = selectedPane();
       if (pane !== currentPane || roots.length !== currentRoots.length || roots.some((root, index) => root !== currentRoots[index])) {
         roots.forEach(root => dirty.add(root));
       }
@@ -327,6 +441,7 @@ window.SignMakerMobileForms = (() => {
       // Layout mutations are observed only after this batch, so they cannot queue another batch.
       onMutation(observer?.takeRecords?.() || [], false);
       observer?.disconnect();
+      if (bar?.dataset.currentMenu === 'subPanelConfig') preparePane(currentPane);
       for (const root of currentRoots) if (!prepared.has(root) || dirty.has(root)) {
         scan(root); prepared.add(root); dirty.delete(root);
       }
@@ -336,7 +451,7 @@ window.SignMakerMobileForms = (() => {
       }
       for (const [root, record] of layouts) {
         if (!root.isConnected) { layouts.delete(root); continue; }
-        if (available(root)) for (const { card, input, label } of record.fields) setHidden(card, hidden(input) || hidden(label));
+        if (available(root)) for (const { card, input, label } of record.fields) setHidden(card, !input?.isConnected || hidden(input) || hidden(label));
       }
     } finally { refreshing = false; observe(); }
   };
@@ -350,8 +465,9 @@ window.SignMakerMobileForms = (() => {
       if (target.closest?.('.mobileNumberControl') && target.tagName !== 'INPUT') continue;
       if (mutation.type === 'childList') {
         if (![...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1 &&
-          (node.matches('input, select, .mobileField') || node.querySelector('input, select')))) continue;
-      } else if (!target.matches?.('input, select, label') && mutation.attributeName !== 'data-current-menu') continue;
+          (node.matches('input, select, .mobileField, .fontPicker, .colorPicker, .symbolPicker') || node.querySelector('input, select')))) continue;
+      } else if (!target.matches?.('input, select, label') && mutation.attributeName !== 'data-current-menu' &&
+        !(mutation.attributeName === 'hidden' && target.matches?.('.fontPicker, .colorPicker, .symbolPicker'))) continue;
       for (const root of currentRoots) if (root.contains(target)) dirty.add(root);
       changed = true;
     }
@@ -388,11 +504,11 @@ window.SignMakerMobileForms = (() => {
         for (const [node, name] of record.classes || []) node.classList.remove(name);
         record.extras?.forEach(node => node.remove());
         record.grid?.remove(); record.rows.forEach(row => row.classList?.remove('mobileOriginalRow')); record.root.classList.remove('mobileTextForm', 'mobileFieldsRow');
-        record.root.classList.remove('mobileIconForm', 'mobileShieldForm');
+        record.root.classList.remove('mobileIconForm', 'mobileShieldForm', 'mobileElementForm');
       }
       layouts.clear();
       prepared.clear(); dirty.clear(); modalCache.clear(); currentRoots = []; currentPane = null; dialogs = [];
     }
   };
-  return { setActive, refresh, normalize, stepValue };
+  return { setActive, prepareElement, refresh, normalize, stepValue };
 })();

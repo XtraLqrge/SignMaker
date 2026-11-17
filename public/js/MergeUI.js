@@ -44,6 +44,7 @@ window.SignMakerMergeUI = (() => {
     });
   };
   const convertSelect = select => {
+    if (["customShieldMakerRouteFont", "customShieldMakerRouteColor"].includes(select.id)) return;
     const runtime=window.SignMakerEditorRuntime;
     const pendingKind=runtime?.pendingKind(select);
     if(pendingKind&&pendingKind!=='native')return;

@@ -144,7 +144,7 @@ html[data-mobile-ui] #mobileEditor #smSPProperties > [data-property] > :is(h3, h
 html[data-mobile-ui] #mobileEditor [hidden] { display: none !important; }
 
 /* Authoring and mouse positioning tools stay out of the phone workflow. */
-html[data-mobile-ui] :is(#sMTemplateEditorTab, #sMTemplateEditor, .templateEditBtn, .templateEditorHint, #openCustomShieldMaker, [data-node-value="__customShieldMaker"], #addNestedExitTab, #exitTabDefaultProfileControls, .exitTabModeSwitch, #exitTabCurrentProfileRow, #stackedPanelList, .panelPopoverHint, .panelSpacingControl, .dragIndicator, #toggleVmsPanel, .panelStackActions, .panelDragSnapGuide, #vmsPanel, label[for="vmsPanel"], #vmsPanelSettings, [data-tab="sMAppShortcuts"], .generalSettingRow:has(#appUiScale), .generalSettingRow:has(#appToolbarPosition), .generalSettingRow:has(#appKeybindMode), .generalSettingRow:has(#showAlignmentGuides), .generalSettingRow:has(#showBlockBoundingBoxes), #alignmentGuideControls) { display: none !important; }
+html[data-mobile-ui] :is(#sMTemplateEditorTab, #sMTemplateEditor, .templateEditBtn, .templateEditorHint, #addNestedExitTab, #exitTabDefaultProfileControls, .exitTabModeSwitch, #exitTabCurrentProfileRow, #stackedPanelList, .panelPopoverHint, .panelSpacingControl, .dragIndicator, #toggleVmsPanel, .panelStackActions, .panelDragSnapGuide, #vmsPanel, label[for="vmsPanel"], #vmsPanelSettings, [data-tab="sMAppShortcuts"], .generalSettingRow:has(#appUiScale), .generalSettingRow:has(#appToolbarPosition), .generalSettingRow:has(#appKeybindMode), .generalSettingRow:has(#showAlignmentGuides), .generalSettingRow:has(#showBlockBoundingBoxes), #alignmentGuideControls) { display: none !important; }
 
 /* Asset selection and export are the only overlays in the phone workspace. */
 html[data-mobile-ui] #modalHolder { inset: 0 !important; width: 100% !important; height: 100dvh !important; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important; box-sizing: border-box; z-index: 4000; }
@@ -230,7 +230,7 @@ html[data-mobile-ui] #mobileEditor .aplMenuHeader { flex-direction: column; alig
 
 /* Element and row editing stays compact before and after picker initialization. */
 .mobileBlockVisual, .mobileJiggleCheck, #mobileJiggleToolbar { display: none; }
-html[data-mobile-ui] #mobileEditor :is(.mergeSelectionHint, .mergeBlockTools, .sMBlockDeleteButton, .sMControlRowDeleteButton, .subPanelTabDeleteButton, #sMSPDuplicateRow, #sMSPDuplicateSelectedBlock) { display: none !important; }
+html[data-mobile-ui] #mobileEditor :is(.mergeSelectionHint, .mergeBlockTools, .sMControlRowDeleteButton, .subPanelTabDeleteButton, #sMSPDuplicateRow, #sMSPDuplicateSelectedBlock) { display: none !important; }
 html[data-mobile-ui] #mobileEditor #subPanelList { display: flex !important; flex-wrap: nowrap !important; align-items: center; gap: 4px; width: 100%; padding: 4px; overflow-x: auto; }
 html[data-mobile-ui] #mobileEditor .subPanelTabGroup { display: inline-flex; flex: 0 0 auto; max-width: none; align-items: center; padding: 0 6px; -webkit-touch-callout: none; }
 html[data-mobile-ui] #mobileEditor .subPanelTabButton { min-height: 44px; padding: 8px 4px; white-space: nowrap; }
@@ -485,40 +485,67 @@ html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm #sdIcon_previ
 /* Shield controls use one primary row and two equally sized style fields. */
 html[data-mobile-ui] #mobileEditor #smSPProperties > .mobileShieldForm:not(.hidden) { display: flex !important; flex-direction: column; gap: 10px; padding: 10px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.mobileShieldTopRow, .mobileShieldBannerRow, .mobileShieldRoadNameRow) { display: block !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.mobileShieldTopGrid, .mobileShieldDetailsGrid, .mobileShieldBannerGrid, .mobileShieldRoadNameGrid, .mobileShieldBannerStyles) { display: grid !important; align-items: end; gap: 6px !important; width: 100% !important; min-width: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.mobileShieldTopGrid, .mobileShieldDetailsGrid, .mobileShieldBannerGrid, .mobileShieldRoadNameGrid, .mobileShieldBannerStyles, .mobileShieldOptionsGrid) { display: grid !important; align-items: end; gap: 6px !important; width: 100% !important; min-width: 0 !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldTopGrid { grid-template-columns: minmax(0, 1fr) 72px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldDetailsGrid { grid-template-columns: 94px minmax(0, 1fr) !important; margin-top: 6px; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldBannerGrid { grid-template-columns: minmax(0, 1fr) 104px 28px 58px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldRoadNameGrid { grid-template-columns: minmax(0, 1fr) 58px !important; max-width: 290px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldBannerStyles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; margin-top: 8px; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldBannerStyles:empty { display: none !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldBannerStyles > .mobileField:only-child { grid-column: 1 / -1 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldOptionsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileField { gap: 4px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileField > label { font-size: 11px !important; line-height: 1.2 !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileField > :is(input[type="text"], .sdShieldBasePickerHost, .sdShieldVariantPickerHost, .fontPicker, .colorPicker, .symbolPicker) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPicker, .shieldVariantPicker, .shieldPickerTrigger, .shieldVariantPickerTrigger, .fontPickerTrigger, .colorPickerTrigger) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 5px !important; box-sizing: border-box; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTrigger, .shieldVariantPickerTrigger) { grid-template-columns: 16px minmax(0, 1fr) 12px !important; column-gap: 3px !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerLabel, .shieldVariantPickerTriggerLabel, .fontPickerTriggerLabel, .colorPickerTriggerLabel) { min-width: 0 !important; max-width: 100% !important; font-size: 13px !important; line-height: 1.15 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerIcon, .shieldVariantPickerTriggerIcon) { width: 16px !important; min-width: 16px !important; height: 22px !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerCaret, .shieldVariantPickerTriggerCaret) { width: 12px !important; height: 12px !important; font-size: 16px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileField > input[type="text"] { padding: 5px !important; font-size: 14px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldPositionButtons { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; width: 100% !important; min-width: 0 !important; gap: 2px !important; margin: 0 !important; padding: 0 !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldCapButtons { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.sdShieldPositionButtons, .sdShieldCapButtons) button { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 2px !important; font-size: 13px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldAlignmentButtons { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100% !important; min-width: 0 !important; gap: 2px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.sdShieldAlignmentButtons, .sdShieldPositionButtons, .sdShieldCapButtons) button { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: 32px !important; min-height: 32px !important; max-height: 32px !important; margin: 0 !important; padding: 2px !important; font-size: 13px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldCapButton .sdShieldBigA { font-size: 17px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileNumberControl { grid-template-columns: minmax(0, 1fr) 20px !important; height: 32px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileNumberControl input { height: 30px !important; min-height: 30px !important; padding: 3px !important; font-size: 13px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileNumberButtons { width: 20px !important; height: 30px !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileNumberButtons button { height: 15px !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldSecondRow { display: flex !important; flex-wrap: wrap !important; align-items: center; gap: 6px 10px !important; width: 100% !important; margin: 0 !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldOption { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldOption label { width: auto !important; margin: 0 !important; font-size: 12px !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldOption input { margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldSecondRow { display: block !important; width: 100% !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileOriginalRow { display: none !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .mobileCheckField { min-height: 32px; align-self: end; padding: 0 !important; }
 
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(input[type="text"], input[type="number"], .mobileNumberControl, .shieldPicker, .fontPicker, .colorPicker, .symbolPicker, .sdShieldBasePickerHost, .sdShieldVariantPickerHost) { flex: 0 0 auto !important; max-height: 32px !important; box-sizing: border-box !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldCapField > label { visibility: hidden; height: 13px; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldCapButton { display: flex !important; justify-content: center !important; align-items: baseline !important; gap: 0 !important; padding-top: 7px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldCapField > label { text-align: center !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm button.sdShieldCapButton { display: flex !important; justify-content: center !important; align-items: center !important; gap: 0 !important; padding: 0 !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldCapButton span:not(.sdShieldBigA) { font-size: 11px !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldCapButton span { align-self: baseline !important; line-height: 1 !important; transform: none !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerLabel, .shieldVariantPickerTriggerLabel) { overflow-wrap: normal !important; word-break: normal !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .sdShieldCapButton span { align-self: center !important; line-height: 1 !important; transform: none !important; }
+
+/* Match the shared picker's important layer so desktop sizes cannot override the phone controls. */
+@layer pickerAppearance {
+  html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPicker, .shieldVariantPicker, .fontPicker, .colorPicker, .symbolPicker, .sdShieldBasePickerHost, .sdShieldVariantPickerHost) {
+    width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+    height: 32px !important; min-height: 32px !important; max-height: 32px !important;
+    margin: 0 !important; padding: 0 !important; box-sizing: border-box !important;
+  }
+  html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTrigger, .shieldVariantPickerTrigger, .fontPickerTrigger, .colorPickerTrigger, .nativeSelectTrigger) {
+    display: flex !important; align-items: center !important; justify-content: flex-start !important;
+    width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+    height: 32px !important; min-height: 32px !important; max-height: 32px !important;
+    margin: 0 !important; padding: 4px 7px !important; gap: 5px !important; font-size: 13px !important;
+  }
+  html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerLabel, .shieldVariantPickerTriggerLabel, .fontPickerTriggerLabel, .colorPickerTriggerLabel, .symbolPickerLabel) {
+    display: block !important; flex: 1 1 auto !important; min-width: 0 !important; max-width: 100% !important;
+    margin: 0 !important; padding: 0 !important; font-size: 13px !important; line-height: 1.15 !important;
+    white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
+    overflow-wrap: normal !important; word-break: normal !important; text-align: left !important;
+  }
+  html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerIcon, .shieldVariantPickerTriggerIcon, .colorPickerSwatch) {
+    width: 16px !important; min-width: 16px !important; max-width: 16px !important;
+    height: 20px !important; max-height: 20px !important; flex: 0 0 16px !important;
+  }
+  html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm .colorPickerSwatch { height: 16px !important; }
+  html[data-mobile-ui] #mobileEditor #smSPProperties .mobileShieldForm :is(.shieldPickerTriggerCaret, .shieldVariantPickerTriggerCaret, .fontPickerTriggerCaret, .colorPickerTriggerCaret, .symbolPickerCaret) {
+    width: 14px !important; min-width: 14px !important; max-width: 14px !important;
+    height: 14px !important; min-height: 14px !important; max-height: 14px !important; flex: 0 0 14px !important;
+  }
+}
 
 /* Row sizing retains sliders and independent reset actions. */
 html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockMarginControls { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -578,3 +605,135 @@ html[data-mobile-ui] #mobileEditor :is(.sMModalBar, .sMModalSubBar) { background
 html[data-mobile-ui] .desktopRowWidthBreak { display: none; }
 
 html[data-mobile-ui] #mobileEditor #smSPBlockProperties .sdBlockWidthControl input[type="number"] { max-width: 3rem !important; }
+
+/* Element editors own their mobile grid; desktop field coordinates stay at home. */
+html[data-mobile-ui] #mobileEditor #smSPProperties > .mobileElementForm:not(.hidden):not([hidden]) { display: block !important; padding: 10px !important; margin: 0 !important; border: 0 !important; background: transparent !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm > .mobileOriginalRow { display: none !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileFieldsGrid { gap: 10px 8px; align-items: end; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileField { position: relative !important; grid-row: auto !important; grid-column: auto !important; align-self: stretch; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileField.mobileFieldWide { grid-column: 1 / -1 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileField > * { grid-area: auto !important; position: static !important; inset: auto !important; align-self: auto !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileField > label { font: 500 12px/1.3 Inter, sans-serif !important; min-height: 16px !important; max-width: 100% !important; overflow-wrap: normal; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm :is(.mobileNumberControl, .mobileField > input[type="text"], .mobileField > .fontPicker, .mobileField > .colorPicker, .mobileField > .symbolPicker, .fontPickerTrigger, .colorPickerTrigger, .nativeSelectTrigger) { height: 38px !important; min-height: 38px !important; max-height: 38px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileNumberControl { grid-template-columns: minmax(0, 1fr) 30px; width: 100% !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileNumberControl input[type="number"] { height: 38px !important; min-height: 38px !important; max-height: 38px !important; padding: 5px 8px !important; font: 500 16px/1.2 Inter, sans-serif !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileNumberButtons { width: 30px; height: 38px; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileNumberButtons button { height: 19px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm :is(.alignmentButtons, .sdIconAlignmentButtons) { height: 38px !important; min-height: 38px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm :is(.alignmentButtons, .sdIconAlignmentButtons) button { height: 38px !important; min-height: 38px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileCheckField { min-height: 38px !important; padding: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm :is(#sdArrow_flipButton, #sMSPEditSelectedGroup) { height: 38px !important; min-height: 38px !important; width: 100% !important; margin: 0 !important; padding: 6px 10px !important; font: 500 14px/1.2 Inter, sans-serif !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileAssetChoice { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 12px; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileAssetChoice > button { width: auto !important; min-width: 0 !important; height: 38px !important; min-height: 38px !important; margin: 0 !important; padding: 6px 10px !important; font: 500 14px/1.2 Inter, sans-serif !important; white-space: nowrap; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileAssetChoice > span { position: static !important; grid-area: auto !important; min-width: 0; max-width: 100%; width: auto !important; margin: 0 !important; padding: 0 !important; background: transparent; font: 500 13px/1.3 Inter, sans-serif !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .sdArrow_rotationButtons { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 3px !important; width: 100% !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .sdArrow_rotationButtons button { min-width: 0 !important; width: 100% !important; height: 32px !important; min-height: 32px !important; padding: 3px !important; font-size: 13px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileElementForm .mobileField > button:is([class*="Reset"], [class*="reset"]) { position: absolute !important; inset: -3px 0 auto auto !important; }
+
+/* The icon thumbnail shares the picker row and never stretches the fields. */
+html[data-mobile-ui] #mobileEditor #smSPProperties > .mobileIconForm.mobileElementForm:not(.hidden) { display: grid !important; grid-template-columns: minmax(0, 1fr) 56px !important; align-items: center; gap: 10px; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm .sdIconMainColumn { display: contents !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm .sdIconPickerRow { grid-column: 1; grid-row: 1; display: flex !important; flex-direction: column; align-items: flex-start; gap: 4px; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm #sdIcon_chooseBtn { min-height: 38px !important; height: 38px !important; padding: 6px 10px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm .sdIconPreviewColumn { grid-column: 2; grid-row: 1; width: 56px !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm #sdIcon_previewBox { width: 56px !important; height: 56px !important; padding: 5px !important; margin: 0 !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .mobileIconForm .mobileIconFields { grid-column: 1 / -1; }
+
+/* Label actions stay inside their own box, including condensed groups. */
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.hasBlockDelete { width: 94px !important; min-width: 94px !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.mobileFullLabel { width: max-content !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock .sMBlockDeleteButton { display: inline-flex !important; order: -1; flex: 0 0 24px; width: 24px !important; min-width: 24px !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 2px !important; background: transparent !important; color: inherit; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .sMBlockDeleteButton .material-symbols-outlined { font-size: 19px !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.sdGroupedBlock { display: inline-flex !important; width: 68px !important; min-width: 68px !important; height: 46px !important; min-height: 46px !important; border-radius: 12px !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.sdGroupedBlock.hasBlockDelete { width: 94px !important; min-width: 94px !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.sdGroupedBlock.mobileFullLabel { width: max-content !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.sdGroupedBlock:not(.mobileFullLabel) > .mergeEditGroup { display: none !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.sdGroupedBlock > .mergeEditGroup { display: inline-flex !important; order: 1; flex: 0 0 24px; width: 24px !important; min-width: 24px !important; height: 32px !important; margin: 0 !important; padding: 2px !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock > .blockTypeInlinePicker { order: 2; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .textEditorBlock.sdArrow { background: #216475 !important; color: #fff !important; }
+html[data-mobile-ui] #mobileEditor[data-jiggle="blocks"] #sMSPTextList .textEditorBlock.hasBlockDelete { width: 116px !important; min-width: 116px !important; }
+html[data-mobile-ui] #mobileEditor #sMSPTextList .mobileJiggleCheck { order: -2; }
+
+
+/* Alternate captions preserve the desktop wording and accessible action names. */
+.templateMobileLabel, .templateMobileRename { display: none; }
+
+/* All mobile menu surfaces use the same square outline. */
+html[data-mobile-ui] :is(#mobileEditor, .mobileEditorHeader, .sMModal, #panelSelect, #modalHolder > dialog, .assetSelectorDialog, #mobileAdvancedDropdownPrompt, .shieldPickerPopover, .blockTypePickerPopover, .fontPickerMenu, .colorPickerMenu, .symbolPickerMenu) { border-radius: 0 !important; }
+
+/* Templates share one scrolling sheet with bounded controls and one action row. */
+html[data-mobile-ui] #mobileEditor .templates .sMModalContent { padding: 10px !important; }
+html[data-mobile-ui] #mobileEditor .templates :is(.templateSaveSection, .templateListSection) { margin: 0; padding: 0; min-width: 0; }
+html[data-mobile-ui] #mobileEditor .templates :is(.templateSaveSection, .templateListSection) > h4 { display: none; }
+html[data-mobile-ui] #mobileEditor .templates .templateSaveInput { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; gap: 6px; margin: 0 0 8px; align-items: center; }
+html[data-mobile-ui] #mobileEditor .templates .templateSearchSortRow { display: grid; grid-template-columns: minmax(0, 1fr) 122px; gap: 6px; margin: 0 0 8px; }
+html[data-mobile-ui] #mobileEditor .templates :is(.templateSaveInput, .templateSearchSortRow) > :is(input, select, .symbolPicker) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileEditor .templates :is(.templateSaveInput, .templateSearchSortRow) > input { height: 40px !important; min-height: 40px !important; padding: 8px !important; font-size: 16px !important; }
+html[data-mobile-ui] #mobileEditor .templates .templateSearchSortRow .symbolPicker { grid-column: 2; grid-row: 1; }
+html[data-mobile-ui] #mobileEditor .templates .templateSearchSortRow :is(select, .nativeSelectTrigger) { min-width: 0 !important; width: 100% !important; height: 40px !important; min-height: 40px !important; padding: 6px !important; font-size: 12px !important; gap: 4px !important; }
+html[data-mobile-ui] #mobileEditor .templates .templateSearchSortRow .symbolPickerLabel { min-width: 0; font-size: 12px !important; overflow: hidden; text-overflow: ellipsis; }
+html[data-mobile-ui] #mobileEditor .templates .templateSearchSortRow .symbolPickerCaret { flex: 0 0 16px; width: 16px !important; height: 16px !important; }
+html[data-mobile-ui] #mobileEditor .templates :is(.templateSaveInput button, .templateItemActions button) { display: inline-flex; align-items: center; justify-content: center; min-width: 0 !important; min-height: 40px !important; height: 40px !important; margin: 0 !important; padding: 5px !important; gap: 4px; font: 500 12px/1.2 Inter, sans-serif !important; white-space: nowrap; }
+html[data-mobile-ui] #mobileEditor .templates .templateSaveInput button > .material-symbols-outlined { display: none; }
+html[data-mobile-ui] #mobileEditor .templates :is(.templateDesktopLabel, .templateDesktopRename) { display: none !important; }
+html[data-mobile-ui] #mobileEditor .templates .templateMobileLabel { display: inline; }
+html[data-mobile-ui] #mobileEditor .templates .templateWarningSetting { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; margin: 0; padding: 0; text-align: left; }
+html[data-mobile-ui] #mobileEditor .templates .templateWarningSetting > span { font: 400 12px/1.35 Inter, sans-serif; }
+html[data-mobile-ui] #mobileEditor .templates .templateWarningSetting input { width: 20px !important; height: 20px !important; margin: 0 !important; flex: 0 0 20px; }
+html[data-mobile-ui] #mobileEditor .templates hr { margin: 8px 0 !important; }
+html[data-mobile-ui] #mobileEditor .templates :is(#savedTemplatesList, #presetTemplatesList) { display: flex; flex-direction: column; max-height: none !important; overflow: visible !important; padding: 0; gap: 8px; }
+html[data-mobile-ui] #mobileEditor .templates .templateItem { display: flex; flex-direction: column; align-items: stretch; gap: 7px; min-width: 0; padding: 9px; }
+html[data-mobile-ui] #mobileEditor .templates .templateNameRow { min-height: 20px; gap: 6px; }
+html[data-mobile-ui] #mobileEditor .templates .templateItemName { flex: 1; min-width: 0; font: 600 15px/1.3 Inter, sans-serif; white-space: normal; overflow-wrap: anywhere; }
+html[data-mobile-ui] #mobileEditor .templates .templateItemDate { font: 400 11px/1.3 Inter, sans-serif; }
+html[data-mobile-ui] #mobileEditor .templates .templateVariantSelect { width: 90px !important; min-width: 0 !important; font-size: 12px !important; }
+html[data-mobile-ui] #mobileEditor .templates .templateItemActions { display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 4px; width: 100%; }
+html[data-mobile-ui] #mobileEditor .templates .templateItemActions .templateLoadBtn { flex: 1 1 0; width: 0; }
+html[data-mobile-ui] #mobileEditor .templates .templateItemActions :is(.templateMobileRename, .templateDeleteBtn) { display: inline-flex; flex: 0 0 34px; width: 34px; }
+html[data-mobile-ui] #mobileEditor .templates .templateItemActions .material-symbols-outlined { font-size: 18px !important; }
+html[data-mobile-ui] #mobileEditor .templates .sMModalTab { min-height: 40px; padding: 6px; }
+
+/* Custom shield editor: a persistent preview, two settings pages and Save. */
+html[data-mobile-ui] #modalHolder > #customShieldMaker.mobileShieldMaker { position: fixed !important; inset: var(--mobile-shield-top, 0px) 0 auto !important; transform: none !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: var(--mobile-shield-height, 100dvh) !important; max-height: var(--mobile-shield-height, 100dvh) !important; margin: 0 !important; padding: 0 !important; border: 0; overflow: hidden !important; box-sizing: border-box; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerShell { display: flex; flex-direction: column; width: 100%; height: 100%; max-height: 100%; min-height: 0; overflow: hidden; font-family: Inter, sans-serif; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerHeader { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: max(6px, env(safe-area-inset-top)) 12px 6px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerHeader h2 { margin: 0; font: 600 17px/1.2 Inter, sans-serif; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerHeader h2 > .material-symbols-outlined { display: none; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker #customShieldMakerClose { width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0; padding: 6px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .mobileShieldPreview { flex: 0 0 auto; display: grid; gap: 6px; padding: 0 12px 8px; min-width: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerPreviewFrame { width: 100% !important; height: clamp(64px, calc(var(--mobile-shield-height, 100dvh) * 0.18), 160px) !important; min-height: 0 !important; margin: 0; box-sizing: border-box; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker #customShieldMakerEmptyPreview { padding: 12px; font: 400 13px/1.4 Inter, sans-serif; text-align: center; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerVariantSection { gap: 4px; min-width: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerVariantHeader { gap: 6px; font: 500 12px/1.3 Inter, sans-serif; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker #customShieldMakerCurrentVariantLabel { font-size: 11px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerVariantButtons { gap: 5px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerVariantButton { min-width: 0; width: 100%; height: 36px; min-height: 36px; margin: 0; padding: 4px; font-size: 14px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerVariantStatus { display: none; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerBody { display: block !important; flex: 1 1 0 !important; min-width: 0 !important; min-height: 0 !important; height: auto !important; max-height: none !important; overflow-x: hidden !important; overflow-y: auto !important; padding: 12px !important; overscroll-behavior: contain; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerBody > :not(.mobileShieldPage) { display: none !important; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .mobileShieldPage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerField { display: grid !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto !important; width: 100% !important; min-width: 0 !important; gap: 5px; margin: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerField > span { font: 500 12px/1.3 Inter, sans-serif; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerField :is(input:not([type="range"]), select) { width: 100%; min-width: 0; height: 44px; min-height: 44px; margin: 0; padding: 8px; font-size: 16px; box-sizing: border-box; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerControls { display: grid; gap: 12px; width: 100%; padding: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerPreviewDropdowns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerAlignmentField { grid-column: 1 / -1; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerAlignmentButtons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 44px; min-height: 44px; gap: 4px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerAlignmentButton { width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 4px; margin: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker :is(.fontPicker, .colorPicker, .symbolPicker) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker :is(.fontPickerTrigger, .colorPickerTrigger, .nativeSelectTrigger) { width: 100% !important; min-width: 0 !important; height: 44px !important; min-height: 44px !important; padding: 7px 9px !important; gap: 5px !important; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker :is(.fontPickerTriggerLabel, .colorPickerTriggerLabel, .symbolPickerLabel) { min-width: 0 !important; font-size: 15px !important; overflow: hidden; text-overflow: ellipsis; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerSliderField { display: grid !important; grid-template-columns: minmax(0, 1fr) 76px !important; align-items: center; gap: 10px !important; width: 100%; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerSliderField input[type="range"] { width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 0; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerSliderValue { width: 76px !important; min-width: 0 !important; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .mobileShieldActions { flex: 0 0 auto; display: flex; gap: 8px; margin: 0; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid rgba(128,128,128,.3); }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerSaveButton { flex: 1; min-height: 44px; margin: 0; padding: 8px; font-size: 14px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .customShieldMakerDeleteButton { flex: 0 0 auto; min-height: 44px; margin: 0; padding: 8px; font-size: 13px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker #customShieldMakerUploadButton { width: 100%; min-height: 44px; padding: 8px; margin: 0; font-size: 14px; }
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker [hidden] { display: none !important; }
+/* These pickers have desktop rules scoped to both dialog and field IDs. */
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker :is(#customShieldMakerRouteFont + .fontPicker, #customShieldMakerRouteColor + .colorPicker) :is(.fontPickerTrigger, .colorPickerTrigger) { width: 100% !important; min-width: 0 !important; height: 44px !important; min-height: 44px !important; padding: 7px 9px !important; }
+
+html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .mobileShieldPage > * { grid-area: auto !important; }
+html[data-mobile-ui] #mobileEditor .templates #sMTemplatesPreset > h4 { display: none; }
+html[data-mobile-ui] #mobileEditor .templates #presetTemplateSearch { width: 100% !important; min-width: 0 !important; height: 40px !important; min-height: 40px !important; margin: 0 0 8px; padding: 8px; font-size: 16px !important; box-sizing: border-box; }

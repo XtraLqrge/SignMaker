@@ -113,8 +113,8 @@ for (const source of sources) {
   const name = source === sources[0] ? 'source' : 'production';
   test(`${name}: every exit slider including optional asset fields keeps its original node and binding`, () => {
     const h = ui(source);
-    assert.equal(h.inputs.length, 9); assert.equal(h.tree.querySelectorAll('input[type="range"]').length, 0);
-    assert.equal(h.tree.querySelectorAll('.mobileExitStepper').length, 9);
+    assert.equal(h.inputs.length, 10); assert.equal(h.tree.querySelectorAll('input[type="range"]').length, 0);
+    assert.equal(h.tree.querySelectorAll('.mobileExitStepper').length, 10);
     for (const original of h.originals) {
       assert.equal(h.byId(original.input.id), original.input); assert.equal(original.input.name, original.name);
       assert.equal(original.input.type, 'number'); assert.ok(original.input.getAttribute('aria-label'));
@@ -177,7 +177,7 @@ for (const source of sources) {
     assert.equal(h.byId('exitTabTransparent').parentElement.classList.contains('assetHiddenSetting'), true);
   });
   test(`${name}: returning to desktop restores original input positions, labels, types, and checkbox order`, () => {
-    const h = ui(source), originalRadiusLabel = 'Set Corner Radius (rem):';
+    const h = ui(source), originalRadiusLabel = 'Use panel corner radius:';
     h.api.setActive(false);
     assert.equal(h.tree.querySelectorAll('.mobileExitStepper').length, 0);
     for (const original of h.originals) {
@@ -188,7 +188,7 @@ for (const source of sources) {
     assert.equal(h.inheritParent.querySelector('label').textContent, originalRadiusLabel);
     assert.deepEqual(h.panel.childNodes, h.checkOrder);
     h.calls.length = 0; const input = h.byId('minHeight'); input.value = '3'; h.fire(input, 'input'); assert.equal(h.calls.length, 0);
-    h.api.setActive(true); h.api.setActive(true); assert.equal(h.tree.querySelectorAll('.mobileExitStepper').length, 9);
+    h.api.setActive(true); h.api.setActive(true); assert.equal(h.tree.querySelectorAll('.mobileExitStepper').length, 10);
     h.fire(h.up('minHeight'), 'click'); assert.equal(input.value, '3.05'); assert.equal(h.calls.length, 2);
   });
 }

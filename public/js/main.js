@@ -1336,14 +1336,13 @@ const ungroupSelectedBlockElement = () => {
   const exitOnlyArrowRatios = new Map();
   const getEmbeddedExitOnlyArrowMask = (src) => {
     if (!exitOnlyArrowMasks.has(src)) {
-      exitOnlyArrowMasks.set(src, fetch(src)
-        .then((response) => response.ok ? response.text() : null)
-        .then((svg) => svg ? `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")` : null)
+      exitOnlyArrowMasks.set(src, exportResourceDataURL(src)
+        .then((url) => `url("${url}")`)
         .then((mask) => {
           if (mask) embeddedExitOnlyArrowMasks.set(src, mask);
           return mask;
         })
-        .catch(() => null));
+        .catch(() => { exitOnlyArrowMasks.delete(src); return null; }));
     }
     return exitOnlyArrowMasks.get(src);
   };
@@ -2276,7 +2275,7 @@ const ungroupSelectedBlockElement = () => {
         }
       }
 
-      for (const key of ["copySignsOnly","showBlockBoundingBoxes","showAlignmentGuides"]) {
+      for (const key of ["copySignsOnly","joinMatchingBanners","showBlockBoundingBoxes","showAlignmentGuides"]) {
         if(typeof postData[key] === "boolean") newPost[key]=postData[key];
       }
       newPost.alignmentGuideSpacing=newPost.normalizeAlignmentGuideSpacing(postData.alignmentGuideSpacing);
@@ -4175,6 +4174,37 @@ const ungroupSelectedBlockElement = () => {
     resolvedBackdropRows.forEach(row => row.classList.add("fullBleedBackgroundPainted"));
   };
 
+  // Extend full-bleed vertical dividers through surrounding padding to the sign
+  // edge or other content; a transform keeps the row height unchanged.
+  const layoutVerticalFullBleedDividers = (signElmt) => {
+    const dividers = signElmt.querySelectorAll(".dividerElement.vertical.fullBleed");
+    dividers.forEach((divider) => { divider.style.transform = ""; });
+
+    for (const divider of dividers) {
+      const rect = divider.getBoundingClientRect();
+      if (!rect.height || !divider.offsetHeight) continue;
+      let top = rect.top, bottom = rect.bottom;
+
+      for (let element = divider; element !== signElmt && element.parentElement; element = element.parentElement) {
+        const parent = element.parentElement;
+        const style = window.getComputedStyle(parent);
+        const elementStyle = window.getComputedStyle(element);
+        const parentRect = parent.getBoundingClientRect();
+        const innerTop = parentRect.top + (parseFloat(style.borderTopWidth) || 0);
+        const innerBottom = parentRect.bottom - (parseFloat(style.borderBottomWidth) || 0);
+        const topSpace = (parseFloat(style.paddingTop) || 0) + Math.max(0, parseFloat(elementStyle.marginTop) || 0);
+        const bottomSpace = (parseFloat(style.paddingBottom) || 0) + Math.max(0, parseFloat(elementStyle.marginBottom) || 0);
+        if (top - innerTop <= topSpace + 0.5) top = Math.min(top, innerTop);
+        if (innerBottom - bottom <= bottomSpace + 0.5) bottom = Math.max(bottom, innerBottom);
+      }
+
+      if (top === rect.top && bottom === rect.bottom) continue;
+      const layoutScale = divider.offsetHeight / rect.height;
+      divider.style.transform =
+        `translateY(${(top - rect.top) * layoutScale}px) scaleY(${(bottom - top) / rect.height})`;
+    }
+  };
+
   const refreshDynamicPanelBorders = (rootElmt) => {
     if (!rootElmt) {
       return;
@@ -4185,6 +4215,26 @@ const ungroupSelectedBlockElement = () => {
       : Array.from(rootElmt.querySelectorAll(".sign"));
 
     for (const signElmt of signs) {
+      layoutVerticalFullBleedDividers(signElmt);
+      if (signElmt.closest('.panel.warningDiamond')) {
+        const container = signElmt.parentElement;
+        let face = container.querySelector(':scope > .warningDiamondFace');
+        if (!face) {
+          face = document.createElement('div');
+          face.className = 'warningDiamondFace';
+          face.setAttribute('aria-hidden', 'true');
+          container.prepend(face);
+        }
+        const panel = signElmt.closest('.panel');
+        const index = Number(panel.dataset.panelIndex);
+        const color = getResolvedCssColorValue(post.panels[index]?.color) || 'var(--yellow)';
+        face.style.backgroundColor = color;
+        face.style.borderColor = getComputedStyle(signElmt).color;
+        // A centered upright rectangle fits a diamond whose diagonal is w+h.
+        const extent = Math.ceil(signElmt.offsetWidth + signElmt.offsetHeight);
+        container.style.setProperty('--warningDiamondExtent', extent + 'px');
+        continue;
+      }
       applyPanelBorderGradient(signElmt);
     }
     PanelBorders.refreshAll(rootElmt);
@@ -4519,6 +4569,7 @@ const ungroupSelectedBlockElement = () => {
       const targetTranslateX = targetVisibleShift / mainVisualScale;
 
       const targetScale =
+        document.documentElement.dataset.shrinkSignsForPanels !== "false" &&
         visiblePostWidthAtNormalScale > availableViewportWidth
           ? Math.max(
               MIN_POST_VIEW_SCALE,
@@ -4610,6 +4661,12 @@ const ungroupSelectedBlockElement = () => {
       newPanel.stackedWithPrevious = false;
       delete newPanel.stackedPanelPlacement;
 
+      const previousPanel = previousPanels[currentlySelectedPanelIndex];
+      if (previousPanel) {
+        newPanel.corner = previousPanel.corner;
+        newPanel.borderRadius = previousPanel.borderRadius;
+      }
+
       if (clearGlobals) {
         clearPanelGlobalBlockElements(newPanel);
       }
@@ -4651,6 +4708,7 @@ const ungroupSelectedBlockElement = () => {
             "open",
             "data-current-menu",
             "data-position",
+            "data-shrink-signs-for-panels",
           ],
         });
       }
@@ -6248,6 +6306,7 @@ const ungroupSelectedBlockElement = () => {
           panelElmt.draggable = wasPanelDraggable;
           if (!moved) return;
           delete panelElmt.dataset.exitTabDragActive;
+          window.SignMakerDragFeedback?.end();
           tabElmt.classList.remove("draggingExitTab");
           holder.style.zIndex = previousZIndex;
           if (dragContainer) dragContainer.style.zIndex = previousContainerZIndex;
@@ -6278,6 +6337,7 @@ const ungroupSelectedBlockElement = () => {
             beginUndoableChange();
             panelElmt.dataset.exitTabDragActive = "true";
             tabElmt.classList.add("draggingExitTab");
+            window.SignMakerDragFeedback?.begin([tabElmt]);
             holder.style.zIndex = "5";
             if (dragContainer) dragContainer.style.zIndex = "4";
           }
@@ -9176,7 +9236,7 @@ const ungroupSelectedBlockElement = () => {
           APL_ARROW_TYPES[kind] ? kind : "UP";
 
         const normalizeArrowMode = (mode) =>
-          mode === "apl" ? "apl" : "standard";
+          ["apl", "diagrammatic", "roundabout"].includes(mode) ? mode : "standard";
 
         const setCurrentPanelArrowMode = function (mode) {
           return runWithUndo(() => {
@@ -9189,6 +9249,7 @@ const ungroupSelectedBlockElement = () => {
 
             const nextMode = normalizeArrowMode(mode);
             sign.arrowMode = nextMode;
+            if (nextMode === "roundabout") window.SignMakerRoundabout.ensureSubpanels(sign);
 
             if (nextMode === "apl") {
               sign.guideArrow = "None";
@@ -9637,7 +9698,7 @@ const ungroupSelectedBlockElement = () => {
             );
 
           const arrowKind = normalizeAPLArrowKind(
-            kind ||
+            kind || window.SignMakerGuideDefaults?.apl.kind ||
               (normalizedPlacement === "divider"
                 ? getDefaultAPLDividerKind(normalizedDividerIndex)
                 : getDefaultAPLArrowKindForSubPanel(normalizedSubPanelIndex, {
@@ -9679,11 +9740,12 @@ const ungroupSelectedBlockElement = () => {
           delete newArrow.dividerAfterSubPanelIndex;
         }
 
-        newArrow.spacingAfterRem = inheritedSpacing;
-        newArrow.spacingBeforeRem = inheritedSpacing;
+        const defaults = window.SignMakerGuideDefaults?.apl || {};
+        newArrow.spacingAfterRem = defaults.spacing ?? inheritedSpacing;
+        newArrow.spacingBeforeRem = defaults.spacing ?? inheritedSpacing;
         newArrow.aplSpacingInitialized = true;
-        newArrow.arrowSizeRem = getDefaultAPLArrowSizeRem(newArrow.type);
-        newArrow.exitOnly = false;
+        newArrow.arrowSizeRem = defaults.size ?? getDefaultAPLArrowSizeRem(newArrow.type);
+        newArrow.exitOnly = defaults.exitOnly === true;
         newArrow.dividerAfter = false;
         newArrow.groupedWithDivider = false;
 
@@ -10009,11 +10071,11 @@ const ungroupSelectedBlockElement = () => {
             type,
             flip,
             placement,
-            spacingAfterRem: DEFAULT_APL_ARROW_SPACING_REM,
-            spacingBeforeRem: DEFAULT_APL_ARROW_SPACING_REM,
+            spacingAfterRem: window.SignMakerGuideDefaults?.apl.spacing ?? DEFAULT_APL_ARROW_SPACING_REM,
+            spacingBeforeRem: window.SignMakerGuideDefaults?.apl.spacing ?? DEFAULT_APL_ARROW_SPACING_REM,
             aplSpacingInitialized: true,
-            arrowSizeRem: getDefaultAPLArrowSizeRem(type),
-            exitOnly: false,
+            arrowSizeRem: window.SignMakerGuideDefaults?.apl.size ?? getDefaultAPLArrowSizeRem(type),
+            exitOnly: window.SignMakerGuideDefaults?.apl.exitOnly === true,
             dividerAfter: false,
             groupedWithDivider: false,
           });
@@ -10448,7 +10510,7 @@ const ungroupSelectedBlockElement = () => {
     const restore = () => {
       button.disabled = false;
       button.classList.remove("activated");
-      button.dataset.tooltip = "Copy Sign";
+      button.dataset.tooltip = "Copy Sign (right-click to choose a panel)";
       icon.textContent = "content_copy";
     };
 
@@ -10561,16 +10623,69 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     }catch(error){setCopyButtonState('error');alert('Unable to copy the sign: '+error.message);return false;}
     finally {copySignInProgress=false;}
   };
+  const closeCopyPanelContextMenu = (restoreFocus = false) => {
+    const menu = document.getElementById("copyPanelContextMenu");
+    if (!menu || menu.classList.contains("hidden")) return;
+    menu.classList.add("hidden");
+    document.getElementById("copySign")?.setAttribute("aria-expanded", "false");
+    if (restoreFocus) document.getElementById("copySign")?.focus({preventScroll: true});
+  };
+
   const openCopyPanelContextMenu = event => {
-    event.preventDefault();event.stopPropagation();
-    const menu=document.getElementById('copyPanelContextMenu');if(!menu)return;
-    menu.innerHTML='';
-    for(const group of getExportablePanelGroups()){
-      const button=document.createElement('button');button.type='button';button.textContent='Copy Panel '+group.label;
-      button.addEventListener('click',()=>{menu.classList.add('hidden');copySignToClipboard(group.topIndex);});menu.appendChild(button);
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = document.getElementById("copyPanelContextMenu");
+    const trigger = document.getElementById("copySign");
+    if (!menu || !trigger || copySignInProgress) return;
+    // A transformed toolbar makes fixed coordinates relative to the toolbar.
+    // Portal to the body so pointer coordinates work at every placement/scale.
+    document.body.appendChild(menu);
+    menu.replaceChildren();
+    const groups = getExportablePanelGroups();
+    for (const group of groups) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.setAttribute("role", "menuitem");
+      button.tabIndex = -1;
+      button.textContent = "Copy Panel " + group.label + (group.indices.length > 1 ? " (stacked)" : "");
+      button.dataset.panelIndex = String(group.topIndex);
+      button.addEventListener("click", () => {
+        closeCopyPanelContextMenu(true);
+        copySignToClipboard(group.topIndex);
+      });
+      menu.appendChild(button);
     }
-    menu.style.left=Math.max(8,Math.min(event.clientX,window.innerWidth-230))+'px';
-    menu.style.top=Math.max(8,Math.min(event.clientY,window.innerHeight-250))+'px';menu.classList.remove('hidden');
+    if (!groups.length) {
+      const empty = document.createElement("button");
+      empty.type = "button";
+      empty.disabled = true;
+      empty.setAttribute("role", "menuitem");
+      empty.textContent = "No visible panels to copy";
+      menu.appendChild(empty);
+    }
+    menu.onkeydown = keyEvent => {
+      const items = [...menu.querySelectorAll("button:not(:disabled)")];
+      const index = items.indexOf(document.activeElement);
+      let next;
+      if (keyEvent.key === "ArrowDown") next = (index + 1) % items.length;
+      if (keyEvent.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+      if (keyEvent.key === "Home") next = 0;
+      if (keyEvent.key === "End") next = items.length - 1;
+      if (next !== undefined) { keyEvent.preventDefault(); items[next]?.focus(); }
+      if (keyEvent.key === "Tab") closeCopyPanelContextMenu(true);
+    };
+    menu.style.left = "0px";
+    menu.style.top = "0px";
+    menu.classList.remove("hidden");
+    const bounds = menu.getBoundingClientRect();
+    const anchor = trigger.getBoundingClientRect();
+    const keyboard = event.type === "keydown" || (!event.clientX && !event.clientY);
+    const x = keyboard ? anchor.left : event.clientX;
+    const y = keyboard ? anchor.bottom : event.clientY;
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8)) + "px";
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8)) + "px";
+    trigger.setAttribute("aria-expanded", "true");
+    (menu.querySelector("button:not(:disabled)") || menu).focus({preventScroll: true});
   };
 
   const copyBlobToClipboard = async (blobOrPromise, mimeType, fileName = "copiedSign") => {
@@ -11058,8 +11173,12 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     const restoreCallbacks = [];
 
     for (const bannerEl of bannerElements) {
-      if (plainTextOnly && bannerEl.children.length) continue;
-      const text = bannerEl.textContent || "";
+      // Extra "\n" lines live in their own span; only the first line gets the letter.
+      const extraLines = bannerEl.querySelector(":scope > .bannerExtraLines");
+      if (plainTextOnly && bannerEl.children.length !== (extraLines ? 1 : 0)) continue;
+      const text = extraLines
+        ? Array.from(bannerEl.childNodes, (node) => node === extraLines ? "" : node.textContent).join("")
+        : bannerEl.textContent || "";
 
       if (!text.trim()) {
         continue;
@@ -11120,6 +11239,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
       if (afterFirst) {
         bannerEl.appendChild(document.createTextNode(afterFirst));
+      }
+
+      if (extraLines) {
+        bannerEl.appendChild(extraLines);
       }
 
       restoreCallbacks.push(() => {
@@ -11396,7 +11519,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     const clone = element.cloneNode(true);
     clone.classList.remove("showBlockBoundingBoxes");
-    clone.querySelectorAll("#alignmentGuides").forEach(guide=>guide.remove());
+    clone.querySelectorAll(".diagrammaticEditing").forEach(node=>node.classList.remove("diagrammaticEditing"));
+    clone.querySelectorAll("#alignmentGuides, .diagrammaticLiveLayer, .diagrammaticSubpanelHandle").forEach(guide=>guide.remove());
     Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
       (hiddenPanelClone) => hiddenPanelClone.remove()
     );
@@ -11499,7 +11623,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       ) {
         const paintedRects = Array.from(
           sourceElement.querySelectorAll(
-            ".sign, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace"
+            ".sign, .warningDiamondFace, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace"
           )
         )
           .filter(isElementVisibleForExport)
@@ -11634,6 +11758,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
+      // Freeze sizes while source and clone nodes still pair up one-to-one;
+      // removing editor-only nodes first would offset every later pairing.
+      freezeStaticCloneLayoutMetrics(sourceElement, clone);
+      clone.querySelectorAll('.diagrammaticLiveLayer, .diagrammaticSubpanelHandle').forEach(node=>node.remove());
+      clone.querySelectorAll('.diagrammaticEditing').forEach(node=>node.classList.remove('diagrammaticEditing'));
 
       if (clone.classList.contains("panelHiddenFromPost")) {
         return;
@@ -11687,8 +11816,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
       const isSinglePanelClone =
         sourceElement.classList && sourceElement.classList.contains("panel");
-
-      freezeStaticCloneLayoutMetrics(sourceElement, clone);
 
       clone.classList.add("exportStaticCaptureClone");
       clone.style.position = "absolute";
@@ -11821,10 +11948,20 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       await VmsPanel.refresh(exportElement, { force: true, exporting: true });
       await waitForNextFrame();
 
+      let exportWithoutPanelBackground = false;
+      try {
+        exportWithoutPanelBackground = localStorage.getItem("signMaker.exportWithoutPanelBackground") === "true";
+      } catch (error) {}
+      if (exportWithoutPanelBackground) {
+        exportElement.classList.add("exportWithoutPanelBackground");
+        await waitForNextFrame();
+      }
+
       const box = getExportBox(exportElement);
       return await callback(box, exportElement, signDocumentJSON);
     } finally {
       restoreExportBannerFirstLetters();
+      exportElement.classList.remove("exportWithoutPanelBackground");
 
       if (staticClone) {
         staticClone.cleanup();
@@ -12696,6 +12833,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             ? "customPanelColor"
             : getColorClassToken(panel.color, "green");
           panelElmt.className = `panel ${panelColorClass} ${panel.corner.toLowerCase()}`;
+          panelElmt.classList.toggle("warningDiamond", panel.warningDiamond === true);
           const panelBorderThickness = Panel.getBorderThickness(panel);
           panelElmt.classList.toggle("panelBorderHidden", panelBorderThickness === 0);
           panelElmt.style.setProperty("--panelBorderWidth", `${panelBorderThickness}rem`);
@@ -13026,6 +13164,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                        exitTabElmt.style.setProperty(
                          "--exitTabAssetVerticalPadding",
                          normalizedAssetVerticalPadding.toString() + "rem"
+                       );
+                       exitTabElmt.style.setProperty(
+                         "--exitTabVerticalPadding",
+                         (isAssetExitTabVariantForSpacing ? 0 : Math.max(0, Math.min(3, parseFloat(exitTab.verticalPadding) || 0))) + "rem"
                        );
                        exitTabElmt.style.setProperty(
                          "--exitTabPrefixScale",
@@ -13734,10 +13876,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                    const baseMinHeight = parseFloat(exitTab.minHeight) || 2.25;
                                    // Account for numeral scaling (1.5em) and vertical spacing
                                    const calculatedMinHeight = Math.max(baseMinHeight * 1.5, 3.75);
-                                   exitTabElmt.style.minHeight = calculatedMinHeight.toString() + "rem";
+                                   exitTabElmt.style.minHeight = `calc(${calculatedMinHeight}rem + 2 * var(--exitTabVerticalPadding, 0rem))`;
                                    // #endregion
                                } else {
-                                   exitTabElmt.style.minHeight = exitTab.minHeight.toString() + "rem";
+                                   exitTabElmt.style.minHeight = `calc(${exitTab.minHeight}rem + 2 * var(--exitTabVerticalPadding, 0rem))`;
                                }
                                if (isTransparentAssetExitTab) {
                                    exitTabElmt.style.minHeight = "0";
@@ -14104,18 +14246,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                       bannerElmt.className += " TOLL";
                   }
                   
-                  if (shield.bannerType != "None") {
-                      bannerElmt.appendChild(document.createTextNode(shield.bannerType));
-                  } else {
-                      bannerElmt.appendChild(document.createTextNode(" "));
-                  }
-                  
-                  if (shield.bannerType2 != "None") {
-                      bannerElmt2.appendChild(
-                                              document.createTextNode(shield.bannerType2)
-                                              );
-                  } else {
-                      bannerElmt2.appendChild(document.createTextNode(" "));
+                  // A typed "\n" breaks the banner onto another line.
+                  for (const [elmt, text] of [[bannerElmt, shield.bannerType], [bannerElmt2, shield.bannerType2]]) {
+                      const value = text != "None" ? String(text ?? "").replace(/\\n/g, "\n") : " ";
+                      elmt.appendChild(document.createTextNode(value));
+                      setMultilineBannerText(elmt, value);
                   }
                   
                   // Font change
@@ -14336,6 +14471,94 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             scheduleRuralPostLayoutUpdate();
           }
           
+          const markSelectedRenderedSubpanel = (targetElmt, subPanelIndex) => {
+            targetElmt.classList.toggle(
+              "selectedRenderedSubpanel",
+              index === currentlySelectedPanelIndex &&
+                subPanelIndex === currentlySelectedSubPanelIndex
+            );
+          };
+
+          const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) => {
+            const bindControl = (master, groupPath = []) => {
+              master.dataset.panelIndex = String(index);
+              master.dataset.subpanel = String(subPanelIndex);
+              const samePath = JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
+              const rows = Array.from(master.children).filter(element => element.classList.contains("blockElementRow"));
+              rows.forEach((rowElmt, rowIndex) => {
+                rowElmt.dataset.signRow = String(rowIndex);
+                rowElmt.classList.toggle("selectedRenderedBlockRow", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex);
+                rowElmt.addEventListener("click", event => {
+                  if (event.target.closest("[data-sign-row][data-sign-block]")?.closest(".blockElementMaster") === master) return;
+                  event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex:0, groupPath, menu:"subpanel", flashTarget:rowElmt });
+                });
+              });
+              master.querySelectorAll("[data-sign-row][data-sign-block]").forEach(blockElmt => {
+                if (blockElmt.closest(".blockElementMaster") !== master) return;
+                const rowIndex = Number(blockElmt.dataset.signRow), blockIndex = Number(blockElmt.dataset.signBlock);
+                blockElmt.classList.toggle("selectedRenderedBlockElement", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex && blockIndex === currentlySelectedBlockIndex);
+                blockElmt.addEventListener("click", event => {
+                  event.preventDefault(); event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
+                });
+                blockElmt.addEventListener("contextmenu", event => {
+                  event.preventDefault(); event.stopPropagation();
+                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
+                  window.SignMakerBlockMenu?.open(event);
+                });
+                const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
+                if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
+              });
+            };
+            if (blockMasterElmt) bindControl(blockMasterElmt);
+          };
+
+          if (normalizeArrowMode(panel.sign.arrowMode) === "roundabout") {
+            const model=window.SignMakerRoundabout.render(signElmt,panel.sign);
+            window.SignMakerRoundabout.directions.forEach((direction,subPanelIndex)=>{
+              const subPanel=panel.sign.subPanels[subPanelIndex];
+              if(!subPanel||!model.exits[direction])return;
+              const frame=document.createElement('div');frame.className=`subPanelDisplay roundaboutDestination roundabout-${direction}`;
+              frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
+              markSelectedRenderedSubpanel(frame,subPanelIndex);
+              const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
+              const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
+              const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
+              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
+              signElmt.append(frame);
+            });
+            signElmt.addEventListener('click',event=>{event.stopPropagation();selectRenderedPanelArea({panelIndex:index,menu:'guideArrows',guideMode:'roundabout',suppressRedraw:true});});
+            refreshDynamicPanelBorders(panelElmt);
+            continue;
+          }
+
+          if (normalizeArrowMode(panel.sign.arrowMode) === "diagrammatic") {
+            signElmt.classList.add("diagrammaticSign");
+            window.SignMakerDiagrammatics.render(signElmt, panel.sign);
+            panel.sign.subPanels.forEach((subPanel,subPanelIndex)=>{
+              const bounds=subPanel.diagrammaticBounds;
+              if(!bounds||![bounds.x,bounds.y,bounds.width,bounds.height].every(Number.isFinite))return;
+              const frame=document.createElement('div');frame.className='subPanelDisplay diagrammaticSubpanel';
+              frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
+              window.SignMakerDiagrammatics.attachSubpanel(frame,panel.sign,subPanelIndex);
+              markSelectedRenderedSubpanel(frame,subPanelIndex);
+              const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
+              const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
+              const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
+              frame.addEventListener('pointerdown',e=>e.stopPropagation());
+              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
+              signElmt.append(frame);
+            });
+            signElmt.addEventListener("click", (event) => {
+              event.stopPropagation();
+              selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
+                guideMode: "diagrammatic", suppressRedraw: true });
+            });
+            refreshDynamicPanelBorders(panelElmt);
+            continue;
+          }
+
           const g_top = document.createElement("div");
           g_top.className = `globalTop`;
           g_top.dataset.subpanelIndex = String(GLOBAL_TOP_SUBPANEL_INDEX);
@@ -14496,44 +14719,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           g_bottom.dataset.globalPosition = "Bottom";
           signElmt.appendChild(g_bottom);
 
-          const markSelectedRenderedSubpanel = (targetElmt, subPanelIndex) => {
-            targetElmt.classList.toggle(
-              "selectedRenderedSubpanel",
-              index === currentlySelectedPanelIndex &&
-                subPanelIndex === currentlySelectedSubPanelIndex
-            );
-          };
-
-          const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) => {
-            const bindControl = (master, groupPath = []) => {
-              master.dataset.panelIndex = String(index);
-              master.dataset.subpanel = String(subPanelIndex);
-              const samePath = JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
-              const rows = Array.from(master.children).filter(element => element.classList.contains("blockElementRow"));
-              rows.forEach((rowElmt, rowIndex) => {
-                rowElmt.dataset.signRow = String(rowIndex);
-                rowElmt.classList.toggle("selectedRenderedBlockRow", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex);
-                rowElmt.addEventListener("click", event => {
-                  if (event.target.closest("[data-sign-row][data-sign-block]")?.closest(".blockElementMaster") === master) return;
-                  event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex:0, groupPath, menu:"subpanel", flashTarget:rowElmt });
-                });
-              });
-              master.querySelectorAll("[data-sign-row][data-sign-block]").forEach(blockElmt => {
-                if (blockElmt.closest(".blockElementMaster") !== master) return;
-                const rowIndex = Number(blockElmt.dataset.signRow), blockIndex = Number(blockElmt.dataset.signBlock);
-                blockElmt.classList.toggle("selectedRenderedBlockElement", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex && blockIndex === currentlySelectedBlockIndex);
-                blockElmt.addEventListener("click", event => {
-                  event.preventDefault(); event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
-                });
-                const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
-                if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
-              });
-            };
-            if (blockMasterElmt) bindControl(blockMasterElmt);
-          };
-        
           const renderGlobalBlockElements = () => {
             const renderGlobalBlocksForPosition = (position, targetElmt) => {
               const key = getGlobalBlockKey(position);
@@ -16557,6 +16742,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             arrow.classList.toggle("selectedGuideArrow", arrow === frame));
                           formHandler.selectStandardArrowIndividual(i);
                           const restorePanelDrag = () => {
+                            window.SignMakerDragFeedback?.end();
                             panelElmt.draggable = panelWasDraggable;
                             guideArrowPointerDragActive = false;
                           };
@@ -16564,7 +16750,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             if (moveEvent.pointerId !== event.pointerId) return;
                             if (arrowCount < 2) return;
                             const delta = (moveEvent.clientX - origin) / (rem * (canvasScale || 1));
-                            if (Math.abs(delta) > 0.1) moved = true;
+                            if (!moved && Math.abs(delta) > 0.1) {
+                              moved = true;
+                              window.SignMakerDragFeedback?.begin([...arrowContElmt.querySelectorAll(".standardGuideArrowFrame")]);
+                            }
                             frame.style.left = `${Math.max(-100, Math.min(100, initial + delta))}rem`;
                           };
                           frame.addEventListener("pointermove", move);
@@ -16649,16 +16838,16 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             const src = ArrowElement.prototype.arrows[key].src;
             const fixed = key.startsWith("TYPE_C_") || key === "TYPE_E";
             const angle = fixed ? 0 : ((Math.round(Number(sign.exitArrowAngle) || 0) % 360) + 360) % 360;
-            const size = Math.max(1, Math.min(5, Number(sign.exitArrowSize) || 3));
-            const padding = Math.max(0, Math.min(5, Number(sign.exitArrowPadding) || 0));
-            const spacing = Math.max(0, Math.min(25, Number(sign.exitArrowSpacing) || 0));
+            const size = clamp(Number(sign.exitArrowSize) || 3, 1, 5);
+            const padding = clamp(Number(sign.exitArrowPadding) || 0, 0, 4);
+            const spacing = clamp(Number(sign.exitArrowSpacing) || 0, 0, 25);
             const diagonalAmount = Math.abs(Math.sin(angle * Math.PI / 90));
             const extendedScale = key === "TYPE_A_EXTENDED" ? 1.15 : 1;
             const verticalPadding = padding * (2 - 1.5 * diagonalAmount) + (key === "TYPE_B" ? 0.08 : 0);
             const horizontalReduction = key === "TYPE_B" ? 0.43 :
                 ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.55 : 0.6;
             const noHorizontalPadding = ["TYPE_D", "TYPE_E"].includes(key);
-            const standardEdgePadding = 0.2;
+            const horizontalPaddingScale = clamp(Number(sign.exitArrowHorizontalPadding ?? 0.2) || 0, 0, 4) * 5;
             const horizontalPadding = noHorizontalPadding ? 0 :
                 ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key)
                     ? Math.max(0, 0.65 - horizontalReduction * size / 3 * diagonalAmount)
@@ -16666,9 +16855,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     : 1;
             const standardHorizontalPadding = noHorizontalPadding ? 0 :
                 ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED", "TYPE_B"].includes(key)
-                    ? Math.max(0, 0.45 + standardEdgePadding - (key === "TYPE_B" ? 0.25 :
+                    ? Math.max(0, 0.65 - (key === "TYPE_B" ? 0.25 :
                         ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 : 0.6) * size / 3 * diagonalAmount)
-                    : key.startsWith("TYPE_C_") ? 0.55 + standardEdgePadding : 1;
+                    : key.startsWith("TYPE_C_") ? 0.75 : 1;
             const coloredEdgePadding = variant === "boxed" ? standardHorizontalPadding :
                 horizontalPadding + (noHorizontalPadding ? 0 :
                     variant === "laneSplit" ? 0.18 : ["DOWN", "DOWN_ALT", "TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.12 : 0);
@@ -16705,8 +16894,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 getExitOnlyContrastColor(getResolvedCssColorValue(panel.color) || "var(--green)"));
             guideArrowsElmt.style.setProperty("--exitOnlyTopBorder", sign.exitTopBorder ? borderWidth : "0px");
             guideArrowsElmt.style.setProperty("--exitOnlyVerticalPadding", `${verticalPadding}rem`);
-            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding}rem`);
-            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding * horizontalPaddingScale}rem`);
+            guideArrowsElmt.style.setProperty("--exitOnlyPlainOuterPadding", `${(noHorizontalPadding ? 0 : Math.max(0.45, standardHorizontalPadding)) * horizontalPaddingScale}rem`);
             guideArrowsElmt.style.setProperty("--exitOnlyEdgeRadius", "var(--signBorderRadius, 0.75rem)");
             otherSymbolsElmt.style.display = "none";
             sideLeftArrowElmt.remove();
@@ -16927,13 +17116,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 shape.style.maskImage = embeddedExitOnlyArrowMasks.get(src) || mask;
                 shape.style.webkitMaskImage = shape.style.maskImage;
                 frame.appendChild(shape);
-                image.style.visibility = "hidden";
+                // Keep the ordinary image visible until the embedded mask is
+                // ready; file:// Safari cannot fetch or mask a local SVG URL.
+                shape.style.visibility = "hidden";
+                image.style.filter = arrowTone.includes("black") ? "brightness(0)" : "brightness(0) invert(1)";
                 frame._arrowMaskReady = getEmbeddedExitOnlyArrowMask(src).then((embeddedMask) => {
                     if (embeddedMask) {
                         shape.style.maskImage = embeddedMask;
                         shape.style.webkitMaskImage = embeddedMask;
                     }
-                    return waitForRenderedArrowMask(embeddedMask, src);
+                    return waitForRenderedArrowMask(embeddedMask, src).then(() => {
+                        if (embeddedMask) { shape.style.visibility = "visible"; image.style.visibility = "hidden"; }
+                    });
                 });
                 let lastRatio = 0;
                 const resize = (ratio) => {
@@ -17107,7 +17301,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             moveEvent.preventDefault();
                             moveEvent.stopPropagation();
                             if (laneRect.width <= arrowRect.width) return;
-                            if (Math.abs(moveEvent.clientX - initialX) > 3) moved = true;
+                            if (!moved && Math.abs(moveEvent.clientX - initialX) > 3) {
+                              moved = true;
+                              window.SignMakerDragFeedback?.begin([plainArrow]);
+                            }
                             if (!moved) return;
                             const rawCenter = Math.max(laneRect.left + arrowRect.width / 2,
                                 Math.min(laneRect.right - arrowRect.width / 2,
@@ -17119,6 +17316,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                             plainArrow.style.transform = "translate(-50%, -50%)";
                         };
                         const restore = () => {
+                            window.SignMakerDragFeedback?.end();
                             window.removeEventListener("pointermove", move, true);
                             window.removeEventListener("pointerup", finish, true);
                             window.removeEventListener("pointercancel", cancel, true);
@@ -17853,6 +18051,40 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         removeAPLArrowAt,
         initializeAPLArrowsForCurrentPanel,
         setCurrentPanelArrowMode,
+        addDiagrammaticSubpanel: bounds => runWithUndo(()=>{
+          const sign=getCurrentPanel()?.sign;if(!sign||sign.arrowMode!=='diagrammatic')return;
+          if(!bounds||!['x','y','width','height'].every(k=>Number.isFinite(bounds[k])))return;
+          const x=clamp(bounds.x,0,.99),y=clamp(bounds.y,0,.99);
+          let subPanelIndex=sign.subPanels.findIndex(subPanel=>{
+            const b=subPanel.diagrammaticBounds;
+            return !b||![b.x,b.y,b.width,b.height].every(Number.isFinite);
+          });
+          const created=subPanelIndex<0;
+          if(created){sign.newSubPanel();subPanelIndex=sign.subPanels.length-1;}
+          const subPanel=sign.subPanels[subPanelIndex],rows=subPanel.blockElements.rows;
+          if(created||(rows.length===1&&rows[0].length===1&&rows[0][0] instanceof ControlTextElement&&rows[0][0].textContent==='Control'&&!subPanel.shields?.length)){
+            rows[0][0].textContent=String(subPanelIndex+1);
+          }
+          sign.subPanels[subPanelIndex].diagrammaticBounds={x,y,width:clamp(bounds.width,.01,1-x),height:clamp(bounds.height,.01,1-y)};
+          selectRenderedPanelArea({panelIndex:currentlySelectedPanelIndex,subPanelIndex,menu:'subpanel',suppressRedraw:true});
+          formHandler.updateForm();redraw();
+        }),
+        editRoundabout: change => runWithUndo(() => {
+          const sign=getCurrentPanel()?.sign;if(!sign)return;
+          sign.roundabout=window.SignMakerRoundabout.normalize(sign.roundabout);
+          change(sign.roundabout);formHandler.updateForm();redraw();
+        }),
+        editRoundaboutDestination: subPanelIndex => {
+          if(![0,1,2].includes(subPanelIndex))return;
+          selectRenderedPanelArea({panelIndex:currentlySelectedPanelIndex,subPanelIndex,menu:'subpanel'});
+        },
+        editDiagrammatic: (change, {redraw: shouldRedraw = true} = {}) => runWithUndo(() => {
+          const sign = getCurrentPanel()?.sign;
+          if (!sign) return;
+          sign.diagrammatic = window.SignMakerDiagrammatics.normalize(sign.diagrammatic);
+          change(sign.diagrammatic, sign);
+          if (shouldRedraw) { formHandler.updateForm(); redraw(); }
+        }),
         addAPLSubPanelLeftAndOpen,
         addAPLSubPanelRightAndOpen,
       vars: {
@@ -19383,7 +19615,7 @@ const serializePostWithElementTypes = (space) => {
         downloadJSONSign, copyJSONSign, serializeSignJSON, importSignJSON, importSignSVG, importJSONFile,
         copyPNGSign: copyPNGSign,
         copySignToClipboard,
-        openCopyPanelContextMenu,
+        openCopyPanelContextMenu, closeCopyPanelContextMenu,
         editTemplate, showActiveTemplateEditor, updateTemplateEditorStatus, switchTemplateEditorVariant, addTemplateEditorVariant, applyTemplateEditorFont, deleteTemplateEditorVariant, saveTemplateEditor, cancelTemplateEditor,
         copySVGSign: copySVGSign,
         copyPanelPNG: copyPanelPNG,

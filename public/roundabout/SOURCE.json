@@ -1,0 +1,7 @@
+{
+  "artwork": "FHWA MUTCD, 11th Edition, December 2023, Figure 2D-11 (page 239), D1-5 and D1-5a",
+  "source": "https://mutcd.fhwa.dot.gov/pdfs/11th_Edition/part2d.pdf",
+  "crossCheck": "FHWA Standard Highway Signs, 2024 Edition, Release 6, pages 4-81 and 4-82",
+  "crossCheckSource": "https://mutcd.fhwa.dot.gov/kno-shs_2024-release-status/pdf/2024_SHS_Release_6-Guide_Signs.pdf",
+  "adaptation": "Original vector contours retained in Roundabout.js. Exits can be omitted by continuing the outer circular edge (or the entry stem for the bypass); destination content remains independently editable."
+}

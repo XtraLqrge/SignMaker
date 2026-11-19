@@ -522,8 +522,8 @@
   --exitTabHorizontalPadding: 0rem;
   --exitTabPrefixScale: 0.7;
   --exitTabCharacterSpacing: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: var(--exitTabVerticalPadding, 0rem);
+  padding-bottom: var(--exitTabVerticalPadding, 0rem);
   padding-left: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
   padding-right: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
 }
@@ -3218,6 +3218,11 @@ img.exitOnlyArrow:last-child {
   line-height: inherit;
 }
 
+/* A blank line (e.g. a leading, doubled or trailing "\n") keeps one line's height. */
+.bE-textElement.bE-multilineTextElement > .bE-textLine:empty::before {
+  content: "\200B";
+}
+
 
 .bE-textElement.bE-betweenLetterSpacing {
   letter-spacing: var(--betweenLetterSpacing, 0em) !important;
@@ -3635,6 +3640,12 @@ img.exitOnlyArrow:last-child {
   border-top-right-radius: var(--fullBleedTopRightRadius, 0px);
   border-bottom-right-radius: var(--fullBleedBottomRightRadius, 0px);
   border-bottom-left-radius: var(--fullBleedBottomLeftRadius, 0px);
+}
+
+/* A full-bleed vertical divider extends past its row into the sign padding,
+   which the row band paints through; the sign's own clip still bounds it. */
+.sign .blockElementRow.fullBleed:has(> * > .dividerElement.vertical.fullBleed) {
+  overflow: visible;
 }
 
 .sign .blockElementRow.fullBleed::before,
@@ -4765,4 +4776,63 @@ img.exitOnlyArrow:last-child {
 .bE-advisoryMessage.bE-multilineTextElement > .bE-textLine:empty,
 .bE-electronicSign.bE-multilineTextElement > .bE-textLine:empty {
   min-height: 1em;
+}
+
+.sign.roundaboutSign {
+  display: grid !important;
+  grid-template-columns: minmax(6rem, max-content) minmax(var(--roundabout-size, 18rem), max-content) minmax(6rem, max-content);
+  grid-template-rows: auto calc(var(--roundabout-size, 18rem) * .475) calc(var(--roundabout-size, 18rem) * .475);
+  gap: 1rem 0;
+  align-items: center;
+  justify-items: center;
+  padding: 1.5rem !important;
+}
+.roundaboutDrawing { grid-column: 2; grid-row: 2 / 4; width: var(--roundabout-size, 18rem); height: calc(var(--roundabout-size, 18rem) * .95); align-self: start; }
+.roundaboutDestination { border: 0 !important; padding: 0 !important; margin: 0 !important; min-width: 0 !important; }
+.roundabout-thru { grid-column: 2; grid-row: 1; }
+.roundabout-left { grid-column: 1; grid-row: 2 / 4; align-self: start; margin-top: calc(var(--roundabout-size, 18rem) * .5) !important; transform:translateY(-50%); }
+.roundabout-right { grid-column: 3; grid-row: 2 / 4; align-self: start; margin-top: calc(var(--roundabout-size, 18rem) * .5) !important; transform:translateY(-50%); }
+.roundaboutBypass .roundabout-right { margin-top: calc(var(--roundabout-size, 18rem) * .73203125) !important; }
+/* Rotate only the square face. Content retains its normal coordinate system. */
+.panel.warningDiamond > .signContainer {
+  position:relative; display:grid; place-items:center;
+  width:var(--warningDiamondExtent, max-content) !important;
+  height:var(--warningDiamondExtent, auto) !important;
+  background:transparent !important; border:0 !important;
+  overflow:visible !important;
+}
+.panel.warningDiamond > .signContainer > .sign {
+  grid-area:1 / 1; width:max-content !important; min-width:0 !important;
+  background:transparent !important; border-color:transparent !important;
+  box-shadow:none !important; flex:none;
+}
+.warningDiamondFace {
+  /* Rounded panels hide their wrapper; the face must opt back into painting. */
+  visibility:visible;
+  position:absolute; width:70.710678%; height:70.710678%;
+  left:14.644661%; top:14.644661%; transform:rotate(45deg);
+  border:var(--panelBorderWidth,0.2rem) solid; box-sizing:border-box;
+  border-radius:var(--signBorderRadius,0.75rem); pointer-events:none;
+}
+.panel.sharp .warningDiamondFace { border-radius:0; }
+
+/* Settings → "Export without panel background": copied and downloaded images
+   keep the sign's content but drop every panel-colored surface. Borders keep
+   their width so the layout matches the editor. */
+html .exportWithoutPanelBackground :is(.panelOuterFace, .dynamicSignFullBleedLayer, .dynamicSignCornerPatch, .warningDiamondFace) {
+  display: none !important;
+}
+
+html .exportWithoutPanelBackground :is(.signContainer, .sign, .exitTabContainer, .exitTabHolder, .exitTab, .sign .blockElementRow, .sign .blockElementRow.fullBleed) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  border-image: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Full-bleed horizontal dividers are normally drawn on the hidden sign layer. */
+html .exportWithoutPanelBackground .dividerElement.fullBleedDividerPainted {
+  opacity: 1;
 }

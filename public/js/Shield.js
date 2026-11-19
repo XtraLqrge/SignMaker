@@ -1012,8 +1012,7 @@ Shield.prototype.shieldDirectory = {
   florida.FLToll = {
     type: "shield",
     name: "FDOT Toll Route",
-    variants: ["40x48 Guide", "48x60 Overhead", "24x30 Route Marker", "Old (Legacy)", "Selmon (Legacy)"],
-    fixedRouteVariants: ["Selmon (Legacy)"],
+    variants: ["40x48 Guide", "48x60 Overhead", "24x30 Route Marker", "Old (Legacy)"],
     className: "FL toll FDOTTOLL",
     standard: "FDOT",
     officialDimensions: true,
@@ -1023,7 +1022,6 @@ Shield.prototype.shieldDirectory = {
       "48x60Overhead": `${fdotFolder}/Toll-48x60.svg`,
       "24x30RouteMarker": `${fdotFolder}/Toll-24x30.svg`,
       "Old(Legacy)": "img/shields/United States/Florida/FLToll-Old.svg",
-      "Selmon(Legacy)": "img/shields/United States/Florida/FLToll-Selmon.png",
     },
     physicalDimensionsByVariant: {
       "40x48Guide": dimensions(40, 48),
@@ -1043,8 +1041,15 @@ Shield.prototype.shieldDirectory = {
       "48×60": "48x60 Overhead",
       Current: "40x48 Guide",
       Old: "Old (Legacy)",
-      Selmon: "Selmon (Legacy)",
     },
+  };
+
+  florida["FL-Selmon"] = {
+    type: "shield",
+    name: "Selmon Expressway",
+    variants: ["Image"],
+    assetPath: "img/shields/United States/FL/FL-Selmon.png",
+    suppressRouteNumber: true,
   };
 
   florida.FLCFX = {
@@ -1060,7 +1065,7 @@ Shield.prototype.shieldDirectory = {
     className: "FL cfxtoll CFXTOLL",
     standard: "CFX",
     officialDimensions: true,
-    maxRouteCharacters: 3,
+    maxRouteCharacters: 5,
     assetPathByVariant: {
       TM36x48CFXJurisdiction: `${cfxFolder}/CFX-TM-36x48.svg`,
       TM48x60CFXJurisdiction: `${cfxFolder}/CFX-TM-48x60.svg`,

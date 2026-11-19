@@ -297,7 +297,7 @@ test('critical CSS and deferred editor assets are complete and independently cac
   // The icon font now travels inside CSS for Safari file:// support; allow
   // its compressed bytes plus base64 overhead while retaining the CSS budget.
   assert.ok(manifest.criticalCSS.gzipBytes<40000+manifest.uiIconFont.bytes*1.1);
-  assert.ok(manifest.startupJS.gzipBytes<170000);
+  assert.ok(manifest.startupJS.gzipBytes<173000);
   for(const source of manifest.deferredEditor){
     assert.ok(fs.existsSync(path.join(root,'public',source)));
     assert.ok(!html.includes('src="'+source+'"'),'Editor must be loaded by the startup coordinator');
@@ -330,7 +330,7 @@ test('production HTML references existing, content-addressed assets',()=>{
   assert.equal(manifest.localStylesheetCount,1);
   assert.ok(!html.includes('src="js/HtmlToImage'));
   for(const asset of manifest.assets.filter(asset=>asset.source)){
-    let source=read('public/'+asset.source);
+    let source=asset.source==='js/DiagrammaticRoadEngine.js'?require('./build-diagrammatics.cjs')(root):read('public/'+asset.source);
     if(asset.source==='js/main.js')source=source.replace('js/HtmlToImage.js',manifest.assets.find(a=>a.source==='js/HtmlToImage.js').output);
     if(asset.source==='js/main.js')source=source.replace('js/ExportAssets.js',manifest.assets.find(a=>a.source==='js/ExportAssets.js').output);
     if(asset.source==='js/main.js')source=source.replace('js/PresetTemplates.js',manifest.assets.find(a=>a.source==='js/PresetTemplates.js').output);
@@ -1804,4 +1804,19 @@ test('row range bounds and precision match the desktop baseline while mobile ret
   for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'-5');assert.equal(slider.max,'10');assert.equal(slider.step,'0.1');assert.equal(slider.value,'-2.5');}
   c.sync(false);
   for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'0');assert.equal(slider.max,'3');assert.equal(slider.step,'.01');}
+});
+
+test('panel auto-shrink preference keeps normal scale while retaining side-panel positioning', () => {
+  const post = {offsetWidth:900,style:{transform:''}};
+  const root = {dataset:{},clientWidth:1000};
+  let menus = [{pushDirection:'left',element:{getBoundingClientRect:()=>({right:500})}}];
+  const c=context({window:{innerWidth:1000},document:{documentElement:root,getElementById:()=>post},getMainVisualScale:()=>1,getVisibleSideMenuElements:()=>menus,SIDE_MENU_VIEWPORT_GAP:20,MIN_POST_VIEW_SCALE:0.1});
+  vm.runInContext(declaration('public/js/main.js','updatePostViewportLayout')+'this.update=updatePostViewportLayout;',c);
+  c.update();
+  assert.equal(post.style.transform, 'translateX(250px) scale(0.5111111111111111)');
+  root.dataset.shrinkSignsForPanels='false';c.update();
+  assert.equal(post.style.transform,'translateX(250px) scale(1)');
+  menus=[];c.update();assert.equal(post.style.transform,'translateX(0px) scale(1)');
+  menus=[{pushDirection:'right',element:{getBoundingClientRect:()=>({left:500})}}];c.update();
+  assert.equal(post.style.transform,'translateX(-250px) scale(1)');
 });

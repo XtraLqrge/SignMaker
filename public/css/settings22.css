@@ -188,3 +188,15 @@
 #settings22Modal .settingsShortcutField { min-width:0; }
 #settings22Modal .settings22ProfileActions { grid-column:1/-1; display:flex; gap:0.3rem; }
 #settings22Modal .settings22ProfileActions button { flex:1; min-width:0; font-size:0.7rem; padding:0.3rem; }
+
+#settings22Modal #defaultsFields fieldset.guideArrowDefaults:not([hidden]) {
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+#settings22Modal .guideArrowDefaults > .generalSettingRow { display: contents; }
+#settings22Modal .guideArrowDefaults label { width:auto; min-width:0; margin:0; text-align:left; }
+#settings22Modal .guideArrowDefaults .generalSettingControl { min-width:0; width:100%; }
+#settings22Modal .guideArrowDefaults input[type="number"],
+#settings22Modal .guideArrowDefaults select { width:100%; min-width:0; box-sizing:border-box; }
+#settings22Modal .guideArrowDefaults > button { grid-column:1/-1; }

@@ -111,10 +111,14 @@
   <script defer src="js/NativeSelect.js?v=20261104-subpanels6" type="text/javascript"></script>
   <script defer src="js/lib.js" type="text/javascript"></script>
   <script defer src="js/Shield.js?v=20261001b" type="text/javascript"></script>
+<script defer src="js/DiagrammaticRoadEngine.js"></script>
+<script defer src="js/Diagrammatics.js" type="text/javascript"></script>
+<script defer src="js/Roundabout.js" type="text/javascript"></script>
   <script defer src="js/Sign.js?v=20261008d" type="text/javascript"></script>
   <script defer src="js/ExitTab.js?v=20261025c" type="text/javascript"></script>
   <script defer src="js/Panel.js?v=20261026-messages1" type="text/javascript"></script>
   <script defer src="js/PanelBorders.js" type="text/javascript"></script>
+  <script defer src="js/DragFeedback.js"></script>
   <script defer src="js/PanelDrag.js" type="text/javascript"></script>
   <script defer src="js/VmsPanel.js?v=20261026-messages1" type="text/javascript"></script>
   <script defer src="js/Post.js?v=20261104-ui2" type="text/javascript"></script>
@@ -127,6 +131,8 @@
   <script defer src="js/IndexDB.js?v=20261104-ui2" type="text/javascript"></script>
   <script defer src="js/CustomShields.js" type="text/javascript"></script>
 <script defer src="js/SignDocument.js"></script>
+  <script defer src="js/GuideArrowDefaults.js"></script>
+  <script defer src="js/BlockContextMenu.js"></script>
   <script defer src="js/main.js?v=20261104-subpanels6" type="text/javascript"></script>
 <script defer src="js/MobileGestures.js" type="text/javascript"></script>
 <script defer src="js/MobileSubpanels.js" type="text/javascript"></script>
@@ -457,6 +463,7 @@
               <input type="range" id="appUiScale" min="50" max="150" step="10" value="100">
               <output id="appUiScaleValue" for="appUiScale">100%</output>
             </div></div></div>
+              <div class="generalSettingRow"><label for="appShrinkSignsForPanels" data-tooltip="Turn off to keep signs at their normal size when an editing panel opens.">Shrink signs to fit panels:</label><div class="generalSettingControl"><input type="checkbox" id="appShrinkSignsForPanels" checked></div></div>
               <div class="generalSettingRow"><label for="appToolbarPosition">Toolbar:</label><div class="generalSettingControl"><select id="appToolbarPosition">
               <option value="right">Right sidebar</option>
               <option value="bottom">Bottom bar</option>
@@ -473,6 +480,8 @@
               <option value="never">Start a new sign</option>
             </select></div></div>
               <div class="generalSettingRow"><label for="copySignsOnly">Copy Signs Only:</label><div class="generalSettingControl"><input type="checkbox" id="copySignsOnly" checked></div></div>
+              <div class="generalSettingRow"><label for="joinMatchingBanners" data-tooltip="Neighboring shields with identical banners above them share one banner. Untick to keep a separate banner on every shield.">Join Matching Banners:</label><div class="generalSettingControl"><input type="checkbox" id="joinMatchingBanners" checked></div></div>
+              <div class="generalSettingRow"><label for="exportWithoutPanelBackground" data-tooltip="Copied and downloaded images leave out the panel fill, borders, exit tab fills and row bands.">Export without panel background:</label><div class="generalSettingControl"><input type="checkbox" id="exportWithoutPanelBackground"></div></div>
               <div class="generalSettingRow"><label for="settingsTemplateLoadWarning">Template Load Warning:</label><div class="generalSettingControl"><input type="checkbox" id="settingsTemplateLoadWarning" onchange="if (typeof app !== 'undefined' &amp;&amp; app.setTemplateLoadWarningEnabled) app.setTemplateLoadWarningEnabled(this.checked);"></div></div>
               <div class="generalSettingRow"><label for="mergeDefaultSignRadius">Default Sign Corner Radius (rem):</label><div class="generalSettingControl"><input type="number" id="mergeDefaultSignRadius" min="0" max="5" step="0.05" value="0.75"></div></div>
               <div class="generalSettingRow"><label for="settingsInterfaceTextSize">Text Size:</label><div class="generalSettingControl"><div class="settingsRangeControl">
@@ -964,6 +973,9 @@
               <label for="panelColor">Panel Color: </label>
               <select id="panelColor" onchange="formHandler.readForm();"></select>
               <br>
+              <label for="panelWarningDiamond">Warning sign (45° square):</label>
+              <input type="checkbox" id="panelWarningDiamond" onchange="formHandler.readForm();">
+              <br>
               <label for="panelCorner">Panel Corners: </label>
               <select id="panelCorner" onchange="formHandler.setPanelCorner(this.value);"></select>
               <br>
@@ -1155,10 +1167,10 @@
 
                 <div class="exitTabSliderGroup" data-exit-slider="cornerRadius">
                   <div class="exitTabCornerRadiusLabel">
-                    <label for="exitTabCornerRadius">Set Corner Radius (rem):</label>
+                    <label for="exitTabUsePanelCornerRadius">Use panel corner radius:</label>
                     <input type="checkbox" id="exitTabUsePanelCornerRadius" name="exitTabUsePanelCornerRadius" checked title="Use parent panel corner radius" aria-label="Use parent panel corner radius" onchange="formHandler.readForm();">
                   </div>
-                  <input type="range" id="exitTabCornerRadius" name="exitTabCornerRadius" min="0" max="2" step="0.05" value="0.75" oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);" onchange="formHandler.readForm();">
+                  <input type="range" id="exitTabCornerRadius" aria-label="Custom corner radius (rem)" name="exitTabCornerRadius" min="0" max="2" step="0.05" value="0.75" oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);" onchange="formHandler.readForm();">
                   <label for="exitTabCornerRadius" id="exitTabCornerRadiusValue" class="exitTabSliderValue">0.75</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabCornerRadiusReset" aria-label="Reset corner radius">
                     <span class="material-symbols-outlined">refresh</span>
@@ -1179,6 +1191,15 @@
                   <input type="range" id="exitTabHorizontalPadding" name="exitTabHorizontalPadding" min="-1" max="3" step="0.1" value="0" oninput="document.getElementById('exitTabHorizontalPaddingValue').innerHTML = Number(this.value).toFixed(1);" onchange="formHandler.readForm();">
                   <label for="exitTabHorizontalPadding" id="exitTabHorizontalPaddingValue" class="exitTabSliderValue">0.0</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabHorizontalPaddingReset" aria-label="Reset horizontal padding">
+                    <span class="material-symbols-outlined">refresh</span>
+                  </button>
+                </div>
+
+                <div class="exitTabSliderGroup" id="exitTabVerticalPaddingGroup">
+                  <label for="exitTabVerticalPadding">Vertical padding:</label>
+                  <input type="range" id="exitTabVerticalPadding" name="exitTabVerticalPadding" min="0" max="3" step="0.1" value="0" oninput="document.getElementById('exitTabVerticalPaddingValue').innerHTML = Number(this.value).toFixed(1);" onchange="formHandler.readForm();">
+                  <label for="exitTabVerticalPadding" id="exitTabVerticalPaddingValue" class="exitTabSliderValue">0.0</label>
+                  <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabVerticalPaddingReset" aria-label="Reset vertical padding">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
                 </div>
@@ -1492,7 +1513,8 @@
                   <label for="sdGroupedBlock_label">Name:</label><input type="text" id="sdGroupedBlock_label" value="Group">
                   <label for="sdGroupedBlock_alignment">Alignment:</label><select id="sdGroupedBlock_alignment"></select>
                   <label for="sdGroupedBlock_backgroundColor">Background:</label><select id="sdGroupedBlock_backgroundColor"></select>
-                  <label for="sdGroupedBlock_padding">Padding (rem):</label><input type="number" id="sdGroupedBlock_padding" min="0" max="10" step="0.05" value="0">
+                  <label for="sdGroupedBlock_padding">Horizontal Padding (rem):</label><input type="number" id="sdGroupedBlock_padding" min="0" max="10" step="0.05" value="0">
+                  <label for="sdGroupedBlock_paddingVertical">Vertical Padding (rem):</label><input type="number" id="sdGroupedBlock_paddingVertical" min="0" max="10" step="0.05" value="0">
                   <label for="sdGroupedBlock_borderRadius">Corner Radius (rem):</label><input type="number" id="sdGroupedBlock_borderRadius" min="0" max="10" step="0.05" value="0">
                   <label for="sdGroupedBlock_border">Border:</label><input type="checkbox" id="sdGroupedBlock_border">
                   <label for="sdGroupedBlock_borderColor">Border Color:</label><select id="sdGroupedBlock_borderColor"></select>
@@ -1520,6 +1542,14 @@
                       <label for="sdCtrlText_fontSize">Font Size (%):</label>
                       <input type="range" id="sdCtrlText_fontSize" min="25" max="250" step="1" value="100">
                       <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="25" max="250" step="1" value="100">
+                    </div>
+                    <div class="sdBlockPaddingControls">
+                      <label for="sdCtrlText_paddingHorizontal">Horizontal Padding (rem):</label>
+                      <input type="range" id="sdCtrlText_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                      <input id="sdCtrlText_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                      <label for="sdCtrlText_paddingVertical">Vertical Padding (rem):</label>
+                      <input type="range" id="sdCtrlText_paddingVertical" min="0" max="8" step="0.1" value="0">
+                      <input id="sdCtrlText_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
                     </div>
 
                     <div class="sdCtrlTextSettingsRow">
@@ -1572,6 +1602,14 @@
                   <input type="checkbox" id="sdBlocker_fullBleed">
                   <label for="sdBlocker_visible">Visibility:</label>
                   <input type="checkbox" id="sdBlocker_visible">
+                  <div class="sdBlockPaddingControls">
+                    <label for="sdBlocker_paddingHorizontal">Horizontal Padding (rem):</label>
+                    <input type="range" id="sdBlocker_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                    <input id="sdBlocker_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    <label for="sdBlocker_paddingVertical">Vertical Padding (rem):</label>
+                    <input type="range" id="sdBlocker_paddingVertical" min="0" max="8" step="0.1" value="0">
+                    <input id="sdBlocker_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                  </div>
                 </div>
 
                 <div data-property="sdShield" class="hidden sdShieldEditorLayout">
@@ -1671,7 +1709,15 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                       <input id="sdShield_bannerLetterSpacingVal" class="smallVal sdShieldBannerLetterSpacingValue" type="number" min="-0.15" max="0.5" step="0.01" value="0">
                     </div>
 
-                    </div>
+                  <div class="sdBlockPaddingControls">
+                    <label for="sdShield_paddingHorizontal">Horizontal Padding (rem):</label>
+                    <input type="range" id="sdShield_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                    <input id="sdShield_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    <label for="sdShield_paddingVertical">Vertical Padding (rem):</label>
+                    <input type="range" id="sdShield_paddingVertical" min="0" max="8" step="0.1" value="0">
+                    <input id="sdShield_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                  </div>
+                </div>
 
                 <div data-property="sdAdvisory" class="hidden sdCtrlTextLayout">
                   <div class="sdCtrlTextTopRow">
@@ -1829,6 +1875,14 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                     <label for="sdBeacon_alignment">Alignment: </label>
                     <select id="sdBeacon_alignment"></select>
                   </div>
+                  <div class="sdBlockPaddingControls">
+                    <label for="sdBeacon_paddingHorizontal">Horizontal Padding (rem):</label>
+                    <input type="range" id="sdBeacon_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                    <input id="sdBeacon_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    <label for="sdBeacon_paddingVertical">Vertical Padding (rem):</label>
+                    <input type="range" id="sdBeacon_paddingVertical" min="0" max="8" step="0.1" value="0">
+                    <input id="sdBeacon_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                  </div>
                 </div>
 
                 <div data-property="sdArrow" class="hidden">
@@ -1942,6 +1996,14 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                     <input type="range" id="sdActionMessage_fontSize" min="25" max="150" step="1" value="100">
                     <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="70">
                   </div>
+                  <div class="sdBlockPaddingControls">
+                    <label for="sdActionMessage_paddingHorizontal">Horizontal Padding (rem):</label>
+                    <input type="range" id="sdActionMessage_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                    <input id="sdActionMessage_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    <label for="sdActionMessage_paddingVertical">Vertical Padding (rem):</label>
+                    <input type="range" id="sdActionMessage_paddingVertical" min="0" max="8" step="0.1" value="0">
+                    <input id="sdActionMessage_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                  </div>
 
                   <div class="sdCtrlTextSettingsRow">
                     <label for="sdActionMessage_alignment">Alignment: </label>
@@ -1993,10 +2055,15 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                   <br>
                   <label for="sdElectronicSign_glow">Glow:</label>
                   <input type="checkbox" id="sdElectronicSign_glow">
-                  <label for="sdElectronicSign_padding">Padding (rem):
+                  <label for="sdElectronicSign_padding">Horizontal Padding (rem):
                   </label>
                   <input type="range" min="0" max="3" value=".5" step=".1" id="sdElectronicSign_padding">
                   <input id="sdElectronicSign_paddingVal" class="smallVal" type="number" value=".5" step="0.1">
+                  <br>
+                  <label for="sdElectronicSign_paddingVertical">Vertical Padding (rem):
+                  </label>
+                  <input type="range" min="0" max="3" value="0" step=".1" id="sdElectronicSign_paddingVertical">
+                  <input id="sdElectronicSign_paddingVerticalVal" class="smallVal" type="number" value="0" step="0.1">
                   <br>
                   <label for="sdElectronicSign_setWidth" data-tooltip="Width of the electronic sign - set to 0 to adjust to text size.">Set Width
                     (rem):</label>
@@ -2010,6 +2077,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                 <div class="sdBlockMarginControls">
                   <div class="sdBlockMarginControl"><label for="sdBlock_topPadding" data-mobile-label="Top margin (rem)" data-desktop-label="Top Margin (rem):">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
                   <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding" data-mobile-label="Bottom margin (rem)" data-desktop-label="Bottom Margin (rem):">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_leftPadding" data-mobile-label="Left padding (rem)" data-desktop-label="Left Padding (rem):">Left Padding (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_leftPadding" data-mobile-min="0" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_leftPaddingVal" class="smallVal" type="number" value="0" min="0" max="10" step="0.1"><button type="button" id="sdBlock_leftPaddingReset" class="sdBlockReset" aria-label="Reset left padding"><span class="material-symbols-outlined">refresh</span></button></div>
+                  <div class="sdBlockMarginControl"><label for="sdBlock_rightPadding" data-mobile-label="Right padding (rem)" data-desktop-label="Right Padding (rem):">Right Padding (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_rightPadding" data-mobile-min="0" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_rightPaddingVal" class="smallVal" type="number" value="0" min="0" max="10" step="0.1"><button type="button" id="sdBlock_rightPaddingReset" class="sdBlockReset" aria-label="Reset right padding"><span class="material-symbols-outlined">refresh</span></button></div>
                 </div>
                 <div class="sdBlockColors">
                 <label for="sdBlock_backgroundColor">BG:</label>
@@ -2091,6 +2160,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           </div>
           <div data-tab="sMExitOnlyArrows" class="sMModalTab">Exit Only</div>
           <div data-tab="sMAPL" class="sMModalTab">Arrow-Per-Lane (APL)</div>
+          <div data-tab="sMDiagrammatics" class="sMModalTab">Diagrammatics</div>
+          <div data-tab="sMRoundabout" class="sMModalTab">Roundabout</div>
         </nav>
         <div class="sMModalContent">
           <div id="sMStandardArrows">
@@ -2117,7 +2188,10 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div class="exitOnlyRow exitOnlyArrowTypeRow"><label for="exitArrowType">Arrow:</label><div class="standardArrowPickerHost"><select id="exitArrowType" aria-label="Exit only arrow type"></select></div><input type="number" id="exitArrowCount" min="0" max="6" step="1" value="1" aria-label="Exit only arrow count"></div>
               <div class="exitOnlyRow"><label for="exitArrowAngle">Angle:</label><div class="guideArrowAngleScale"><input type="range" id="exitArrowAngle" min="0" max="315" step="45" value="0"><div class="guideArrowAngleTicks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><input type="number" id="exitArrowAngleValue" step="1" value="0" aria-label="Exit only arrow angle"><button type="button" class="guideArrowReset" data-exit-reset="Angle" aria-label="Reset exit only arrow angle"><span class="material-symbols-outlined">refresh</span></button><button type="button" id="exitArrowFlip" class="standardArrowFlipButton" aria-pressed="false" hidden>Flip</button></div>
               <div class="exitOnlyRow"><label for="exitArrowSize">Size:</label><input type="range" id="exitArrowSize" min="1" max="5" step="0.1" value="3"><input type="number" id="exitArrowSizeValue" min="1" max="5" step="0.1" value="3.0" aria-label="Exit only arrow size"><button type="button" class="guideArrowReset" data-exit-reset="Size" aria-label="Reset exit only arrow size"><span class="material-symbols-outlined">refresh</span></button></div>
-              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding:</label><input type="range" id="exitArrowPadding" min="0" max="1" step="0.05" value="0.2"><input type="number" id="exitArrowPaddingValue" min="0" max="5" step="0.01" value="0.20" aria-label="Exit only arrow padding"><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only arrow padding"><span class="material-symbols-outlined">refresh</span></button></div>
+              <!-- XTRA DO NOT CHANGE THIS I SWEAR TO GOD -->
+              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding up/down:</label><input type="range" id="exitArrowPadding" min="0" max="4" step="0.05" value="0.2"><input type="number" id="exitArrowPaddingValue" min="0" max="4" step="0.01" value="0.20" aria-label="Exit only padding up/down"><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only padding up/down"><span class="material-symbols-outlined">refresh</span></button></div>
+              <!-- XTRA DO NOT CHANGE THIS I SWEAR TO GOD -->
+              <div class="exitOnlyRow"><label for="exitArrowHorizontalPadding">Padding left/right:</label><input type="range" id="exitArrowHorizontalPadding" min="0" max="4" step="0.05" value="0.2"><input type="number" id="exitArrowHorizontalPaddingValue" min="0" max="4" step="0.01" value="0.20" aria-label="Exit only padding left/right"><button type="button" class="guideArrowReset" data-exit-reset="HorizontalPadding" aria-label="Reset exit only padding left/right"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><label for="exitArrowSpacing">Spacing:</label><input type="range" id="exitArrowSpacing" min="4" max="12" step="0.10" value="8.5"><input type="number" id="exitArrowSpacingValue" min="0" max="25" step="0.01" value="8.50" aria-label="Space between exit only arrows"><button type="button" class="guideArrowReset" data-exit-reset="Spacing" aria-label="Reset exit only arrow spacing"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><span class="standardArrowLabel">Alignment:</span><div class="standardArrowChoices" role="group" aria-label="Exit only arrow alignment"><button type="button" data-exit-alignment="Left">L</button><button type="button" data-exit-alignment="Center">C</button><button type="button" data-exit-alignment="Right">R</button></div></div>
               <h4>Text</h4>
@@ -2199,6 +2273,37 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="aplArrowList" class="scrollMenu">
               </div>
             </div>
+          </div>
+          <div id="sMDiagrammatics" class="tabHidden">
+            <h3>Diagrammatics</h3>
+            <div id="diagrammaticRoadControls"></div>
+            <div class="diagrammaticSettings"><label for="diagrammaticWidth">Width (rem)</label><input id="diagrammaticWidth" type="number" min="1" max="80" step="0.25" value="40"></div>
+            <div class="diagrammaticSettings"><label for="diagrammaticHeight">Height (rem)</label><input id="diagrammaticHeight" type="number" min="1" max="80" step="0.25" value="25"></div>
+            <label class="diagrammaticEnable"><input id="diagrammaticConsistentGaps" type="checkbox" checked> Consistent gaps on turns</label>
+            <div class="diagrammaticTransfer">
+              <button id="diagrammaticExportJSON" type="button" title="Export arrow stems as JSON" aria-label="Export arrow stems as JSON"><span class="material-symbols-outlined" aria-hidden="true">download</span><span>Export JSON</span></button>
+              <button id="diagrammaticImportJSON" type="button" title="Import arrow stems from JSON" aria-label="Import arrow stems from JSON"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span>Import JSON</span></button>
+              <input id="diagrammaticImportFile" type="file" accept=".json,application/json" hidden>
+            </div>
+            <p>Draw on the sign. Right-click a lane node for curves, tapers, connections, and overlap order. Drag the preview background to pan all panels; use + / − to zoom and F to fit.</p>
+          </div>
+          <div id="sMRoundabout" class="tabHidden">
+            <h3>Roundabout</h3>
+            <fieldset id="roundaboutOptions">
+              <label for="roundaboutType">Arrow type</label>
+              <select id="roundaboutType"><option value="normal">D1-5 — Roundabout</option><option value="bypass">D1-5a — Right-turn bypass</option></select>
+              <div><label for="roundaboutSize">Assembly size (rem)</label><input id="roundaboutSize" type="number" min="6" max="60" step="0.5" value="18"></div>
+              <fieldset class="roundaboutPadding"><legend>Sign padding (rem)</legend>
+                <label for="roundaboutPadding-top">Top</label><input id="roundaboutPadding-top" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-right">Right</label><input id="roundaboutPadding-right" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-bottom">Bottom</label><input id="roundaboutPadding-bottom" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-left">Left</label><input id="roundaboutPadding-left" type="number" min="0" max="20" step="0.25" value="1.5">
+              </fieldset>
+              <div><label><input id="roundaboutExit-left" type="checkbox" checked> Left exit — Subpanel 1</label> <button id="roundaboutEdit-left" type="button">Edit destination</button></div>
+              <div><label><input id="roundaboutExit-thru" type="checkbox" checked> Thru exit — Subpanel 2</label> <button id="roundaboutEdit-thru" type="button">Edit destination</button></div>
+              <div><label><input id="roundaboutExit-right" type="checkbox" checked> Right exit — Subpanel 3</label> <button id="roundaboutEdit-right" type="button">Edit destination</button></div>
+            </fieldset>
+            <p>2023 MUTCD. Click a destination on the sign to edit its subpanel. Disabled exits retain their content.</p>
           </div>
         </div>
       </div>
@@ -2425,9 +2530,9 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <img src="img/other-symbols/ui/template.svg" alt="Templates Icon" class="configIcon templateIcon" loading="lazy" decoding="async">
         <span id="templatesButtonLabel">Templates</span>
       </button>
-      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" title="Copy Sign" data-tooltip="Copy Sign">
+      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" aria-haspopup="menu" aria-expanded="false" aria-controls="copyPanelContextMenu" title="Copy Sign (right-click to choose a panel)" data-tooltip="Copy Sign (right-click to choose a panel)">
   <span class="material-symbols-outlined">content_copy</span><span class="buttonLabel">Copy Sign</span>
-</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
+</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden" role="menu" aria-label="Choose a sign panel to copy" tabindex="-1"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
         <span class="material-symbols-outlined"> download </span>
         <span class="buttonLabel">Export</span>
       </button>

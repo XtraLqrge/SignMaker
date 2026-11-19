@@ -1,0 +1,73 @@
+<!-- Native control template for the diagrammatic arrow editor; not a standalone editor. -->
+<div class="modals">
+    <section id="elementsEditor" class="editor" aria-labelledby="elementsTitle" hidden>
+      <div class="editorBar">
+        <h2 id="elementsTitle" class="editorTitle" tabindex="-1">
+          <span class="material-symbols-outlined" aria-hidden="true">road</span>
+          Elements
+        </h2>
+      </div>
+      <div class="editorContent">
+        <div class="fieldRow elementAddRow">
+          <label for="elementToAdd">Add</label>
+          <select id="elementToAdd"><option value="road">Arrow stem</option></select>
+          <button type="button" id="addElement" aria-label="Add selected element" title="Add selected element"><span class="material-symbols-outlined" aria-hidden="true">add</span></button>
+        </div>
+        <div hidden><button type="button" id="addRoad" aria-pressed="false">Add Road</button></div>
+        <div class="headActions"><button type="button" id="deleteRoad" disabled>Delete</button></div>
+        <p id="elementsHint" class="elementsHint" aria-live="polite"></p>
+        <div class="fieldRow">
+          <label for="roadLanes">Lanes</label>
+          <input id="roadLanes" type="number" min="1" max="999" step="1" value="1" />
+        </div>
+        <div class="fieldRow">
+          <label for="roadLaneWidth">Lane width (ft)</label>
+          <input id="roadLaneWidth" type="number" min="8" max="50" step="0.5" value="12" />
+        </div>
+        <div id="roadCurveFields" hidden>
+          <div class="fieldRow"><label for="roadCurveType">Curve</label><select id="roadCurveType"><option value="arc">Circular arc</option><option value="freeform">Freeform</option><option value="clothoid">Clothoid</option></select></div>
+          <div id="roadArcFields" hidden>
+            <div id="roadArcFitRow" class="fieldRow" hidden><label for="roadArcFit">Fit split/merge arcs</label><input id="roadArcFit" type="checkbox" aria-describedby="roadArcFitHint" /></div>
+            <div class="fieldRow"><label for="roadArcAngle">Curve angle (°)</label><div class="dimensionInputs"><input id="roadArcAngle" type="range" min="-360" max="360" step="0.1" value="90" /><input id="roadArcAngleValue" type="number" min="-360" max="360" step="any" value="90" aria-label="Curve angle in degrees" /></div></div>
+            <div id="roadArcRadiusRow" class="fieldRow"><label for="roadArcRadius">Radius (ft)</label><input id="roadArcRadius" type="number" min="0" step="any" /></div>
+            <p id="roadArcFitHint" class="fieldHint" hidden>The joined roads determine the angle; adjust Radius to change the bend.</p>
+            <p class="fieldHint">Drag the curve handle to change the bend. Positive angles turn right; negative angles turn left. Circular arcs also have a radius handle at the circle center; 360° closes a loop. Clothoids change curvature gradually.</p>
+          </div>
+        </div>
+        <div class="fieldRow">
+          <label for="autoTapers">Auto tapers</label>
+          <input id="autoTapers" type="checkbox" aria-describedby="autoTapersHint" />
+        </div>
+        <p id="autoTapersHint" class="fieldHint">Taper lanes that start or end at a join</p>
+        <div class="fieldRow">
+          <label for="independentCurves">Curve joined ends independently</label>
+          <input id="independentCurves" type="checkbox" aria-describedby="independentCurvesHint" />
+        </div>
+        <p id="independentCurvesHint" class="fieldHint">Or hold Option (Alt) while dragging a curve handle</p>
+        <div id="curveLinkFields" hidden>
+          <h3>Curve relationship</h3>
+          <p id="curveLinkStatus" class="elementsHint" role="status"></p>
+          <div id="curveRotationRow" class="fieldRow"><label for="curveRotation">Rotate handles</label><select id="curveRotation"><option value="same">Same direction</option><option value="opposite">Opposite directions</option></select></div>
+          <div id="keepSymmetricRow" class="fieldRow"><label for="keepSymmetric">Keep symmetric</label><input id="keepSymmetric" type="checkbox" checked /></div>
+          <div class="headActions"><button id="applyCurveMirror" type="button" hidden>Apply Mirror</button><button id="editCurveAxis" type="button" hidden>Edit Symmetry Line…</button><button id="unlinkCurve" type="button" hidden>Unlink Curves</button><button id="cancelCurveLink" type="button" hidden>Cancel</button></div>
+        </div>
+        <div id="laneFields" hidden>
+          <hr />
+          <h3 id="laneTitle">Lane</h3>
+          <div class="fieldRow">
+            <label for="laneTaper">Taper</label>
+            <select id="laneTaper">
+              <option value="auto">Auto (at joints)</option>
+              <option value="taper">Taper</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div class="fieldRow">
+            <label for="laneTaperLength">Taper length (ft)</label>
+            <input id="laneTaperLength" type="number" min="10" max="2000" step="10" value="300" />
+          </div>
+          <p id="laneTaperState" class="elementsHint" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+</div>

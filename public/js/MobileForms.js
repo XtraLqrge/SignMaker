@@ -144,6 +144,7 @@ window.SignMakerMobileForms = (() => {
       ['dividerWidth', 'Width'], ['dividerMeasurement', 'Units'],
       ['dividerHeight', 'Height (rem)'], ['orientation', 'Orientation'],
       ['dividerColor', 'Color'], ['alignment', 'Alignment'], ['fullBleed', 'Full bleed'], ['visible', 'Visible'],
+      ['paddingHorizontalVal', 'Horizontal padding (rem)', 'paddingHorizontal'], ['paddingVerticalVal', 'Vertical padding (rem)', 'paddingVertical'],
     ],
     sdTollLogo: [
       ['logoHeight', 'Size (rem)'], ['spacing', 'Spacing (rem)'],
@@ -155,11 +156,12 @@ window.SignMakerMobileForms = (() => {
       ['textContent', 'Content', null, null, true], ['fontFamily', 'Font', null, null, true],
       ['fontSize', 'Text size (%)'], ['textColor', 'Text color'],
       ['lineHeightVal', 'Line height (%)', 'lineHeight'], ['setWidth', 'Width (rem)'],
-      ['paddingVal', 'Padding (rem)', 'padding'], ['alignment', 'Alignment'], ['glow', 'Glow'],
+      ['paddingVal', 'Horizontal padding (rem)', 'padding'], ['paddingVerticalVal', 'Vertical padding (rem)', 'paddingVertical'],
+      ['alignment', 'Alignment'], ['glow', 'Glow'],
     ],
     sdGroupedBlock: [
       ['label', 'Name', null, null, true], ['alignment', 'Alignment'], ['backgroundColor', 'Background'],
-      ['padding', 'Padding (rem)'], ['borderRadius', 'Corner radius (rem)'],
+      ['padding', 'Horizontal padding (rem)'], ['paddingVertical', 'Vertical padding (rem)'], ['borderRadius', 'Corner radius (rem)'],
       ['border', 'Border'], ['borderColor', 'Border color'],
     ],
   };

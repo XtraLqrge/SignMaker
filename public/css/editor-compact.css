@@ -24,6 +24,9 @@
 .mergeBlockTools { padding:0.2rem 0; }
 #smSPBlockProperties .sdBlockMarginControls { display:flex; flex-wrap:wrap; gap:0.5rem 0.9rem; }
 #smSPBlockProperties .sdBlockMarginControl { display:grid; grid-template-columns:max-content 6.5rem 3rem; flex:0 1 auto; gap:0.35rem; }
+#smSPProperties .sdBlockPaddingControls { display:grid; grid-template-columns:max-content minmax(4rem,14rem) 3.5rem; grid-column:1 / -1; align-items:center; justify-content:start; gap:0.35rem 0.5rem; margin-top:0.5rem; width:100%; }
+#smSPProperties .sdBlockPaddingControls > label { white-space:nowrap; width:auto!important; min-width:0!important; max-width:none!important; text-align:right; }
+#smSPProperties .sdBlockPaddingControls > input[type=range] { width:100%; min-width:0; }
 #smSPBlockProperties .sdBlockMarginControl label { font-size:0.8rem; line-height:1.2; }
 #smSPBlockProperties .sdBlockMarginControl input[type="range"] { width:6.5rem!important; min-width:0!important; max-width:6.5rem!important; }
 #smSPBlockProperties .sdBlockMarginControl input[type="number"] { width:3rem!important; min-width:3rem!important; max-width:3rem!important; padding:0.2rem; font-size:0.8rem; }

@@ -587,6 +587,8 @@ const formHandler = (function () {
       for (const [sliderId, valueId, resetId] of [
         ['sdBlock_topPadding', 'sdBlock_topPaddingVal', 'sdBlock_topPaddingReset'],
         ['sdBlock_bottomPadding', 'sdBlock_bottomPaddingVal', 'sdBlock_bottomPaddingReset'],
+        ['sdBlock_leftPadding', 'sdBlock_leftPaddingVal', 'sdBlock_leftPaddingReset'],
+        ['sdBlock_rightPadding', 'sdBlock_rightPaddingVal', 'sdBlock_rightPaddingReset'],
         ['sdBlock_widthSlider', 'sdBlock_width', 'sdBlock_widthReset'],
       ]) {
         const slider = document.getElementById(sliderId), value = document.getElementById(valueId), reset = document.getElementById(resetId);
@@ -613,6 +615,8 @@ const formHandler = (function () {
       const marginInputs = [
         document.getElementById("sdBlock_topPaddingVal"),
         document.getElementById("sdBlock_bottomPaddingVal"),
+        document.getElementById("sdBlock_leftPaddingVal"),
+        document.getElementById("sdBlock_rightPaddingVal"),
       ].filter(Boolean);
 
       const normalizeMarginInputValue = (value, fallback = 0) => {
@@ -980,6 +984,7 @@ const formHandler = (function () {
       );
     };
     const STORAGE_KEYS = {
+        shrinkSignsForPanels: "signMaker.shrinkSignsForPanels",
         postPosition: "signMaker.postPosition",
         postColor: "signMaker.postColor",
         showPost: "signMaker.showPost",
@@ -1202,6 +1207,7 @@ const formHandler = (function () {
       "minValue",
       "nestedSpacingValue",
       "exitTabHorizontalPaddingValue",
+      "exitTabVerticalPaddingValue",
     ]);
 
     const formatExitTabSliderDisplayValue = (valueId, value) =>
@@ -1260,6 +1266,7 @@ const formHandler = (function () {
         "exitTabCornerRadius",
         "nestedTabSpacing",
         "exitTabHorizontalPadding",
+        "exitTabVerticalPadding",
         "exitTabTextSizePercent",
       ].forEach((id) => {
         const input = document.getElementById(id);
@@ -1340,6 +1347,7 @@ const formHandler = (function () {
             "fontFamily",
             "characterSpacing",
             "horizontalPadding",
+            "verticalPadding",
             "exitTextSizePercent",
             "exitTextSizePercentVersion",
             "textColor",
@@ -1416,6 +1424,7 @@ const formHandler = (function () {
         tollLogoSquare: false,
         assetHorizontalPadding: 0,
         assetVerticalPadding: 0,
+        verticalPadding: 0,
         transparent: false,
         nestedTabSpacing: 0,
       };
@@ -1496,6 +1505,8 @@ const formHandler = (function () {
         normalized.assetVerticalPadding,
         fallback.assetVerticalPadding || 0
       );
+      normalized.verticalPadding = Math.max(0, Math.min(3,
+        getFiniteExitTabNumber(normalized.verticalPadding, fallback.verticalPadding || 0)));
       normalized.textColor =
         normalized.textColor || ExitTab.prototype.defaultTextColor || "Panel Color";
       normalized.color =
@@ -2366,6 +2377,16 @@ const formHandler = (function () {
             getFiniteExitTabNumber(
               form["exitTabHorizontalPadding"]?.value,
               updated.horizontalPadding
+            )
+          )
+        );
+        updated.verticalPadding = Math.max(
+          0,
+          Math.min(
+            3,
+            getFiniteExitTabNumber(
+              form["exitTabVerticalPadding"]?.value,
+              updated.verticalPadding || 0
             )
           )
         );
@@ -4854,6 +4875,13 @@ const formHandler = (function () {
     return nextScale;
   };
 
+  const getShrinkSignsForPanels = () => getStoredItem(STORAGE_KEYS.shrinkSignsForPanels) !== "false";
+  const applyShrinkSignsForPanels = (enabled, {persist = false} = {}) => {
+    const value = enabled !== false;
+    document.documentElement.dataset.shrinkSignsForPanels = String(value);
+    if (persist) setStoredItem(STORAGE_KEYS.shrinkSignsForPanels, String(value));
+  };
+
   const getStoredInterfaceUIScale = () =>
     normalizeInterfaceUIScale(window.SignMakerInterfaceScale?.getScale() ?? getStoredItem(STORAGE_KEYS.interfaceUiScale));
 
@@ -5193,6 +5221,9 @@ const formHandler = (function () {
     const verticalPaddingInput = document.getElementById("exitTabTextSizePercent");
     const verticalPaddingLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
     const verticalPaddingValue = document.getElementById("exitTabTextSizePercentValue");
+    // Logo/icon tabs reuse the text-size slider for their vertical padding.
+    const textVerticalPaddingGroup = document.getElementById("exitTabVerticalPaddingGroup");
+    if (textVerticalPaddingGroup) textVerticalPaddingGroup.hidden = usesAssetControls;
 
     if (usesAssetControls) {
       const resolvedAssetSize = normalizeExitTabAssetSizeValue(
@@ -5288,6 +5319,12 @@ const formHandler = (function () {
     if (horizontalPaddingValue) {
       horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
     }
+
+    const resolvedTextVerticalPadding = Math.max(0, Math.min(3, parseFloat(workingExitTab?.verticalPadding) || 0));
+    const textVerticalPaddingInput = document.getElementById("exitTabVerticalPadding");
+    if (textVerticalPaddingInput) setExitTabRangeControlValue(textVerticalPaddingInput, resolvedTextVerticalPadding);
+    const textVerticalPaddingValue = document.getElementById("exitTabVerticalPaddingValue");
+    if (textVerticalPaddingValue) textVerticalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedTextVerticalPadding);
 
     const resolvedExitTextSize = (() => {
       const parsed = parseFloat(workingExitTab?.exitTextSizePercent);
@@ -8890,6 +8927,7 @@ const formHandler = (function () {
     applyConfigBarPosition(getStoredConfigBarPosition());
     bindUndoControls();
     applyInterfaceUIScale(getStoredInterfaceUIScale());
+    applyShrinkSignsForPanels(getShrinkSignsForPanels());
     bindInterfaceUIScaleControl(document);
 
     try {
@@ -10882,6 +10920,7 @@ const formHandler = (function () {
         "FLToll",
         "FLCFX",
         "FLTP",
+        "FL-Selmon",
       ],
 
       "us-georgia": [
@@ -11078,6 +11117,11 @@ const formHandler = (function () {
                 value: "FLTP",
                 label: "Florida's Turnpike",
                 asset: "img/shields/United States/Florida/FDOT/FLTP-48.svg",
+              },
+              {
+                value: "FL-Selmon",
+                label: "Selmon Expressway",
+                asset: "img/shields/United States/FL/FL-Selmon.png",
               },
             ],
           },
@@ -11608,6 +11652,7 @@ const formHandler = (function () {
         "FLToll",
         "FLCFX",
         "FLTP",
+        "FL-Selmon",
         "GA",
         "GAALT",
         "GABYP",
@@ -11728,6 +11773,11 @@ const formHandler = (function () {
             "FLTP",
             "Florida's Turnpike",
             "img/shields/United States/Florida/FDOT/FLTP-48.svg"
+          ),
+          node(
+            "FL-Selmon",
+            "Selmon Expressway",
+            "img/shields/United States/FL/FL-Selmon.png"
           ),
         ]),
 
@@ -14706,7 +14756,8 @@ const formHandler = (function () {
       for (const [name, value, digits] of [
         ["Angle", normalizeStandardAngle(sign.exitArrowAngle), 0],
         ["Size", clampStandardValue(sign.exitArrowSize, 1, 5, 10, 3), 1],
-        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 5, 100, 0.2), 2],
+        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 4, 100, 0.2), 2],
+        ["HorizontalPadding", clampStandardValue(sign.exitArrowHorizontalPadding, 0, 4, 100, 0.2), 2],
         ["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2]
       ]) {
         exitArrowField(name).value = Math.min(Number(exitArrowField(name).max), value);
@@ -14827,7 +14878,8 @@ const formHandler = (function () {
       for (const [field, name, min, max, precision, digits, fallback] of [
         [exitArrowField, "Angle", 0, 359, 1, 0, 0],
         [exitArrowField, "Size", 1, 5, 10, 1, 3],
-        [exitArrowField, "Padding", 0, 5, 100, 2, 0.2],
+        [exitArrowField, "Padding", 0, 4, 100, 2, 0.2],
+        [exitArrowField, "HorizontalPadding", 0, 4, 100, 2, 0.2],
         [exitArrowField, "Spacing", 0, 25, 100, 2, 8.5],
         [exitTextField, "Size", 50, 100, 1, 0, 70],
         [exitTextField, "Spacing", -0.15, 0.5, 100, 2, 0]
@@ -14871,7 +14923,7 @@ const formHandler = (function () {
           const defaults = isText
             ? { Size: 70, Spacing: 0 }
             : { Angle: getDefaultGuideArrowAngle(exitArrowField("Type").value,
-                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, HorizontalPadding: 0.2, Spacing: 8.5 };
           const digits = name === "Angle" || (isText && name === "Size") ? 0 : name === "Size" ? 1 : 2;
           field(name).value = String(defaults[name]);
           field(`${name}Value`).value = defaults[name].toFixed(digits);
@@ -15144,6 +15196,8 @@ const formHandler = (function () {
       window.SignMakerSettings22.init({
         getTheme:getStoredInterfaceThemeMode,
         setTheme:value=>{applyInterfaceThemeMode(value,{persist:true});updateUtilityButtonLabels();},
+        getShrinkSignsForPanels,
+        setShrinkSignsForPanels:value=>applyShrinkSignsForPanels(value,{persist:true}),
         getScale:getStoredInterfaceUIScale,
         setScale:value=>applyInterfaceUIScale(value,{persist:true}),
         getToolbar:getStoredConfigBarPosition,
@@ -15460,6 +15514,13 @@ const formHandler = (function () {
             ? settings.assetHorizontalPadding
             : settings.horizontalPadding;
         }
+      );
+
+      bindExitTabSliderReset(
+        "exitTabVerticalPaddingReset",
+        "exitTabVerticalPadding",
+        "exitTabVerticalPaddingValue",
+        () => getExitTabProfileContextSettings()?.verticalPadding ?? 0
       );
 
       bindExitTabSliderReset(
@@ -16117,6 +16178,8 @@ const formHandler = (function () {
           return "standard";
         }
 
+        if (["diagrammatic", "roundabout"].includes(sign.arrowMode)) return sign.arrowMode;
+
         const hasAPLArrows =
           Array.isArray(sign.aplArrows) && sign.aplArrows.length > 0;
 
@@ -16147,7 +16210,11 @@ const formHandler = (function () {
         }
 
         const activeGuideArrow = exposed.getCurrentPanel()?.sign?.guideArrow || "None";
-        const targetTab = resolvedMode === "apl"
+        const targetTab = resolvedMode === "roundabout"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMRoundabout"]'
+          : resolvedMode === "diagrammatic"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMDiagrammatics"]'
+          : resolvedMode === "apl"
           ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
           : activeGuideArrow.includes("Exit Only")
             ? '.guideArrowConfig .sMModalTab[data-tab="sMExitOnlyArrows"]'
@@ -16540,6 +16607,11 @@ const formHandler = (function () {
             return;
           }
 
+          const arrowModeForTab = {sMDiagrammatics: "diagrammatic", sMRoundabout: "roundabout"}[button.dataset.tab];
+          if (arrowModeForTab && exposed.getCurrentPanel()?.sign?.arrowMode !== arrowModeForTab) {
+            exposed.setCurrentPanelArrowMode(arrowModeForTab);
+          }
+
           if (button.dataset.tab === "sMAPL") {
             const panel = post?.panels?.[exposed.vars.currentlySelectedPanelIndex];
             const subPanelCount = panel?.sign?.subPanels?.length || 0;
@@ -16623,6 +16695,9 @@ const formHandler = (function () {
                     target.value = type;
                     target._arrowPickerApi?.setValue(type);
                   }
+                }
+                if (["diagrammatic", "roundabout"].includes(sign?.arrowMode)) {
+                  exposed.setCurrentPanelArrowMode("standard");
                 }
                 guideArrowSelect.value = next;
                 readForm();
@@ -19425,9 +19500,10 @@ const formHandler = (function () {
           const controlId = id.slice(0, -3);
           const control = document.getElementById(controlId);
           if (control) {
-            if (controlId === "sdBlock_topPadding" || controlId === "sdBlock_bottomPadding") {
+            if (["sdBlock_topPadding", "sdBlock_bottomPadding", "sdBlock_leftPadding", "sdBlock_rightPadding"].includes(controlId)) {
               const parsed = parseFloat(valEl.value);
-              const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
+              const minimum = controlId.endsWith("leftPadding") || controlId.endsWith("rightPadding") ? 0 : -5;
+              const normalized = Number.isFinite(parsed) ? Math.max(minimum, Math.min(10, parsed)) : 0;
               valEl.value = normalized;
               control.value = normalized;
             } else if (
@@ -20823,6 +20899,7 @@ const formHandler = (function () {
     currentPanel.color = form["panelColor"].value;
     currentPanel.corner = form["panelCorner"].value;
     currentPanel.borderColor = form["panelBorderColor"].value || "Inherit";
+    currentPanel.warningDiamond = document.getElementById("panelWarningDiamond").checked;
     const nextPanelBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelBorderThickness"].value });
     if (nextPanelBorderThickness !== Panel.getBorderThickness(currentPanel)) {
       Panel.setBorderThickness(currentPanel, nextPanelBorderThickness);
@@ -21230,6 +21307,10 @@ const formHandler = (function () {
           exitTab.horizontalPadding = Number.isFinite(horizontalPaddingInput)
             ? Math.max(-1, Math.min(3, horizontalPaddingInput))
             : ExitTab.prototype.defaultHorizontalPadding;
+          const verticalPaddingInput = parseFloat(form["exitTabVerticalPadding"]?.value);
+          exitTab.verticalPadding = Number.isFinite(verticalPaddingInput)
+            ? Math.max(0, Math.min(3, verticalPaddingInput))
+            : 0;
         }
 
         const exitTextSizePercentInput = parseFloat(form["exitTabTextSizePercent"]?.value);
@@ -21688,6 +21769,16 @@ const formHandler = (function () {
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].bottomPadding = bottomMarginValue;
+    for (const side of ["left", "right"]) {
+      const valueEl = document.querySelector(`#sdBlock_${side}PaddingVal`);
+      const sliderEl = document.querySelector(`#sdBlock_${side}Padding`);
+      const value = Math.max(0, normalizeBlockMarginInputValue(valueEl?.value ?? sliderEl?.value, 0));
+      if (valueEl && !mergeLiveInputActive) valueEl.value = value;
+      if (sliderEl) sliderEl.value = Math.max(0, Math.min(3, value));
+      subPanel.blockElements.blockProperties[
+        exposed.vars.currentlySelectedRowIndex
+      ][`${side}Padding`] = value;
+    }
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].backgroundColor = document.querySelector(
@@ -21745,7 +21836,9 @@ const formHandler = (function () {
 
         currentPanel.sign.guideArrow = guideArrow_result;
 
-        if (guideArrow_result !== "None") {
+        if (["diagrammatic", "roundabout"].includes(currentPanel.sign.arrowMode)) {
+          // Diagrammatics owns the face; retain the saved standard settings.
+        } else if (guideArrow_result !== "None") {
           currentPanel.sign.arrowMode = "standard";
         } else if (currentPanel.sign.arrowMode !== "apl") {
           currentPanel.sign.arrowMode = "standard";
@@ -21768,7 +21861,8 @@ const formHandler = (function () {
           sign.exitArrowAngle = normalizeStandardAngle(exitArrowField("AngleValue").value);
           sign.exitArrowFlip = exitArrowField("Flip").getAttribute("aria-pressed") === "true";
           sign.exitArrowSize = clampStandardValue(exitArrowField("SizeValue").value, 1, 5, 10, 3);
-          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 4, 100, 0.2);
+          sign.exitArrowHorizontalPadding = clampStandardValue(exitArrowField("HorizontalPaddingValue").value, 0, 4, 100, 0.2);
           sign.exitArrowSpacing = clampStandardValue(exitArrowField("SpacingValue").value, 0, 25, 100, 8.5);
           sign.exitTextFont = exitTextField("Font").value || "Series E";
           sign.exitTextSize = clampStandardValue(exitTextField("SizeValue").value, 50, 100, 1, 70);
@@ -22590,6 +22684,13 @@ const formHandler = (function () {
         bottomPadValEl.textContent = bottomPadValue;
       }
     }
+    for (const side of ["left", "right"]) {
+      const value = Math.max(0, clampBlockMarginSliderValue(selectedBlockProperties[`${side}Padding`]));
+      const sliderEl = document.querySelector(`#sdBlock_${side}Padding`);
+      const valueEl = document.querySelector(`#sdBlock_${side}PaddingVal`);
+      if (sliderEl) sliderEl.value = value;
+      if (valueEl) valueEl.value = value;
+    }
     bindBlockMarginStepperCommit();
 
     document.querySelector("#sdBlock_backgroundColor").value =
@@ -22683,6 +22784,8 @@ const formHandler = (function () {
     mergePendingFormRefresh = false; mergePendingFormOptions = null;
     if (options.elementOnly && exposed.getCurrentBlockElem?.()) { syncSelectedBlockEditor(); return; }
     syncPostReference();
+    window.SignMakerDiagrammatics.syncEditor(exposed.getCurrentPanel()?.sign);
+    window.SignMakerRoundabout.syncEditor(exposed.getCurrentPanel()?.sign);
     normalizeExitTabProfiles();
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {
@@ -24777,6 +24880,7 @@ const formHandler = (function () {
       }
     }
 
+    document.getElementById("panelWarningDiamond").checked = panel.warningDiamond === true;
     const panelCornerSelectElmt = document.getElementById("panelCorner");
     for (const option of panelCornerSelectElmt.options) {
       if (option.value == panel.corner) {
@@ -24818,6 +24922,7 @@ const formHandler = (function () {
     const vmsSettings = VmsPanel.settings(panel);
     document.getElementById("vmsPanel").checked=panel.isVms===true;
     document.getElementById("copySignsOnly").checked=post.copySignsOnly!==false;
+    document.getElementById("joinMatchingBanners").checked=post.joinMatchingBanners!==false;
     syncDisplaySettings();
     document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
     document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
@@ -25241,6 +25346,13 @@ const formHandler = (function () {
     } else {
       exitTab.horizontalPadding = resolvedHorizontalPadding;
     }
+    const textVerticalPadding = Math.max(0, Math.min(3, parseFloat(exitTab.verticalPadding) || 0));
+    const textVerticalPaddingInput = document.getElementById("exitTabVerticalPadding");
+    if (textVerticalPaddingInput) textVerticalPaddingInput.value = String(textVerticalPadding);
+    const textVerticalPaddingDisplay = document.getElementById("exitTabVerticalPaddingValue");
+    if (textVerticalPaddingDisplay) textVerticalPaddingDisplay.innerHTML = textVerticalPadding.toFixed(1);
+    const textVerticalPaddingGroup = document.getElementById("exitTabVerticalPaddingGroup");
+    if (textVerticalPaddingGroup) textVerticalPaddingGroup.hidden = isAssetExitTabForPaddingControls;
     if (horizontalPadding) {
       horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "-1";
       horizontalPadding.max = "3";

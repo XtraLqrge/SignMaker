@@ -1,0 +1,253 @@
+/* Serve public/, then run with Playwright installed: node scripts/diagrammatics.browser.cjs */
+const {chromium,webkit}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const engine=process.env.BROWSER==='webkit'?webkit:chromium;
+ const browser=await engine.launch({headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE||process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined});
+ try {
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ page.setDefaultTimeout(10000);page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
+ await page.goto(process.argv[2]||'http://localhost:8765',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>document.documentElement.dataset.appReady==='true');
+ await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();
+ const frame=page;
+ await page.waitForFunction(()=>window.SignMakerDiagrammatics?.engine?.app.roadEditor);
+ assert.equal(await page.locator('iframe').count(),0);
+ assert.deepEqual(await page.locator('.diagrammaticEngineControls #elementToAdd option').evaluateAll(ns=>ns.map(n=>n.value)),['road','subpanel']);
+ assert.equal(await page.locator('.diagrammaticEngineControls #laneType, .diagrammaticEngineControls #roadOpposite, .diagrammaticEngineControls #markingsEditor').count(),0);
+ const clickPoint=async point=>{
+  await frame.locator('.diagrammaticLiveLayer #workspace').click({trial:true});
+  const local=await frame.evaluate(p=>{const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected,r=e.live.getBoundingClientRect();return{x:p.x*r.width/s.width,y:p.y*r.height/s.height};},point);
+  await frame.locator('.diagrammaticLiveLayer #workspace').click({position:local});
+ };
+ // Exercise StripeMaker's actual edge-snap path in both directions: split and merge.
+ for(const split of [true,false]){
+  await frame.evaluate(()=>{const s=SignMakerDiagrammatics.engine.app.sheets.selected;
+   s.roads=[{id:1,lanes:2,laneWidth:12,ends:[{joint:1,sign:1,length:null},{joint:2,sign:1,length:null}]}];
+   s.joints=[{id:1,x:400,y:500,root:1,dir:{x:1,y:0},links:[]},{id:2,x:1300,y:500,root:1,dir:{x:1,y:0},links:[]}];
+   SignMakerDiagrammatics.engine.app.roadEditor.focusRoad(null);SignMakerDiagrammatics.engine.commit();
+  });
+  if(!await page.locator('#roadLanes').isVisible()){await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();}
+  await frame.locator('#roadLanes').fill('1');await frame.locator('#roadLanes').press('Tab');
+  await frame.locator('#addElement').click();
+  const edge={x:850,y:524},free={x:split?1106:594,y:780};
+  await clickPoint(split?edge:free);await clickPoint(split?free:edge);await frame.locator('.diagrammaticLiveLayer #workspace').press('Escape');
+  assert.equal(await frame.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length),3,'edge split/merge creates three connected road sections');
+  assert.ok(await frame.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.joints.some(j=>j.links.length>=2)),'lane links survive junction creation');
+  await page.locator('#undoButton').click();await page.waitForFunction(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===1);
+  await page.locator('#redoButton').click();await page.waitForFunction(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===3);
+ }
+ await frame.evaluate(()=>SignMakerDiagrammatics.engine.app.roadEditor.focusRoad(SignMakerDiagrammatics.engine.app.sheets.selected.roads.find(r=>r.id===2)));
+ const node=frame.locator('.roadNode[data-road="2"][data-end="0"][data-lane="0"]');
+ await node.click({button:'right'});
+ assert.equal(await page.locator('.diagrammaticMenus button').filter({hasText:/bike|two-way|one-way|intersection/i}).count(),0);
+ await frame.getByText('Taper (Lane Add)',{exact:true}).click();
+ assert.equal(await frame.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.find(r=>r.id===2).tapers['0:0'].mode),'taper');
+ assert.notEqual(await frame.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.find(r=>r.id===2).arcAngle??null),null,'new stems start as circular arcs');
+ assert.equal(await frame.locator('#roadCurveType').inputValue(),'arc');
+ await node.click({button:'right'});await frame.getByText('Use Freeform Curve',{exact:true}).click();
+ await node.click({button:'right'});await frame.getByText('Curve This End',{exact:true}).click();
+ assert.ok(await frame.locator('[aria-label="Start curve handle"]').isVisible());
+ const beforeDrag=await page.evaluate(()=>JSON.stringify(SignMakerDiagrammatics.engine.app.sheets.selected.joints));
+ const handle=await node.boundingBox();await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
+ await page.mouse.down();await page.mouse.move(handle.x+handle.width/2-25,handle.y+handle.height/2+25,{steps:5});await page.mouse.up();
+ assert.notEqual(await page.evaluate(()=>JSON.stringify(SignMakerDiagrammatics.engine.app.sheets.selected.joints)),beforeDrag,'dragging a node edits the sign geometry');
+ // Escape unwinds lane, then stem selection without closing the editor.
+ await node.click();await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>SignMakerDiagrammatics.engine.app.roadEditor.diagnostics().selectedLane),null);
+ assert.ok(await page.evaluate(()=>SignMakerDiagrammatics.engine.app.roadEditor.diagnostics().selectedRoad));
+ await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>SignMakerDiagrammatics.engine.app.roadEditor.diagnostics().selectedRoad),null);
+ assert.ok(await page.locator('#sMDiagrammatics').isVisible());
+ await node.click({button:'right'});await page.keyboard.press('Escape');
+ assert.equal(await page.locator('.diagrammaticMenus #nodeMenu').isVisible(),false);
+ await node.click();
+ const countBeforeDelete=await page.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length);
+ await page.keyboard.press('Backspace');
+ assert.equal(await page.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length),countBeforeDelete-1);
+ await page.locator('#undoButton').click();await page.waitForFunction(n=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===n,countBeforeDelete);
+ await node.click();await page.keyboard.press('Delete');
+ assert.equal(await page.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length),countBeforeDelete-1);
+ await page.locator('#undoButton').click();await page.waitForFunction(n=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===n,countBeforeDelete);
+ await node.click();
+ const handleSizes=()=>page.locator('.diagrammaticLiveLayer .roadNode,.diagrammaticLiveLayer .laneAdd,.diagrammaticLiveLayer .roadControl').evaluateAll(ns=>ns.filter(n=>!n.hidden).map(n=>({name:n.className,w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height})));
+ const sizesBefore=await handleSizes();
+ await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+ const sizesAfter=await handleSizes();
+ assert.equal(sizesBefore.length,sizesAfter.length);
+ for(let i=0;i<sizesBefore.length;i++){assert.ok(Math.abs(sizesAfter[i].w-sizesBefore[i].w)<.1,'handle width stays fixed on screen');assert.ok(Math.abs(sizesAfter[i].h-sizesBefore[i].h)<.1,'handle height stays fixed on screen');}
+ // Handles are tools of the Diagrammatics tab, not permanent sign content.
+ await page.locator('[data-tab="sMRoundabout"]').click();
+ assert.equal(await page.locator('.diagrammaticLiveLayer .roadNode:visible').count(),0);
+ assert.ok(await page.locator('.roundaboutDrawing').isVisible());
+ assert.equal(await page.locator('#diagrammaticPreviewWorld').evaluate(n=>getComputedStyle(n).transform),'matrix(1, 0, 0, 1, 0, 0)');
+ const inactiveEvents=await page.locator('main').evaluate(n=>{const events=[new WheelEvent('wheel',{deltaY:100,bubbles:true,cancelable:true}),new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}),new Event('gesturestart',{bubbles:true,cancelable:true}),new Event('gesturechange',{bubbles:true,cancelable:true})];for(const e of events)n.dispatchEvent(e);SignMakerDiagrammatics.engine.app.sheets.zoomBy(2);return events.map(e=>e.defaultPrevented);});
+ assert.deepEqual(inactiveEvents,[false,false,false,false]);
+ assert.equal(await page.locator('#diagrammaticPreviewWorld').evaluate(n=>getComputedStyle(n).transform),'matrix(1, 0, 0, 1, 0, 0)');
+ await page.locator('[data-tab="sMDiagrammatics"]').click();
+ await page.locator('.diagrammaticLiveLayer button.roadNode').first().waitFor({state:'visible'});
+ await page.locator('#guideArrowConfig').click();
+ assert.equal(await page.locator('.diagrammaticLiveLayer .roadNode:visible').count(),0);
+ await page.locator('#guideArrowConfig').click();
+ await page.locator('.diagrammaticLiveLayer button.roadNode').first().waitFor({state:'visible'});
+ await page.locator('#subPanelConfig').click();
+ assert.equal(await page.locator('.diagrammaticLiveLayer .roadNode:visible').count(),0);
+ await page.locator('#guideArrowConfig').click();
+ await page.locator('[data-tab="sMDiagrammatics"]').click();
+ await page.locator('.diagrammaticLiveLayer button.roadNode').first().waitFor({state:'visible'});
+ // Crossing clearance, black lane lines, layer order, and view-only zoom.
+ await page.evaluate(()=>{
+  const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected;
+  s.overlapOrder=[];
+  s.roads=[{id:11,lanes:3,laneWidth:12,ends:[{joint:11,sign:1,length:null},{joint:12,sign:1,length:null}]},{id:12,lanes:3,laneWidth:12,ends:[{joint:13,sign:1,length:null},{joint:14,sign:1,length:null}]}];
+  s.joints=[{id:11,x:350,y:500,root:11,dir:{x:1,y:0},links:[]},{id:12,x:1250,y:500,root:11,dir:{x:1,y:0},links:[]},{id:13,x:800,y:800,root:12,dir:{x:0,y:-1},links:[]},{id:14,x:800,y:200,root:12,dir:{x:0,y:-1},links:[]}];
+  e.app.roadEditor.focusRoad(null);e.commit();
+ });
+ const road11=page.locator('.diagrammaticLiveLayer .diagrammaticRoad[data-road-id="11"]');
+ assert.match(await road11.getAttribute('mask'),/diagrammatic-gap/);
+ assert.deepEqual(await page.locator('.diagrammaticLiveLayer .diagrammaticRoad path[stroke="black"]').evaluateAll(ns=>[...new Set(ns.map(n=>n.getAttribute('stroke')))]),['black']);
+ await page.locator('#diagrammaticConsistentGaps').uncheck();
+ assert.ok(await page.locator('.diagrammaticLiveLayer path[stroke-dasharray]').count()>0,'toggle restores independent lane dashes');
+ await page.locator('#diagrammaticConsistentGaps').check();
+ assert.ok(await page.locator('.diagrammaticLiveLayer path[data-aligned-gaps]').count()>0,'default aligns lane dashes to the right edge');
+ const beforeMove=await page.evaluate(()=>structuredClone(SignMakerDiagrammatics.engine.app.sheets.selected.joints));
+ await page.getByRole('button',{name:'Move assemblies',exact:true}).click();
+ const assemblyBox=await page.locator('.diagrammaticLiveLayer #workspace').boundingBox();
+ const dragAssemblies=async()=>{await page.mouse.move(assemblyBox.x+assemblyBox.width*.65,assemblyBox.y+assemblyBox.height*.5);await page.mouse.down();await page.mouse.move(assemblyBox.x+assemblyBox.width*.65+24,assemblyBox.y+assemblyBox.height*.5+16,{steps:5});};
+ await dragAssemblies();await page.mouse.up();
+ const afterMove=await page.evaluate(()=>structuredClone(SignMakerDiagrammatics.engine.app.sheets.selected.joints));
+ assert.ok(afterMove[0].x>beforeMove[0].x);
+ for(let i=1;i<beforeMove.length;i++){
+  assert.ok(Math.abs((afterMove[i].x-beforeMove[i].x)-(afterMove[0].x-beforeMove[0].x))<.001);
+  assert.ok(Math.abs((afterMove[i].y-beforeMove[i].y)-(afterMove[0].y-beforeMove[0].y))<.001);
+ }
+ await page.locator('#undoButton').click();await page.waitForFunction(j=>JSON.stringify(SignMakerDiagrammatics.engine.app.sheets.selected.joints)===JSON.stringify(j),beforeMove);
+ if(await page.getByRole('button',{name:'Move assemblies',exact:true}).getAttribute('aria-pressed')!=='true')await page.getByRole('button',{name:'Move assemblies',exact:true}).click();
+ await dragAssemblies();await page.keyboard.press('Escape');await page.mouse.up();
+ assert.deepEqual(await page.evaluate(()=>structuredClone(SignMakerDiagrammatics.engine.app.sheets.selected.joints)),beforeMove,'Escape cancels an assembly move');
+ await page.screenshot({path:'/tmp/diagrammatic-crossing.png'});
+ await page.evaluate(()=>SignMakerDiagrammatics.engine.app.roadEditor.focusRoad(SignMakerDiagrammatics.engine.app.sheets.selected.roads[0]));
+ await page.locator('.roadNode[data-road="11"][data-end="0"][data-lane="2"]').click({button:'right'});
+ await page.getByRole('menuitem',{name:'Bring Stem to Front',exact:true}).click();
+ assert.equal(await road11.getAttribute('mask'),null);
+ assert.match(await page.locator('.diagrammaticLiveLayer .diagrammaticRoad[data-road-id="12"]').getAttribute('mask'),/diagrammatic-gap/);
+ await page.locator('#undoButton').click();await page.waitForFunction(()=>!SignMakerDiagrammatics.engine.app.sheets.selected.overlapOrder.length);
+ await page.locator('#redoButton').click();await page.waitForFunction(()=>SignMakerDiagrammatics.engine.app.sheets.selected.overlapOrder.at(-1)===11);
+ const pixels=await page.evaluate(async()=>{
+  const artwork=app.getPost().panels[0].sign.diagrammatic.artwork,img=new Image();img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(artwork);await img.decode();
+  const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=1000;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,1600,1000);
+  return{center:[...ctx.getImageData(800,500,1,1).data],gap:[...ctx.getImageData(800,539,1,1).data]};
+ });
+ assert.equal(pixels.center[3],255,'top stem remains opaque in the exported SVG');
+ assert.equal(pixels.gap[3],0,'clearance is transparent in the exported SVG');
+ const panelBeforeZoom=await page.locator('.diagrammaticSign').boundingBox();
+ const beforeView=await page.evaluate(()=>JSON.stringify(app.getPost().panels[0].sign.diagrammatic));
+ await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+ assert.equal(await page.getByLabel('Zoom level',{exact:true}).textContent(),'125%');
+ const panelAfterZoom=await page.locator('.diagrammaticSign').boundingBox();
+ assert.ok(Math.abs(panelAfterZoom.width/panelBeforeZoom.width-1.25)<.01,'the sign border scales with its contents');
+ assert.equal(await page.locator('.diagrammaticLiveLayer .diagrammaticSheet').evaluate(n=>n.style.transform),'','no content-only camera remains');
+ const anchor=await page.evaluate(()=>{const e=SignMakerDiagrammatics.engine,r=e.live.getBoundingClientRect();return{x:Math.round(r.left+r.width*.7),y:Math.round(r.top+r.height*.4)};});
+ const atAnchor=await page.evaluate(p=>SignMakerDiagrammatics.engine.app.sheets.toImage(p.x,p.y),anchor);
+ await page.locator('.diagrammaticLiveLayer #workspace').dispatchEvent('wheel',{clientX:anchor.x,clientY:anchor.y,deltaY:-50,deltaX:0,deltaMode:0,ctrlKey:true});
+ const afterAnchor=await page.evaluate(p=>SignMakerDiagrammatics.engine.app.sheets.toImage(p.x,p.y),anchor);
+ assert.ok(Math.hypot(afterAnchor.x-atAnchor.x,afterAnchor.y-atAnchor.y)<.01,'pinch zoom stays anchored under pointer');
+ assert.equal(await page.evaluate(()=>JSON.stringify(app.getPost().panels[0].sign.diagrammatic)),beforeView,'zoom does not change saved geometry or export');
+ await page.getByRole('button',{name:'Fit sign preview',exact:true}).click();
+ assert.equal(await page.getByLabel('Zoom level',{exact:true}).textContent(),'100%');
+ const graph=await page.evaluate(()=>app.getPost().panels[0].sign.diagrammatic.roadGraph);
+ await page.screenshot({path:'/tmp/diagrammatic-road-engine.png'});
+ assert.equal(await page.locator('.diagrammaticSign').count(),1);
+ assert.equal(await page.locator('.diagrammaticSign .blockElementMaster').count(),0);
+ const oldSubpanels=await page.evaluate(()=>app.getPost().panels[0].sign.subPanels.length);
+ await page.locator('.diagrammaticEngineControls #elementToAdd').selectOption('subpanel');
+ await page.locator('.diagrammaticEngineControls #addElement').click();await page.keyboard.press('Escape');
+ assert.equal(await page.locator('.diagrammaticLiveLayer #workspace').evaluate(n=>n.classList.contains('placingSubpanel')),false);
+ await page.locator('.diagrammaticEngineControls #addElement').click();
+ await page.locator('.diagrammaticLiveLayer #workspace').click({trial:true});
+ const signBox=await page.locator('.diagrammaticSign').boundingBox();
+ await page.mouse.move(signBox.x+signBox.width*.1,signBox.y+signBox.height*.1);await page.mouse.down();
+ await page.mouse.move(signBox.x+signBox.width*.4,signBox.y+signBox.height*.4,{steps:5});await page.mouse.up();
+ await page.locator('.diagrammaticSubpanel').waitFor();
+ assert.equal(await page.locator('.diagrammaticLiveLayer .roadNode:visible').count(),0,'editing subpanel content hides diagrammatic controls');
+ assert.equal(await page.evaluate(()=>app.getPost().panels[0].sign.subPanels.length),oldSubpanels);
+ const placed=await page.evaluate(()=>app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds);
+ assert.ok(Math.abs(placed.x-.1)<.015&&Math.abs(placed.width-.3)<.015,'drag box defines subpanel bounds');
+ assert.match(await page.locator('.diagrammaticSubpanel').innerText(),/1/);
+ assert.equal(await page.locator('.diagrammaticSubpanel').evaluate(n=>getComputedStyle(n).borderTopColor),'rgba(0, 0, 0, 0)');
+ await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();
+ assert.equal(await page.locator('.diagrammaticSubpanel').evaluate(n=>getComputedStyle(n).borderTopColor),'rgb(255, 255, 255)');
+ await page.locator('.diagrammaticSubpanel').click();
+ assert.equal(await page.locator('.diagrammaticSubpanel').evaluate(n=>getComputedStyle(n).borderTopColor),'rgba(0, 0, 0, 0)');
+ await page.screenshot({path:'/tmp/diagrammatic-subpanel.png',animations:'disabled'});
+ const centered=await page.locator('.diagrammaticSubpanel').evaluate(n=>{const frame=n.getBoundingClientRect(),text=n.querySelector('.bE-textElement').getBoundingClientRect();return{dx:Math.abs(frame.x+frame.width/2-text.x-text.width/2),dy:Math.abs(frame.y+frame.height/2-text.y-text.height/2)};});
+ assert.ok(centered.dx<2&&centered.dy<2,'new subpanel number is centered horizontally and vertically');
+ await page.locator('#undoButton').click();await page.waitForFunction(()=>!app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds);
+ await page.locator('#redoButton').click();await page.waitForFunction(()=>!!app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds);
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.documentElement.dataset.appReady==='true');
+ assert.deepEqual(await page.evaluate(()=>app.getPost().panels[0].sign.diagrammatic.roadGraph),graph);
+ assert.deepEqual(await page.evaluate(()=>app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds),placed);
+ assert.ok(await page.locator('.diagrammaticSubpanel').isVisible());
+ await page.locator('.diagrammaticSubpanel').click();
+ await page.locator('#sdCtrlText_textContent').fill('Exit');await page.locator('#sdCtrlText_textContent').press('Tab');
+ await page.waitForFunction(()=>app.getPost().panels[0].sign.subPanels[0].blockElements.rows[0][0].textContent==='Exit');
+ assert.match(await page.locator('.diagrammaticSubpanel').innerText(),/Exit/);
+ assert.equal(await page.locator('.diagrammaticSubpanel').evaluate(n=>getComputedStyle(n).borderTopColor),'rgba(0, 0, 0, 0)');
+ // Placed subpanels resize and move directly without opening the content editor.
+ await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();
+ const resizeHandle=page.getByRole('button',{name:'Resize bottom-right Subpanel 1',exact:true});
+ const moveHandle=page.getByRole('button',{name:'Move Subpanel 1',exact:true});
+ const readBounds=()=>page.evaluate(()=>structuredClone(app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds));
+ const resizeOriginal=await readBounds();
+ await page.waitForFunction(()=>!document.getElementById('postContainer').getAnimations({subtree:true}).some(a=>a.playState==='running'));
+ const handleBefore=await resizeHandle.boundingBox();
+ await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+ await page.waitForFunction(()=>!document.getElementById('postContainer').getAnimations({subtree:true}).some(a=>a.playState==='running'));
+ const handleZoomed=await resizeHandle.boundingBox();assert.ok(Math.abs(handleBefore.width-handleZoomed.width)<.2,`subpanel handles keep their screen size: ${handleBefore.width} -> ${handleZoomed.width}`);
+ const dragHandle=async(handle,dx,dy,finish=true)=>{await handle.waitFor({state:'visible'});await handle.click({trial:true});await page.waitForFunction(()=>!document.getElementById('postContainer').getAnimations({subtree:true}).some(a=>a.playState==='running'));const r=await handle.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.mouse.move(r.x+r.width/2+dx,r.y+r.height/2+dy,{steps:5});if(finish)await page.mouse.up();};
+ await dragHandle(resizeHandle,30,20);
+ const resized=await readBounds();assert.ok(resized.width>resizeOriginal.width&&resized.height>resizeOriginal.height);assert.equal(resized.x,resizeOriginal.x);assert.equal(resized.y,resizeOriginal.y);
+ assert.ok(await page.locator('#sMDiagrammatics').isVisible());
+ await page.locator('#undoButton').click();await page.waitForFunction(b=>JSON.stringify(app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds)===JSON.stringify(b),resizeOriginal);
+ await page.locator('#redoButton').click();await page.waitForFunction(b=>JSON.stringify(app.getPost().panels[0].sign.subPanels[0].diagrammaticBounds)===JSON.stringify(b),resized);
+ await dragHandle(moveHandle,24,16);
+ const moved=await readBounds();assert.ok(moved.x>resized.x&&moved.y>resized.y);assert.equal(moved.width,resized.width);assert.equal(moved.height,resized.height);
+ await dragHandle(resizeHandle,20,20,false);await page.keyboard.press('Escape');await page.mouse.up();assert.deepEqual(await readBounds(),moved,'Escape cancels subpanel resizing');
+ assert.match(await page.locator('.diagrammaticSubpanel').innerText(),/Exit/);
+ await page.locator('#subPanelConfig').click();assert.equal(await page.locator('.diagrammaticSubpanelHandle:visible').count(),0);
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.documentElement.dataset.appReady==='true');assert.deepEqual(await readBounds(),moved,'resized and moved bounds survive reload');
+ // Place remaining existing destinations before allocating another subpanel.
+ for(const expectedIndex of [1,2,3]){
+  const selected=await page.evaluate(()=>{app.exposeToFormHandler.addDiagrammaticSubpanel({x:.5,y:.1,width:.2,height:.2});return app.exposeToFormHandler.vars.currentlySelectedSubPanelIndex;});
+  assert.equal(selected,expectedIndex);
+ }
+ assert.deepEqual(await page.evaluate(()=>app.getPost().panels[0].sign.subPanels.map(s=>s.blockElements.rows[0][0].textContent)),['Exit','Thru','Right','4']);
+ // A normal selected panel cannot move the diagrammatic camera.
+ await page.evaluate(()=>app.createPanelRightOfSelected());
+ await page.locator('#postContainer').click({trial:true});
+ const panelBounds=()=>page.locator('#panelContainer .sign').evaluateAll(ns=>ns.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};}));
+ const allBefore=await panelBounds();assert.ok(allBefore.length>=2);
+ await page.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.zoomBy(1.25));
+ const allAfter=await panelBounds();
+ assert.deepEqual(allAfter,allBefore,'zoom is disabled outside diagrammatic editing');
+ const center=await page.locator('main').boundingBox();
+ await page.locator('main').dispatchEvent('wheel',{clientX:Math.round(center.x+center.width/2),clientY:Math.round(center.y+center.height/2),deltaX:24,deltaY:12,deltaMode:0});
+ const allPanned=await panelBounds();
+ assert.deepEqual(allPanned,allAfter,'pan is disabled outside diagrammatic editing');
+ await page.screenshot({path:'/tmp/diagrammatic-whole-preview.png'});
+ await page.evaluate(()=>SignMakerDiagrammatics.engine.app.sheets.recenter());
+ // JSON export/import restores the drawing in one undoable step.
+ if(!await page.locator('#diagrammaticExportJSON').isVisible()){await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();}
+ const saved=await page.evaluate(()=>app.exposeToFormHandler.getCurrentPanel().sign.diagrammatic);
+ const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#diagrammaticExportJSON').click()]);
+ const exported=require('node:path').join(require('node:os').tmpdir(),'diagrammatic-export.json');await download.saveAs(exported);
+ await page.evaluate(()=>app.exposeToFormHandler.editDiagrammatic(m=>{m.roadGraph={roads:[],joints:[],overlapOrder:[]};m.artwork='';}));
+ await page.locator('#diagrammaticImportFile').setInputFiles(exported);
+ await page.waitForFunction(n=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===n,saved.roadGraph.roads.length);
+ const restored=await page.evaluate(()=>app.exposeToFormHandler.getCurrentPanel().sign.diagrammatic);
+ assert.deepEqual(restored.roadGraph,saved.roadGraph);assert.equal(restored.artwork,saved.artwork);
+ await page.locator('#undoButton').click();await page.waitForFunction(()=>SignMakerDiagrammatics.engine.app.sheets.selected.roads.length===0);
+ assert.deepEqual(errors,[]);
+ console.log('Passed: original edge splits, merges, tapers, curve handles, undo/redo, direct editing, crossing masks, black lane lines, overlap order, whole-panel zoom/pan, Delete/Escape, fixed-size handles, numbered subpanel placement/editing, reload, element suppression and JSON export/import.');
+ } finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -58,6 +58,7 @@ window.SignMakerMobileGestures = (() => {
         });
     };
     const start = event => {
+      if(event.target.closest(".diagrammaticLiveLayer")) return;
       if (!isActive() || event.isPrimary === false || (event.button != null && event.button !== 0)) return;
       const range = event.target.closest('input[type="range"]');
       if (range && !range.disabled && (event.pointerType === 'touch' || Date.now() - lastScrollAt < 220)) {

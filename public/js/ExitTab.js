@@ -75,7 +75,8 @@ class ExitTab {
       this.color = this.colors[0];
     }
 
-    const normalizedVariant = variant === "Standard" ? "Default" : variant;
+    const normalizedVariant = caStyle === true && ["Default", "Standard"].includes(variant)
+      ? "California" : variant === "Standard" ? "Default" : variant;
     if (this.variants.includes(normalizedVariant)) {
       this.variant = normalizedVariant;
     } else {
@@ -134,7 +135,7 @@ class ExitTab {
 
       return FHWAFont === false
         ? (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR")
-        : (ExitTab.prototype.defaultFHWAFontFamily || "Series EEM");
+        : (ExitTab.prototype.defaultFHWAFontFamily || "Series E");
     })();
     this.fontFamily = typeof normalizeTextFontFamilyName === "function"
       ? normalizeTextFontFamilyName(resolvedFontFamily)
@@ -180,7 +181,7 @@ class ExitTab {
         ? { ...fullWidthRestoreConfig }
         : null;
     this.verticalArrangement = verticalArrangement;
-    this.caStyle = caStyle;
+    this.caStyle = this.variant === "California";
     const defaultTollLogoSize =
       typeof ExitTab.prototype.defaultTollLogoSize === "number"
         ? ExitTab.prototype.defaultTollLogoSize: 3;
@@ -285,7 +286,7 @@ class ExitTab {
 }
 
 ExitTab.prototype.positions = ["Left", "Center", "Right"];
-ExitTab.prototype.variants = ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+ExitTab.prototype.variants = ["Default", "California", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
 ExitTab.prototype.widths = ["Narrow", "Wide", "Full", "Edge", "Out", "Side"];
 ExitTab.prototype.defaultBorderThickness = 0.2;
 ExitTab.prototype.defaultTollLogoSize = 3;
@@ -296,7 +297,7 @@ ExitTab.prototype.defaultCornerRadius = "panel";
 ExitTab.prototype.defaultTopOffset = false;
 ExitTab.prototype.defaultFHWAFont = true;
 ExitTab.prototype.defaultFontFamily = "Series E";
-ExitTab.prototype.defaultFHWAFontFamily = "Series EEM";
+ExitTab.prototype.defaultFHWAFontFamily = "Series E";
 ExitTab.prototype.defaultClearviewFontFamily = "Series 5WR";
 ExitTab.prototype.defaultCharacterSpacing = 0;
 ExitTab.prototype.defaultTextColor = "Panel Color";
@@ -420,13 +421,13 @@ ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.protot
     borderThickness: ExitTab.prototype.defaultBorderThickness,
     minHeight: 2,
     fontSize: ExitTab.prototype.defaultFontSize,
-    fontFamily: ExitTab.prototype.defaultFontFamily || ExitTab.prototype.defaultFHWAFontFamily || "Series EEM",
+    fontFamily: ExitTab.prototype.defaultFontFamily || ExitTab.prototype.defaultFHWAFontFamily || "Series E",
     characterSpacing: ExitTab.prototype.defaultCharacterSpacing,
     horizontalPadding: ExitTab.prototype.defaultHorizontalPadding,
     exitTextSizePercent: ExitTab.prototype.defaultExitTextSizePercent,
     exitTextSizePercentVersion: ExitTab.prototype.exitTextSizePercentVersion,
     textColor: ExitTab.prototype.defaultTextColor,
-    FHWAFont: /^Series\s/i.test(String(ExitTab.prototype.defaultFontFamily || ExitTab.prototype.defaultFHWAFontFamily || "Series EEM")),
+    FHWAFont: /^Series\s/i.test(String(ExitTab.prototype.defaultFontFamily || ExitTab.prototype.defaultFHWAFontFamily || "Series E")),
     showLeft: ExitTab.prototype.defaultShowLeft,
     fullBorder: ExitTab.prototype.defaultFullBorder,
     squareCorners: ExitTab.prototype.defaultSquareCorners,
@@ -446,4 +447,18 @@ ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.protot
     transparent: false,
     nestedTabSpacing: ExitTab.prototype.defaultNestedTabSpacing,
   };
+};
+
+ExitTab.normalizeCalifornia = function (tab) {
+  if (!tab) return tab;
+  if (tab.caStyle === true && ["Default", "Standard"].includes(tab.variant)) tab.variant = "California";
+  tab.caStyle = tab.variant === "California";
+  if (tab.caStyle) {
+    tab.position = tab.position === "Left" ? "Left" : "Right";
+    tab.width = "Narrow";
+    tab.showLeft = false; tab.bilingual = false; tab.topOffset = false; tab.fullBorder = true;
+    tab.dragOffsetRem = 0;
+    delete tab.dragSnapAnchor; delete tab.dragLayoutPosition; delete tab.dragParentLayoutPosition;
+  }
+  return tab;
 };

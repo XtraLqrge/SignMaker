@@ -155,7 +155,7 @@ window.SignMakerMobileForms = (() => {
       ['textContent', 'Content', null, null, true], ['fontFamily', 'Font', null, null, true],
       ['fontSize', 'Text size (%)'], ['textColor', 'Text color'],
       ['lineHeightVal', 'Line height (%)', 'lineHeight'], ['setWidth', 'Width (rem)'],
-      ['paddingVal', 'Padding (rem)', 'padding'], ['alignment', 'Alignment'], ['glow', 'Glow'],
+      ['paddingVal', 'Padding (rem)', 'padding'], ['alignment', 'Alignment'], ['realisticLED', 'Realistic LED'], ['ledResolution', 'LED resolution'], ['glow', 'Glow'],
     ],
     sdGroupedBlock: [
       ['label', 'Name', null, null, true], ['alignment', 'Alignment'], ['backgroundColor', 'Background'],

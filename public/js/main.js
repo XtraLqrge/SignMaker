@@ -392,7 +392,7 @@ const scheduleAlignmentGuideUpdate = (
     const legacyFallback = exitTab.FHWAFont === true
       ? ExitTab.prototype.defaultFHWAFontFamily
       : (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR");
-    const fallback = legacyFallback || ExitTab.prototype.defaultFontFamily || "Series EEM";
+    const fallback = legacyFallback || ExitTab.prototype.defaultFontFamily || "Series E";
 
     if (requested) {
       if (availableFonts.includes(requested)) {
@@ -412,7 +412,7 @@ const scheduleAlignmentGuideUpdate = (
 
     return availableFonts.includes(fallback)
       ? fallback
-      : (availableFonts[0] || fallback || "Series EEM");
+      : (availableFonts[0] || fallback || "Series E");
   };
 
   const normalizeExitTabLegacyFields = (exitTab = {}) => {
@@ -2200,6 +2200,7 @@ const ungroupSelectedBlockElement = () => {
                   const ElemClass = Control.prototype.blockToClassElems[elemType];
                   const elem = new ElemClass(elemType === "GroupedBlockElement" ? { ...elemData, blockElements: new Control() } : elemData);
                   Object.assign(elem, elemData);
+                  if (elem instanceof ElectronicSignElement) elem.realisticLED = elemData.realisticLED === true;
                   if (elemType === "GroupedBlockElement") elem.blockElements = reconstructControl(elemData.blockElements);
                   if (typeof elem.fontFamily === "string") {
                     elem.fontFamily = normalizeTextFontFamilyName(elem.fontFamily);
@@ -4671,55 +4672,12 @@ const ungroupSelectedBlockElement = () => {
   // Initialize the application, and populates dropdowns and the default post.
 
 
-    const LEGACY_NONE_BANNER_MIGRATION_KEY =
-      "signMaker.migrations.shieldBannerNoneToBlank.v1";
-
-    const migrateLegacyNoneShieldBannersOnce = () => {
-      try {
-        if (
-          window.localStorage.getItem(LEGACY_NONE_BANNER_MIGRATION_KEY) === "1"
-        ) {
-          return false;
-        }
-      } catch (error) {}
-
-      let changed = false;
-      const visited = new WeakSet();
-
-      const walk = (value) => {
-        if (!value || typeof value !== "object" || visited.has(value)) {
-          return;
-        }
-
-        visited.add(value);
-
-        for (const key of Object.keys(value)) {
-          const child = value[key];
-
-          if (
-            (key === "bannerType" || key === "bannerType2") &&
-            typeof child === "string" &&
-            child.trim().toLowerCase() === "none"
-          ) {
-            value[key] = "";
-            changed = true;
-            continue;
-          }
-
-          if (child && typeof child === "object") {
-            walk(child);
-          }
-        }
-      };
-
-      walk(post);
-
-      try {
-        window.localStorage.setItem(LEGACY_NONE_BANNER_MIGRATION_KEY, "1");
-      } catch (error) {}
-
-      return changed;
-    };
+    const migrateSavedSignTypographyOnce = () =>
+      window.SignMakerMigrations?.runOnce({
+        readSnapshot: readSavedAppStateSnapshot, readPersistent: getPersistentValue,
+        writePersistent: setPersistentValue, migratePreferences: formHandler.migrateSavedTypographyPreferences,
+        getTemplates: initTemplateDB, snapshotKey: APP_STORAGE_KEY,
+      }) ?? null;
 
     let initializationStarted = false;
     const init = async function () {
@@ -4735,9 +4693,9 @@ const ungroupSelectedBlockElement = () => {
       bindDownloadResolutionControl();
 
       // A fresh sign needs no editor registries. Paint it before loading them.
-      const savedSnapshot = getRestoreOnRefreshMode() === "never"
+      let savedSnapshot = getRestoreOnRefreshMode() === "never"
         ? null : await readSavedAppStateSnapshot();
-      let restored = false, migratedLegacyNoneBanners = false;
+      let restored = false;
       const paintSign = async () => {
         await Promise.all([
           prepareIconImagesForPost(post),
@@ -4760,6 +4718,8 @@ const ungroupSelectedBlockElement = () => {
       const paintedFreshSign = !savedSnapshot && !hasStoredPostPreferences;
       if (paintedFreshSign) await paintSign();
       await window.SignMakerBoot?.loadEditor();
+      initializeVmsRendering();
+      savedSnapshot = await migrateSavedSignTypographyOnce() ?? savedSnapshot;
       window.customShields = new CustomShields();
       await formHandler.init(exposeToFormHandler, {
         beforeUI: async () => {
@@ -4768,7 +4728,6 @@ const ungroupSelectedBlockElement = () => {
             post.newPanel();
             currentlySelectedPanelIndex = post.panels.length - 1;
           }
-          migratedLegacyNoneBanners = migrateLegacyNoneShieldBannersOnce();
           if (!paintedFreshSign) await paintSign();
         },
       });
@@ -4794,7 +4753,7 @@ const ungroupSelectedBlockElement = () => {
       requestAnimationFrame(refreshStartupLayout);
       document.fonts?.ready?.then(refreshStartupLayout).catch(() => {});
 
-        if (!restored || migratedLegacyNoneBanners) {
+        if (!restored) {
           saveAppState();
         }
 
@@ -6200,7 +6159,7 @@ const ungroupSelectedBlockElement = () => {
       window.SignMakerMobile?.active || (panelElmt.classList.contains("panelDragHandle") && !event.altKey);
 
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
-      if (!panelElmt || !holder || !tabElmt || !exitTab) return;
+      if (!panelElmt || !holder || !tabElmt || !exitTab || exitTab.caStyle === true || exitTab.variant === "California") return;
       tabElmt.classList.add("draggableExitTab");
       const initialOffset = Number(exitTab.dragOffsetRem) || 0;
       setRenderedExitTabOffset(holder, initialOffset);
@@ -7995,6 +7954,7 @@ const ungroupSelectedBlockElement = () => {
           const ElemClass = Control.prototype.blockToClassElems[elemType];
           const elem = new ElemClass(elemType === "GroupedBlockElement" ? { ...data, blockElements: new Control() } : data);
           Object.assign(elem, data);
+          if (elem instanceof ElectronicSignElement) elem.realisticLED = data.realisticLED === true;
           if (elemType === "GroupedBlockElement") elem.blockElements = Control.fromData(data.blockElements);
           delete elem._elementType;
           delete elem.__undoType;
@@ -11395,6 +11355,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     wrapper.style.boxSizing = "border-box";
 
     const clone = element.cloneNode(true);
+    window.SignMakerBannerExport.freeze(element, clone, layoutScale, getExportPixelRatio());
     clone.classList.remove("showBlockBoundingBoxes");
     clone.querySelectorAll("#alignmentGuides").forEach(guide=>guide.remove());
     Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
@@ -11634,6 +11595,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
+      freezeStaticCloneLayoutMetrics(sourceElement, clone);
+      window.SignMakerBannerExport.freeze(sourceElement, clone, layoutScale, getExportPixelRatio());
 
       if (clone.classList.contains("panelHiddenFromPost")) {
         return;
@@ -11687,8 +11650,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       const isPanelLikeClone = isPanelExportSourceElement(sourceElement);
       const isSinglePanelClone =
         sourceElement.classList && sourceElement.classList.contains("panel");
-
-      freezeStaticCloneLayoutMetrics(sourceElement, clone);
 
       clone.classList.add("exportStaticCaptureClone");
       clone.style.position = "absolute";
@@ -11752,6 +11713,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   const withTemporaryExportStyles = async (element, callback, selectedPanelIndexSet = getSelectedExportPanelIndexSet(), { includeSignDocument = false } = {}) => {
     const exportFontCSS = await prepareExportFonts(element);
     await waitForPendingRenderedArrows(element);
+    const prepareElementDisplays = () => {
+      window.CaliforniaExit?.refresh(element);
+      return window.VmsElement.refresh(element);
+    };
+    await (window.SignMakerMobile?.active
+      ? window.SignMakerMobile.withFullLayout(prepareElementDisplays)
+      : prepareElementDisplays());
     await VmsPanel.refresh(element);
     if (element?.id === "postContainer") {
       updateRuralPostLayout();
@@ -12553,6 +12521,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       return;
     }
     VmsPanel.disconnect();
+    window.VmsElement?.disconnect();
+    window.CaliforniaExit?.disconnect();
     const postContainerElmt = document.getElementById("postContainer");
     const panelContainerElmt = document.getElementById("panelContainer");
     const previousArrowFrames = collectRenderedArrows(panelContainerElmt);
@@ -12865,7 +12835,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                exitTabIndex > -1;
                exitTabIndex--
                ) {
-                   var exitTab = panel.exitTabs[exitTabIndex];
+                   var exitTab = window.CaliforniaExit?.view(panel.exitTabs[exitTabIndex]) || panel.exitTabs[exitTabIndex];
                    if (exitTab && exitTab.variant === "Quebec Exit Marker") {
                      continue;
                    }
@@ -12888,12 +12858,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    exitTabCont.style.position = "relative";
                    exitTabCont.style.zIndex = "1";
                    
-                   // If CA style, don't append to panel yet - store for later insertion inside sign
-                   if (exitTab.caStyle && exitTab.variant == "Default") {
-                       caStyleExitTabs.push({exitTabCont, exitTabIndex});
-                   } else {
-                       panelElmt.appendChild(exitTabCont);
-                   }
+                   panelElmt.appendChild(exitTabCont);
                    
                    // Apply nested tab spacing CSS variable
                    const nestedTabSpacingValue =
@@ -12946,7 +12911,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    
                    for (let nestIndex = -1; nestIndex < nestedExitTabs; nestIndex++) {
                        if (nestIndex != -1) {
-                           exitTab = nestedExitTabListForLayout[nestIndex];
+                           exitTab = window.CaliforniaExit?.view(nestedExitTabListForLayout[nestIndex]) || nestedExitTabListForLayout[nestIndex];
                        }
 
                        if (!exitTab) {
@@ -13317,6 +13282,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                        exitTabHolderElmt.appendChild(exitTabElmt);
                        
                        exitTabCont.appendChild(exitTabHolderElmt);
+                       if (exitTab.caStyle === true) {
+                         exitTabHolderElmt.classList.add("californiaExitTab");
+                         caStyleExitTabs.push({ exitTabCont: exitTabHolderElmt, exitTabIndex, nestedExitTabIndex: nestIndex });
+                       }
                        if (!shouldCollapseEmptyExitTab) {
                          bindRenderedExitTabDrag(panelElmt, exitTabHolderElmt, exitTabElmt, exitTab);
                        }
@@ -13730,7 +13699,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                // #endregion
                                // Increase minHeight when vertical arrangement is enabled to accommodate stacked content
                                // Large numerals (1.5em scale) need extra space, so increase minHeight more
-                               if (exitTab.verticalArrangement && exitTab.variant == "Default") {
+                               if (exitTab._californiaRender) {
+                                   const minimum = parseFloat(exitTab.minHeight);
+                                   exitTabElmt.style.minHeight = (Number.isFinite(minimum) ? Math.max(0, minimum) : ExitTab.prototype.defaultMinHeight) + "rem";
+                               } else if (exitTab.verticalArrangement && exitTab.variant == "Default") {
                                    const baseMinHeight = parseFloat(exitTab.minHeight) || 2.25;
                                    // Account for numeral scaling (1.5em) and vertical spacing
                                    const calculatedMinHeight = Math.max(baseMinHeight * 1.5, 3.75);
@@ -14254,10 +14226,12 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 (exitTab) =>
                   exitTab &&
                   exitTab.variant !== "Quebec Exit Marker" &&
+                  exitTab.variant !== "California" && exitTab.caStyle !== true &&
                   !isEmptyDefaultExitTab(exitTab)
               )
             : [];
-          const signShapeExitTab = visibleExitTabsForSignShape[0] || panel.exitTabs?.[0] || {};
+          const signShapeExitTab = visibleExitTabsForSignShape[0] ||
+            panel.exitTabs?.find(tab => tab.variant !== "California" && tab.caStyle !== true) || {};
           const getExitTabWidthClassForSignShape = (exitTab = {}) => {
               if (isAplEdgeExitTabWidth(exitTab.width)) {
                   return "edge aplEdge";
@@ -15395,14 +15369,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    signContentContainerElmt.id =
                    "signContentContainer" + subPanelIndex.toString();
                    new_subPanel.appendChild(signContentContainerElmt);
-                   
-                   // Insert CA style exit tabs at the beginning of the first subpanel
-                   if (subPanelIndex === 0 && caStyleExitTabs.length > 0) {
-                       caStyleExitTabs.forEach(({exitTabCont}) => {
-                           exitTabCont.classList.add("caStyle");
-                           signContentContainerElmt.appendChild(exitTabCont);
-                       });
-                   }
                    
                    const shieldsContainerElmt = document.createElement("div");
                    shieldsContainerElmt.className = `shieldsContainer ${panel.sign.shieldBacks ? "shieldBacks" : ""
@@ -17714,6 +17680,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               signElmt.style.setProperty("border-bottom-right-radius", "0", "important");
           }
           
+          window.CaliforniaExit?.mount(panelElmt, panel, caStyleExitTabs);
           var width = signCont.clientWidth;
           var exitWidth = firstExitTab.clientWidth;
           
@@ -17734,7 +17701,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           applyRenderedExitTabAnchors(panelElmt, panel);
           watchRenderedExitTabAnchors(panelElmt, panel);
           schedulePanelBorderGradientUpdate(panelElmt);
+          window.CaliforniaExit?.mount(panelElmt, panel);
           VmsPanel.mount(panelElmt);
+          window.VmsElement?.mount(panelElmt);
         }
       });
       if (fdotSupport) fdot.render(post, postContainerElmt, panelContainerElmt);
@@ -17746,27 +17715,31 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     
     // end of redraw //
 
-  VmsPanel.setFontProvider((root) => getSafeExportFontEmbedCSS(root));
-  VmsPanel.setCaptureProvider(async (screen, options) => {
-    const panel = screen.closest(".panel");
-    const captureClone = panel ? createStaticExportClone(panel) : null;
-    const source = captureClone?.node.querySelector(".signContainer");
-    if (!source) {
-      captureClone?.cleanup();
-      throw new Error("Unable to prepare an isolated VMS capture.");
-    }
-    source.dataset.vmsCaptureSource = "true";
-    let restore = () => {};
-    try {
-      restore = materializeExportBannerFirstLetters(source);
-      await waitForImagesInElement(source);
-      const htmlToImage = await loadImageExportLibrary();
-      return await htmlToImage.toCanvas(source, options);
-    } finally {
-      restore();
-      captureClone?.cleanup();
-    }
-  });
+  const initializeVmsRendering = () => {
+    window.VmsElement.setProviders(getSafeExportFontEmbedCSS, async (screen, options) =>
+      (await loadImageExportLibrary()).toCanvas(screen, options));
+    VmsPanel.setFontProvider((root) => getSafeExportFontEmbedCSS(root));
+    VmsPanel.setCaptureProvider(async (screen, options) => {
+      const panel = screen.closest(".panel");
+      const captureClone = panel ? createStaticExportClone(panel) : null;
+      const source = captureClone?.node.querySelector(".signContainer");
+      if (!source) {
+        captureClone?.cleanup();
+        throw new Error("Unable to prepare an isolated VMS capture.");
+      }
+      source.dataset.vmsCaptureSource = "true";
+      let restore = () => {};
+      try {
+        restore = materializeExportBannerFirstLetters(source);
+        await waitForImagesInElement(source);
+        const htmlToImage = await loadImageExportLibrary();
+        return await htmlToImage.toCanvas(source, options);
+      } finally {
+        restore();
+        captureClone?.cleanup();
+      }
+    });
+  };
 
   // Expose necessary variables and functions to formHandler
     const exposeToFormHandler = {

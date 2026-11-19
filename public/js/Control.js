@@ -1301,6 +1301,8 @@ class ElectronicSignElement extends TextElement {
     textColor = "Orange",
     padding = 0.5,
     glow = true,
+    realisticLED = true,
+    ledResolution = "medium",
     setWidth = 0,
   } = {}) {
     super({ textContent, fontFamily });
@@ -1311,6 +1313,8 @@ class ElectronicSignElement extends TextElement {
     this.useBannerFormatting = false;
     this.padding = padding;
     this.glow = glow;
+    this.realisticLED = realisticLED === true;
+    this.ledResolution = ledResolution;
     this.setWidth = setWidth;
   }
 
@@ -1323,6 +1327,7 @@ class ElectronicSignElement extends TextElement {
       "--textColor",
       (lib.colors[this.textColor] || this.textColor).toLowerCase()
     );
+    newText.style.color = (lib.colors[this.textColor] || this.textColor).toLowerCase();
     newText.style.setProperty("--padding", this.padding + "rem");
     newText.style.setProperty(
       "--textShadow",
@@ -1339,6 +1344,7 @@ class ElectronicSignElement extends TextElement {
       newText.classList.add("hgFix");
     }
 
+    window.VmsElement?.configure(newText, this, panel);
     return newText;
   }
 }
@@ -4136,7 +4142,7 @@ ShieldElement.prototype.normalizeBannerType = function (value) {
   }
 
   const trimmed = rawValue.trim();
-  if (!trimmed) {
+  if (!trimmed || /^none$/i.test(trimmed)) {
     return ShieldElement.prototype.defaultBannerType;
   }
   if (!options.length || options.includes(trimmed)) {
@@ -4256,7 +4262,7 @@ ShieldElement.prototype.normalizeScaleBannersWithShield = function (value) {
 };
 
 ShieldElement.prototype.getBannerDisplayInfo = function (value) {
-  const originalValue = String(value ?? "");
+  const originalValue = ShieldElement.prototype.normalizeBannerType(String(value ?? ""));
   const isBlankPlaceholder =
     originalValue.length > 0 && originalValue.trim() === "";
   const rawValue = isBlankPlaceholder ? originalValue : originalValue.trim();
@@ -7679,6 +7685,7 @@ Control.prototype.cloneElement = function (element) {
   }
 
   const clonedElement = Object.assign(new Constructor(element), element);
+  if (clonedElement instanceof ElectronicSignElement) clonedElement.realisticLED = element.realisticLED === true;
   delete clonedElement._elementType;
 
   if (typeof clonedElement.fontFamily === "string") {
@@ -7796,6 +7803,7 @@ Control.fromData = function (data = {}) {
     if (typeof Constructor !== "function") return value;
     const options = type === "GroupedBlockElement" ? { ...value, blockElements: new Control() } : value;
     const element = Object.assign(new Constructor(options), value);
+    if (element instanceof ElectronicSignElement) element.realisticLED = value.realisticLED === true;
     if (type === "GroupedBlockElement") element.blockElements = Control.fromData(value.blockElements);
     delete element._elementType; delete element.__undoType;
     return element;

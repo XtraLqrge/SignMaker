@@ -374,29 +374,28 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.0336fd94ec2141a9.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.eb9c3bde7f58f24d.css" rel="stylesheet" type="text/css">
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.494cff79d89d9a03.js","js/IndexDB.905b66ca7e8b07ba.js","js/CustomShields.85049f03f2f32351.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c64e39f0eb70dce2.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.6384dbf6104f922e.js","js/MobileShieldMaker.3aef7ec77a808b44.js","js/MobileUI.de661de95cdf6194.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.1b34d00665ea8199.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.f80f226b0e9a99a8.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/FDOTSupports.26d110c7592ad794.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.de87557d912d4b11.js","js/IndexDB.ed3f5570a8a35ea9.js","js/CustomShields.85049f03f2f32351.js","js/SignDocument.049462d0df09a6fc.js","js/SignMigrations.b2fa30175c714ab4.js","js/BannerExport.d86d8a7d7161a216.js","js/VmsElement.a1bac1137d0dd618.js","js/CaliforniaExit.0c392f8cf54132fb.js","js/MobileGestures.60c25f9e9efbc630.js","js/MobileSubpanels.c64e39f0eb70dce2.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.3e4297a531275781.js","js/MobileShieldMaker.3aef7ec77a808b44.js","js/MobileUI.de661de95cdf6194.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.1b34d00665ea8199.js","js/Settings22.d5c85ec51307e808.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.19632fe2c4d0eee0.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.0ab7f934b53b4d2c.js"></script>
 <script defer src="js/Sign.3640c7bc4cd48652.js"></script>
-<script defer src="js/ExitTab.5509e16b3358304f.js"></script>
+<script defer src="js/ExitTab.a5a0d58d26b239c9.js"></script>
 <script defer src="js/Panel.5e4c31f252743c95.js"></script>
 <script defer src="js/PanelBorders.0b690deb621e6bc7.js"></script>
 <script defer src="js/PanelDrag.5ad70d87d3493110.js"></script>
-<script defer src="js/VmsPanel.34d9648ce7eb7499.js"></script>
+<script defer src="js/VmsPanel.06c887aa6ae98462.js"></script>
 <script defer src="js/Post.9f6684dc6741e278.js"></script>
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
-<script defer src="js/Control.6aff623ed0796bef.js"></script>
+<script defer src="js/Control.87f6f4700bdd0981.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
-<script defer src="js/SignDocument.049462d0df09a6fc.js"></script>
-<script defer src="js/main.6dd9ad61749b2432.js"></script>
+<script defer src="js/main.a15326cf057a372e.js"></script>
   
   
   
@@ -417,6 +416,10 @@ remember
   
   
   
+
+
+
+
 
   
 
@@ -1498,8 +1501,6 @@ remember
                 <input type="checkbox" id="squareCorners" value="squareCorners" name="squareCorners" onchange="formHandler.readForm();" checked>
                 <label for="exitTabTransparent" id="exitTabTransparentLabel" class="assetHiddenSetting">Transparent:</label>
                 <input type="checkbox" id="exitTabTransparent" name="exitTabTransparent" class="assetHiddenSetting" onchange="formHandler.readForm();">
-                <label for="caStyle">CA Style:</label>
-                <input type="checkbox" id="caStyle" value="caStyle" name="caStyle" onchange="formHandler.readForm();">
                 <label for="exitTabBilingual" id="exitTabBilingualLabel">Bilingual:</label>
                 <input type="checkbox" id="exitTabBilingual" name="exitTabBilingual" onchange="formHandler.readForm();">
               </div>
@@ -2282,6 +2283,16 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                   <input type="range" min="0" max="300" value="100" step="1" id="sdElectronicSign_lineHeight">
                   <input id="sdElectronicSign_lineHeightVal" class="smallVal" type="number" value="100" step="1">
                   <br>
+                  <label for="sdElectronicSign_realisticLED">Realistic LED:</label>
+                  <input type="checkbox" id="sdElectronicSign_realisticLED" checked>
+                  <label for="sdElectronicSign_ledResolution">LED Resolution:</label>
+                  <select id="sdElectronicSign_ledResolution">
+                    <option value="extra-low">Extra Low</option>
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="extra-high">Extra High</option>
+                  </select>
                   <label for="sdElectronicSign_glow">Glow:</label>
                   <input type="checkbox" id="sdElectronicSign_glow">
                   <label for="sdElectronicSign_padding">Padding (rem):

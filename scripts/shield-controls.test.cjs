@@ -286,3 +286,19 @@ test('static Colorado logos never render route-number overlays and keep their sh
   assert.ok(standard.querySelector('.routeNumber'));assert.equal(standard.querySelector('.routeNumber').innerHTML.replace(/<[^>]+>/g,''),'470');
   assert.equal(standard.querySelector('img').src,'img/shields/United States/CO/CO-2Digit.svg');
 });
+test('legacy None banners stay blank after template reconstruction without removing intentional blank or quoted banners',()=>{
+  const c=coloradoShieldRenderer();
+  assert.equal(vm.runInContext('ShieldElement.prototype.normalizeBannerType("None")',c),'');
+  assert.equal(vm.runInContext('ShieldElement.prototype.hasBannerValue(" None ")',c),false);
+  assert.equal(vm.runInContext('ShieldElement.prototype.hasBannerValue("   ")',c),true);
+  c.quoted='"None"';assert.equal(vm.runInContext('ShieldElement.prototype.getBannerDisplayInfo(quoted).displayValue',c),'None');
+  const rendered=vm.runInContext('Control.fromData({rows:[[{_elementType:"ShieldElement",shieldBase:"IL",bannerType:"None",bannerType2:"None"}]]}).rows[0][0].createElement()',c);
+  assert.equal(rendered.querySelector('.bannerA'),null);assert.equal(rendered.querySelector('.bannerB'),null);
+});
+test('exit tab defaults use Series E while Series EEM remains an explicit selectable font',()=>{
+  const c=coloradoShieldRenderer();
+  assert.equal(vm.runInContext('ExitTab.prototype.defaultFHWAFontFamily',c),'Series E');
+  assert.equal(vm.runInContext('new ExitTab({FHWAFont:true}).fontFamily',c),'Series E');
+  assert.equal(vm.runInContext('new ExitTab({fontFamily:"Series EEM"}).fontFamily',c),'Series EEM');
+  assert.equal(vm.runInContext('TextElement.prototype.fontFamily.includes("Series EEM")',c),true);
+});

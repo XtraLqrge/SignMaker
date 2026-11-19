@@ -2275,7 +2275,7 @@ const ungroupSelectedBlockElement = () => {
         }
       }
 
-      for (const key of ["copySignsOnly","showBlockBoundingBoxes","showAlignmentGuides"]) {
+      for (const key of ["copySignsOnly","joinMatchingBanners","showBlockBoundingBoxes","showAlignmentGuides"]) {
         if(typeof postData[key] === "boolean") newPost[key]=postData[key];
       }
       newPost.alignmentGuideSpacing=newPost.normalizeAlignmentGuideSpacing(postData.alignmentGuideSpacing);
@@ -4174,6 +4174,37 @@ const ungroupSelectedBlockElement = () => {
     resolvedBackdropRows.forEach(row => row.classList.add("fullBleedBackgroundPainted"));
   };
 
+  // Extend full-bleed vertical dividers through surrounding padding to the sign
+  // edge or other content; a transform keeps the row height unchanged.
+  const layoutVerticalFullBleedDividers = (signElmt) => {
+    const dividers = signElmt.querySelectorAll(".dividerElement.vertical.fullBleed");
+    dividers.forEach((divider) => { divider.style.transform = ""; });
+
+    for (const divider of dividers) {
+      const rect = divider.getBoundingClientRect();
+      if (!rect.height || !divider.offsetHeight) continue;
+      let top = rect.top, bottom = rect.bottom;
+
+      for (let element = divider; element !== signElmt && element.parentElement; element = element.parentElement) {
+        const parent = element.parentElement;
+        const style = window.getComputedStyle(parent);
+        const elementStyle = window.getComputedStyle(element);
+        const parentRect = parent.getBoundingClientRect();
+        const innerTop = parentRect.top + (parseFloat(style.borderTopWidth) || 0);
+        const innerBottom = parentRect.bottom - (parseFloat(style.borderBottomWidth) || 0);
+        const topSpace = (parseFloat(style.paddingTop) || 0) + Math.max(0, parseFloat(elementStyle.marginTop) || 0);
+        const bottomSpace = (parseFloat(style.paddingBottom) || 0) + Math.max(0, parseFloat(elementStyle.marginBottom) || 0);
+        if (top - innerTop <= topSpace + 0.5) top = Math.min(top, innerTop);
+        if (innerBottom - bottom <= bottomSpace + 0.5) bottom = Math.max(bottom, innerBottom);
+      }
+
+      if (top === rect.top && bottom === rect.bottom) continue;
+      const layoutScale = divider.offsetHeight / rect.height;
+      divider.style.transform =
+        `translateY(${(top - rect.top) * layoutScale}px) scaleY(${(bottom - top) / rect.height})`;
+    }
+  };
+
   const refreshDynamicPanelBorders = (rootElmt) => {
     if (!rootElmt) {
       return;
@@ -4184,6 +4215,7 @@ const ungroupSelectedBlockElement = () => {
       : Array.from(rootElmt.querySelectorAll(".sign"));
 
     for (const signElmt of signs) {
+      layoutVerticalFullBleedDividers(signElmt);
       if (signElmt.closest('.panel.warningDiamond')) {
         const container = signElmt.parentElement;
         let face = container.querySelector(':scope > .warningDiamondFace');
@@ -11916,10 +11948,20 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       await VmsPanel.refresh(exportElement, { force: true, exporting: true });
       await waitForNextFrame();
 
+      let exportWithoutPanelBackground = false;
+      try {
+        exportWithoutPanelBackground = localStorage.getItem("signMaker.exportWithoutPanelBackground") === "true";
+      } catch (error) {}
+      if (exportWithoutPanelBackground) {
+        exportElement.classList.add("exportWithoutPanelBackground");
+        await waitForNextFrame();
+      }
+
       const box = getExportBox(exportElement);
       return await callback(box, exportElement, signDocumentJSON);
     } finally {
       restoreExportBannerFirstLetters();
+      exportElement.classList.remove("exportWithoutPanelBackground");
 
       if (staticClone) {
         staticClone.cleanup();
@@ -13124,6 +13166,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                          normalizedAssetVerticalPadding.toString() + "rem"
                        );
                        exitTabElmt.style.setProperty(
+                         "--exitTabVerticalPadding",
+                         (isAssetExitTabVariantForSpacing ? 0 : Math.max(0, Math.min(3, parseFloat(exitTab.verticalPadding) || 0))) + "rem"
+                       );
+                       exitTabElmt.style.setProperty(
                          "--exitTabPrefixScale",
                          (normalizedExitTabTextSizePercent / 100).toString()
                        );
@@ -13830,10 +13876,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                    const baseMinHeight = parseFloat(exitTab.minHeight) || 2.25;
                                    // Account for numeral scaling (1.5em) and vertical spacing
                                    const calculatedMinHeight = Math.max(baseMinHeight * 1.5, 3.75);
-                                   exitTabElmt.style.minHeight = calculatedMinHeight.toString() + "rem";
+                                   exitTabElmt.style.minHeight = `calc(${calculatedMinHeight}rem + 2 * var(--exitTabVerticalPadding, 0rem))`;
                                    // #endregion
                                } else {
-                                   exitTabElmt.style.minHeight = exitTab.minHeight.toString() + "rem";
+                                   exitTabElmt.style.minHeight = `calc(${exitTab.minHeight}rem + 2 * var(--exitTabVerticalPadding, 0rem))`;
                                }
                                if (isTransparentAssetExitTab) {
                                    exitTabElmt.style.minHeight = "0";

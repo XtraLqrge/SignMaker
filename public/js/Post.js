@@ -62,6 +62,7 @@ class Post {
     this.thickness = this.normalizeThickness(defaultThickness);
 
     this.copySignsOnly = true;
+    this.joinMatchingBanners = true;
     this.showBlockBoundingBoxes = false;
     this.showAlignmentGuides = false;
     this.alignmentGuideSpacing = 4;

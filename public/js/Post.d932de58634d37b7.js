@@ -5,7 +5,7 @@ const cloneSignMakerValue=(t,e=new WeakMap)=>{if(null===t||"object"!=typeof t)re
    * @param {number} [lanesWide=1] - How many lanes wide the post should appear to be.
    * @param {string} [color=Post.prototype.colors[0]] - Visual color treatment for the post.
    */
-constructor(t="Right",e=1,s=Post.prototype.colors?.[0]){this.polePositions.includes(t)?this.polePosition=t:this.polePosition="Right",this.lanesWide=e>=1&&e<=6?e:1;const n=Array.isArray(Post.prototype.colors)?Post.prototype.colors:["Silver"];n.includes(s)?this.color=s:this.color=n[0];const i="number"==typeof Post.prototype.defaultThickness?Post.prototype.defaultThickness:1;this.thickness=this.normalizeThickness(i),this.copySignsOnly=!0,this.showBlockBoundingBoxes=!1,this.showAlignmentGuides=!1,this.alignmentGuideSpacing=4,this.alignmentGuidePhase=0,this.panels=[],this.panelSpacing=1}
+constructor(t="Right",e=1,s=Post.prototype.colors?.[0]){this.polePositions.includes(t)?this.polePosition=t:this.polePosition="Right",this.lanesWide=e>=1&&e<=6?e:1;const n=Array.isArray(Post.prototype.colors)?Post.prototype.colors:["Silver"];n.includes(s)?this.color=s:this.color=n[0];const i="number"==typeof Post.prototype.defaultThickness?Post.prototype.defaultThickness:1;this.thickness=this.normalizeThickness(i),this.copySignsOnly=!0,this.joinMatchingBanners=!0,this.showBlockBoundingBoxes=!1,this.showAlignmentGuides=!1,this.alignmentGuideSpacing=4,this.alignmentGuidePhase=0,this.panels=[],this.panelSpacing=1}
 /**
    * Create a new panel for the post. Add it to the end of the list of existing panels.
    */newPanel(){const t=new Sign;t.newSubPanel();const e=new Panel(t,void 0),s=new ExitTab;e.exitTabs.push(s),this.panels.push(e)}

@@ -587,6 +587,8 @@ const formHandler = (function () {
       for (const [sliderId, valueId, resetId] of [
         ['sdBlock_topPadding', 'sdBlock_topPaddingVal', 'sdBlock_topPaddingReset'],
         ['sdBlock_bottomPadding', 'sdBlock_bottomPaddingVal', 'sdBlock_bottomPaddingReset'],
+        ['sdBlock_leftPadding', 'sdBlock_leftPaddingVal', 'sdBlock_leftPaddingReset'],
+        ['sdBlock_rightPadding', 'sdBlock_rightPaddingVal', 'sdBlock_rightPaddingReset'],
         ['sdBlock_widthSlider', 'sdBlock_width', 'sdBlock_widthReset'],
       ]) {
         const slider = document.getElementById(sliderId), value = document.getElementById(valueId), reset = document.getElementById(resetId);
@@ -613,6 +615,8 @@ const formHandler = (function () {
       const marginInputs = [
         document.getElementById("sdBlock_topPaddingVal"),
         document.getElementById("sdBlock_bottomPaddingVal"),
+        document.getElementById("sdBlock_leftPaddingVal"),
+        document.getElementById("sdBlock_rightPaddingVal"),
       ].filter(Boolean);
 
       const normalizeMarginInputValue = (value, fallback = 0) => {
@@ -1203,6 +1207,7 @@ const formHandler = (function () {
       "minValue",
       "nestedSpacingValue",
       "exitTabHorizontalPaddingValue",
+      "exitTabVerticalPaddingValue",
     ]);
 
     const formatExitTabSliderDisplayValue = (valueId, value) =>
@@ -1261,6 +1266,7 @@ const formHandler = (function () {
         "exitTabCornerRadius",
         "nestedTabSpacing",
         "exitTabHorizontalPadding",
+        "exitTabVerticalPadding",
         "exitTabTextSizePercent",
       ].forEach((id) => {
         const input = document.getElementById(id);
@@ -1341,6 +1347,7 @@ const formHandler = (function () {
             "fontFamily",
             "characterSpacing",
             "horizontalPadding",
+            "verticalPadding",
             "exitTextSizePercent",
             "exitTextSizePercentVersion",
             "textColor",
@@ -1417,6 +1424,7 @@ const formHandler = (function () {
         tollLogoSquare: false,
         assetHorizontalPadding: 0,
         assetVerticalPadding: 0,
+        verticalPadding: 0,
         transparent: false,
         nestedTabSpacing: 0,
       };
@@ -1497,6 +1505,8 @@ const formHandler = (function () {
         normalized.assetVerticalPadding,
         fallback.assetVerticalPadding || 0
       );
+      normalized.verticalPadding = Math.max(0, Math.min(3,
+        getFiniteExitTabNumber(normalized.verticalPadding, fallback.verticalPadding || 0)));
       normalized.textColor =
         normalized.textColor || ExitTab.prototype.defaultTextColor || "Panel Color";
       normalized.color =
@@ -2367,6 +2377,16 @@ const formHandler = (function () {
             getFiniteExitTabNumber(
               form["exitTabHorizontalPadding"]?.value,
               updated.horizontalPadding
+            )
+          )
+        );
+        updated.verticalPadding = Math.max(
+          0,
+          Math.min(
+            3,
+            getFiniteExitTabNumber(
+              form["exitTabVerticalPadding"]?.value,
+              updated.verticalPadding || 0
             )
           )
         );
@@ -5201,6 +5221,9 @@ const formHandler = (function () {
     const verticalPaddingInput = document.getElementById("exitTabTextSizePercent");
     const verticalPaddingLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
     const verticalPaddingValue = document.getElementById("exitTabTextSizePercentValue");
+    // Logo/icon tabs reuse the text-size slider for their vertical padding.
+    const textVerticalPaddingGroup = document.getElementById("exitTabVerticalPaddingGroup");
+    if (textVerticalPaddingGroup) textVerticalPaddingGroup.hidden = usesAssetControls;
 
     if (usesAssetControls) {
       const resolvedAssetSize = normalizeExitTabAssetSizeValue(
@@ -5296,6 +5319,12 @@ const formHandler = (function () {
     if (horizontalPaddingValue) {
       horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
     }
+
+    const resolvedTextVerticalPadding = Math.max(0, Math.min(3, parseFloat(workingExitTab?.verticalPadding) || 0));
+    const textVerticalPaddingInput = document.getElementById("exitTabVerticalPadding");
+    if (textVerticalPaddingInput) setExitTabRangeControlValue(textVerticalPaddingInput, resolvedTextVerticalPadding);
+    const textVerticalPaddingValue = document.getElementById("exitTabVerticalPaddingValue");
+    if (textVerticalPaddingValue) textVerticalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedTextVerticalPadding);
 
     const resolvedExitTextSize = (() => {
       const parsed = parseFloat(workingExitTab?.exitTextSizePercent);
@@ -15488,6 +15517,13 @@ const formHandler = (function () {
       );
 
       bindExitTabSliderReset(
+        "exitTabVerticalPaddingReset",
+        "exitTabVerticalPadding",
+        "exitTabVerticalPaddingValue",
+        () => getExitTabProfileContextSettings()?.verticalPadding ?? 0
+      );
+
+      bindExitTabSliderReset(
         "exitTabTextSizePercentReset",
         "exitTabTextSizePercent",
         "exitTabTextSizePercentValue",
@@ -19464,9 +19500,10 @@ const formHandler = (function () {
           const controlId = id.slice(0, -3);
           const control = document.getElementById(controlId);
           if (control) {
-            if (controlId === "sdBlock_topPadding" || controlId === "sdBlock_bottomPadding") {
+            if (["sdBlock_topPadding", "sdBlock_bottomPadding", "sdBlock_leftPadding", "sdBlock_rightPadding"].includes(controlId)) {
               const parsed = parseFloat(valEl.value);
-              const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
+              const minimum = controlId.endsWith("leftPadding") || controlId.endsWith("rightPadding") ? 0 : -5;
+              const normalized = Number.isFinite(parsed) ? Math.max(minimum, Math.min(10, parsed)) : 0;
               valEl.value = normalized;
               control.value = normalized;
             } else if (
@@ -21270,6 +21307,10 @@ const formHandler = (function () {
           exitTab.horizontalPadding = Number.isFinite(horizontalPaddingInput)
             ? Math.max(-1, Math.min(3, horizontalPaddingInput))
             : ExitTab.prototype.defaultHorizontalPadding;
+          const verticalPaddingInput = parseFloat(form["exitTabVerticalPadding"]?.value);
+          exitTab.verticalPadding = Number.isFinite(verticalPaddingInput)
+            ? Math.max(0, Math.min(3, verticalPaddingInput))
+            : 0;
         }
 
         const exitTextSizePercentInput = parseFloat(form["exitTabTextSizePercent"]?.value);
@@ -21728,6 +21769,16 @@ const formHandler = (function () {
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].bottomPadding = bottomMarginValue;
+    for (const side of ["left", "right"]) {
+      const valueEl = document.querySelector(`#sdBlock_${side}PaddingVal`);
+      const sliderEl = document.querySelector(`#sdBlock_${side}Padding`);
+      const value = Math.max(0, normalizeBlockMarginInputValue(valueEl?.value ?? sliderEl?.value, 0));
+      if (valueEl && !mergeLiveInputActive) valueEl.value = value;
+      if (sliderEl) sliderEl.value = Math.max(0, Math.min(3, value));
+      subPanel.blockElements.blockProperties[
+        exposed.vars.currentlySelectedRowIndex
+      ][`${side}Padding`] = value;
+    }
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].backgroundColor = document.querySelector(
@@ -22632,6 +22683,13 @@ const formHandler = (function () {
       } else {
         bottomPadValEl.textContent = bottomPadValue;
       }
+    }
+    for (const side of ["left", "right"]) {
+      const value = Math.max(0, clampBlockMarginSliderValue(selectedBlockProperties[`${side}Padding`]));
+      const sliderEl = document.querySelector(`#sdBlock_${side}Padding`);
+      const valueEl = document.querySelector(`#sdBlock_${side}PaddingVal`);
+      if (sliderEl) sliderEl.value = value;
+      if (valueEl) valueEl.value = value;
     }
     bindBlockMarginStepperCommit();
 
@@ -24864,6 +24922,7 @@ const formHandler = (function () {
     const vmsSettings = VmsPanel.settings(panel);
     document.getElementById("vmsPanel").checked=panel.isVms===true;
     document.getElementById("copySignsOnly").checked=post.copySignsOnly!==false;
+    document.getElementById("joinMatchingBanners").checked=post.joinMatchingBanners!==false;
     syncDisplaySettings();
     document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
     document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
@@ -25287,6 +25346,13 @@ const formHandler = (function () {
     } else {
       exitTab.horizontalPadding = resolvedHorizontalPadding;
     }
+    const textVerticalPadding = Math.max(0, Math.min(3, parseFloat(exitTab.verticalPadding) || 0));
+    const textVerticalPaddingInput = document.getElementById("exitTabVerticalPadding");
+    if (textVerticalPaddingInput) textVerticalPaddingInput.value = String(textVerticalPadding);
+    const textVerticalPaddingDisplay = document.getElementById("exitTabVerticalPaddingValue");
+    if (textVerticalPaddingDisplay) textVerticalPaddingDisplay.innerHTML = textVerticalPadding.toFixed(1);
+    const textVerticalPaddingGroup = document.getElementById("exitTabVerticalPaddingGroup");
+    if (textVerticalPaddingGroup) textVerticalPaddingGroup.hidden = isAssetExitTabForPaddingControls;
     if (horizontalPadding) {
       horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "-1";
       horizontalPadding.max = "3";

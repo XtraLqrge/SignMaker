@@ -1314,6 +1314,7 @@ class ElectronicSignElement extends TextElement {
     fontFamily = "Modern VMS",
     textColor = "Orange",
     padding = 0.5,
+    paddingVertical = 0,
     glow = true,
     setWidth = 0,
   } = {}) {
@@ -1324,6 +1325,7 @@ class ElectronicSignElement extends TextElement {
     this.useNumeralFormatting = false;
     this.useBannerFormatting = false;
     this.padding = padding;
+    this.paddingVertical = paddingVertical;
     this.glow = glow;
     this.setWidth = setWidth;
   }
@@ -1338,6 +1340,7 @@ class ElectronicSignElement extends TextElement {
       (lib.colors[this.textColor] || this.textColor).toLowerCase()
     );
     newText.style.setProperty("--padding", this.padding + "rem");
+    newText.style.setProperty("--paddingVertical", Math.max(0, parseFloat(this.paddingVertical) || 0) + "rem");
     newText.style.setProperty(
       "--textShadow",
       this.glow
@@ -5226,14 +5229,9 @@ class DividerElement {
         "--dividerBleedRight",
         !isVertical ? right || "0rem" : "0rem"
       );
-      newDivider.style.setProperty(
-        "--dividerBleedTop",
-        isVertical ? top || "0rem" : "0rem"
-      );
-      newDivider.style.setProperty(
-        "--dividerBleedBottom",
-        isVertical ? bottom || "0rem" : "0rem"
-      );
+      // Vertical bleed is measured after layout in main.js.
+      newDivider.style.setProperty("--dividerBleedTop", "0rem");
+      newDivider.style.setProperty("--dividerBleedBottom", "0rem");
     } else {
       newDivider.classList.remove("fullBleed");
       newDivider.style.setProperty("--dividerBleedLeft", "0rem");
@@ -6881,6 +6879,8 @@ class Block {
   constructor({
     topPadding = 0,
     bottomPadding = 0,
+    leftPadding = 0,
+    rightPadding = 0,
     backgroundColor = "Inherit",
     borderColor = "Match BG",
     backgroundFullWidth = true,
@@ -6892,6 +6892,8 @@ class Block {
   } = {}) {
     this.topPadding = topPadding;
     this.bottomPadding = bottomPadding;
+    this.leftPadding = leftPadding;
+    this.rightPadding = rightPadding;
     this.backgroundColor = backgroundColor;
     this.borderColor = borderColor;
     this.backgroundFullWidth = backgroundFullWidth;
@@ -6945,7 +6947,7 @@ ShieldElement.prototype.areMergeableAboveBannersEquivalent = function (
 };
 
 ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
-  if (!container) {
+  if (!container || (typeof app !== "undefined" && app.getPost?.()?.joinMatchingBanners === false)) {
     return;
   }
 
@@ -7363,6 +7365,8 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
       flexRow.style.setProperty("--marginBottom", bottomSpacing);
       flexRow.style.setProperty("--blockPaddingTopExtra", "0rem");
       flexRow.style.setProperty("--blockPaddingBottomExtra", "0rem");
+      flexRow.style.setProperty("--rowPaddingLeft", Math.max(0, parseFloat(properties.leftPadding) || 0) + "rem");
+      flexRow.style.setProperty("--rowPaddingRight", Math.max(0, parseFloat(properties.rightPadding) || 0) + "rem");
       const resolvedBackgroundColor =
         properties.backgroundColor == "Inherit"
           ? ""
@@ -7544,6 +7548,7 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
           }
         }
 
+        applyBlockElementPadding(elem, blockElmt);
         blockElmt.dataset.signRow = i;
         blockElmt.dataset.signBlock = blockIdx;
         activeAlignmentGroup.appendChild(blockElmt);
@@ -7581,6 +7586,7 @@ class GroupedBlockElement {
     alignment = "Center",
     backgroundColor = "Inherit",
     padding = 0,
+    paddingVertical,
     borderRadius = 0,
     border = false,
     borderColor = "Inherit",
@@ -7598,6 +7604,8 @@ class GroupedBlockElement {
       : "Inherit";
     // Both in rem; the editor supplies strings.
     this.padding = GroupedBlockElement.normalizeLength(padding);
+    // Older groups used `padding` on every side.
+    this.paddingVertical = GroupedBlockElement.normalizeLength(paddingVertical ?? padding);
     this.borderRadius = GroupedBlockElement.normalizeLength(borderRadius);
     this.border = border === true;
     this.borderColor = TextElement.prototype.backgroundColor.includes(borderColor)
@@ -7630,8 +7638,9 @@ class GroupedBlockElement {
     }
 
     const padding = GroupedBlockElement.normalizeLength(this.padding);
+    const paddingVertical = GroupedBlockElement.normalizeLength(this.paddingVertical ?? this.padding);
     const borderRadius = GroupedBlockElement.normalizeLength(this.borderRadius);
-    if (padding) wrapper.style.padding = `${padding}rem`;
+    if (padding || paddingVertical) wrapper.style.padding = `${paddingVertical}rem ${padding}rem`;
     if (borderRadius) wrapper.style.borderRadius = `${borderRadius}rem`;
     if (this.border) {
       // Inherit follows the group's text color; the width matches the sign's.
@@ -7737,6 +7746,26 @@ Control.prototype.clone = function () {
   return new Control({ rows, blockProperties });
 };
 
+
+// Text and shields pad inside their box; beacons and dividers add outside space.
+const BLOCK_PADDING_TYPES = [ControlTextElement, ActionMessageElement, ShieldElement, BeaconElement, DividerElement];
+for (const BlockType of BLOCK_PADDING_TYPES) {
+  BlockType.prototype.paddingHorizontal = 0;
+  BlockType.prototype.paddingVertical = 0;
+}
+
+const applyBlockElementPadding = (elem, blockElmt) => {
+  if (!BLOCK_PADDING_TYPES.includes(elem?.constructor) || !blockElmt) return;
+  const horizontal = Math.max(0, parseFloat(elem.paddingHorizontal) || 0);
+  const vertical = Math.max(0, parseFloat(elem.paddingVertical) || 0);
+  if (!horizontal && !vertical) return;
+  blockElmt.classList.add("hasBlockPadding");
+  blockElmt.style.setProperty("--blockPaddingH", horizontal + "rem");
+  blockElmt.style.setProperty("--blockPaddingV", vertical + "rem");
+  if (elem instanceof DividerElement) {
+    blockElmt.style.marginTop = blockElmt.style.marginBottom = vertical + "rem";
+  }
+};
 
 Control.prototype.blockToClassElems = {
   ControlTextElement: ControlTextElement,

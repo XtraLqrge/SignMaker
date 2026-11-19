@@ -1065,7 +1065,7 @@ Shield.prototype.shieldDirectory = {
     className: "FL cfxtoll CFXTOLL",
     standard: "CFX",
     officialDimensions: true,
-    maxRouteCharacters: 3,
+    maxRouteCharacters: 5,
     assetPathByVariant: {
       TM36x48CFXJurisdiction: `${cfxFolder}/CFX-TM-36x48.svg`,
       TM48x60CFXJurisdiction: `${cfxFolder}/CFX-TM-48x60.svg`,

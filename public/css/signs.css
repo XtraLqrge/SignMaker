@@ -522,8 +522,8 @@
   --exitTabHorizontalPadding: 0rem;
   --exitTabPrefixScale: 0.7;
   --exitTabCharacterSpacing: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: var(--exitTabVerticalPadding, 0rem);
+  padding-bottom: var(--exitTabVerticalPadding, 0rem);
   padding-left: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
   padding-right: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
 }
@@ -3218,6 +3218,11 @@ img.exitOnlyArrow:last-child {
   line-height: inherit;
 }
 
+/* A blank line (e.g. a leading, doubled or trailing "\n") keeps one line's height. */
+.bE-textElement.bE-multilineTextElement > .bE-textLine:empty::before {
+  content: "\200B";
+}
+
 
 .bE-textElement.bE-betweenLetterSpacing {
   letter-spacing: var(--betweenLetterSpacing, 0em) !important;
@@ -3635,6 +3640,12 @@ img.exitOnlyArrow:last-child {
   border-top-right-radius: var(--fullBleedTopRightRadius, 0px);
   border-bottom-right-radius: var(--fullBleedBottomRightRadius, 0px);
   border-bottom-left-radius: var(--fullBleedBottomLeftRadius, 0px);
+}
+
+/* A full-bleed vertical divider extends past its row into the sign padding,
+   which the row band paints through; the sign's own clip still bounds it. */
+.sign .blockElementRow.fullBleed:has(> * > .dividerElement.vertical.fullBleed) {
+  overflow: visible;
 }
 
 .sign .blockElementRow.fullBleed::before,
@@ -4804,3 +4815,24 @@ img.exitOnlyArrow:last-child {
   border-radius:var(--signBorderRadius,0.75rem); pointer-events:none;
 }
 .panel.sharp .warningDiamondFace { border-radius:0; }
+
+/* Settings → "Export without panel background": copied and downloaded images
+   keep the sign's content but drop every panel-colored surface. Borders keep
+   their width so the layout matches the editor. */
+html .exportWithoutPanelBackground :is(.panelOuterFace, .dynamicSignFullBleedLayer, .dynamicSignCornerPatch, .warningDiamondFace) {
+  display: none !important;
+}
+
+html .exportWithoutPanelBackground :is(.signContainer, .sign, .exitTabContainer, .exitTabHolder, .exitTab, .sign .blockElementRow, .sign .blockElementRow.fullBleed) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  border-image: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Full-bleed horizontal dividers are normally drawn on the hidden sign layer. */
+html .exportWithoutPanelBackground .dividerElement.fullBleedDividerPainted {
+  opacity: 1;
+}

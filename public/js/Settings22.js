@@ -2,6 +2,9 @@
 window.SignMakerSettings22=(()=>{
  let preferences=null,initialized=false,lastState='';
  const field=id=>document.getElementById(id);
+ const EXPORT_WITHOUT_PANEL_BACKGROUND_KEY='signMaker.exportWithoutPanelBackground';
+ const getExportWithoutPanelBackground=()=>{try{return localStorage.getItem(EXPORT_WITHOUT_PANEL_BACKGROUND_KEY)==='true';}catch{return false;}};
+ const setExportWithoutPanelBackground=enabled=>{try{localStorage.setItem(EXPORT_WITHOUT_PANEL_BACKGROUND_KEY,String(enabled));}catch{}};
  const refreshPickers=()=>{
   window.SignMakerEditorRuntime?.ensure();
   window.nativeSelectPickers?.forEach(picker=>{if(window.SignMakerEditorRuntime?.isActive(picker.select))picker.sync();});
@@ -19,6 +22,7 @@ window.SignMakerSettings22=(()=>{
   field('appKeybindMode').value=preferences.getKeybind();
   field('restoreOnRefresh').value=preferences.getRestore();
   field('appDropdownAnimations').checked=window.SignMakerDropdowns.getAnimationsEnabled();
+  field('exportWithoutPanelBackground').checked=getExportWithoutPanelBackground();
   refreshPickers();
  };
  const showDefaults=()=>{
@@ -49,6 +53,11 @@ window.SignMakerSettings22=(()=>{
   field('appDropdownAnimations').addEventListener('change',()=>{window.SignMakerDropdowns.setAnimationsEnabled(field('appDropdownAnimations').checked);sync();});
   field('defaultsCategory').addEventListener('change',showDefaults);
   field('settings22Modal').querySelectorAll('.sMModalTab').forEach(tab=>tab.addEventListener('click',()=>showTab(tab.dataset.tab)));
+  field('exportWithoutPanelBackground').checked=getExportWithoutPanelBackground();
+  field('exportWithoutPanelBackground').addEventListener('change',()=>setExportWithoutPanelBackground(field('exportWithoutPanelBackground').checked));
+  field('joinMatchingBanners').addEventListener('change',()=>{
+   const bridge=app.exposeToFormHandler;bridge.beginUndoableChange();app.getPost().joinMatchingBanners=field('joinMatchingBanners').checked;bridge.endUndoableChange();bridge.redraw();
+  });
   field('copySignsOnly').addEventListener('change',()=>{
    const bridge=app.exposeToFormHandler;bridge.beginUndoableChange();app.getPost().copySignsOnly=field('copySignsOnly').checked;bridge.endUndoableChange();
   });

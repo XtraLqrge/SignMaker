@@ -1,0 +1,38 @@
+@layer pickerAppearance {
+  .searchablePicker .pickerSearchBar {
+    position: sticky;
+    top: -0.1rem;
+    z-index: 3;
+    padding: 0.3rem;
+    margin: 0;
+    background: var(--sm-dropdown-background);
+    box-sizing: border-box;
+  }
+  .searchablePicker .pickerSearchInput {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 1.8rem !important;
+    min-height: 1.8rem !important;
+    margin: 0 !important;
+    padding: 0.25rem 0.4rem !important;
+    border: 1px solid var(--sm-dropdown-border) !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+    background: rgb(var(--inputColor)) !important;
+    color: var(--textColor) !important;
+    font: 400 0.8rem/1.2 Inter, sans-serif !important;
+    text-align: left !important;
+  }
+  .searchablePicker .pickerSearchInput::placeholder { color: inherit; opacity: 0.65; }
+  .searchablePicker .pickerSearchInput:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+  .searchablePicker [hidden] { display: none !important; }
+  .pickerSearchEmpty { padding: 0.6rem; font: 400 0.8rem/1.3 Inter, sans-serif; }
+  html[data-mobile-ui] .searchablePicker .pickerSearchInput { height: 38px !important; min-height: 38px !important; font-size: 16px !important; }
+}
+
+/* Native selects can still display a previously selected Highway VAR font. */
+html:not([data-highway-var-fonts]) option[value^="Highway VAR"] {
+  display: none;
+}

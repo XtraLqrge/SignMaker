@@ -250,6 +250,11 @@ const definitions = {
 "weight": "600"
 }
 };
+for (const grade of ["", "G-1", "G-2"]) for (let series = 1; series <= 9; series++) {
+definitions["Highway VAR Series " + series + (grade ? " " + grade : "")] = {
+src: "fonts/oc-highway-var2/OCHighwayVAR2-Series" + series + grade + ".woff2", weight: "400"
+};
+}
 const aliases = {
 "Series 1": ["Clearview 1B", "Clearview 1W"], "Series 2": ["Clearview 2B", "Clearview 2W"],
 "Series 3": ["Clearview 3B", "Clearview 3W"], "Series 4": ["Clearview 4B", "Clearview 4W"],
@@ -271,6 +276,7 @@ let name = raw.trim().replace(/^["']|["']$/g, "");
 if (typeof resolveTextFontFamilyForRender === "function" && owner) {
 name = resolveTextFontFamilyForRender(name, owner, panel);
 }
+name = name.replace(/^OC Highway VAR2(?= |$)/i, "Highway VAR");
 for (const candidate of aliases[name] || [name]) {
 const family = canonicalNames.get(candidate.toLowerCase());
 if (family) families.add(family);
@@ -313,7 +319,8 @@ preload(family);
 const definition = definitions[family];
 try {
 requests.set(family, document.fonts.load(
-definition.weight + ' 16px "' + family + '"', "0A"
+definition.weight + ' 16px "' + family + '"',
+family.startsWith("Highway VAR ") ? "0A½" : "0A"
 ).catch(() => []));
 } catch (error) { requests.set(family, Promise.resolve([])); }
 }
@@ -374,14 +381,16 @@ remember
 })();
 </script>
   <!-- CSS Links -->
-  <link href="css/sign.e2a93d7201f1ae44.css" rel="stylesheet" type="text/css">
+  <link href="css/sign.b50bdf35a06d7247.css" rel="stylesheet" type="text/css">
+  
+  
   
   
   
   
   
   <!-- Page Links -->
-  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7b59a44862f35bb2.js","js/DiagrammaticRoadEngine.c3276cf74ac0dc2e.js","js/Diagrammatics.ad48e03c9f88f798.js","js/Roundabout.08d36150961b04b3.js","js/SpecialPanelLayout.ebf7a256bf57742c.js","js/DragFeedback.c8d142298bb8170a.js","js/FDOTSupports.353487bdf39bc15f.js","js/IconPicker.f07693de1a9e8c8f.js","js/form.f4b4dc59ab16fc40.js","js/IndexDB.ed3f5570a8a35ea9.js","js/CustomShields.85049f03f2f32351.js","js/SignDocument.049462d0df09a6fc.js","js/SignMigrations.b2fa30175c714ab4.js","js/BannerExport.03161132c4d841de.js","js/VmsElement.a1bac1137d0dd618.js","js/CaliforniaExit.0c392f8cf54132fb.js","js/GuideArrowDefaults.20da3f527035a54a.js","js/BlockContextMenu.da04750cc8a3f445.js","js/CopyPanelMenu.1e988b6fa65dbf39.js","js/BlockProperties.819cde37945fd777.js","js/MobileGestures.f1a20ba0cb160ef3.js","js/MobileSubpanels.c64e39f0eb70dce2.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.b43a012bd224276c.js","js/MobileShieldMaker.3aef7ec77a808b44.js","js/MobileUI.de661de95cdf6194.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.9ec01c73c294f303.js","js/Settings22.4e2c85b4aff66944.js","js/DropdownTheme.f1d44178025090c0.js"]' data-editor-css="css/app.f4c30aecac13bfad.css"></script>
+  <script defer src="js/Startup.9d75b1c853e51bc9.js" data-editor-scripts='["js/AlignmentButtons.f1278edc85d1f9aa.js","js/NativeSelect.7f88543cdf55b910.js","js/DiagrammaticRoadEngine.c3276cf74ac0dc2e.js","js/Diagrammatics.ad48e03c9f88f798.js","js/Roundabout.08d36150961b04b3.js","js/SpecialPanelLayout.ebf7a256bf57742c.js","js/DragFeedback.c8d142298bb8170a.js","js/FDOTSupports.353487bdf39bc15f.js","js/IconPicker.f07693de1a9e8c8f.js","js/HighwayVarFonts.a64ac12e2b96146a.js","js/PickerSearch.c28526c28f803968.js","js/form.df15f7fcacd06059.js","js/IndexDB.ed3f5570a8a35ea9.js","js/CustomShields.85049f03f2f32351.js","js/SignDocument.049462d0df09a6fc.js","js/SignMigrations.b2fa30175c714ab4.js","js/BannerExport.03161132c4d841de.js","js/VmsElement.a1bac1137d0dd618.js","js/CaliforniaExit.0c392f8cf54132fb.js","js/GuideArrowDefaults.20da3f527035a54a.js","js/BlockContextMenu.da04750cc8a3f445.js","js/CopyPanelMenu.1e988b6fa65dbf39.js","js/BlockProperties.819cde37945fd777.js","js/MobileGestures.f1a20ba0cb160ef3.js","js/MobileSubpanels.c64e39f0eb70dce2.js","js/MobileExitTabs.2cc9631b990c501f.js","js/MobileForms.b43a012bd224276c.js","js/MobileShieldMaker.3aef7ec77a808b44.js","js/MobileUI.de661de95cdf6194.js","js/MobileDropdowns.82efb2293f24f97e.js","js/MergeUI.9ec01c73c294f303.js","js/Settings22.4e2c85b4aff66944.js","js/DropdownTheme.483f02b41085e153.js"]' data-editor-css="css/app.6430d69b96462a20.css"></script>
 <script defer src="js/EditorRuntime.22e3b656e2676515.js"></script>
 <script defer src="js/lib.fe59e1d3b9e31c9f.js"></script>
 <script defer src="js/Shield.f5178a5830cb822f.js"></script>
@@ -395,7 +404,7 @@ remember
 <script defer src="js/Arrows.40ab7892bc2c752b.js"></script>
 <script defer src="js/Control.87f6e5820b22f24b.js"></script>
 <script defer src="js/SubPanels.d4d392b29959e7d4.js"></script>
-<script defer src="js/main.1b4cae1d57cdab4d.js"></script>
+<script defer src="js/main.c72efc3568b5bad9.js"></script>
   
   
   
@@ -405,6 +414,8 @@ remember
 
 
 
+  
+  
   
   
   
@@ -787,6 +798,7 @@ remember
                     </div></div></div>
               <div class="generalSettingRow"><label for="appDropdownAnimations">Interface animations:</label><div class="generalSettingControl"><input type="checkbox" id="appDropdownAnimations" checked></div></div>
               <div class="generalSettingRow"><label for="appAdvancedDropdowns">Advanced dropdowns:</label><div class="generalSettingControl"><input type="checkbox" id="appAdvancedDropdowns"></div></div>
+              <div class="generalSettingRow"><label for="appHighwayVarFonts">Enable Highway VAR fonts:</label><div class="generalSettingControl"><input type="checkbox" id="appHighwayVarFonts"></div></div>
               <div class="generalSettingRow"><label for="disableFlash">Disable Selection Flash:</label><div class="generalSettingControl"><input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showBlockBoundingBoxes">Show Block Bounds:</label><div class="generalSettingControl"><input type="checkbox" id="showBlockBoundingBoxes" name="showBlockBoundingBoxes" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showAlignmentGuides" data-tooltip="Draws evenly spaced vertical guides below the rendered signs.">Alignment Guides:</label><div class="generalSettingControl"><input type="checkbox" id="showAlignmentGuides" name="showAlignmentGuides" onchange="formHandler.readForm(event);"></div></div>

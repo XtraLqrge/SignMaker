@@ -9207,6 +9207,11 @@ const formHandler = (function () {
           previewFont: "Helvetica Roman",
           fonts: allFonts.filter((font) => /^Helvetica(?: Neue)?/i.test(font)),
         },
+        {
+          family: "Highway VAR",
+          previewFont: "Highway VAR Series 5",
+          fonts: allFonts.filter((font) => /^Highway VAR Series /i.test(font)),
+        },
       ];
 
       return familyDefs.filter((def) => def.fonts.length > 0);
@@ -9307,6 +9312,10 @@ const formHandler = (function () {
 
       const menu = document.createElement("div");
       menu.className = "fontPickerMenu";
+      const list = document.createElement("div");
+      list.className = "fontPickerList";
+      menu.appendChild(list);
+      let search;
       menu.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
       const isCustomShieldFontPicker = selectEl.id === "customShieldMakerRouteFont";
       wrapper.classList.toggle("customShieldFontPicker", isCustomShieldFontPicker);
@@ -9397,6 +9406,7 @@ const formHandler = (function () {
         button.type = "button";
         button.className = "fontPickerItem fontPickerFamilyItem";
         button.dataset.familyValue = family;
+        button.dataset.searchText = getFontsForPickerFamily(family).join(" ");
         button.textContent = getUiFontDisplayName(family);
         const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
         button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
@@ -9419,10 +9429,10 @@ const formHandler = (function () {
       };
 
       const render = () => {
-        menu.innerHTML = "";
+        list.innerHTML = "";
 
         const mobile = window.SignMakerMobileDropdowns;
-        if (mobile?.view(selectEl, 'font', { mode }).simple) {
+        if (!search?.query && mobile?.view(selectEl, 'font', { mode }).simple) {
           for (const choice of mobile.fontChoices(selectEl, mode)) {
             let button;
             if (mode === 'family') {
@@ -9443,14 +9453,17 @@ const formHandler = (function () {
             } else button = makeFontButton(choice.value);
             button.textContent = choice.label;
             button.style.fontFamily = '"' + choice.fontValue + '", sans-serif';
-            menu.appendChild(button);
+            list.appendChild(button);
           }
-          mobile.appendAdvanced(menu, selectEl, 'font', () => { render(); positionFloatingFontPickerMenu(); }, { mode });
+          mobile.appendAdvanced(list, selectEl, 'font', () => { render(); positionFloatingFontPickerMenu(); }, { mode });
+          search?.filterItems(list);
           updateTrigger();
           return;
         }
 
-        const families = getFontPickerFamilies(isCustomShieldFontPicker);
+        const isAvailable = window.SignMakerHighwayVar?.allows;
+        const families = getFontPickerFamilies(isCustomShieldFontPicker)
+          .filter(({ family }) => !isAvailable || isAvailable(family));
 
         if (mode === "allFontsGrouped") {
           for (const familyDef of families) {
@@ -9481,21 +9494,22 @@ const formHandler = (function () {
             }
             familyBlock.appendChild(familyHeader);
             familyBlock.appendChild(children);
-            menu.appendChild(familyBlock);
+            list.appendChild(familyBlock);
           }
         } else if (mode === "family") {
           for (const familyDef of families) {
-            menu.appendChild(makeFamilyButton(familyDef.family));
+            list.appendChild(makeFamilyButton(familyDef.family));
           }
         } else if (mode === "familyFont") {
           const family = linkedFamilySelect?.value || "";
           const fonts = getFontsForPickerFamily(family);
 
           for (const font of fonts) {
-            menu.appendChild(makeFontButton(font));
+            if (!isAvailable || isAvailable(font)) list.appendChild(makeFontButton(font));
           }
         }
 
+        search?.filterItems(list);
         updateTrigger();
       };
 
@@ -9512,6 +9526,13 @@ const formHandler = (function () {
         }
       };
 
+      search = window.SignMakerPickerSearch?.create({
+        menu, label: "Fonts",
+        onChange: () => { render(); menu.scrollTop = 0; positionFloatingFontPickerMenu(); },
+        onClose: () => { wrapper.classList.remove("open"); syncFloatingFontPickerMenuClasses(); trigger.focus(); },
+        items: () => Array.from(list.querySelectorAll(".fontPickerItem")),
+      });
+
       trigger.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -9520,6 +9541,7 @@ const formHandler = (function () {
         closeAllFontPickers(wrapper);
 
         if (willOpen) {
+          search?.reset({ notify: false });
           render();
           window.SignMakerDropdowns.prepareMenu(menu);
           wrapper.classList.add("open");
@@ -12699,6 +12721,7 @@ const formHandler = (function () {
         };
 
         const saveShieldPickerScrollTop = () => {
+          if (search?.query) return;
           setStoredItem(
             STORAGE_KEYS.shieldPickerScrollTop,
             String(Math.max(0, popover.scrollTop || 0))
@@ -12727,6 +12750,7 @@ const formHandler = (function () {
       const tree = document.createElement("div");
       tree.className = "shieldPickerTree";
       let treeDirty = true;
+      let search, searchExpanded = null;
       popover.appendChild(tree);
 
       wrapper.appendChild(trigger);
@@ -12830,11 +12854,15 @@ const formHandler = (function () {
         if (treeDirty || !tree.childElementCount) {
           treeDirty = false;
           const scrollTop = popover.scrollTop;
+          const results = window.SignMakerPickerSearch?.filterTree(rootNodes, search?.query || "") || { nodes: rootNodes };
+          if (search?.query && !searchExpanded) searchExpanded = new Set(results.expanded);
+          search?.setCount(results.nodes.length);
+          const activeExpanded = search?.query ? searchExpanded : expandedIds;
           renderShieldPickerTree({
             container: tree,
-            nodes: rootNodes,
+            nodes: results.nodes,
             currentValue,
-            expandedIds,
+            expandedIds: activeExpanded,
             onSelect: (node, options = {}) => {
               if (
                 node.customShieldMaker ||
@@ -12866,10 +12894,10 @@ const formHandler = (function () {
                 }
               },
               onToggle: (id) => {
-                if (expandedIds.has(id)) {
-                  expandedIds.delete(id);
+                if (activeExpanded.has(id)) {
+                  activeExpanded.delete(id);
                 } else {
-                  expandedIds.add(id);
+                  activeExpanded.add(id);
                 }
 
                 rerenderTree(true);
@@ -12894,8 +12922,15 @@ const formHandler = (function () {
             return;
           }
 
-          updateShieldPickerTreeState(tree, currentValue, expandedIds);
+          updateShieldPickerTreeState(tree, currentValue, search?.query ? searchExpanded : expandedIds);
         };
+
+        search = window.SignMakerPickerSearch?.create({
+          menu: popover, label: "Shields",
+          onChange: () => { searchExpanded = null; rerenderTree(true); popover.scrollTop = 0; if (wrapper.classList.contains("open")) placePopover(); },
+          onClose: () => { wrapper.classList.remove("open"); trigger.focus(); },
+          items: () => Array.from(tree.querySelectorAll(".shieldPickerItem")).filter(item => item.dataset.hasChildren !== "true" && !item.classList.contains("disabled")),
+        });
 
         trigger.addEventListener("click", (event) => {
           event.preventDefault();
@@ -12907,7 +12942,10 @@ const formHandler = (function () {
             saveShieldPickerScrollTop();
           }
 
-          if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
+          if (willOpen) {
+            if (search?.query) { search.reset({ notify: false }); searchExpanded = null; treeDirty = true; }
+            window.SignMakerDropdowns.prepareMenu(popover);
+          }
           wrapper.classList.toggle("open", willOpen);
 
           if (willOpen) {
@@ -13368,6 +13406,12 @@ const formHandler = (function () {
       };
 
       const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:0,maxWidth:12});
+      const search = window.SignMakerPickerSearch?.create({
+        menu: popover, label: "Shield variants",
+        onChange: () => { search.filterItems(list, ".shieldPickerItem"); popover.scrollTop = 0; if (wrapper.classList.contains("open")) placePopover(); },
+        onClose: () => { close(); trigger.focus(); },
+        items: () => Array.from(list.querySelectorAll(".shieldPickerItem")),
+      });
 
       const applyImageFallback = (image, requestedPath = "") => {
         if (typeof window.applySignMakerAssetFallback === "function") {
@@ -13434,6 +13478,7 @@ const formHandler = (function () {
 
           list.appendChild(item);
         }
+        search?.filterItems(list, ".shieldPickerItem");
       };
 
       const syncTrigger = () => {
@@ -13514,6 +13559,7 @@ const formHandler = (function () {
         if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
         wrapper.classList.toggle("open", willOpen);
         if (willOpen) {
+          search?.reset({ notify: false });
           renderItems();
           placePopover();
         }
@@ -17545,9 +17591,11 @@ const formHandler = (function () {
         Rawlinson: rawlinsonFonts,
         "ITC Stone Sans": itcStoneSansFonts,
         "Helvetica": helveticaNeueFonts,
+        "Highway VAR": TextElement.prototype.fontFamily.filter(font => /^Highway VAR Series /i.test(font)),
       };
 
       const settingsDefaultsFontDefaults = {
+        "Highway VAR": "Highway VAR Series 5",
         Clearview: clearviewFonts.includes("Series 5WR")
           ? "Series 5WR"
           : (clearviewFonts[0] || ""),
@@ -18021,7 +18069,7 @@ const formHandler = (function () {
           storedSettingsDefaults,
           fontId
         )
-          ? storedSettingsDefaults[fontId]
+          ? normalizeUiFontValue(storedSettingsDefaults[fontId])
           : settingsDefaultsFieldDefaults[fontId];
 
         const defaultFontForFamily =
@@ -18062,7 +18110,7 @@ const formHandler = (function () {
 
         const selectedFamily =
           Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
-            ? storedSettingsDefaults[id]
+            ? normalizeUiFontValue(storedSettingsDefaults[id])
             : settingsDefaultsFieldDefaults[id];
 
         populateSimpleSelect(

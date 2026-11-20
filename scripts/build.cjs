@@ -117,7 +117,7 @@ function build() {
   const fontSource=fs.readFileSync(path.join(publicRoot,'js/FontLoader.js'),'utf8');
   const fontHelper=compactJS(fontSource).replace(/<\/script/gi,'<\\/script');
   html=html.replace(/<script\b[^>]*src="js\/FontLoader\.js[^"\s]*"[^>]*><\/script>/,()=>'<script data-font-loader>\n'+fontHelper+'</script>');
-  const editorNames = new Set(["AlignmentButtons", "NativeSelect", "FDOTSupports", "IconPicker", "form", "IndexDB", "CustomShields", "SignMigrations", "BannerExport", "SignDocument", "VmsElement", "CaliforniaExit", "MergeUI", "Settings22", "DropdownTheme", "MobileGestures", "MobileSubpanels", "MobileExitTabs", "MobileForms", "MobileShieldMaker", "MobileUI", "MobileDropdowns", "DiagrammaticRoadEngine", "Diagrammatics", "Roundabout", "SpecialPanelLayout", "DragFeedback", "GuideArrowDefaults", "BlockContextMenu", "CopyPanelMenu", "BlockProperties"]);
+  const editorNames = new Set(["HighwayVarFonts", "PickerSearch", "AlignmentButtons", "NativeSelect", "FDOTSupports", "IconPicker", "form", "IndexDB", "CustomShields", "SignMigrations", "BannerExport", "SignDocument", "VmsElement", "CaliforniaExit", "MergeUI", "Settings22", "DropdownTheme", "MobileGestures", "MobileSubpanels", "MobileExitTabs", "MobileForms", "MobileShieldMaker", "MobileUI", "MobileDropdowns", "DiagrammaticRoadEngine", "Diagrammatics", "Roundabout", "SpecialPanelLayout", "DragFeedback", "GuideArrowDefaults", "BlockContextMenu", "CopyPanelMenu", "BlockProperties"]);
   const core=[], editor=[];
   html = html.replace(/<script\b[^>]*\bsrc="(js\/[^"?]+)(?:\?[^"\s]*)?"[^>]*><\/script>/g, (tag,relative) => {
     if (relative === 'js/Startup.js') return '<!-- STARTUP_SCRIPT -->';

@@ -150,6 +150,11 @@ window.SignMakerFonts = (() => {
     "weight": "600"
   }
 };
+  for (const grade of ["", "G-1", "G-2"]) for (let series = 1; series <= 9; series++) {
+    definitions["Highway VAR Series " + series + (grade ? " " + grade : "")] = {
+      src: "fonts/oc-highway-var2/OCHighwayVAR2-Series" + series + grade + ".woff2", weight: "400"
+    };
+  }
   const aliases = {
     "Series 1": ["Clearview 1B", "Clearview 1W"], "Series 2": ["Clearview 2B", "Clearview 2W"],
     "Series 3": ["Clearview 3B", "Clearview 3W"], "Series 4": ["Clearview 4B", "Clearview 4W"],
@@ -171,6 +176,7 @@ window.SignMakerFonts = (() => {
     if (typeof resolveTextFontFamilyForRender === "function" && owner) {
       name = resolveTextFontFamilyForRender(name, owner, panel);
     }
+    name = name.replace(/^OC Highway VAR2(?= |$)/i, "Highway VAR");
     for (const candidate of aliases[name] || [name]) {
       const family = canonicalNames.get(candidate.toLowerCase());
       if (family) families.add(family);
@@ -213,7 +219,8 @@ window.SignMakerFonts = (() => {
       const definition = definitions[family];
       try {
         requests.set(family, document.fonts.load(
-          definition.weight + ' 16px "' + family + '"', "0A"
+          definition.weight + ' 16px "' + family + '"',
+          family.startsWith("Highway VAR ") ? "0A½" : "0A"
         ).catch(() => []));
       } catch (error) { requests.set(family, Promise.resolve([])); }
     }

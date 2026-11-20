@@ -18128,7 +18128,7 @@ const serializePostWithElementTypes = (space) => {
               ? variant.data
               : template.data,
           fontFamily:
-            typeof variant.fontFamily === "string" ? variant.fontFamily : "",
+            normalizeTextFontFamilyName(variant.fontFamily),
         };
       });
   };

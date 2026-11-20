@@ -4,7 +4,7 @@
   "localStylesheetCount": 1,
   "deferredEditor": [
     "js/AlignmentButtons.f1278edc85d1f9aa.js",
-    "js/NativeSelect.7b59a44862f35bb2.js",
+    "js/NativeSelect.7f88543cdf55b910.js",
     "js/DiagrammaticRoadEngine.c3276cf74ac0dc2e.js",
     "js/Diagrammatics.ad48e03c9f88f798.js",
     "js/Roundabout.08d36150961b04b3.js",
@@ -12,7 +12,9 @@
     "js/DragFeedback.c8d142298bb8170a.js",
     "js/FDOTSupports.353487bdf39bc15f.js",
     "js/IconPicker.f07693de1a9e8c8f.js",
-    "js/form.f4b4dc59ab16fc40.js",
+    "js/HighwayVarFonts.a64ac12e2b96146a.js",
+    "js/PickerSearch.c28526c28f803968.js",
+    "js/form.df15f7fcacd06059.js",
     "js/IndexDB.ed3f5570a8a35ea9.js",
     "js/CustomShields.85049f03f2f32351.js",
     "js/SignDocument.049462d0df09a6fc.js",
@@ -33,23 +35,23 @@
     "js/MobileDropdowns.82efb2293f24f97e.js",
     "js/MergeUI.9ec01c73c294f303.js",
     "js/Settings22.4e2c85b4aff66944.js",
-    "js/DropdownTheme.f1d44178025090c0.js"
+    "js/DropdownTheme.483f02b41085e153.js"
   ],
-  "deferredStyles": "css/app.f4c30aecac13bfad.css",
+  "deferredStyles": "css/app.6430d69b96462a20.css",
   "startupJS": {
-    "bytes": 619895,
-    "gzipBytes": 169970,
-    "brotliBytes": 140958
+    "bytes": 619891,
+    "gzipBytes": 169973,
+    "brotliBytes": 140960
   },
   "criticalCSS": {
-    "bytes": 279265,
-    "gzipBytes": 61628,
-    "brotliBytes": 53115
+    "bytes": 291339,
+    "gzipBytes": 62272,
+    "brotliBytes": 53570
   },
   "inlineFontHelper": {
-    "bytes": 8187,
-    "gzipBytes": 2302,
-    "brotliBytes": 1996
+    "bytes": 8557,
+    "gzipBytes": 2480,
+    "brotliBytes": 2149
   },
   "uiIconFont": {
     "file": "fonts/ui/symbols.b86218c91b5064ea.woff2",
@@ -61,6 +63,11 @@
       "output": "export-assets/074452f99924141b.js",
       "exportOnly": true,
       "bytes": 1162839
+    },
+    {
+      "output": "export-assets/dd5d63e93ee18478.js",
+      "exportOnly": true,
+      "bytes": 807527
     },
     {
       "output": "export-assets/91397fadae7b3693.js",
@@ -538,16 +545,16 @@
     },
     {
       "source": "js/ExportAssets.js",
-      "output": "js/ExportAssets.f7f20030f257c6e1.js",
+      "output": "js/ExportAssets.3bcdc409d07e791a.js",
       "original": {
-        "bytes": 134950,
-        "gzipBytes": 11225,
-        "brotliBytes": 8952
+        "bytes": 156244,
+        "gzipBytes": 11925,
+        "brotliBytes": 9362
       },
       "optimized": {
-        "bytes": 133288,
-        "gzipBytes": 11023,
-        "brotliBytes": 8678
+        "bytes": 153934,
+        "gzipBytes": 11708,
+        "brotliBytes": 9116
       }
     },
     {
@@ -566,16 +573,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.1b4cae1d57cdab4d.js",
+      "output": "js/main.c72efc3568b5bad9.js",
       "original": {
-        "bytes": 762049,
-        "gzipBytes": 134584,
-        "brotliBytes": 106136
+        "bytes": 762032,
+        "gzipBytes": 134587,
+        "brotliBytes": 106182
       },
       "optimized": {
-        "bytes": 329991,
-        "gzipBytes": 88233,
-        "brotliBytes": 72234
+        "bytes": 329987,
+        "gzipBytes": 88236,
+        "brotliBytes": 72236
       }
     },
     {
@@ -594,16 +601,16 @@
     },
     {
       "source": "js/NativeSelect.js",
-      "output": "js/NativeSelect.7b59a44862f35bb2.js",
+      "output": "js/NativeSelect.7f88543cdf55b910.js",
       "original": {
-        "bytes": 20755,
-        "gzipBytes": 5953,
-        "brotliBytes": 5118
+        "bytes": 21433,
+        "gzipBytes": 6085,
+        "brotliBytes": 5246
       },
       "optimized": {
-        "bytes": 13112,
-        "gzipBytes": 5018,
-        "brotliBytes": 4335
+        "bytes": 13446,
+        "gzipBytes": 5120,
+        "brotliBytes": 4436
       }
     },
     {
@@ -705,17 +712,45 @@
       }
     },
     {
-      "source": "js/form.js",
-      "output": "js/form.f4b4dc59ab16fc40.js",
+      "source": "js/HighwayVarFonts.js",
+      "output": "js/HighwayVarFonts.a64ac12e2b96146a.js",
       "original": {
-        "bytes": 958691,
-        "gzipBytes": 164807,
-        "brotliBytes": 125652
+        "bytes": 1804,
+        "gzipBytes": 819,
+        "brotliBytes": 683
       },
       "optimized": {
-        "bytes": 490772,
-        "gzipBytes": 113265,
-        "brotliBytes": 88971
+        "bytes": 1142,
+        "gzipBytes": 661,
+        "brotliBytes": 537
+      }
+    },
+    {
+      "source": "js/PickerSearch.js",
+      "output": "js/PickerSearch.c28526c28f803968.js",
+      "original": {
+        "bytes": 5438,
+        "gzipBytes": 1845,
+        "brotliBytes": 1560
+      },
+      "optimized": {
+        "bytes": 3509,
+        "gzipBytes": 1553,
+        "brotliBytes": 1326
+      }
+    },
+    {
+      "source": "js/form.js",
+      "output": "js/form.df15f7fcacd06059.js",
+      "original": {
+        "bytes": 961618,
+        "gzipBytes": 165465,
+        "brotliBytes": 126094
+      },
+      "optimized": {
+        "bytes": 492558,
+        "gzipBytes": 113743,
+        "brotliBytes": 89385
       }
     },
     {
@@ -1000,16 +1035,16 @@
     },
     {
       "source": "js/DropdownTheme.js",
-      "output": "js/DropdownTheme.f1d44178025090c0.js",
+      "output": "js/DropdownTheme.483f02b41085e153.js",
       "original": {
-        "bytes": 12808,
-        "gzipBytes": 4140,
-        "brotliBytes": 3638
+        "bytes": 15083,
+        "gzipBytes": 4800,
+        "brotliBytes": 4242
       },
       "optimized": {
-        "bytes": 8032,
-        "gzipBytes": 3359,
-        "brotliBytes": 2981
+        "bytes": 9051,
+        "gzipBytes": 3808,
+        "brotliBytes": 3378
       }
     },
     {
@@ -1020,6 +1055,8 @@
         "css/form.css",
         "css/sign-foundation.css",
         "css/ui-fonts.css",
+        "css/highway-var-fonts.css",
+        "css/picker-search.css",
         "css/merge-features.css",
         "css/legacy-shields.css",
         "css/template-editor.css",
@@ -1033,25 +1070,25 @@
         "css/custom-shield-maker.css",
         "css/block-properties.css"
       ],
-      "output": "css/app.f4c30aecac13bfad.css",
+      "output": "css/app.6430d69b96462a20.css",
       "original": {
-        "bytes": 897257,
-        "gzipBytes": 145049,
-        "brotliBytes": 114023
+        "bytes": 911590,
+        "gzipBytes": 145978,
+        "brotliBytes": 114630
       },
       "optimized": {
-        "bytes": 758867,
-        "gzipBytes": 121526,
-        "brotliBytes": 96272
+        "bytes": 770941,
+        "gzipBytes": 122257,
+        "brotliBytes": 96746
       }
     },
     {
       "critical": true,
-      "output": "css/sign.e2a93d7201f1ae44.css",
+      "output": "css/sign.b50bdf35a06d7247.css",
       "optimized": {
-        "bytes": 279265,
-        "gzipBytes": 61628,
-        "brotliBytes": 53115
+        "bytes": 291339,
+        "gzipBytes": 62272,
+        "brotliBytes": 53570
       }
     },
     {

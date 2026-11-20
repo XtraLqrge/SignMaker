@@ -1,0 +1,15 @@
+{
+  "js/Diagrammatics.js": "da2097e6e1dc7b7f9807b2c0e3d9c940323acd8f467909b7f581a064b8ad1fd5",
+  "js/Roundabout.js": "38dfc832b4224ae1bf97b676d5bb2a7f3db3959306e7492b6929c7e4ed77136f",
+  "diagrammatics/controls.source.html": "4b128a9b835ee07fe5678b4bdb6a173547f2bf229381aff966227365d92a8f5b",
+  "diagrammatics/stripe/LICENSE": "605e9047a563c5c8396ffb18232aa4304ec56586aee537c45064c6fb425e44ad",
+  "diagrammatics/stripe/SOURCE.json": "8752645b6c89c8a26d8e342e397f6ddbf5b5e4183a564bd834a6f44451a27d1c",
+  "diagrammatics/stripe/css/form.css": "6c7918288f8bed6fb86aa82cf18528014e3be16309c5fa9fc6161f322547ebb6",
+  "diagrammatics/stripe/css/menus.css": "0c19bfd7e7bf879c4c042c8959f47ed2f900e6466a04a6aaae1c4257be55f332",
+  "diagrammatics/stripe/css/page.css": "9bd47068eeecfb466aafbe4a485290451d606a2af3eefd6de9bcd4765cc964ea",
+  "diagrammatics/stripe/js/circular-arc.js": "821b33dfe5854c311cc4b491ba5831b2c0271b5ea9c8b2ceb0e4cb7828fcb54b",
+  "diagrammatics/stripe/js/clothoid.js": "935773c1addfea8b93ec0e003ab3d3f9bfc73aa7668dbfb00f9ce0908192b16f",
+  "diagrammatics/stripe/js/curve-links.js": "2b440b680426387be59316b19c08728d6a4a407c199b5ce820bb76c3954bb172",
+  "diagrammatics/stripe/js/elements.js": "e04b29fe579f5f7605647c27681b8d35d8beb14f91f723610ebca1529e87d117",
+  "diagrammatics/stripe/js/road-widths.js": "7fc35a38a15b2440e15f694c28aa5bd00755b06171a5ec54a5799e1e619bb6cc"
+}

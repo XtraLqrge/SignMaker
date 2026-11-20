@@ -23,13 +23,13 @@
 /js/ShieldFallbacks.2e935e76679a9d08.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Shield.b8ba6ebe5dc0e3b6.js
+/js/Shield.f5178a5830cb822f.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Sign.e1a0e096aa562c79.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/ExitTab.5509e16b3358304f.js
+/js/ExitTab.a5a0d58d26b239c9.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Panel.5e4c31f252743c95.js
@@ -41,7 +41,7 @@
 /js/PanelDrag.ab4bab4047ff9b6f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/VmsPanel.34d9648ce7eb7499.js
+/js/VmsPanel.06c887aa6ae98462.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Post.d932de58634d37b7.js
@@ -53,25 +53,22 @@
 /js/IconFallbacks.d438a3a04387fedd.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Control.17a20f416dc3be10.js
+/js/Control.87f6e5820b22f24b.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/SubPanels.d4d392b29959e7d4.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/SignDocument.049462d0df09a6fc.js
-  Cache-Control: public, max-age=31536000, immutable
-
 /js/HtmlToImage.27f73655f8a42531.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/ExportAssets.df65f86375408534.js
+/js/ExportAssets.f7f20030f257c6e1.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/PresetTemplates.fff3bc65509984e9.js
+/js/PresetTemplates.12d6e48cb9eed8b7.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.3795328eb1538723.js
+/js/main.eb79077719884428.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.f1278edc85d1f9aa.js
@@ -89,6 +86,9 @@
 /js/Roundabout.08d36150961b04b3.js
   Cache-Control: public, max-age=31536000, immutable
 
+/js/SpecialPanelLayout.ebf7a256bf57742c.js
+  Cache-Control: public, max-age=31536000, immutable
+
 /js/DragFeedback.c8d142298bb8170a.js
   Cache-Control: public, max-age=31536000, immutable
 
@@ -98,19 +98,40 @@
 /js/IconPicker.f07693de1a9e8c8f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.de016edce7567e1c.js
+/js/form.f4b4dc59ab16fc40.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/IndexDB.905b66ca7e8b07ba.js
+/js/IndexDB.ed3f5570a8a35ea9.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/CustomShields.85049f03f2f32351.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/SignDocument.049462d0df09a6fc.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/SignMigrations.b2fa30175c714ab4.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/BannerExport.03161132c4d841de.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/VmsElement.a1bac1137d0dd618.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/CaliforniaExit.0c392f8cf54132fb.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/GuideArrowDefaults.20da3f527035a54a.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/BlockContextMenu.da04750cc8a3f445.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/CopyPanelMenu.1e988b6fa65dbf39.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/BlockProperties.819cde37945fd777.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MobileGestures.f1a20ba0cb160ef3.js
@@ -122,7 +143,7 @@
 /js/MobileExitTabs.2cc9631b990c501f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MobileForms.190fcf1c23561a68.js
+/js/MobileForms.b43a012bd224276c.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MobileShieldMaker.3aef7ec77a808b44.js
@@ -143,10 +164,10 @@
 /js/DropdownTheme.f1d44178025090c0.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.24b9801392237839.css
+/css/app.f4c30aecac13bfad.css
   Cache-Control: public, max-age=31536000, immutable
 
-/css/sign.4baf4bfe89e4b340.css
+/css/sign.e2a93d7201f1ae44.css
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Startup.9d75b1c853e51bc9.js

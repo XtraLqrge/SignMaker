@@ -392,7 +392,7 @@ const scheduleAlignmentGuideUpdate = (
     const legacyFallback = exitTab.FHWAFont === true
       ? ExitTab.prototype.defaultFHWAFontFamily
       : (ExitTab.prototype.defaultClearviewFontFamily || "Series 5WR");
-    const fallback = legacyFallback || ExitTab.prototype.defaultFontFamily || "Series EEM";
+    const fallback = legacyFallback || ExitTab.prototype.defaultFontFamily || "Series E";
 
     if (requested) {
       if (availableFonts.includes(requested)) {
@@ -412,7 +412,7 @@ const scheduleAlignmentGuideUpdate = (
 
     return availableFonts.includes(fallback)
       ? fallback
-      : (availableFonts[0] || fallback || "Series EEM");
+      : (availableFonts[0] || fallback || "Series E");
   };
 
   const normalizeExitTabLegacyFields = (exitTab = {}) => {
@@ -2199,6 +2199,7 @@ const ungroupSelectedBlockElement = () => {
                   const ElemClass = Control.prototype.blockToClassElems[elemType];
                   const elem = new ElemClass(elemType === "GroupedBlockElement" ? { ...elemData, blockElements: new Control() } : elemData);
                   Object.assign(elem, elemData);
+                  if (elem instanceof ElectronicSignElement) elem.realisticLED = elemData.realisticLED === true;
                   if (elemType === "GroupedBlockElement") elem.blockElements = reconstructControl(elemData.blockElements);
                   if (typeof elem.fontFamily === "string") {
                     elem.fontFamily = normalizeTextFontFamilyName(elem.fontFamily);
@@ -4174,37 +4175,6 @@ const ungroupSelectedBlockElement = () => {
     resolvedBackdropRows.forEach(row => row.classList.add("fullBleedBackgroundPainted"));
   };
 
-  // Extend full-bleed vertical dividers through surrounding padding to the sign
-  // edge or other content; a transform keeps the row height unchanged.
-  const layoutVerticalFullBleedDividers = (signElmt) => {
-    const dividers = signElmt.querySelectorAll(".dividerElement.vertical.fullBleed");
-    dividers.forEach((divider) => { divider.style.transform = ""; });
-
-    for (const divider of dividers) {
-      const rect = divider.getBoundingClientRect();
-      if (!rect.height || !divider.offsetHeight) continue;
-      let top = rect.top, bottom = rect.bottom;
-
-      for (let element = divider; element !== signElmt && element.parentElement; element = element.parentElement) {
-        const parent = element.parentElement;
-        const style = window.getComputedStyle(parent);
-        const elementStyle = window.getComputedStyle(element);
-        const parentRect = parent.getBoundingClientRect();
-        const innerTop = parentRect.top + (parseFloat(style.borderTopWidth) || 0);
-        const innerBottom = parentRect.bottom - (parseFloat(style.borderBottomWidth) || 0);
-        const topSpace = (parseFloat(style.paddingTop) || 0) + Math.max(0, parseFloat(elementStyle.marginTop) || 0);
-        const bottomSpace = (parseFloat(style.paddingBottom) || 0) + Math.max(0, parseFloat(elementStyle.marginBottom) || 0);
-        if (top - innerTop <= topSpace + 0.5) top = Math.min(top, innerTop);
-        if (innerBottom - bottom <= bottomSpace + 0.5) bottom = Math.max(bottom, innerBottom);
-      }
-
-      if (top === rect.top && bottom === rect.bottom) continue;
-      const layoutScale = divider.offsetHeight / rect.height;
-      divider.style.transform =
-        `translateY(${(top - rect.top) * layoutScale}px) scaleY(${(bottom - top) / rect.height})`;
-    }
-  };
-
   const refreshDynamicPanelBorders = (rootElmt) => {
     if (!rootElmt) {
       return;
@@ -4215,26 +4185,8 @@ const ungroupSelectedBlockElement = () => {
       : Array.from(rootElmt.querySelectorAll(".sign"));
 
     for (const signElmt of signs) {
-      layoutVerticalFullBleedDividers(signElmt);
-      if (signElmt.closest('.panel.warningDiamond')) {
-        const container = signElmt.parentElement;
-        let face = container.querySelector(':scope > .warningDiamondFace');
-        if (!face) {
-          face = document.createElement('div');
-          face.className = 'warningDiamondFace';
-          face.setAttribute('aria-hidden', 'true');
-          container.prepend(face);
-        }
-        const panel = signElmt.closest('.panel');
-        const index = Number(panel.dataset.panelIndex);
-        const color = getResolvedCssColorValue(post.panels[index]?.color) || 'var(--yellow)';
-        face.style.backgroundColor = color;
-        face.style.borderColor = getComputedStyle(signElmt).color;
-        // A centered upright rectangle fits a diamond whose diagonal is w+h.
-        const extent = Math.ceil(signElmt.offsetWidth + signElmt.offsetHeight);
-        container.style.setProperty('--warningDiamondExtent', extent + 'px');
-        continue;
-      }
+      window.SignMakerSpecialPanelLayout.layoutVerticalFullBleedDividers(signElmt);
+      if (window.SignMakerSpecialPanelLayout.renderWarningFace(signElmt, post, getResolvedCssColorValue)) continue;
       applyPanelBorderGradient(signElmt);
     }
     PanelBorders.refreshAll(rootElmt);
@@ -4729,55 +4681,12 @@ const ungroupSelectedBlockElement = () => {
   // Initialize the application, and populates dropdowns and the default post.
 
 
-    const LEGACY_NONE_BANNER_MIGRATION_KEY =
-      "signMaker.migrations.shieldBannerNoneToBlank.v1";
-
-    const migrateLegacyNoneShieldBannersOnce = () => {
-      try {
-        if (
-          window.localStorage.getItem(LEGACY_NONE_BANNER_MIGRATION_KEY) === "1"
-        ) {
-          return false;
-        }
-      } catch (error) {}
-
-      let changed = false;
-      const visited = new WeakSet();
-
-      const walk = (value) => {
-        if (!value || typeof value !== "object" || visited.has(value)) {
-          return;
-        }
-
-        visited.add(value);
-
-        for (const key of Object.keys(value)) {
-          const child = value[key];
-
-          if (
-            (key === "bannerType" || key === "bannerType2") &&
-            typeof child === "string" &&
-            child.trim().toLowerCase() === "none"
-          ) {
-            value[key] = "";
-            changed = true;
-            continue;
-          }
-
-          if (child && typeof child === "object") {
-            walk(child);
-          }
-        }
-      };
-
-      walk(post);
-
-      try {
-        window.localStorage.setItem(LEGACY_NONE_BANNER_MIGRATION_KEY, "1");
-      } catch (error) {}
-
-      return changed;
-    };
+    const migrateSavedSignTypographyOnce = () =>
+      window.SignMakerMigrations?.runOnce({
+        readSnapshot: readSavedAppStateSnapshot, readPersistent: getPersistentValue,
+        writePersistent: setPersistentValue, migratePreferences: formHandler.migrateSavedTypographyPreferences,
+        getTemplates: initTemplateDB, snapshotKey: APP_STORAGE_KEY,
+      }) ?? null;
 
     let initializationStarted = false;
     const init = async function () {
@@ -4793,9 +4702,9 @@ const ungroupSelectedBlockElement = () => {
       bindDownloadResolutionControl();
 
       // A fresh sign needs no editor registries. Paint it before loading them.
-      const savedSnapshot = getRestoreOnRefreshMode() === "never"
+      let savedSnapshot = getRestoreOnRefreshMode() === "never"
         ? null : await readSavedAppStateSnapshot();
-      let restored = false, migratedLegacyNoneBanners = false;
+      let restored = false;
       const paintSign = async () => {
         await Promise.all([
           prepareIconImagesForPost(post),
@@ -4818,6 +4727,8 @@ const ungroupSelectedBlockElement = () => {
       const paintedFreshSign = !savedSnapshot && !hasStoredPostPreferences;
       if (paintedFreshSign) await paintSign();
       await window.SignMakerBoot?.loadEditor();
+      initializeVmsRendering();
+      savedSnapshot = await migrateSavedSignTypographyOnce() ?? savedSnapshot;
       window.customShields = new CustomShields();
       await formHandler.init(exposeToFormHandler, {
         beforeUI: async () => {
@@ -4826,7 +4737,6 @@ const ungroupSelectedBlockElement = () => {
             post.newPanel();
             currentlySelectedPanelIndex = post.panels.length - 1;
           }
-          migratedLegacyNoneBanners = migrateLegacyNoneShieldBannersOnce();
           if (!paintedFreshSign) await paintSign();
         },
       });
@@ -4852,7 +4762,7 @@ const ungroupSelectedBlockElement = () => {
       requestAnimationFrame(refreshStartupLayout);
       document.fonts?.ready?.then(refreshStartupLayout).catch(() => {});
 
-        if (!restored || migratedLegacyNoneBanners) {
+        if (!restored) {
           saveAppState();
         }
 
@@ -6258,7 +6168,7 @@ const ungroupSelectedBlockElement = () => {
       window.SignMakerMobile?.active || (panelElmt.classList.contains("panelDragHandle") && !event.altKey);
 
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
-      if (!panelElmt || !holder || !tabElmt || !exitTab) return;
+      if (!panelElmt || !holder || !tabElmt || !exitTab || exitTab.caStyle === true || exitTab.variant === "California") return;
       tabElmt.classList.add("draggableExitTab");
       const initialOffset = Number(exitTab.dragOffsetRem) || 0;
       setRenderedExitTabOffset(holder, initialOffset);
@@ -8055,6 +7965,7 @@ const ungroupSelectedBlockElement = () => {
           const ElemClass = Control.prototype.blockToClassElems[elemType];
           const elem = new ElemClass(elemType === "GroupedBlockElement" ? { ...data, blockElements: new Control() } : data);
           Object.assign(elem, data);
+          if (elem instanceof ElectronicSignElement) elem.realisticLED = data.realisticLED === true;
           if (elemType === "GroupedBlockElement") elem.blockElements = Control.fromData(data.blockElements);
           delete elem._elementType;
           delete elem.__undoType;
@@ -10623,70 +10534,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     }catch(error){setCopyButtonState('error');alert('Unable to copy the sign: '+error.message);return false;}
     finally {copySignInProgress=false;}
   };
-  const closeCopyPanelContextMenu = (restoreFocus = false) => {
-    const menu = document.getElementById("copyPanelContextMenu");
-    if (!menu || menu.classList.contains("hidden")) return;
-    menu.classList.add("hidden");
-    document.getElementById("copySign")?.setAttribute("aria-expanded", "false");
-    if (restoreFocus) document.getElementById("copySign")?.focus({preventScroll: true});
-  };
-
-  const openCopyPanelContextMenu = event => {
-    event.preventDefault();
-    event.stopPropagation();
-    const menu = document.getElementById("copyPanelContextMenu");
-    const trigger = document.getElementById("copySign");
-    if (!menu || !trigger || copySignInProgress) return;
-    // A transformed toolbar makes fixed coordinates relative to the toolbar.
-    // Portal to the body so pointer coordinates work at every placement/scale.
-    document.body.appendChild(menu);
-    menu.replaceChildren();
-    const groups = getExportablePanelGroups();
-    for (const group of groups) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.setAttribute("role", "menuitem");
-      button.tabIndex = -1;
-      button.textContent = "Copy Panel " + group.label + (group.indices.length > 1 ? " (stacked)" : "");
-      button.dataset.panelIndex = String(group.topIndex);
-      button.addEventListener("click", () => {
-        closeCopyPanelContextMenu(true);
-        copySignToClipboard(group.topIndex);
-      });
-      menu.appendChild(button);
-    }
-    if (!groups.length) {
-      const empty = document.createElement("button");
-      empty.type = "button";
-      empty.disabled = true;
-      empty.setAttribute("role", "menuitem");
-      empty.textContent = "No visible panels to copy";
-      menu.appendChild(empty);
-    }
-    menu.onkeydown = keyEvent => {
-      const items = [...menu.querySelectorAll("button:not(:disabled)")];
-      const index = items.indexOf(document.activeElement);
-      let next;
-      if (keyEvent.key === "ArrowDown") next = (index + 1) % items.length;
-      if (keyEvent.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
-      if (keyEvent.key === "Home") next = 0;
-      if (keyEvent.key === "End") next = items.length - 1;
-      if (next !== undefined) { keyEvent.preventDefault(); items[next]?.focus(); }
-      if (keyEvent.key === "Tab") closeCopyPanelContextMenu(true);
-    };
-    menu.style.left = "0px";
-    menu.style.top = "0px";
-    menu.classList.remove("hidden");
-    const bounds = menu.getBoundingClientRect();
-    const anchor = trigger.getBoundingClientRect();
-    const keyboard = event.type === "keydown" || (!event.clientX && !event.clientY);
-    const x = keyboard ? anchor.left : event.clientX;
-    const y = keyboard ? anchor.bottom : event.clientY;
-    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8)) + "px";
-    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8)) + "px";
-    trigger.setAttribute("aria-expanded", "true");
-    (menu.querySelector("button:not(:disabled)") || menu).focus({preventScroll: true});
-  };
+  const closeCopyPanelContextMenu = (restoreFocus = false) => window.SignMakerCopyPanelMenu.close(restoreFocus);
+  const openCopyPanelContextMenu = event => window.SignMakerCopyPanelMenu.open(event, {
+    getExportablePanelGroups, copySignToClipboard, copySignInProgress
+  });
 
   const copyBlobToClipboard = async (blobOrPromise, mimeType, fileName = "copiedSign") => {
     if (
@@ -11518,6 +11369,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     wrapper.style.boxSizing = "border-box";
 
     const clone = element.cloneNode(true);
+    window.SignMakerBannerExport.freeze(element, clone, layoutScale, getExportPixelRatio());
     clone.classList.remove("showBlockBoundingBoxes");
     clone.querySelectorAll(".diagrammaticEditing").forEach(node=>node.classList.remove("diagrammaticEditing"));
     clone.querySelectorAll("#alignmentGuides, .diagrammaticLiveLayer, .diagrammaticSubpanelHandle").forEach(guide=>guide.remove());
@@ -11685,82 +11537,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
     let compactLeft = padding;
 
-    const freezeStaticCloneLayoutMetrics = (sourceRoot, cloneRoot) => {
-      if (!sourceRoot || !cloneRoot) {
-        return;
-      }
-
-      const layoutSelectors = [
-        ".panel",
-        ".panelStack",
-        ".exitTabContainer",
-        ".exitTabHolder",
-        ".exitTab",
-        ".signContainer",
-        ".sign",
-        ".signHolder",
-        ".globalTop",
-        ".globalBottom",
-        ".subPanelDisplay",
-        ".signContentContainer",
-        ".blockElementMaster",
-        ".guideArrows",
-        ".aplArrows",
-      ].join(", ");
-
-      const sourceNodes = [sourceRoot, ...sourceRoot.querySelectorAll("*")];
-      const cloneNodes = [cloneRoot, ...cloneRoot.querySelectorAll("*")];
-
-      sourceNodes.forEach((sourceNode, nodeIndex) => {
-        const cloneNode = cloneNodes[nodeIndex];
-
-        if (!cloneNode || !sourceNode.matches || !sourceNode.matches(layoutSelectors)) {
-          return;
-        }
-
-        const rect = sourceNode.getBoundingClientRect();
-
-        if (!rect.width || !rect.height) {
-          return;
-        }
-
-        const computedStyle = window.getComputedStyle(sourceNode);
-        const widthPx = normalizeMeasurement(rect.width) + "px";
-        const heightPx = normalizeMeasurement(rect.height) + "px";
-
-        const shouldFreezeAsBorderBox =
-          sourceNode.classList.contains("hasPanelOuterBorder") ||
-          sourceNode.classList.contains("sign") && sourceNode.classList.contains("hasSideGuideArrow");
-
-        cloneNode.style.boxSizing = shouldFreezeAsBorderBox
-          ? "border-box"
-          : computedStyle.boxSizing || "border-box";
-        cloneNode.style.width = widthPx;
-        cloneNode.style.minWidth = widthPx;
-        cloneNode.style.maxWidth = widthPx;
-
-        if (
-          sourceNode.classList.contains("sign") ||
-          sourceNode.classList.contains("signContainer") ||
-          sourceNode.classList.contains("exitTabContainer") ||
-          sourceNode.classList.contains("exitTabHolder") ||
-          sourceNode.classList.contains("exitTab") ||
-          sourceNode.classList.contains("globalTop") ||
-          sourceNode.classList.contains("globalBottom") ||
-          sourceNode.classList.contains("guideArrows") ||
-          sourceNode.classList.contains("aplArrows")
-        ) {
-          cloneNode.style.height = heightPx;
-          cloneNode.style.minHeight = heightPx;
-        }
-      });
-    };
+    const freezeStaticCloneLayoutMetrics = (sourceRoot, cloneRoot) =>
+      window.SignMakerBannerExport.freezeLayout(sourceRoot, cloneRoot, normalizeMeasurement);
 
     sourceInfos.forEach(({ sourceElement, sourceRect, bounds }) => {
       const clone = sourceElement.cloneNode(true);
-      // Freeze sizes while source and clone nodes still pair up one-to-one;
-      // removing editor-only nodes first would offset every later pairing.
       freezeStaticCloneLayoutMetrics(sourceElement, clone);
+      window.SignMakerBannerExport.freeze(sourceElement, clone, layoutScale, getExportPixelRatio());
       clone.querySelectorAll('.diagrammaticLiveLayer, .diagrammaticSubpanelHandle').forEach(node=>node.remove());
       clone.querySelectorAll('.diagrammaticEditing').forEach(node=>node.classList.remove('diagrammaticEditing'));
 
@@ -11879,6 +11662,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
   const withTemporaryExportStyles = async (element, callback, selectedPanelIndexSet = getSelectedExportPanelIndexSet(), { includeSignDocument = false } = {}) => {
     const exportFontCSS = await prepareExportFonts(element);
     await waitForPendingRenderedArrows(element);
+    const prepareElementDisplays = () => {
+      window.CaliforniaExit?.refresh(element);
+      return window.VmsElement.refresh(element);
+    };
+    await (window.SignMakerMobile?.active
+      ? window.SignMakerMobile.withFullLayout(prepareElementDisplays)
+      : prepareElementDisplays());
     await VmsPanel.refresh(element);
     if (element?.id === "postContainer") {
       updateRuralPostLayout();
@@ -12690,6 +12480,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       return;
     }
     VmsPanel.disconnect();
+    window.VmsElement?.disconnect();
+    window.CaliforniaExit?.disconnect();
     const postContainerElmt = document.getElementById("postContainer");
     const panelContainerElmt = document.getElementById("panelContainer");
     const previousArrowFrames = collectRenderedArrows(panelContainerElmt);
@@ -13003,7 +12795,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                exitTabIndex > -1;
                exitTabIndex--
                ) {
-                   var exitTab = panel.exitTabs[exitTabIndex];
+                   var exitTab = window.CaliforniaExit?.view(panel.exitTabs[exitTabIndex]) || panel.exitTabs[exitTabIndex];
                    if (exitTab && exitTab.variant === "Quebec Exit Marker") {
                      continue;
                    }
@@ -13026,12 +12818,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    exitTabCont.style.position = "relative";
                    exitTabCont.style.zIndex = "1";
                    
-                   // If CA style, don't append to panel yet - store for later insertion inside sign
-                   if (exitTab.caStyle && exitTab.variant == "Default") {
-                       caStyleExitTabs.push({exitTabCont, exitTabIndex});
-                   } else {
-                       panelElmt.appendChild(exitTabCont);
-                   }
+                   panelElmt.appendChild(exitTabCont);
                    
                    // Apply nested tab spacing CSS variable
                    const nestedTabSpacingValue =
@@ -13084,7 +12871,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    
                    for (let nestIndex = -1; nestIndex < nestedExitTabs; nestIndex++) {
                        if (nestIndex != -1) {
-                           exitTab = nestedExitTabListForLayout[nestIndex];
+                           exitTab = window.CaliforniaExit?.view(nestedExitTabListForLayout[nestIndex]) || nestedExitTabListForLayout[nestIndex];
                        }
 
                        if (!exitTab) {
@@ -13459,6 +13246,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                        exitTabHolderElmt.appendChild(exitTabElmt);
                        
                        exitTabCont.appendChild(exitTabHolderElmt);
+                       if (exitTab.caStyle === true) {
+                         exitTabHolderElmt.classList.add("californiaExitTab");
+                         caStyleExitTabs.push({ exitTabCont: exitTabHolderElmt, exitTabIndex, nestedExitTabIndex: nestIndex });
+                       }
                        if (!shouldCollapseEmptyExitTab) {
                          bindRenderedExitTabDrag(panelElmt, exitTabHolderElmt, exitTabElmt, exitTab);
                        }
@@ -13872,7 +13663,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                // #endregion
                                // Increase minHeight when vertical arrangement is enabled to accommodate stacked content
                                // Large numerals (1.5em scale) need extra space, so increase minHeight more
-                               if (exitTab.verticalArrangement && exitTab.variant == "Default") {
+                               if (exitTab._californiaRender) {
+                                   const minimum = parseFloat(exitTab.minHeight);
+                                   exitTabElmt.style.minHeight = (Number.isFinite(minimum) ? Math.max(0, minimum) : ExitTab.prototype.defaultMinHeight) + "rem";
+                               } else if (exitTab.verticalArrangement && exitTab.variant == "Default") {
                                    const baseMinHeight = parseFloat(exitTab.minHeight) || 2.25;
                                    // Account for numeral scaling (1.5em) and vertical spacing
                                    const calculatedMinHeight = Math.max(baseMinHeight * 1.5, 3.75);
@@ -14389,10 +14183,12 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 (exitTab) =>
                   exitTab &&
                   exitTab.variant !== "Quebec Exit Marker" &&
+                  exitTab.variant !== "California" && exitTab.caStyle !== true &&
                   !isEmptyDefaultExitTab(exitTab)
               )
             : [];
-          const signShapeExitTab = visibleExitTabsForSignShape[0] || panel.exitTabs?.[0] || {};
+          const signShapeExitTab = visibleExitTabsForSignShape[0] ||
+            panel.exitTabs?.find(tab => tab.variant !== "California" && tab.caStyle !== true) || {};
           const getExitTabWidthClassForSignShape = (exitTab = {}) => {
               if (isAplEdgeExitTabWidth(exitTab.width)) {
                   return "edge aplEdge";
@@ -14479,82 +14275,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             );
           };
 
-          const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) => {
-            const bindControl = (master, groupPath = []) => {
-              master.dataset.panelIndex = String(index);
-              master.dataset.subpanel = String(subPanelIndex);
-              const samePath = JSON.stringify(groupPath) === JSON.stringify(currentlyEditingGroupPath);
-              const rows = Array.from(master.children).filter(element => element.classList.contains("blockElementRow"));
-              rows.forEach((rowElmt, rowIndex) => {
-                rowElmt.dataset.signRow = String(rowIndex);
-                rowElmt.classList.toggle("selectedRenderedBlockRow", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex);
-                rowElmt.addEventListener("click", event => {
-                  if (event.target.closest("[data-sign-row][data-sign-block]")?.closest(".blockElementMaster") === master) return;
-                  event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex:0, groupPath, menu:"subpanel", flashTarget:rowElmt });
-                });
-              });
-              master.querySelectorAll("[data-sign-row][data-sign-block]").forEach(blockElmt => {
-                if (blockElmt.closest(".blockElementMaster") !== master) return;
-                const rowIndex = Number(blockElmt.dataset.signRow), blockIndex = Number(blockElmt.dataset.signBlock);
-                blockElmt.classList.toggle("selectedRenderedBlockElement", samePath && index === currentlySelectedPanelIndex && subPanelIndex === currentlySelectedSubPanelIndex && rowIndex === currentlySelectedRowIndex && blockIndex === currentlySelectedBlockIndex);
-                blockElmt.addEventListener("click", event => {
-                  event.preventDefault(); event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
-                });
-                blockElmt.addEventListener("contextmenu", event => {
-                  event.preventDefault(); event.stopPropagation();
-                  selectRenderedPanelArea({ panelIndex:index, subPanelIndex, rowIndex, blockIndex, groupPath, menu:"subpanel", flashTarget:blockElmt });
-                  window.SignMakerBlockMenu?.open(event);
-                });
-                const nested = blockElmt.querySelector(":scope > .bE-groupedBlockElementContent");
-                if (nested) bindControl(nested, groupPath.concat({ rowIndex, blockIndex }));
-              });
-            };
-            if (blockMasterElmt) bindControl(blockMasterElmt);
-          };
+          const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) =>
+            window.SignMakerSpecialPanelLayout.bindRenderedBlockSelection(blockMasterElmt, {
+              index, subPanelIndex, currentlyEditingGroupPath, currentlySelectedPanelIndex,
+              currentlySelectedSubPanelIndex, currentlySelectedRowIndex, currentlySelectedBlockIndex,
+              selectRenderedPanelArea
+            });
 
-          if (normalizeArrowMode(panel.sign.arrowMode) === "roundabout") {
-            const model=window.SignMakerRoundabout.render(signElmt,panel.sign);
-            window.SignMakerRoundabout.directions.forEach((direction,subPanelIndex)=>{
-              const subPanel=panel.sign.subPanels[subPanelIndex];
-              if(!subPanel||!model.exits[direction])return;
-              const frame=document.createElement('div');frame.className=`subPanelDisplay roundaboutDestination roundabout-${direction}`;
-              frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
-              markSelectedRenderedSubpanel(frame,subPanelIndex);
-              const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
-              const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
-              const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
-              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
-              signElmt.append(frame);
-            });
-            signElmt.addEventListener('click',event=>{event.stopPropagation();selectRenderedPanelArea({panelIndex:index,menu:'guideArrows',guideMode:'roundabout',suppressRedraw:true});});
-            refreshDynamicPanelBorders(panelElmt);
-            continue;
-          }
-
-          if (normalizeArrowMode(panel.sign.arrowMode) === "diagrammatic") {
-            signElmt.classList.add("diagrammaticSign");
-            window.SignMakerDiagrammatics.render(signElmt, panel.sign);
-            panel.sign.subPanels.forEach((subPanel,subPanelIndex)=>{
-              const bounds=subPanel.diagrammaticBounds;
-              if(!bounds||![bounds.x,bounds.y,bounds.width,bounds.height].every(Number.isFinite))return;
-              const frame=document.createElement('div');frame.className='subPanelDisplay diagrammaticSubpanel';
-              frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
-              window.SignMakerDiagrammatics.attachSubpanel(frame,panel.sign,subPanelIndex);
-              markSelectedRenderedSubpanel(frame,subPanelIndex);
-              const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
-              const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
-              const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
-              frame.addEventListener('pointerdown',e=>e.stopPropagation());
-              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
-              signElmt.append(frame);
-            });
-            signElmt.addEventListener("click", (event) => {
-              event.stopPropagation();
-              selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
-                guideMode: "diagrammatic", suppressRedraw: true });
-            });
+          if (window.SignMakerSpecialPanelLayout.render({
+            mode: normalizeArrowMode(panel.sign.arrowMode), panel, index, signElmt,
+            createShield, markSelectedRenderedSubpanel, bindRenderedBlockSelection, selectRenderedPanelArea
+          })) {
+            window.CaliforniaExit?.mount(panelElmt, panel, caStyleExitTabs);
             refreshDynamicPanelBorders(panelElmt);
             continue;
           }
@@ -15580,14 +15312,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    signContentContainerElmt.id =
                    "signContentContainer" + subPanelIndex.toString();
                    new_subPanel.appendChild(signContentContainerElmt);
-                   
-                   // Insert CA style exit tabs at the beginning of the first subpanel
-                   if (subPanelIndex === 0 && caStyleExitTabs.length > 0) {
-                       caStyleExitTabs.forEach(({exitTabCont}) => {
-                           exitTabCont.classList.add("caStyle");
-                           signContentContainerElmt.appendChild(exitTabCont);
-                       });
-                   }
                    
                    const shieldsContainerElmt = document.createElement("div");
                    shieldsContainerElmt.className = `shieldsContainer ${panel.sign.shieldBacks ? "shieldBacks" : ""
@@ -17912,6 +17636,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               signElmt.style.setProperty("border-bottom-right-radius", "0", "important");
           }
           
+          window.CaliforniaExit?.mount(panelElmt, panel, caStyleExitTabs);
           var width = signCont.clientWidth;
           var exitWidth = firstExitTab.clientWidth;
           
@@ -17932,7 +17657,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           applyRenderedExitTabAnchors(panelElmt, panel);
           watchRenderedExitTabAnchors(panelElmt, panel);
           schedulePanelBorderGradientUpdate(panelElmt);
+          window.CaliforniaExit?.mount(panelElmt, panel);
           VmsPanel.mount(panelElmt);
+          window.VmsElement?.mount(panelElmt);
         }
       });
       if (fdotSupport) fdot.render(post, postContainerElmt, panelContainerElmt);
@@ -17944,27 +17671,31 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     
     // end of redraw //
 
-  VmsPanel.setFontProvider((root) => getSafeExportFontEmbedCSS(root));
-  VmsPanel.setCaptureProvider(async (screen, options) => {
-    const panel = screen.closest(".panel");
-    const captureClone = panel ? createStaticExportClone(panel) : null;
-    const source = captureClone?.node.querySelector(".signContainer");
-    if (!source) {
-      captureClone?.cleanup();
-      throw new Error("Unable to prepare an isolated VMS capture.");
-    }
-    source.dataset.vmsCaptureSource = "true";
-    let restore = () => {};
-    try {
-      restore = materializeExportBannerFirstLetters(source);
-      await waitForImagesInElement(source);
-      const htmlToImage = await loadImageExportLibrary();
-      return await htmlToImage.toCanvas(source, options);
-    } finally {
-      restore();
-      captureClone?.cleanup();
-    }
-  });
+  const initializeVmsRendering = () => {
+    window.VmsElement.setProviders(getSafeExportFontEmbedCSS, async (screen, options) =>
+      (await loadImageExportLibrary()).toCanvas(screen, options));
+    VmsPanel.setFontProvider((root) => getSafeExportFontEmbedCSS(root));
+    VmsPanel.setCaptureProvider(async (screen, options) => {
+      const panel = screen.closest(".panel");
+      const captureClone = panel ? createStaticExportClone(panel) : null;
+      const source = captureClone?.node.querySelector(".signContainer");
+      if (!source) {
+        captureClone?.cleanup();
+        throw new Error("Unable to prepare an isolated VMS capture.");
+      }
+      source.dataset.vmsCaptureSource = "true";
+      let restore = () => {};
+      try {
+        restore = materializeExportBannerFirstLetters(source);
+        await waitForImagesInElement(source);
+        const htmlToImage = await loadImageExportLibrary();
+        return await htmlToImage.toCanvas(source, options);
+      } finally {
+        restore();
+        captureClone?.cleanup();
+      }
+    });
+  };
 
   // Expose necessary variables and functions to formHandler
     const exposeToFormHandler = {
@@ -18051,40 +17782,20 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         removeAPLArrowAt,
         initializeAPLArrowsForCurrentPanel,
         setCurrentPanelArrowMode,
-        addDiagrammaticSubpanel: bounds => runWithUndo(()=>{
-          const sign=getCurrentPanel()?.sign;if(!sign||sign.arrowMode!=='diagrammatic')return;
-          if(!bounds||!['x','y','width','height'].every(k=>Number.isFinite(bounds[k])))return;
-          const x=clamp(bounds.x,0,.99),y=clamp(bounds.y,0,.99);
-          let subPanelIndex=sign.subPanels.findIndex(subPanel=>{
-            const b=subPanel.diagrammaticBounds;
-            return !b||![b.x,b.y,b.width,b.height].every(Number.isFinite);
-          });
-          const created=subPanelIndex<0;
-          if(created){sign.newSubPanel();subPanelIndex=sign.subPanels.length-1;}
-          const subPanel=sign.subPanels[subPanelIndex],rows=subPanel.blockElements.rows;
-          if(created||(rows.length===1&&rows[0].length===1&&rows[0][0] instanceof ControlTextElement&&rows[0][0].textContent==='Control'&&!subPanel.shields?.length)){
-            rows[0][0].textContent=String(subPanelIndex+1);
-          }
-          sign.subPanels[subPanelIndex].diagrammaticBounds={x,y,width:clamp(bounds.width,.01,1-x),height:clamp(bounds.height,.01,1-y)};
-          selectRenderedPanelArea({panelIndex:currentlySelectedPanelIndex,subPanelIndex,menu:'subpanel',suppressRedraw:true});
-          formHandler.updateForm();redraw();
-        }),
-        editRoundabout: change => runWithUndo(() => {
-          const sign=getCurrentPanel()?.sign;if(!sign)return;
-          sign.roundabout=window.SignMakerRoundabout.normalize(sign.roundabout);
-          change(sign.roundabout);formHandler.updateForm();redraw();
-        }),
+        addDiagrammaticSubpanel: bounds => runWithUndo(() => window.SignMakerSpecialPanelLayout.addSubpanel({
+          sign: getCurrentPanel()?.sign, bounds, panelIndex: currentlySelectedPanelIndex,
+          selectRenderedPanelArea, updateForm: formHandler.updateForm, redraw, clamp
+        })),
+        editRoundabout: change => runWithUndo(() => window.SignMakerSpecialPanelLayout.editModel(
+          getCurrentPanel()?.sign, "roundabout", change, formHandler.updateForm, redraw
+        )),
         editRoundaboutDestination: subPanelIndex => {
           if(![0,1,2].includes(subPanelIndex))return;
           selectRenderedPanelArea({panelIndex:currentlySelectedPanelIndex,subPanelIndex,menu:'subpanel'});
         },
-        editDiagrammatic: (change, {redraw: shouldRedraw = true} = {}) => runWithUndo(() => {
-          const sign = getCurrentPanel()?.sign;
-          if (!sign) return;
-          sign.diagrammatic = window.SignMakerDiagrammatics.normalize(sign.diagrammatic);
-          change(sign.diagrammatic, sign);
-          if (shouldRedraw) { formHandler.updateForm(); redraw(); }
-        }),
+        editDiagrammatic: (change, {redraw: shouldRedraw = true} = {}) => runWithUndo(() =>
+          window.SignMakerSpecialPanelLayout.editModel(getCurrentPanel()?.sign, "diagrammatic", change,
+            formHandler.updateForm, redraw, shouldRedraw)),
         addAPLSubPanelLeftAndOpen,
         addAPLSubPanelRightAndOpen,
       vars: {

@@ -65,11 +65,11 @@ window.SignMakerMobileForms = (() => {
   };
   const organizeText = root => {
     if (layouts.has(root)) return;
-    const record = { root, homes: [], fields: [], rows: Array.from(root.children) };
+    const record = { root, homes: [], fields: [], rows: Array.from(root.children).filter(node => !node.classList.contains('sdElementBlockProperties')) };
     const grid = document.createElement('div'); grid.className = 'mobileFieldsGrid';
     const consumed = new Set();
     const field = (input, label, generated = false) => {
-      if (!input || consumed.has(input) || input.closest('.mobileField')) return;
+      if (!input || consumed.has(input) || input.closest('.mobileField, .sdElementBlockProperties')) return;
       const card = document.createElement('div'); card.className = 'mobileField';
       const wide = /_(textContent|fontFamily)$/.test(input.id);
       card.classList.toggle('mobileFieldWide', wide);
@@ -92,7 +92,9 @@ window.SignMakerMobileForms = (() => {
       field(input, label, true);
     }
     record.rows.forEach(row => row.classList?.add('mobileOriginalRow'));
-    root.classList.add('mobileTextForm'); root.append(grid); record.grid = grid; layouts.set(root, record);
+    const blockProperties = Array.from(root.children).find(node => node.classList.contains('sdElementBlockProperties'));
+    if (blockProperties) blockProperties.before(grid); else root.append(grid);
+    root.classList.add('mobileTextForm'); record.grid = grid; layouts.set(root, record);
   };
   const specialRecord = root => ({ root, homes: [], fields: [], rows: [], extras: [], titles: [], classes: [] });
   const addClass = (record, node, name) => { if (node) { node.classList.add(name); record.classes.push([node, name]); } };
@@ -144,7 +146,6 @@ window.SignMakerMobileForms = (() => {
       ['dividerWidth', 'Width'], ['dividerMeasurement', 'Units'],
       ['dividerHeight', 'Height (rem)'], ['orientation', 'Orientation'],
       ['dividerColor', 'Color'], ['alignment', 'Alignment'], ['fullBleed', 'Full bleed'], ['visible', 'Visible'],
-      ['paddingHorizontalVal', 'Horizontal padding (rem)', 'paddingHorizontal'], ['paddingVerticalVal', 'Vertical padding (rem)', 'paddingVertical'],
     ],
     sdTollLogo: [
       ['logoHeight', 'Size (rem)'], ['spacing', 'Spacing (rem)'],
@@ -156,12 +157,11 @@ window.SignMakerMobileForms = (() => {
       ['textContent', 'Content', null, null, true], ['fontFamily', 'Font', null, null, true],
       ['fontSize', 'Text size (%)'], ['textColor', 'Text color'],
       ['lineHeightVal', 'Line height (%)', 'lineHeight'], ['setWidth', 'Width (rem)'],
-      ['paddingVal', 'Horizontal padding (rem)', 'padding'], ['paddingVerticalVal', 'Vertical padding (rem)', 'paddingVertical'],
-      ['alignment', 'Alignment'], ['glow', 'Glow'],
+      ['alignment', 'Alignment'], ['realisticLED', 'Realistic LED'], ['ledResolution', 'LED resolution'], ['glow', 'Glow'],
     ],
     sdGroupedBlock: [
       ['label', 'Name', null, null, true], ['alignment', 'Alignment'], ['backgroundColor', 'Background'],
-      ['padding', 'Horizontal padding (rem)'], ['paddingVertical', 'Vertical padding (rem)'], ['borderRadius', 'Corner radius (rem)'],
+      ['borderRadius', 'Corner radius (rem)'],
       ['border', 'Border'], ['borderColor', 'Border color'],
     ],
   };
@@ -190,7 +190,9 @@ window.SignMakerMobileForms = (() => {
       const button = document.getElementById('sMSPEditSelectedGroup');
       if (button) { move(record, button, grid); addClass(record, button, 'mobileFieldWide'); }
     }
-    record.rows = Array.from(root.children).filter(node => !record.extras.includes(node) && node.nodeType === 1);
+    const blockProperties = Array.from(root.children).find(node => node.classList.contains('sdElementBlockProperties'));
+    if (blockProperties) blockProperties.before(grid);
+    record.rows = Array.from(root.children).filter(node => !record.extras.includes(node) && node.nodeType === 1 && !node.classList.contains('sdElementBlockProperties'));
     record.rows.forEach(node => node.classList.add('mobileOriginalRow'));
     root.classList.add('mobileElementForm'); layouts.set(root, record);
   };

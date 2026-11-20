@@ -1084,7 +1084,7 @@
   --fhwaBaselineOffset: 0px;
   display: flex;
   align-items: center;
-  font-family: var(--exitTabFontFamily, "Series EEM");
+  font-family: var(--exitTabFontFamily, "Series E");
   font-size: 18px;
 }
 
@@ -4778,6 +4778,109 @@ img.exitOnlyArrow:last-child {
   min-height: 1em;
 }
 
+/* Individual LED screens keep the variable message's existing box and text. */
+.bE-realisticLED {
+  position: relative;
+}
+.bE-realisticLED.ledElementReady > :not(.ledElementDisplay) {
+  visibility: hidden;
+}
+.bE-realisticLED > .ledElementDisplay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.ledElementDisplay > .ledElementImage,
+.ledElementDisplay > .ledElementPreview {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ledElementDisplay > .ledElementImage {
+  display: none;
+}
+.exportStaticCaptureWrapper .ledElementDisplay > .ledElementImage,
+.exportCaptureTarget .ledElementDisplay > .ledElementImage {
+  display: block;
+}
+.exportStaticCaptureWrapper .ledElementDisplay > .ledElementPreview,
+.exportCaptureTarget .ledElementDisplay > .ledElementPreview {
+  display: none;
+}
+.panel.vmsPanel .bE-realisticLED.ledElementReady > :not(.ledElementDisplay) {
+  visibility: visible;
+}
+.panel.vmsPanel .ledElementDisplay {
+  display: none;
+}
+
+/* California plaques share the sign's top and side border. */
+.californiaExitTab {
+  position: absolute !important;
+  z-index: 100 !important;
+  display: flex !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  gap: 0;
+}
+.californiaExitTab[hidden] {
+  display: none !important;
+}
+.californiaExitTab > .exitTabHolder {
+  flex: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: max-content !important;
+  background: transparent !important;
+}
+.californiaExitTab .exitTab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: max-content !important;
+  margin: 0 !important;
+  --californiaExitBasePadding: 0.42em;
+  padding: var(--exitTabVerticalPadding, 0rem) max(0px, calc(var(--californiaExitBasePadding) + var(--exitTabHorizontalPadding, 0rem))) !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+.californiaExitTab .exitTab.verticalArrangement {
+  --californiaExitBasePadding: 0.35em;
+}
+.californiaExitTab .exitTab.verticalArrangement .exitTabVerticalContainer {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.06em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+.californiaExitTab .exitTab.verticalArrangement .exitTabVerticalText,
+.californiaExitTab .exitTab.verticalArrangement .exitTabVerticalNumber {
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 0.85 !important;
+  top: 0 !important;
+}
+.alignmentButtons button[hidden] {
+  display: none !important;
+}
 .sign.roundaboutSign {
   display: grid !important;
   grid-template-columns: minmax(6rem, max-content) minmax(var(--roundabout-size, 18rem), max-content) minmax(6rem, max-content);

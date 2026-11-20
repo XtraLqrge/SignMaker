@@ -408,3 +408,18 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
   margin-right: var(--blockPaddingH, 0rem);
 }
 
+/* Only blocks with explicit new layout settings receive these wrappers. */
+.elementPropertiesFrame {
+  display: flex;
+  align-items: center;
+  flex-basis: auto;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.elementPropertiesPaint {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}

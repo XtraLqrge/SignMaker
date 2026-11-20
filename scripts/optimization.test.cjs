@@ -297,7 +297,7 @@ test('critical CSS and deferred editor assets are complete and independently cac
   // The icon font now travels inside CSS for Safari file:// support; allow
   // its compressed bytes plus base64 overhead while retaining the CSS budget.
   assert.ok(manifest.criticalCSS.gzipBytes<40000+manifest.uiIconFont.bytes*1.1);
-  assert.ok(manifest.startupJS.gzipBytes<173000);
+  assert.ok(manifest.startupJS.gzipBytes<170000);
   for(const source of manifest.deferredEditor){
     assert.ok(fs.existsSync(path.join(root,'public',source)));
     assert.ok(!html.includes('src="'+source+'"'),'Editor must be loaded by the startup coordinator');
@@ -1726,9 +1726,9 @@ test('the selected-element refresh preserves row nodes and writes only the selec
   for(const select of tree.querySelectorAll('select'))Object.defineProperty(select,'options',{get:()=>select.children.filter(node=>node.tagName==='OPTION')});
   const a={textContent:'Alpha',fontFamily:'Series EM',fontSize:100,backgroundColor:'Inherit',textColor:'Match BG',spacing:0,letterSpacing:0,alignment:'Center',lineHeight:100};
   const b={...a,textContent:'Beta',fontFamily:'Series 5'};const rows=[[a,b]],control={rows,blockProperties:[{topPadding:0,bottomPadding:0,width:0,backgroundColor:'Inherit',borderColor:'Match BG'}]};
-  const vars={currentlySelectedRowIndex:0,currentlySelectedBlockIndex:0};let reads=0;
+  const vars={currentlySelectedRowIndex:0,currentlySelectedBlockIndex:0};let reads=0;const propertySync=[];
   const document={getElementById:byId,querySelector:s=>tree.querySelector(s),querySelectorAll:s=>tree.querySelectorAll(s),createElement:tag=>new Node(tag)};
-  const c=context({document,Event,exposed:{vars,getCurrentSubPanel:()=>({blockElements:control}),getCurrentBlockElem:()=>rows[vars.currentlySelectedRowIndex][vars.currentlySelectedBlockIndex],hasSubpanelClipboard:()=>false},
+  const c=context({document,Event,window:{SignMakerBlockProperties:{sync:(element,prefix)=>propertySync.push({element,prefix})}},exposed:{vars,getCurrentSubPanel:()=>({blockElements:control}),getCurrentBlockElem:()=>rows[vars.currentlySelectedRowIndex][vars.currentlySelectedBlockIndex],hasSubpanelClipboard:()=>false},
     Control:{prototype:{blockToClassElems:{getElem:()=> 'ControlTextElement'},blockInternalElements:{ControlTextElement:'sdCtrlText'},blockElements:{ControlTextElement:'Control Text'}}},
     Block:class{},GroupedBlockElement:class{},subpanelListCache:null,subpanelClipboardSelection:{selectedBlocks:new Set()},
     closeSubpanelBlockTypePicker(){},ensureSubpanelClipboardSelectionForRows(){},rowIsFullySelectedForSubpanelClipboard:()=>false,
@@ -1747,6 +1747,7 @@ test('the selected-element refresh preserves row nodes and writes only the selec
   assert.equal(blocks[0].classList.contains('selected'),false);assert.equal(blocks[1].classList.contains('selected'),true);
   byId('sdCtrlText_textContent').value='Edited Beta';byId('sdCtrlText_textContent').dispatchEvent(new Event('input'));
   assert.equal(reads,1);assert.equal(a.textContent,'Alpha');assert.equal(b.textContent,'Edited Beta');
+  assert.equal(propertySync.at(-1).element,b);assert.equal(propertySync.at(-1).prefix,'sdCtrlText');
 });
 
 test('mobile live inputs share one animation-frame render while desktop keeps its immediate flush',()=>{

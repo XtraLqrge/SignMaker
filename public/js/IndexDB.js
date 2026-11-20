@@ -91,6 +91,26 @@ class IndexDB {
   }
 
   // Template methods
+  async migrateTemplates(transform) {
+    await this.dbInitialized;
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.templatesStoreName], "readwrite");
+      const store = transaction.objectStore(this.templatesStoreName);
+      const request = store.getAll();
+      let changed = 0;
+      request.onsuccess = () => {
+        try {
+          for (const template of request.result) {
+            if (transform(template)) { store.put(template); changed++; }
+          }
+        } catch (error) { transaction.abort(); reject(error); }
+      };
+      transaction.oncomplete = () => resolve(changed);
+      transaction.onerror = () => reject(transaction.error || request.error);
+      transaction.onabort = () => reject(transaction.error || new Error("Template migration was aborted."));
+    });
+  }
+
   async saveTemplate(templateData) {
     await this.dbInitialized;
     

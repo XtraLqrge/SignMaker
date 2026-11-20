@@ -38,8 +38,8 @@ const VmsPanel = (() => {
     element.dataset.vmsAntialias = String(options.vmsAntialias);
   };
 
-  const contentKey = (model) => "vms-display-8:" + JSON.stringify(model, (key, value) => {
-    if (["vmsFrameColor", "vmsFixedWidth", "vmsWidth", "__undoType", "_elementType"].includes(key)) return undefined;
+  const contentKey = (model) => "vms-display-9:" + JSON.stringify(model, (key, value) => {
+    if (["vmsFrameColor", "vmsFixedWidth", "vmsWidth", "__undoType", "_elementType", "realisticLED", "ledResolution"].includes(key)) return undefined;
     if (!value || typeof value !== "object" || Array.isArray(value)) return value;
     return Object.fromEntries(Object.keys(value).sort().map((name) => [name, value[name]]));
   });
@@ -216,6 +216,7 @@ const VmsPanel = (() => {
     previewFrames.set(bitmap, { canvas: preview, key });
   };
   const refreshPreviews = () => {
+    if (typeof window !== "undefined") window.VmsElement?.refreshPreviews();
     if (previewFrame !== null) cancelAnimationFrame(previewFrame);
     previewFrame = requestAnimationFrame(() => { previewFrame = null; watching.forEach(drawPreview); });
   };
@@ -362,6 +363,6 @@ const VmsPanel = (() => {
     window.addEventListener("resize", refreshPreviews);
     document.addEventListener("transitionend", (event) => { if (event.target?.id === "postContainer") refreshPreviews(); });
   }
-  return { settings, setEnabled, configure, mount, disconnect, refresh, refreshPreviews, samplePixels, renderPixels, renderPreview,
+  return { settings, setEnabled, configure, mount, disconnect, refresh, refreshPreviews, samplePixels, renderPixels, renderPreview, waitForSource, resolutions,
     setFontProvider: (provider) => { fontProvider = provider; }, setCaptureProvider: (provider) => { captureProvider = provider; } };
 })();

@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('build-manifest.json'));
 const sources = ['public/js/MobileForms.js', 'public/' + manifest.assets.find(asset => asset.source === 'js/MobileForms.js').output];
-const sourceStyle = cascade(read('public/css/form.css') + '\n' + read('public/css/mobile.css'));
+const sourceStyle = cascade(read('public/css/form.css') + '\n' + read('public/css/mobile.css') + '\n' + read('public/css/block-properties.css'));
 const productionStyle = cascade(read('public/' + manifest.deferredStyles));
 const linkedStyles = [...read('scripts/index.source.html').matchAll(/<link\b[^>]*>/g)].map(match => match[0])
   .filter(tag => /rel=["']stylesheet["']/.test(tag)).map(tag => tag.match(/href=["']([^"']+)/)?.[1].split('?')[0])
@@ -73,7 +73,7 @@ function ui(source, { startActive=true } = {}) {
   c.exposed = { getCurrentBlockElem: () => ({ type: c.selection }) };
   c.app = { exposeToFormHandler: c.exposed };
   vm.runInContext('let selectedSettings;', c);
-  const choose = prefix => { c.selection = prefix; vm.runInContext(selectionLoop, c); };
+  const choose = prefix => { c.selection = prefix; vm.runInContext(selectionLoop, c); for (const slot of tree.querySelectorAll('[data-element-padding]')) slot.hidden = slot.dataset.elementPadding !== prefix; };
   bar.dataset.currentMenu = 'subPanelConfig'; choose('sdCtrlText');
   vm.runInContext(read(source), c); const api = window.SignMakerMobileForms; if(startActive)api.setActive(true);
   const fire = (node, type) => node.dispatchEvent(new Event(type, { bubbles: true }));
@@ -197,7 +197,7 @@ for (const source of sources) {
     Object.assign(range,{id:'subpanelPrecisionRange',type:'range',min:'0',max:'10',step:'0.5',value:'4'});range.setAttribute('step','0.5');root.append(range);
     h.emit([{target:root,type:'childList',addedNodes:[range],removedNodes:[]}]);h.flush();
     for(const type of ['input','change','blur'])range.addEventListener(type,()=>seen.push([type,range.value]));
-    const card=range.parentElement.querySelector('.mobileNumericField');assert.ok(card);const input=card.querySelector('input');
+    const card=Array.from(range.parentElement.children).find(node=>node.classList.contains('mobileNumericField'));assert.ok(card);const input=card.querySelector('input');
     input.value='6.237';h.fire(input,'input');h.fire(input,'change');h.fire(input,'blur');
     assert.equal(range.value,'6.237');assert.deepEqual(seen.map(item=>item[0]),['input','input','change','blur']);
     assert.equal(range.step,'any');range.value='4.253';h.api.refresh();assert.equal(input.value,'4.253');
@@ -225,8 +225,8 @@ for (const source of sources) {
     const editors={sdArrow:['rotationVal','size','paddingHorizontal','paddingVertical','alignment'],
       sdBlocker:['dividerWidth','dividerMeasurement','dividerHeight','orientation','dividerColor','alignment','fullBleed','visible'],
       sdTollLogo:['logoHeight','spacing','backgroundColor','horizontalPadding','verticalPadding','borderRadius','squareIcon','hasOnlyBlock'],
-      sdElectronicSign:['textContent','fontFamily','fontSize','textColor','lineHeightVal','paddingVal','setWidth','alignment','glow'],
-      sdGroupedBlock:['label','alignment','backgroundColor','padding','borderRadius','border','borderColor']};
+      sdElectronicSign:['textContent','fontFamily','fontSize','textColor','lineHeightVal','setWidth','alignment','glow'],
+      sdGroupedBlock:['label','alignment','backgroundColor','borderRadius','border','borderColor']};
     for(const [prefix,keys] of Object.entries(editors)){
       h.select(prefix);const pane=h.tree.querySelector(`[data-property="${prefix}"]`);
       assert.equal(pane.classList.contains('mobileElementForm'),true,prefix);
@@ -396,6 +396,22 @@ for (const source of sources) {
       h.tree.setAttribute('data-theme',theme);
       for(const bar of h.tree.querySelectorAll('.sMModalBar, .sMModalSubBar'))assert.equal(style(bar,'background'),'transparent');
     }
+  });
+  test(`${name}: the separate block panel exposes four margins and keeps removed padding inputs hidden`, () => {
+    const h=ui(source),section=h.byId('smSPElementProperties');
+    assert.equal(h.properties.nextElementSibling,section);
+    assert.equal(section.nextElementSibling,h.byId('smSPBlockProperties'));
+    assert.equal(section.querySelectorAll('.propertySpacingField').length,4);
+    for(const prefix of ['sdCtrlText','sdActionMessage','sdShield','sdBlocker','sdBeacon','sdElectronicSign','sdGroupedBlock']){
+      h.select(prefix);
+      for(const key of ['topPadding','bottomPadding','leftMargin','rightMargin']){
+        const numeric=h.byId('sdElement_'+key+'Val');assert.ok(numeric.closest('.mobileNumberControl'),numeric.id);
+      }
+      for(const input of h.byId('legacyElementPadding').querySelectorAll('input'))assert.equal(input.closest('.mobileNumberControl'),null,input.id);
+    }
+    assert.equal(h.byId('legacyElementPadding').hidden,true);
+    h.api.setActive(false);
+    for(const [input,parent,type] of h.originals){assert.equal(input.parentElement,parent,input.id);assert.equal(input.type,type,input.id);}
   });
   test(`${name}: desktop restores each original control and dynamic arrow rows retain sliders`, () => {
     const h = ui(source);h.open('guideArrowConfig');h.reveal('standardArrowIndividualRows');const row = new Node('div'); row.className = 'individualArrowSpacingRow';

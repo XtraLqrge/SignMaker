@@ -1078,7 +1078,7 @@ const formHandler = (function () {
         fallback ||
         ExitTab.prototype.defaultFontFamily ||
         ExitTab.prototype.defaultFHWAFontFamily ||
-        (availableFonts.length ? availableFonts[0] : "Series EEM");
+        (availableFonts.length ? availableFonts[0] : "Series E");
 
       if (requested) {
         if (availableFonts.includes(requested)) {
@@ -1098,7 +1098,7 @@ const formHandler = (function () {
 
       return availableFonts.includes(fallbackFont)
         ? fallbackFont
-        : (availableFonts[0] || fallbackFont || "Series EEM");
+        : (availableFonts[0] || fallbackFont || "Series E");
     };
 
     const normalizeExitTabCharacterSpacing = (value) => {
@@ -1453,7 +1453,7 @@ const formHandler = (function () {
 
       normalized.fontFamily = normalizeExitTabFontFamily(
         normalized.fontFamily,
-        fallback.fontFamily || "Series EEM"
+        fallback.fontFamily || "Series E"
       );
       normalized.FHWAFont = isExitTabHighwayGothicFontFamily(normalized.fontFamily);
       normalized.characterSpacing = normalizeExitTabCharacterSpacing(
@@ -1540,7 +1540,7 @@ const formHandler = (function () {
       }
 
       delete normalized.number;
-
+      ExitTab.normalizeCalifornia(normalized);
       return normalized;
     };
 
@@ -1901,7 +1901,7 @@ const formHandler = (function () {
       ExitTab.prototype.defaultBorderThickness = normalized.borderThickness;
       ExitTab.prototype.defaultMinHeight = normalized.minHeight;
       ExitTab.prototype.defaultFontSize = normalized.fontSize;
-      ExitTab.prototype.defaultFontFamily = normalized.fontFamily || "Series EEM";
+      ExitTab.prototype.defaultFontFamily = normalized.fontFamily || "Series E";
       ExitTab.prototype.defaultFHWAFont = isExitTabHighwayGothicFontFamily(
         normalized.fontFamily
       );
@@ -2322,7 +2322,7 @@ const formHandler = (function () {
       updated.topOffset = form["topOffset"]?.checked === true;
       updated.verticalArrangement =
         form["verticalArrangement"]?.checked === true;
-      updated.caStyle = form["caStyle"]?.checked === true;
+      updated.caStyle = resolvedVariant === "California";
       updated.bilingual = form["exitTabBilingual"]?.checked === true;
       updated.bilingualBottomText =
         form["exitTabBilingualBottomText"]?.value || "SORTIE";
@@ -2360,7 +2360,7 @@ const formHandler = (function () {
       } else {
         updated.fontFamily = normalizeExitTabFontFamily(
           form["exitTabFontFamily"]?.value || updated.fontFamily,
-          updated.fontFamily || "Series EEM"
+          updated.fontFamily || "Series E"
         );
         updated.FHWAFont = isExitTabHighwayGothicFontFamily(updated.fontFamily);
         updated.characterSpacing = normalizeExitTabCharacterSpacing(
@@ -5468,6 +5468,7 @@ const formHandler = (function () {
       }
     });
 
+    window.CaliforniaExit?.syncEditor(normalizedVariant);
     if (options.syncAssetSliders !== false) {
       const sliderTarget =
         exitTabEditorMode === "default"
@@ -8894,6 +8895,41 @@ const formHandler = (function () {
       });
     };
 
+  const migrateSavedTypographyPreferences = async () => {
+    const migration = window.SignMakerMigrations;
+    const keys = new Set([
+      STORAGE_KEYS.controlTextFont, STORAGE_KEYS.bannerFontFamily,
+      "signMaker.settingsDefaults", STORAGE_KEYS.customShieldMakerShields,
+      "signMaker.subpanelBlockClipboard.v1",
+    ]);
+    try {
+      for (let index = 0; index < window.localStorage.length; index++) {
+        const key = window.localStorage.key(index);
+        if (key?.startsWith("signMaker.") && /font|defaults|profiles/i.test(key)) keys.add(key);
+      }
+    } catch {}
+    for (const key of keys) {
+      const local = getStoredItem(key);
+      const stored = await getPersistentFormValue(key);
+      const nextLocal = migration.preference(key, local);
+      const nextStored = migration.preference(key, stored);
+      if (nextLocal !== local) {
+        await setPersistentFormValue(key, nextLocal);
+        if (!setStoredItem(key, nextLocal)) throw new Error("Unable to save upgraded font preferences.");
+      } else if (nextStored !== stored) {
+        await setPersistentFormValue(key, nextStored);
+      }
+    }
+    await customShieldMakerLoadPromise;
+    if (migration.migrate(customShieldMakerRecords)) {
+      const serialized = JSON.stringify(customShieldMakerRecords);
+      await setPersistentFormValue(STORAGE_KEYS.customShieldMakerShields, serialized);
+      if (getStoredItem(STORAGE_KEYS.customShieldMakerShields) !== null &&
+          !setStoredItem(STORAGE_KEYS.customShieldMakerShields, serialized)) throw new Error("Unable to save upgraded shield fonts.");
+      syncCustomShieldMakerConfigs();
+    }
+  };
+
   const initialize = async (appExposed, { beforeUI } = {}) => {
     exposed = appExposed;
     post = exposed.getPost();
@@ -10026,8 +10062,8 @@ const formHandler = (function () {
       }
 
       if (lowerValue === "match bg" || lowerValue === "match background") {
-        if (selectEl?.id === "sdBlock_borderColor") {
-          const blockBackgroundSelect = document.querySelector("#sdBlock_backgroundColor");
+        if (["sdBlock_borderColor", "sdElement_borderColor"].includes(selectEl?.id)) {
+          const blockBackgroundSelect = document.getElementById(selectEl.id.replace("borderColor", "backgroundColor"));
           let blockBackgroundValue = blockBackgroundSelect?.value || "Inherit";
 
           if (/^(inherit|panel color|default)$/i.test(blockBackgroundValue)) {
@@ -20954,6 +20990,9 @@ const formHandler = (function () {
         { preserveText: true }
       );
       exitTab.variant = requestedExitVariant;
+      exitTab.caStyle = requestedExitVariant === "California";
+      if (exitTab.caStyle) { exitTab.squareCorners = false; exitTab.cornerRadius = 0.25; }
+      ExitTab.normalizeCalifornia(exitTab);
       if (currentPanelExitTabProfileId === EXIT_TAB_DEFAULT_PROFILE_ID && savedWidth) {
         exitTab.width = savedWidth;
       }
@@ -21018,7 +21057,7 @@ const formHandler = (function () {
           ? showLeftField.checked
           : previousShowLeft;
 
-        const changedLeftCheckbox = showLeftField && changedControl === showLeftField;
+        const changedLeftCheckbox = showLeftField && changedControl === showLeftField && exitTab.variant !== "California";
         const changedPositionDropdown =
           exitTabPositionField && changedControl === exitTabPositionField;
 
@@ -21033,7 +21072,7 @@ const formHandler = (function () {
           }
         }
       
-        if (changedPositionDropdown) {
+        if (changedPositionDropdown && exitTab.variant !== "California") {
           nextShowLeft = nextExitTabPosition === "Left";
         }
 
@@ -21258,19 +21297,12 @@ const formHandler = (function () {
 
         exitTabFontCheckboxChangedByUser = false;
 
-        const previousCaStyleState = exitTab.caStyle === true;
-        const nextCaStyleState = form["caStyle"].checked === true;
-
-        if (nextCaStyleState && !previousCaStyleState && !form["fullBorder"].checked) {
-          form["fullBorder"].checked = true;
-        }
-
         exitTab.fullBorder = form["fullBorder"].checked;
         exitTab.squareCorners = form["squareCorners"].checked;
         exitTab.cornerRadius = readExitTabCornerRadiusFromForm();
         exitTab.topOffset = form["topOffset"].checked;
         exitTab.verticalArrangement = form["verticalArrangement"].checked;
-        exitTab.caStyle = nextCaStyleState;
+        exitTab.caStyle = exitTab.variant === "California";
 
         setStoredItem(STORAGE_KEYS.exitTabFHWAFont, String(!!exitTab.FHWAFont));
         setStoredItem(STORAGE_KEYS.exitTabFullBorder, String(!!exitTab.fullBorder));
@@ -21331,6 +21363,8 @@ const formHandler = (function () {
             : 0;
         }
 
+        ExitTab.normalizeCalifornia(exitTab);
+        window.CaliforniaExit?.syncEditor(exitTab.variant);
         saveCurrentExitTabEditsToSelectedProfile(exitTab, !!exitWidthChange);
     }
     // Misc Shields
@@ -22753,6 +22787,7 @@ const formHandler = (function () {
     const actionMessageElmt = document.getElementById("actionMessage");
     actionMessageElmt.value = sign.actionMessage;
     */
+    window.SignMakerBlockProperties?.sync(currentBlockElem, blockElemType, exposed);
     return { blockElemType, currentBlockElem };
   };
   const syncSelectedBlockEditor = () => {
@@ -24982,6 +25017,7 @@ const formHandler = (function () {
         : "none";
 
     // Exit Tabs
+    ExitTab.normalizeCalifornia(exitTab);
     const exitNumberElmt = document.getElementById("exitNumber");
     const exitTabBilingualField = document.getElementById("exitTabBilingual");
     const exitTabBilingualBottomTextField = document.getElementById("exitTabBilingualBottomText");
@@ -25253,8 +25289,6 @@ const formHandler = (function () {
     const verticalArrangement = document.getElementById("verticalArrangement");
     verticalArrangement.checked = exitTab.verticalArrangement;
 
-    const caStyle = document.getElementById("caStyle");
-    caStyle.checked = exitTab.caStyle;
 
     const exitTabTransparent = document.getElementById("exitTabTransparent");
     if (exitTabTransparent) {
@@ -26320,6 +26354,7 @@ const formHandler = (function () {
         remap(snapshot);
         if (records.length) { syncCustomShieldMakerConfigs(); saveCustomShieldMakerRecords(); }
       },
+      migrateSavedTypographyPreferences,
       init: initialize,
       readForm,
       persistPostAppearance,

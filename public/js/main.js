@@ -4185,8 +4185,8 @@ const ungroupSelectedBlockElement = () => {
       : Array.from(rootElmt.querySelectorAll(".sign"));
 
     for (const signElmt of signs) {
-      window.SignMakerSpecialPanelLayout.layoutVerticalFullBleedDividers(signElmt);
-      if (window.SignMakerSpecialPanelLayout.renderWarningFace(signElmt, post, getResolvedCssColorValue)) continue;
+      window.SignMakerSpecialPanelLayout?.layoutVerticalFullBleedDividers(signElmt);
+      if (window.SignMakerSpecialPanelLayout?.renderWarningFace(signElmt, post, getResolvedCssColorValue)) continue;
       applyPanelBorderGradient(signElmt);
     }
     PanelBorders.refreshAll(rootElmt);
@@ -4740,6 +4740,8 @@ const ungroupSelectedBlockElement = () => {
           if (!paintedFreshSign) await paintSign();
         },
       });
+      // Attach deferred layout and selection handlers after the first sign paint.
+      if (paintedFreshSign) redraw();
       window.SignMakerEditorRuntime?.init();
       window.SignMakerMergeUI?.init();
       window.SignMakerSettings22?.sync();
@@ -14276,13 +14278,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           };
 
           const bindRenderedBlockSelection = (blockMasterElmt, subPanelIndex) =>
-            window.SignMakerSpecialPanelLayout.bindRenderedBlockSelection(blockMasterElmt, {
+            window.SignMakerSpecialPanelLayout?.bindRenderedBlockSelection(blockMasterElmt, {
               index, subPanelIndex, currentlyEditingGroupPath, currentlySelectedPanelIndex,
               currentlySelectedSubPanelIndex, currentlySelectedRowIndex, currentlySelectedBlockIndex,
               selectRenderedPanelArea
             });
 
-          if (window.SignMakerSpecialPanelLayout.render({
+          if (window.SignMakerSpecialPanelLayout?.render({
             mode: normalizeArrowMode(panel.sign.arrowMode), panel, index, signElmt,
             createShield, markSelectedRenderedSubpanel, bindRenderedBlockSelection, selectRenderedPanelArea
           })) {

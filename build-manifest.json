@@ -37,9 +37,9 @@
   ],
   "deferredStyles": "css/app.f4c30aecac13bfad.css",
   "startupJS": {
-    "bytes": 619801,
-    "gzipBytes": 169927,
-    "brotliBytes": 140966
+    "bytes": 619895,
+    "gzipBytes": 169970,
+    "brotliBytes": 140958
   },
   "criticalCSS": {
     "bytes": 279265,
@@ -566,16 +566,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.eb79077719884428.js",
+      "output": "js/main.1b4cae1d57cdab4d.js",
       "original": {
-        "bytes": 761924,
-        "gzipBytes": 134537,
-        "brotliBytes": 106093
+        "bytes": 762049,
+        "gzipBytes": 134584,
+        "brotliBytes": 106136
       },
       "optimized": {
-        "bytes": 329897,
-        "gzipBytes": 88190,
-        "brotliBytes": 72242
+        "bytes": 329991,
+        "gzipBytes": 88233,
+        "brotliBytes": 72234
       }
     },
     {

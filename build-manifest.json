@@ -22,7 +22,7 @@
     "js/BannerExport.03161132c4d841de.js",
     "js/VmsElement.a1bac1137d0dd618.js",
     "js/CaliforniaExit.0c392f8cf54132fb.js",
-    "js/GuideArrowDefaults.20da3f527035a54a.js",
+    "js/GuideArrowDefaults.d03e7a287ff870d8.js",
     "js/BlockContextMenu.da04750cc8a3f445.js",
     "js/CopyPanelMenu.1e988b6fa65dbf39.js",
     "js/BlockProperties.819cde37945fd777.js",
@@ -39,9 +39,9 @@
   ],
   "deferredStyles": "css/app.ffb62c2a5b757433.css",
   "startupJS": {
-    "bytes": 619948,
-    "gzipBytes": 169676,
-    "brotliBytes": 140916
+    "bytes": 620339,
+    "gzipBytes": 169868,
+    "brotliBytes": 141160
   },
   "criticalCSS": {
     "bytes": 291425,
@@ -461,16 +461,16 @@
     },
     {
       "source": "js/Post.js",
-      "output": "js/Post.d932de58634d37b7.js",
+      "output": "js/Post.abd1328ced621fbe.js",
       "original": {
-        "bytes": 6790,
-        "gzipBytes": 1787,
-        "brotliBytes": 1553
+        "bytes": 7128,
+        "gzipBytes": 1943,
+        "brotliBytes": 1688
       },
       "optimized": {
-        "bytes": 4567,
-        "gzipBytes": 1453,
-        "brotliBytes": 1254
+        "bytes": 4858,
+        "gzipBytes": 1594,
+        "brotliBytes": 1380
       }
     },
     {
@@ -573,16 +573,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.24ae1a9b7529fb18.js",
+      "output": "js/main.46524924d17cb1bf.js",
       "original": {
-        "bytes": 762032,
-        "gzipBytes": 134270,
-        "brotliBytes": 106205
+        "bytes": 762141,
+        "gzipBytes": 134330,
+        "brotliBytes": 106215
       },
       "optimized": {
-        "bytes": 329987,
-        "gzipBytes": 88205,
-        "brotliBytes": 72180
+        "bytes": 330087,
+        "gzipBytes": 88256,
+        "brotliBytes": 72298
       }
     },
     {
@@ -853,16 +853,16 @@
     },
     {
       "source": "js/GuideArrowDefaults.js",
-      "output": "js/GuideArrowDefaults.20da3f527035a54a.js",
+      "output": "js/GuideArrowDefaults.d03e7a287ff870d8.js",
       "original": {
-        "bytes": 4384,
-        "gzipBytes": 1722,
-        "brotliBytes": 1494
+        "bytes": 8476,
+        "gzipBytes": 2916,
+        "brotliBytes": 2562
       },
       "optimized": {
-        "bytes": 3351,
-        "gzipBytes": 1507,
-        "brotliBytes": 1296
+        "bytes": 6742,
+        "gzipBytes": 2571,
+        "brotliBytes": 2237
       }
     },
     {

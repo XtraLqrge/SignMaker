@@ -17993,7 +17993,8 @@ const serializePostWithElementTypes = (space) => {
 
   const createDefaultTemplateData = (buildTemplate) => {
     const defaultPost = new Post(DEFAULT_POST_POSITION);
-    defaultPost.newPanel();
+    // Built-in templates are stored, so they never take this device's defaults.
+    defaultPost.newPanel({ useDeviceDefaults: false });
     defaultPost.panels[0].sign.subPanels[0].blockElements = new Control(
       buildTemplate()
     );

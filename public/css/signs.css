@@ -4773,6 +4773,14 @@ img.exitOnlyArrow:last-child {
   row-gap: max(0em, calc((var(--lineHeight, 100) - 80) * 0.01em));
 }
 
+/* The trimmed box already centers the capitals on the advisory background, so
+   the Highway Gothic baseline nudge (--fhwaBaselineOffset) would push them low. */
+@supports (text-box-trim: trim-both) {
+  .bE-advisoryMessage.bE-messageCapOnly > span {
+    top: 0;
+  }
+}
+
 .bE-advisoryMessage.bE-multilineTextElement > .bE-textLine:empty,
 .bE-electronicSign.bE-multilineTextElement > .bE-textLine:empty {
   min-height: 1em;

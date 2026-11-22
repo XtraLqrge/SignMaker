@@ -6864,6 +6864,7 @@ TollLogoElement.prototype.logos = {
   EPASS: { label: "E-PASS", src: "img/tolls/EPASS.svg" },
   SunPassOld: { label: "SunPass (old)", src: "img/tolls/SUNPASS-1.svg" },
   SunPassNew: { label: "SunPass (new)", src: "img/tolls/SUNPASS-2.svg" },
+  VicePass: { label: "VicePass", src: "img/tolls/VICEPASS.png" },
   ZipCash: { label: "ZipCash", src: "img/tolls/ZIPCASH.svg" },
   LEEWAY: { label: "LeeWay", src: "img/tolls/LEEWAY.svg" },
   KTAG: { label: "K-TAG", src: "img/tolls/KTAG.svg" },

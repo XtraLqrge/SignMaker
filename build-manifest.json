@@ -37,20 +37,20 @@
     "js/Settings22.4e2c85b4aff66944.js",
     "js/DropdownTheme.483f02b41085e153.js"
   ],
-  "deferredStyles": "css/app.6430d69b96462a20.css",
+  "deferredStyles": "css/app.ffb62c2a5b757433.css",
   "startupJS": {
-    "bytes": 619891,
-    "gzipBytes": 169973,
-    "brotliBytes": 140960
+    "bytes": 619948,
+    "gzipBytes": 169676,
+    "brotliBytes": 140916
   },
   "criticalCSS": {
-    "bytes": 291339,
-    "gzipBytes": 62272,
-    "brotliBytes": 53570
+    "bytes": 291425,
+    "gzipBytes": 62539,
+    "brotliBytes": 53621
   },
   "inlineFontHelper": {
     "bytes": 8557,
-    "gzipBytes": 2480,
+    "gzipBytes": 2481,
     "brotliBytes": 2149
   },
   "uiIconFont": {
@@ -60,276 +60,276 @@
   },
   "assets": [
     {
-      "output": "export-assets/074452f99924141b.js",
+      "output": "export-assets/6a552ed6e3f57e4b.js",
       "exportOnly": true,
-      "bytes": 1162839
+      "bytes": 1169475
     },
     {
-      "output": "export-assets/dd5d63e93ee18478.js",
+      "output": "export-assets/ff0db0bac6b5c7a0.js",
       "exportOnly": true,
-      "bytes": 807527
+      "bytes": 812187
     },
     {
-      "output": "export-assets/91397fadae7b3693.js",
+      "output": "export-assets/153c7eb86ecb8917.js",
       "exportOnly": true,
-      "bytes": 1399214
+      "bytes": 1407150
     },
     {
-      "output": "export-assets/7e863f96e7472f36.js",
+      "output": "export-assets/d802489114604235.js",
       "exportOnly": true,
-      "bytes": 62636
+      "bytes": 63040
     },
     {
-      "output": "export-assets/89e3038d979035c2.js",
+      "output": "export-assets/ee61bf53c833243c.js",
       "exportOnly": true,
-      "bytes": 1040239
+      "bytes": 1045239
     },
     {
-      "output": "export-assets/5445f9498989126a.js",
+      "output": "export-assets/082f11d96e257335.js",
       "exportOnly": true,
-      "bytes": 1040297
+      "bytes": 1045309
     },
     {
-      "output": "export-assets/b7eabccb164db691.js",
+      "output": "export-assets/85a4eb0ffbf3ad29.js",
       "exportOnly": true,
-      "bytes": 955
+      "bytes": 939
     },
     {
-      "output": "export-assets/9c89b6c51f1fc22f.js",
+      "output": "export-assets/93f4fff87521491c.js",
       "exportOnly": true,
-      "bytes": 5830
+      "bytes": 5822
     },
     {
-      "output": "export-assets/be05f0c8101e21b1.js",
+      "output": "export-assets/9888b72ed68d54ee.js",
       "exportOnly": true,
-      "bytes": 13079
+      "bytes": 12991
     },
     {
-      "output": "export-assets/b08bc1c3f2b58fee.js",
+      "output": "export-assets/45d16a4621920322.js",
       "exportOnly": true,
-      "bytes": 1822
+      "bytes": 1794
     },
     {
-      "output": "export-assets/d18996a5eda2c48e.js",
+      "output": "export-assets/4bdad975e05bce78.js",
       "exportOnly": true,
-      "bytes": 423343
+      "bytes": 428295
     },
     {
-      "output": "export-assets/77fd547087409310.js",
+      "output": "export-assets/f432e6655f6a5c99.js",
       "exportOnly": true,
-      "bytes": 951511
+      "bytes": 963307
     },
     {
-      "output": "export-assets/a94e0159a43889a1.js",
+      "output": "export-assets/a760ae81a7fb0329.js",
       "exportOnly": true,
-      "bytes": 503031
+      "bytes": 508711
     },
     {
-      "output": "export-assets/1855dea363ee9ddb.js",
+      "output": "export-assets/16d1a162c12d711b.js",
       "exportOnly": true,
-      "bytes": 305603
+      "bytes": 309007
     },
     {
-      "output": "export-assets/6893a113e08179b2.js",
+      "output": "export-assets/a058c44cb4401eec.js",
       "exportOnly": true,
-      "bytes": 450599
+      "bytes": 455611
     },
     {
-      "output": "export-assets/7454fd548ba04bb8.js",
+      "output": "export-assets/b1cb88db665b9a3b.js",
       "exportOnly": true,
-      "bytes": 161487
+      "bytes": 163019
     },
     {
-      "output": "export-assets/b36098ce6fcecb4d.js",
+      "output": "export-assets/f10036d3c4fbe804.js",
       "exportOnly": true,
-      "bytes": 1092151
+      "bytes": 1100707
     },
     {
-      "output": "export-assets/22d8fcf2f9bb38b0.js",
+      "output": "export-assets/4ee583241f9948f7.js",
       "exportOnly": true,
-      "bytes": 6448
+      "bytes": 6424
     },
     {
-      "output": "export-assets/eb81ca26df99c00c.js",
+      "output": "export-assets/fdccaba919aa2200.js",
       "exportOnly": true,
-      "bytes": 18151
+      "bytes": 18095
     },
     {
-      "output": "export-assets/a1a4b36841f51562.js",
+      "output": "export-assets/84e440ea9c61d3b4.js",
       "exportOnly": true,
-      "bytes": 674311
+      "bytes": 681999
     },
     {
-      "output": "export-assets/668fa5699d7897f7.js",
+      "output": "export-assets/0e7f91fc4c56c724.js",
       "exportOnly": true,
-      "bytes": 19600
+      "bytes": 19516
     },
     {
-      "output": "export-assets/155cc5a7e9e49168.js",
+      "output": "export-assets/c3a3f946f503482d.js",
       "exportOnly": true,
-      "bytes": 1409
+      "bytes": 1385
     },
     {
-      "output": "export-assets/18889fa47e79d0ed.js",
+      "output": "export-assets/a719434eb3426bfd.js",
       "exportOnly": true,
-      "bytes": 1348555
+      "bytes": 1363159
     },
     {
-      "output": "export-assets/5639c7da2531cd01.js",
+      "output": "export-assets/4112be7cb98df6a2.js",
       "exportOnly": true,
-      "bytes": 3246
+      "bytes": 3186
     },
     {
-      "output": "export-assets/192409a973483311.js",
+      "output": "export-assets/0d309e8dc29365f8.js",
       "exportOnly": true,
-      "bytes": 7902
+      "bytes": 7846
     },
     {
-      "output": "export-assets/1f4452438dad0257.js",
+      "output": "export-assets/69e60a42636bc1d2.js",
       "exportOnly": true,
-      "bytes": 10582
+      "bytes": 10526
     },
     {
-      "output": "export-assets/78b30050a01f0892.js",
+      "output": "export-assets/3f22fa3fbcbed942.js",
       "exportOnly": true,
-      "bytes": 39467
+      "bytes": 39475
     },
     {
-      "output": "export-assets/4328cbfabbdc47dc.js",
+      "output": "export-assets/9d8e2fefc248f856.js",
       "exportOnly": true,
-      "bytes": 1660070
+      "bytes": 1680142
     },
     {
-      "output": "export-assets/5d82f0510540fd84.js",
+      "output": "export-assets/a393e051c55c08f6.js",
       "exportOnly": true,
-      "bytes": 12047
+      "bytes": 11991
     },
     {
-      "output": "export-assets/e5dd31e8b93513a2.js",
+      "output": "export-assets/9ae494f4ba7abd11.js",
       "exportOnly": true,
-      "bytes": 99504
+      "bytes": 99516
     },
     {
-      "output": "export-assets/964e2a5ed208a02c.js",
+      "output": "export-assets/9ef69c98e2679220.js",
       "exportOnly": true,
-      "bytes": 2268575
+      "bytes": 2295847
     },
     {
-      "output": "export-assets/18e94407b780d36d.js",
+      "output": "export-assets/f42e8f8e4180c2b3.js",
       "exportOnly": true,
-      "bytes": 13490
+      "bytes": 13494
     },
     {
-      "output": "export-assets/4305e0caffee7c0c.js",
+      "output": "export-assets/0579b4107f530f3b.js",
       "exportOnly": true,
-      "bytes": 479662
+      "bytes": 482730
     },
     {
-      "output": "export-assets/db8a9655b1eb7eb4.js",
+      "output": "export-assets/a9bae82cb3772801.js",
       "exportOnly": true,
-      "bytes": 189390
+      "bytes": 189602
     },
     {
-      "output": "export-assets/6d54eb63fc1f462a.js",
+      "output": "export-assets/c0d0e7aa02bb2a58.js",
       "exportOnly": true,
-      "bytes": 304594
+      "bytes": 306502
     },
     {
-      "output": "export-assets/e7cc2452311986cb.js",
+      "output": "export-assets/f90bdf1a9d50c446.js",
       "exportOnly": true,
-      "bytes": 5035462
+      "bytes": 5069850
     },
     {
-      "output": "export-assets/8f60c2154b27de48.js",
+      "output": "export-assets/34a374af3696e92b.js",
       "exportOnly": true,
-      "bytes": 12562
+      "bytes": 12522
     },
     {
-      "output": "export-assets/6c41d24a3f2e228a.js",
+      "output": "export-assets/98c089437fef3196.js",
       "exportOnly": true,
-      "bytes": 117698
+      "bytes": 118330
     },
     {
-      "output": "export-assets/e4a3bda5174e40ac.js",
+      "output": "export-assets/cc2f4d522cd0209e.js",
       "exportOnly": true,
-      "bytes": 240286
+      "bytes": 241762
     },
     {
-      "output": "export-assets/d0c6156cf028e9c3.js",
+      "output": "export-assets/635bcbd39a473e51.js",
       "exportOnly": true,
-      "bytes": 17982
+      "bytes": 17926
     },
     {
-      "output": "export-assets/aeed16eb6d00bb0f.js",
+      "output": "export-assets/b154fd7fafdc688f.js",
       "exportOnly": true,
-      "bytes": 59382
+      "bytes": 59426
     },
     {
-      "output": "export-assets/9934749a8a0f00af.js",
+      "output": "export-assets/5c87f0541e88a186.js",
       "exportOnly": true,
-      "bytes": 547898
+      "bytes": 551410
     },
     {
-      "output": "export-assets/9f1d5045399ce619.js",
+      "output": "export-assets/e9f7263d15d1e501.js",
       "exportOnly": true,
-      "bytes": 25842
+      "bytes": 25798
     },
     {
-      "output": "export-assets/7ce812e37c0a0e25.js",
+      "output": "export-assets/42804b9f9592c3b8.js",
       "exportOnly": true,
-      "bytes": 808694
+      "bytes": 813902
     },
     {
-      "output": "export-assets/947ad252aaaab8cb.js",
+      "output": "export-assets/864106014905de69.js",
       "exportOnly": true,
-      "bytes": 198422
+      "bytes": 200070
     },
     {
-      "output": "export-assets/d0e8f22c62b235cf.js",
+      "output": "export-assets/b4893fa76b57e42f.js",
       "exportOnly": true,
-      "bytes": 1885130
+      "bytes": 1898342
     },
     {
-      "output": "export-assets/e49e82ca8e790ac7.js",
+      "output": "export-assets/d67f7a3647a75184.js",
       "exportOnly": true,
-      "bytes": 767330
+      "bytes": 776090
     },
     {
-      "output": "export-assets/092bbbc602dff87d.js",
+      "output": "export-assets/32bcdec3296f7a8f.js",
       "exportOnly": true,
-      "bytes": 507798
+      "bytes": 512662
     },
     {
-      "output": "export-assets/4a1b529d06e2d62a.js",
+      "output": "export-assets/88063ab8547dfec5.js",
       "exportOnly": true,
-      "bytes": 1961294
+      "bytes": 1974718
     },
     {
-      "output": "export-assets/427fd98ee85731fe.js",
+      "output": "export-assets/ab994c631f16bc09.js",
       "exportOnly": true,
-      "bytes": 195164
+      "bytes": 197180
     },
     {
-      "output": "export-assets/3a826f1affc71422.js",
+      "output": "export-assets/1b1367fec96502c0.js",
       "exportOnly": true,
-      "bytes": 45682
+      "bytes": 46050
     },
     {
-      "output": "export-assets/ce17e1b7d3155397.js",
+      "output": "export-assets/59df7ede4e491559.js",
       "exportOnly": true,
-      "bytes": 7778159
+      "bytes": 8024291
     },
     {
       "source": "js/EditorRuntime.js",
       "output": "js/EditorRuntime.22e3b656e2676515.js",
       "original": {
         "bytes": 2683,
-        "gzipBytes": 1025,
+        "gzipBytes": 1026,
         "brotliBytes": 856
       },
       "optimized": {
         "bytes": 1708,
-        "gzipBytes": 865,
+        "gzipBytes": 867,
         "brotliBytes": 731
       }
     },
@@ -338,12 +338,12 @@
       "output": "js/lib.fe59e1d3b9e31c9f.js",
       "original": {
         "bytes": 1754,
-        "gzipBytes": 790,
+        "gzipBytes": 788,
         "brotliBytes": 645
       },
       "optimized": {
         "bytes": 746,
-        "gzipBytes": 472,
+        "gzipBytes": 473,
         "brotliBytes": 393
       }
     },
@@ -352,12 +352,12 @@
       "output": "js/ShieldFallbacks.2e935e76679a9d08.js",
       "original": {
         "bytes": 352349,
-        "gzipBytes": 190606,
+        "gzipBytes": 192463,
         "brotliBytes": 178139
       },
       "optimized": {
         "bytes": 352338,
-        "gzipBytes": 190592,
+        "gzipBytes": 192450,
         "brotliBytes": 178101
       }
     },
@@ -366,12 +366,12 @@
       "output": "js/Shield.f5178a5830cb822f.js",
       "original": {
         "bytes": 40107,
-        "gzipBytes": 9174,
+        "gzipBytes": 9035,
         "brotliBytes": 7871
       },
       "optimized": {
         "bytes": 29669,
-        "gzipBytes": 8262,
+        "gzipBytes": 8119,
         "brotliBytes": 7091
       }
     },
@@ -380,12 +380,12 @@
       "output": "js/Sign.e1a0e096aa562c79.js",
       "original": {
         "bytes": 16872,
-        "gzipBytes": 4134,
+        "gzipBytes": 4123,
         "brotliBytes": 3625
       },
       "optimized": {
         "bytes": 10124,
-        "gzipBytes": 3468,
+        "gzipBytes": 3469,
         "brotliBytes": 3068
       }
     },
@@ -394,12 +394,12 @@
       "output": "js/ExitTab.a5a0d58d26b239c9.js",
       "original": {
         "bytes": 17651,
-        "gzipBytes": 3652,
+        "gzipBytes": 3653,
         "brotliBytes": 3215
       },
       "optimized": {
         "bytes": 11685,
-        "gzipBytes": 3083,
+        "gzipBytes": 3082,
         "brotliBytes": 2729
       }
     },
@@ -408,12 +408,12 @@
       "output": "js/Panel.5e4c31f252743c95.js",
       "original": {
         "bytes": 4933,
-        "gzipBytes": 1586,
+        "gzipBytes": 1594,
         "brotliBytes": 1346
       },
       "optimized": {
         "bytes": 3283,
-        "gzipBytes": 1345,
+        "gzipBytes": 1339,
         "brotliBytes": 1143
       }
     },
@@ -422,12 +422,12 @@
       "output": "js/PanelBorders.0b690deb621e6bc7.js",
       "original": {
         "bytes": 10970,
-        "gzipBytes": 3499,
+        "gzipBytes": 3487,
         "brotliBytes": 3074
       },
       "optimized": {
         "bytes": 6764,
-        "gzipBytes": 2828,
+        "gzipBytes": 2820,
         "brotliBytes": 2495
       }
     },
@@ -436,12 +436,12 @@
       "output": "js/PanelDrag.ab4bab4047ff9b6f.js",
       "original": {
         "bytes": 10587,
-        "gzipBytes": 3233,
+        "gzipBytes": 3245,
         "brotliBytes": 2823
       },
       "optimized": {
         "bytes": 6101,
-        "gzipBytes": 2542,
+        "gzipBytes": 2549,
         "brotliBytes": 2255
       }
     },
@@ -450,12 +450,12 @@
       "output": "js/VmsPanel.06c887aa6ae98462.js",
       "original": {
         "bytes": 22191,
-        "gzipBytes": 6511,
+        "gzipBytes": 6505,
         "brotliBytes": 5668
       },
       "optimized": {
         "bytes": 13295,
-        "gzipBytes": 5235,
+        "gzipBytes": 5233,
         "brotliBytes": 4609
       }
     },
@@ -464,12 +464,12 @@
       "output": "js/Post.d932de58634d37b7.js",
       "original": {
         "bytes": 6790,
-        "gzipBytes": 1797,
+        "gzipBytes": 1787,
         "brotliBytes": 1553
       },
       "optimized": {
         "bytes": 4567,
-        "gzipBytes": 1444,
+        "gzipBytes": 1453,
         "brotliBytes": 1254
       }
     },
@@ -478,12 +478,12 @@
       "output": "js/Arrows.40ab7892bc2c752b.js",
       "original": {
         "bytes": 976,
-        "gzipBytes": 435,
+        "gzipBytes": 427,
         "brotliBytes": 342
       },
       "optimized": {
         "bytes": 828,
-        "gzipBytes": 409,
+        "gzipBytes": 406,
         "brotliBytes": 355
       }
     },
@@ -492,27 +492,27 @@
       "output": "js/IconFallbacks.d438a3a04387fedd.js",
       "original": {
         "bytes": 1759458,
-        "gzipBytes": 956695,
+        "gzipBytes": 962782,
         "brotliBytes": 895245
       },
       "optimized": {
         "bytes": 1759456,
-        "gzipBytes": 956697,
+        "gzipBytes": 962779,
         "brotliBytes": 895430
       }
     },
     {
       "source": "js/Control.js",
-      "output": "js/Control.87f6e5820b22f24b.js",
+      "output": "js/Control.1b95bfa0df04ccb0.js",
       "original": {
-        "bytes": 308729,
-        "gzipBytes": 62982,
+        "bytes": 308795,
+        "gzipBytes": 62757,
         "brotliBytes": 51363
       },
       "optimized": {
-        "bytes": 199098,
-        "gzipBytes": 50732,
-        "brotliBytes": 41757
+        "bytes": 199155,
+        "gzipBytes": 50607,
+        "brotliBytes": 41769
       }
     },
     {
@@ -520,12 +520,12 @@
       "output": "js/SubPanels.d4d392b29959e7d4.js",
       "original": {
         "bytes": 1675,
-        "gzipBytes": 637,
+        "gzipBytes": 632,
         "brotliBytes": 531
       },
       "optimized": {
         "bytes": 882,
-        "gzipBytes": 448,
+        "gzipBytes": 446,
         "brotliBytes": 368
       }
     },
@@ -534,27 +534,27 @@
       "output": "js/HtmlToImage.27f73655f8a42531.js",
       "original": {
         "bytes": 17217,
-        "gzipBytes": 5612,
+        "gzipBytes": 5577,
         "brotliBytes": 4910
       },
       "optimized": {
         "bytes": 16918,
-        "gzipBytes": 5603,
+        "gzipBytes": 5565,
         "brotliBytes": 4902
       }
     },
     {
       "source": "js/ExportAssets.js",
-      "output": "js/ExportAssets.3bcdc409d07e791a.js",
+      "output": "js/ExportAssets.4896025c47e03927.js",
       "original": {
-        "bytes": 156244,
-        "gzipBytes": 11925,
-        "brotliBytes": 9362
+        "bytes": 156319,
+        "gzipBytes": 11883,
+        "brotliBytes": 9432
       },
       "optimized": {
-        "bytes": 153934,
-        "gzipBytes": 11708,
-        "brotliBytes": 9116
+        "bytes": 154009,
+        "gzipBytes": 11674,
+        "brotliBytes": 9136
       }
     },
     {
@@ -562,27 +562,27 @@
       "output": "js/PresetTemplates.12d6e48cb9eed8b7.js",
       "original": {
         "bytes": 44839,
-        "gzipBytes": 3119,
+        "gzipBytes": 3110,
         "brotliBytes": 2498
       },
       "optimized": {
         "bytes": 39032,
-        "gzipBytes": 3004,
+        "gzipBytes": 3003,
         "brotliBytes": 2437
       }
     },
     {
       "source": "js/main.js",
-      "output": "js/main.c72efc3568b5bad9.js",
+      "output": "js/main.24ae1a9b7529fb18.js",
       "original": {
         "bytes": 762032,
-        "gzipBytes": 134587,
-        "brotliBytes": 106182
+        "gzipBytes": 134270,
+        "brotliBytes": 106205
       },
       "optimized": {
         "bytes": 329987,
-        "gzipBytes": 88236,
-        "brotliBytes": 72236
+        "gzipBytes": 88205,
+        "brotliBytes": 72180
       }
     },
     {
@@ -590,12 +590,12 @@
       "output": "js/AlignmentButtons.f1278edc85d1f9aa.js",
       "original": {
         "bytes": 4743,
-        "gzipBytes": 1542,
+        "gzipBytes": 1543,
         "brotliBytes": 1285
       },
       "optimized": {
         "bytes": 2904,
-        "gzipBytes": 1265,
+        "gzipBytes": 1272,
         "brotliBytes": 1068
       }
     },
@@ -604,12 +604,12 @@
       "output": "js/NativeSelect.7f88543cdf55b910.js",
       "original": {
         "bytes": 21433,
-        "gzipBytes": 6085,
+        "gzipBytes": 6073,
         "brotliBytes": 5246
       },
       "optimized": {
         "bytes": 13446,
-        "gzipBytes": 5120,
+        "gzipBytes": 5129,
         "brotliBytes": 4436
       }
     },
@@ -618,12 +618,12 @@
       "output": "js/DiagrammaticRoadEngine.c3276cf74ac0dc2e.js",
       "original": {
         "bytes": 204043,
-        "gzipBytes": 56791,
+        "gzipBytes": 56591,
         "brotliBytes": 47403
       },
       "optimized": {
         "bytes": 133502,
-        "gzipBytes": 45963,
+        "gzipBytes": 45915,
         "brotliBytes": 39328
       }
     },
@@ -632,12 +632,12 @@
       "output": "js/Diagrammatics.ad48e03c9f88f798.js",
       "original": {
         "bytes": 40055,
-        "gzipBytes": 11978,
+        "gzipBytes": 11896,
         "brotliBytes": 10557
       },
       "optimized": {
         "bytes": 29361,
-        "gzipBytes": 9834,
+        "gzipBytes": 9774,
         "brotliBytes": 8679
       }
     },
@@ -646,12 +646,12 @@
       "output": "js/Roundabout.08d36150961b04b3.js",
       "original": {
         "bytes": 12513,
-        "gzipBytes": 4323,
+        "gzipBytes": 4309,
         "brotliBytes": 3670
       },
       "optimized": {
         "bytes": 11457,
-        "gzipBytes": 4074,
+        "gzipBytes": 4072,
         "brotliBytes": 3468
       }
     },
@@ -660,12 +660,12 @@
       "output": "js/SpecialPanelLayout.ebf7a256bf57742c.js",
       "original": {
         "bytes": 11344,
-        "gzipBytes": 2896,
+        "gzipBytes": 2898,
         "brotliBytes": 2523
       },
       "optimized": {
         "bytes": 6323,
-        "gzipBytes": 2233,
+        "gzipBytes": 2247,
         "brotliBytes": 1943
       }
     },
@@ -674,12 +674,12 @@
       "output": "js/DragFeedback.c8d142298bb8170a.js",
       "original": {
         "bytes": 2143,
-        "gzipBytes": 960,
+        "gzipBytes": 966,
         "brotliBytes": 795
       },
       "optimized": {
         "bytes": 1580,
-        "gzipBytes": 848,
+        "gzipBytes": 849,
         "brotliBytes": 712
       }
     },
@@ -688,12 +688,12 @@
       "output": "js/FDOTSupports.353487bdf39bc15f.js",
       "original": {
         "bytes": 26003,
-        "gzipBytes": 7664,
+        "gzipBytes": 7638,
         "brotliBytes": 6751
       },
       "optimized": {
         "bytes": 16191,
-        "gzipBytes": 6325,
+        "gzipBytes": 6277,
         "brotliBytes": 5570
       }
     },
@@ -702,12 +702,12 @@
       "output": "js/IconPicker.f07693de1a9e8c8f.js",
       "original": {
         "bytes": 19240,
-        "gzipBytes": 5161,
+        "gzipBytes": 5158,
         "brotliBytes": 4463
       },
       "optimized": {
         "bytes": 13009,
-        "gzipBytes": 4328,
+        "gzipBytes": 4332,
         "brotliBytes": 3802
       }
     },
@@ -716,12 +716,12 @@
       "output": "js/HighwayVarFonts.a64ac12e2b96146a.js",
       "original": {
         "bytes": 1804,
-        "gzipBytes": 819,
+        "gzipBytes": 818,
         "brotliBytes": 683
       },
       "optimized": {
         "bytes": 1142,
-        "gzipBytes": 661,
+        "gzipBytes": 659,
         "brotliBytes": 537
       }
     },
@@ -730,12 +730,12 @@
       "output": "js/PickerSearch.c28526c28f803968.js",
       "original": {
         "bytes": 5438,
-        "gzipBytes": 1845,
+        "gzipBytes": 1848,
         "brotliBytes": 1560
       },
       "optimized": {
         "bytes": 3509,
-        "gzipBytes": 1553,
+        "gzipBytes": 1552,
         "brotliBytes": 1326
       }
     },
@@ -744,12 +744,12 @@
       "output": "js/form.df15f7fcacd06059.js",
       "original": {
         "bytes": 961618,
-        "gzipBytes": 165465,
+        "gzipBytes": 165189,
         "brotliBytes": 126094
       },
       "optimized": {
         "bytes": 492558,
-        "gzipBytes": 113743,
+        "gzipBytes": 113514,
         "brotliBytes": 89385
       }
     },
@@ -758,12 +758,12 @@
       "output": "js/IndexDB.ed3f5570a8a35ea9.js",
       "original": {
         "bytes": 6171,
-        "gzipBytes": 1202,
+        "gzipBytes": 1207,
         "brotliBytes": 1047
       },
       "optimized": {
         "bytes": 3425,
-        "gzipBytes": 976,
+        "gzipBytes": 979,
         "brotliBytes": 860
       }
     },
@@ -772,12 +772,12 @@
       "output": "js/CustomShields.85049f03f2f32351.js",
       "original": {
         "bytes": 3912,
-        "gzipBytes": 1156,
+        "gzipBytes": 1163,
         "brotliBytes": 942
       },
       "optimized": {
         "bytes": 2833,
-        "gzipBytes": 1005,
+        "gzipBytes": 1009,
         "brotliBytes": 819
       }
     },
@@ -786,12 +786,12 @@
       "output": "js/SignDocument.049462d0df09a6fc.js",
       "original": {
         "bytes": 4578,
-        "gzipBytes": 1750,
+        "gzipBytes": 1758,
         "brotliBytes": 1454
       },
       "optimized": {
         "bytes": 3495,
-        "gzipBytes": 1534,
+        "gzipBytes": 1540,
         "brotliBytes": 1273
       }
     },
@@ -800,12 +800,12 @@
       "output": "js/SignMigrations.b2fa30175c714ab4.js",
       "original": {
         "bytes": 4754,
-        "gzipBytes": 1647,
+        "gzipBytes": 1657,
         "brotliBytes": 1414
       },
       "optimized": {
         "bytes": 2833,
-        "gzipBytes": 1363,
+        "gzipBytes": 1364,
         "brotliBytes": 1183
       }
     },
@@ -814,12 +814,12 @@
       "output": "js/BannerExport.03161132c4d841de.js",
       "original": {
         "bytes": 7696,
-        "gzipBytes": 2324,
+        "gzipBytes": 2333,
         "brotliBytes": 1943
       },
       "optimized": {
         "bytes": 4598,
-        "gzipBytes": 1877,
+        "gzipBytes": 1885,
         "brotliBytes": 1579
       }
     },
@@ -828,12 +828,12 @@
       "output": "js/VmsElement.a1bac1137d0dd618.js",
       "original": {
         "bytes": 9234,
-        "gzipBytes": 3049,
+        "gzipBytes": 3054,
         "brotliBytes": 2593
       },
       "optimized": {
         "bytes": 5824,
-        "gzipBytes": 2539,
+        "gzipBytes": 2544,
         "brotliBytes": 2184
       }
     },
@@ -842,12 +842,12 @@
       "output": "js/CaliforniaExit.0c392f8cf54132fb.js",
       "original": {
         "bytes": 9099,
-        "gzipBytes": 2947,
+        "gzipBytes": 2956,
         "brotliBytes": 2531
       },
       "optimized": {
         "bytes": 5396,
-        "gzipBytes": 2302,
+        "gzipBytes": 2318,
         "brotliBytes": 2022
       }
     },
@@ -856,12 +856,12 @@
       "output": "js/GuideArrowDefaults.20da3f527035a54a.js",
       "original": {
         "bytes": 4384,
-        "gzipBytes": 1735,
+        "gzipBytes": 1722,
         "brotliBytes": 1494
       },
       "optimized": {
         "bytes": 3351,
-        "gzipBytes": 1506,
+        "gzipBytes": 1507,
         "brotliBytes": 1296
       }
     },
@@ -870,12 +870,12 @@
       "output": "js/BlockContextMenu.da04750cc8a3f445.js",
       "original": {
         "bytes": 4044,
-        "gzipBytes": 1596,
+        "gzipBytes": 1590,
         "brotliBytes": 1367
       },
       "optimized": {
         "bytes": 3243,
-        "gzipBytes": 1433,
+        "gzipBytes": 1436,
         "brotliBytes": 1211
       }
     },
@@ -884,12 +884,12 @@
       "output": "js/CopyPanelMenu.1e988b6fa65dbf39.js",
       "original": {
         "bytes": 3368,
-        "gzipBytes": 1183,
+        "gzipBytes": 1185,
         "brotliBytes": 944
       },
       "optimized": {
         "bytes": 2231,
-        "gzipBytes": 1012,
+        "gzipBytes": 1015,
         "brotliBytes": 805
       }
     },
@@ -898,12 +898,12 @@
       "output": "js/BlockProperties.819cde37945fd777.js",
       "original": {
         "bytes": 7535,
-        "gzipBytes": 2320,
+        "gzipBytes": 2324,
         "brotliBytes": 2019
       },
       "optimized": {
         "bytes": 4782,
-        "gzipBytes": 1927,
+        "gzipBytes": 1931,
         "brotliBytes": 1681
       }
     },
@@ -912,12 +912,12 @@
       "output": "js/MobileGestures.f1a20ba0cb160ef3.js",
       "original": {
         "bytes": 12229,
-        "gzipBytes": 3411,
+        "gzipBytes": 3418,
         "brotliBytes": 2948
       },
       "optimized": {
         "bytes": 7605,
-        "gzipBytes": 2850,
+        "gzipBytes": 2854,
         "brotliBytes": 2526
       }
     },
@@ -926,12 +926,12 @@
       "output": "js/MobileSubpanels.c64e39f0eb70dce2.js",
       "original": {
         "bytes": 23029,
-        "gzipBytes": 6350,
+        "gzipBytes": 6334,
         "brotliBytes": 5554
       },
       "optimized": {
         "bytes": 14597,
-        "gzipBytes": 4987,
+        "gzipBytes": 4980,
         "brotliBytes": 4431
       }
     },
@@ -940,12 +940,12 @@
       "output": "js/MobileExitTabs.2cc9631b990c501f.js",
       "original": {
         "bytes": 8724,
-        "gzipBytes": 2641,
+        "gzipBytes": 2640,
         "brotliBytes": 2275
       },
       "optimized": {
         "bytes": 5495,
-        "gzipBytes": 2204,
+        "gzipBytes": 2218,
         "brotliBytes": 1942
       }
     },
@@ -954,12 +954,12 @@
       "output": "js/MobileForms.b43a012bd224276c.js",
       "original": {
         "bytes": 34288,
-        "gzipBytes": 8496,
+        "gzipBytes": 8487,
         "brotliBytes": 7461
       },
       "optimized": {
         "bytes": 22073,
-        "gzipBytes": 7058,
+        "gzipBytes": 7070,
         "brotliBytes": 6256
       }
     },
@@ -968,12 +968,12 @@
       "output": "js/MobileShieldMaker.3aef7ec77a808b44.js",
       "original": {
         "bytes": 5466,
-        "gzipBytes": 1625,
+        "gzipBytes": 1634,
         "brotliBytes": 1355
       },
       "optimized": {
         "bytes": 3807,
-        "gzipBytes": 1349,
+        "gzipBytes": 1360,
         "brotliBytes": 1141
       }
     },
@@ -982,12 +982,12 @@
       "output": "js/MobileUI.de661de95cdf6194.js",
       "original": {
         "bytes": 19897,
-        "gzipBytes": 5574,
+        "gzipBytes": 5573,
         "brotliBytes": 4842
       },
       "optimized": {
         "bytes": 12217,
-        "gzipBytes": 4394,
+        "gzipBytes": 4395,
         "brotliBytes": 3873
       }
     },
@@ -996,12 +996,12 @@
       "output": "js/MobileDropdowns.82efb2293f24f97e.js",
       "original": {
         "bytes": 10719,
-        "gzipBytes": 3200,
+        "gzipBytes": 3208,
         "brotliBytes": 2742
       },
       "optimized": {
         "bytes": 6565,
-        "gzipBytes": 2581,
+        "gzipBytes": 2585,
         "brotliBytes": 2233
       }
     },
@@ -1010,12 +1010,12 @@
       "output": "js/MergeUI.9ec01c73c294f303.js",
       "original": {
         "bytes": 8349,
-        "gzipBytes": 2612,
+        "gzipBytes": 2629,
         "brotliBytes": 2235
       },
       "optimized": {
         "bytes": 6188,
-        "gzipBytes": 2249,
+        "gzipBytes": 2260,
         "brotliBytes": 1925
       }
     },
@@ -1024,12 +1024,12 @@
       "output": "js/Settings22.4e2c85b4aff66944.js",
       "original": {
         "bytes": 5066,
-        "gzipBytes": 1472,
+        "gzipBytes": 1479,
         "brotliBytes": 1269
       },
       "optimized": {
         "bytes": 4088,
-        "gzipBytes": 1284,
+        "gzipBytes": 1291,
         "brotliBytes": 1096
       }
     },
@@ -1038,12 +1038,12 @@
       "output": "js/DropdownTheme.483f02b41085e153.js",
       "original": {
         "bytes": 15083,
-        "gzipBytes": 4800,
+        "gzipBytes": 4790,
         "brotliBytes": 4242
       },
       "optimized": {
         "bytes": 9051,
-        "gzipBytes": 3808,
+        "gzipBytes": 3807,
         "brotliBytes": 3378
       }
     },
@@ -1070,25 +1070,25 @@
         "css/custom-shield-maker.css",
         "css/block-properties.css"
       ],
-      "output": "css/app.6430d69b96462a20.css",
+      "output": "css/app.ffb62c2a5b757433.css",
       "original": {
-        "bytes": 911590,
-        "gzipBytes": 145978,
-        "brotliBytes": 114630
+        "bytes": 911860,
+        "gzipBytes": 146780,
+        "brotliBytes": 114697
       },
       "optimized": {
-        "bytes": 770941,
-        "gzipBytes": 122257,
-        "brotliBytes": 96746
+        "bytes": 771027,
+        "gzipBytes": 122350,
+        "brotliBytes": 96696
       }
     },
     {
       "critical": true,
-      "output": "css/sign.b50bdf35a06d7247.css",
+      "output": "css/sign.e05ec733fec5325b.css",
       "optimized": {
-        "bytes": 291339,
-        "gzipBytes": 62272,
-        "brotliBytes": 53570
+        "bytes": 291425,
+        "gzipBytes": 62539,
+        "brotliBytes": 53621
       }
     },
     {
@@ -1096,12 +1096,12 @@
       "output": "js/Startup.9d75b1c853e51bc9.js",
       "original": {
         "bytes": 1757,
-        "gzipBytes": 731,
+        "gzipBytes": 729,
         "brotliBytes": 585
       },
       "optimized": {
         "bytes": 1154,
-        "gzipBytes": 604,
+        "gzipBytes": 608,
         "brotliBytes": 476
       }
     }

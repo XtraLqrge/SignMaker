@@ -68,7 +68,7 @@
 /js/PresetTemplates.12d6e48cb9eed8b7.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.46524924d17cb1bf.js
+/js/main.a042d38ef7cada6f.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.f1278edc85d1f9aa.js
@@ -104,7 +104,7 @@
 /js/PickerSearch.c28526c28f803968.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.df15f7fcacd06059.js
+/js/form.fe09df412c11fbf6.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.ed3f5570a8a35ea9.js
@@ -129,6 +129,9 @@
   Cache-Control: public, max-age=31536000, immutable
 
 /js/GuideArrowDefaults.d03e7a287ff870d8.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/AplSpacing.3c346fe25b12d0ef.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/BlockContextMenu.da04750cc8a3f445.js
@@ -170,10 +173,10 @@
 /js/DropdownTheme.483f02b41085e153.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.ffb62c2a5b757433.css
+/css/app.69130f605f1e3eb2.css
   Cache-Control: public, max-age=31536000, immutable
 
-/css/sign.e05ec733fec5325b.css
+/css/sign.1c61c06757a9a5bd.css
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Startup.9d75b1c853e51bc9.js

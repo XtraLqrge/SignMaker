@@ -14,7 +14,7 @@
     "js/IconPicker.f07693de1a9e8c8f.js",
     "js/HighwayVarFonts.a64ac12e2b96146a.js",
     "js/PickerSearch.c28526c28f803968.js",
-    "js/form.df15f7fcacd06059.js",
+    "js/form.fe09df412c11fbf6.js",
     "js/IndexDB.ed3f5570a8a35ea9.js",
     "js/CustomShields.85049f03f2f32351.js",
     "js/SignDocument.049462d0df09a6fc.js",
@@ -23,6 +23,7 @@
     "js/VmsElement.a1bac1137d0dd618.js",
     "js/CaliforniaExit.0c392f8cf54132fb.js",
     "js/GuideArrowDefaults.d03e7a287ff870d8.js",
+    "js/AplSpacing.3c346fe25b12d0ef.js",
     "js/BlockContextMenu.da04750cc8a3f445.js",
     "js/CopyPanelMenu.1e988b6fa65dbf39.js",
     "js/BlockProperties.819cde37945fd777.js",
@@ -37,16 +38,16 @@
     "js/Settings22.4e2c85b4aff66944.js",
     "js/DropdownTheme.483f02b41085e153.js"
   ],
-  "deferredStyles": "css/app.ffb62c2a5b757433.css",
+  "deferredStyles": "css/app.69130f605f1e3eb2.css",
   "startupJS": {
-    "bytes": 620339,
-    "gzipBytes": 169868,
-    "brotliBytes": 141160
+    "bytes": 620430,
+    "gzipBytes": 169894,
+    "brotliBytes": 141126
   },
   "criticalCSS": {
-    "bytes": 291425,
-    "gzipBytes": 62539,
-    "brotliBytes": 53621
+    "bytes": 291616,
+    "gzipBytes": 62580,
+    "brotliBytes": 53654
   },
   "inlineFontHelper": {
     "bytes": 8557,
@@ -573,16 +574,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.46524924d17cb1bf.js",
+      "output": "js/main.a042d38ef7cada6f.js",
       "original": {
-        "bytes": 762141,
-        "gzipBytes": 134330,
-        "brotliBytes": 106215
+        "bytes": 762317,
+        "gzipBytes": 134382,
+        "brotliBytes": 106258
       },
       "optimized": {
-        "bytes": 330087,
-        "gzipBytes": 88256,
-        "brotliBytes": 72298
+        "bytes": 330178,
+        "gzipBytes": 88282,
+        "brotliBytes": 72264
       }
     },
     {
@@ -741,16 +742,16 @@
     },
     {
       "source": "js/form.js",
-      "output": "js/form.df15f7fcacd06059.js",
+      "output": "js/form.fe09df412c11fbf6.js",
       "original": {
-        "bytes": 961618,
-        "gzipBytes": 165189,
-        "brotliBytes": 126094
+        "bytes": 962515,
+        "gzipBytes": 165374,
+        "brotliBytes": 126373
       },
       "optimized": {
-        "bytes": 492558,
-        "gzipBytes": 113514,
-        "brotliBytes": 89385
+        "bytes": 493024,
+        "gzipBytes": 113675,
+        "brotliBytes": 89579
       }
     },
     {
@@ -863,6 +864,20 @@
         "bytes": 6742,
         "gzipBytes": 2571,
         "brotliBytes": 2237
+      }
+    },
+    {
+      "source": "js/AplSpacing.js",
+      "output": "js/AplSpacing.3c346fe25b12d0ef.js",
+      "original": {
+        "bytes": 3421,
+        "gzipBytes": 1330,
+        "brotliBytes": 1127
+      },
+      "optimized": {
+        "bytes": 2276,
+        "gzipBytes": 1080,
+        "brotliBytes": 937
       }
     },
     {
@@ -1070,25 +1085,25 @@
         "css/custom-shield-maker.css",
         "css/block-properties.css"
       ],
-      "output": "css/app.ffb62c2a5b757433.css",
+      "output": "css/app.69130f605f1e3eb2.css",
       "original": {
-        "bytes": 911860,
-        "gzipBytes": 146780,
-        "brotliBytes": 114697
+        "bytes": 912159,
+        "gzipBytes": 146844,
+        "brotliBytes": 114775
       },
       "optimized": {
-        "bytes": 771027,
-        "gzipBytes": 122350,
-        "brotliBytes": 96696
+        "bytes": 771218,
+        "gzipBytes": 122389,
+        "brotliBytes": 96788
       }
     },
     {
       "critical": true,
-      "output": "css/sign.e05ec733fec5325b.css",
+      "output": "css/sign.1c61c06757a9a5bd.css",
       "optimized": {
-        "bytes": 291425,
-        "gzipBytes": 62539,
-        "brotliBytes": 53621
+        "bytes": 291616,
+        "gzipBytes": 62580,
+        "brotliBytes": 53654
       }
     },
     {

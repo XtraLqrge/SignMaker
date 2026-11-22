@@ -21906,6 +21906,13 @@ const formHandler = (function () {
       subPanel.width = parseInt(form["subPanelLength"].value);
     }
 
+    // Middle is the default, so it is left off the saved subpanel.
+    const verticalAlign = form["subPanelVerticalAlign"]?.value;
+    if (subPanel && verticalAlign) {
+      if (verticalAlign === "Middle") delete subPanel.verticalAlign;
+      else subPanel.verticalAlign = verticalAlign;
+    }
+
     currentPanel.sign.shieldPosition = form["shieldsPosition"].value;
     var guideArrow_result = form["guideArrow"].value;
 
@@ -25063,6 +25070,15 @@ const formHandler = (function () {
         panel.sign.subPanels.length > 1
         ? "inline-block"
         : "none";
+
+    const selectedSubPanel = panel.sign.subPanels[exposed.vars.currentlySelectedSubPanelIndex];
+    const subPanelVerticalAlign = document.getElementById("subPanelVerticalAlign");
+    const subPanelVerticalAlignLabel = document.getElementById("subPanelVerticalAlignLabel");
+    if (subPanelVerticalAlign && subPanelVerticalAlignLabel) {
+      subPanelVerticalAlign.style.display = selectedSubPanel ? "initial" : "none";
+      subPanelVerticalAlignLabel.style.display = selectedSubPanel ? "inline-block" : "none";
+      subPanelVerticalAlign.value = selectedSubPanel?.verticalAlign || "Middle";
+    }
 
     // Exit Tabs
     ExitTab.normalizeCalifornia(exitTab);

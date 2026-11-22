@@ -1909,6 +1909,15 @@
   box-sizing: border-box;
 }
 
+/* Subpanel vertical alignment (Extra Subpanel Settings); Middle is the default. */
+.subPanelDisplay[data-valign="Top"] > .signContentContainer {
+  justify-content: flex-start !important;
+}
+
+.subPanelDisplay[data-valign="Bottom"] > .signContentContainer {
+  justify-content: flex-end !important;
+}
+
 /* APL arrows can reserve width for the subpanel they belong to, but APL mode
    should not make every subpanel split the sign width equally by default. */
 .signHolder:has(.subpanelAplArrows) .subPanelDisplay {

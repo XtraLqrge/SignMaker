@@ -141,6 +141,7 @@
 <script defer src="js/VmsElement.js"></script>
 <script defer src="js/CaliforniaExit.js"></script>
   <script defer src="js/GuideArrowDefaults.js"></script>
+  <script defer src="js/AplSpacing.js"></script>
   <script defer src="js/BlockContextMenu.js"></script>
 <script defer src="js/CopyPanelMenu.js"></script>
 <script defer src="js/BlockProperties.js"></script>
@@ -1457,6 +1458,14 @@
             <select id="sdShield_direction"></select>
           </div>
           <div id="sMSPBlocks" class="">
+            <div id="subPanelVerticalAlignRow">
+              <label for="subPanelVerticalAlign" id="subPanelVerticalAlignLabel" style="display: none">Vertical Align:</label>
+              <select id="subPanelVerticalAlign" name="subPanelVerticalAlign" onchange="formHandler.readForm();" style="display: none">
+                <option value="Top">Top</option>
+                <option value="Middle" selected>Middle</option>
+                <option value="Bottom">Bottom</option>
+              </select>
+            </div>
             <div id="sMSPTextEditor">
 
                 <div id="sMSPGroupNav" class="mergeGroupNav hidden">

@@ -15273,6 +15273,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    
                    const new_subPanel = document.createElement("div");
                    new_subPanel.className = "subPanelDisplay";
+                   if (subPanel.verticalAlign) new_subPanel.dataset.valign = subPanel.verticalAlign;
                    new_subPanel.id = "S_subPanel" + subPanelIndex.toString();
                    new_subPanel.dataset.panelIndex = String(index);
                    new_subPanel.dataset.subpanelIndex = String(subPanelIndex);
@@ -15697,6 +15698,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               arrow changes cannot widen or shrink the owning subpanel correctly.
             */
             [...contentCells, ...arrowCells].forEach(clearLinkedWidth);
+            window.SignMakerAplSpacing?.(contentCells, arrowCells, remPx);
 
             const desiredWidths = contentCells.map((contentCell, cellIndex) => {
               const arrowCell = arrowCells[cellIndex];

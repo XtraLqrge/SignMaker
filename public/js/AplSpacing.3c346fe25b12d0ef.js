@@ -1,0 +1,11 @@
+/* Keep APL arrows evenly spaced across subpanels. Text wider than a middle
+   subpanel's arrows widens every gap by the same factor instead of opening one
+   large gap, and extra text room on the edge subpanels goes to the outer side.
+   main.js calls this before it links the content and arrow column widths. */
+window.SignMakerAplSpacing=(t,e,r)=>{const o=e.length-1;if(o<1)return;
+// The values main.js rendered, kept so repeated syncs never compound.
+const base=(t,e)=>Number(t.dataset.aplBase??=e())||0,a=e.map(t=>{const e=t.querySelector(":scope > .subpanelAplArrows"),r=e?[...e.querySelectorAll(":scope > .aplArrowSlot")]:[],o=r.map(t=>(t.dataset.aplBaseRight??=parseFloat(t.style.marginRight)||0,[base(t,()=>parseFloat(t.style.marginLeft)||0),Number(t.dataset.aplBaseRight)]));return{box:e,slots:r,margins:o,total:o.reduce((t,[e,r])=>t+e+r,0)}});let l=1;a.forEach((e,a)=>{a>0&&a<o&&e.total>0&&(l=Math.max(l,(t=>{const e=t.querySelector(":scope > .signContentContainer"),o=e&&["width","min-width"].map(t=>[t,e.style.getPropertyValue(t),e.style.getPropertyPriority(t)]);for(const r of[t,e])r?.style.setProperty("width","max-content","important"),r?.style.setProperty("min-width","0","important");const a=t.offsetWidth;return t.style.removeProperty("width"),t.style.removeProperty("min-width"),o?.forEach(([t,r,o])=>r?e.style.setProperty(t,r,o):e.style.removeProperty(t)),a/r})(t[a])/e.total))}),a.forEach(({box:r,slots:a,margins:s},n)=>{if(!r)return;let y=0;if(a.forEach((t,e)=>{
+// The sign's outer edges keep their fixed padding.
+const r=0===n&&0===e?s[e][0]:s[e][0]*l,i=n===o&&e===a.length-1?s[e][1]:s[e][1]*l;t.style.marginLeft=r+"rem",t.style.marginRight=i+"rem",y+=r+i}),r.style.setProperty("justify-content",0===n?"flex-end":n===o?"flex-start":"center","important"),y>0)for(const r of[t[n],e[n]])r?.style.setProperty("--aplSubpanelMinWidth",y+"rem")});
+// Shared Exit Only plaques are centred by offsets measured in the same spacing.
+for(const[t,r]of[[".aplExitOnlySharedLabel","--aplExitOnlySharedCenterOffset"],[".aplExitOnlyBoundarySharedLabel","--aplExitOnlyBoundaryCenterOffset"]])for(const o of e[0].parentElement?.querySelectorAll(t)||[])o.style.getPropertyValue(r)&&o.style.setProperty(r,base(o,()=>parseFloat(o.style.getPropertyValue(r))||0)*l+"rem")};

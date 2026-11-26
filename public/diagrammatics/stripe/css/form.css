@@ -1,0 +1,97 @@
+button {
+  display: flex;
+  appearance: none;
+  justify-content: center;
+  align-items: center;
+  border: 0;
+  width: max-content;
+  background-color: rgb(var(--inputColor));
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  color: var(--textColor);
+  cursor: pointer;
+}
+
+#configBar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  width: max-content;
+  max-width: calc(100vw - 1rem);
+  background: var(--hotbarColor);
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.modals {
+  position: fixed;
+  inset: 1.5rem auto auto 1.5rem;
+  width: fit-content;
+  max-width: min(80vh, calc(100vw - 3rem));
+}
+
+.editor {
+  background: var(--hotbarColor);
+  min-width: min(45vh, calc(100vw - 3rem));
+  width: max-content;
+  max-width: min(80vh, calc(100vw - 3rem));
+  overflow: hidden;
+}
+
+.editorBar {
+  display: flex;
+  align-items: center;
+  background-color: rgba(var(--baseColor), 0.5);
+}
+
+.editorTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(var(--baseColor), 0.75);
+  font-size: 16px;
+}
+
+.editorTitle .material-symbols-outlined { font-size: 20px; }
+:root[data-theme="dark"] .editorBar { background-color: rgb(50, 75, 255); }
+:root[data-theme="dark"] .editorTitle { background-color: rgb(50, 50, 200); }
+
+.editorContent {
+  width: 100%;
+  padding: 1rem;
+  max-height: 80vh;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  #configBar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    transform: none;
+    overflow-x: auto;
+    padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+    scrollbar-width: none;
+  }
+
+  #configBar::-webkit-scrollbar { display: none; }
+
+  .modals {
+    inset: auto 0 calc(3.2rem + env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .editor { width: 100%; min-width: 0; max-width: 100%; }
+  .editorContent { max-height: 48dvh; padding: 0.75rem; }
+}
+

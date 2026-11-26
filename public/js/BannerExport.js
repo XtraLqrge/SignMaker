@@ -32,9 +32,19 @@ window.SignMakerBannerExport = (() => {
       if ("letterSpacing" in context && "wordSpacing" in context) {
         context.letterSpacing = style.letterSpacing === "normal" ? "0px" : style.letterSpacing;
         context.wordSpacing = style.wordSpacing === "normal" ? "0px" : style.wordSpacing;
-        range.selectNodeContents(node);
-        const box = range.getBoundingClientRect();
-        context.fillText(transform(node.textContent), (box.left - rect.left) / scale, (box.top - rect.top) / scale + ascent);
+        if (/[\r\n]/.test(node.textContent)) {
+          // Each extra banner line has its own baseline in the live sign.
+          for (const line of node.textContent.matchAll(/[^\r\n]+/g)) {
+            range.setStart(node, line.index);
+            range.setEnd(node, line.index + line[0].length);
+            const box = range.getBoundingClientRect();
+            context.fillText(transform(line[0]), (box.left - rect.left) / scale, (box.top - rect.top) / scale + ascent);
+          }
+        } else {
+          range.selectNodeContents(node);
+          const box = range.getBoundingClientRect();
+          context.fillText(transform(node.textContent), (box.left - rect.left) / scale, (box.top - rect.top) / scale + ascent);
+        }
       } else {
         // Older canvas implementations cannot apply CSS character spacing.
         // Measure each character's painted position instead of guessing it.
@@ -83,5 +93,76 @@ window.SignMakerBannerExport = (() => {
       clone.style.setProperty("position", "relative", "important");
     });
   };
-  return { freeze };
+    const freezeLayout = (sourceRoot, cloneRoot, normalizeMeasurement) => {
+      if (!sourceRoot || !cloneRoot) {
+        return;
+      }
+
+      const layoutSelectors = [
+        ".panel",
+        ".panelStack",
+        ".exitTabContainer",
+        ".exitTabHolder",
+        ".exitTab",
+        ".signContainer",
+        ".sign",
+        ".signHolder",
+        ".globalTop",
+        ".globalBottom",
+        ".subPanelDisplay",
+        ".signContentContainer",
+        ".blockElementMaster",
+        ".guideArrows",
+        ".aplArrows",
+      ].join(", ");
+
+      const sourceNodes = [sourceRoot, ...sourceRoot.querySelectorAll("*")];
+      const cloneNodes = [cloneRoot, ...cloneRoot.querySelectorAll("*")];
+
+      sourceNodes.forEach((sourceNode, nodeIndex) => {
+        const cloneNode = cloneNodes[nodeIndex];
+
+        if (!cloneNode || !sourceNode.matches || !sourceNode.matches(layoutSelectors)) {
+          return;
+        }
+
+        const rect = sourceNode.getBoundingClientRect();
+
+        if (!rect.width || !rect.height) {
+          return;
+        }
+
+        const computedStyle = window.getComputedStyle(sourceNode);
+        const widthPx = normalizeMeasurement(rect.width) + "px";
+        const heightPx = normalizeMeasurement(rect.height) + "px";
+
+        const shouldFreezeAsBorderBox =
+          sourceNode.classList.contains("hasPanelOuterBorder") ||
+          sourceNode.classList.contains("sign") && sourceNode.classList.contains("hasSideGuideArrow");
+
+        cloneNode.style.boxSizing = shouldFreezeAsBorderBox
+          ? "border-box"
+          : computedStyle.boxSizing || "border-box";
+        cloneNode.style.width = widthPx;
+        cloneNode.style.minWidth = widthPx;
+        cloneNode.style.maxWidth = widthPx;
+
+        if (
+          sourceNode.classList.contains("sign") ||
+          sourceNode.classList.contains("signContainer") ||
+          sourceNode.classList.contains("exitTabContainer") ||
+          sourceNode.classList.contains("exitTabHolder") ||
+          sourceNode.classList.contains("exitTab") ||
+          sourceNode.classList.contains("globalTop") ||
+          sourceNode.classList.contains("globalBottom") ||
+          sourceNode.classList.contains("guideArrows") ||
+          sourceNode.classList.contains("aplArrows")
+        ) {
+          cloneNode.style.height = heightPx;
+          cloneNode.style.minHeight = heightPx;
+        }
+      });
+    };
+
+  return { freeze, freezeLayout };
 })();

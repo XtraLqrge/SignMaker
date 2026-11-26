@@ -1,0 +1,55 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,100..900;1,100..900&display=swap");
+
+:root[data-theme="light"] {
+  --backgroundColor: rgb(144 181 255);
+  --hotbarColor: rgb(210, 225, 255);
+  --textColor: rgb(0, 0, 0);
+  --selectedColor: rgb(255, 255, 255);
+  --hoverColor: rgba(255, 255, 255, 0.5);
+  --baseColor: 255, 255, 255;
+  --inputColor: 240, 240, 240;
+  --blankSheetColor: rgb(255 255 255);
+}
+
+:root[data-theme="dark"] {
+  --backgroundColor: rgb(10 28 77);
+  --hotbarColor: rgb(43 63 118);
+  --textColor: rgb(247 249 251);
+  --selectedColor: rgba(255, 255, 255, 0.25);
+  --hoverColor: rgb(24 39 78);
+  --baseColor: 0, 0, 0;
+  --inputColor: 15, 15, 15;
+  --blankSheetColor: rgb(30 31 34);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 20px;
+  color: var(--textColor);
+}
+
+body {
+  background-color: var(--backgroundColor);
+  transition: 0.15s ease-in-out background-color;
+}
+
+main {
+  width: 100%;
+  height: 100dvh;
+}
+
+h2, p { margin: 0; }
+h2 { font-family: "Overpass", sans-serif; font-weight: 600; }
+.material-symbols-outlined { user-select: none; }
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}

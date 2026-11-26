@@ -94,5 +94,5 @@ test('California minimum height honors zero and small values in horizontal and v
     vm.runInNewContext(block,{exitTab,exitTabElmt,ExitTab:{prototype:{defaultMinHeight:2.25}}});assert.equal(exitTabElmt.style.minHeight,minimum+'rem');
   }
   const exitTab={_californiaRender:false,minHeight:.05,verticalArrangement:true,variant:'Default'},exitTabElmt={style:{}};
-  vm.runInNewContext(block,{exitTab,exitTabElmt,ExitTab:{prototype:{defaultMinHeight:2.25}}});assert.equal(exitTabElmt.style.minHeight,'3.75rem','Other exit-tab types retain their existing sizing');
+  vm.runInNewContext(block,{exitTab,exitTabElmt,ExitTab:{prototype:{defaultMinHeight:2.25}}});assert.equal(exitTabElmt.style.minHeight,'calc(3.75rem + 2 * var(--exitTabVerticalPadding, 0rem))','Standard tabs keep their minimum and add the requested vertical padding');
 });

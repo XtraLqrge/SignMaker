@@ -63,11 +63,15 @@
     let pointer = null;
     let pointerClick = false;
     let colorInput = null;
+    let typeahead;
     const mobileKind = colorForValue ? 'color' : textStyleForValue && /font/i.test(select.id) ? 'font' : null;
     const mobileMode = () => [...select.options].some(option => option.value === 'Highway Gothic') ? 'family' : 'allFontsGrouped';
     const mobileOptions = () => ({ mode: mobileMode() });
     const entries = () => {
-      const options = [...select.options].filter(option => !option.hidden && (!headerFooter || option.value));
+      const available = window.SignMakerHighwayVar?.allows;
+      const options = [...select.options].filter(option =>
+        !option.hidden && (!headerFooter || option.value) && (!available || available(option.value))
+      );
       return mobileKind && window.SignMakerMobileDropdowns
         ? window.SignMakerMobileDropdowns.entries(select, mobileKind, options, mobileOptions()) : options;
     };
@@ -86,6 +90,7 @@
     }
 
     function close(restoreFocus = false) {
+      typeahead?.clear();
       open = false;
       pointer = null;
       unlisten();
@@ -126,7 +131,7 @@
       if (!open && state === syncedState) return;
       syncedState = state;
       const options = entries();
-      const option = options.find(item => item.value === select.value);
+      const option = options.find(item => item.value === select.value) ?? select.selectedOptions[0];
       if (headerFooter) trigger.querySelector('.symbolPickerLabel').textContent = select.id === 'mergeAddHeader' ? 'Add Header' : 'Add Footer';
       else updateLabel(trigger.querySelector('.symbolPickerLabel'), option);
       if (colorForValue && !headerFooter) updateSwatch(trigger.querySelector('.colorPickerSwatch'), select.value);
@@ -232,7 +237,10 @@
     function show() {
       if (trigger.disabled) return;
       ensureMenu();
-      if (!open) listenWhileOpen();
+      if (!open) {
+        typeahead?.clear();
+        listenWhileOpen();
+      }
       const options = entries();
       renderItems(options);
       window.SignMakerDropdowns.prepareMenu(menu);
@@ -289,8 +297,8 @@
     // (see form.js), which keeps this within a frame.
     function choose(index) {
       const option = entries()[index];
-      if (!option || option.disabled || trigger.disabled) return;
-      close(true);
+      if (!option || option.disabled || option.parentElement?.disabled || trigger.disabled) return;
+      if (open) close(true);
       if (select.value === option.value) return;
       if (mobileKind === 'font' && ![...select.options].some(entry => entry.value === option.value)) select.add(new Option(option.textContent, option.value));
       select.value = option.value;
@@ -315,6 +323,7 @@
     };
     trigger.addEventListener('pointerenter', prepare);
     trigger.addEventListener('focus', prepare);
+    trigger.addEventListener('blur', () => typeahead?.clear());
     trigger.addEventListener('pointerdown', event => {
       if (event.button !== 0 || event.pointerType === 'touch' || trigger.disabled) return;
       event.preventDefault();
@@ -330,21 +339,30 @@
       if (open) close(); else show();
     });
     trigger.addEventListener('keydown', event => {
-      if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing || trigger.disabled) return;
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || trigger.disabled) return;
       if (event.key === 'Tab') { close(); return; }
-      if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); close(true); return; }
+      if (event.key === 'Escape') {
+        typeahead?.clear();
+        if (open) { event.preventDefault(); event.stopPropagation(); close(true); }
+        return;
+      }
       if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+        typeahead?.clear();
         event.preventDefault();
         if (!open) { show(); return; }
         highlight(event.key === 'Home' ? 0 : event.key === 'End' ? menuRows.length - 1 : active + (event.key === 'ArrowDown' ? 1 : -1));
-      } else if (['Enter', ' '].includes(event.key)) {
+      } else if (event.key === 'Enter' || (event.key === ' ' && !typeahead?.continues(event))) {
+        typeahead?.clear();
         event.preventDefault();
         if (open && active >= entries().length) runAction(menuRows[active]);
         else if (open) choose(active); else show();
-      } else if (event.key.length === 1) {
-        const index = entries().findIndex(option => option.textContent.toLowerCase().startsWith(event.key.toLowerCase()));
-        if (index < 0) return;
+      } else if (window.SignMakerDropdowns.textKey(event.key)) {
+        typeahead ??= window.SignMakerDropdowns.createTypeahead();
+        const index = typeahead.find(event, entries(), option =>
+          option.disabled || option.parentElement?.disabled ? '' : option.textContent);
         event.preventDefault();
+        event.stopPropagation();
+        if (index < 0) return;
         if (open) highlight(index); else choose(index);
       }
     });

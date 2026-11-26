@@ -104,6 +104,8 @@
   <link href="css/form.css?v=20261104-ui3" rel="stylesheet" type="text/css">
   <link href="css/sign-foundation.css?v=20261025a" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="css/ui-fonts.css">
+  <link rel="stylesheet" href="css/highway-var-fonts.css">
+  <link rel="stylesheet" href="css/picker-search.css">
   <!-- Page Links -->
   <script defer src="js/Startup.js"></script>
   <script defer src="js/EditorRuntime.js" type="text/javascript"></script>
@@ -111,10 +113,15 @@
   <script defer src="js/NativeSelect.js?v=20261104-subpanels6" type="text/javascript"></script>
   <script defer src="js/lib.js" type="text/javascript"></script>
   <script defer src="js/Shield.js?v=20261001b" type="text/javascript"></script>
+<script defer src="js/DiagrammaticRoadEngine.js"></script>
+<script defer src="js/Diagrammatics.js" type="text/javascript"></script>
+<script defer src="js/Roundabout.js" type="text/javascript"></script>
+<script defer src="js/SpecialPanelLayout.js"></script>
   <script defer src="js/Sign.js?v=20261008d" type="text/javascript"></script>
   <script defer src="js/ExitTab.js?v=20261025c" type="text/javascript"></script>
   <script defer src="js/Panel.js?v=20261026-messages1" type="text/javascript"></script>
   <script defer src="js/PanelBorders.js" type="text/javascript"></script>
+  <script defer src="js/DragFeedback.js"></script>
   <script defer src="js/PanelDrag.js" type="text/javascript"></script>
   <script defer src="js/VmsPanel.js?v=20261026-messages1" type="text/javascript"></script>
   <script defer src="js/Post.js?v=20261104-ui2" type="text/javascript"></script>
@@ -123,6 +130,8 @@
   <script defer src="js/Control.js?v=20261104-subpanels6" type="text/javascript"></script>
   <script defer src="js/SubPanels.js" type="text/javascript"></script>
   <script defer src="js/IconPicker.js?v=20261029-assets1" type="text/javascript"></script>
+  <script defer src="js/HighwayVarFonts.js"></script>
+  <script defer src="js/PickerSearch.js"></script>
   <script defer src="js/form.js?v=20261104-general8" type="text/javascript"></script>
   <script defer src="js/IndexDB.js?v=20261104-ui2" type="text/javascript"></script>
   <script defer src="js/CustomShields.js" type="text/javascript"></script>
@@ -131,6 +140,11 @@
 <script defer src="js/BannerExport.js"></script>
 <script defer src="js/VmsElement.js"></script>
 <script defer src="js/CaliforniaExit.js"></script>
+  <script defer src="js/GuideArrowDefaults.js"></script>
+  <script defer src="js/AplSpacing.js"></script>
+  <script defer src="js/BlockContextMenu.js"></script>
+<script defer src="js/CopyPanelMenu.js"></script>
+<script defer src="js/BlockProperties.js"></script>
   <script defer src="js/main.js?v=20261104-subpanels6" type="text/javascript"></script>
 <script defer src="js/MobileGestures.js" type="text/javascript"></script>
 <script defer src="js/MobileSubpanels.js" type="text/javascript"></script>
@@ -142,19 +156,16 @@
   <link href="css/merge-features.css?v=20261104-subpanels6" rel="stylesheet" type="text/css">
   <link href="css/legacy-shields.css?v=20261104" rel="stylesheet" type="text/css">
   <script defer src="js/MergeUI.js?v=20261104-subpanels6" type="text/javascript"></script>
-<link href="css/template-editor.css?v=20261104-ui2" rel="stylesheet" type="text/css"><link href="css/ui-upgrade.css?v=20261104-pickers7" rel="stylesheet" type="text/css"><script defer src="js/Settings22.js?v=20261104-general8" type="text/javascript"></script><script defer src="js/DropdownTheme.js?v=20261104-general8" type="text/javascript"></script><link rel="stylesheet" href="css/settings22.css?v=20261104-settings22"><link rel="stylesheet" href="css/editor-compact.css?v=20261104-compact4"><link rel="stylesheet" href="css/dropdown-layout.css?v=20261104-general8"><link rel="stylesheet" href="css/picker-theme.css"><link rel="stylesheet" href="css/mobile.css"><link rel="stylesheet" href="css/segmented-controls.css"><link rel="stylesheet" href="css/custom-shield-maker.css"></head>
+<link href="css/template-editor.css?v=20261104-ui2" rel="stylesheet" type="text/css"><link href="css/ui-upgrade.css?v=20261104-pickers7" rel="stylesheet" type="text/css"><script defer src="js/Settings22.js?v=20261104-general8" type="text/javascript"></script><script defer src="js/DropdownTheme.js?v=20261104-general8" type="text/javascript"></script><link rel="stylesheet" href="css/settings22.css?v=20261104-settings22"><link rel="stylesheet" href="css/editor-compact.css?v=20261104-compact4"><link rel="stylesheet" href="css/dropdown-layout.css?v=20261104-general8"><link rel="stylesheet" href="css/picker-theme.css"><link rel="stylesheet" href="css/mobile.css"><link rel="stylesheet" href="css/segmented-controls.css"><link rel="stylesheet" href="css/custom-shield-maker.css"><link rel="stylesheet" href="css/block-properties.css"></head>
 
 <body>
-    <div class="top-right-links">
-      <a class="mutcd-link" href="https://discord.gg/dgqGZAeZvF" target="_blank" rel="noopener noreferrer">
-        <span>Join the Discord!</span>
-        <span class="material-symbols-outlined external-link-icon">open_in_new</span>
-      </a>
-      <a class="mutcd-link" href="https://mutcd.fhwa.dot.gov/pdfs/11th_Edition/mutcd11thedition.pdf" target="_blank" rel="noopener noreferrer">
-        <span>MUTCD</span>
-        <span class="material-symbols-outlined external-link-icon">open_in_new</span>
-      </a>
-    </div>
+  <nav class="site-navigation" aria-label="Site navigation">
+    <a href="./" aria-current="page">SignMaker</a>
+    <a href="https://signal.hwysignmaker.com">SignalMaker</a>
+    <a href="https://stripe.hwysignmaker.com">StripeMaker</a>
+    <a href="https://discord.gg/dgqGZAeZvF">Discord</a>
+    <a href="https://mutcd.fhwa.dot.gov/pdfs/11th_Edition/mutcd11thedition.pdf">MUTCD</a>
+  </nav>
   <main>
     <div id="postContainer">
       <div class="post"></div>
@@ -461,6 +472,7 @@
               <input type="range" id="appUiScale" min="50" max="150" step="10" value="100">
               <output id="appUiScaleValue" for="appUiScale">100%</output>
             </div></div></div>
+              <div class="generalSettingRow"><label for="appShrinkSignsForPanels" data-tooltip="Turn off to keep signs at their normal size when an editing panel opens.">Shrink signs to fit panels:</label><div class="generalSettingControl"><input type="checkbox" id="appShrinkSignsForPanels" checked></div></div>
               <div class="generalSettingRow"><label for="appToolbarPosition">Toolbar:</label><div class="generalSettingControl"><select id="appToolbarPosition">
               <option value="right">Right sidebar</option>
               <option value="bottom">Bottom bar</option>
@@ -477,6 +489,8 @@
               <option value="never">Start a new sign</option>
             </select></div></div>
               <div class="generalSettingRow"><label for="copySignsOnly">Copy Signs Only:</label><div class="generalSettingControl"><input type="checkbox" id="copySignsOnly" checked></div></div>
+              <div class="generalSettingRow"><label for="joinMatchingBanners" data-tooltip="Neighboring shields with identical banners above them share one banner. Untick to keep a separate banner on every shield.">Join Matching Banners:</label><div class="generalSettingControl"><input type="checkbox" id="joinMatchingBanners" checked></div></div>
+              <div class="generalSettingRow"><label for="exportWithoutPanelBackground" data-tooltip="Copied and downloaded images leave out the panel fill, borders, exit tab fills and row bands.">Export without panel background:</label><div class="generalSettingControl"><input type="checkbox" id="exportWithoutPanelBackground"></div></div>
               <div class="generalSettingRow"><label for="settingsTemplateLoadWarning">Template Load Warning:</label><div class="generalSettingControl"><input type="checkbox" id="settingsTemplateLoadWarning" onchange="if (typeof app !== 'undefined' &amp;&amp; app.setTemplateLoadWarningEnabled) app.setTemplateLoadWarningEnabled(this.checked);"></div></div>
               <div class="generalSettingRow"><label for="mergeDefaultSignRadius">Default Sign Corner Radius (rem):</label><div class="generalSettingControl"><input type="number" id="mergeDefaultSignRadius" min="0" max="5" step="0.05" value="0.75"></div></div>
               <div class="generalSettingRow"><label for="settingsInterfaceTextSize">Text Size:</label><div class="generalSettingControl"><div class="settingsRangeControl">
@@ -485,6 +499,7 @@
                     </div></div></div>
               <div class="generalSettingRow"><label for="appDropdownAnimations">Interface animations:</label><div class="generalSettingControl"><input type="checkbox" id="appDropdownAnimations" checked></div></div>
               <div class="generalSettingRow"><label for="appAdvancedDropdowns">Advanced dropdowns:</label><div class="generalSettingControl"><input type="checkbox" id="appAdvancedDropdowns"></div></div>
+              <div class="generalSettingRow"><label for="appHighwayVarFonts">Enable Highway VAR fonts:</label><div class="generalSettingControl"><input type="checkbox" id="appHighwayVarFonts"></div></div>
               <div class="generalSettingRow"><label for="disableFlash">Disable Selection Flash:</label><div class="generalSettingControl"><input type="checkbox" id="disableFlash" name="disableFlash" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showBlockBoundingBoxes">Show Block Bounds:</label><div class="generalSettingControl"><input type="checkbox" id="showBlockBoundingBoxes" name="showBlockBoundingBoxes" onchange="formHandler.readForm(event);"></div></div>
               <div class="generalSettingRow"><label for="showAlignmentGuides" data-tooltip="Draws evenly spaced vertical guides below the rendered signs.">Alignment Guides:</label><div class="generalSettingControl"><input type="checkbox" id="showAlignmentGuides" name="showAlignmentGuides" onchange="formHandler.readForm(event);"></div></div>
@@ -510,7 +525,7 @@
           <div id="sMDefaults" class="tabHidden">
             <p>Saved automatically. Applies to new signs and blocks.</p>
             <label for="defaultsCategory">Defaults for: </label>
-            <select id="defaultsCategory"><option value="settingsDefaultControlText">Control Text</option><option value="settingsDefaultShields">Shields</option><option value="settingsDefaultActionMessage">Action Message</option><option value="settingsDefaultAdvisoryMessage">Advisory Message</option><option value="settingsDefaultArrow">Arrow</option><option value="settingsDefaultIcon">Icon</option><option value="settingsDefaultTollLogo">Toll Logo</option><option value="settingsDefaultStandardArrows">Standard Arrows</option><option value="settingsDefaultAPLArrows">APL Arrows</option></select>
+            <select id="defaultsCategory"><option value="settingsDefaultControlText">Control Text</option><option value="settingsDefaultShields">Shields</option><option value="settingsDefaultActionMessage">Action Message</option><option value="settingsDefaultAdvisoryMessage">Advisory Message</option><option value="settingsDefaultArrow">Arrow</option><option value="settingsDefaultIcon">Icon</option><option value="settingsDefaultTollLogo">Toll Logo</option><option value="settingsDefaultStandardArrows">Standard Arrows</option><option value="settingsDefaultAPLArrows">APL Arrows</option><option value="settingsDefaultExitOnly">Exit Only</option></select>
             <div id="defaultsFields"><fieldset id="settingsDefaultControlText" hidden="hidden"><legend>Control Text</legend><label for="settingsDefaultsControlTextText">Text:</label>
                   <input id="settingsDefaultsControlTextText" type="text" value="Control">
 
@@ -798,7 +813,7 @@
                   <div class="settingsDefaultsCheckboxField">
                     <input id="settingsDefaultsTollLogoShowOnlyBlock" type="checkbox">
                   </div>
-                </fieldset><fieldset id="settingsDefaultStandardArrows" hidden="hidden"><legend>Standard Arrows</legend></fieldset><fieldset id="settingsDefaultAPLArrows" hidden="hidden"><legend>APL Arrows</legend></fieldset></div>
+                </fieldset><fieldset id="settingsDefaultStandardArrows" hidden="hidden"><legend>Standard Arrows</legend></fieldset><fieldset id="settingsDefaultAPLArrows" hidden="hidden"><legend>APL Arrows</legend></fieldset><fieldset id="settingsDefaultExitOnly" hidden="hidden"><legend>Exit Only</legend></fieldset></div>
             <button type="button" id="settingsResetDefaultsButton">Reset to Defaults</button>
           <div class="settings22ProfileActions" hidden="hidden"><button type="button" id="settingsExportProfile">
                   Export Settings<br>Profile (JSON)
@@ -968,6 +983,9 @@
               <label for="panelColor">Panel Color: </label>
               <select id="panelColor" onchange="formHandler.readForm();"></select>
               <br>
+              <label for="panelWarningDiamond">Warning sign (45° square):</label>
+              <input type="checkbox" id="panelWarningDiamond" onchange="formHandler.readForm();">
+              <br>
               <label for="panelCorner">Panel Corners: </label>
               <select id="panelCorner" onchange="formHandler.setPanelCorner(this.value);"></select>
               <br>
@@ -1085,7 +1103,7 @@
           <div id="sMExitTabSetting">
             <div class="exitTabMainSettingsGrid" id="exitTabMainSettingsGrid">
               <label for="exitNumber" id="exitNumberLabel" class="exitTabMainTextLabel">Text:</label>
-              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00" class="exitTabMainTextInput" onchange="formHandler.readForm();">
+              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00" class="exitTabMainTextInput" oninput="QuebecExitMarker.filterInput(event);" onchange="formHandler.readForm(event);">
 
               <div id="exitTollLogoPickerRow" class="exitTabAssetPickerRow hidden">
                 <input type="hidden" id="exitTollLogoPickerValue" value="TxTag">
@@ -1112,6 +1130,16 @@
               <label for="exitTabBilingualBottomText" id="exitTabBilingualBottomTextLabel" class="exitTabBottomTextLabel" hidden>Bottom:</label>
               <input type="text" id="exitTabBilingualBottomText" name="exitTabBilingualBottomText" placeholder="SORTIE" class="exitTabBottomTextInput" onchange="formHandler.readForm();" hidden>
 
+            </div>
+
+            <div class="qcExitMarkerControls" hidden>
+              <label for="qcExitMarkerFlipped">Flip marker:</label>
+              <input type="checkbox" id="qcExitMarkerFlipped" onchange="formHandler.readForm(event);">
+              <div class="qcExitMarkerSizeControl exitTabSliderGroup">
+                <label for="qcExitMarkerSize">Size (rem):</label>
+                <input type="range" id="qcExitMarkerSize" min="2" max="6" step="0.05" value="3.3" oninput="document.getElementById('qcExitMarkerSizeValue').textContent = this.value;" onchange="formHandler.readForm(event);">
+                <output for="qcExitMarkerSize" id="qcExitMarkerSizeValue" class="exitTabSliderValue">3.3</output>
+              </div>
             </div>
 
             <div class="exitTabStyleSettingsGrid">
@@ -1159,10 +1187,10 @@
 
                 <div class="exitTabSliderGroup" data-exit-slider="cornerRadius">
                   <div class="exitTabCornerRadiusLabel">
-                    <label for="exitTabCornerRadius">Set Corner Radius (rem):</label>
+                    <label for="exitTabUsePanelCornerRadius">Use panel corner radius:</label>
                     <input type="checkbox" id="exitTabUsePanelCornerRadius" name="exitTabUsePanelCornerRadius" checked title="Use parent panel corner radius" aria-label="Use parent panel corner radius" onchange="formHandler.readForm();">
                   </div>
-                  <input type="range" id="exitTabCornerRadius" name="exitTabCornerRadius" min="0" max="2" step="0.05" value="0.75" oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);" onchange="formHandler.readForm();">
+                  <input type="range" id="exitTabCornerRadius" aria-label="Custom corner radius (rem)" name="exitTabCornerRadius" min="0" max="2" step="0.05" value="0.75" oninput="document.getElementById('exitTabCornerRadiusValue').textContent = Number(this.value).toFixed(2);" onchange="formHandler.readForm();">
                   <label for="exitTabCornerRadius" id="exitTabCornerRadiusValue" class="exitTabSliderValue">0.75</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabCornerRadiusReset" aria-label="Reset corner radius">
                     <span class="material-symbols-outlined">refresh</span>
@@ -1183,6 +1211,15 @@
                   <input type="range" id="exitTabHorizontalPadding" name="exitTabHorizontalPadding" min="-1" max="3" step="0.1" value="0" oninput="document.getElementById('exitTabHorizontalPaddingValue').innerHTML = Number(this.value).toFixed(1);" onchange="formHandler.readForm();">
                   <label for="exitTabHorizontalPadding" id="exitTabHorizontalPaddingValue" class="exitTabSliderValue">0.0</label>
                   <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabHorizontalPaddingReset" aria-label="Reset horizontal padding">
+                    <span class="material-symbols-outlined">refresh</span>
+                  </button>
+                </div>
+
+                <div class="exitTabSliderGroup" id="exitTabVerticalPaddingGroup">
+                  <label for="exitTabVerticalPadding">Vertical padding:</label>
+                  <input type="range" id="exitTabVerticalPadding" name="exitTabVerticalPadding" min="0" max="3" step="0.1" value="0" oninput="document.getElementById('exitTabVerticalPaddingValue').innerHTML = Number(this.value).toFixed(1);" onchange="formHandler.readForm();">
+                  <label for="exitTabVerticalPadding" id="exitTabVerticalPaddingValue" class="exitTabSliderValue">0.0</label>
+                  <button type="button" class="resetBtn clear exitTabSliderReset" id="exitTabVerticalPaddingReset" aria-label="Reset vertical padding">
                     <span class="material-symbols-outlined">refresh</span>
                   </button>
                 </div>
@@ -1215,35 +1252,6 @@
                 <input type="checkbox" id="exitTabBilingual" name="exitTabBilingual" onchange="formHandler.readForm();">
               </div>
             </div>
-                <div class="qcExitMarkerControls">
-                  <legend>Quebec Exit Marker</legend>
-
-                  <div class="qcExitMarkerRow qcExitMarkerTopRow">
-                    <label for="qcExitMarkerEnabled">Show Quebec marker:</label>
-                    <input type="checkbox" id="qcExitMarkerEnabled" onchange="formHandler.readForm();">
-
-                    <label for="qcExitMarkerNumber">Number:</label>
-                    <input type="text" id="qcExitMarkerNumber" value="1" onchange="formHandler.readForm();">
-                  </div>
-
-                  <div class="qcExitMarkerRow qcExitMarkerSecondRow">
-                    <label for="qcExitMarkerPosition">Position:</label>
-                    <select id="qcExitMarkerPosition" onchange="formHandler.readForm();">
-                      <option value="Left">Bottom Left</option>
-                      <option value="Center">Bottom Center</option>
-                      <option value="Right">Bottom Right</option>
-                    </select>
-
-                    <label for="qcExitMarkerFlipped">Flipped / left-hand exit:</label>
-                    <input type="checkbox" id="qcExitMarkerFlipped" onchange="formHandler.readForm();">
-                  </div>
-
-                  <div class="qcExitMarkerRow qcExitMarkerSizeRow">
-                    <label for="qcExitMarkerSize">QC Exit Tab Marker Size:</label>
-                    <input type="range" id="qcExitMarkerSize" min="2" max="6" step="0.05" value="3.3" oninput="document.getElementById('qcExitMarkerSizeValue').innerHTML = this.value" onchange="formHandler.readForm();">
-                    <label for="qcExitMarkerSize" id="qcExitMarkerSizeValue">3.3</label>
-                  </div>
-                </div>
             <div id="exitTollLogoOptions" class="hidden">
               <legend>Toll Logo Options</legend>
               <label for="exitTollLogoSelect">Toll Logo:</label>
@@ -1434,11 +1442,21 @@
                   <button type="button" id="sMSPExitGroup">Back</button>
                   <span id="sMSPGroupLabel">Editing Group</span>
                 </div>
+              <div class="subPanelBlockBar">
                 <div class="mergeBlockTools">
                   <button type="button" id="sMSPGroupSelectedBlocks" title="Ctrl/Cmd-click or Shift-click blocks to select them">Group selected</button>
                   <button type="button" id="sMSPUngroupSelectedBlock">Ungroup</button>
-                  </div>
-                <p class="mergeSelectionHint">Ctrl/Cmd-click or Shift-click to select blocks for grouping.</p>
+                </div>
+                <div id="subPanelVerticalAlignRow" hidden>
+                  <label for="subPanelVerticalAlign" id="subPanelVerticalAlignLabel">Vertical Align:</label>
+                  <select id="subPanelVerticalAlign" name="subPanelVerticalAlign" onchange="formHandler.readForm();">
+                    <option value="Top">Top</option>
+                    <option value="Middle" selected>Middle</option>
+                    <option value="Bottom">Bottom</option>
+                  </select>
+                </div>
+              </div>
+              <p class="mergeSelectionHint">Ctrl/Cmd-click or Shift-click to select blocks for grouping.</p>
 
               <div id="sMSPCreate">
                 <span id="SMSPSelectLabel">Selected: Row 1</span>
@@ -1494,66 +1512,106 @@
                   <label for="sdGroupedBlock_label">Name:</label><input type="text" id="sdGroupedBlock_label" value="Group">
                   <label for="sdGroupedBlock_alignment">Alignment:</label><select id="sdGroupedBlock_alignment"></select>
                   <label for="sdGroupedBlock_backgroundColor">Background:</label><select id="sdGroupedBlock_backgroundColor"></select>
-                  <label for="sdGroupedBlock_padding">Padding (rem):</label><input type="number" id="sdGroupedBlock_padding" min="0" max="10" step="0.05" value="0">
+                  
+                  
                   <label for="sdGroupedBlock_borderRadius">Corner Radius (rem):</label><input type="number" id="sdGroupedBlock_borderRadius" min="0" max="10" step="0.05" value="0">
                   <label for="sdGroupedBlock_border">Border:</label><input type="checkbox" id="sdGroupedBlock_border">
                   <label for="sdGroupedBlock_borderColor">Border Color:</label><select id="sdGroupedBlock_borderColor"></select>
                   <button type="button" id="sMSPEditSelectedGroup">Edit contents</button>
                 </div>
 
-                <div data-property="sdCtrlText" class="sdCtrlTextLayout">
-                    <div class="sdCtrlTextTopRow">
+                <div data-property="sdCtrlText" class="sdCtrlTextLayout sdTextEditorLayout">
+                  <div class="sdCtrlTextTopRow">
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_textContent">Content:</label>
-                      <input type="text" id="sdCtrlText_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
+                      <div class="sdTextEditorControl">
+                        <input type="text" id="sdCtrlText_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_fontFamily">Font:</label>
-                      <select id="sdCtrlText_fontFamily" class="sdTextEditorFontCompact"></select>
+                      <div class="sdTextEditorControl">
+                        <select id="sdCtrlText_fontFamily" class="sdTextEditorFontCompact"></select>
+                      </div>
                     </div>
-
-                    <div class="sdCtrlTextSecondRow">
+                  </div>
+                  <div class="sdCtrlTextSecondRow">
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_backgroundColor">BG:</label>
-                      <select id="sdCtrlText_backgroundColor"></select>
+                      <div class="sdTextEditorControl">
+                        <select id="sdCtrlText_backgroundColor"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_textColor">Text:</label>
-                      <select id="sdCtrlText_textColor"></select>
+                      <div class="sdTextEditorControl">
+                        <select id="sdCtrlText_textColor"></select>
+                      </div>
                     </div>
-                    <div class="sdCtrlTextSettingsRow">
-                      <label for="sdCtrlText_spacing" data-tooltip="Spacing of the Control Text element on the left-right axis">Spacing:</label>
-                      <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
-
+                  </div>
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdCtrlText_spacing" data-tooltip="Spacing of the Control Text element on the left-right axis">Side Spacing:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_fontSize">Font Size (%):</label>
-                      <input type="range" id="sdCtrlText_fontSize" min="25" max="250" step="1" value="100">
-                      <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="25" max="250" step="1" value="100">
+                      <div class="sdTextEditorControl">
+                        <input type="range" id="sdCtrlText_fontSize" min="25" max="250" step="1" value="100">
+                        <input id="sdCtrlText_fontSizeVal" class="smallVal" type="number" min="25" max="250" step="1" value="100">
+                      </div>
                     </div>
-
-                    <div class="sdCtrlTextSettingsRow">
-                      <label for="sdCtrlText_alignment">Alignment: </label>
-                      <select id="sdCtrlText_alignment"></select>
-
-                      <label for="sdCtrlText_lineHeight">Line Height (%): </label>
-                      <input type="range" min="0" max="300" value="100" step="1" id="sdCtrlText_lineHeight">
-                      <input id="sdCtrlText_lineHeightVal" class="smallVal" type="number" value="100">
+                  </div>
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdCtrlText_alignment">Alignment:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdCtrlText_alignment"></select>
+                      </div>
                     </div>
-
-                    <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdCtrlText_lineHeight">Line Height (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" min="0" max="300" value="100" step="1" id="sdCtrlText_lineHeight">
+                        <input id="sdCtrlText_lineHeightVal" class="smallVal" type="number" value="100">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sdCtrlTextSettingsRow sdTextEditorCheckRow">
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_useNumeralFormatting">Enlarge Numerals:</label>
-                      <input type="checkbox" id="sdCtrlText_useNumeralFormatting">
-                      <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_numeralFormattingSize" data-tooltip="Relative Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
-
-                        <label for="sdCtrlText_useBannerFormatting">Enlarge Banners:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdCtrlText_useNumeralFormatting">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_numeralFormattingSize" data-tooltip="Relative Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdCtrlText_useBannerFormatting">Enlarge Banners:</label>
+                      <div class="sdTextEditorControl">
                         <input type="checkbox" id="sdCtrlText_useBannerFormatting">
-
-                        <label for="sdCtrlText_smallCapitals" class="sdCtrlTextSmallLettersLabel">Small Letters:</label>
-                        <input type="checkbox" id="sdCtrlText_smallCapitals">
-                        <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_smallLettersSize" data-tooltip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75">
-
                         <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_bannerFormattingSize" data-tooltip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100">
                         <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_bannerFirstLetterSize" data-tooltip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                      </div>
                     </div>
-
-                    <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdCtrlText_smallCapitals">Small Letters:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdCtrlText_smallCapitals">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdCtrlText_smallLettersSize" data-tooltip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
                       <label for="sdCtrlText_letterSpacing" data-tooltip="Spacing between letters in the Control Text element">Letter Spacing (em):</label>
-                      <input type="range" id="sdCtrlText_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
-                      <input id="sdCtrlText_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
+                      <div class="sdTextEditorControl">
+                        <input type="range" id="sdCtrlText_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
+                        <input id="sdCtrlText_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
+                      </div>
                     </div>
+                  </div>
                 </div>
 
                 <div data-property="sdBlocker" class="hidden">
@@ -1672,77 +1730,123 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                       <input type="range" id="sdShield_bannerLetterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
                       <input id="sdShield_bannerLetterSpacingVal" class="smallVal sdShieldBannerLetterSpacingValue" type="number" min="-0.15" max="0.5" step="0.01" value="0">
                     </div>
+                </div>
 
-                    </div>
-
-                <div data-property="sdAdvisory" class="hidden sdCtrlTextLayout">
+                <div data-property="sdAdvisory" class="hidden sdCtrlTextLayout sdTextEditorLayout">
                   <div class="sdCtrlTextTopRow">
-                    <label for="sdAdvisory_textContent">Content:</label>
-                    <input type="text" id="sdAdvisory_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
-                    <label for="sdAdvisory_fontFamily">Font:</label>
-                    <select id="sdAdvisory_fontFamily" class="sdTextEditorFontCompact"></select>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_textContent">Content:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="text" id="sdAdvisory_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_fontFamily">Font:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdAdvisory_fontFamily" class="sdTextEditorFontCompact"></select>
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSecondRow">
-                    <label for="sdAdvisory_backgroundColor">BG:</label>
-                    <select id="sdAdvisory_backgroundColor"></select>
-                    <label for="sdAdvisory_textColor">Text:</label>
-                    <select id="sdAdvisory_textColor"></select>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_backgroundColor">BG:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdAdvisory_backgroundColor"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_textColor">Text:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdAdvisory_textColor"></select>
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdAdvisory_spacing" data-tooltip="Spacing of the Advisory Message element on the left-right axis">Spacing:</label>
-                    <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
-
-                    <label for="sdAdvisory_fontSize">Font Size (%):</label>
-                    <input type="range" id="sdAdvisory_fontSize" min="25" max="150" step="1" value="100">
-                    <input id="sdAdvisory_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="100">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_spacing" data-tooltip="Spacing of the Advisory Message element on the left-right axis">Side Spacing:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_fontSize">Font Size (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" id="sdAdvisory_fontSize" min="25" max="150" step="1" value="100">
+                        <input id="sdAdvisory_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="100">
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdAdvisory_alignment">Alignment: </label>
-                    <select id="sdAdvisory_alignment"></select>
-
-                    <label for="sdAdvisory_lineHeight">Line Height (%): </label>
-                    <input type="range" min="0" max="300" value="100" step="1" id="sdAdvisory_lineHeight">
-                    <input id="sdAdvisory_lineHeightVal" class="smallVal" type="number" value="100">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_alignment">Alignment:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdAdvisory_alignment"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_lineHeight">Line Height (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" min="0" max="300" value="100" step="1" id="sdAdvisory_lineHeight">
+                        <input id="sdAdvisory_lineHeightVal" class="smallVal" type="number" value="100">
+                      </div>
+                    </div>
                   </div>
-
+                  <div class="sdCtrlTextSettingsRow sdTextEditorCheckRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_useNumeralFormatting">Enlarge Numerals:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdAdvisory_useNumeralFormatting">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_numeralFormattingSize" data-tooltip="Relative Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_useBannerFormatting">Enlarge Banners:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdAdvisory_useBannerFormatting">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_bannerFormattingSize" data-tooltip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_bannerFirstLetterSize" data-tooltip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_smallCapitals">Small Letters:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdAdvisory_smallCapitals">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_smallLettersSize" data-tooltip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75">
+                      </div>
+                    </div>
+                  </div>
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdAdvisory_useNumeralFormatting">Enlarge Numerals:</label>
-                    <input type="checkbox" id="sdAdvisory_useNumeralFormatting">
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_numeralFormattingSize" data-tooltip="Relative Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
-
-                    <label for="sdAdvisory_useBannerFormatting">Enlarge Banners:</label>
-                    <input type="checkbox" id="sdAdvisory_useBannerFormatting">
-
-                    <label for="sdAdvisory_smallCapitals" class="sdCtrlTextSmallLettersLabel">Small Letters:</label>
-                    <input type="checkbox" id="sdAdvisory_smallCapitals">
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_smallLettersSize" data-tooltip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75">
-
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_bannerFormattingSize" data-tooltip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100">
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdAdvisory_bannerFirstLetterSize" data-tooltip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_letterSpacing" data-tooltip="Spacing between letters in the Advisory Message element">Letter Spacing (em):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" id="sdAdvisory_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
+                        <input id="sdAdvisory_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdAdvisory_borderRadius">Border Radius (px):</label>
-                    <input type="number" id="sdAdvisory_borderRadius" placeholder="4" max="16" min="0" step="1" value="4">
-
-                    <label for="sdAdvisory_horizPadding">Horizontal Padding (rem):</label>
-                    <input type="range" min="0" max="3" value=".2" step=".1" id="sdAdvisory_horizPadding">
-                    <input id="sdAdvisory_horizPaddingVal" class="smallVal" type="number" value=".2" step="0.1">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_horizPadding">Horizontal Padding (rem):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" min="0" max="3" value=".2" step=".1" id="sdAdvisory_horizPadding">
+                        <input id="sdAdvisory_horizPaddingVal" class="smallVal" type="number" value=".2" step="0.1">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_vertPadding">Vertical Padding (rem):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" min="0" max="3" value=".1" step=".1" id="sdAdvisory_vertPadding">
+                        <input id="sdAdvisory_vertPaddingVal" class="smallVal" type="number" value=".1" step="0.1">
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdAdvisory_vertPadding">Vertical Padding (rem):</label>
-                    <input type="range" min="0" max="3" value=".1" step=".1" id="sdAdvisory_vertPadding">
-                    <input id="sdAdvisory_vertPaddingVal" class="smallVal" type="number" value=".1" step="0.1">
-                  </div>
-
-                  <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
-                    <label for="sdAdvisory_letterSpacing" data-tooltip="Spacing between letters in the Advisory Message element">Letter Spacing (em):</label>
-                    <input type="range" id="sdAdvisory_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
-                    <input id="sdAdvisory_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_borderRadius">Border Radius (px):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdAdvisory_borderRadius" placeholder="4" max="16" min="0" step="1" value="4">
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1921,134 +2025,287 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                   <input type="number" id="sdTollLogo_verticalPadding" class="hidden" value=".05" step=".01">
                 </div>
 
-                <div data-property="sdActionMessage" class="hidden sdCtrlTextLayout">
+                <div data-property="sdActionMessage" class="hidden sdCtrlTextLayout sdTextEditorLayout">
                   <div class="sdCtrlTextTopRow">
-                    <label for="sdActionMessage_textContent">Content:</label>
-                    <input type="text" id="sdActionMessage_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
-                    <label for="sdActionMessage_fontFamily">Font:</label>
-                    <select id="sdActionMessage_fontFamily" class="sdTextEditorFontCompact"></select>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_textContent">Content:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="text" id="sdActionMessage_textContent" class="sdTextEditorContentCompact" placeholder="Text" value="">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_fontFamily">Font:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdActionMessage_fontFamily" class="sdTextEditorFontCompact"></select>
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSecondRow">
-                    <label for="sdActionMessage_backgroundColor">BG:</label>
-                    <select id="sdActionMessage_backgroundColor"></select>
-                    <label for="sdActionMessage_textColor">Text:</label>
-                    <select id="sdActionMessage_textColor"></select>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_backgroundColor">BG:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdActionMessage_backgroundColor"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_textColor">Text:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdActionMessage_textColor"></select>
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdActionMessage_spacing" data-tooltip="Spacing of the Action Message element on the left-right axis">Spacing:</label>
-                    <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
-
-                    <label for="sdActionMessage_fontSize">Font Size (%):</label>
-                    <input type="range" id="sdActionMessage_fontSize" min="25" max="150" step="1" value="100">
-                    <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="70">
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_spacing" data-tooltip="Spacing of the Action Message element on the left-right axis">Side Spacing:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_fontSize">Font Size (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" id="sdActionMessage_fontSize" min="25" max="150" step="1" value="100">
+                        <input id="sdActionMessage_fontSizeVal" class="smallVal" type="number" min="25" max="150" step="1" value="70">
+                      </div>
+                    </div>
                   </div>
-
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdActionMessage_alignment">Alignment: </label>
-                    <select id="sdActionMessage_alignment"></select>
-
-                    <label for="sdActionMessage_lineHeight">Line Height (%):</label>
-                    <input type="range" min="0" max="300" value="100" step="1" id="sdActionMessage_lineHeight">
-                    <input id="sdActionMessage_lineHeightVal" class="smallVal" type="number" value="100">
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_alignment">Alignment:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdActionMessage_alignment"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_lineHeight">Line Height (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" min="0" max="300" value="100" step="1" id="sdActionMessage_lineHeight">
+                        <input id="sdActionMessage_lineHeightVal" class="smallVal" type="number" value="100">
+                      </div>
+                    </div>
                   </div>
-
+                  <div class="sdCtrlTextSettingsRow sdTextEditorCheckRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_useNumeralFormatting">Enlarge Numerals:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdActionMessage_useNumeralFormatting">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_numeralFormattingSize" data-tooltip="Relative Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_useBannerFormatting">Enlarge Banners:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdActionMessage_useBannerFormatting">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_bannerFormattingSize" data-tooltip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_bannerFirstLetterSize" data-tooltip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_smallCapitals">Small Letters:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdActionMessage_smallCapitals">
+                        <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_smallLettersSize" data-tooltip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75">
+                      </div>
+                    </div>
+                  </div>
                   <div class="sdCtrlTextSettingsRow">
-                    <label for="sdActionMessage_useNumeralFormatting">Enlarge Numerals:</label>
-                    <input type="checkbox" id="sdActionMessage_useNumeralFormatting">
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_numeralFormattingSize" data-tooltip="Relative Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
-
-                    <label for="sdActionMessage_useBannerFormatting">Enlarge Banners:</label>
-                    <input type="checkbox" id="sdActionMessage_useBannerFormatting">
-
-                    <label for="sdActionMessage_smallCapitals" class="sdCtrlTextSmallLettersLabel">Small Letters:</label>
-                    <input type="checkbox" id="sdActionMessage_smallCapitals">
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_smallLettersSize" data-tooltip="Size of non-initial letters (%)" placeholder="75" max="100" min="25" step="1" value="75">
-
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_bannerFormattingSize" data-tooltip="Relative Size (%)" placeholder="100" max="150" min="50" step="1" value="100">
-                    <input type="number" class="sdTextEditorSmall hidden" id="sdActionMessage_bannerFirstLetterSize" data-tooltip="First Letter Size (%)" placeholder="120" max="150" min="50" step="1" value="120">
-                  </div>
-
-                  <div class="sdCtrlTextSettingsRow sdCtrlTextSpacingSliderRow">
-                    <label for="sdActionMessage_letterSpacing" data-tooltip="Spacing between letters in the Action Message element">Letter Spacing (em):</label>
-                    <input type="range" id="sdActionMessage_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
-                    <input id="sdActionMessage_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_letterSpacing" data-tooltip="Spacing between letters in the Action Message element">Letter Spacing (em):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" id="sdActionMessage_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
+                        <input id="sdActionMessage_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div data-property="sdElectronicSign" class="hidden">
-                  <label for="sdElectronicSign_textContent">Content:</label>
-                  <input type="text" id="sdElectronicSign_textContent" class="sdTextEditorWide" placeholder="VARIABLE" value="VARIABLE">
-                  <br>
-                  <label for="sdElectronicSign_fontFamily">Font:</label>
-                  <select id="sdElectronicSign_fontFamily"></select>
-                  <label for="sdElectronicSign_fontSize">Font Size (%):</label>
-                  <input type="number" id="sdElectronicSign_fontSize" placeholder="100" max="150" min="50" step="1" value="100">
-                  <br>
-                  <label for="sdElectronicSign_textColor">Text Color:</label>
-                  <select id="sdElectronicSign_textColor"></select>
-                  <label for="sdElectronicSign_lineHeight">Line Height (%):
-                  </label>
-                  <input type="range" min="0" max="300" value="100" step="1" id="sdElectronicSign_lineHeight">
-                  <input id="sdElectronicSign_lineHeightVal" class="smallVal" type="number" value="100" step="1">
-                  <br>
-                  <label for="sdElectronicSign_realisticLED">Realistic LED:</label>
-                  <input type="checkbox" id="sdElectronicSign_realisticLED" checked>
-                  <label for="sdElectronicSign_ledResolution">LED Resolution:</label>
-                  <select id="sdElectronicSign_ledResolution">
-                    <option value="extra-low">Extra Low</option>
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                    <option value="extra-high">Extra High</option>
-                  </select>
-                  <label for="sdElectronicSign_glow">Glow:</label>
-                  <input type="checkbox" id="sdElectronicSign_glow">
-                  <label for="sdElectronicSign_padding">Padding (rem):
-                  </label>
-                  <input type="range" min="0" max="3" value=".5" step=".1" id="sdElectronicSign_padding">
-                  <input id="sdElectronicSign_paddingVal" class="smallVal" type="number" value=".5" step="0.1">
-                  <br>
-                  <label for="sdElectronicSign_setWidth" data-tooltip="Width of the electronic sign - set to 0 to adjust to text size.">Set Width
-                    (rem):</label>
-                  <input type="number" id="sdElectronicSign_setWidth" placeholder="0" max="100" min="0" step=".5" value="0">
-                  <label for="sdElectronicSign_alignment">Alignment: </label>
-                  <select id="sdElectronicSign_alignment"></select>
+                <div data-property="sdElectronicSign" class="hidden sdTextEditorLayout">
+                  <div class="sdCtrlTextTopRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_textContent">Content:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="text" id="sdElectronicSign_textContent" class="sdTextEditorContentCompact" placeholder="VARIABLE" value="VARIABLE">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_fontFamily">Font:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdElectronicSign_fontFamily"></select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sdCtrlTextSecondRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_textColor">Text:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdElectronicSign_textColor"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_fontSize">Font Size (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdElectronicSign_fontSize" placeholder="100" max="150" min="50" step="1" value="100">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_alignment">Alignment:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdElectronicSign_alignment"></select>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_lineHeight">Line Height (%):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="range" min="0" max="300" value="100" step="1" id="sdElectronicSign_lineHeight">
+                        <input id="sdElectronicSign_lineHeightVal" class="smallVal" type="number" value="100" step="1">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_realisticLED">Realistic LED:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdElectronicSign_realisticLED" checked>
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_glow">Glow:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="checkbox" id="sdElectronicSign_glow">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_setWidth" data-tooltip="Width of the electronic sign - set to 0 to adjust to text size.">Set Width (rem):</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdElectronicSign_setWidth" placeholder="0" max="100" min="0" step=".5" value="0">
+                      </div>
+                    </div>
+                    <div class="sdTextEditorField">
+                      <label for="sdElectronicSign_ledResolution">LED Resolution:</label>
+                      <div class="sdTextEditorControl">
+                        <select id="sdElectronicSign_ledResolution">
+                          <option value="extra-low">Extra Low</option>
+                          <option value="low">Low</option>
+                          <option value="medium" selected>Medium</option>
+                          <option value="high">High</option>
+                          <option value="extra-high">Extra High</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div id="smSPBlockProperties">
-                <h4>Row Properties</h4>
-                <div class="sdBlockMarginControls">
-                  <div class="sdBlockMarginControl"><label for="sdBlock_topPadding" data-mobile-label="Top margin (rem)" data-desktop-label="Top Margin (rem):">Top Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
-                  <div class="sdBlockMarginControl"><label for="sdBlock_bottomPadding" data-mobile-label="Bottom margin (rem)" data-desktop-label="Bottom Margin (rem):">Bottom Margin (rem):</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
+              <details id="smSPElementProperties" class="propertyPanel">
+                <summary>Block Properties</summary>
+                <div class="propertyDisclosureContent">
+                  <div class="propertyDisclosureFields">
+                    <div class="propertySpacingRow">
+                      <span class="propertySpacingLabel" title="Values in rem">Margin:</span>
+                    <div class="propertySpacingField"><label for="sdElement_topPadding">Top</label><input type="range" id="sdElement_topPadding" data-element-property="topPadding" min="0" max="3" step="0.1" value="0" aria-label="Block top margin (rem)"><input id="sdElement_topPaddingVal" data-element-property="topPadding" type="number" min="-5" max="10" step="0.1" value="0" aria-label="Block top margin value (rem)"><button type="button" class="propertyReset" data-element-reset="topPadding" aria-label="Reset block top margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                    <div class="propertySpacingField"><label for="sdElement_bottomPadding">Bottom</label><input type="range" id="sdElement_bottomPadding" data-element-property="bottomPadding" min="0" max="3" step="0.1" value="0" aria-label="Block bottom margin (rem)"><input id="sdElement_bottomPaddingVal" data-element-property="bottomPadding" type="number" min="-5" max="10" step="0.1" value="0" aria-label="Block bottom margin value (rem)"><button type="button" class="propertyReset" data-element-reset="bottomPadding" aria-label="Reset block bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                      <div class="propertySpacingField"><label for="sdElement_leftMargin">Left</label><input type="range" id="sdElement_leftMargin" data-element-property="leftMargin" min="-5" max="3" step="0.1" value="0" aria-label="Block left margin (rem)"><input id="sdElement_leftMarginVal" data-element-property="leftMargin" type="number" min="-5" max="10" step="0.1" value="0" aria-label="Block left margin value (rem)"><button type="button" class="propertyReset" data-element-reset="leftMargin" aria-label="Reset block left margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                    <div class="propertySpacingField"><label for="sdElement_rightMargin">Right</label><input type="range" id="sdElement_rightMargin" data-element-property="rightMargin" min="-5" max="3" step="0.1" value="0" aria-label="Block right margin (rem)"><input id="sdElement_rightMarginVal" data-element-property="rightMargin" type="number" min="-5" max="10" step="0.1" value="0" aria-label="Block right margin value (rem)"><button type="button" class="propertyReset" data-element-reset="rightMargin" aria-label="Reset block right margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                    </div>
+                    <div class="propertyAppearanceRow">
+                      <div class="propertyColorField"><label for="sdElement_backgroundColor">BG:</label><select id="sdElement_backgroundColor" data-element-property="backgroundColor"><option value="Inherit">Inherit</option></select></div>
+                      <div class="propertyColorField"><label for="sdElement_borderColor">Border:</label><select id="sdElement_borderColor" data-element-property="borderColor"><option value="Match BG">Match BG</option></select></div>
+                      <div class="propertyWidthField"><label for="sdElement_widthSlider">Width (rem):</label><input type="range" id="sdElement_widthSlider" data-element-property="width" min="0" max="100" step="0.05" value="0" aria-label="Block width"><input type="number" id="sdElement_width" data-element-property="width" min="0" max="100" step="0.05" value="0"><button type="button" class="propertyReset" data-element-reset="width" aria-label="Reset block width"><span class="material-symbols-outlined">refresh</span></button></div>
+                      <label class="propertyCheckField" for="sdElement_backgroundFullWidth">BG Full Width:<input type="checkbox" id="sdElement_backgroundFullWidth" data-element-property="backgroundFullWidth" checked></label>
+                    </div>
+                  </div>
                 </div>
-                <div class="sdBlockColors">
-                <label for="sdBlock_backgroundColor">BG:</label>
-                <select id="sdBlock_backgroundColor"></select>
-                <label for="sdBlock_borderColor">Border:</label>
-                <select id="sdBlock_borderColor"></select>
+              </details>
+              <details id="smSPBlockProperties" class="propertyPanel">
+                <summary>Row Properties</summary>
+                <div class="propertyDisclosureContent">
+                  <div class="propertyDisclosureFields">
+                    <div class="sdBlockMarginControls propertySpacingRow">
+                      <span class="propertySpacingLabel" title="Values in rem">Margin:</span>
+                      <div class="sdBlockMarginControl propertySpacingField"><label for="sdBlock_topPadding" data-mobile-label="Top" data-desktop-label="Top">Top</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_topPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_topPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_topPaddingReset" class="sdBlockReset" aria-label="Reset top margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                      <div class="sdBlockMarginControl propertySpacingField"><label for="sdBlock_bottomPadding" data-mobile-label="Bottom" data-desktop-label="Bottom">Bottom</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_bottomPadding" data-mobile-min="-5" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_bottomPaddingVal" class="smallVal" type="number" value="0" min="-5" max="10" step="0.1"><button type="button" id="sdBlock_bottomPaddingReset" class="sdBlockReset" aria-label="Reset bottom margin"><span class="material-symbols-outlined">refresh</span></button></div>
+                      <span class="propertySpacingLabel" title="Values in rem">Padding:</span><div class="sdBlockMarginControl propertySpacingField"><label for="sdBlock_leftPadding" data-mobile-label="Left" data-desktop-label="Left">Left</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_leftPadding" data-mobile-min="0" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_leftPaddingVal" class="smallVal" type="number" value="0" min="0" max="10" step="0.1"><button type="button" id="sdBlock_leftPaddingReset" class="sdBlockReset" aria-label="Reset left padding"><span class="material-symbols-outlined">refresh</span></button></div>
+                      <div class="sdBlockMarginControl propertySpacingField"><label for="sdBlock_rightPadding" data-mobile-label="Right" data-desktop-label="Right">Right</label><input type="range" min="0" max="3" value="0" step=".01" id="sdBlock_rightPadding" data-mobile-min="0" data-mobile-max="10" data-mobile-step="0.1" data-desktop-min="0" data-desktop-max="3" data-desktop-step=".01"><input id="sdBlock_rightPaddingVal" class="smallVal" type="number" value="0" min="0" max="10" step="0.1"><button type="button" id="sdBlock_rightPaddingReset" class="sdBlockReset" aria-label="Reset right padding"><span class="material-symbols-outlined">refresh</span></button></div>
+                    </div>
+                    <div class="sdBlockColors propertyAppearanceRow">
+                      <div class="propertyColorField"><label for="sdBlock_backgroundColor">BG:</label><select id="sdBlock_backgroundColor"></select></div>
+                      <div class="propertyColorField"><label for="sdBlock_borderColor">Border:</label><select id="sdBlock_borderColor"></select></div>
+                      <div class="sdBlockWidthControl propertyWidthField">
+                        <label for="sdBlock_width" data-tooltip="Width of the row, set to 0 to automatically resize">Width (rem):</label>
+                        <input type="range" id="sdBlock_widthSlider" min="0" max="100" step="0.05" value="0" aria-label="Row width">
+                        <input type="number" id="sdBlock_width" placeholder="0" max="100" min="0" step=".05" value="0">
+                        <button type="button" id="sdBlock_widthReset" class="sdBlockReset" aria-label="Reset row width"><span class="material-symbols-outlined">refresh</span></button>
+                      </div>
+                      <label class="propertyCheckField" for="sdBlock_fullBorder">Full border:<input type="checkbox" id="sdBlock_fullBorder"></label>
+                    </div>
+                  </div>
                 </div>
-                <br class="desktopRowWidthBreak">
-                <div class="sdBlockWidthControl">
-                <label for="sdBlock_width" data-tooltip="Width of the block, set to 0 to automatically resize">Width
-                  (rem):</label>
-                <input type="range" id="sdBlock_widthSlider" min="0" max="100" step="0.05" value="0" aria-label="Row width">
-                <input type="number" id="sdBlock_width" placeholder="0" max="100" min="0" step=".05" value="0">
-                <button type="button" id="sdBlock_widthReset" class="sdBlockReset" aria-label="Reset row width"><span class="material-symbols-outlined">refresh</span></button>
-                </div>
-                <label for="sdBlock_backgroundFullWidth">BG Full Width:</label>
-                <input type="checkbox" id="sdBlock_backgroundFullWidth">
-                <br>
-                <label class="sdBlockStretchControls" for="sdBlock_stretchLeft" data-tooltip="Allow the alignment to take up the remaining space.">Stretch:</label>
-                <input class="sdBlockStretchControls" type="checkbox" id="sdBlock_stretchLeft">
-                <label for="sdBlock_stretchLeft" class="noLabelAlignment sdBlockStretchControls">Left
-                </label>
-                <input class="sdBlockStretchControls" type="checkbox" id="sdBlock_stretchCenter">
-                <label for="sdBlock_stretchCenter" class="noLabelAlignment sdBlockStretchControls">Center
-                </label>
-                <input class="sdBlockStretchControls" type="checkbox" id="sdBlock_stretchRight">
-                <label for="sdBlock_stretchRight" class="noLabelAlignment sdBlockStretchControls">Right</label>
+              </details>
+              <div id="legacyElementPadding" hidden inert aria-hidden="true">
+<div class="elementPaddingSlots"><div data-element-padding="sdGroupedBlock" hidden>
+<div class="sdElementPaddingControl propertySpacingField"><label for="sdGroupedBlock_paddingSlider">Horizontal</label><input type="range" id="sdGroupedBlock_paddingSlider" data-source-input="sdGroupedBlock_padding" min="0" max="10" step="0.05" value="0"><input type="number" id="sdGroupedBlock_padding" min="0" max="10" step="0.05" value="0"></div>
+<div class="sdElementPaddingControl propertySpacingField"><label for="sdGroupedBlock_paddingVerticalSlider">Vertical</label><input type="range" id="sdGroupedBlock_paddingVerticalSlider" data-source-input="sdGroupedBlock_paddingVertical" min="0" max="10" step="0.05" value="0"><input type="number" id="sdGroupedBlock_paddingVertical" min="0" max="10" step="0.05" value="0"></div></div><div data-element-padding="sdCtrlText" hidden>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdCtrlText_paddingHorizontal">Horizontal</label>
+                      <input type="range" id="sdCtrlText_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                      <input id="sdCtrlText_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdCtrlText_paddingVertical">Vertical</label>
+                      <input type="range" id="sdCtrlText_paddingVertical" min="0" max="8" step="0.1" value="0">
+                      <input id="sdCtrlText_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div></div><div data-element-padding="sdBlocker" hidden>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdBlocker_paddingHorizontal">Horizontal</label>
+                      <input type="range" id="sdBlocker_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                      <input id="sdBlocker_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdBlocker_paddingVertical">Vertical</label>
+                      <input type="range" id="sdBlocker_paddingVertical" min="0" max="8" step="0.1" value="0">
+                      <input id="sdBlocker_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div></div><div data-element-padding="sdShield" hidden>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdShield_paddingHorizontal">Horizontal</label>
+                      <input type="range" id="sdShield_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                      <input id="sdShield_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdShield_paddingVertical">Vertical</label>
+                      <input type="range" id="sdShield_paddingVertical" min="0" max="8" step="0.1" value="0">
+                      <input id="sdShield_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div></div><div data-element-padding="sdBeacon" hidden>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdBeacon_paddingHorizontal">Horizontal</label>
+                      <input type="range" id="sdBeacon_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                      <input id="sdBeacon_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdBeacon_paddingVertical">Vertical</label>
+                      <input type="range" id="sdBeacon_paddingVertical" min="0" max="8" step="0.1" value="0">
+                      <input id="sdBeacon_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div></div><div data-element-padding="sdActionMessage" hidden>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdActionMessage_paddingHorizontal">Horizontal</label>
+                      <input type="range" id="sdActionMessage_paddingHorizontal" min="0" max="8" step="0.1" value="0">
+                      <input id="sdActionMessage_paddingHorizontalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div>
+                    <div class="sdElementPaddingControl propertySpacingField">
+                      <label for="sdActionMessage_paddingVertical">Vertical</label>
+                      <input type="range" id="sdActionMessage_paddingVertical" min="0" max="8" step="0.1" value="0">
+                      <input id="sdActionMessage_paddingVerticalVal" class="smallVal" type="number" min="0" max="8" step="0.1" value="0">
+                    </div></div><div data-element-padding="sdElectronicSign" hidden>
+<div class="sdElementPaddingControl propertySpacingField"><label for="sdElectronicSign_padding">Horizontal</label>
+                  <input type="range" min="0" max="3" value=".5" step=".1" id="sdElectronicSign_padding">
+                  <input id="sdElectronicSign_paddingVal" class="smallVal" type="number" value=".5" step="0.1">
+                  </div>
+<div class="sdElementPaddingControl propertySpacingField"><label for="sdElectronicSign_paddingVertical">Vertical</label>
+                  <input type="range" min="0" max="3" value="0" step=".1" id="sdElectronicSign_paddingVertical">
+                  <input id="sdElectronicSign_paddingVerticalVal" class="smallVal" type="number" value="0" step="0.1">
+                  </div></div></div>
               </div>
             </div>
             <div style="display: none">
@@ -2103,6 +2360,10 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
           </div>
           <div data-tab="sMExitOnlyArrows" class="sMModalTab">Exit Only</div>
           <div data-tab="sMAPL" class="sMModalTab">Arrow-Per-Lane (APL)</div>
+          <div class="guideArrowExtraTabs">
+            <div data-tab="sMDiagrammatics" class="sMModalTab">Diagrammatics</div>
+            <div data-tab="sMRoundabout" class="sMModalTab">Roundabout</div>
+          </div>
         </nav>
         <div class="sMModalContent">
           <div id="sMStandardArrows">
@@ -2129,7 +2390,8 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div class="exitOnlyRow exitOnlyArrowTypeRow"><label for="exitArrowType">Arrow:</label><div class="standardArrowPickerHost"><select id="exitArrowType" aria-label="Exit only arrow type"></select></div><input type="number" id="exitArrowCount" min="0" max="6" step="1" value="1" aria-label="Exit only arrow count"></div>
               <div class="exitOnlyRow"><label for="exitArrowAngle">Angle:</label><div class="guideArrowAngleScale"><input type="range" id="exitArrowAngle" min="0" max="315" step="45" value="0"><div class="guideArrowAngleTicks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><input type="number" id="exitArrowAngleValue" step="1" value="0" aria-label="Exit only arrow angle"><button type="button" class="guideArrowReset" data-exit-reset="Angle" aria-label="Reset exit only arrow angle"><span class="material-symbols-outlined">refresh</span></button><button type="button" id="exitArrowFlip" class="standardArrowFlipButton" aria-pressed="false" hidden>Flip</button></div>
               <div class="exitOnlyRow"><label for="exitArrowSize">Size:</label><input type="range" id="exitArrowSize" min="1" max="5" step="0.1" value="3"><input type="number" id="exitArrowSizeValue" min="1" max="5" step="0.1" value="3.0" aria-label="Exit only arrow size"><button type="button" class="guideArrowReset" data-exit-reset="Size" aria-label="Reset exit only arrow size"><span class="material-symbols-outlined">refresh</span></button></div>
-              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding:</label><input type="range" id="exitArrowPadding" min="0" max="1" step="0.05" value="0.2"><input type="number" id="exitArrowPaddingValue" min="0" max="5" step="0.01" value="0.20" aria-label="Exit only arrow padding"><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only arrow padding"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><label for="exitArrowPadding">Padding up/down:</label><input type="range" id="exitArrowPadding" min="0" max="4" step="0.05" value="0.2"><input type="number" id="exitArrowPaddingValue" min="0" max="4" step="0.01" value="0.20" aria-label="Exit only padding up/down"><button type="button" class="guideArrowReset" data-exit-reset="Padding" aria-label="Reset exit only padding up/down"><span class="material-symbols-outlined">refresh</span></button></div>
+              <div class="exitOnlyRow"><label for="exitArrowHorizontalPadding">Padding left/right:</label><input type="range" id="exitArrowHorizontalPadding" min="0" max="4" step="0.05" value="0.2"><input type="number" id="exitArrowHorizontalPaddingValue" min="0" max="4" step="0.01" value="0.20" aria-label="Exit only padding left/right"><button type="button" class="guideArrowReset" data-exit-reset="HorizontalPadding" aria-label="Reset exit only padding left/right"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><label for="exitArrowSpacing">Spacing:</label><input type="range" id="exitArrowSpacing" min="4" max="12" step="0.10" value="8.5"><input type="number" id="exitArrowSpacingValue" min="0" max="25" step="0.01" value="8.50" aria-label="Space between exit only arrows"><button type="button" class="guideArrowReset" data-exit-reset="Spacing" aria-label="Reset exit only arrow spacing"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><span class="standardArrowLabel">Alignment:</span><div class="standardArrowChoices" role="group" aria-label="Exit only arrow alignment"><button type="button" data-exit-alignment="Left">L</button><button type="button" data-exit-alignment="Center">C</button><button type="button" data-exit-alignment="Right">R</button></div></div>
               <h4>Text</h4>
@@ -2211,6 +2473,48 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div id="aplArrowList" class="scrollMenu">
               </div>
             </div>
+          </div>
+          <div id="sMDiagrammatics" class="tabHidden">
+            <h3>Diagrammatics</h3>
+            <fieldset id="diagrammaticTemplates" hidden>
+              <legend>Arrow templates</legend>
+              <div class="diagrammaticTemplateChoices">
+                <button type="button" data-diagrammatic-template="straight" aria-pressed="false">Straight</button>
+                <button type="button" data-diagrammatic-template="left" aria-pressed="false">Left fork</button>
+                <button type="button" data-diagrammatic-template="right" aria-pressed="false">Right fork</button>
+                <button type="button" data-diagrammatic-template="split" aria-pressed="false">Y split</button>
+              </div>
+            </fieldset>
+            <div id="diagrammaticRoadControls"></div>
+            <div class="diagrammaticSettings"><label for="diagrammaticWidth">Width (rem)</label><input id="diagrammaticWidth" type="number" min="1" max="80" step="0.25" value="24"></div>
+            <div class="diagrammaticSettings"><label for="diagrammaticHeight">Height (rem)</label><input id="diagrammaticHeight" type="number" min="1" max="80" step="0.25" value="15"></div>
+            <div class="diagrammaticSettings diagrammaticHeadSizeSetting"><label for="diagrammaticHeadSize">Default arrowhead size</label><input id="diagrammaticHeadSize" type="range" min="50" max="200" step="5" value="100"><output id="diagrammaticHeadSizeValue" for="diagrammaticHeadSize">100%</output></div>
+            <label class="diagrammaticEnable"><input id="diagrammaticConsistentGaps" type="checkbox" checked> Consistent gaps on turns</label>
+            <label class="diagrammaticEnable"><input id="diagrammaticStraightenOnShiftClick" type="checkbox" checked> Straighten on Shift-click</label>
+            <div class="diagrammaticTransfer">
+              <button id="diagrammaticExportJSON" type="button" title="Export arrow stems as JSON" aria-label="Export arrow stems as JSON"><span class="material-symbols-outlined" aria-hidden="true">download</span><span>Export JSON</span></button>
+              <button id="diagrammaticImportJSON" type="button" title="Import arrow stems from JSON" aria-label="Import arrow stems from JSON"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span>Import JSON</span></button>
+              <input id="diagrammaticImportFile" type="file" accept=".json,application/json" hidden>
+            </div>
+            <p>Draw a stem from the bottom up. Hold Shift while drawing to choose a different direction. Drag the body of a stem to move its assembly, or drag a lane node to adjust one endpoint. Hold Alt to bypass alignment. Use + / − to zoom and F to fit.</p>
+          </div>
+          <div id="sMRoundabout" class="tabHidden">
+            <h3>Roundabout</h3>
+            <fieldset id="roundaboutOptions">
+              <label for="roundaboutType">Arrow type</label>
+              <select id="roundaboutType"><option value="normal">D1-5 — Roundabout</option><option value="bypass">D1-5a — Right-turn bypass</option></select>
+              <div><label for="roundaboutSize">Assembly size (rem)</label><input id="roundaboutSize" type="number" min="6" max="60" step="0.5" value="18"></div>
+              <fieldset class="roundaboutPadding"><legend>Sign padding (rem)</legend>
+                <label for="roundaboutPadding-top">Top</label><input id="roundaboutPadding-top" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-right">Right</label><input id="roundaboutPadding-right" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-bottom">Bottom</label><input id="roundaboutPadding-bottom" type="number" min="0" max="20" step="0.25" value="1.5">
+                <label for="roundaboutPadding-left">Left</label><input id="roundaboutPadding-left" type="number" min="0" max="20" step="0.25" value="1.5">
+              </fieldset>
+              <div><label><input id="roundaboutExit-left" type="checkbox" checked> Left exit — Subpanel 1</label> <button id="roundaboutEdit-left" type="button">Edit destination</button></div>
+              <div><label><input id="roundaboutExit-thru" type="checkbox" checked> Thru exit — Subpanel 2</label> <button id="roundaboutEdit-thru" type="button">Edit destination</button></div>
+              <div><label><input id="roundaboutExit-right" type="checkbox" checked> Right exit — Subpanel 3</label> <button id="roundaboutEdit-right" type="button">Edit destination</button></div>
+            </fieldset>
+            <p>2023 MUTCD. Click a destination on the sign to edit its subpanel. Disabled exits retain their content.</p>
           </div>
         </div>
       </div>
@@ -2437,9 +2741,9 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <img src="img/other-symbols/ui/template.svg" alt="Templates Icon" class="configIcon templateIcon" loading="lazy" decoding="async">
         <span id="templatesButtonLabel">Templates</span>
       </button>
-      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" title="Copy Sign" data-tooltip="Copy Sign">
+      <button type="button" id="copySign" class="sMConfigOption" aria-label="Copy Sign" aria-haspopup="menu" aria-expanded="false" aria-controls="copyPanelContextMenu" title="Copy Sign (right-click to choose a panel)" data-tooltip="Copy Sign (right-click to choose a panel)">
   <span class="material-symbols-outlined">content_copy</span><span class="buttonLabel">Copy Sign</span>
-</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
+</button><menu id="copyPanelContextMenu" class="copyPanelContextMenu hidden" role="menu" aria-label="Choose a sign panel to copy" tabindex="-1"></menu><button id="export" class="sMConfigOption" aria-label="Export" title="Export">
         <span class="material-symbols-outlined"> download </span>
         <span class="buttonLabel">Export</span>
       </button>
@@ -2460,6 +2764,14 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <span class="buttonLabel">Hide Menu</span>
       </button>
       <div class="historyBar">
+        <a id="signMakerHelp" class="historyButton" href="help.html" target="_blank" rel="noopener noreferrer"
+           title="Help" aria-label="Help"
+           onclick="if (!event.ctrlKey &amp;&amp; !event.metaKey &amp;&amp; !event.shiftKey &amp;&amp; !event.altKey) {
+             const guide = window.open(this.href, 'signmaker-help', 'popup,width=1080,height=740');
+             if (guide) { guide.opener = null; guide.focus(); return false; }
+           }">
+          <span class="toolbarHelpIcon" aria-hidden="true">?</span>
+        </a>
         <button id="undoButton" class="historyButton" type="button" title="Undo (CTRL+Z)" aria-label="Undo (CTRL+Z)">
           <span class="material-symbols-outlined">undo</span>
         </button>
@@ -2472,6 +2784,47 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
       </div>
     </nav>
   </form>
+  <dialog id="welcomeToSignMaker" aria-labelledby="welcomeTitle">
+    <header class="welcomeHeader">
+      <img src="img/other-symbols/logo-48.webp" alt="" width="48" height="38">
+      <h2 id="welcomeTitle">Welcome to SignMaker</h2>
+      <button id="closeWelcome" type="button" aria-label="Close tutorial" title="Close tutorial">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </header>
+    <div class="welcomeSample" role="group" aria-label="Practice sign">
+      <span id="welcomePreviewDestination">Riverside</span>
+      <span id="welcomePreviewArrow" aria-label="Straight ahead">↑</span>
+    </div>
+    <section class="welcomeStep">
+      <p>Design highway signs with your own destinations, route shields, and arrows. Try editing this sample sign to learn the basics.</p>
+    </section>
+    <section class="welcomeStep" hidden>
+      <h3 tabindex="-1">1. Edit the destination</h3>
+      <p>Select text on a sign, or open <strong>Subpanels</strong> (<strong>Blocks</strong> on mobile) and choose a <strong>Control Text</strong> block. Try changing the sample destination.</p>
+      <label for="welcomeDestination">Destination</label>
+      <input id="welcomeDestination" type="text" value="Riverside" maxlength="40" autocomplete="off">
+    </section>
+    <section class="welcomeStep" hidden>
+      <h3 tabindex="-1">2. Set the direction</h3>
+      <p>Open <strong>Guide Arrows</strong> (<strong>Arrows</strong> on mobile) to choose an arrow and set its angle. Give the sample sign a direction.</p>
+      <div class="welcomeDirections" role="group" aria-label="Sample arrow direction">
+        <button type="button" data-arrow="↖" aria-pressed="false">Left</button>
+        <button type="button" data-arrow="↑" aria-pressed="true">Straight ahead</button>
+        <button type="button" data-arrow="↗" aria-pressed="false">Right</button>
+      </div>
+    </section>
+    <section class="welcomeStep" hidden>
+      <h3 tabindex="-1">3. Save your sign</h3>
+      <p>Open <strong>Export</strong> (under <strong>More</strong> on mobile) to save a PNG or SVG image. Choose JSON if you want to reopen the file and keep editing.</p>
+      <p>Use the <strong>Help</strong> button beside Undo to find more examples and editing tips.</p>
+    </section>
+    <div class="welcomeActions">
+      <button id="skipWelcome" type="button">Skip tutorial</button>
+      <button id="welcomeBack" type="button" hidden>Back</button>
+      <button id="welcomeNext" type="button" autofocus>Start tutorial</button>
+    </div>
+  </dialog>
   <footer>
     <div>
       <img src="img/other-symbols/logo-48.webp" srcset="img/other-symbols/logo-96.webp 2x" alt="SignMaker 2.19 logo" width="48" height="38" style="width:auto;height:38px" loading="lazy" decoding="async">

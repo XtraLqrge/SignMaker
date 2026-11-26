@@ -142,7 +142,7 @@ function bannerExportHarness(file,letterSpacing=true){
     createRange(){let offset=0;return {selectNodeContents(){offset=0;},setStart(node,value){offset=value;},setEnd(){},getBoundingClientRect:()=>({left:120+offset*35,top:28})};},
   };
   const c=vm.createContext({window:{getComputedStyle:()=>styles},document,NodeFilter:{SHOW_TEXT:4}});vm.runInContext(read(file),c);
-  return {freeze:c.window.SignMakerBannerExport.freeze,drawn,created,context,styles,document};
+  return {freeze:c.window.SignMakerBannerExport.freeze,freezeLayout:c.window.SignMakerBannerExport.freezeLayout,drawn,created,context,styles,document};
 }
 const bannerExports=['public/js/BannerExport.js'];
 const builtBannerExport=manifest.assets.find(asset=>asset.source==='js/BannerExport.js');if(builtBannerExport)bannerExports.push('public/'+builtBannerExport.output);
@@ -171,6 +171,23 @@ for(const file of bannerExports){
     const h=bannerExportHarness(file,false),source=h.document.createElement('p'),target=h.document.createElement('p');source.className=target.className='bannerA specialShieldPlaque';
     source.getBoundingClientRect=()=>({left:100,top:20,width:200,height:100});source.append(new Node('#text','TO'));target.append(new Node('#text','TO'));h.freeze(source,target);
     assert.deepEqual(h.drawn.map(item=>item.args),[['T',20,80],['O',55,80]]);
+  });
+  test(`${file}: multiline special banners export each line at its editor baseline`,()=>{
+    const h=bannerExportHarness(file),source=h.document.createElement('p'),target=h.document.createElement('p');
+    source.className=target.className='bannerA specialShieldPlaque';
+    source.getBoundingClientRect=()=>({left:100,top:20,width:300,height:280});
+    const text='TOLL\nTRUCKS\nONLY';source.append(new Node('#text',text));target.append(new Node('#text',text));
+    h.document.createRange=()=>{let node,offset=0;return {setStart(value,start){node=value;offset=start;},setEnd(){},getBoundingClientRect(){return {left:120,top:28+(node.textContent.slice(0,offset).match(/\n/g)||[]).length*90};}};};
+    h.freeze(source,target);
+    assert.deepEqual(h.drawn.map(item=>item.args),[['TOLL',20,80],['TRUCKS',20,170],['ONLY',20,260]]);
+    assert.equal(source.textContent,text);assert.equal(source.style.height,undefined);
+  });
+  test(`${file}: static clones retain the measured sign box before editor handles are removed`,()=>{
+    const h=bannerExportHarness(file),source=h.document.createElement('div'),clone=h.document.createElement('div');
+    source.className=clone.className='sign';source.getBoundingClientRect=()=>({width:400,height:160});
+    h.styles.boxSizing='content-box';h.freezeLayout(source,clone,value=>value/2);
+    assert.equal(clone.style.width,'200px');assert.equal(clone.style.minWidth,'200px');assert.equal(clone.style.maxWidth,'200px');assert.equal(clone.style.height,'80px');assert.equal(clone.style.minHeight,'80px');assert.equal(clone.style.boxSizing,'content-box');
+    assert.equal(source.style.width,undefined);
   });
 }
 test('full-post and selected-panel exports capture banners before clone descendants are changed',()=>{

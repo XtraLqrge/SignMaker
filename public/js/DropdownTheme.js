@@ -2,6 +2,7 @@
 window.SignMakerDropdowns = (() => {
   const owners='.symbolPicker,.fontPicker,.colorPicker,.shieldPicker,.profilePicker';
   const portals=new Map();
+  const menuTypeaheads=new WeakMap();
   let initialized=false;
   const animationPreference='signMaker.dropdownAnimations';
   let animationsEnabled=true;
@@ -15,6 +16,7 @@ window.SignMakerDropdowns = (() => {
   const release=menu=>{
     const state=portals.get(menu);
     state?.animation?.cancel();state?.observer.disconnect();portals.delete(menu);
+    if(menuTypeaheads.delete(menu))menu.querySelector('.keyboardActive')?.classList.remove('keyboardActive');
     if(!portals.size){removalObserver?.disconnect();removalObserver=null;}
   };
   const watchOpenMenus=()=>{
@@ -66,16 +68,43 @@ window.SignMakerDropdowns = (() => {
     }
     if(!requested)release(menu);
   };
+  const typeaheadTimeout = 900;
+  const textKey = key => typeof key === 'string' && Array.from(key).length === 1;
+  const normalizeLabel = text => String(text ?? '').normalize('NFD')
+    .replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ');
+  const createTypeahead = () => {
+    let query = '';
+    let lastTypedAt = -Infinity;
+    const eventTime = event => event.timeStamp ?? Date.now();
+    const continues = event => query !== '' && eventTime(event) - lastTypedAt <= typeaheadTimeout;
+    const clear = () => { query = ''; lastTypedAt = -Infinity; };
+    const find = (event, options, labelFor) => {
+      query = (continues(event) ? query : '') + normalizeLabel(event.key);
+      lastTypedAt = eventTime(event);
+      let prefix = -1;
+      let contains = -1;
+      for (const [index, option] of options.entries()) {
+        const label = normalizeLabel(labelFor(option)).trim();
+        if (!label) continue;
+        if (label === query) return index;
+        if (prefix < 0 && label.startsWith(query)) prefix = index;
+        if (contains < 0 && label.includes(query)) contains = index;
+      }
+      return prefix >= 0 ? prefix : contains;
+    };
+    return { clear, continues, find };
+  };
+
   // Specialized pickers share the native picker's hold/release and keyboard behavior.
   const triggerSelector='.fontPickerTrigger,.colorPickerTrigger,.shieldPickerTrigger,.profilePickerTrigger,.blockTypeInlinePickerTrigger';
   const itemSelector='.fontPickerFontItem[data-font-value],.fontPickerFamilyItem[data-family-value],.colorPickerItem[data-color-value],[role="option"],.shieldPickerItem';
   const editorTrigger=target=>{
-    const trigger=target.closest(triggerSelector);
-    return trigger&&!trigger.disabled&&!trigger.closest('.guideArrowConfig')?trigger:null;
+    const trigger=target.closest?.(triggerSelector);
+    return trigger&&!trigger.disabled?trigger:null;
   };
   const triggerMenus=new WeakMap();
   let held=null,suppressClick=null;
-  const rows=menu=>[...menu.querySelectorAll(itemSelector)].filter(item=>!item.disabled&&item.getClientRects().length);
+  const rows=menu=>[...menu.querySelectorAll(itemSelector+',.profilePickerItem')].filter(item=>!item.disabled&&!item.classList.contains('disabled')&&item.getClientRects().length);
   const choose=item=>{
     if(item.matches('.fontPickerFontItem,.fontPickerFamilyItem,.colorPickerItem'))
       item.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,button:0}));
@@ -83,7 +112,7 @@ window.SignMakerDropdowns = (() => {
   };
   document.addEventListener('pointerdown',event=>{
     const trigger=editorTrigger(event.target);
-    if(!trigger||event.button!==0||event.pointerType==='touch')return;
+    if(!trigger||trigger.closest('.guideArrowConfig')||event.button!==0||event.pointerType==='touch')return;
     event.preventDefault();
     trigger.focus({preventScroll:true});
     trigger.click();
@@ -107,33 +136,62 @@ window.SignMakerDropdowns = (() => {
       event.preventDefault();event.stopImmediatePropagation();suppressClick=null;
     }
   },true);
-  document.addEventListener('keydown',event=>{
-    const trigger=editorTrigger(event.target);
-    if(!trigger||event.ctrlKey||event.metaKey||event.altKey||event.isComposing)return;
-    if(!['ArrowDown','ArrowUp','Home','End','Enter',' '].includes(event.key)&&event.key.length!==1)return;
-    let menu=triggerMenus.get(trigger);
-    if(!menu?.classList.contains('open')){trigger.click();menu=triggerMenus.get(trigger);}
-    if(!menu)return;
-    const options=rows(menu);if(!options.length)return;
-    event.preventDefault();event.stopImmediatePropagation();
-    let index=options.findIndex(item=>item.classList.contains('keyboardActive'));
-    if(event.key==='Enter'||event.key===' '){if(index>=0)choose(options[index]);return;}
-    if(event.key==='Home')index=0;
-    else if(event.key==='End')index=options.length-1;
-    else if(event.key==='ArrowDown')index=(index+1)%options.length;
-    else if(event.key==='ArrowUp')index=(Math.max(index,0)-1+options.length)%options.length;
-    else{
-      const key=event.key.toLowerCase();
-      const offset=Array.from({length:options.length},(_,i)=>(index+1+i)%options.length)
-        .find(i=>String(options[i].dataset.fontValue||options[i].dataset.familyValue||options[i].dataset.colorValue||options[i].textContent).trim().toLowerCase().startsWith(key));
-      if(offset===undefined)return;
-      index=offset;
+  document.addEventListener('keydown', event => {
+    const trigger = editorTrigger(event.target);
+    if (!trigger || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+    let menu = triggerMenus.get(trigger);
+    const wasOpen = menu?.classList.contains('open');
+    if (event.key === 'Tab' || event.key === 'Escape') {
+      menuTypeaheads.get(menu)?.clear();
+      return;
     }
-    options.forEach((item,i)=>item.classList.toggle('keyboardActive',i===index));
-    options[index].scrollIntoView({block:'nearest'});
-  },true);
+    const navigation = ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key);
+    if (!navigation && event.key !== 'Enter' && !textKey(event.key)) return;
+    if (!wasOpen) {
+      trigger.click();
+      menu = triggerMenus.get(trigger);
+    }
+    if (!menu?.classList.contains('open')) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const search = menu.querySelector('.pickerSearchInput');
+    const searchApi = window.SignMakerPickerSearch;
+    if (search && searchApi) {
+      if (textKey(event.key) && event.key !== ' ') searchApi.typeInto(search, event.key);
+      else if (navigation) searchApi.navigate(search, event.key);
+      return;
+    }
+
+    const options = rows(menu);
+    if (!options.length) return;
+    let typeahead = menuTypeaheads.get(menu);
+    if (!typeahead) {
+      typeahead = createTypeahead();
+      menuTypeaheads.set(menu, typeahead);
+    }
+    let index = options.findIndex(item => item.classList.contains('keyboardActive'));
+    if (event.key === 'Enter' || (event.key === ' ' && !typeahead.continues(event))) {
+      typeahead.clear();
+      if (wasOpen && index >= 0) choose(options[index]);
+      return;
+    }
+    if (navigation) {
+      typeahead.clear();
+      if (event.key === 'Home') index = 0;
+      else if (event.key === 'End') index = options.length - 1;
+      else if (event.key === 'ArrowDown') index = (index + 1) % options.length;
+      else index = (Math.max(index, 0) - 1 + options.length) % options.length;
+    } else {
+      index = typeahead.find(event, options, item =>
+        item.querySelector('.shieldPickerItemLabel, .colorPickerItemLabel, .symbolPickerLabel')?.textContent ?? item.textContent);
+      if (index < 0) return;
+    }
+    options.forEach((item, i) => item.classList.toggle('keyboardActive', i === index));
+    options[index].scrollIntoView({ block: 'nearest' });
+  }, true);
   const positionMenu=(menu,trigger,{minWidth=12.5,maxWidth=24,openClass='open',beside=null,anchor=null,fitContent=false}={})=>{
-    triggerMenus.set(trigger,menu);
+    if(openClass==='open')triggerMenus.set(trigger,menu);
     const owner=trigger.closest(owners)||trigger.parentElement;
     if(!owner||!trigger.isConnected)return null;
     prepareMenu(menu);
@@ -218,5 +276,5 @@ window.SignMakerDropdowns = (() => {
   // Kept for callers that update labels; CSS applies without a DOM scan.
   const refresh=()=>{};
   const init=()=>{initialized=true;};
-  return {init,refresh,positionMenu,prepareMenu,closeMenu,getAnimationsEnabled:()=>animationsEnabled,setAnimationsEnabled};
+  return {init,refresh,positionMenu,prepareMenu,closeMenu,createTypeahead,textKey,getAnimationsEnabled:()=>animationsEnabled,setAnimationsEnabled};
 })();

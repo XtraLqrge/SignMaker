@@ -36,6 +36,121 @@ const getDefaultGuideArrowAngle = (type, alignment = "Center") => {
     ? 315 : 45;
 };
 
+const QuebecExitMarker = {
+  number(value) {
+    return String(value ?? "").replace(/[^0-9]/g, "");
+  },
+
+  filterInput(event) {
+    const input = event.target;
+    if (input.getAttribute("inputmode") !== "numeric" || event.isComposing) return;
+    const number = this.number(input.value);
+    if (number === input.value) return;
+    const cursor = this.number(input.value.slice(0, input.selectionEnd)).length;
+    input.value = number;
+    input.setSelectionRange(cursor, cursor);
+  },
+
+  size(value) {
+    return Math.max(2, Math.min(6, Number(value) || 3.3));
+  },
+
+  side(tab, fallback = "Right") {
+    if (tab.position === "Left" || tab.position === "Right") return tab.position;
+    return tab.quebecMarkerFlipped === true ? "Left" : fallback;
+  },
+
+  find(tabs = []) {
+    for (const [exitTabIndex, parent] of tabs.entries()) {
+      const row = [parent, ...(parent.nestedExitTabs || [])];
+      const index = row.findIndex(tab => tab.variant === "Quebec Exit Marker" && this.number(tab.number));
+      if (index >= 0) return { tab: row[index], exitTabIndex, nestedExitTabIndex: index - 1 };
+    }
+    return null;
+  },
+
+  migrate(sign, tabs) {
+    const legacySymbol = ["Quebec-Style Exit Marker", "Quebec-Left"].includes(sign.otherSymbol);
+    if (!this.find(tabs) && (sign.quebecExitMarkerEnabled === true || (legacySymbol && String(sign.oSNum ?? "").trim()))) {
+      const position = String(sign.quebecExitMarkerPosition || "Center").replace(/^Bottom\s+/i, "").trim();
+      const marker = new ExitTab({
+        variant: "Quebec Exit Marker",
+        number: this.number(sign.quebecExitMarkerNumber ?? (legacySymbol ? sign.oSNum : "1")),
+        position,
+        quebecMarkerSizeRem: this.size(sign.quebecExitMarkerSizeRem),
+        quebecMarkerFlipped: sign.quebecExitMarkerFlipped === true || sign.otherSymbol === "Quebec-Left",
+      });
+      tabs.push(marker);
+    }
+    if (legacySymbol) {
+      sign.otherSymbol = "None";
+      sign.oSNum = "";
+    }
+    delete sign.quebecExitMarkerEnabled;
+    delete sign.quebecExitMarkerNumber;
+    delete sign.quebecExitMarkerPosition;
+    delete sign.quebecExitMarkerSizeRem;
+    delete sign.quebecExitMarkerFlipped;
+    return tabs;
+  },
+
+  width(tab) {
+    return this.size(tab.quebecMarkerSizeRem ?? (parseFloat(tab.fontSize) || 16.5) / 5);
+  },
+
+  create(tab, side, select) {
+    const marker = document.createElement("span");
+    marker.className = "qcExitMarker";
+    marker.classList.toggle("flipped", side === "Left" || tab.quebecMarkerFlipped === true);
+    const width = this.width(tab);
+    const text = this.number(tab.number);
+    marker.style.setProperty("--qc-marker-width", width + "rem");
+    marker.style.setProperty("--qc-marker-font-size", width * Math.min(0.44, 1.32 / text.length) + "rem");
+    const image = document.createElement("img");
+    image.className = "qcExitMarkerImg";
+    image.src = "img/other-symbols/QC-Exit.svg";
+    image.alt = "Quebec exit";
+    image.draggable = false;
+    const number = document.createElement("span");
+    number.className = "qcExitMarkerNumber";
+    number.textContent = text;
+    marker.append(image, number);
+    marker.addEventListener("click", event => {
+      event.stopPropagation();
+      select(marker);
+    });
+    return marker;
+  },
+
+  replaceExitText(lane, selector, marker, side) {
+    const slots = [...lane.querySelectorAll(selector)];
+    const target = side === "Left" ? slots[0] : slots.at(-1);
+    if (target) {
+      target.replaceChildren(marker);
+      for (const slot of slots) {
+        if (slot !== target) slot.remove();
+      }
+    } else {
+      const arrows = [...lane.children].filter(child => child.matches(".exitOnlyArrow"));
+      if (arrows.length > 1) {
+        arrows[Math.ceil(arrows.length / 2)].before(marker);
+      } else if (side === "Left") {
+        lane.prepend(marker);
+      } else {
+        lane.append(marker);
+      }
+    }
+  },
+
+  appendFooter(signElmt, marker, side) {
+    const footer = document.createElement("div");
+    footer.className = `qcExitMarkerFooter qc${side}`;
+    footer.append(marker);
+    signElmt.append(footer);
+    return footer;
+  },
+};
+
 class Sign {
 
   /**
@@ -60,16 +175,18 @@ class Sign {
     arrowMode = "Standard",
     arrows = [],
     aplArrows = [],
+    diagrammatic,
+    roundabout,
     guideArrow,
     guideArrowLanes = 1,
-    standardArrowType = "DOWN",
-    standardArrowAngle = null,
-    standardArrowFlip = false,
-    standardArrowSize = 3,
-    standardArrowPadding,
-    standardArrowSpacing = 8.5,
-    standardArrowAlignment = "Center",
-    standardArrowPosition = "Down",
+    standardArrowType = Sign.prototype.guideDefaults?.type ?? "DOWN",
+    standardArrowAngle = Sign.prototype.guideDefaults?.angle ?? null,
+    standardArrowFlip = Sign.prototype.guideDefaults?.flip ?? false,
+    standardArrowSize = Sign.prototype.guideDefaults?.size ?? 3,
+    standardArrowPadding = Sign.prototype.guideDefaults?.padding,
+    standardArrowSpacing = Sign.prototype.guideDefaults?.spacing ?? 8.5,
+    standardArrowAlignment = Sign.prototype.guideDefaults?.alignment ?? "Center",
+    standardArrowPosition = Sign.prototype.guideDefaults?.position ?? "Down",
     useCanadianDownArrows = false,
     exitguideArrows = "Down Arrow",
     exitOnlyPadding = 0.2,
@@ -83,6 +200,7 @@ class Sign {
     exitArrowFlip = false,
     exitArrowSize = 3,
     exitArrowPadding = 0.2,
+    exitArrowHorizontalPadding = 0.2,
     exitArrowSpacing = 8.5,
     exitArrowAlignment = "Center",
     exitTextFont = "Series E",
@@ -170,6 +288,8 @@ class Sign {
     this.shieldDistance = shieldDistance;
     this.advisoryText = advisoryText;
     this.arrowMode = arrowMode;
+    this.diagrammatic = cloneSignModelValue(diagrammatic || {});
+    this.roundabout = cloneSignModelValue(roundabout || {});
     this.arrows = arrows;
     this.aplArrows = aplArrows;
     this.exitguideArrows = exitguideArrows;
@@ -180,6 +300,7 @@ class Sign {
     this.exitArrowFlip = !!exitArrowFlip;
     this.exitArrowSize = exitArrowSize;
     this.exitArrowPadding = exitArrowPadding;
+    this.exitArrowHorizontalPadding = exitArrowHorizontalPadding;
     this.exitArrowSpacing = exitArrowSpacing;
     this.exitArrowAlignment = guideArrow === "Half Exit Only" &&
       !["Left", "Right"].includes(exitArrowAlignment) ? "Right" : exitArrowAlignment;

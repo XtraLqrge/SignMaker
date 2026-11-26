@@ -62,6 +62,7 @@ class Post {
     this.thickness = this.normalizeThickness(defaultThickness);
 
     this.copySignsOnly = true;
+    this.joinMatchingBanners = true;
     this.showBlockBoundingBoxes = false;
     this.showAlignmentGuides = false;
     this.alignmentGuideSpacing = 4;
@@ -73,8 +74,11 @@ class Post {
   /**
    * Create a new panel for the post. Add it to the end of the list of existing panels.
    */
-  newPanel() {
+  newPanel({ useDeviceDefaults = true } = {}) {
     const newSign = new Sign();
+    // Settings → Defaults (GuideArrowDefaults.js) for new panels only; built-in
+    // templates opt out. Panels made before that editor script loads wait for it.
+    if (useDeviceDefaults) (Post.applyDefaults || Post.pendingDefaults.push.bind(Post.pendingDefaults))(newSign);
     newSign.newSubPanel();
 
 
@@ -225,3 +229,4 @@ Post.prototype.normalizeAlignmentGuidePhase = function (value, spacing = this.al
 
 Post.prototype.defaultAlignmentGuideSpacing=4;
 Post.prototype.defaultAlignmentGuidePhase=0;
+Post.pendingDefaults=[];

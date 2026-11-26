@@ -1047,6 +1047,14 @@ Shield.prototype.shieldDirectory = {
     },
   };
 
+  florida["FL-Selmon"] = {
+    type: "shield",
+    name: "Selmon Expressway",
+    variants: ["Image"],
+    assetPath: "img/shields/United States/FL/FL-Selmon.png",
+    suppressRouteNumber: true,
+  };
+
   florida.FLCFX = {
     type: "shield",
     name: "CFX Toll Route",
@@ -1060,7 +1068,7 @@ Shield.prototype.shieldDirectory = {
     className: "FL cfxtoll CFXTOLL",
     standard: "CFX",
     officialDimensions: true,
-    maxRouteCharacters: 3,
+    maxRouteCharacters: 5,
     assetPathByVariant: {
       TM36x48CFXJurisdiction: `${cfxFolder}/CFX-TM-36x48.svg`,
       TM48x60CFXJurisdiction: `${cfxFolder}/CFX-TM-48x60.svg`,

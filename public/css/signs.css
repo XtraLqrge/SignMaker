@@ -522,8 +522,8 @@
   --exitTabHorizontalPadding: 0rem;
   --exitTabPrefixScale: 0.7;
   --exitTabCharacterSpacing: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: var(--exitTabVerticalPadding, 0rem);
+  padding-bottom: var(--exitTabVerticalPadding, 0rem);
   padding-left: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
   padding-right: calc(var(--exitTabBaseHorizontalPadding, 0.5rem) + var(--exitTabHorizontalPadding, 0rem));
 }
@@ -1362,52 +1362,72 @@
   min-width: 0.3rem;
 }
 
+.panel .exitTabContainer.hasFullLeftTab,
+.panel .exitTabHolder.fullLeftHolder,
+.panel .exitTab.fullLeft {
+  background-color: transparent !important;
+}
+
 .exitTab.fullLeft {
+  min-height: 0;
   padding: 0;
   flex-direction: column;
   align-items: stretch;
-  border-color: var(--white);
-  border-top-width: 0;
-  border-top-style: none;
-  overflow: visible;
+  border-width: 0 !important;
+}
+
+.panel.sharp .exitTab.fullLeft {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.panel.sharp .exitTab.fullLeft .fullLeftBannerPlate {
+  background-color: var(--yellow);
 }
 
 .exitTab.fullLeft .fullLeftBanner {
   background: var(--yellow);
   color: var(--black);
-  font-family: "Series E", var(--fontFamily, "Clearview 4W");
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: "Series E";
+  font-size: calc(var(--leftExitLabelFontSize, 27px) * 1.16);
+  line-height: 0.92;
   text-align: center;
-  padding: 0.2rem 0.5rem;
+  padding: 0.05em 0.5rem 0.04em;
   border: var(--exitTabBorderWidth, 0.2rem) solid var(--black);
-  border-bottom-width: var(--exitTabBorderWidth, 0.2rem);
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  margin: calc(-1 * var(--exitTabBorderWidth, 0.2rem)) calc(-1 * var(--exitTabBorderWidth, 0.2rem)) 0;
+  border-radius: var(--fullLeftBannerRadius, 0) var(--fullLeftBannerRadius, 0) 0 0;
 }
 
 .exitTab.fullLeft .fullLeftNumber {
   display: flex;
+  box-sizing: border-box;
+  min-height: calc(var(--fullLeftNumberMinHeight, 2rem) + 2 * var(--exitTabVerticalPadding, 0rem));
+  flex: 1 0 auto;
   justify-content: center;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.75rem 0.4rem;
+  line-height: 0.92;
+  padding: calc(0.10rem + var(--exitTabVerticalPadding, 0rem)) max(0.15rem, calc(0.55rem + var(--exitTabHorizontalPadding, 0rem)));
   border: var(--exitTabBorderWidth, 0.2rem) solid var(--white);
-  border-top-width: 0;
-  border-bottom-left-radius: inherit;
-  border-bottom-right-radius: inherit;
+  border-color: inherit;
+  border-top: 0;
+  border-radius: inherit;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
-  margin: 0 calc(-1 * var(--exitTabBorderWidth, 0.2rem)) calc(-1 * var(--exitTabBorderWidth, 0.2rem));
-  background: inherit;
+  background-color: var(--fullLeftExitFill);
+  background-clip: padding-box;
 }
 
-.exitTab.fullLeft .fullLeftNumber .exitTabTextSpacer {
-  min-width: 0.35rem;
+.exitTab.fullLeft .fullLeftNumber .numeral {
+  line-height: 0.92;
+}
+
+.exitTab.fullLeft .fullLeftNumber .numeral:only-child {
+  padding-inline: 0;
+}
+
+.exitTab.fullLeft:not(.fullLeftHasBottomBorder) .fullLeftNumber {
+  border-bottom-width: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* BILINGUAL EXIT TABS */
@@ -1909,6 +1929,15 @@
   box-sizing: border-box;
 }
 
+/* Subpanel vertical alignment (Extra Subpanel Settings); Middle is the default. */
+.subPanelDisplay[data-valign="Top"] > .signContentContainer {
+  justify-content: flex-start !important;
+}
+
+.subPanelDisplay[data-valign="Bottom"] > .signContentContainer {
+  justify-content: flex-end !important;
+}
+
 /* APL arrows can reserve width for the subpanel they belong to, but APL mode
    should not make every subpanel split the sign width equally by default. */
 .signHolder:has(.subpanelAplArrows) .subPanelDisplay {
@@ -2255,145 +2284,101 @@ img.exitOnlyArrow:last-child {
   pointer-events: none;
 }
 
-/* ---------- Quebec-style exit marker feature ---------- */
-
-.sign,
-.guideArrows {
-  position: relative;
-}
-
+/* Quebec exit marker artwork stays in the arrow band or footer flow. */
 .qcExitMarker {
-  position: absolute;
-  z-index: 18;
-  pointer-events: none;
   display: block;
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--qc-marker-width, 3.3rem);
+  height: calc(var(--qc-marker-width, 3.3rem) * 0.42446);
+  cursor: pointer;
 }
 
-.qcExitMarker.qcOnSign {
-  width: var(--qc-marker-width, 3.05rem);
-  height: var(--qc-marker-height, 1.18rem);
-  bottom: 0.42rem;
-}
-
-.qcExitMarker.qcLeft {
-  left: 0.85rem;
-}
-
-.qcExitMarker.qcCenter {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.qcExitMarker.qcRight {
-  right: 0.85rem;
+.qcExitMarkerImg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .qcExitMarker.flipped .qcExitMarkerImg {
   transform: scaleX(-1);
-  transform-origin: center;
-}
-
-.qcExitMarkerImg {
-  width: 100%;
-  height: 100%;
-  display: block;
 }
 
 .qcExitMarkerNumber {
   position: absolute;
-  inset: 0;
+  inset: 16% 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--black);
-  z-index: 2;
   font-family: "Series E";
-  font-size: var(--qc-marker-font-size, 1rem);
+  font-size: var(--qc-marker-font-size, 1.45rem);
   line-height: 1;
-  font-weight: 700;
-  padding-top: 0.01rem;
+  font-weight: 400;
+  padding-inline-end: 12%;
 }
 
-/* QC marker inside Exit Only / Half Exit Only yellow band */
-
-.guideArrows.qcExitMarkerMode {
-  min-height: 1.95rem;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  position: relative;
+.qcExitMarker.flipped .qcExitMarkerNumber {
+  padding-inline: 12% 0;
 }
 
-.guideArrows.qcExitMarkerMode .exitOnlyText {
-  display: none !important;
+.qcExitMarkerFooter,
+.qcStandardArrowRow,
+.qcStandardArrowGap {
+  display: flex;
+  align-items: center;
 }
 
-.guideArrows.qcExitMarkerMode .arrowContainer {
-  width: 100% !important;
-  min-width: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 !important;
-  margin: 0 !important;
+.qcExitMarkerFooter {
+  grid-column: 1 / -1;
   box-sizing: border-box;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitOnlyPair {
   width: 100%;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.72rem !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  box-sizing: border-box;
+  min-width: max-content;
+  justify-content: center;
+  padding: 0.25rem 0.65rem;
 }
 
-.guideArrows.qcExitMarkerMode .qcExitOnlyArrow {
-  width: 1.75rem !important;
-  height: 1.75rem !important;
-  display: block !important;
-  flex: 0 0 auto;
-  padding: 0 !important;
-  margin: 0 !important;
-  object-fit: contain !important;
-  filter: none !important;
+.qcExitMarkerFooter.qcLeft { justify-content: flex-start; }
+.qcExitMarkerFooter.qcRight { justify-content: flex-end; }
+
+.qcDiagrammaticFooter {
+  visibility: visible;
+  border: var(--panelBorderWidth, 0.2rem) solid var(--panelBorderColor, currentColor);
+  border-top: 0;
+  border-radius: 0 0 var(--signBorderRadius, 0.75rem) var(--signBorderRadius, 0.75rem);
 }
 
-.guideArrows.qcExitMarkerMode .qcExitOnlyArrow.flipped {
-  transform: scaleX(-1);
+.sign.diagrammaticSign:has(+ .qcDiagrammaticFooter) {
+  border-bottom-width: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
-.guideArrows.qcExitMarkerMode .qcExitMarker.qcInBand {
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: auto !important;
-  transform: none !important;
-  width: var(--qc-marker-width, 3.05rem) !important;
-  height: var(--qc-marker-height, 1.18rem) !important;
-  flex: 0 0 auto;
-  margin: 0 !important;
-  z-index: 19;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitMarker.flipped .qcExitMarkerImg {
-  transform: scaleX(-1);
-  transform-origin: center;
-}
-
-.guideArrows.qcExitMarkerMode .qcExitMarkerImg {
+.qcStandardArrowRow {
   width: 100%;
-  height: 100%;
-  display: block;
+  min-width: max-content;
+  gap: 0.55rem;
+  padding-inline: 0.65rem;
 }
 
-.guideArrows.qcExitMarkerMode .qcExitMarkerNumber {
-  font-size: var(--qc-marker-font-size, 1rem) !important;
-  padding-top: 0 !important;
+.qcStandardArrowGap {
+  min-width: max-content;
+  justify-content: center;
 }
 
+.exitOnlyText:has(> .qcExitMarker) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-block: 0 !important;
+  min-width: max-content;
+  padding-block: 0;
+  top: auto;
+}
+
+.arrowContainer:has(> .exitOnlyFourLaneText > .qcExitMarker) {
+  min-height: calc(var(--qc-lane-marker-width, 3.3rem) * 0.42446);
+}
 
 /* Downsize in-panel diagonal guide arrows only.
    Does not affect Side Left / Side Right, because those use
@@ -3218,6 +3203,11 @@ img.exitOnlyArrow:last-child {
   line-height: inherit;
 }
 
+/* A blank line (e.g. a leading, doubled or trailing "\n") keeps one line's height. */
+.bE-textElement.bE-multilineTextElement > .bE-textLine:empty::before {
+  content: "\200B";
+}
+
 
 .bE-textElement.bE-betweenLetterSpacing {
   letter-spacing: var(--betweenLetterSpacing, 0em) !important;
@@ -3635,6 +3625,12 @@ img.exitOnlyArrow:last-child {
   border-top-right-radius: var(--fullBleedTopRightRadius, 0px);
   border-bottom-right-radius: var(--fullBleedBottomRightRadius, 0px);
   border-bottom-left-radius: var(--fullBleedBottomLeftRadius, 0px);
+}
+
+/* A full-bleed vertical divider extends past its row into the sign padding,
+   which the row band paints through; the sign's own clip still bounds it. */
+.sign .blockElementRow.fullBleed:has(> * > .dividerElement.vertical.fullBleed) {
+  overflow: visible;
 }
 
 .sign .blockElementRow.fullBleed::before,
@@ -4762,6 +4758,14 @@ img.exitOnlyArrow:last-child {
   row-gap: max(0em, calc((var(--lineHeight, 100) - 80) * 0.01em));
 }
 
+/* The trimmed box already centers the capitals on the advisory background, so
+   the Highway Gothic baseline nudge (--fhwaBaselineOffset) would push them low. */
+@supports (text-box-trim: trim-both) {
+  .bE-advisoryMessage.bE-messageCapOnly > span {
+    top: 0;
+  }
+}
+
 .bE-advisoryMessage.bE-multilineTextElement > .bE-textLine:empty,
 .bE-electronicSign.bE-multilineTextElement > .bE-textLine:empty {
   min-height: 1em;
@@ -4842,7 +4846,7 @@ img.exitOnlyArrow:last-child {
   width: max-content !important;
   margin: 0 !important;
   --californiaExitBasePadding: 0.42em;
-  padding: 0 max(0px, calc(var(--californiaExitBasePadding) + var(--exitTabHorizontalPadding, 0rem))) !important;
+  padding: var(--exitTabVerticalPadding, 0rem) max(0px, calc(var(--californiaExitBasePadding) + var(--exitTabHorizontalPadding, 0rem))) !important;
   line-height: 1;
   white-space: nowrap;
 }
@@ -4869,4 +4873,62 @@ img.exitOnlyArrow:last-child {
 }
 .alignmentButtons button[hidden] {
   display: none !important;
+}
+.sign.roundaboutSign {
+  display: grid !important;
+  grid-template-columns: minmax(6rem, max-content) minmax(var(--roundabout-size, 18rem), max-content) minmax(6rem, max-content);
+  grid-template-rows: auto calc(var(--roundabout-size, 18rem) * .475) calc(var(--roundabout-size, 18rem) * .475);
+  gap: 1rem 0;
+  align-items: center;
+  justify-items: center;
+  padding: 1.5rem !important;
+}
+.roundaboutDrawing { grid-column: 2; grid-row: 2 / 4; width: var(--roundabout-size, 18rem); height: calc(var(--roundabout-size, 18rem) * .95); align-self: start; }
+.roundaboutDestination { border: 0 !important; padding: 0 !important; margin: 0 !important; min-width: 0 !important; }
+.roundabout-thru { grid-column: 2; grid-row: 1; }
+.roundabout-left { grid-column: 1; grid-row: 2 / 4; align-self: start; margin-top: calc(var(--roundabout-size, 18rem) * .5) !important; transform:translateY(-50%); }
+.roundabout-right { grid-column: 3; grid-row: 2 / 4; align-self: start; margin-top: calc(var(--roundabout-size, 18rem) * .5) !important; transform:translateY(-50%); }
+.roundaboutBypass .roundabout-right { margin-top: calc(var(--roundabout-size, 18rem) * .73203125) !important; }
+/* Rotate only the square face. Content retains its normal coordinate system. */
+.panel.warningDiamond > .signContainer {
+  position:relative; display:grid; place-items:center;
+  width:var(--warningDiamondExtent, max-content) !important;
+  height:var(--warningDiamondExtent, auto) !important;
+  background:transparent !important; border:0 !important;
+  overflow:visible !important;
+}
+.panel.warningDiamond > .signContainer > .sign {
+  grid-area:1 / 1; width:max-content !important; min-width:0 !important;
+  background:transparent !important; border-color:transparent !important;
+  box-shadow:none !important; flex:none;
+}
+.warningDiamondFace {
+  /* Rounded panels hide their wrapper; the face must opt back into painting. */
+  visibility:visible;
+  position:absolute; width:70.710678%; height:70.710678%;
+  left:14.644661%; top:14.644661%; transform:rotate(45deg);
+  border:var(--panelBorderWidth,0.2rem) solid; box-sizing:border-box;
+  border-radius:var(--signBorderRadius,0.75rem); pointer-events:none;
+}
+.panel.sharp .warningDiamondFace { border-radius:0; }
+
+/* Settings → "Export without panel background": copied and downloaded images
+   keep the sign's content but drop every panel-colored surface. Borders keep
+   their width so the layout matches the editor. */
+html .exportWithoutPanelBackground :is(.panelOuterFace, .dynamicSignFullBleedLayer, .dynamicSignCornerPatch, .warningDiamondFace) {
+  display: none !important;
+}
+
+html .exportWithoutPanelBackground :is(.signContainer, .sign, .exitTabContainer, .exitTabHolder, .exitTab, .fullLeftBannerPlate, .fullLeftBanner, .fullLeftNumber, .sign .blockElementRow, .sign .blockElementRow.fullBleed) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  border-image: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Full-bleed horizontal dividers are normally drawn on the hidden sign layer. */
+html .exportWithoutPanelBackground .dividerElement.fullBleedDividerPainted {
+  opacity: 1;
 }

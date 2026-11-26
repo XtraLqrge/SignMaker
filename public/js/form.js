@@ -587,6 +587,8 @@ const formHandler = (function () {
       for (const [sliderId, valueId, resetId] of [
         ['sdBlock_topPadding', 'sdBlock_topPaddingVal', 'sdBlock_topPaddingReset'],
         ['sdBlock_bottomPadding', 'sdBlock_bottomPaddingVal', 'sdBlock_bottomPaddingReset'],
+        ['sdBlock_leftPadding', 'sdBlock_leftPaddingVal', 'sdBlock_leftPaddingReset'],
+        ['sdBlock_rightPadding', 'sdBlock_rightPaddingVal', 'sdBlock_rightPaddingReset'],
         ['sdBlock_widthSlider', 'sdBlock_width', 'sdBlock_widthReset'],
       ]) {
         const slider = document.getElementById(sliderId), value = document.getElementById(valueId), reset = document.getElementById(resetId);
@@ -613,6 +615,8 @@ const formHandler = (function () {
       const marginInputs = [
         document.getElementById("sdBlock_topPaddingVal"),
         document.getElementById("sdBlock_bottomPaddingVal"),
+        document.getElementById("sdBlock_leftPaddingVal"),
+        document.getElementById("sdBlock_rightPaddingVal"),
       ].filter(Boolean);
 
       const normalizeMarginInputValue = (value, fallback = 0) => {
@@ -980,6 +984,7 @@ const formHandler = (function () {
       );
     };
     const STORAGE_KEYS = {
+        shrinkSignsForPanels: "signMaker.shrinkSignsForPanels",
         postPosition: "signMaker.postPosition",
         postColor: "signMaker.postColor",
         showPost: "signMaker.showPost",
@@ -1202,6 +1207,7 @@ const formHandler = (function () {
       "minValue",
       "nestedSpacingValue",
       "exitTabHorizontalPaddingValue",
+      "exitTabVerticalPaddingValue",
     ]);
 
     const formatExitTabSliderDisplayValue = (valueId, value) =>
@@ -1260,6 +1266,7 @@ const formHandler = (function () {
         "exitTabCornerRadius",
         "nestedTabSpacing",
         "exitTabHorizontalPadding",
+        "exitTabVerticalPadding",
         "exitTabTextSizePercent",
       ].forEach((id) => {
         const input = document.getElementById(id);
@@ -1303,7 +1310,7 @@ const formHandler = (function () {
         ExitTab.prototype &&
         Array.isArray(ExitTab.prototype.variants)
           ? ExitTab.prototype.variants
-          : ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+          : ["Default", "Quebec Exit Marker", "Toll Logo", "Icon", "Full Left", "Stacked"];
       return variants.includes(normalized) ? normalized : "Default";
     };
 
@@ -1318,7 +1325,7 @@ const formHandler = (function () {
         ExitTab.prototype &&
         Array.isArray(ExitTab.prototype.variants)
           ? ExitTab.prototype.variants
-          : ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+          : ["Default", "Quebec Exit Marker", "Toll Logo", "Icon", "Full Left", "Stacked"];
       return variants
         .map(normalizeExitTabProfileVariant)
         .filter((variant, index, list) => list.indexOf(variant) === index);
@@ -1340,6 +1347,7 @@ const formHandler = (function () {
             "fontFamily",
             "characterSpacing",
             "horizontalPadding",
+            "verticalPadding",
             "exitTextSizePercent",
             "exitTextSizePercentVersion",
             "textColor",
@@ -1416,6 +1424,7 @@ const formHandler = (function () {
         tollLogoSquare: false,
         assetHorizontalPadding: 0,
         assetVerticalPadding: 0,
+        verticalPadding: 0,
         transparent: false,
         nestedTabSpacing: 0,
       };
@@ -1496,6 +1505,8 @@ const formHandler = (function () {
         normalized.assetVerticalPadding,
         fallback.assetVerticalPadding || 0
       );
+      normalized.verticalPadding = Math.max(0, Math.min(3,
+        getFiniteExitTabNumber(normalized.verticalPadding, fallback.verticalPadding || 0)));
       normalized.textColor =
         normalized.textColor || ExitTab.prototype.defaultTextColor || "Panel Color";
       normalized.color =
@@ -1530,6 +1541,7 @@ const formHandler = (function () {
 
       delete normalized.number;
       ExitTab.normalizeCalifornia(normalized);
+      ExitTab.normalizeFullLeft(normalized);
       return normalized;
     };
 
@@ -2282,6 +2294,10 @@ const formHandler = (function () {
       delete updated.number;
       updated.variant = resolvedVariant;
       updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
+      if (resolvedVariant === "Quebec Exit Marker") {
+        readQuebecExitMarkerForm(updated);
+        return updated;
+      }
       if (widthChange) updated.width = widthChange;
       updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
       updated.textColor =
@@ -2366,6 +2382,16 @@ const formHandler = (function () {
             getFiniteExitTabNumber(
               form["exitTabHorizontalPadding"]?.value,
               updated.horizontalPadding
+            )
+          )
+        );
+        updated.verticalPadding = Math.max(
+          0,
+          Math.min(
+            3,
+            getFiniteExitTabNumber(
+              form["exitTabVerticalPadding"]?.value,
+              updated.verticalPadding || 0
             )
           )
         );
@@ -3548,102 +3574,37 @@ const formHandler = (function () {
     return !!configBar && configBar.dataset.currentMenu === "subPanelConfig";
   };
 
-  let subpanelHeightSyncFrame = 0;
+  const bindSubpanelDisclosureScroll = () => {
+    const body = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
+    if (!body) return;
 
-  const syncSubpanelModalHeight = () => {
-    if (window.SignMakerMobile?.active) {
-      // Drop desktop measurements when resizing into the mobile sheet layout.
-      const content = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
-      for (const property of ["height", "max-height", "overflow-y", "overflow-x"]) {
-        content?.style.removeProperty(property);
+    let openingSection = null;
+    const reveal = () => {
+      if (!openingSection?.open || window.SignMakerMobile?.active || !subpanelMenuIsOpen()) return;
+      const viewport = body.getBoundingClientRect();
+      const section = openingSection.getBoundingClientRect();
+      const scale = viewport.height / body.offsetHeight || 1;
+      const padding = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+      const overflow = section.bottom + padding * scale - viewport.bottom;
+      if (overflow > 0) {
+        body.scrollTop += Math.max(0, Math.min(overflow, section.top - viewport.top)) / scale;
       }
-      return;
-    }
-    if (!subpanelMenuIsOpen()) {
-      return;
-    }
+    };
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(reveal) : null;
 
-    const modal = document.querySelector(".sMModal.subPanelConfig");
-    const content = modal?.querySelector(":scope > .sMModalContent");
-
-    if (!modal || !content || window.getComputedStyle(modal).display === "none") {
-      return;
-    }
-
-    const activeHolder = Array.from(content.children).find((holder) => {
-      const style = window.getComputedStyle(holder);
-      return (
-        !holder.classList.contains("tabHidden") &&
-        style.display !== "none" &&
-        style.visibility !== "hidden"
-      );
-    });
-
-    if (!activeHolder) {
-      return;
-    }
-
-    /* Remove any previous measured height before taking a fresh measurement. */
-    content.style.removeProperty("height");
-    content.style.removeProperty("overflow-y");
-
-    const rootStyle = window.getComputedStyle(document.documentElement);
-    const zoom = Math.max(0.01, parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1);
-    const contentRect = content.getBoundingClientRect();
-    const contentStyle = window.getComputedStyle(content);
-    const paddingBottom = (parseFloat(contentStyle.paddingBottom) || 0) * zoom;
-
-    let visibleBottom = contentRect.top;
-
-    const candidates = [activeHolder, ...activeHolder.querySelectorAll("*")];
-    candidates.forEach((element) => {
-      const style = window.getComputedStyle(element);
-
-      if (
-        style.display === "none" ||
-        style.visibility === "hidden" ||
-        style.position === "fixed" ||
-        element.closest(
-          ".fontPickerMenu, .colorPickerMenu, .colorPickerCustomPanel, .shieldPickerPopover, .profilePickerMenu, dialog"
-        )
-      ) {
-        return;
-      }
-
-      const rect = element.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        return;
-      }
-
-      if (rect.bottom > visibleBottom) {
-        visibleBottom = rect.bottom;
-      }
-    });
-
-    const desiredScreenHeight = Math.max(0, visibleBottom - contentRect.top + paddingBottom);
-    const availableScreenHeight = Math.max(0, window.innerHeight - contentRect.top - 12);
-    const desiredCssHeight = desiredScreenHeight / zoom;
-    const availableCssHeight = availableScreenHeight / zoom;
-    const needsScroll = desiredCssHeight > availableCssHeight + 1;
-    const targetHeight = Math.max(0, Math.min(desiredCssHeight, availableCssHeight));
-
-    content.style.setProperty("height", `${targetHeight}px`, "important");
-    content.style.setProperty("max-height", `${availableCssHeight}px`, "important");
-    content.style.setProperty("overflow-y", needsScroll ? "auto" : "hidden", "important");
-    content.style.setProperty("overflow-x", "hidden", "important");
-  };
-
-  const scheduleSubpanelModalHeightSync = () => {
-    if (subpanelHeightSyncFrame) {
-      cancelAnimationFrame(subpanelHeightSyncFrame);
-    }
-
-    subpanelHeightSyncFrame = requestAnimationFrame(() => {
-      subpanelHeightSyncFrame = requestAnimationFrame(() => {
-        subpanelHeightSyncFrame = 0;
-        syncSubpanelModalHeight();
+    for (const details of body.querySelectorAll(".propertyPanel")) {
+      details.addEventListener("toggle", () => {
+        if (details.open) {
+          openingSection = details;
+          observer?.disconnect();
+          observer?.observe(details);
+          if (!observer) requestAnimationFrame(reveal);
+        } else if (openingSection === details) {
+          openingSection = null;
+          observer?.disconnect();
+        }
       });
-    });
+    }
   };
 
   const CUSTOM_ICON_VALUE_PREFIX = "CUSTOMICON-";
@@ -4854,6 +4815,13 @@ const formHandler = (function () {
     return nextScale;
   };
 
+  const getShrinkSignsForPanels = () => getStoredItem(STORAGE_KEYS.shrinkSignsForPanels) !== "false";
+  const applyShrinkSignsForPanels = (enabled, {persist = false} = {}) => {
+    const value = enabled !== false;
+    document.documentElement.dataset.shrinkSignsForPanels = String(value);
+    if (persist) setStoredItem(STORAGE_KEYS.shrinkSignsForPanels, String(value));
+  };
+
   const getStoredInterfaceUIScale = () =>
     normalizeInterfaceUIScale(window.SignMakerInterfaceScale?.getScale() ?? getStoredItem(STORAGE_KEYS.interfaceUiScale));
 
@@ -5193,6 +5161,9 @@ const formHandler = (function () {
     const verticalPaddingInput = document.getElementById("exitTabTextSizePercent");
     const verticalPaddingLabel = document.querySelector('label[for="exitTabTextSizePercent"]');
     const verticalPaddingValue = document.getElementById("exitTabTextSizePercentValue");
+    // Logo/icon tabs reuse the text-size slider for their vertical padding.
+    const textVerticalPaddingGroup = document.getElementById("exitTabVerticalPaddingGroup");
+    if (textVerticalPaddingGroup) textVerticalPaddingGroup.hidden = usesAssetControls;
 
     if (usesAssetControls) {
       const resolvedAssetSize = normalizeExitTabAssetSizeValue(
@@ -5289,6 +5260,12 @@ const formHandler = (function () {
       horizontalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedHorizontalPadding);
     }
 
+    const resolvedTextVerticalPadding = Math.max(0, Math.min(3, parseFloat(workingExitTab?.verticalPadding) || 0));
+    const textVerticalPaddingInput = document.getElementById("exitTabVerticalPadding");
+    if (textVerticalPaddingInput) setExitTabRangeControlValue(textVerticalPaddingInput, resolvedTextVerticalPadding);
+    const textVerticalPaddingValue = document.getElementById("exitTabVerticalPaddingValue");
+    if (textVerticalPaddingValue) textVerticalPaddingValue.innerHTML = formatExitTabDecimalValue(resolvedTextVerticalPadding);
+
     const resolvedExitTextSize = (() => {
       const parsed = parseFloat(workingExitTab?.exitTextSizePercent);
       return Number.isFinite(parsed)
@@ -5311,9 +5288,14 @@ const formHandler = (function () {
 
   const toggleExitTabVariantOptionsVisibility = (variantValue, options = {}) => {
     const normalizedVariant = String(variantValue || "Default");
+    const isQuebec = normalizedVariant === "Quebec Exit Marker";
+    const isFullLeft = normalizedVariant === "Full Left";
+    document.getElementById("sMExitTabSetting").classList.toggle("quebecExitTabMode", isQuebec);
+    document.getElementById("sMExitTabSetting").classList.toggle("fullLeftExitTabMode", isFullLeft);
+    document.querySelector(".qcExitMarkerControls").hidden = !isQuebec;
+    document.getElementById("exitTabPosition").disabled = isFullLeft;
     const isTollLogo = normalizedVariant === "Toll Logo";
     const isIcon = normalizedVariant === "Icon";
-    const qcMode = normalizedVariant === "Quebec Exit Marker";
 
     const tollOptionsElmt = document.getElementById("exitTollLogoOptions");
     if (tollOptionsElmt) {
@@ -5343,6 +5325,7 @@ const formHandler = (function () {
       exitNumber.classList.toggle("hidden", hideExitNumber);
       exitNumber.hidden = hideExitNumber;
       exitNumber.disabled = hideExitNumber;
+      exitNumber.inputMode = isQuebec ? "numeric" : "text";
       if (profileEditorMode) {
         exitNumber.value = "";
       }
@@ -5352,19 +5335,16 @@ const formHandler = (function () {
     if (exitNumberLabel) {
       exitNumberLabel.classList.toggle("hidden", profileEditorMode);
       exitNumberLabel.hidden = profileEditorMode;
-      exitNumberLabel.textContent = qcMode
-        ? "Number:"
-        : isTollLogo
+      exitNumberLabel.textContent = isTollLogo
           ? "Logo:"
           : isIcon
             ? "Icon:"
-            : "Text:";
+            : isQuebec ? "Number:" : "Text:";
     }
 
     const isAssetVariant = isTollLogo || isIcon;
     const mainGrid = document.getElementById("exitTabMainSettingsGrid");
     if (mainGrid) {
-      mainGrid.classList.toggle("qcExitMarkerMode", qcMode);
       mainGrid.classList.toggle("exitTabAssetMode", isAssetVariant);
     }
 
@@ -5384,7 +5364,7 @@ const formHandler = (function () {
     if (fontPickerWrapper) {
       assetHiddenStyleControls.push(fontPickerWrapper);
     }
-    const hideTextControls = isAssetVariant || qcMode;
+    const hideTextControls = isAssetVariant || isQuebec;
     assetHiddenStyleControls.forEach((element) => {
       element?.classList.toggle("assetHiddenSetting", hideTextControls);
     });
@@ -5399,19 +5379,8 @@ const formHandler = (function () {
 
     const transparentLabel = document.getElementById("exitTabTransparentLabel");
     const transparentInput = document.getElementById("exitTabTransparent");
-    transparentLabel?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
-    transparentInput?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
-
-    ["exitTabWidth", "exitTabPosition", "exitTabBilingualBottomTextLabel", "exitTabBilingualBottomText"].forEach((id) => {
-      const element = document.getElementById(id);
-      if (element) {
-        element.classList.toggle("qcHiddenSetting", qcMode);
-      }
-    });
-
-    document
-      .querySelectorAll('[data-exit-slider="borderThickness"], [data-exit-slider="minHeight"], .exitTabCheckboxPanel')
-      .forEach((element) => element.classList.toggle("qcHiddenSetting", qcMode));
+    transparentLabel?.classList.toggle("assetHiddenSetting", !isAssetVariant);
+    transparentInput?.classList.toggle("assetHiddenSetting", !isAssetVariant);
 
     const assetHiddenIds = [
       "showLeft",
@@ -5427,7 +5396,7 @@ const formHandler = (function () {
     assetHiddenIds.forEach((id) => {
       const element = document.getElementById(id);
       if (element) {
-        element.classList.toggle("assetHiddenSetting", isTollLogo || isIcon || qcMode);
+        element.classList.toggle("assetHiddenSetting", isTollLogo || isIcon);
       }
     });
 
@@ -8893,6 +8862,54 @@ const formHandler = (function () {
     }
   };
 
+  const showWelcomeTutorial = () => {
+    const dialog = document.getElementById("welcomeToSignMaker");
+    if (!dialog || getStoredItem("closedWelcome")) return;
+
+    const steps = [...dialog.querySelectorAll(".welcomeStep")];
+    const back = dialog.querySelector("#welcomeBack");
+    const next = dialog.querySelector("#welcomeNext");
+    const destination = dialog.querySelector("#welcomeDestination");
+    const previewDestination = dialog.querySelector("#welcomePreviewDestination");
+    const previewArrow = dialog.querySelector("#welcomePreviewArrow");
+    const directionButtons = dialog.querySelectorAll("[data-arrow]");
+    let step = 0;
+
+    const showStep = (index) => {
+      steps[step].hidden = true;
+      step = index;
+      steps[step].hidden = false;
+      back.hidden = step === 0;
+      next.textContent = step === 0 ? "Start tutorial" :
+        step === steps.length - 1 ? "Open editor" : "Next";
+      (steps[step].querySelector("h3") || next).focus();
+      dialog.scrollTop = 0;
+    };
+
+    destination.addEventListener("input", () => {
+      previewDestination.textContent = destination.value.trim() || "Riverside";
+    });
+    for (const button of directionButtons) {
+      button.addEventListener("click", () => {
+        for (const option of directionButtons) {
+          option.setAttribute("aria-pressed", String(option === button));
+        }
+        previewArrow.textContent = button.dataset.arrow;
+        previewArrow.setAttribute("aria-label", button.textContent);
+      });
+    }
+    back.addEventListener("click", () => showStep(step - 1));
+    next.addEventListener("click", () => {
+      if (step === steps.length - 1) dialog.close();
+      else showStep(step + 1);
+    });
+    for (const id of ["closeWelcome", "skipWelcome"]) {
+      dialog.querySelector("#" + id).addEventListener("click", () => dialog.close());
+    }
+    dialog.addEventListener("close", () => setStoredItem("closedWelcome", "true"), { once: true });
+    dialog.showModal();
+  };
+
   const initialize = async (appExposed, { beforeUI } = {}) => {
     exposed = appExposed;
     post = exposed.getPost();
@@ -8926,6 +8943,7 @@ const formHandler = (function () {
     applyConfigBarPosition(getStoredConfigBarPosition());
     bindUndoControls();
     applyInterfaceUIScale(getStoredInterfaceUIScale());
+    applyShrinkSignsForPanels(getShrinkSignsForPanels());
     bindInterfaceUIScaleControl(document);
 
     try {
@@ -9169,6 +9187,11 @@ const formHandler = (function () {
           previewFont: "Helvetica Roman",
           fonts: allFonts.filter((font) => /^Helvetica(?: Neue)?/i.test(font)),
         },
+        {
+          family: "Highway VAR",
+          previewFont: "Highway VAR Series 5",
+          fonts: allFonts.filter((font) => /^Highway VAR Series /i.test(font)),
+        },
       ];
 
       return familyDefs.filter((def) => def.fonts.length > 0);
@@ -9269,6 +9292,10 @@ const formHandler = (function () {
 
       const menu = document.createElement("div");
       menu.className = "fontPickerMenu";
+      const list = document.createElement("div");
+      list.className = "fontPickerList";
+      menu.appendChild(list);
+      let search;
       menu.classList.toggle("assetHiddenSetting", selectEl.classList.contains("assetHiddenSetting"));
       const isCustomShieldFontPicker = selectEl.id === "customShieldMakerRouteFont";
       wrapper.classList.toggle("customShieldFontPicker", isCustomShieldFontPicker);
@@ -9359,6 +9386,7 @@ const formHandler = (function () {
         button.type = "button";
         button.className = "fontPickerItem fontPickerFamilyItem";
         button.dataset.familyValue = family;
+        button.dataset.searchText = getFontsForPickerFamily(family).join(" ");
         button.textContent = getUiFontDisplayName(family);
         const renderedPreviewFont = resolveFontPickerPreviewFont(previewFont);
         button.style.fontFamily = `"${renderedPreviewFont}", sans-serif`;
@@ -9381,10 +9409,10 @@ const formHandler = (function () {
       };
 
       const render = () => {
-        menu.innerHTML = "";
+        list.innerHTML = "";
 
         const mobile = window.SignMakerMobileDropdowns;
-        if (mobile?.view(selectEl, 'font', { mode }).simple) {
+        if (!search?.query && mobile?.view(selectEl, 'font', { mode }).simple) {
           for (const choice of mobile.fontChoices(selectEl, mode)) {
             let button;
             if (mode === 'family') {
@@ -9405,14 +9433,17 @@ const formHandler = (function () {
             } else button = makeFontButton(choice.value);
             button.textContent = choice.label;
             button.style.fontFamily = '"' + choice.fontValue + '", sans-serif';
-            menu.appendChild(button);
+            list.appendChild(button);
           }
-          mobile.appendAdvanced(menu, selectEl, 'font', () => { render(); positionFloatingFontPickerMenu(); }, { mode });
+          mobile.appendAdvanced(list, selectEl, 'font', () => { render(); positionFloatingFontPickerMenu(); }, { mode });
+          search?.filterItems(list);
           updateTrigger();
           return;
         }
 
-        const families = getFontPickerFamilies(isCustomShieldFontPicker);
+        const isAvailable = window.SignMakerHighwayVar?.allows;
+        const families = getFontPickerFamilies(isCustomShieldFontPicker)
+          .filter(({ family }) => !isAvailable || isAvailable(family));
 
         if (mode === "allFontsGrouped") {
           for (const familyDef of families) {
@@ -9443,21 +9474,22 @@ const formHandler = (function () {
             }
             familyBlock.appendChild(familyHeader);
             familyBlock.appendChild(children);
-            menu.appendChild(familyBlock);
+            list.appendChild(familyBlock);
           }
         } else if (mode === "family") {
           for (const familyDef of families) {
-            menu.appendChild(makeFamilyButton(familyDef.family));
+            list.appendChild(makeFamilyButton(familyDef.family));
           }
         } else if (mode === "familyFont") {
           const family = linkedFamilySelect?.value || "";
           const fonts = getFontsForPickerFamily(family);
 
           for (const font of fonts) {
-            menu.appendChild(makeFontButton(font));
+            if (!isAvailable || isAvailable(font)) list.appendChild(makeFontButton(font));
           }
         }
 
+        search?.filterItems(list);
         updateTrigger();
       };
 
@@ -9474,6 +9506,13 @@ const formHandler = (function () {
         }
       };
 
+      search = window.SignMakerPickerSearch?.create({
+        menu, label: "Fonts",
+        onChange: () => { render(); menu.scrollTop = 0; positionFloatingFontPickerMenu(); },
+        onClose: () => { wrapper.classList.remove("open"); syncFloatingFontPickerMenuClasses(); trigger.focus(); },
+        items: () => Array.from(list.querySelectorAll(".fontPickerItem")),
+      });
+
       trigger.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -9482,6 +9521,7 @@ const formHandler = (function () {
         closeAllFontPickers(wrapper);
 
         if (willOpen) {
+          search?.reset({ notify: false });
           render();
           window.SignMakerDropdowns.prepareMenu(menu);
           wrapper.classList.add("open");
@@ -10024,8 +10064,8 @@ const formHandler = (function () {
       }
 
       if (lowerValue === "match bg" || lowerValue === "match background") {
-        if (selectEl?.id === "sdBlock_borderColor") {
-          const blockBackgroundSelect = document.querySelector("#sdBlock_backgroundColor");
+        if (["sdBlock_borderColor", "sdElement_borderColor"].includes(selectEl?.id)) {
+          const blockBackgroundSelect = document.getElementById(selectEl.id.replace("borderColor", "backgroundColor"));
           let blockBackgroundValue = blockBackgroundSelect?.value || "Inherit";
 
           if (/^(inherit|panel color|default)$/i.test(blockBackgroundValue)) {
@@ -10918,6 +10958,7 @@ const formHandler = (function () {
         "FLToll",
         "FLCFX",
         "FLTP",
+        "FL-Selmon",
       ],
 
       "us-georgia": [
@@ -11114,6 +11155,11 @@ const formHandler = (function () {
                 value: "FLTP",
                 label: "Florida's Turnpike",
                 asset: "img/shields/United States/Florida/FDOT/FLTP-48.svg",
+              },
+              {
+                value: "FL-Selmon",
+                label: "Selmon Expressway",
+                asset: "img/shields/United States/FL/FL-Selmon.png",
               },
             ],
           },
@@ -11644,6 +11690,7 @@ const formHandler = (function () {
         "FLToll",
         "FLCFX",
         "FLTP",
+        "FL-Selmon",
         "GA",
         "GAALT",
         "GABYP",
@@ -11764,6 +11811,11 @@ const formHandler = (function () {
             "FLTP",
             "Florida's Turnpike",
             "img/shields/United States/Florida/FDOT/FLTP-48.svg"
+          ),
+          node(
+            "FL-Selmon",
+            "Selmon Expressway",
+            "img/shields/United States/FL/FL-Selmon.png"
           ),
         ]),
 
@@ -12649,6 +12701,7 @@ const formHandler = (function () {
         };
 
         const saveShieldPickerScrollTop = () => {
+          if (search?.query) return;
           setStoredItem(
             STORAGE_KEYS.shieldPickerScrollTop,
             String(Math.max(0, popover.scrollTop || 0))
@@ -12677,6 +12730,7 @@ const formHandler = (function () {
       const tree = document.createElement("div");
       tree.className = "shieldPickerTree";
       let treeDirty = true;
+      let search, searchExpanded = null;
       popover.appendChild(tree);
 
       wrapper.appendChild(trigger);
@@ -12780,11 +12834,15 @@ const formHandler = (function () {
         if (treeDirty || !tree.childElementCount) {
           treeDirty = false;
           const scrollTop = popover.scrollTop;
+          const results = window.SignMakerPickerSearch?.filterTree(rootNodes, search?.query || "") || { nodes: rootNodes };
+          if (search?.query && !searchExpanded) searchExpanded = new Set(results.expanded);
+          search?.setCount(results.nodes.length);
+          const activeExpanded = search?.query ? searchExpanded : expandedIds;
           renderShieldPickerTree({
             container: tree,
-            nodes: rootNodes,
+            nodes: results.nodes,
             currentValue,
-            expandedIds,
+            expandedIds: activeExpanded,
             onSelect: (node, options = {}) => {
               if (
                 node.customShieldMaker ||
@@ -12816,10 +12874,10 @@ const formHandler = (function () {
                 }
               },
               onToggle: (id) => {
-                if (expandedIds.has(id)) {
-                  expandedIds.delete(id);
+                if (activeExpanded.has(id)) {
+                  activeExpanded.delete(id);
                 } else {
-                  expandedIds.add(id);
+                  activeExpanded.add(id);
                 }
 
                 rerenderTree(true);
@@ -12844,8 +12902,15 @@ const formHandler = (function () {
             return;
           }
 
-          updateShieldPickerTreeState(tree, currentValue, expandedIds);
+          updateShieldPickerTreeState(tree, currentValue, search?.query ? searchExpanded : expandedIds);
         };
+
+        search = window.SignMakerPickerSearch?.create({
+          menu: popover, label: "Shields",
+          onChange: () => { searchExpanded = null; rerenderTree(true); popover.scrollTop = 0; if (wrapper.classList.contains("open")) placePopover(); },
+          onClose: () => { wrapper.classList.remove("open"); trigger.focus(); },
+          items: () => Array.from(tree.querySelectorAll(".shieldPickerItem")).filter(item => item.dataset.hasChildren !== "true" && !item.classList.contains("disabled")),
+        });
 
         trigger.addEventListener("click", (event) => {
           event.preventDefault();
@@ -12857,7 +12922,10 @@ const formHandler = (function () {
             saveShieldPickerScrollTop();
           }
 
-          if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
+          if (willOpen) {
+            if (search?.query) { search.reset({ notify: false }); searchExpanded = null; treeDirty = true; }
+            window.SignMakerDropdowns.prepareMenu(popover);
+          }
           wrapper.classList.toggle("open", willOpen);
 
           if (willOpen) {
@@ -13318,6 +13386,12 @@ const formHandler = (function () {
       };
 
       const placePopover=()=>window.SignMakerDropdowns.positionMenu(popover,trigger,{minWidth:0,maxWidth:12});
+      const search = window.SignMakerPickerSearch?.create({
+        menu: popover, label: "Shield variants",
+        onChange: () => { search.filterItems(list, ".shieldPickerItem"); popover.scrollTop = 0; if (wrapper.classList.contains("open")) placePopover(); },
+        onClose: () => { close(); trigger.focus(); },
+        items: () => Array.from(list.querySelectorAll(".shieldPickerItem")),
+      });
 
       const applyImageFallback = (image, requestedPath = "") => {
         if (typeof window.applySignMakerAssetFallback === "function") {
@@ -13384,6 +13458,7 @@ const formHandler = (function () {
 
           list.appendChild(item);
         }
+        search?.filterItems(list, ".shieldPickerItem");
       };
 
       const syncTrigger = () => {
@@ -13464,6 +13539,7 @@ const formHandler = (function () {
         if (willOpen) window.SignMakerDropdowns.prepareMenu(popover);
         wrapper.classList.toggle("open", willOpen);
         if (willOpen) {
+          search?.reset({ notify: false });
           renderItems();
           placePopover();
         }
@@ -14742,7 +14818,8 @@ const formHandler = (function () {
       for (const [name, value, digits] of [
         ["Angle", normalizeStandardAngle(sign.exitArrowAngle), 0],
         ["Size", clampStandardValue(sign.exitArrowSize, 1, 5, 10, 3), 1],
-        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 5, 100, 0.2), 2],
+        ["Padding", clampStandardValue(sign.exitArrowPadding, 0, 4, 100, 0.2), 2],
+        ["HorizontalPadding", clampStandardValue(sign.exitArrowHorizontalPadding, 0, 4, 100, 0.2), 2],
         ["Spacing", clampStandardValue(sign.exitArrowSpacing, 0, 25, 100, 8.5), 2]
       ]) {
         exitArrowField(name).value = Math.min(Number(exitArrowField(name).max), value);
@@ -14863,7 +14940,8 @@ const formHandler = (function () {
       for (const [field, name, min, max, precision, digits, fallback] of [
         [exitArrowField, "Angle", 0, 359, 1, 0, 0],
         [exitArrowField, "Size", 1, 5, 10, 1, 3],
-        [exitArrowField, "Padding", 0, 5, 100, 2, 0.2],
+        [exitArrowField, "Padding", 0, 4, 100, 2, 0.2],
+        [exitArrowField, "HorizontalPadding", 0, 4, 100, 2, 0.2],
         [exitArrowField, "Spacing", 0, 25, 100, 2, 8.5],
         [exitTextField, "Size", 50, 100, 1, 0, 70],
         [exitTextField, "Spacing", -0.15, 0.5, 100, 2, 0]
@@ -14907,7 +14985,7 @@ const formHandler = (function () {
           const defaults = isText
             ? { Size: 70, Spacing: 0 }
             : { Angle: getDefaultGuideArrowAngle(exitArrowField("Type").value,
-                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, Spacing: 8.5 };
+                exitDefaultSide(exposed.getCurrentPanel()?.sign)), Size: 3, Padding: 0.2, HorizontalPadding: 0.2, Spacing: 8.5 };
           const digits = name === "Angle" || (isText && name === "Size") ? 0 : name === "Size" ? 1 : 2;
           field(name).value = String(defaults[name]);
           field(`${name}Value`).value = defaults[name].toFixed(digits);
@@ -15180,6 +15258,8 @@ const formHandler = (function () {
       window.SignMakerSettings22.init({
         getTheme:getStoredInterfaceThemeMode,
         setTheme:value=>{applyInterfaceThemeMode(value,{persist:true});updateUtilityButtonLabels();},
+        getShrinkSignsForPanels,
+        setShrinkSignsForPanels:value=>applyShrinkSignsForPanels(value,{persist:true}),
         getScale:getStoredInterfaceUIScale,
         setScale:value=>applyInterfaceUIScale(value,{persist:true}),
         getToolbar:getStoredConfigBarPosition,
@@ -15499,6 +15579,13 @@ const formHandler = (function () {
       );
 
       bindExitTabSliderReset(
+        "exitTabVerticalPaddingReset",
+        "exitTabVerticalPadding",
+        "exitTabVerticalPaddingValue",
+        () => getExitTabProfileContextSettings()?.verticalPadding ?? 0
+      );
+
+      bindExitTabSliderReset(
         "exitTabTextSizePercentReset",
         "exitTabTextSizePercent",
         "exitTabTextSizePercentValue",
@@ -15698,7 +15785,9 @@ const formHandler = (function () {
             }
           });
         } else {
-          holder.style.display = open ? "block" : "";
+          const desktopSubpanels = holder.classList.contains("subPanelConfig") && !window.SignMakerMobile?.active;
+          const display = desktopSubpanels ? "flex" : "block";
+          holder.style.display = open ? display : "";
         }
       }
 
@@ -15706,7 +15795,6 @@ const formHandler = (function () {
 
       if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
         window.SignMakerMobileForms?.prepareElement();
-        scheduleSubpanelModalHeightSync();
       }
 
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
@@ -16119,7 +16207,7 @@ const formHandler = (function () {
         downloadDialog.style.display !== "none";
 
       const isShortcutBlockingOverlayOpen = () =>
-        isSettingsOpen() || isDownloadMenuOpen();
+        isSettingsOpen() || isDownloadMenuOpen() || document.getElementById("welcomeToSignMaker")?.open;
 
       const ensureSubpanelMenuOpen = () => {
         if (!sMConfigBar) {
@@ -16153,6 +16241,8 @@ const formHandler = (function () {
           return "standard";
         }
 
+        if (["diagrammatic", "roundabout"].includes(sign.arrowMode)) return sign.arrowMode;
+
         const hasAPLArrows =
           Array.isArray(sign.aplArrows) && sign.aplArrows.length > 0;
 
@@ -16183,7 +16273,11 @@ const formHandler = (function () {
         }
 
         const activeGuideArrow = exposed.getCurrentPanel()?.sign?.guideArrow || "None";
-        const targetTab = resolvedMode === "apl"
+        const targetTab = resolvedMode === "roundabout"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMRoundabout"]'
+          : resolvedMode === "diagrammatic"
+          ? '.guideArrowConfig .sMModalTab[data-tab="sMDiagrammatics"]'
+          : resolvedMode === "apl"
           ? '.guideArrowConfig .sMModalTab[data-tab="sMAPL"]'
           : activeGuideArrow.includes("Exit Only")
             ? '.guideArrowConfig .sMModalTab[data-tab="sMExitOnlyArrows"]'
@@ -16576,6 +16670,11 @@ const formHandler = (function () {
             return;
           }
 
+          const arrowModeForTab = {sMDiagrammatics: "diagrammatic", sMRoundabout: "roundabout"}[button.dataset.tab];
+          if (arrowModeForTab && exposed.getCurrentPanel()?.sign?.arrowMode !== arrowModeForTab) {
+            exposed.setCurrentPanelArrowMode(arrowModeForTab);
+          }
+
           if (button.dataset.tab === "sMAPL") {
             const panel = post?.panels?.[exposed.vars.currentlySelectedPanelIndex];
             const subPanelCount = panel?.sign?.subPanels?.length || 0;
@@ -16659,6 +16758,9 @@ const formHandler = (function () {
                     target.value = type;
                     target._arrowPickerApi?.setValue(type);
                   }
+                }
+                if (["diagrammatic", "roundabout"].includes(sign?.arrowMode)) {
+                  exposed.setCurrentPanelArrowMode("standard");
                 }
                 guideArrowSelect.value = next;
                 readForm();
@@ -16925,7 +17027,7 @@ const formHandler = (function () {
     });
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
-    window.addEventListener("resize", scheduleSubpanelModalHeightSync);
+    bindSubpanelDisclosureScroll();
 
     document.addEventListener("click", (event) => {
       if (event.ctrlKey || event.metaKey || event.shiftKey) {
@@ -16967,30 +17069,6 @@ const formHandler = (function () {
           updateUtilityButtonLabels();
     };
     
-      const closeWelcomeButton = document.querySelector("#closeWelcome");
-      if (closeWelcomeButton) {
-        closeWelcomeButton.onclick = function () {
-          const modalHolder = document.querySelector("#modalHolder");
-          const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-
-          localStorage.setItem("closedWelcome", "true");
-
-          if (welcomeDialog && typeof welcomeDialog.close === "function") {
-            try {
-              welcomeDialog.close();
-            } catch (error) {}
-          }
-
-          if (welcomeDialog) {
-            welcomeDialog.style.display = "none";
-          }
-
-          if (modalHolder) {
-            modalHolder.style.display = "none";
-          }
-        };
-      }
-
     newRowDropTargetButton = document.getElementById("sMSPCreateRow");
     if (newRowDropTargetButton) {
       newRowDropTargetButton.addEventListener("dragenter", handleNewRowDragEnter);
@@ -17074,17 +17152,6 @@ const formHandler = (function () {
         });
       });
     });
-
-      const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-      if (!localStorage.getItem("closedWelcome") && welcomeDialog) {
-        const modalHolder = document.querySelector("#modalHolder");
-
-        if (modalHolder) {
-          modalHolder.style.display = "flex";
-        }
-
-        welcomeDialog.style.display = "flex";
-      }
 
     // The model keeps the full preset ID across the position and type controls.
     const postPositionSelectElmt = document.getElementById("postPosition");
@@ -17170,7 +17237,7 @@ const formHandler = (function () {
     // Populate the exit variants
     const exitVariantSelectElmt = document.getElementById("exitVariant");
     if (exitVariantSelectElmt) {
-      const hiddenExitVariants = new Set(["HOV 1", "HOV 2", "Quebec Exit Marker"]);
+      const hiddenExitVariants = new Set(["HOV 1", "HOV 2"]);
       for (const exitVariant of ExitTab.prototype.variants) {
         if (!hiddenExitVariants.has(exitVariant)) {
           lib.appendOption(exitVariantSelectElmt, exitVariant, {
@@ -17178,7 +17245,6 @@ const formHandler = (function () {
           });
         }
       }
-      lib.appendOption(exitVariantSelectElmt, "Quebec Exit Marker");
       toggleExitTabVariantOptionsVisibility(exitVariantSelectElmt.value);
     }
 
@@ -17470,9 +17536,11 @@ const formHandler = (function () {
         Rawlinson: rawlinsonFonts,
         "ITC Stone Sans": itcStoneSansFonts,
         "Helvetica": helveticaNeueFonts,
+        "Highway VAR": TextElement.prototype.fontFamily.filter(font => /^Highway VAR Series /i.test(font)),
       };
 
       const settingsDefaultsFontDefaults = {
+        "Highway VAR": "Highway VAR Series 5",
         Clearview: clearviewFonts.includes("Series 5WR")
           ? "Series 5WR"
           : (clearviewFonts[0] || ""),
@@ -17946,7 +18014,7 @@ const formHandler = (function () {
           storedSettingsDefaults,
           fontId
         )
-          ? storedSettingsDefaults[fontId]
+          ? normalizeUiFontValue(storedSettingsDefaults[fontId])
           : settingsDefaultsFieldDefaults[fontId];
 
         const defaultFontForFamily =
@@ -17987,7 +18055,7 @@ const formHandler = (function () {
 
         const selectedFamily =
           Object.prototype.hasOwnProperty.call(storedSettingsDefaults, id)
-            ? storedSettingsDefaults[id]
+            ? normalizeUiFontValue(storedSettingsDefaults[id])
             : settingsDefaultsFieldDefaults[id];
 
         populateSimpleSelect(
@@ -19461,9 +19529,10 @@ const formHandler = (function () {
           const controlId = id.slice(0, -3);
           const control = document.getElementById(controlId);
           if (control) {
-            if (controlId === "sdBlock_topPadding" || controlId === "sdBlock_bottomPadding") {
+            if (["sdBlock_topPadding", "sdBlock_bottomPadding", "sdBlock_leftPadding", "sdBlock_rightPadding"].includes(controlId)) {
               const parsed = parseFloat(valEl.value);
-              const normalized = Number.isFinite(parsed) ? Math.max(-5, Math.min(10, parsed)) : 0;
+              const minimum = controlId.endsWith("leftPadding") || controlId.endsWith("rightPadding") ? 0 : -5;
+              const normalized = Number.isFinite(parsed) ? Math.max(minimum, Math.min(10, parsed)) : 0;
               valEl.value = normalized;
               control.value = normalized;
             } else if (
@@ -20399,7 +20468,7 @@ const formHandler = (function () {
     }
 
     if (exitNumberLabel) {
-      exitNumberLabel.textContent = isBilingual ? "Top:" : "Text:";
+      exitNumberLabel.textContent = exitTab.variant === "Quebec Exit Marker" ? "Number:" : isBilingual ? "Top:" : "Text:";
     }
 
     if (bilingualCheckbox) {
@@ -20771,6 +20840,19 @@ const formHandler = (function () {
     document.getElementById("alignmentGuidePhaseValue").value=guidePhase;
   };
 
+  const updateQuebecExitMarkerForm = (tab) => {
+    document.getElementById("qcExitMarkerFlipped").checked = tab.quebecMarkerFlipped === true;
+    const size = QuebecExitMarker.width(tab);
+    document.getElementById("qcExitMarkerSize").value = size;
+    document.getElementById("qcExitMarkerSizeValue").textContent = size;
+  };
+
+  const readQuebecExitMarkerForm = (tab) => {
+    tab.position = document.getElementById("exitTabPosition").value || "Center";
+    tab.quebecMarkerFlipped = document.getElementById("qcExitMarkerFlipped").checked;
+    tab.quebecMarkerSizeRem = QuebecExitMarker.size(document.getElementById("qcExitMarkerSize").value);
+  };
+
   // Read the form and update the page by redrawing it.
   const readForm = function (options = {}) {
     if (mergeLiveInputActive && !mergeLiveInputValid) return;
@@ -20849,6 +20931,16 @@ const formHandler = (function () {
 
     if (exitTab) {
       syncCurrentExitTabProfileSelectionFromTab(exitTab);
+      if (exitTab.variant === "Quebec Exit Marker" &&
+          ["exitNumber", "exitTabPosition", "qcExitMarkerFlipped", "qcExitMarkerSize"].includes(changedControl?.id)) {
+        const number = form["exitNumber"];
+        exitTab.number = QuebecExitMarker.number(number.value);
+        if (number.value !== exitTab.number) number.value = exitTab.number;
+        readQuebecExitMarkerForm(exitTab);
+        saveCurrentExitTabEditsToSelectedProfile(exitTab);
+        redrawAfterExitTabEdit();
+        return;
+      }
     }
 
     // Post
@@ -20859,6 +20951,7 @@ const formHandler = (function () {
     currentPanel.color = form["panelColor"].value;
     currentPanel.corner = form["panelCorner"].value;
     currentPanel.borderColor = form["panelBorderColor"].value || "Inherit";
+    currentPanel.warningDiamond = document.getElementById("panelWarningDiamond").checked;
     const nextPanelBorderThickness = Panel.getBorderThickness({ borderThickness: form["panelBorderThickness"].value });
     if (nextPanelBorderThickness !== Panel.getBorderThickness(currentPanel)) {
       Panel.setBorderThickness(currentPanel, nextPanelBorderThickness);
@@ -20893,7 +20986,7 @@ const formHandler = (function () {
     readDisplaySettings(form);
 
     // Exit Tab
-    if (exitTab) {
+    if (exitTab && (exitTab.variant !== "Quebec Exit Marker" || exitVariantChange)) {
     const previousExitVariant = normalizeExitTabProfileVariant(
       exitTab.variant || "Default"
     );
@@ -20913,6 +21006,9 @@ const formHandler = (function () {
         { preserveText: true }
       );
       exitTab.variant = requestedExitVariant;
+      if (requestedExitVariant === "Quebec Exit Marker") {
+        exitTab.number = QuebecExitMarker.number(exitTab.number);
+      }
       exitTab.caStyle = requestedExitVariant === "California";
       if (exitTab.caStyle) { exitTab.squareCorners = false; exitTab.cornerRadius = 0.25; }
       ExitTab.normalizeCalifornia(exitTab);
@@ -21031,46 +21127,6 @@ const formHandler = (function () {
         : normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3);
     }
         
-        const currentSign = currentPanel?.sign;
-
-        if (currentSign) {
-        const qcEnabled = document.getElementById("qcExitMarkerEnabled");
-        const qcNumber = document.getElementById("qcExitMarkerNumber");
-        const qcPosition = document.getElementById("qcExitMarkerPosition");
-        const qcFlipped = document.getElementById("qcExitMarkerFlipped");
-        const qcSize = document.getElementById("qcExitMarkerSize");
-        const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
-
-        if (qcEnabled) {
-        currentSign.quebecExitMarkerEnabled = !!qcEnabled.checked;
-        }
-
-        if (qcNumber) {
-        currentSign.quebecExitMarkerNumber = qcNumber.value || "1";
-        }
-
-        if (qcPosition) {
-          currentSign.quebecExitMarkerPosition = String(qcPosition.value || "Center")
-            .replace(/^Bottom\s+/i, "")
-            .trim();
-        }
-
-        if (qcFlipped) {
-        currentSign.quebecExitMarkerFlipped = !!qcFlipped.checked;
-        }
-        if (qcSize) {
-          const parsedSize = parseFloat(qcSize.value);
-          const resolvedSize =
-            Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 3.05;
-
-          currentSign.quebecExitMarkerSizeRem = resolvedSize;
-
-          if (qcSizeValue) {
-            qcSizeValue.textContent = resolvedSize.toString();
-          }
-        }
-    }
-
     if (exitTab.variant == "Toll Logo") {
       const tollLogoOptions = TollLogoElement.prototype.logos || {};
       const pickerValue = document.getElementById("exitTollLogoPickerValue")?.value;
@@ -21104,21 +21160,6 @@ const formHandler = (function () {
       exitTab.tollLogoOnly =
         typeof exitTab.tollLogoOnly === "boolean" ? exitTab.tollLogoOnly : true;
       exitTab.tollLogoSquare = !!exitTab.tollLogoSquare;
-    }
-
-    if (exitTab.variant === "Quebec Exit Marker" && currentSign) {
-      const qcNumber = String(exitTab.number || "").trim();
-      currentSign.quebecExitMarkerEnabled = qcNumber.length > 0;
-      currentSign.quebecExitMarkerNumber = qcNumber;
-      currentSign.quebecExitMarkerPosition = exitTab.position || "Right";
-      currentSign.quebecExitMarkerSizeRem = Math.max(2, Math.min(6, (parseFloat(exitTab.fontSize) || 18) / 5));
-    } else if (currentSign && currentSign.quebecExitMarkerEnabled) {
-      const hasActiveQcExitTab = Array.isArray(currentPanel.exitTabs) && currentPanel.exitTabs.some(
-        (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
-      );
-      if (!hasActiveQcExitTab) {
-        currentSign.quebecExitMarkerEnabled = false;
-      }
     }
 
         const exitTabFontSelect = form["exitTabFontFamily"];
@@ -21262,6 +21303,10 @@ const formHandler = (function () {
           exitTab.horizontalPadding = Number.isFinite(horizontalPaddingInput)
             ? Math.max(-1, Math.min(3, horizontalPaddingInput))
             : ExitTab.prototype.defaultHorizontalPadding;
+          const verticalPaddingInput = parseFloat(form["exitTabVerticalPadding"]?.value);
+          exitTab.verticalPadding = Number.isFinite(verticalPaddingInput)
+            ? Math.max(0, Math.min(3, verticalPaddingInput))
+            : 0;
         }
 
         const exitTextSizePercentInput = parseFloat(form["exitTabTextSizePercent"]?.value);
@@ -21283,6 +21328,7 @@ const formHandler = (function () {
         }
 
         ExitTab.normalizeCalifornia(exitTab);
+        ExitTab.normalizeFullLeft(exitTab);
         window.CaliforniaExit?.syncEditor(exitTab.variant);
         saveCurrentExitTabEditsToSelectedProfile(exitTab, !!exitWidthChange);
     }
@@ -21722,6 +21768,16 @@ const formHandler = (function () {
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].bottomPadding = bottomMarginValue;
+    for (const side of ["left", "right"]) {
+      const valueEl = document.querySelector(`#sdBlock_${side}PaddingVal`);
+      const sliderEl = document.querySelector(`#sdBlock_${side}Padding`);
+      const value = Math.max(0, normalizeBlockMarginInputValue(valueEl?.value ?? sliderEl?.value, 0));
+      if (valueEl && !mergeLiveInputActive) valueEl.value = value;
+      if (sliderEl) sliderEl.value = Math.max(0, Math.min(3, value));
+      subPanel.blockElements.blockProperties[
+        exposed.vars.currentlySelectedRowIndex
+      ][`${side}Padding`] = value;
+    }
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].backgroundColor = document.querySelector(
@@ -21732,21 +21788,10 @@ const formHandler = (function () {
     ].borderColor = document.querySelector("#sdBlock_borderColor").value;
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
-    ].backgroundFullWidth = document.querySelector(
-      "#sdBlock_backgroundFullWidth"
-    ).checked;
+    ].fullBorder = document.getElementById("sdBlock_fullBorder").checked;
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].width = document.querySelector("#sdBlock_width").value;
-    subPanel.blockElements.blockProperties[
-      exposed.vars.currentlySelectedRowIndex
-    ].stretchLeft = document.querySelector("#sdBlock_stretchLeft").checked;
-    subPanel.blockElements.blockProperties[
-      exposed.vars.currentlySelectedRowIndex
-    ].stretchCenter = document.querySelector("#sdBlock_stretchCenter").checked;
-    subPanel.blockElements.blockProperties[
-      exposed.vars.currentlySelectedRowIndex
-    ].stretchRight = document.querySelector("#sdBlock_stretchRight").checked;
 
     if (
       currentPanel.sign.subPanels.length > 1 &&
@@ -21767,6 +21812,13 @@ const formHandler = (function () {
       subPanel.width = parseInt(form["subPanelLength"].value);
     }
 
+    // Middle is the default, so it is left off the saved subpanel.
+    const verticalAlign = form["subPanelVerticalAlign"]?.value;
+    if (subPanel && verticalAlign) {
+      if (verticalAlign === "Middle") delete subPanel.verticalAlign;
+      else subPanel.verticalAlign = verticalAlign;
+    }
+
     currentPanel.sign.shieldPosition = form["shieldsPosition"].value;
     var guideArrow_result = form["guideArrow"].value;
 
@@ -21779,7 +21831,9 @@ const formHandler = (function () {
 
         currentPanel.sign.guideArrow = guideArrow_result;
 
-        if (guideArrow_result !== "None") {
+        if (["diagrammatic", "roundabout"].includes(currentPanel.sign.arrowMode)) {
+          // Diagrammatics owns the face; retain the saved standard settings.
+        } else if (guideArrow_result !== "None") {
           currentPanel.sign.arrowMode = "standard";
         } else if (currentPanel.sign.arrowMode !== "apl") {
           currentPanel.sign.arrowMode = "standard";
@@ -21802,7 +21856,8 @@ const formHandler = (function () {
           sign.exitArrowAngle = normalizeStandardAngle(exitArrowField("AngleValue").value);
           sign.exitArrowFlip = exitArrowField("Flip").getAttribute("aria-pressed") === "true";
           sign.exitArrowSize = clampStandardValue(exitArrowField("SizeValue").value, 1, 5, 10, 3);
-          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 5, 100, 0.2);
+          sign.exitArrowPadding = clampStandardValue(exitArrowField("PaddingValue").value, 0, 4, 100, 0.2);
+          sign.exitArrowHorizontalPadding = clampStandardValue(exitArrowField("HorizontalPaddingValue").value, 0, 4, 100, 0.2);
           sign.exitArrowSpacing = clampStandardValue(exitArrowField("SpacingValue").value, 0, 25, 100, 8.5);
           sign.exitTextFont = exitTextField("Font").value || "Series E";
           sign.exitTextSize = clampStandardValue(exitTextField("SizeValue").value, 50, 100, 1, 70);
@@ -22624,6 +22679,13 @@ const formHandler = (function () {
         bottomPadValEl.textContent = bottomPadValue;
       }
     }
+    for (const side of ["left", "right"]) {
+      const value = Math.max(0, clampBlockMarginSliderValue(selectedBlockProperties[`${side}Padding`]));
+      const sliderEl = document.querySelector(`#sdBlock_${side}Padding`);
+      const valueEl = document.querySelector(`#sdBlock_${side}PaddingVal`);
+      if (sliderEl) sliderEl.value = value;
+      if (valueEl) valueEl.value = value;
+    }
     bindBlockMarginStepperCommit();
 
     document.querySelector("#sdBlock_backgroundColor").value =
@@ -22642,14 +22704,9 @@ const formHandler = (function () {
       blockBorderColorEl.addEventListener("blur", readForm, { once: true });
     }
 
-    const blockBackgroundFullWidthEl = document.querySelector(
-      "#sdBlock_backgroundFullWidth"
-    );
-    blockBackgroundFullWidthEl.checked =
-      !!selectedBlockProperties.backgroundFullWidth;
-    blockBackgroundFullWidthEl.addEventListener("change", readForm, {
-      once: true,
-    });
+    const rowFullBorderInput = document.getElementById("sdBlock_fullBorder");
+    rowFullBorderInput.checked = selectedBlockProperties.fullBorder === true;
+    rowFullBorderInput.addEventListener("change", readForm, { once: true });
 
     document.querySelector("#sdBlock_width").value =
       selectedBlockProperties.width;
@@ -22659,25 +22716,6 @@ const formHandler = (function () {
       .querySelector("#sdBlock_width")
       .addEventListener("change", readForm, { once: true });
 
-    document
-      .querySelector("#sdBlock_stretchLeft")
-      .addEventListener("change", readForm, { once: true });
-
-    document.querySelector("#sdBlock_stretchLeft").checked =
-      selectedBlockProperties.stretchLeft;
-
-    document
-      .querySelector("#sdBlock_stretchCenter")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchCenter").checked =
-      selectedBlockProperties.stretchCenter;
-
-    document
-      .querySelector("#sdBlock_stretchRight")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchRight").checked =
-      selectedBlockProperties.stretchRight;
-
     /*
     // Old Control Text
     const controlTextElmt = document.getElementById("controlText");
@@ -22686,6 +22724,7 @@ const formHandler = (function () {
     const actionMessageElmt = document.getElementById("actionMessage");
     actionMessageElmt.value = sign.actionMessage;
     */
+    window.SignMakerBlockProperties?.sync(currentBlockElem, blockElemType, exposed);
     return { blockElemType, currentBlockElem };
   };
   const syncSelectedBlockEditor = () => {
@@ -22706,7 +22745,6 @@ const formHandler = (function () {
     window.SignMakerMergeUI?.sync();
     window.SignMakerMobileForms?.prepareElement();
     window.SignMakerMobileSubpanels?.refresh();
-    scheduleSubpanelModalHeightSync();
   };
 
   const updateForm = function (options = {}) {
@@ -22717,6 +22755,8 @@ const formHandler = (function () {
     mergePendingFormRefresh = false; mergePendingFormOptions = null;
     if (options.elementOnly && exposed.getCurrentBlockElem?.()) { syncSelectedBlockEditor(); return; }
     syncPostReference();
+    window.SignMakerDiagrammatics.syncEditor(exposed.getCurrentPanel()?.sign);
+    window.SignMakerRoundabout.syncEditor(exposed.getCurrentPanel()?.sign);
     normalizeExitTabProfiles();
       const currentPanelLabel = document.getElementById("currentlySelectedPanel");
       if (currentPanelLabel && post && Array.isArray(post.panels)) {
@@ -24811,6 +24851,7 @@ const formHandler = (function () {
       }
     }
 
+    document.getElementById("panelWarningDiamond").checked = panel.warningDiamond === true;
     const panelCornerSelectElmt = document.getElementById("panelCorner");
     for (const option of panelCornerSelectElmt.options) {
       if (option.value == panel.corner) {
@@ -24852,6 +24893,7 @@ const formHandler = (function () {
     const vmsSettings = VmsPanel.settings(panel);
     document.getElementById("vmsPanel").checked=panel.isVms===true;
     document.getElementById("copySignsOnly").checked=post.copySignsOnly!==false;
+    document.getElementById("joinMatchingBanners").checked=post.joinMatchingBanners!==false;
     syncDisplaySettings();
     document.getElementById("vmsPanelSettings").hidden = panel.isVms !== true;
     document.getElementById("vmsResolution").value = String(vmsSettings.vmsResolution);
@@ -24910,8 +24952,18 @@ const formHandler = (function () {
         ? "inline-block"
         : "none";
 
+    const selectedSubPanel = panel.sign.subPanels[exposed.vars.currentlySelectedSubPanelIndex];
+    const subPanelVerticalAlign = document.getElementById("subPanelVerticalAlign");
+    const subPanelVerticalAlignRow = document.getElementById("subPanelVerticalAlignRow");
+    if (subPanelVerticalAlign && subPanelVerticalAlignRow) {
+      subPanelVerticalAlignRow.hidden = !selectedSubPanel;
+      subPanelVerticalAlign.value = selectedSubPanel?.verticalAlign || "Middle";
+    }
+
     // Exit Tabs
     ExitTab.normalizeCalifornia(exitTab);
+    ExitTab.normalizeFullLeft(exitTab);
+    if (exitTab.variant === "Quebec Exit Marker") updateQuebecExitMarkerForm(exitTab);
     const exitNumberElmt = document.getElementById("exitNumber");
     const exitTabBilingualField = document.getElementById("exitTabBilingual");
     const exitTabBilingualBottomTextField = document.getElementById("exitTabBilingualBottomText");
@@ -25001,47 +25053,6 @@ const formHandler = (function () {
       }
       toggleExitTabVariantOptionsVisibility(exitTab.variant);
     }
-      const currentSign = panel?.sign;
-
-      if (currentSign) {
-        const qcEnabled = document.getElementById("qcExitMarkerEnabled");
-        const qcNumber = document.getElementById("qcExitMarkerNumber");
-        const qcPosition = document.getElementById("qcExitMarkerPosition");
-        const qcFlipped = document.getElementById("qcExitMarkerFlipped");
-        const qcSize = document.getElementById("qcExitMarkerSize");
-        const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
-
-        if (qcEnabled) {
-          qcEnabled.checked = !!currentSign.quebecExitMarkerEnabled;
-        }
-
-        if (qcNumber) {
-          qcNumber.value = currentSign.quebecExitMarkerNumber || "1";
-        }
-
-        if (qcPosition) {
-        qcPosition.value = String(currentSign.quebecExitMarkerPosition || "Center")
-          .replace(/^Bottom\s+/i, "")
-          .trim();
-        }
-
-        if (qcFlipped) {
-          qcFlipped.checked = !!currentSign.quebecExitMarkerFlipped;
-        }
-        if (qcSize) {
-            const resolvedSize =
-              Number.isFinite(parseFloat(currentSign.quebecExitMarkerSizeRem))
-                ? parseFloat(currentSign.quebecExitMarkerSizeRem)
-                : 3.3;
-
-            qcSize.value = resolvedSize;
-
-            if (qcSizeValue) {
-              qcSizeValue.innerHTML = resolvedSize;
-            }
-        }
-      }
-
     const tollLogoSizeInput = document.getElementById("exitTollLogoSize");
     const tollLogoSizeValueElmt = document.getElementById(
       "exitTollLogoSizeValue"
@@ -25274,6 +25285,13 @@ const formHandler = (function () {
     } else {
       exitTab.horizontalPadding = resolvedHorizontalPadding;
     }
+    const textVerticalPadding = Math.max(0, Math.min(3, parseFloat(exitTab.verticalPadding) || 0));
+    const textVerticalPaddingInput = document.getElementById("exitTabVerticalPadding");
+    if (textVerticalPaddingInput) textVerticalPaddingInput.value = String(textVerticalPadding);
+    const textVerticalPaddingDisplay = document.getElementById("exitTabVerticalPaddingValue");
+    if (textVerticalPaddingDisplay) textVerticalPaddingDisplay.innerHTML = textVerticalPadding.toFixed(1);
+    const textVerticalPaddingGroup = document.getElementById("exitTabVerticalPaddingGroup");
+    if (textVerticalPaddingGroup) textVerticalPaddingGroup.hidden = isAssetExitTabForPaddingControls;
     if (horizontalPadding) {
       horizontalPadding.min = isAssetExitTabForPaddingControls ? "-3" : "-1";
       horizontalPadding.max = "3";
@@ -25595,7 +25613,6 @@ const formHandler = (function () {
       }
 
       syncGlobalBlockControls();
-      scheduleSubpanelModalHeightSync();
   
     window.SignMakerMergeUI?.sync();
     window.SignMakerEditorRuntime?.ensure();
@@ -26243,6 +26260,7 @@ const formHandler = (function () {
       },
       migrateSavedTypographyPreferences,
       init: initialize,
+      showWelcomeTutorial,
       readForm,
       persistPostAppearance,
       updateForm,

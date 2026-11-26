@@ -276,9 +276,9 @@ test('the real font picker renders family labels, expands once, and retains a sp
   const f = fixture(), select = f.select('sdCtrlText_fontFamily', 'Series EM');
   const make = installFontPicker(f), picker = make({selectEl: select, mode: 'allFontsGrouped'});
   const trigger = picker.wrapper.querySelector('button'); trigger.click();
-  assert.deepEqual(picker.menu.children.map(node => node.textContent), ['Highway Gothic','Clearview','Advanced...']);
+  assert.deepEqual(picker.menu.querySelector('.fontPickerList').children.map(node => node.textContent), ['Highway Gothic','Clearview','Advanced...']);
   assert.equal(select.value, 'Series EM');
-  picker.menu.children[1].click(); assert.equal(select.value, 'Series 5');
+  picker.menu.querySelector('.fontPickerList').children[1].click(); assert.equal(select.value, 'Series 5');
   trigger.click(); picker.menu.querySelector('.mobileDropdownAdvanced').click();
   assert.equal(picker.menu.querySelectorAll('.fontPickerFontItem').length, 6);
   const specific = picker.menu.querySelectorAll('.fontPickerFontItem').find(node => node.dataset.fontValue === 'Series C');
@@ -292,7 +292,7 @@ test('the real default-family font picker selects the requested font rather than
   const f = fixture(), family = f.select('settingsDefaultsControlTextFontFamily', 'Highway Gothic');
   const font = f.select('settingsDefaultsControlTextFont', 'Series EM');
   const picker = installFontPicker(f)({selectEl: family, mode: 'family'});
-  picker.wrapper.querySelector('button').click(); picker.menu.children[1].click();
+  picker.wrapper.querySelector('button').click(); picker.menu.querySelector('.fontPickerList').children[1].click();
   assert.equal(family.value, 'Clearview'); assert.equal(font.value, 'Series 5');
 });
 test('the real arrow picker filters only its mobile source and restores every desktop entry on Advanced', () => {
@@ -335,6 +335,43 @@ test('the native font picker uses the same two named choices for other text', ()
   assert.deepEqual(menu.querySelectorAll('[data-native-index]').map(row => row.querySelector('.symbolPickerLabel').textContent), ['Highway Gothic','Clearview']);
   menu.querySelectorAll('[data-native-index]')[1].click(); assert.equal(select.value, 'Series 4');
   assert.equal(trigger.querySelector('.symbolPickerLabel').textContent, 'Clearview');
+});
+
+test('a dropdown without a search bar matches the entire typed sequence', () => {
+  const f = fixture();
+  const appearance = f.window.SignMakerDropdowns;
+  vm.runInContext(read('public/js/DropdownTheme.js'), f.context);
+  Object.assign(f.window.SignMakerDropdowns, appearance);
+  vm.runInContext(read('public/js/NativeSelect.js'), f.context);
+  const select = f.select('arrowType', 'Down', ['Down', 'Type A Extended', 'Type A', 'Type A Extra', 'Type B']);
+  select.options[1].disabled = true;
+  const picker = f.window.createNativeSelectPicker(select, 'Arrow type');
+  const trigger = picker.wrapper.querySelector('button');
+  let timeStamp = 0;
+  const key = (key, pause = 100) => {
+    timeStamp += pause;
+    trigger.dispatchEvent({type: 'keydown', key, timeStamp, preventDefault() {}, stopPropagation() {}});
+  };
+  trigger.click();
+  for (const char of 'type a') key(char);
+  const menu = f.document.querySelectorAll('.symbolPickerMenu')[0];
+  const activeLabel = () => menu.querySelector('.symbolPickerItem.active').querySelector('.symbolPickerLabel').textContent;
+  assert.equal(activeLabel(), 'Type A');
+  assert.equal(select.value, 'Down');
+  for (const char of ' ex') key(char);
+  assert.equal(activeLabel(), 'Type A Extra');
+  key('Enter');
+  assert.equal(select.value, 'Type A Extra');
+
+  for (const char of 'type b') key(char);
+  assert.equal(select.value, 'Type B');
+  key('d', 1100);
+  assert.equal(select.value, 'Down');
+  key('e', 1100);
+  key('x');
+  assert.equal(select.value, 'Type A Extra');
+  key(' ', 1100);
+  assert.equal(trigger.getAttribute('aria-expanded'), 'true');
 });
 
 test('the real color picker hides custom creation and saved colors until expanded, without losing their values', () => {

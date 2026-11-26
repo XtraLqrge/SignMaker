@@ -1,0 +1,435 @@
+/* Upright static Highway VAR styles, with their original font bytes. */
+@font-face {
+  font-family: "Highway VAR Series 1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 3";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series3.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 4";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series4.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 5";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series5.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 6";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series6.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 7";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series7.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 8";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series8.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 9";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series9.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 1 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series1G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 2 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series2G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 3 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series3G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 4 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series4G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 5 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series5G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 6 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series6G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 7 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series7G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 8 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series8G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 9 G-1";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series9G-1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 1 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series1G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 2 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series2G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 3 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series3G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 4 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series4G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 5 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series5G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 6 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series6G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 7 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series7G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 8 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series8G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Highway VAR Series 9 G-2";
+  src: url("../fonts/oc-highway-var2/OCHighwayVAR2-Series9G-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Supplement the missing fractions with Roadgeek widths and matching cap height. */
+@font-face {
+  font-family: "Highway VAR Series 1";
+  src: url("../fonts/Roadgeek2014SeriesB.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 2";
+  src: url("../fonts/Roadgeek2014SeriesC.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 3";
+  src: url("../fonts/Roadgeek2014SeriesC.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 4";
+  src: url("../fonts/Roadgeek2014SeriesD.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 5";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 6";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 7";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 8";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 9";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 1 G-1";
+  src: url("../fonts/Roadgeek2014SeriesB.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 2 G-1";
+  src: url("../fonts/Roadgeek2014SeriesC.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 3 G-1";
+  src: url("../fonts/Roadgeek2014SeriesC.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 4 G-1";
+  src: url("../fonts/Roadgeek2014SeriesD.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 5 G-1";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 6 G-1";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 7 G-1";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 8 G-1";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 9 G-1";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 1 G-2";
+  src: url("../fonts/Roadgeek2014SeriesB.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 2 G-2";
+  src: url("../fonts/Roadgeek2014SeriesC.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 3 G-2";
+  src: url("../fonts/Roadgeek2014SeriesC.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 4 G-2";
+  src: url("../fonts/Roadgeek2014SeriesD.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 5 G-2";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 6 G-2";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 7 G-2";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 8 G-2";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}
+@font-face {
+  font-family: "Highway VAR Series 9 G-2";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 117.5%;
+  unicode-range: U+00BC-00BE, U+2044, U+2150-215E;
+}

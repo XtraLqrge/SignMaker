@@ -216,6 +216,20 @@ const encodeMotorwayRouteText = (value) => {
   return text.match(/NE|SE|NW|SW|[ABEMNSW0-9 \n]/g)?.map((part) => directions[part] || part).join("") || "";
 };
 
+// A typed "\n" breaks a banner onto more lines. The first line stays a plain
+// text node so it keeps the single-line box and position; the rest stack
+// tightly below it in their own block.
+const setMultilineBannerText = (element, text) => {
+  const [firstLine, ...moreLines] = String(text ?? "").split("\n");
+  if (!element || !moreLines.length) return;
+  element.classList.add("multilineBanner");
+  element.textContent = firstLine || " ";
+  const extraLines = document.createElement("span");
+  extraLines.className = "bannerExtraLines";
+  extraLines.textContent = moreLines.join("\n");
+  element.appendChild(extraLines);
+};
+
 const applyMotorwayTextFallback = (element, fontFamily) => {
   if (!element || !/^Motorway (?:Permanent|Temporary)$/.test(fontFamily)) return;
 
@@ -1300,6 +1314,7 @@ class ElectronicSignElement extends TextElement {
     fontFamily = "Modern VMS",
     textColor = "Orange",
     padding = 0.5,
+    paddingVertical = 0,
     glow = true,
     realisticLED = true,
     ledResolution = "medium",
@@ -1312,6 +1327,7 @@ class ElectronicSignElement extends TextElement {
     this.useNumeralFormatting = false;
     this.useBannerFormatting = false;
     this.padding = padding;
+    this.paddingVertical = paddingVertical;
     this.glow = glow;
     this.realisticLED = realisticLED === true;
     this.ledResolution = ledResolution;
@@ -1329,6 +1345,7 @@ class ElectronicSignElement extends TextElement {
     );
     newText.style.color = (lib.colors[this.textColor] || this.textColor).toLowerCase();
     newText.style.setProperty("--padding", this.padding + "rem");
+    newText.style.setProperty("--paddingVertical", Math.max(0, parseFloat(this.paddingVertical) || 0) + "rem");
     newText.style.setProperty(
       "--textShadow",
       this.glow
@@ -4528,15 +4545,17 @@ ShieldElement.prototype.createBannerElement = function (
     bannerEl.classList.add("multilineRoadName");
   }
 
-  const displayBannerValue = isRoadNameBanner
-    ? normalizedBannerValue.replace(/\\n/g, "\n")
-    : normalizedBannerValue;
+  const displayBannerValue = normalizedBannerValue.replace(/\\n/g, "\n");
 
   bannerEl.textContent = bannerInfo.isBlankPlaceholder
     ? "W"
     : normalizedBannerValue
       ? displayBannerValue
       : " ";
+
+  if (!isRoadNameBanner && !bannerInfo.isBlankPlaceholder) {
+    setMultilineBannerText(bannerEl, displayBannerValue);
+  }
 
   if (/^Motorway (?:Permanent|Temporary)$/.test(renderedFont)) {
     bannerEl.style.setProperty("--bannerFontFamily", `"${getMotorwayFallbackFont(renderedFont)}"`);
@@ -5216,14 +5235,9 @@ class DividerElement {
         "--dividerBleedRight",
         !isVertical ? right || "0rem" : "0rem"
       );
-      newDivider.style.setProperty(
-        "--dividerBleedTop",
-        isVertical ? top || "0rem" : "0rem"
-      );
-      newDivider.style.setProperty(
-        "--dividerBleedBottom",
-        isVertical ? bottom || "0rem" : "0rem"
-      );
+      // Vertical bleed is measured after layout in main.js.
+      newDivider.style.setProperty("--dividerBleedTop", "0rem");
+      newDivider.style.setProperty("--dividerBleedBottom", "0rem");
     } else {
       newDivider.classList.remove("fullBleed");
       newDivider.style.setProperty("--dividerBleedLeft", "0rem");
@@ -6850,6 +6864,7 @@ TollLogoElement.prototype.logos = {
   EPASS: { label: "E-PASS", src: "img/tolls/EPASS.svg" },
   SunPassOld: { label: "SunPass (old)", src: "img/tolls/SUNPASS-1.svg" },
   SunPassNew: { label: "SunPass (new)", src: "img/tolls/SUNPASS-2.svg" },
+  VicePass: { label: "VicePass", src: "img/tolls/VICEPASS.png" },
   ZipCash: { label: "ZipCash", src: "img/tolls/ZIPCASH.svg" },
   LEEWAY: { label: "LeeWay", src: "img/tolls/LEEWAY.svg" },
   KTAG: { label: "K-TAG", src: "img/tolls/KTAG.svg" },
@@ -6871,9 +6886,12 @@ class Block {
   constructor({
     topPadding = 0,
     bottomPadding = 0,
+    leftPadding = 0,
+    rightPadding = 0,
     backgroundColor = "Inherit",
     borderColor = "Match BG",
     backgroundFullWidth = true,
+    fullBorder = false,
     width = 0,
     stretchLeft = true,
     stretchCenter = true,
@@ -6882,9 +6900,12 @@ class Block {
   } = {}) {
     this.topPadding = topPadding;
     this.bottomPadding = bottomPadding;
+    this.leftPadding = leftPadding;
+    this.rightPadding = rightPadding;
     this.backgroundColor = backgroundColor;
     this.borderColor = borderColor;
     this.backgroundFullWidth = backgroundFullWidth;
+    this.fullBorder = fullBorder === true;
     this.width = width;
     this.stretchLeft = stretchLeft;
     this.stretchCenter = stretchCenter;
@@ -6935,7 +6956,7 @@ ShieldElement.prototype.areMergeableAboveBannersEquivalent = function (
 };
 
 ShieldElement.prototype.mergeConsecutiveAboveBanners = function (container) {
-  if (!container) {
+  if (!container || (typeof app !== "undefined" && app.getPost?.()?.joinMatchingBanners === false)) {
     return;
   }
 
@@ -7353,6 +7374,8 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
       flexRow.style.setProperty("--marginBottom", bottomSpacing);
       flexRow.style.setProperty("--blockPaddingTopExtra", "0rem");
       flexRow.style.setProperty("--blockPaddingBottomExtra", "0rem");
+      flexRow.style.setProperty("--rowPaddingLeft", Math.max(0, parseFloat(properties.leftPadding) || 0) + "rem");
+      flexRow.style.setProperty("--rowPaddingRight", Math.max(0, parseFloat(properties.rightPadding) || 0) + "rem");
       const resolvedBackgroundColor =
         properties.backgroundColor == "Inherit"
           ? ""
@@ -7372,6 +7395,26 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         properties.backgroundColor == "Fluorescent Yellow-Green" ||
         properties.backgroundColor == "Fluorescent Pink";
 
+      const chosenBorderColor =
+        typeof properties.borderColor === "string" &&
+          properties.borderColor.trim().length
+          ? properties.borderColor
+          : Block.defaultBorderColor;
+      const resolvedBorderColor =
+        chosenBorderColor === Block.defaultBorderColor
+          ? usesLightBleedBackground
+            ? (lib.colors && lib.colors.Black) || "black"
+            : (lib.colors && lib.colors.White) || "white"
+          : resolveColorValue(chosenBorderColor);
+      if (properties.fullBorder === true) {
+        flexRow.dataset.rowFullBorder = "true";
+        flexRow.style.setProperty(
+          "--rowFullBorderColor",
+          chosenBorderColor === Block.defaultBorderColor && !resolvedBackgroundColor
+            ? "currentColor"
+            : resolvedBorderColor
+        );
+      }
       let appliedFullBleedBorderColor = "";
       const rowWidthValue = parseFloat(properties.width);
       const rowWidthStyle =
@@ -7390,17 +7433,6 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         flexRow.style.setProperty("--marginBottom", bottomNegativeSpacing);
         flexRow.style.setProperty("--blockPaddingTopExtra", topPositiveSpacing);
         flexRow.style.setProperty("--blockPaddingBottomExtra", bottomPositiveSpacing);
-        const chosenBorderColor =
-          typeof properties.borderColor === "string" &&
-            properties.borderColor.trim().length
-            ? properties.borderColor
-            : Block.defaultBorderColor;
-        const resolvedBorderColor =
-          chosenBorderColor === Block.defaultBorderColor
-            ? usesLightBleedBackground
-              ? (lib.colors && lib.colors.Black) || "black"
-              : (lib.colors && lib.colors.White) || "white"
-            : resolveColorValue(chosenBorderColor);
         if (resolvedBorderColor) {
           flexRow.dataset.fullBleedBorderColor = resolvedBorderColor;
           appliedFullBleedBorderColor = resolvedBorderColor;
@@ -7419,7 +7451,9 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
             resolvedBackgroundColor
           );
         } else {
-          delete flexRow.dataset.fullBleedBorderColor;
+          if (properties.fullBorder !== true || chosenBorderColor === Block.defaultBorderColor) {
+            delete flexRow.dataset.fullBleedBorderColor;
+          }
           delete flexRow.dataset.fullBleedBackgroundColor;
           flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
           flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");
@@ -7517,7 +7551,7 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
           }
         }
 
-        const blockElmt = elem.createElement(panel, subPanel);
+        let blockElmt = elem.createElement(panel, subPanel);
 
         if (elem instanceof ShieldElement) {
           const hasBlockBefore = blockIdx > 0 && row[blockIdx - 1];
@@ -7534,6 +7568,7 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
           }
         }
 
+        blockElmt = window.SignMakerBlockProperties?.renderElement(elem, blockElmt) || blockElmt;
         blockElmt.dataset.signRow = i;
         blockElmt.dataset.signBlock = blockIdx;
         activeAlignmentGroup.appendChild(blockElmt);
@@ -7571,6 +7606,7 @@ class GroupedBlockElement {
     alignment = "Center",
     backgroundColor = "Inherit",
     padding = 0,
+    paddingVertical,
     borderRadius = 0,
     border = false,
     borderColor = "Inherit",
@@ -7588,6 +7624,8 @@ class GroupedBlockElement {
       : "Inherit";
     // Both in rem; the editor supplies strings.
     this.padding = GroupedBlockElement.normalizeLength(padding);
+    // Older groups used `padding` on every side.
+    this.paddingVertical = GroupedBlockElement.normalizeLength(paddingVertical ?? padding);
     this.borderRadius = GroupedBlockElement.normalizeLength(borderRadius);
     this.border = border === true;
     this.borderColor = TextElement.prototype.backgroundColor.includes(borderColor)
@@ -7620,8 +7658,9 @@ class GroupedBlockElement {
     }
 
     const padding = GroupedBlockElement.normalizeLength(this.padding);
+    const paddingVertical = GroupedBlockElement.normalizeLength(this.paddingVertical ?? this.padding);
     const borderRadius = GroupedBlockElement.normalizeLength(this.borderRadius);
-    if (padding) wrapper.style.padding = `${padding}rem`;
+    if (padding || paddingVertical) wrapper.style.padding = `${paddingVertical}rem ${padding}rem`;
     if (borderRadius) wrapper.style.borderRadius = `${borderRadius}rem`;
     if (this.border) {
       // Inherit follows the group's text color; the width matches the sign's.
@@ -7687,6 +7726,7 @@ Control.prototype.cloneElement = function (element) {
   const clonedElement = Object.assign(new Constructor(element), element);
   if (clonedElement instanceof ElectronicSignElement) clonedElement.realisticLED = element.realisticLED === true;
   delete clonedElement._elementType;
+  if (element.blockProperties) clonedElement.blockProperties = { ...element.blockProperties };
 
   if (typeof clonedElement.fontFamily === "string") {
     clonedElement.fontFamily = normalizeTextFontFamilyName(
@@ -7728,6 +7768,13 @@ Control.prototype.clone = function () {
   return new Control({ rows, blockProperties });
 };
 
+
+// Text and shields pad inside their box; beacons and dividers add outside space.
+const BLOCK_PADDING_TYPES = [ControlTextElement, ActionMessageElement, ShieldElement, BeaconElement, DividerElement];
+for (const BlockType of BLOCK_PADDING_TYPES) {
+  BlockType.prototype.paddingHorizontal = 0;
+  BlockType.prototype.paddingVertical = 0;
+}
 
 Control.prototype.blockToClassElems = {
   ControlTextElement: ControlTextElement,

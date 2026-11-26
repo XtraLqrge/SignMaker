@@ -29,16 +29,29 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
   background-color: var(--masterBlockBgColor);
 }
 
+.blockElementRow {
+  padding-left: var(--rowPaddingLeft, 0rem);
+  padding-right: var(--rowPaddingRight, 0rem);
+}
+
 .blockElementRow.fullBleed {
   width: calc(100% + var(--blockBleedLeft, 0rem) + var(--blockBleedRight, 0rem));
   margin-left: calc(-1 * var(--blockBleedLeft, 0rem));
   margin-right: calc(-1 * var(--blockBleedRight, 0rem));
   margin-top: calc(var(--marginTop, 0rem) - var(--blockBleedTop, 0rem));
   margin-bottom: calc(var(--marginBottom, 0rem) - var(--blockBleedBottom, 0rem));
-  padding-left: var(--blockBleedLeft, 0rem);
-  padding-right: var(--blockBleedRight, 0rem);
+  padding-left: calc(var(--blockBleedLeft, 0rem) + var(--rowPaddingLeft, 0rem));
+  padding-right: calc(var(--blockBleedRight, 0rem) + var(--rowPaddingRight, 0rem));
   padding-top: calc(var(--blockBleedTop, 0rem) + var(--blockPaddingTopExtra, 0rem));
   padding-bottom: calc(var(--blockBleedBottom, 0rem) + var(--blockPaddingBottomExtra, 0rem));
+}
+
+/* Bounded rows paint their border on the row itself, inside the content box. */
+.blockElementRow[data-row-full-border]:not(.fullBleed),
+.sign .bE-groupedBlockElement .blockElementRow[data-row-full-border].fullBleed {
+  --rowFullBorderWidth: max(1px, var(--panelBorderWidth, 0.2rem));
+  outline: var(--rowFullBorderWidth) solid var(--rowFullBorderColor, currentColor) !important;
+  outline-offset: calc(-1 * var(--rowFullBorderWidth));
 }
 
 .bE-textElement {
@@ -77,12 +90,12 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
 }
 
 .bE-electronicSign {
-  padding: 0.2rem var(--padding);
+  padding: calc(0.2rem + var(--paddingVertical, 0rem)) var(--padding);
   line-height: calc(var(--fontSize) * ((var(--lineHeight) / 100)));
 }
 
 .bE-electronicSign.hgFix {
-  padding: 0.4rem var(--padding) 0.2rem var(--padding);
+  padding: calc(0.4rem + var(--paddingVertical, 0rem)) var(--padding) calc(0.2rem + var(--paddingVertical, 0rem)) var(--padding);
 }
 
 .bE-numeral {
@@ -322,10 +335,13 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
   flex-grow: 1;
 }
 
+/* Fill the block group reliably (a percentage of an auto-height group can
+   resolve to 0); the edge-to-edge extent is then measured after layout
+   (layoutVerticalFullBleedDividers). */
 .dividerElement.vertical.fullBleed {
-  height: calc(var(--dividerLength, 100%) + var(--dividerBleedTop, 0rem) + var(--dividerBleedBottom, 0rem));
-  margin-top: calc(-1 * var(--dividerBleedTop, 0rem));
-  margin-bottom: calc(-1 * var(--dividerBleedBottom, 0rem));
+  height: auto;
+  align-self: stretch;
+  transform-origin: top;
 }
 
 .blockElementLeft,
@@ -381,4 +397,37 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
 
 .bE-iconElement.hasBorder {
   border: 0.15rem solid var(--iconBorderColor, white);
+}
+
+/* Block padding (applyBlockElementPadding in Control.js). */
+.bE-controlTextElement.hasBlockPadding,
+.bE-actionMessageElement.hasBlockPadding,
+.bE-shieldElement.hasBlockPadding {
+  padding: var(--blockPaddingV, 0rem) var(--blockPaddingH, 0rem);
+}
+
+.bE-beaconElement.hasBlockPadding {
+  margin: var(--blockPaddingV, 0rem) calc(0.5rem + var(--blockPaddingH, 0rem));
+}
+
+.dividerElement.hasBlockPadding:not(.fullBleed),
+.dividerElement.vertical.hasBlockPadding {
+  margin-left: var(--blockPaddingH, 0rem);
+  margin-right: var(--blockPaddingH, 0rem);
+}
+
+/* Only blocks with explicit new layout settings receive these wrappers. */
+.elementPropertiesFrame {
+  display: flex;
+  align-items: center;
+  flex-basis: auto;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.elementPropertiesPaint {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
 }

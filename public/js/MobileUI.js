@@ -170,6 +170,7 @@ window.SignMakerMobile = (() => {
     more.hidden = true;
     for (const id of ['export', 'importJSON', 'copySign', 'templates', 'postStyleConfig', 'nightMode', 'appSettingsConfig']) {
       const node = document.getElementById(id);
+      if (!node) continue;
       utilityHomes.push([markHome(node), node]);
       more.append(node);
     }

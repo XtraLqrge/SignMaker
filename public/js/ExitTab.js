@@ -30,6 +30,8 @@ class ExitTab {
       borderThickness = ExitTab.prototype.defaultBorderThickness,
       minHeight = ExitTab.prototype.defaultMinHeight,
       nestedExitTabs = [],
+      quebecMarkerSizeRem,
+      quebecMarkerFlipped,
       nestedTabSpacing = ExitTab.prototype.defaultNestedTabSpacing,
       dragOffsetRem = 0,
       FHWAFont = ExitTab.prototype.defaultFHWAFont,
@@ -84,6 +86,10 @@ class ExitTab {
     }
 
     this.fullBorder = fullBorder;
+    if (this.variant === "Quebec Exit Marker") {
+      this.quebecMarkerSizeRem = quebecMarkerSizeRem;
+      this.quebecMarkerFlipped = quebecMarkerFlipped === true;
+    }
     this.squareCorners = squareCorners;
     this.cornerRadius = cornerRadius === "panel" || cornerRadius == null
       ? "panel"
@@ -226,6 +232,7 @@ class ExitTab {
         typeof bilingualBottomText === "string" && bilingualBottomText.trim().length
           ? bilingualBottomText
           : "SORTIE";
+    ExitTab.normalizeFullLeft(this);
   }
 
   nestExitTab() {
@@ -277,6 +284,8 @@ class ExitTab {
       transparent: exisitingTab.transparent,
       verticalArrangement: exisitingTab.verticalArrangement,
       caStyle: exisitingTab.caStyle,
+      quebecMarkerSizeRem: exisitingTab.quebecMarkerSizeRem,
+      quebecMarkerFlipped: exisitingTab.quebecMarkerFlipped,
       profileId: exisitingTab.profileId
     });
 
@@ -286,7 +295,7 @@ class ExitTab {
 }
 
 ExitTab.prototype.positions = ["Left", "Center", "Right"];
-ExitTab.prototype.variants = ["Default", "California", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+ExitTab.prototype.variants = ["Default", "California", "Quebec Exit Marker", "Toll Logo", "Icon", "Full Left", "Stacked"];
 ExitTab.prototype.widths = ["Narrow", "Wide", "Full", "Edge", "Out", "Side"];
 ExitTab.prototype.defaultBorderThickness = 0.2;
 ExitTab.prototype.defaultTollLogoSize = 3;
@@ -403,6 +412,8 @@ ExitTab.prototype.profileFormattingKeys = [
   "assetVerticalPadding",
   "transparent",
   "nestedTabSpacing",
+  "quebecMarkerSizeRem",
+  "quebecMarkerFlipped",
 ];
 
 ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.prototype.defaultVariant) {
@@ -415,7 +426,7 @@ ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.protot
 
   return {
     variant: resolvedVariant,
-    position: ExitTab.prototype.defaultPosition,
+    position: resolvedVariant === "Full Left" ? "Left" : resolvedVariant === "Quebec Exit Marker" ? "Center" : ExitTab.prototype.defaultPosition,
     width: ExitTab.prototype.defaultWidth,
     color: ExitTab.prototype.defaultColor,
     borderThickness: ExitTab.prototype.defaultBorderThickness,
@@ -446,7 +457,21 @@ ExitTab.prototype.getDefaultProfileSettings = function (variant = ExitTab.protot
     assetVerticalPadding: 0,
     transparent: false,
     nestedTabSpacing: ExitTab.prototype.defaultNestedTabSpacing,
+    ...(resolvedVariant === "Quebec Exit Marker" ? { quebecMarkerSizeRem: 3.3, quebecMarkerFlipped: false } : {}),
   };
+};
+
+ExitTab.normalizeFullLeft = function (tab) {
+  if (tab?.variant !== "Full Left") return;
+  tab.position = "Left";
+  tab.fontFamily = "Series E";
+  tab.FHWAFont = true;
+  tab.showLeft = false;
+  tab.bilingual = false;
+  tab.dragOffsetRem = 0;
+  delete tab.dragSnapAnchor;
+  delete tab.dragLayoutPosition;
+  delete tab.dragParentLayoutPosition;
 };
 
 ExitTab.normalizeCalifornia = function (tab) {

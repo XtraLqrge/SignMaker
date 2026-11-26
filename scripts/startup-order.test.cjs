@@ -76,11 +76,12 @@ function harness({minified=false, snapshot=null, preferences=false} = {}) {
     DEFAULT_POST_POSITION:'Right',getDefaultPanelSpacing:()=>1,ensureExtendedGuideArrowOptions(){},bindDownloadResolutionControl(){},
     getRestoreOnRefreshMode:()=>'always',readSavedAppStateSnapshot:async()=>snapshot,prepareIconImagesForPost:async()=>{},
     initializeVmsRendering:()=>note('vms-ready'),migrateSavedSignTypographyOnce:async()=>null,CustomShields:class {},exposeToFormHandler:{},
-    formHandler:{init:async(_api,{beforeUI})=>{await beforeUI();note('form-ready');},updateForm:()=>note('form-update')},
+    formHandler:{init:async(_api,{beforeUI})=>{await beforeUI();note('form-ready');},updateForm:()=>note('form-update'),showWelcomeTutorial:()=>note('welcome')},
     finishTemplateEditorSessionUi(){},applyRenderedExitTabAnchors(){},schedulePanelBorderGradientUpdate(){},schedulePostViewportLayoutUpdate(){},
     VmsPanel:{refreshPreviews(){}},saveAppState(){},bindPostViewportLayoutWatcher(){},
     PanelBorders:{refreshAll:()=>note('border-refresh')},applyPanelBorderGradient:()=>note('border-paint'),getResolvedCssColorValue:value=>value,
     normalizeArrowMode:mode=>mode,createShield(){},selectRenderedPanelArea:selection=>selections.push(selection)});
+  vm.runInContext(read('public/js/Sign.js'),c);
   vm.runInContext(read('public/js/Startup.js'),c);
   vm.runInContext(minified ? minifyJS(program) : program,c);
   const run=c.run();
@@ -105,6 +106,7 @@ for(const minified of [false,true]) {
     assert.notEqual(h.html.dataset.appReady,'true');assert.equal(h.nodes[0].block.events.has('click'),false);
     h.releaseEditor();await h.run;
     assert.equal(h.html.dataset.appReady,'true');assert.equal(h.nodes.length,2);
+    assert.ok(h.events.indexOf('welcome')>h.events.indexOf('signmaker:editor-ready'));
     assert.ok(h.nodes[1].block.events.has('click'));
     h.nodes[1].block.dispatchEvent(new Event('click'));
     assert.equal(h.selections.length,1);assert.equal(h.selections[0].blockIndex,0);
@@ -114,9 +116,11 @@ for(const minified of [false,true]) {
     assert.equal(h.nodes.length,0);assert.equal(h.window.SignMakerSpecialPanelLayout,undefined);
     h.releaseEditor();await h.run;
     assert.equal(h.html.dataset.appReady,'true');assert.equal(h.nodes.length,1);assert.ok(h.events.includes(mode));
+    assert.ok(!h.events.includes('welcome'));
   });
   test(`${name}: stored post preferences also wait for the editor before the first sign paint`,async()=>{
     const h=harness({minified,preferences:true});await h.waitForEditor();assert.equal(h.nodes.length,0);
     h.releaseEditor();await h.run;assert.equal(h.html.dataset.appReady,'true');assert.equal(h.nodes.length,1);
+    assert.ok(!h.events.includes('welcome'));
   });
 }

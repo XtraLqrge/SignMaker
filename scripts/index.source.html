@@ -159,24 +159,13 @@
 <link href="css/template-editor.css?v=20261104-ui2" rel="stylesheet" type="text/css"><link href="css/ui-upgrade.css?v=20261104-pickers7" rel="stylesheet" type="text/css"><script defer src="js/Settings22.js?v=20261104-general8" type="text/javascript"></script><script defer src="js/DropdownTheme.js?v=20261104-general8" type="text/javascript"></script><link rel="stylesheet" href="css/settings22.css?v=20261104-settings22"><link rel="stylesheet" href="css/editor-compact.css?v=20261104-compact4"><link rel="stylesheet" href="css/dropdown-layout.css?v=20261104-general8"><link rel="stylesheet" href="css/picker-theme.css"><link rel="stylesheet" href="css/mobile.css"><link rel="stylesheet" href="css/segmented-controls.css"><link rel="stylesheet" href="css/custom-shield-maker.css"><link rel="stylesheet" href="css/block-properties.css"></head>
 
 <body>
-    <div class="top-right-links">
-      <a id="signMakerHelp" class="mutcd-link" href="help.html" target="_blank" rel="noopener noreferrer"
-         onclick="if (!event.ctrlKey &amp;&amp; !event.metaKey &amp;&amp; !event.shiftKey &amp;&amp; !event.altKey) {
-           const guide = window.open(this.href, 'signmaker-help', 'popup,width=1080,height=740');
-           if (guide) { guide.opener = null; guide.focus(); return false; }
-         }">
-        <span>Help</span>
-        <span class="material-symbols-outlined external-link-icon" aria-hidden="true">open_in_new</span>
-      </a>
-      <a class="mutcd-link" href="https://discord.gg/dgqGZAeZvF" target="_blank" rel="noopener noreferrer">
-        <span>Join the Discord!</span>
-        <span class="material-symbols-outlined external-link-icon">open_in_new</span>
-      </a>
-      <a class="mutcd-link" href="https://mutcd.fhwa.dot.gov/pdfs/11th_Edition/mutcd11thedition.pdf" target="_blank" rel="noopener noreferrer">
-        <span>MUTCD</span>
-        <span class="material-symbols-outlined external-link-icon">open_in_new</span>
-      </a>
-    </div>
+  <nav class="site-navigation" aria-label="Site navigation">
+    <a href="./" aria-current="page">SignMaker</a>
+    <a href="https://signal.hwysignmaker.com">SignalMaker</a>
+    <a href="https://stripe.hwysignmaker.com">StripeMaker</a>
+    <a href="https://discord.gg/dgqGZAeZvF">Discord</a>
+    <a href="https://mutcd.fhwa.dot.gov/pdfs/11th_Edition/mutcd11thedition.pdf">MUTCD</a>
+  </nav>
   <main>
     <div id="postContainer">
       <div class="post"></div>
@@ -1114,7 +1103,7 @@
           <div id="sMExitTabSetting">
             <div class="exitTabMainSettingsGrid" id="exitTabMainSettingsGrid">
               <label for="exitNumber" id="exitNumberLabel" class="exitTabMainTextLabel">Text:</label>
-              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00" class="exitTabMainTextInput" onchange="formHandler.readForm();">
+              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00" class="exitTabMainTextInput" oninput="QuebecExitMarker.filterInput(event);" onchange="formHandler.readForm(event);">
 
               <div id="exitTollLogoPickerRow" class="exitTabAssetPickerRow hidden">
                 <input type="hidden" id="exitTollLogoPickerValue" value="TxTag">
@@ -1141,6 +1130,16 @@
               <label for="exitTabBilingualBottomText" id="exitTabBilingualBottomTextLabel" class="exitTabBottomTextLabel" hidden>Bottom:</label>
               <input type="text" id="exitTabBilingualBottomText" name="exitTabBilingualBottomText" placeholder="SORTIE" class="exitTabBottomTextInput" onchange="formHandler.readForm();" hidden>
 
+            </div>
+
+            <div class="qcExitMarkerControls" hidden>
+              <label for="qcExitMarkerFlipped">Flip marker:</label>
+              <input type="checkbox" id="qcExitMarkerFlipped" onchange="formHandler.readForm(event);">
+              <div class="qcExitMarkerSizeControl exitTabSliderGroup">
+                <label for="qcExitMarkerSize">Size (rem):</label>
+                <input type="range" id="qcExitMarkerSize" min="2" max="6" step="0.05" value="3.3" oninput="document.getElementById('qcExitMarkerSizeValue').textContent = this.value;" onchange="formHandler.readForm(event);">
+                <output for="qcExitMarkerSize" id="qcExitMarkerSizeValue" class="exitTabSliderValue">3.3</output>
+              </div>
             </div>
 
             <div class="exitTabStyleSettingsGrid">
@@ -1253,35 +1252,6 @@
                 <input type="checkbox" id="exitTabBilingual" name="exitTabBilingual" onchange="formHandler.readForm();">
               </div>
             </div>
-                <div class="qcExitMarkerControls">
-                  <legend>Quebec Exit Marker</legend>
-
-                  <div class="qcExitMarkerRow qcExitMarkerTopRow">
-                    <label for="qcExitMarkerEnabled">Show Quebec marker:</label>
-                    <input type="checkbox" id="qcExitMarkerEnabled" onchange="formHandler.readForm();">
-
-                    <label for="qcExitMarkerNumber">Number:</label>
-                    <input type="text" id="qcExitMarkerNumber" value="1" onchange="formHandler.readForm();">
-                  </div>
-
-                  <div class="qcExitMarkerRow qcExitMarkerSecondRow">
-                    <label for="qcExitMarkerPosition">Position:</label>
-                    <select id="qcExitMarkerPosition" onchange="formHandler.readForm();">
-                      <option value="Left">Bottom Left</option>
-                      <option value="Center">Bottom Center</option>
-                      <option value="Right">Bottom Right</option>
-                    </select>
-
-                    <label for="qcExitMarkerFlipped">Flipped / left-hand exit:</label>
-                    <input type="checkbox" id="qcExitMarkerFlipped" onchange="formHandler.readForm();">
-                  </div>
-
-                  <div class="qcExitMarkerRow qcExitMarkerSizeRow">
-                    <label for="qcExitMarkerSize">QC Exit Tab Marker Size:</label>
-                    <input type="range" id="qcExitMarkerSize" min="2" max="6" step="0.05" value="3.3" oninput="document.getElementById('qcExitMarkerSizeValue').innerHTML = this.value" onchange="formHandler.readForm();">
-                    <label for="qcExitMarkerSize" id="qcExitMarkerSizeValue">3.3</label>
-                  </div>
-                </div>
             <div id="exitTollLogoOptions" class="hidden">
               <legend>Toll Logo Options</legend>
               <label for="exitTollLogoSelect">Toll Logo:</label>
@@ -1579,7 +1549,13 @@
                       </div>
                     </div>
                   </div>
-                  <div class="sdCtrlTextSettingsRow sdTextEditorFontSizeRow">
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdCtrlText_spacing" data-tooltip="Spacing of the Control Text element on the left-right axis">Side Spacing:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
+                      </div>
+                    </div>
                     <div class="sdTextEditorField">
                       <label for="sdCtrlText_fontSize">Font Size (%):</label>
                       <div class="sdTextEditorControl">
@@ -1633,12 +1609,6 @@
                       <div class="sdTextEditorControl">
                         <input type="range" id="sdCtrlText_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
                         <input id="sdCtrlText_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
-                      </div>
-                    </div>
-                    <div class="sdTextEditorField">
-                      <label for="sdCtrlText_spacing" data-tooltip="Spacing of the Control Text element on the left-right axis">Side Spacing:</label>
-                      <div class="sdTextEditorControl">
-                        <input type="number" id="sdCtrlText_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
                       </div>
                     </div>
                   </div>
@@ -1791,7 +1761,13 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                       </div>
                     </div>
                   </div>
-                  <div class="sdCtrlTextSettingsRow sdTextEditorFontSizeRow">
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdAdvisory_spacing" data-tooltip="Spacing of the Advisory Message element on the left-right axis">Side Spacing:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
+                      </div>
+                    </div>
                     <div class="sdTextEditorField">
                       <label for="sdAdvisory_fontSize">Font Size (%):</label>
                       <div class="sdTextEditorControl">
@@ -1845,12 +1821,6 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                       <div class="sdTextEditorControl">
                         <input type="range" id="sdAdvisory_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
                         <input id="sdAdvisory_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
-                      </div>
-                    </div>
-                    <div class="sdTextEditorField">
-                      <label for="sdAdvisory_spacing" data-tooltip="Spacing of the Advisory Message element on the left-right axis">Side Spacing:</label>
-                      <div class="sdTextEditorControl">
-                        <input type="number" id="sdAdvisory_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
                       </div>
                     </div>
                   </div>
@@ -2084,7 +2054,13 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                       </div>
                     </div>
                   </div>
-                  <div class="sdCtrlTextSettingsRow sdTextEditorFontSizeRow">
+                  <div class="sdCtrlTextSettingsRow">
+                    <div class="sdTextEditorField">
+                      <label for="sdActionMessage_spacing" data-tooltip="Spacing of the Action Message element on the left-right axis">Side Spacing:</label>
+                      <div class="sdTextEditorControl">
+                        <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
+                      </div>
+                    </div>
                     <div class="sdTextEditorField">
                       <label for="sdActionMessage_fontSize">Font Size (%):</label>
                       <div class="sdTextEditorControl">
@@ -2138,12 +2114,6 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
                       <div class="sdTextEditorControl">
                         <input type="range" id="sdActionMessage_letterSpacing" min="-0.15" max="0.5" step="0.01" value="0">
                         <input id="sdActionMessage_letterSpacingVal" class="smallVal" type="number" min="-0.15" max="0.5" step="0.01" value="0">
-                      </div>
-                    </div>
-                    <div class="sdTextEditorField">
-                      <label for="sdActionMessage_spacing" data-tooltip="Spacing of the Action Message element on the left-right axis">Side Spacing:</label>
-                      <div class="sdTextEditorControl">
-                        <input type="number" id="sdActionMessage_spacing" placeholder="0" max="10" min="-10" step=".25" value="0">
                       </div>
                     </div>
                   </div>
@@ -2794,6 +2764,14 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <span class="buttonLabel">Hide Menu</span>
       </button>
       <div class="historyBar">
+        <a id="signMakerHelp" class="historyButton" href="help.html" target="_blank" rel="noopener noreferrer"
+           title="Help" aria-label="Help"
+           onclick="if (!event.ctrlKey &amp;&amp; !event.metaKey &amp;&amp; !event.shiftKey &amp;&amp; !event.altKey) {
+             const guide = window.open(this.href, 'signmaker-help', 'popup,width=1080,height=740');
+             if (guide) { guide.opener = null; guide.focus(); return false; }
+           }">
+          <span class="toolbarHelpIcon" aria-hidden="true">?</span>
+        </a>
         <button id="undoButton" class="historyButton" type="button" title="Undo (CTRL+Z)" aria-label="Undo (CTRL+Z)">
           <span class="material-symbols-outlined">undo</span>
         </button>
@@ -2806,6 +2784,47 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
       </div>
     </nav>
   </form>
+  <dialog id="welcomeToSignMaker" aria-labelledby="welcomeTitle">
+    <header class="welcomeHeader">
+      <img src="img/other-symbols/logo-48.webp" alt="" width="48" height="38">
+      <h2 id="welcomeTitle">Welcome to SignMaker</h2>
+      <button id="closeWelcome" type="button" aria-label="Close tutorial" title="Close tutorial">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </header>
+    <div class="welcomeSample" role="group" aria-label="Practice sign">
+      <span id="welcomePreviewDestination">Riverside</span>
+      <span id="welcomePreviewArrow" aria-label="Straight ahead">↑</span>
+    </div>
+    <section class="welcomeStep">
+      <p>Design highway signs with your own destinations, route shields, and arrows. Try editing this sample sign to learn the basics.</p>
+    </section>
+    <section class="welcomeStep" hidden>
+      <h3 tabindex="-1">1. Edit the destination</h3>
+      <p>Select text on a sign, or open <strong>Subpanels</strong> (<strong>Blocks</strong> on mobile) and choose a <strong>Control Text</strong> block. Try changing the sample destination.</p>
+      <label for="welcomeDestination">Destination</label>
+      <input id="welcomeDestination" type="text" value="Riverside" maxlength="40" autocomplete="off">
+    </section>
+    <section class="welcomeStep" hidden>
+      <h3 tabindex="-1">2. Set the direction</h3>
+      <p>Open <strong>Guide Arrows</strong> (<strong>Arrows</strong> on mobile) to choose an arrow and set its angle. Give the sample sign a direction.</p>
+      <div class="welcomeDirections" role="group" aria-label="Sample arrow direction">
+        <button type="button" data-arrow="↖" aria-pressed="false">Left</button>
+        <button type="button" data-arrow="↑" aria-pressed="true">Straight ahead</button>
+        <button type="button" data-arrow="↗" aria-pressed="false">Right</button>
+      </div>
+    </section>
+    <section class="welcomeStep" hidden>
+      <h3 tabindex="-1">3. Save your sign</h3>
+      <p>Open <strong>Export</strong> (under <strong>More</strong> on mobile) to save a PNG or SVG image. Choose JSON if you want to reopen the file and keep editing.</p>
+      <p>Use the <strong>Help</strong> button beside Undo to find more examples and editing tips.</p>
+    </section>
+    <div class="welcomeActions">
+      <button id="skipWelcome" type="button">Skip tutorial</button>
+      <button id="welcomeBack" type="button" hidden>Back</button>
+      <button id="welcomeNext" type="button" autofocus>Start tutorial</button>
+    </div>
+  </dialog>
   <footer>
     <div>
       <img src="img/other-symbols/logo-48.webp" srcset="img/other-symbols/logo-96.webp 2x" alt="SignMaker 2.19 logo" width="48" height="38" style="width:auto;height:38px" loading="lazy" decoding="async">

@@ -57,7 +57,6 @@ html:not([data-mobile-ui]) #smSPProperties .sdTextEditorField > label {
   text-align: right !important;
   white-space: normal;
 }
-html:not([data-mobile-ui]) .sdTextEditorFontSizeRow > .sdTextEditorField { margin-inline-start: auto; }
 html:not([data-mobile-ui]) .sdTextEditorControl {
   display: flex;
   flex-wrap: wrap;

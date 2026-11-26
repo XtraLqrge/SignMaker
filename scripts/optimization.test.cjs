@@ -516,11 +516,10 @@ test('shield catalog builds on opening, renders expanded branches and preserves 
   click(trigger);picker.setValue('B');assert.equal(picker.getValue(),'B');
   click(trigger);assert.equal(catalog.querySelectorAll('.shieldPickerItem').some(node=>node.dataset.nodeValue==='B'&&node.classList.contains('selected')),true);
 });
-test('the toolbar moves below the links and scrolls at the selected scale when needed', () => {
-  const root = { clientHeight: 1000 };
+test('the right toolbar clears site navigation and scrolls at the selected scale when needed', () => {
+  const root = { clientHeight: 810 };
   let zoom = 1;
-  let linkBounds = { left: 900, right: 1080, bottom: 188, height: 168 };
-  let toolbarBounds = { left: 100, right: 960 };
+  const navigationBounds = { bottom: 44 };
   const properties = new Map();
   const toolbar = {
     scrollHeight: 740,
@@ -530,30 +529,28 @@ test('the toolbar moves below the links and scrolls at the selected scale when n
       getPropertyValue: name => properties.get(name) || '',
       setProperty: (name, value) => properties.set(name, value),
     },
-    getBoundingClientRect: () => toolbarBounds,
   };
   const c = context({
     document: {
       documentElement: root,
-      querySelector: () => ({ getBoundingClientRect: () => linkBounds }),
+      querySelector: () => ({ getBoundingClientRect: () => navigationBounds }),
       getElementById: () => toolbar,
     },
     getComputedStyle: () => ({ fontSize: '20px', getPropertyValue: () => String(zoom) }),
   });
-  vm.runInContext(declaration('public/js/main.js', 'fitToolbarAroundExternalLinks') +
-    ';this.fit = fitToolbarAroundExternalLinks;', c);
+  vm.runInContext(declaration('public/js/main.js', 'fitToolbarBelowSiteNavigation') +
+    ';this.fit = fitToolbarBelowSiteNavigation;', c);
 
   c.fit();
-  assert.equal(properties.get('--sm-toolbar-top'), '568px');
+  assert.equal(properties.get('--sm-toolbar-top'), '424px');
   assert.equal(toolbar.style.getPropertyValue('--sm-right-toolbar-max-height'), '');
   assert.equal(toolbar.style.getPropertyValue('--sm-right-toolbar-overflow'), '');
 
   zoom = 1.5;
-  linkBounds = { ...linkBounds, bottom: 272, height: 252 };
   root.clientHeight = 520;
   c.fit();
-  assert.equal(properties.get('--sm-toolbar-top'), '396px');
-  assert.equal(properties.get('--sm-right-toolbar-max-height'), '152px');
+  assert.equal(properties.get('--sm-toolbar-top'), '282px');
+  assert.equal(properties.get('--sm-right-toolbar-max-height'), '304px');
   assert.equal(properties.get('--sm-right-toolbar-overflow'), 'hidden auto');
 
   zoom = 1;
@@ -565,52 +562,29 @@ test('the toolbar moves below the links and scrolls at the selected scale when n
 
   toolbar.dataset.position = 'top';
   c.fit();
-  assert.equal(properties.get('--sm-toolbar-top'), '282px');
-  toolbarBounds = { left: 100, right: 890 };
-  c.fit();
   assert.equal(properties.get('--sm-toolbar-top'), '');
 
   toolbar.dataset.position = 'bottom';
   c.fit();
   assert.equal(properties.get('--sm-toolbar-top'), '');
 });
-test('Subpanels sizing only caps the scroll area, leaving the editor at its intrinsic height', () => {
-  const sizes = new Map();
-  const content = {
-    getBoundingClientRect: () => ({ top: 108 }),
-    style: {
-      get maxHeight() { return sizes.get('max-height'); },
-      setProperty: (name, value) => sizes.set(name, value),
-      removeProperty: name => sizes.delete(name),
-    },
-  };
-  const modal = {
-    querySelector: () => content,
-    getClientRects: () => [{}],
-    getBoundingClientRect: () => ({ top: 30 }),
-  };
-  const window = {
-    innerHeight: 900,
-    getComputedStyle: el => el === modal ? { maxHeight: '560px' } : {
-      getPropertyValue: () => '1.5',
-    },
-  };
-  const c = context({ window, document: { querySelector: () => modal }, subpanelMenuIsOpen: () => true });
-  vm.runInContext(declaration('public/js/form.js', 'syncSubpanelModalHeight') +
-    ';this.sync = syncSubpanelModalHeight;', c);
-
-  c.sync();
-  assert.deepEqual([...sizes], [['max-height', '508px']]);
-
-  window.SignMakerMobile = { active: true };
-  c.sync();
-  assert.equal(sizes.size, 0);
+test('desktop Subpanels shrinks around short editors and scrolls when the viewport is full', () => {
+  const css = read('public/css/form.css');
+  const shell = css.match(/html:not\(\[data-mobile-ui\]\) \.sMModal\.subPanelConfig \{([^}]+)\}/)[1];
+  const body = css.match(/html:not\(\[data-mobile-ui\]\) \.sMModal\.subPanelConfig > \.sMModalContent \{([^}]+)\}/)[1];
+  assert.match(shell, /flex-direction: column/);
+  assert.match(css, /--sm-editor-viewport-height: calc\(100dvh - var\(--sm-site-nav-height\)\)/);
+  assert.match(shell, /max-height: calc\(\(var\(--sm-editor-viewport-height\)/);
+  assert.match(body, /height: auto/);
+  assert.match(body, /min-height: 0/);
+  assert.match(body, /max-height: none/);
+  assert.match(body, /overflow-y: auto/);
 });
 test('layout scheduling coalesces events and unchanged transforms cause no writes',()=>{
   const jobs=[],observed=[];let writes=0,transform='';
   const post={offsetWidth:300,style:{get transform(){return transform},set transform(value){writes++;transform=value;}}};
   const c=context({window:{innerWidth:1000,requestAnimationFrame:fn=>{jobs.push(fn);return jobs.length;},addEventListener(){}},document:{getElementById:()=>post,documentElement:{clientWidth:1000},body:{},querySelector:()=>null,querySelectorAll:()=>[]},VmsPanel:{refreshPreviews(){}},MutationObserver:class{observe(target,options){observed.push({target,options});}},ResizeObserver:class{observe(){}},getMainVisualScale:()=>1,getVisibleSideMenuElements:()=>[],postViewportLayoutFrame:null,postViewportLayoutObserver:null});
-  vm.runInContext(['updatePostViewportLayout','fitToolbarAroundExternalLinks','schedulePostViewportLayoutUpdate','bindPostViewportLayoutWatcher'].map(name=>declaration('public/js/main.js',name)).join('\n')+'\nthis.check={updatePostViewportLayout,schedulePostViewportLayoutUpdate,bindPostViewportLayoutWatcher};',c);
+  vm.runInContext(['updatePostViewportLayout','fitToolbarBelowSiteNavigation','schedulePostViewportLayoutUpdate','bindPostViewportLayoutWatcher'].map(name=>declaration('public/js/main.js',name)).join('\n')+'\nthis.check={updatePostViewportLayout,schedulePostViewportLayoutUpdate,bindPostViewportLayoutWatcher};',c);
   for(let n=0;n<100;n++)c.check.schedulePostViewportLayoutUpdate();assert.equal(jobs.length,1);jobs.shift()();
   c.check.updatePostViewportLayout();assert.equal(writes,1);
   c.check.bindPostViewportLayoutWatcher();assert.ok(observed.length);assert.ok(observed.every(record=>!record.options.subtree));
@@ -778,7 +752,7 @@ test('opening the phone editor hydrates its dropdowns after its containers becom
   const pickerButton=new Element();
   const c=context({sMConfigBar:{dataset:{currentMenu:'subPanelConfig'}},
     document:{querySelector:()=>null,querySelectorAll:selector=>selector==='.sMModal'?[modal]:selector.includes(':has')?[pickerButton]:[]},
-    window:{SignMakerMobile:{prepareEditor:()=>{editorHidden=false;}},SignMakerEditorRuntime:{ensure:()=>{
+    window:{SignMakerMobile:{active:true,prepareEditor:()=>{editorHidden=false;}},SignMakerEditorRuntime:{ensure:()=>{
       assert.equal(editorHidden,false);assert.equal(modal.style.display,'block');hydrated++;
     }}},panelStylePopoverIsOpen:()=>false,scheduleSubpanelModalHeightSync(){},clearPanelStylePopoverPosition(){}});
   vm.runInContext(declaration('public/js/form.js','reDisplay')+';this.open=reDisplay;',c);

@@ -1310,7 +1310,7 @@ const formHandler = (function () {
         ExitTab.prototype &&
         Array.isArray(ExitTab.prototype.variants)
           ? ExitTab.prototype.variants
-          : ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+          : ["Default", "Quebec Exit Marker", "Toll Logo", "Icon", "Full Left", "Stacked"];
       return variants.includes(normalized) ? normalized : "Default";
     };
 
@@ -1325,7 +1325,7 @@ const formHandler = (function () {
         ExitTab.prototype &&
         Array.isArray(ExitTab.prototype.variants)
           ? ExitTab.prototype.variants
-          : ["Default", "Toll Logo", "Icon", "Full Left", "Stacked", "Quebec Exit Marker"];
+          : ["Default", "Quebec Exit Marker", "Toll Logo", "Icon", "Full Left", "Stacked"];
       return variants
         .map(normalizeExitTabProfileVariant)
         .filter((variant, index, list) => list.indexOf(variant) === index);
@@ -1541,6 +1541,7 @@ const formHandler = (function () {
 
       delete normalized.number;
       ExitTab.normalizeCalifornia(normalized);
+      ExitTab.normalizeFullLeft(normalized);
       return normalized;
     };
 
@@ -2293,6 +2294,10 @@ const formHandler = (function () {
       delete updated.number;
       updated.variant = resolvedVariant;
       updated.position = form["exitTabPosition"]?.value || updated.position || "Right";
+      if (resolvedVariant === "Quebec Exit Marker") {
+        readQuebecExitMarkerForm(updated);
+        return updated;
+      }
       if (widthChange) updated.width = widthChange;
       updated.color = form["exitColor"]?.value || updated.color || "Panel Color";
       updated.textColor =
@@ -3569,48 +3574,37 @@ const formHandler = (function () {
     return !!configBar && configBar.dataset.currentMenu === "subPanelConfig";
   };
 
-  let subpanelHeightSyncFrame = 0;
+  const bindSubpanelDisclosureScroll = () => {
+    const body = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
+    if (!body) return;
 
-  const syncSubpanelModalHeight = () => {
-    const mobile = window.SignMakerMobile?.active;
-    if (!mobile && !subpanelMenuIsOpen()) return;
+    let openingSection = null;
+    const reveal = () => {
+      if (!openingSection?.open || window.SignMakerMobile?.active || !subpanelMenuIsOpen()) return;
+      const viewport = body.getBoundingClientRect();
+      const section = openingSection.getBoundingClientRect();
+      const scale = viewport.height / body.offsetHeight || 1;
+      const padding = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+      const overflow = section.bottom + padding * scale - viewport.bottom;
+      if (overflow > 0) {
+        body.scrollTop += Math.max(0, Math.min(overflow, section.top - viewport.top)) / scale;
+      }
+    };
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(reveal) : null;
 
-    const modal = document.querySelector(".sMModal.subPanelConfig");
-    const content = modal?.querySelector(":scope > .sMModalContent");
-    if (!content) return;
-
-    if (mobile) {
-      content.style.removeProperty("max-height");
-      return;
-    }
-    if (!modal.getClientRects().length) return;
-
-    const rootStyle = window.getComputedStyle(document.documentElement);
-    const zoom = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
-    const modalLimit = parseFloat(window.getComputedStyle(modal).maxHeight);
-    const viewportBottom = window.innerHeight - 12;
-    const modalBottom = Number.isFinite(modalLimit)
-      ? modal.getBoundingClientRect().top + modalLimit * zoom
-      : viewportBottom;
-    const bottom = Math.min(viewportBottom, modalBottom);
-    const available = Math.max(0, (bottom - content.getBoundingClientRect().top) / zoom);
-    const maxHeight = `${available}px`;
-    if (content.style.maxHeight !== maxHeight) {
-      content.style.setProperty("max-height", maxHeight, "important");
-    }
-  };
-
-  const scheduleSubpanelModalHeightSync = () => {
-    if (subpanelHeightSyncFrame) {
-      cancelAnimationFrame(subpanelHeightSyncFrame);
-    }
-
-    subpanelHeightSyncFrame = requestAnimationFrame(() => {
-      subpanelHeightSyncFrame = requestAnimationFrame(() => {
-        subpanelHeightSyncFrame = 0;
-        syncSubpanelModalHeight();
+    for (const details of body.querySelectorAll(".propertyPanel")) {
+      details.addEventListener("toggle", () => {
+        if (details.open) {
+          openingSection = details;
+          observer?.disconnect();
+          observer?.observe(details);
+          if (!observer) requestAnimationFrame(reveal);
+        } else if (openingSection === details) {
+          openingSection = null;
+          observer?.disconnect();
+        }
       });
-    });
+    }
   };
 
   const CUSTOM_ICON_VALUE_PREFIX = "CUSTOMICON-";
@@ -5294,9 +5288,14 @@ const formHandler = (function () {
 
   const toggleExitTabVariantOptionsVisibility = (variantValue, options = {}) => {
     const normalizedVariant = String(variantValue || "Default");
+    const isQuebec = normalizedVariant === "Quebec Exit Marker";
+    const isFullLeft = normalizedVariant === "Full Left";
+    document.getElementById("sMExitTabSetting").classList.toggle("quebecExitTabMode", isQuebec);
+    document.getElementById("sMExitTabSetting").classList.toggle("fullLeftExitTabMode", isFullLeft);
+    document.querySelector(".qcExitMarkerControls").hidden = !isQuebec;
+    document.getElementById("exitTabPosition").disabled = isFullLeft;
     const isTollLogo = normalizedVariant === "Toll Logo";
     const isIcon = normalizedVariant === "Icon";
-    const qcMode = normalizedVariant === "Quebec Exit Marker";
 
     const tollOptionsElmt = document.getElementById("exitTollLogoOptions");
     if (tollOptionsElmt) {
@@ -5326,6 +5325,7 @@ const formHandler = (function () {
       exitNumber.classList.toggle("hidden", hideExitNumber);
       exitNumber.hidden = hideExitNumber;
       exitNumber.disabled = hideExitNumber;
+      exitNumber.inputMode = isQuebec ? "numeric" : "text";
       if (profileEditorMode) {
         exitNumber.value = "";
       }
@@ -5335,19 +5335,16 @@ const formHandler = (function () {
     if (exitNumberLabel) {
       exitNumberLabel.classList.toggle("hidden", profileEditorMode);
       exitNumberLabel.hidden = profileEditorMode;
-      exitNumberLabel.textContent = qcMode
-        ? "Number:"
-        : isTollLogo
+      exitNumberLabel.textContent = isTollLogo
           ? "Logo:"
           : isIcon
             ? "Icon:"
-            : "Text:";
+            : isQuebec ? "Number:" : "Text:";
     }
 
     const isAssetVariant = isTollLogo || isIcon;
     const mainGrid = document.getElementById("exitTabMainSettingsGrid");
     if (mainGrid) {
-      mainGrid.classList.toggle("qcExitMarkerMode", qcMode);
       mainGrid.classList.toggle("exitTabAssetMode", isAssetVariant);
     }
 
@@ -5367,7 +5364,7 @@ const formHandler = (function () {
     if (fontPickerWrapper) {
       assetHiddenStyleControls.push(fontPickerWrapper);
     }
-    const hideTextControls = isAssetVariant || qcMode;
+    const hideTextControls = isAssetVariant || isQuebec;
     assetHiddenStyleControls.forEach((element) => {
       element?.classList.toggle("assetHiddenSetting", hideTextControls);
     });
@@ -5382,19 +5379,8 @@ const formHandler = (function () {
 
     const transparentLabel = document.getElementById("exitTabTransparentLabel");
     const transparentInput = document.getElementById("exitTabTransparent");
-    transparentLabel?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
-    transparentInput?.classList.toggle("assetHiddenSetting", !isAssetVariant || qcMode);
-
-    ["exitTabWidth", "exitTabPosition", "exitTabBilingualBottomTextLabel", "exitTabBilingualBottomText"].forEach((id) => {
-      const element = document.getElementById(id);
-      if (element) {
-        element.classList.toggle("qcHiddenSetting", qcMode);
-      }
-    });
-
-    document
-      .querySelectorAll('[data-exit-slider="borderThickness"], [data-exit-slider="minHeight"], .exitTabCheckboxPanel')
-      .forEach((element) => element.classList.toggle("qcHiddenSetting", qcMode));
+    transparentLabel?.classList.toggle("assetHiddenSetting", !isAssetVariant);
+    transparentInput?.classList.toggle("assetHiddenSetting", !isAssetVariant);
 
     const assetHiddenIds = [
       "showLeft",
@@ -5410,7 +5396,7 @@ const formHandler = (function () {
     assetHiddenIds.forEach((id) => {
       const element = document.getElementById(id);
       if (element) {
-        element.classList.toggle("assetHiddenSetting", isTollLogo || isIcon || qcMode);
+        element.classList.toggle("assetHiddenSetting", isTollLogo || isIcon);
       }
     });
 
@@ -8874,6 +8860,54 @@ const formHandler = (function () {
           !setStoredItem(STORAGE_KEYS.customShieldMakerShields, serialized)) throw new Error("Unable to save upgraded shield fonts.");
       syncCustomShieldMakerConfigs();
     }
+  };
+
+  const showWelcomeTutorial = () => {
+    const dialog = document.getElementById("welcomeToSignMaker");
+    if (!dialog || getStoredItem("closedWelcome")) return;
+
+    const steps = [...dialog.querySelectorAll(".welcomeStep")];
+    const back = dialog.querySelector("#welcomeBack");
+    const next = dialog.querySelector("#welcomeNext");
+    const destination = dialog.querySelector("#welcomeDestination");
+    const previewDestination = dialog.querySelector("#welcomePreviewDestination");
+    const previewArrow = dialog.querySelector("#welcomePreviewArrow");
+    const directionButtons = dialog.querySelectorAll("[data-arrow]");
+    let step = 0;
+
+    const showStep = (index) => {
+      steps[step].hidden = true;
+      step = index;
+      steps[step].hidden = false;
+      back.hidden = step === 0;
+      next.textContent = step === 0 ? "Start tutorial" :
+        step === steps.length - 1 ? "Open editor" : "Next";
+      (steps[step].querySelector("h3") || next).focus();
+      dialog.scrollTop = 0;
+    };
+
+    destination.addEventListener("input", () => {
+      previewDestination.textContent = destination.value.trim() || "Riverside";
+    });
+    for (const button of directionButtons) {
+      button.addEventListener("click", () => {
+        for (const option of directionButtons) {
+          option.setAttribute("aria-pressed", String(option === button));
+        }
+        previewArrow.textContent = button.dataset.arrow;
+        previewArrow.setAttribute("aria-label", button.textContent);
+      });
+    }
+    back.addEventListener("click", () => showStep(step - 1));
+    next.addEventListener("click", () => {
+      if (step === steps.length - 1) dialog.close();
+      else showStep(step + 1);
+    });
+    for (const id of ["closeWelcome", "skipWelcome"]) {
+      dialog.querySelector("#" + id).addEventListener("click", () => dialog.close());
+    }
+    dialog.addEventListener("close", () => setStoredItem("closedWelcome", "true"), { once: true });
+    dialog.showModal();
   };
 
   const initialize = async (appExposed, { beforeUI } = {}) => {
@@ -15751,7 +15785,9 @@ const formHandler = (function () {
             }
           });
         } else {
-          holder.style.display = open ? "block" : "";
+          const desktopSubpanels = holder.classList.contains("subPanelConfig") && !window.SignMakerMobile?.active;
+          const display = desktopSubpanels ? "flex" : "block";
+          holder.style.display = open ? display : "";
         }
       }
 
@@ -15759,7 +15795,6 @@ const formHandler = (function () {
 
       if (sMConfigBar.dataset.currentMenu === "subPanelConfig") {
         window.SignMakerMobileForms?.prepareElement();
-        scheduleSubpanelModalHeightSync();
       }
 
       if (sMConfigBar.dataset.currentMenu == "panelSelector") {
@@ -16172,7 +16207,7 @@ const formHandler = (function () {
         downloadDialog.style.display !== "none";
 
       const isShortcutBlockingOverlayOpen = () =>
-        isSettingsOpen() || isDownloadMenuOpen();
+        isSettingsOpen() || isDownloadMenuOpen() || document.getElementById("welcomeToSignMaker")?.open;
 
       const ensureSubpanelMenuOpen = () => {
         if (!sMConfigBar) {
@@ -16992,7 +17027,7 @@ const formHandler = (function () {
     });
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
-    window.addEventListener("resize", scheduleSubpanelModalHeightSync);
+    bindSubpanelDisclosureScroll();
 
     document.addEventListener("click", (event) => {
       if (event.ctrlKey || event.metaKey || event.shiftKey) {
@@ -17034,30 +17069,6 @@ const formHandler = (function () {
           updateUtilityButtonLabels();
     };
     
-      const closeWelcomeButton = document.querySelector("#closeWelcome");
-      if (closeWelcomeButton) {
-        closeWelcomeButton.onclick = function () {
-          const modalHolder = document.querySelector("#modalHolder");
-          const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-
-          localStorage.setItem("closedWelcome", "true");
-
-          if (welcomeDialog && typeof welcomeDialog.close === "function") {
-            try {
-              welcomeDialog.close();
-            } catch (error) {}
-          }
-
-          if (welcomeDialog) {
-            welcomeDialog.style.display = "none";
-          }
-
-          if (modalHolder) {
-            modalHolder.style.display = "none";
-          }
-        };
-      }
-
     newRowDropTargetButton = document.getElementById("sMSPCreateRow");
     if (newRowDropTargetButton) {
       newRowDropTargetButton.addEventListener("dragenter", handleNewRowDragEnter);
@@ -17141,17 +17152,6 @@ const formHandler = (function () {
         });
       });
     });
-
-      const welcomeDialog = document.querySelector("#welcomeToSignMaker");
-      if (!localStorage.getItem("closedWelcome") && welcomeDialog) {
-        const modalHolder = document.querySelector("#modalHolder");
-
-        if (modalHolder) {
-          modalHolder.style.display = "flex";
-        }
-
-        welcomeDialog.style.display = "flex";
-      }
 
     // The model keeps the full preset ID across the position and type controls.
     const postPositionSelectElmt = document.getElementById("postPosition");
@@ -17237,7 +17237,7 @@ const formHandler = (function () {
     // Populate the exit variants
     const exitVariantSelectElmt = document.getElementById("exitVariant");
     if (exitVariantSelectElmt) {
-      const hiddenExitVariants = new Set(["HOV 1", "HOV 2", "Quebec Exit Marker"]);
+      const hiddenExitVariants = new Set(["HOV 1", "HOV 2"]);
       for (const exitVariant of ExitTab.prototype.variants) {
         if (!hiddenExitVariants.has(exitVariant)) {
           lib.appendOption(exitVariantSelectElmt, exitVariant, {
@@ -17245,7 +17245,6 @@ const formHandler = (function () {
           });
         }
       }
-      lib.appendOption(exitVariantSelectElmt, "Quebec Exit Marker");
       toggleExitTabVariantOptionsVisibility(exitVariantSelectElmt.value);
     }
 
@@ -20469,7 +20468,7 @@ const formHandler = (function () {
     }
 
     if (exitNumberLabel) {
-      exitNumberLabel.textContent = isBilingual ? "Top:" : "Text:";
+      exitNumberLabel.textContent = exitTab.variant === "Quebec Exit Marker" ? "Number:" : isBilingual ? "Top:" : "Text:";
     }
 
     if (bilingualCheckbox) {
@@ -20841,6 +20840,19 @@ const formHandler = (function () {
     document.getElementById("alignmentGuidePhaseValue").value=guidePhase;
   };
 
+  const updateQuebecExitMarkerForm = (tab) => {
+    document.getElementById("qcExitMarkerFlipped").checked = tab.quebecMarkerFlipped === true;
+    const size = QuebecExitMarker.width(tab);
+    document.getElementById("qcExitMarkerSize").value = size;
+    document.getElementById("qcExitMarkerSizeValue").textContent = size;
+  };
+
+  const readQuebecExitMarkerForm = (tab) => {
+    tab.position = document.getElementById("exitTabPosition").value || "Center";
+    tab.quebecMarkerFlipped = document.getElementById("qcExitMarkerFlipped").checked;
+    tab.quebecMarkerSizeRem = QuebecExitMarker.size(document.getElementById("qcExitMarkerSize").value);
+  };
+
   // Read the form and update the page by redrawing it.
   const readForm = function (options = {}) {
     if (mergeLiveInputActive && !mergeLiveInputValid) return;
@@ -20919,6 +20931,16 @@ const formHandler = (function () {
 
     if (exitTab) {
       syncCurrentExitTabProfileSelectionFromTab(exitTab);
+      if (exitTab.variant === "Quebec Exit Marker" &&
+          ["exitNumber", "exitTabPosition", "qcExitMarkerFlipped", "qcExitMarkerSize"].includes(changedControl?.id)) {
+        const number = form["exitNumber"];
+        exitTab.number = QuebecExitMarker.number(number.value);
+        if (number.value !== exitTab.number) number.value = exitTab.number;
+        readQuebecExitMarkerForm(exitTab);
+        saveCurrentExitTabEditsToSelectedProfile(exitTab);
+        redrawAfterExitTabEdit();
+        return;
+      }
     }
 
     // Post
@@ -20964,7 +20986,7 @@ const formHandler = (function () {
     readDisplaySettings(form);
 
     // Exit Tab
-    if (exitTab) {
+    if (exitTab && (exitTab.variant !== "Quebec Exit Marker" || exitVariantChange)) {
     const previousExitVariant = normalizeExitTabProfileVariant(
       exitTab.variant || "Default"
     );
@@ -20984,6 +21006,9 @@ const formHandler = (function () {
         { preserveText: true }
       );
       exitTab.variant = requestedExitVariant;
+      if (requestedExitVariant === "Quebec Exit Marker") {
+        exitTab.number = QuebecExitMarker.number(exitTab.number);
+      }
       exitTab.caStyle = requestedExitVariant === "California";
       if (exitTab.caStyle) { exitTab.squareCorners = false; exitTab.cornerRadius = 0.25; }
       ExitTab.normalizeCalifornia(exitTab);
@@ -21102,46 +21127,6 @@ const formHandler = (function () {
         : normalizeExitTabAssetSizeValue(exitTab.tollLogoSize, 3);
     }
         
-        const currentSign = currentPanel?.sign;
-
-        if (currentSign) {
-        const qcEnabled = document.getElementById("qcExitMarkerEnabled");
-        const qcNumber = document.getElementById("qcExitMarkerNumber");
-        const qcPosition = document.getElementById("qcExitMarkerPosition");
-        const qcFlipped = document.getElementById("qcExitMarkerFlipped");
-        const qcSize = document.getElementById("qcExitMarkerSize");
-        const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
-
-        if (qcEnabled) {
-        currentSign.quebecExitMarkerEnabled = !!qcEnabled.checked;
-        }
-
-        if (qcNumber) {
-        currentSign.quebecExitMarkerNumber = qcNumber.value || "1";
-        }
-
-        if (qcPosition) {
-          currentSign.quebecExitMarkerPosition = String(qcPosition.value || "Center")
-            .replace(/^Bottom\s+/i, "")
-            .trim();
-        }
-
-        if (qcFlipped) {
-        currentSign.quebecExitMarkerFlipped = !!qcFlipped.checked;
-        }
-        if (qcSize) {
-          const parsedSize = parseFloat(qcSize.value);
-          const resolvedSize =
-            Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 3.05;
-
-          currentSign.quebecExitMarkerSizeRem = resolvedSize;
-
-          if (qcSizeValue) {
-            qcSizeValue.textContent = resolvedSize.toString();
-          }
-        }
-    }
-
     if (exitTab.variant == "Toll Logo") {
       const tollLogoOptions = TollLogoElement.prototype.logos || {};
       const pickerValue = document.getElementById("exitTollLogoPickerValue")?.value;
@@ -21175,21 +21160,6 @@ const formHandler = (function () {
       exitTab.tollLogoOnly =
         typeof exitTab.tollLogoOnly === "boolean" ? exitTab.tollLogoOnly : true;
       exitTab.tollLogoSquare = !!exitTab.tollLogoSquare;
-    }
-
-    if (exitTab.variant === "Quebec Exit Marker" && currentSign) {
-      const qcNumber = String(exitTab.number || "").trim();
-      currentSign.quebecExitMarkerEnabled = qcNumber.length > 0;
-      currentSign.quebecExitMarkerNumber = qcNumber;
-      currentSign.quebecExitMarkerPosition = exitTab.position || "Right";
-      currentSign.quebecExitMarkerSizeRem = Math.max(2, Math.min(6, (parseFloat(exitTab.fontSize) || 18) / 5));
-    } else if (currentSign && currentSign.quebecExitMarkerEnabled) {
-      const hasActiveQcExitTab = Array.isArray(currentPanel.exitTabs) && currentPanel.exitTabs.some(
-        (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
-      );
-      if (!hasActiveQcExitTab) {
-        currentSign.quebecExitMarkerEnabled = false;
-      }
     }
 
         const exitTabFontSelect = form["exitTabFontFamily"];
@@ -21358,6 +21328,7 @@ const formHandler = (function () {
         }
 
         ExitTab.normalizeCalifornia(exitTab);
+        ExitTab.normalizeFullLeft(exitTab);
         window.CaliforniaExit?.syncEditor(exitTab.variant);
         saveCurrentExitTabEditsToSelectedProfile(exitTab, !!exitWidthChange);
     }
@@ -22774,7 +22745,6 @@ const formHandler = (function () {
     window.SignMakerMergeUI?.sync();
     window.SignMakerMobileForms?.prepareElement();
     window.SignMakerMobileSubpanels?.refresh();
-    scheduleSubpanelModalHeightSync();
   };
 
   const updateForm = function (options = {}) {
@@ -24992,6 +24962,8 @@ const formHandler = (function () {
 
     // Exit Tabs
     ExitTab.normalizeCalifornia(exitTab);
+    ExitTab.normalizeFullLeft(exitTab);
+    if (exitTab.variant === "Quebec Exit Marker") updateQuebecExitMarkerForm(exitTab);
     const exitNumberElmt = document.getElementById("exitNumber");
     const exitTabBilingualField = document.getElementById("exitTabBilingual");
     const exitTabBilingualBottomTextField = document.getElementById("exitTabBilingualBottomText");
@@ -25081,47 +25053,6 @@ const formHandler = (function () {
       }
       toggleExitTabVariantOptionsVisibility(exitTab.variant);
     }
-      const currentSign = panel?.sign;
-
-      if (currentSign) {
-        const qcEnabled = document.getElementById("qcExitMarkerEnabled");
-        const qcNumber = document.getElementById("qcExitMarkerNumber");
-        const qcPosition = document.getElementById("qcExitMarkerPosition");
-        const qcFlipped = document.getElementById("qcExitMarkerFlipped");
-        const qcSize = document.getElementById("qcExitMarkerSize");
-        const qcSizeValue = document.getElementById("qcExitMarkerSizeValue");
-
-        if (qcEnabled) {
-          qcEnabled.checked = !!currentSign.quebecExitMarkerEnabled;
-        }
-
-        if (qcNumber) {
-          qcNumber.value = currentSign.quebecExitMarkerNumber || "1";
-        }
-
-        if (qcPosition) {
-        qcPosition.value = String(currentSign.quebecExitMarkerPosition || "Center")
-          .replace(/^Bottom\s+/i, "")
-          .trim();
-        }
-
-        if (qcFlipped) {
-          qcFlipped.checked = !!currentSign.quebecExitMarkerFlipped;
-        }
-        if (qcSize) {
-            const resolvedSize =
-              Number.isFinite(parseFloat(currentSign.quebecExitMarkerSizeRem))
-                ? parseFloat(currentSign.quebecExitMarkerSizeRem)
-                : 3.3;
-
-            qcSize.value = resolvedSize;
-
-            if (qcSizeValue) {
-              qcSizeValue.innerHTML = resolvedSize;
-            }
-        }
-      }
-
     const tollLogoSizeInput = document.getElementById("exitTollLogoSize");
     const tollLogoSizeValueElmt = document.getElementById(
       "exitTollLogoSizeValue"
@@ -25682,7 +25613,6 @@ const formHandler = (function () {
       }
 
       syncGlobalBlockControls();
-      scheduleSubpanelModalHeightSync();
   
     window.SignMakerMergeUI?.sync();
     window.SignMakerEditorRuntime?.ensure();
@@ -26330,6 +26260,7 @@ const formHandler = (function () {
       },
       migrateSavedTypographyPreferences,
       init: initialize,
+      showWelcomeTutorial,
       readForm,
       persistPostAppearance,
       updateForm,

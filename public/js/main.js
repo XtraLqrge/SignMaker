@@ -252,7 +252,7 @@ const scheduleAlignmentGuideUpdate = (
   let guideArrowPointerDragActive = false;
   let copiedGuideArrowArea = null;
   const guideArrowProperty = (key) => /^(standardArrow|exitArrow|exitOnly|exitText|exitBackground|exitBorder|exitTopBorder|exitColorEdges|exitTexasBorder|aplArrow)/.test(key) ||
-    ["guideArrow", "guideArrowLanes", "arrowMode", "arrowPosition", "arrows", "exitguideArrows", "hideExitArrow", "useCanadianDownArrows", "quebecExitMarkerEnabled"].includes(key);
+    ["guideArrow", "guideArrowLanes", "arrowMode", "arrowPosition", "arrows", "exitguideArrows", "hideExitArrow", "useCanadianDownArrows"].includes(key);
   const copyGuideArrowArea = (sign) => JSON.parse(JSON.stringify(Object.fromEntries(Object.keys(sign)
     .filter(guideArrowProperty).map((key) => [key, sign[key]]))));
 
@@ -420,6 +420,10 @@ const scheduleAlignmentGuideUpdate = (
       return exitTab;
     }
 
+    ExitTab.normalizeFullLeft(exitTab);
+    if (exitTab.variant === "Quebec Exit Marker") {
+      exitTab.number = QuebecExitMarker.number(exitTab.number);
+    }
     exitTab.fontFamily = normalizeExitTabFontFamily(exitTab);
     exitTab.FHWAFont = isExitTabHighwayGothicFontFamily(exitTab.fontFamily);
 
@@ -2378,7 +2382,7 @@ const ungroupSelectedBlockElement = () => {
           panel.borderThickness = Panel.getBorderThickness(panelData);
           delete panel.hideBorder;
           Object.assign(panel, VmsPanel.settings(panelData));
-          panel.exitTabs = normalizedExitTabs;
+          panel.exitTabs = QuebecExitMarker.migrate(sign, normalizedExitTabs);
           panel.sign = sign;
           newPost.panels.push(panel);
         }
@@ -4547,33 +4551,27 @@ const ungroupSelectedBlockElement = () => {
       setTransform(`translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`);
     };
 
-    const fitToolbarAroundExternalLinks = () => {
-      const links = document.querySelector(".top-right-links");
+    const fitToolbarBelowSiteNavigation = () => {
+      const navigation = document.querySelector(".site-navigation");
       const toolbar = document.getElementById("sMConfigBar");
-      if (!links || !toolbar) return;
+      if (!navigation || !toolbar) return;
 
       const root = document.documentElement;
-      const { left, right, bottom, height } = links.getBoundingClientRect();
+      const { bottom } = navigation.getBoundingClientRect();
+      const position = toolbar.dataset.position || "right";
       let top = "";
       let maxHeight = "";
 
-      if (height && toolbar.scrollHeight) {
+      if (position === "right" && !toolbar.classList.contains("invisible") && toolbar.scrollHeight) {
         const rootStyle = getComputedStyle(root);
         const gap = (parseFloat(rootStyle.fontSize) || 20) / 2;
         const clearTop = bottom + gap;
-        const position = toolbar.dataset.position || "right";
-
-        if (position === "right" && !toolbar.classList.contains("invisible")) {
-          const zoom = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
-          const naturalHeight = toolbar.scrollHeight * zoom;
-          const available = Math.max(1, root.clientHeight - clearTop - gap);
-          const center = clearTop + Math.min(naturalHeight, available) / 2;
-          if (center > root.clientHeight / 2) top = `${center}px`;
-          if (naturalHeight > available) maxHeight = `${available / zoom}px`;
-        } else if (position === "top") {
-          const toolbarRect = toolbar.getBoundingClientRect();
-          if (toolbarRect.right > left && toolbarRect.left < right) top = `${clearTop}px`;
-        }
+        const zoom = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
+        const naturalHeight = toolbar.scrollHeight * zoom;
+        const available = Math.max(1, root.clientHeight - clearTop - gap);
+        const center = clearTop + Math.min(naturalHeight, available) / 2;
+        if (center > root.clientHeight / 2) top = `${center}px`;
+        if (naturalHeight > available) maxHeight = `${available / zoom}px`;
       }
 
       for (const [name, value] of [
@@ -4592,7 +4590,7 @@ const ungroupSelectedBlockElement = () => {
 
       postViewportLayoutFrame = window.requestAnimationFrame(() => {
         postViewportLayoutFrame = null;
-        fitToolbarAroundExternalLinks();
+        fitToolbarBelowSiteNavigation();
         updatePostViewportLayout();
         VmsPanel.refreshPreviews();
       });
@@ -4725,7 +4723,7 @@ const ungroupSelectedBlockElement = () => {
         const sizes = new ResizeObserver(schedule);
         const layoutTargets = [
           document.getElementById("postContainer"), document.getElementById("sMConfigBar"),
-          document.getElementById("panelSelect"), document.querySelector(".top-right-links"),
+          document.getElementById("panelSelect"), document.querySelector(".site-navigation"),
           ...document.querySelectorAll(".sMModal"),
         ];
         layoutTargets.filter(Boolean).forEach(target => sizes.observe(target));
@@ -4905,6 +4903,9 @@ const ungroupSelectedBlockElement = () => {
       window.SignMakerMobile?.init();
       window.performance?.mark?.("signmaker:editor-ready");
       window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
+      if (!savedSnapshot && !hasStoredPostPreferences && getRestoreOnRefreshMode() !== "never") {
+        formHandler.showWelcomeTutorial();
+      }
     };
 
   // Create a new panel, set the current editing panel to that panel, update the form, and redraw.
@@ -6231,6 +6232,7 @@ const ungroupSelectedBlockElement = () => {
 
     const bindRenderedExitTabDrag = (panelElmt, holder, tabElmt, exitTab) => {
       if (!panelElmt || !holder || !tabElmt || !exitTab || exitTab.caStyle === true || exitTab.variant === "California") return;
+      if (exitTab.variant === "Full Left") return;
       tabElmt.classList.add("draggableExitTab");
       const initialOffset = Number(exitTab.dragOffsetRem) || 0;
       setRenderedExitTabOffset(holder, initialOffset);
@@ -6649,6 +6651,8 @@ const ungroupSelectedBlockElement = () => {
       "assetHorizontalPadding",
       "assetVerticalPadding",
       "transparent",
+      "quebecMarkerSizeRem",
+      "quebecMarkerFlipped",
       "normalFontSizeBeforeAsset",
       "nestedTabSpacing",
     ];
@@ -6668,15 +6672,6 @@ const ungroupSelectedBlockElement = () => {
 
   const getNestedExitTabLimit = () => null;
 
-  const panelHasActiveQcExitMarker = (panel) =>
-    !!(
-      panel &&
-      Array.isArray(panel.exitTabs) &&
-      panel.exitTabs.some(
-        (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
-      )
-    );
-
   const trimNestedExitTabsToLimit = (exitTab) => {
     const limit = getNestedExitTabLimit();
     if (
@@ -6695,10 +6690,6 @@ const ungroupSelectedBlockElement = () => {
       return runWithUndo(() => {
         const panel = getCurrentPanel();
         if (!panel) {
-          return;
-        }
-
-        if (panelHasActiveQcExitMarker(panel)) {
           return;
         }
 
@@ -6740,7 +6731,7 @@ const ungroupSelectedBlockElement = () => {
     const newNestExitTab = function () {
       return runWithUndo(() => {
         const panel = getCurrentPanel();
-        if (!panel || !panel.exitTabs.length || panelHasActiveQcExitMarker(panel)) {
+        if (!panel || !panel.exitTabs.length) {
           return;
         }
 
@@ -12655,7 +12646,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       );
     }
 
-    var firstExitTab = null;
     let currentPanelStackElmt = null;
 
       const isPanelVisibleInCurrentPost = (panelIndex) =>
@@ -12833,35 +12823,20 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           
           // Store CA style exit tabs to append inside sign later
           const caStyleExitTabs = [];
-          const qcVariantExitTab = Array.isArray(panel.exitTabs)
-            ? panel.exitTabs.find(
-                (tab) => tab && tab.variant === "Quebec Exit Marker" && String(tab.number || "").trim().length > 0
-              )
-            : null;
-
-          if (qcVariantExitTab && panel.sign) {
-            panel.sign.quebecExitMarkerEnabled = true;
-            panel.sign.quebecExitMarkerNumber = String(qcVariantExitTab.number || "").trim();
-            panel.sign.quebecExitMarkerPosition = qcVariantExitTab.position || "Right";
-            panel.sign.quebecExitMarkerSizeRem = Math.max(2, Math.min(6, (parseFloat(qcVariantExitTab.fontSize) || 18) / 5));
-          } else if (panel.sign && Array.isArray(panel.exitTabs)) {
-            const hasAnyQcExitTab = panel.exitTabs.some((tab) => tab && tab.variant === "Quebec Exit Marker");
-            if (hasAnyQcExitTab) {
-              panel.sign.quebecExitMarkerEnabled = false;
-            }
-          }
-
-          if (!qcVariantExitTab || panel.sign.arrowMode === "diagrammatic") {
-          
+          let firstExitTab = null;
           for (
                let exitTabIndex = panel.exitTabs.length - 1;
                exitTabIndex > -1;
                exitTabIndex--
                ) {
-                   var exitTab = window.CaliforniaExit?.view(panel.exitTabs[exitTabIndex]) || panel.exitTabs[exitTabIndex];
-                   if (exitTab && exitTab.variant === "Quebec Exit Marker") {
-                     continue;
-                   }
+                   const parentTab = panel.exitTabs[exitTabIndex];
+                   const isQuebecTab = parentTab.variant === "Quebec Exit Marker";
+                   const layoutTab = isQuebecTab
+                     ? parentTab.nestedExitTabs?.find(tab => tab.variant !== "Quebec Exit Marker")
+                     : parentTab;
+                   if (!layoutTab) continue;
+                   ExitTab.normalizeFullLeft(layoutTab);
+                   var exitTab = window.CaliforniaExit?.view(layoutTab) || layoutTab;
                    
                    const exitTabCont = document.createElement("div");
                    exitTabCont.className = `exitTabContainer ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
@@ -12869,11 +12844,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                      exitTabCont.classList.add("aplEdge");
                      exitTabCont.dataset.aplEdgePosition = String(exitTab.position || "Right");
                    }
-                   const exitTabHasNestedTabs =
-                     Array.isArray(exitTab?.nestedExitTabs) &&
-                     exitTab.nestedExitTabs.length > 0;
+                   const nestedExitTabListForLayout = parentTab.nestedExitTabs || [];
+                   const visibleNestedTabCount = nestedExitTabListForLayout.filter(tab => tab.variant !== "Quebec Exit Marker").length;
                    const shouldCollapseEmptyExitTab =
-                     isEmptyDefaultExitTab(exitTab) && !exitTabHasNestedTabs;
+                     isEmptyDefaultExitTab(exitTab) && !visibleNestedTabCount;
                    if (shouldCollapseEmptyExitTab) {
                      exitTabCont.classList.add("emptyExitTab");
                      exitTabCont.style.display = "none";
@@ -12911,14 +12885,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    const parentExitTabAlignment = String(
                      parentExitTabForNestedLayout?.position || "Right"
                    ).toLowerCase();
-                   const nestedExitTabListForLayout = Array.isArray(
-                     parentExitTabForNestedLayout?.nestedExitTabs
-                   )
-                     ? parentExitTabForNestedLayout.nestedExitTabs
-                     : [];
                    const hasMixedNestedExitTabAlignment = nestedExitTabListForLayout.some(
                      (nestedTab) =>
-                       String(
+                       nestedTab.variant !== "Quebec Exit Marker" && String(
                          nestedTab?.position || parentExitTabForNestedLayout?.position || "Right"
                        ).toLowerCase() !== parentExitTabAlignment
                    );
@@ -12928,19 +12897,17 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                    }
 
                    var nestedExitTabs = nestedExitTabListForLayout.length;
-                   if (nestedExitTabs > 0) {
+                   if (visibleNestedTabCount > (isQuebecTab ? 1 : 0)) {
                      exitTabCont.classList.add("hasNestedExitTabs");
                    }
                    
-                   for (let nestIndex = -1; nestIndex < nestedExitTabs; nestIndex++) {
+                   for (let nestIndex = isQuebecTab ? 0 : -1; nestIndex < nestedExitTabs; nestIndex++) {
                        if (nestIndex != -1) {
                            exitTab = window.CaliforniaExit?.view(nestedExitTabListForLayout[nestIndex]) || nestedExitTabListForLayout[nestIndex];
                        }
 
-                       if (!exitTab) {
-                           continue;
-                       }
-                       
+                       if (!exitTab || exitTab.variant === "Quebec Exit Marker") continue;
+
                        normalizeExitTabLegacyFields(exitTab);
                        const exitTabElmt = document.createElement("div");
                        exitTabElmt.className = `exitTab ${exitTab.position.toLowerCase()} ${exitTab.width.toLowerCase()}`;
@@ -13152,8 +13119,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                : ""
                                )
                                );
-                               targetElmt.appendChild(divTextElmt);
-                               
+                               if (exitTab.variant !== "Full Left" || leadingText.trim() || txtArr.length === 1) {
+                                   targetElmt.appendChild(divTextElmt);
+                               }
+
                                if (txtArr.length > 1) {
                                    divTextElmt.classList.add("exitFormat");
                                    if (leadingText && leadingText.trim().length > 0) {
@@ -13558,11 +13527,25 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                    }
                                } else if (exitTab.variant == "Full Left") {
                                    exitTabElmt.classList.add("fullLeft");
+                                   const joinsPanelEdge = ["Full", "Edge"].includes(exitTab.width) &&
+                                       (!exitTab.fullBorder || !panel.outerBorder);
+                                   exitTabElmt.classList.toggle("fullLeftJoinsPanel", joinsPanelEdge);
+                                   if (!joinsPanelEdge && (exitTab.fullBorder || exitTab.width === "Out")) {
+                                       exitTabElmt.classList.add("fullLeftHasBottomBorder");
+                                   }
+                                   exitTabHolderElmt.classList.add("fullLeftHolder");
+                                   exitTabCont.classList.add("hasFullLeftTab");
+                                   exitTabElmt.style.setProperty("--fullLeftExitFill", getResolvedCssColorValue(resolvedExitTabColor));
+                                   const bannerPlate = document.createElement("div");
+                                   bannerPlate.className = "fullLeftBannerPlate";
                                    const bannerElmt = document.createElement("div");
                                    bannerElmt.className = "fullLeftBanner";
-                                   registerExitTabText(bannerElmt);
-                                   bannerElmt.appendChild(document.createTextNode("LEFT"));
-                                   exitTabElmt.appendChild(bannerElmt);
+                                   const bannerText = document.createElement("span");
+                                   bannerText.className = "leftExitLabelText";
+                                   bannerText.textContent = "LEFT";
+                                   bannerElmt.appendChild(bannerText);
+                                   bannerPlate.appendChild(bannerElmt);
+                                   exitTabElmt.appendChild(bannerPlate);
                                    
                                    const numberWrapperElmt = document.createElement("div");
                                    numberWrapperElmt.className = "fullLeftNumber";
@@ -13684,7 +13667,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                }
                                
                                applyExitTabCornerShape(exitTabElmt, exitTab.fullBorder, isBorderlessTab);
-                               applyExitTabAttachedOverlap(exitTabElmt, exitTab, normalizedBorderThickness, isTransparentAssetExitTab);
+                               if (exitTab.variant === "Full Left") {
+                                   exitTabElmt.style.setProperty("--fullLeftBannerRadius", isBorderlessTab ? "0" : cornerRadius);
+                               } else {
+                                   applyExitTabAttachedOverlap(exitTabElmt, exitTab, normalizedBorderThickness, isTransparentAssetExitTab);
+                               }
                                
                                if (hasRightEdgeExitTab) {
                                    panelElmt.style.borderTopRightRadius = "0";
@@ -13712,7 +13699,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                );
 
                                exitTabElmt.style.fontSize = resolvedFontSize.toString() + "px";
-                               if (exitTab.showLeft === true && exitTab.variant === "Default") {
+                               if ((exitTab.showLeft === true && exitTab.variant === "Default") || exitTab.variant === "Full Left") {
                                  // Both font families use the same LEFT label size at
                                  // their respective default text sizes (18 and 22).
                                  const leftLabelFontSize = usesHighwayGothicFont
@@ -13729,6 +13716,12 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                if (exitTab._californiaRender) {
                                    const minimum = parseFloat(exitTab.minHeight);
                                    exitTabElmt.style.minHeight = (Number.isFinite(minimum) ? Math.max(0, minimum) : ExitTab.prototype.defaultMinHeight) + "rem";
+                               } else if (exitTab.variant === "Full Left") {
+                                   const minimum = parseFloat(exitTab.minHeight);
+                                   const numberMinHeight = Number.isFinite(minimum)
+                                     ? Math.max(0, minimum)
+                                     : ExitTab.prototype.defaultMinHeight;
+                                   exitTabElmt.style.setProperty("--fullLeftNumberMinHeight", numberMinHeight + "rem");
                                } else if (exitTab.verticalArrangement && exitTab.variant == "Default") {
                                    const baseMinHeight = parseFloat(exitTab.minHeight) || 2.25;
                                    // Account for numeral scaling (1.5em) and vertical spacing
@@ -13744,9 +13737,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                            }
                    }
                    
-                   if (exitTabIndex == 0) {
-                       firstExitTab = exitTabCont;
-                   }
+                   if (!shouldCollapseEmptyExitTab) firstExitTab = exitTabCont;
                    
                    exitTabCont.style.display = "flex";
                }
@@ -14213,8 +14204,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               }
           }
           
-          }
-          
           function monitorControlText(i, p) {
               function LineEditor(line) {
                   if (line.includes("</>")) {
@@ -14251,7 +14240,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               )
             : [];
           const signShapeExitTab = visibleExitTabsForSignShape[0] ||
-            panel.exitTabs?.find(tab => tab.variant !== "California" && tab.caStyle !== true) || {};
+            panel.exitTabs?.find(tab => tab.variant !== "California" && tab.caStyle !== true && tab.variant !== "Quebec Exit Marker") || {};
           const getExitTabWidthClassForSignShape = (exitTab = {}) => {
               if (isAplEdgeExitTabWidth(exitTab.width)) {
                   return "edge aplEdge";
@@ -14270,7 +14259,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                   exitTab.fullBorder === true ||
                   String(exitTab.fullBorder || "").toLowerCase() === "true";
 
-                if (hasFullBorder) {
+                if (hasFullBorder && (exitTab.variant !== "Full Left" || panel.outerBorder)) {
                     return cuts;
                 }
 
@@ -14345,10 +14334,33 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
               selectRenderedPanelArea
             });
 
+          const sign = panel.sign;
+          const qcMarker = QuebecExitMarker.find(panel.exitTabs);
+          const qcMarkerEnabled = !!qcMarker;
+          const makeQuebecMarker = side => QuebecExitMarker.create(qcMarker.tab, side, marker => {
+            if (document.querySelector(".exitTabConfig.defaultConfigMode")) {
+              formHandler.setExitTabEditorMode("current");
+            }
+            const { exitTabIndex, nestedExitTabIndex } = qcMarker;
+            selectRenderedPanelArea({ panelIndex: index, exitTabIndex, nestedExitTabIndex,
+              menu: "exitTabs", flashTarget: marker, suppressRedraw: true });
+          });
+          const appendQuebecFooter = (side = QuebecExitMarker.side(qcMarker.tab, "Center")) => {
+            QuebecExitMarker.appendFooter(signElmt, makeQuebecMarker(side), side);
+          };
+
           if (window.SignMakerSpecialPanelLayout?.render({
             mode: normalizeArrowMode(panel.sign.arrowMode), panel, index, signElmt,
             createShield, markSelectedRenderedSubpanel, bindRenderedBlockSelection, selectRenderedPanelArea
           })) {
+            if (qcMarkerEnabled && signElmt.classList.contains("diagrammaticSign")) {
+              const side = QuebecExitMarker.side(qcMarker.tab, "Center");
+              const footer = QuebecExitMarker.appendFooter(signCont, makeQuebecMarker(side), side);
+              footer.classList.add("qcDiagrammaticFooter");
+              footer.style.backgroundColor = panelFillColor;
+            } else if (qcMarkerEnabled) {
+              appendQuebecFooter();
+            }
             window.CaliforniaExit?.mount(panelElmt, panel, caStyleExitTabs);
             refreshDynamicPanelBorders(panelElmt);
             continue;
@@ -14371,7 +14383,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
           const hasExitTabThatCanWidenPanel =
             Array.isArray(panel.exitTabs) &&
-            panel.exitTabs.some((tab) => !isEmptyDefaultExitTab(tab));
+            panel.exitTabs.some((tab) => tab.variant !== "Quebec Exit Marker" && !isEmptyDefaultExitTab(tab));
 
           if (hasGuideArrowThatCanWidenPanel || hasExitTabThatCanWidenPanel) {
             signElmt.classList.add("hasWideningPanelFeature");
@@ -15972,7 +15984,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             );
 
             const standardGuideArrowImgs = Array.from(
-              arrowContElmt.querySelectorAll("img.arrow, img.standardGuideArrowImage, img.exitOnlyArrow, img.qcExitOnlyArrow")
+              arrowContElmt.querySelectorAll("img.arrow, img.standardGuideArrowImage, img.exitOnlyArrow")
             ).filter((img) => {
               const rect = img.getBoundingClientRect();
               const styles = window.getComputedStyle(img);
@@ -16042,35 +16054,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           
           var path;
           
-          const qcExitMarkerMode =
-            panel.sign.quebecExitMarkerEnabled === true &&
-            (
-              panel.sign.guideArrow === "Exit Only" ||
-              panel.sign.guideArrow === "Half Exit Only" ||
-              panel.sign.guideArrow === "Split Exit Only"
-            );
-
-          const qcExitArrowSide =
-            String(panel.sign.arrowPosition || "Middle").toLowerCase() === "left"
-              ? "left"
-              : "right";
-
-          const qcExitArrowSideClass =
-            qcExitArrowSide === "left" ? "Left" : "Right";
-          
-          const createQuebecExitOnlyArrowElmt = () => {
-            const arrowImg = document.createElement("img");
-            arrowImg.className = "exitOnlyArrow qcExitOnlyArrow";
-            arrowImg.src = "img/arrows/QC_EXIT_RIGHT.svg";
-            arrowImg.alt = "Quebec exit arrow";
-
-            if (qcExitArrowSide === "left") {
-              arrowImg.classList.add("flipped");
-            }
-
-            return arrowImg;
-          };
-          
           const createArrowElmt = function (key, dir, name, extra) {
               if (dir == "MainArrows!ExitOnly") {
                   key = key.split("/")[1];
@@ -16091,20 +16074,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
 
                       if (inverted) {
                           downArrowElmt.style.filter = "invert(1)";
-                      }
-
-                      if (qcExitMarkerMode) {
-                          downArrowElmt.src = "img/arrows/QC_EXIT_RIGHT.svg";
-                          downArrowElmt.classList.add("qcExitOnlyArrow");
-                          downArrowElmt.style.filter = "none";
-
-                          if (qcExitArrowSide === "left") {
-                              downArrowElmt.classList.add("flipped");
-                          } else {
-                              downArrowElmt.classList.remove("flipped");
-                          }
-
-                          return downArrowElmt;
                       }
 
                       const shouldUseOntarioDownArrow =
@@ -16159,10 +16128,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           
           if (panel.sign.guideArrow.includes("Exit Only") && Number(panel.sign.exitOnlyEditorVersion) < 1) {
               const createExitOnlyArrowElmt = (direction) => {
-                if (qcExitMarkerMode) {
-                  return createQuebecExitOnlyArrowElmt();
-                }
-
                 const arrowImg = ArrowElmt(direction, "", true);
                   arrowImg.classList.remove("arrow");
                   arrowImg.classList.add("exitOnlyArrow");
@@ -16356,15 +16321,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     "halfarrow",
                     halfExitRenderPositionLower
                   );
-
-                  if (qcExitMarkerMode) {
-                    arrow.src = "img/arrows/QC_EXIT_RIGHT.svg";
-                    arrow.classList.add("qcExitOnlyArrow");
-
-                    if (String(panel.sign.arrowPosition || "Middle").toLowerCase() === "left") {
-                      arrow.classList.add("flipped");
-                    }
-                  }
 
                   halfExitGuideLane.appendChild(arrow);
 
@@ -16619,7 +16575,6 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             }
         } else if (["Exit Only", "Half Exit Only", "Split Exit Only"].includes(panel.sign.guideArrow) &&
                    Number(panel.sign.exitOnlyEditorVersion) >= 1 && panel.sign.arrowMode !== "apl") {
-            const sign = panel.sign;
             const variant = sign.guideArrow === "Half Exit Only" ? "laneSplit" :
                 sign.guideArrow === "Split Exit Only" ? "boxed" : "standard";
             const count = Math.max(0, Math.min(6, Math.round(Number(sign.guideArrowLanes) || 0)));
@@ -17049,6 +17004,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                     sequence.appendChild(rightText);
                     appendArrows(Math.floor(laneCount / 2));
                 }
+                if (qcMarkerEnabled) {
+                    const exitsLeft = variant === "laneSplit" ? sign.exitArrowAlignment === "Left" :
+                        sign.arrowPosition === "Left" || angle > 180 || (fixed && sign.exitArrowFlip);
+                    const side = variant === "laneSplit" ? (exitsLeft ? "Left" : "Right") :
+                        QuebecExitMarker.side(qcMarker.tab, exitsLeft ? "Left" : "Right");
+                    QuebecExitMarker.replaceExitText(sequence, ".modernExitTextSlot", makeQuebecMarker(side), side);
+                }
                 lane.appendChild(sequence);
                 document.fonts?.ready?.then(syncExitOnlyPanelWidth);
                 return lane;
@@ -17220,17 +17182,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                               path.appendChild(actionMessage);
                           } else {
                               
-                              const exitOnlyLabelLeft = qcExitMarkerMode
-                              ? ""
-                              : (typeof panel.sign.exitOnlyLeftText === "string" ? panel.sign.exitOnlyLeftText : "EXIT").trim();
+                              const exitOnlyLabelLeft = (typeof panel.sign.exitOnlyLeftText === "string" ? panel.sign.exitOnlyLeftText : "EXIT").trim();
                               
-                              const exitOnlyLabelRight = qcExitMarkerMode
-                              ? ""
-                              : (typeof panel.sign.exitOnlyRightText === "string" ? panel.sign.exitOnlyRightText : "ONLY").trim();
+                              const exitOnlyLabelRight = (typeof panel.sign.exitOnlyRightText === "string" ? panel.sign.exitOnlyRightText : "ONLY").trim();
                               
-                              const exitOnlyLabelFull = qcExitMarkerMode
-                              ? ""
-                              : [exitOnlyLabelLeft, exitOnlyLabelRight]
+                              const exitOnlyLabelFull = [exitOnlyLabelLeft, exitOnlyLabelRight]
                               .filter((text) => text && text.length > 0)
                               .join(" ")
                               .trim();
@@ -17417,29 +17373,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                                                    panel.sign.guideArrow == "Exit Only" && length == 1;
 
                                                const arrowPos = isExitOnlySingle
-                                                   ? (
-                                                       qcExitMarkerMode
-                                                           ? qcExitArrowSide
-                                                           : (panel.sign.arrowPosition || "Middle").toLowerCase()
-                                                     )
+                                                   ? (sign.arrowPosition || "Middle").toLowerCase()
                                                    : "middle";
 
-                                               if (qcExitMarkerMode && isExitOnlySingle) {
-                                                   path.classList.add("qcExitOnlyPath");
-
-                                                   if (arrowPos === "left") {
-                                                       path.classList.add("qcExitOnlyPathLeft");
-                                                       path.classList.remove("qcExitOnlyPathRight");
-                                                   } else {
-                                                       path.classList.add("qcExitOnlyPathRight");
-                                                       path.classList.remove("qcExitOnlyPathLeft");
-                                                   }
-
-                                                   if (arrowEl) {
-                                                       arrowEl.classList.toggle("flipped", arrowPos === "left");
-                                                       path.appendChild(arrowEl);
-                                                   }
-                                               } else if (arrowPos === "left") {
+                                               if (arrowPos === "left") {
                                                    if (arrowEl) path.appendChild(arrowEl);
                                                    if (leftTextEl) path.appendChild(leftTextEl);
                                                    if (rightTextEl) path.appendChild(rightTextEl);
@@ -17588,100 +17525,48 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                   otherSymbolsElmt.appendChild(markerElmt);
               default:
           }
-          if (panel.sign.quebecExitMarkerEnabled) {
-              const normalizeQuebecMarkerPosition = (value) => {
-                  const normalized = String(value || "Center")
-                      .replace(/^Bottom\s+/i, "")
-                      .trim();
-
-                  if (
-                      normalized === "Left" ||
-                      normalized === "Center" ||
-                      normalized === "Right"
-                  ) {
-                      return normalized;
-                  }
-
-                  return "Center";
-              };
-
-              const qcUsesBottomBand =
-                  panel.sign.guideArrow === "Exit Only" ||
-                  panel.sign.guideArrow === "Half Exit Only" ||
-                  panel.sign.guideArrow === "Split Exit Only";
-
-              const qcRawArrowPosition = String(
-                  panel.sign.arrowPosition || "Middle"
-              ).toLowerCase();
-
-              const qcArrowSide = qcRawArrowPosition === "left" ? "Left" : "Right";
-
-              const qcMarkerPosition = qcUsesBottomBand
-                  ? qcArrowSide === "Left"
-                      ? "Right"
-                      : "Left"
-                  : normalizeQuebecMarkerPosition(panel.sign.quebecExitMarkerPosition);
-
-              const qcMarker = document.createElement("div");
-              qcMarker.className = "qcExitMarker";
-              qcMarker.classList.add(`qc${qcMarkerPosition}`);
-              qcMarker.classList.add(qcUsesBottomBand ? "qcInBand" : "qcOnSign");
-
-              const qcMarkerSize = parseFloat(panel.sign.quebecExitMarkerSizeRem);
-              const resolvedQcMarkerWidth =
-                  Number.isFinite(qcMarkerSize) && qcMarkerSize > 0 ? qcMarkerSize : 3.05;
-
-              const resolvedQcMarkerHeight = resolvedQcMarkerWidth * 0.387;
-              const resolvedQcMarkerFontSize = resolvedQcMarkerWidth * 0.33;
-
-              qcMarker.style.setProperty("--qc-marker-width", `${resolvedQcMarkerWidth}rem`);
-              qcMarker.style.setProperty("--qc-marker-height", `${resolvedQcMarkerHeight}rem`);
-              qcMarker.style.setProperty("--qc-marker-font-size", `${resolvedQcMarkerFontSize}rem`);
-
-              const shouldFlipQcMarker =
-                  panel.sign.quebecExitMarkerFlipped ||
-                  (qcUsesBottomBand && qcArrowSide === "Left");
-
-              if (shouldFlipQcMarker) {
-                  qcMarker.classList.add("flipped");
-              }
-
-              const qcImg = document.createElement("img");
-              qcImg.className = "qcExitMarkerImg";
-              qcImg.src = "img/other-symbols/QC-Exit.svg";
-              qcImg.alt = "Quebec exit marker";
-
-              const qcNum = document.createElement("span");
-              qcNum.className = "qcExitMarkerNumber";
-              qcNum.textContent = String(panel.sign.quebecExitMarkerNumber || "1").trim();
-
-              qcMarker.appendChild(qcImg);
-              qcMarker.appendChild(qcNum);
-
-              if (qcUsesBottomBand && path) {
-                  guideArrowsElmt.classList.add("qcExitMarkerMode");
-                  guideArrowsElmt.classList.add(`qcArrow${qcArrowSide}`);
-
-                  path.classList.add("qcExitOnlyPair");
-
-                  const existingQcArrow = path.querySelector(".qcExitOnlyArrow");
-
-                  if (existingQcArrow) {
-                      existingQcArrow.classList.toggle("flipped", qcArrowSide === "Left");
-
-                      if (qcArrowSide === "Left") {
-                          path.appendChild(qcMarker);
-                      } else {
-                          path.insertBefore(qcMarker, existingQcArrow);
-                      }
-                  } else {
-                      path.appendChild(qcMarker);
-                  }
+          if (qcMarkerEnabled) {
+            if (path && sign.arrowMode !== "apl") {
+              const fallback = sign.arrowPosition === "Left" ? "Left" : "Right";
+              const side = sign.guideArrow === "Half Exit Only" ? fallback :
+                QuebecExitMarker.side(qcMarker.tab, fallback);
+              path.style.setProperty("--qc-lane-marker-width", QuebecExitMarker.width(qcMarker.tab) + "rem");
+              QuebecExitMarker.replaceExitText(path, ".exitOnlyText", makeQuebecMarker(side), side);
+            } else if (!guideArrowsElmt.classList.contains("modernExitOnly")) {
+              const arrows = sign.arrowMode !== "apl"
+                ? [...arrowContElmt.querySelectorAll(".standardGuideArrowFrame, img.arrow")]
+                : [];
+              const fallback = [sign.standardArrowPosition, sign.standardArrowAlignment, sign.arrowPosition,
+                sign.guideArrow].some(value => value === "Left" || value === "Side Left")
+                ? "Left" : "Right";
+              if (arrows.length > 1) {
+                const marker = makeQuebecMarker(QuebecExitMarker.side(qcMarker.tab, fallback));
+                const rightArrow = arrows[Math.ceil(arrows.length / 2)];
+                const gap = rightArrow.previousElementSibling;
+                if (gap?.classList.contains("standardGuideArrowGap")) {
+                  gap.classList.add("qcStandardArrowGap");
+                  gap.append(marker);
+                } else {
+                  rightArrow.before(marker);
+                }
+              } else if (arrows.length === 1) {
+                const side = QuebecExitMarker.side(qcMarker.tab, fallback);
+                const marker = makeQuebecMarker(side);
+                const row = document.createElement("div");
+                row.className = "qcStandardArrowRow";
+                arrowContElmt.before(row);
+                if (side === "Left") row.append(marker, arrowContElmt);
+                else row.append(arrowContElmt, marker);
+              } else if (signElmt.classList.contains("hasSideGuideArrow")) {
+                appendQuebecFooter(QuebecExitMarker.side(qcMarker.tab, fallback));
               } else {
-                  signElmt.appendChild(qcMarker);
+                appendQuebecFooter();
               }
+              syncStandardGuideArrowSubpanelWidth();
+              syncWidenedSubpanelFill();
+            }
           }
-          
+
           // APL Arrows Rendering
           // aplArrows is already defined above
             if (panel.sign.arrowMode === "apl" && aplArrows.length > 0) {
@@ -17702,11 +17587,19 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           }
           
           window.CaliforniaExit?.mount(panelElmt, panel, caStyleExitTabs);
-          var width = signCont.clientWidth;
-          var exitWidth = firstExitTab.clientWidth;
+          const fullLeftTab = firstExitTab?.querySelector(".exitTab.fullLeft:is(.edge, .full)");
+          const fullLeftWidth = fullLeftTab && parseFloat(window.getComputedStyle(fullLeftTab).width);
+          const width = fullLeftWidth ? parseFloat(window.getComputedStyle(signCont).width) : signCont.clientWidth;
+          const exitWidth = fullLeftWidth && !firstExitTab.classList.contains("hasNestedExitTabs")
+            ? fullLeftWidth
+            : Math.max(firstExitTab?.clientWidth || 0, fullLeftWidth || 0);
           
           if (exitWidth > width) {
-              signCont.style.width = firstExitTab.clientWidth + "px";
+              signCont.style.width = exitWidth + "px";
+          }
+          if (fullLeftTab?.classList.contains("fullLeftJoinsPanel") &&
+              Math.abs(fullLeftTab.offsetWidth - signElmt.offsetWidth) <= 1) {
+              signCont.classList.add("exitTabCutsTopRight");
           }
 
           adoptNearbyExitTabAnchors(panelElmt, panel);

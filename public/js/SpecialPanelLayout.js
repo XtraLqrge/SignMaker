@@ -43,7 +43,6 @@ window.SignMakerSpecialPanelLayout = (() => {
               frame.addEventListener('contextmenu',selectAssembly,true);
               frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
             });
-            renderQuebecMarker(panel,index,signElmt,selectRenderedPanelArea);
             signElmt.addEventListener("click", (event) => {
               event.stopPropagation();
               selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
@@ -144,31 +143,6 @@ window.SignMakerSpecialPanelLayout = (() => {
             if (blockMasterElmt) bindControl(blockMasterElmt);
           };
 
-  const renderQuebecMarker = (panel,panelIndex,host,selectRenderedPanelArea) => {
-    const {sign}=panel;
-    if(!sign.quebecExitMarkerEnabled)return;
-    const position=String(sign.quebecExitMarkerPosition||'').replace(/^Bottom\s+/i,'').trim().toLowerCase();
-    const alignment=position==='left'?'Left':position==='right'?'Right':'Center';
-    const marker=document.createElement('div');marker.className=`qcExitMarker qcOnSign qc${alignment}`;
-    marker.classList.toggle('flipped',!!sign.quebecExitMarkerFlipped);
-    const width=Number(sign.quebecExitMarkerSizeRem)||3.05;
-    marker.style.setProperty('--qc-marker-width',width+'rem');
-    marker.style.setProperty('--qc-marker-height',width*.387+'rem');
-    marker.style.setProperty('--qc-marker-font-size',width*.33+'rem');
-    const image=document.createElement('img');image.className='qcExitMarkerImg';
-    image.src='img/other-symbols/QC-Exit.svg';image.alt='Quebec exit marker';
-    const number=document.createElement('span');number.className='qcExitMarkerNumber';
-    number.textContent=String(sign.quebecExitMarkerNumber||'1').trim();
-    marker.append(image,number);
-    const exitTabIndex=panel.exitTabs?.findIndex(tab=>tab?.variant==='Quebec Exit Marker'&&String(tab.number||'').trim());
-    if(exitTabIndex>=0){
-      marker.dataset.exitTabIndex=String(exitTabIndex);
-      marker.addEventListener('click',event=>{
-        event.stopPropagation();selectRenderedPanelArea({panelIndex,exitTabIndex,menu:'exitTabs',flashTarget:marker});
-      });
-    }
-    host.append(marker);
-  };
   const addSubpanel = ({sign,bounds,panelIndex,selectRenderedPanelArea,updateForm,redraw,clamp}) => {
     if(sign?.arrowMode!=='diagrammatic'||!bounds||!['x','y','width','height'].every(k=>Number.isFinite(bounds[k])))return;
     const diagrammatics=window.SignMakerDiagrammatics;

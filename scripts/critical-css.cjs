@@ -4,7 +4,7 @@ const cssTree = require('./vendor/css-tree.cjs');
 const renderFiles = new Set(['page.css', 'signs.css', 'sign-foundation.css', 'ui-fonts.css']);
 const shellNames = new Set(['hidden', 'material-symbols-outlined', 'sMConfigBar', 'sMConfigOption', 'buttonLabel',
   'historyBar', 'historyButton', 'undoButton', 'redoButton', 'clearAllButton', 'hideConfig', 'configHidden', 'export', 'hitbox',
-  'top-right-links', 'mutcd-link', 'external-link-icon', 'toolTip', 'sMConfigOptionActive']);
+  'toolTip', 'sMConfigOptionActive']);
 const canvasName = /^(?:post|panel|alignmentGuide|signHolder|bE-|blockElement|groupedBlock|subPanel|subDivider|exitTab|guideArrow|standardArrow|aplArrow|vms)/i;
 function criticalCSS(files, read) {
   const select = list => {

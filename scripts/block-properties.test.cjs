@@ -40,18 +40,32 @@ test('the two property disclosures start closed, and vertical alignment follows 
     assert.deepEqual(align.querySelectorAll('option').map(option => option.value), ['Top', 'Middle', 'Bottom']);
   }
 });
-test('Help is the first external link and Side Spacing stays beside Letter Spacing', () => {
+test('Help sits before Undo and Side Spacing sits to the left of Font Size', () => {
   const tree = parse(html);
-  const guide = tree.querySelector('.top-right-links').children[0];
-  assert.equal(guide.id, 'signMakerHelp');
+  const guide = tree.querySelector('.historyBar #signMakerHelp');
+  assert.equal(guide.nextElementSibling.id, 'undoButton');
+  assert.equal(tree.querySelector('.site-navigation #signMakerHelp'), null);
   assert.equal(guide.getAttribute('href'), 'help.html');
   assert.match(read('public/help.html'), /<title>SignMaker User Guide<\/title>/);
   for (const prefix of ['sdCtrlText', 'sdAdvisory', 'sdActionMessage']) {
     const side = tree.querySelector('#' + prefix + '_spacing');
-    const letter = tree.querySelector('#' + prefix + '_letterSpacing');
-    assert.equal(letter.closest('.sdTextEditorField').nextElementSibling, side.closest('.sdTextEditorField'));
+    const size = tree.querySelector('#' + prefix + '_fontSize');
+    assert.equal(side.closest('.sdTextEditorField').nextElementSibling, size.closest('.sdTextEditorField'));
     assert.equal(tree.querySelector('label[for="' + prefix + '_spacing"]').textContent, 'Side Spacing:');
     assert.deepEqual([side.min, side.max, side.step], ['-10', '10', '.25']);
+  }
+});
+test('the site navigation omits Indev and Quebec settings are inside the exit tab editor', () => {
+  for (const markup of [html, read('public/index.html')]) {
+    const tree = parse(markup);
+    const nav = tree.querySelector('.site-navigation');
+    assert.deepEqual(nav.children.map(node => node.textContent.trim()),
+      ['SignMaker', 'SignalMaker', 'StripeMaker', 'Discord', 'MUTCD']);
+    const marker = tree.querySelector('.exitTabConfig .qcExitMarkerControls');
+    assert.equal(marker.closest('#sMExitTabSetting').id, 'sMExitTabSetting');
+    assert.equal(marker.hasAttribute('hidden'), true);
+    assert.ok(marker.querySelector('#qcExitMarkerSize'));
+    assert.equal(tree.querySelector('#qcExitMarkerEnabled'), null);
   }
 });
 function models(){
@@ -62,6 +76,85 @@ function models(){
  vm.runInContext(read('public/js/BlockProperties.js'),c);
  return {c,make};
 }
+test('saved standalone Quebec markers migrate to a selectable tab type without changing existing tabs', () => {
+  const { c } = models();
+  const result = vm.runInContext(`(() => {
+    const sign = Object.assign(new Sign(), {
+      quebecExitMarkerEnabled: true,
+      quebecExitMarkerNumber: 'EXIT 058B',
+      quebecExitMarkerPosition: 'Bottom Left',
+      quebecExitMarkerSizeRem: 4,
+      quebecExitMarkerFlipped: true,
+    });
+    const tabs = QuebecExitMarker.migrate(sign, [new ExitTab({ number: '6A' })]);
+    const marker = QuebecExitMarker.find(tabs);
+    QuebecExitMarker.migrate(sign, tabs);
+    return {
+      tabs: tabs.map(tab => tab.number),
+      side: QuebecExitMarker.side(marker.tab),
+      width: QuebecExitMarker.width(marker.tab),
+      flipped: marker.tab.quebecMarkerFlipped,
+      index: marker.exitTabIndex,
+      oldSetting: 'quebecExitMarkerEnabled' in sign,
+      variant: marker.tab.variant,
+    };
+  })()`, c);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)),
+    {tabs:['6A','058'], side:'Left', width:4, flipped:true, index:1, oldSetting:false, variant:'Quebec Exit Marker'});
+});
+
+test('Quebec marker input keeps digits and leading zeroes when other characters are entered', () => {
+  const { c } = models();
+  const value = vm.runInContext(`(() => {
+    const input = {
+      value: 'EXIT 007B', selectionEnd: 7, getAttribute: () => 'numeric',
+      setSelectionRange(start, end) { this.selection = [start, end]; },
+    };
+    QuebecExitMarker.filterInput({ target: input });
+    return [input.value, ...input.selection];
+  })()`, c);
+  assert.deepEqual(Array.from(value), ['007', 2, 2]);
+});
+
+test('Full Left uses Series E and clears right-side drag placement', () => {
+  const { c } = models();
+  const result = vm.runInContext(`(() => {
+    const tab = new ExitTab({variant:'Full Left', position:'Right', fontFamily:'Series D', dragOffsetRem:2});
+    const restored = { ...tab, position: 'Right', dragSnapAnchor: { kind: 'tab' } };
+    ExitTab.normalizeFullLeft(restored);
+    return [restored.position, restored.fontFamily, restored.dragOffsetRem, restored.dragSnapAnchor ?? null];
+  })()`, c);
+  assert.deepEqual(Array.from(result), ['Left', 'Series E', 0, null]);
+});
+
+test('Full Left keeps the number row tall and square at an open seam', () => {
+  for (const css of [read('public/css/signs.css'), read('public/' + manifest.deferredStyles)]) {
+    const style = cascade(css, { respectLayers: true });
+    const panel = new Node('div');
+    panel.className = 'panel sharp';
+    const tab = new Node('div');
+    tab.className = 'exitTab fullLeft edge left';
+    panel.append(tab);
+    const plate = new Node('div');
+    plate.className = 'fullLeftBannerPlate';
+    tab.append(plate);
+    assert.equal(style(plate, 'background-color'), 'var(--yellow)');
+    const number = new Node('div');
+    number.className = 'fullLeftNumber';
+    tab.append(number);
+    const numeral = new Node('span');
+    numeral.className = 'numeral';
+    number.append(numeral);
+    assert.equal(Number(style(numeral, 'line-height')), 0.92);
+    assert.match(style(number, 'min-height'), /--fullLeftNumberMinHeight/);
+    for (const property of ['border-bottom-width', 'border-bottom-left-radius', 'border-bottom-right-radius']) {
+      assert.equal(style(number, property), '0');
+      tab.classList.add('fullLeftHasBottomBorder');
+      assert.equal(style(number, property), undefined);
+      tab.classList.remove('fullLeftHasBottomBorder');
+    }
+  }
+});
 test('nested block spacing and row-side padding survive typed loading and duplication without changing legacy defaults',()=>{
  const {c}=models();const result=vm.runInContext(`(()=>{
   const saved={rows:[[{_elementType:'GroupedBlockElement',padding:1.25,blockElements:{rows:[[{_elementType:'ControlTextElement',textContent:'City',paddingHorizontal:2,paddingVertical:0.7}]],blockProperties:[{leftPadding:1.1,rightPadding:2.2}]}}]],blockProperties:[{leftPadding:0.6,rightPadding:0.8}]};

@@ -3572,86 +3572,32 @@ const formHandler = (function () {
   let subpanelHeightSyncFrame = 0;
 
   const syncSubpanelModalHeight = () => {
-    if (window.SignMakerMobile?.active) {
-      // Drop desktop measurements when resizing into the mobile sheet layout.
-      const content = document.querySelector(".sMModal.subPanelConfig > .sMModalContent");
-      for (const property of ["height", "max-height", "overflow-y", "overflow-x"]) {
-        content?.style.removeProperty(property);
-      }
-      return;
-    }
-    if (!subpanelMenuIsOpen()) {
-      return;
-    }
+    const mobile = window.SignMakerMobile?.active;
+    if (!mobile && !subpanelMenuIsOpen()) return;
 
     const modal = document.querySelector(".sMModal.subPanelConfig");
     const content = modal?.querySelector(":scope > .sMModalContent");
+    if (!content) return;
 
-    if (!modal || !content || window.getComputedStyle(modal).display === "none") {
+    if (mobile) {
+      content.style.removeProperty("max-height");
       return;
     }
-
-    const activeHolder = Array.from(content.children).find((holder) => {
-      const style = window.getComputedStyle(holder);
-      return (
-        !holder.classList.contains("tabHidden") &&
-        style.display !== "none" &&
-        style.visibility !== "hidden"
-      );
-    });
-
-    if (!activeHolder) {
-      return;
-    }
-
-    /* Remove any previous measured height before taking a fresh measurement. */
-    content.style.removeProperty("height");
-    content.style.removeProperty("overflow-y");
+    if (!modal.getClientRects().length) return;
 
     const rootStyle = window.getComputedStyle(document.documentElement);
-    const zoom = Math.max(0.01, parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1);
-    const contentRect = content.getBoundingClientRect();
-    const contentStyle = window.getComputedStyle(content);
-    const paddingBottom = (parseFloat(contentStyle.paddingBottom) || 0) * zoom;
-
-    let visibleBottom = contentRect.top;
-
-    const candidates = [activeHolder, ...activeHolder.querySelectorAll("*")];
-    candidates.forEach((element) => {
-      const style = window.getComputedStyle(element);
-
-      if (
-        style.display === "none" ||
-        style.visibility === "hidden" ||
-        style.position === "fixed" ||
-        element.closest(
-          ".fontPickerMenu, .colorPickerMenu, .colorPickerCustomPanel, .shieldPickerPopover, .profilePickerMenu, dialog"
-        )
-      ) {
-        return;
-      }
-
-      const rect = element.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        return;
-      }
-
-      if (rect.bottom > visibleBottom) {
-        visibleBottom = rect.bottom;
-      }
-    });
-
-    const desiredScreenHeight = Math.max(0, visibleBottom - contentRect.top + paddingBottom);
-    const availableScreenHeight = Math.max(0, window.innerHeight - contentRect.top - 12);
-    const desiredCssHeight = desiredScreenHeight / zoom;
-    const availableCssHeight = availableScreenHeight / zoom;
-    const needsScroll = desiredCssHeight > availableCssHeight + 1;
-    const targetHeight = Math.max(0, Math.min(desiredCssHeight, availableCssHeight));
-
-    content.style.setProperty("height", `${targetHeight}px`, "important");
-    content.style.setProperty("max-height", `${availableCssHeight}px`, "important");
-    content.style.setProperty("overflow-y", needsScroll ? "auto" : "hidden", "important");
-    content.style.setProperty("overflow-x", "hidden", "important");
+    const zoom = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
+    const modalLimit = parseFloat(window.getComputedStyle(modal).maxHeight);
+    const viewportBottom = window.innerHeight - 12;
+    const modalBottom = Number.isFinite(modalLimit)
+      ? modal.getBoundingClientRect().top + modalLimit * zoom
+      : viewportBottom;
+    const bottom = Math.min(viewportBottom, modalBottom);
+    const available = Math.max(0, (bottom - content.getBoundingClientRect().top) / zoom);
+    const maxHeight = `${available}px`;
+    if (content.style.maxHeight !== maxHeight) {
+      content.style.setProperty("max-height", maxHeight, "important");
+    }
   };
 
   const scheduleSubpanelModalHeightSync = () => {
@@ -21871,21 +21817,10 @@ const formHandler = (function () {
     ].borderColor = document.querySelector("#sdBlock_borderColor").value;
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
-    ].backgroundFullWidth = document.querySelector(
-      "#sdBlock_backgroundFullWidth"
-    ).checked;
+    ].fullBorder = document.getElementById("sdBlock_fullBorder").checked;
     subPanel.blockElements.blockProperties[
       exposed.vars.currentlySelectedRowIndex
     ].width = document.querySelector("#sdBlock_width").value;
-    subPanel.blockElements.blockProperties[
-      exposed.vars.currentlySelectedRowIndex
-    ].stretchLeft = document.querySelector("#sdBlock_stretchLeft").checked;
-    subPanel.blockElements.blockProperties[
-      exposed.vars.currentlySelectedRowIndex
-    ].stretchCenter = document.querySelector("#sdBlock_stretchCenter").checked;
-    subPanel.blockElements.blockProperties[
-      exposed.vars.currentlySelectedRowIndex
-    ].stretchRight = document.querySelector("#sdBlock_stretchRight").checked;
 
     if (
       currentPanel.sign.subPanels.length > 1 &&
@@ -22798,14 +22733,9 @@ const formHandler = (function () {
       blockBorderColorEl.addEventListener("blur", readForm, { once: true });
     }
 
-    const blockBackgroundFullWidthEl = document.querySelector(
-      "#sdBlock_backgroundFullWidth"
-    );
-    blockBackgroundFullWidthEl.checked =
-      !!selectedBlockProperties.backgroundFullWidth;
-    blockBackgroundFullWidthEl.addEventListener("change", readForm, {
-      once: true,
-    });
+    const rowFullBorderInput = document.getElementById("sdBlock_fullBorder");
+    rowFullBorderInput.checked = selectedBlockProperties.fullBorder === true;
+    rowFullBorderInput.addEventListener("change", readForm, { once: true });
 
     document.querySelector("#sdBlock_width").value =
       selectedBlockProperties.width;
@@ -22814,25 +22744,6 @@ const formHandler = (function () {
     document
       .querySelector("#sdBlock_width")
       .addEventListener("change", readForm, { once: true });
-
-    document
-      .querySelector("#sdBlock_stretchLeft")
-      .addEventListener("change", readForm, { once: true });
-
-    document.querySelector("#sdBlock_stretchLeft").checked =
-      selectedBlockProperties.stretchLeft;
-
-    document
-      .querySelector("#sdBlock_stretchCenter")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchCenter").checked =
-      selectedBlockProperties.stretchCenter;
-
-    document
-      .querySelector("#sdBlock_stretchRight")
-      .addEventListener("change", readForm, { once: true });
-    document.querySelector("#sdBlock_stretchRight").checked =
-      selectedBlockProperties.stretchRight;
 
     /*
     // Old Control Text
@@ -25073,10 +24984,9 @@ const formHandler = (function () {
 
     const selectedSubPanel = panel.sign.subPanels[exposed.vars.currentlySelectedSubPanelIndex];
     const subPanelVerticalAlign = document.getElementById("subPanelVerticalAlign");
-    const subPanelVerticalAlignLabel = document.getElementById("subPanelVerticalAlignLabel");
-    if (subPanelVerticalAlign && subPanelVerticalAlignLabel) {
-      subPanelVerticalAlign.style.display = selectedSubPanel ? "initial" : "none";
-      subPanelVerticalAlignLabel.style.display = selectedSubPanel ? "inline-block" : "none";
+    const subPanelVerticalAlignRow = document.getElementById("subPanelVerticalAlignRow");
+    if (subPanelVerticalAlign && subPanelVerticalAlignRow) {
+      subPanelVerticalAlignRow.hidden = !selectedSubPanel;
       subPanelVerticalAlign.value = selectedSubPanel?.verticalAlign || "Middle";
     }
 

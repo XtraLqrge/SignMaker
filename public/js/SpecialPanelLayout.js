@@ -24,19 +24,26 @@ window.SignMakerSpecialPanelLayout = (() => {
             signElmt.classList.add("diagrammaticSign");
             window.SignMakerDiagrammatics.render(signElmt, panel.sign);
             panel.sign.subPanels.forEach((subPanel,subPanelIndex)=>{
-              const bounds=subPanel.diagrammaticBounds;
-              if(!bounds||![bounds.x,bounds.y,bounds.width,bounds.height].every(Number.isFinite))return;
               const frame=document.createElement('div');frame.className='subPanelDisplay diagrammaticSubpanel';
               frame.dataset.panelIndex=String(index);frame.dataset.subpanelIndex=String(subPanelIndex);
-              window.SignMakerDiagrammatics.attachSubpanel(frame,panel.sign,subPanelIndex);
               markSelectedRenderedSubpanel(frame,subPanelIndex);
               const contents=document.createElement('div');contents.className=`signContentContainer shieldPosition${panel.sign.shieldPosition}`;
               const shields=document.createElement('div');shields.className='shieldsContainer';createShield(subPanel.shields,shields);contents.append(shields);
               const blocks=subPanel.blockElements.createElement(panel,subPanel);bindRenderedBlockSelection(blocks,subPanelIndex);contents.append(blocks);frame.append(contents);
-              frame.addEventListener('pointerdown',e=>e.stopPropagation());
-              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
               signElmt.append(frame);
+              window.SignMakerDiagrammatics.attachSubpanel(frame,panel.sign,subPanelIndex,contents);
+              const selectAssembly = event => {
+                if (event.target.closest('.diagrammaticSubpanelHandle')) return;
+                if (window.SignMakerDiagrammatics.openAssembly({frame,sign:panel.sign,index:subPanelIndex,panelIndex:index,selectRenderedPanelArea})) {
+                  event.preventDefault();event.stopImmediatePropagation();
+                }
+              };
+              frame.addEventListener('pointerdown',e=>e.stopPropagation());
+              frame.addEventListener('click',selectAssembly,true);
+              frame.addEventListener('contextmenu',selectAssembly,true);
+              frame.addEventListener('click',e=>{e.stopPropagation();selectRenderedPanelArea({panelIndex:index,subPanelIndex,menu:'subpanel',flashTarget:frame});});
             });
+            renderQuebecMarker(panel,index,signElmt,selectRenderedPanelArea);
             signElmt.addEventListener("click", (event) => {
               event.stopPropagation();
               selectRenderedPanelArea({ panelIndex: index, menu: "guideArrows",
@@ -137,25 +144,45 @@ window.SignMakerSpecialPanelLayout = (() => {
             if (blockMasterElmt) bindControl(blockMasterElmt);
           };
 
-  const addSubpanel = ({sign, bounds, panelIndex, selectRenderedPanelArea, updateForm, redraw, clamp}) => {
-
-          if(!sign||sign.arrowMode!=='diagrammatic')return;
-          if(!bounds||!['x','y','width','height'].every(k=>Number.isFinite(bounds[k])))return;
-          const x=clamp(bounds.x,0,.99),y=clamp(bounds.y,0,.99);
-          let subPanelIndex=sign.subPanels.findIndex(subPanel=>{
-            const b=subPanel.diagrammaticBounds;
-            return !b||![b.x,b.y,b.width,b.height].every(Number.isFinite);
-          });
-          const created=subPanelIndex<0;
-          if(created){sign.newSubPanel();subPanelIndex=sign.subPanels.length-1;}
-          const subPanel=sign.subPanels[subPanelIndex],rows=subPanel.blockElements.rows;
-          if(created||(rows.length===1&&rows[0].length===1&&rows[0][0] instanceof ControlTextElement&&rows[0][0].textContent==='Control'&&!subPanel.shields?.length)){
-            rows[0][0].textContent=String(subPanelIndex+1);
-          }
-          sign.subPanels[subPanelIndex].diagrammaticBounds={x,y,width:clamp(bounds.width,.01,1-x),height:clamp(bounds.height,.01,1-y)};
-          selectRenderedPanelArea({panelIndex:panelIndex,subPanelIndex,menu:'subpanel',suppressRedraw:true});
-          updateForm();redraw();
-          };
+  const renderQuebecMarker = (panel,panelIndex,host,selectRenderedPanelArea) => {
+    const {sign}=panel;
+    if(!sign.quebecExitMarkerEnabled)return;
+    const position=String(sign.quebecExitMarkerPosition||'').replace(/^Bottom\s+/i,'').trim().toLowerCase();
+    const alignment=position==='left'?'Left':position==='right'?'Right':'Center';
+    const marker=document.createElement('div');marker.className=`qcExitMarker qcOnSign qc${alignment}`;
+    marker.classList.toggle('flipped',!!sign.quebecExitMarkerFlipped);
+    const width=Number(sign.quebecExitMarkerSizeRem)||3.05;
+    marker.style.setProperty('--qc-marker-width',width+'rem');
+    marker.style.setProperty('--qc-marker-height',width*.387+'rem');
+    marker.style.setProperty('--qc-marker-font-size',width*.33+'rem');
+    const image=document.createElement('img');image.className='qcExitMarkerImg';
+    image.src='img/other-symbols/QC-Exit.svg';image.alt='Quebec exit marker';
+    const number=document.createElement('span');number.className='qcExitMarkerNumber';
+    number.textContent=String(sign.quebecExitMarkerNumber||'1').trim();
+    marker.append(image,number);
+    const exitTabIndex=panel.exitTabs?.findIndex(tab=>tab?.variant==='Quebec Exit Marker'&&String(tab.number||'').trim());
+    if(exitTabIndex>=0){
+      marker.dataset.exitTabIndex=String(exitTabIndex);
+      marker.addEventListener('click',event=>{
+        event.stopPropagation();selectRenderedPanelArea({panelIndex,exitTabIndex,menu:'exitTabs',flashTarget:marker});
+      });
+    }
+    host.append(marker);
+  };
+  const addSubpanel = ({sign,bounds,panelIndex,selectRenderedPanelArea,updateForm,redraw,clamp}) => {
+    if(sign?.arrowMode!=='diagrammatic'||!bounds||!['x','y','width','height'].every(k=>Number.isFinite(bounds[k])))return;
+    const diagrammatics=window.SignMakerDiagrammatics;
+    sign.subPanels.forEach((subPanel,index)=>{
+      subPanel.diagrammaticBounds=diagrammatics.assemblyBounds(sign,index);
+    });
+    sign.newSubPanel();
+    const subPanelIndex=sign.subPanels.length-1,subPanel=sign.subPanels[subPanelIndex];
+    const x=clamp(bounds.x,0,.99),y=clamp(bounds.y,0,.99);
+    subPanel.diagrammaticBounds={x,y,width:clamp(bounds.width,.01,1-x),height:clamp(bounds.height,.01,1-y)};
+    diagrammatics.selectAssembly(subPanel);
+    selectRenderedPanelArea({panelIndex,subPanelIndex,menu:'guideArrows',guideMode:'diagrammatic',suppressRedraw:true});
+    updateForm();redraw();
+  };
   const editModel = (sign, kind, change, updateForm, redraw, shouldRedraw = true) => {
     if (!sign) return;
     const service = kind === "roundabout" ? window.SignMakerRoundabout : window.SignMakerDiagrammatics;

@@ -53,6 +53,9 @@
     const hint = document.getElementById("elementsHint");
     const lanesInput = document.getElementById("roadLanes");
     const widthInput = document.getElementById("roadLaneWidth");
+    const headSizeInput = document.getElementById("roadArrowHeadSize");
+    const headSizeValue = document.getElementById("roadArrowHeadSizeValue");
+    const resetHeadSize = document.getElementById("resetRoadArrowHeadSize");
     const laneFields = document.getElementById("laneFields");
     const laneTitle = document.getElementById("laneTitle");
     const taperSelect = document.getElementById("laneTaper");
@@ -61,6 +64,7 @@
     const autoTapersInput = document.getElementById("autoTapers");
     const independentInput = document.getElementById("independentCurves");
     const defaults = { lanes: 1, laneWidth: 12 };
+    const restoreDefaults = () => Object.assign(defaults, {lanes:1,laneWidth:12}, sheets.selected?.stemDefaults);
     const openCurves = new Set();
     const nodeButtons = new Map();
     let selectedRoad = null;
@@ -69,6 +73,7 @@
     let drag = null;
     let snapTarget = null;
     let menuNode = null;
+    let restoringControls = false;
     const curveLinks = window.StripeMaker.curveLinks;
     let curvePick = null;
     const curveFields = document.getElementById("curveLinkFields");
@@ -118,6 +123,13 @@
     const dot = (a, b) => a.x * b.x + a.y * b.y;
     const jointOf = (sheet, id) => sheet.joints.find(joint => joint.id === id);
     const roadOf = (sheet, id) => sheet.roads.find(road => road.id === id);
+    const snapshotGeometry = sheet => structuredClone({roads:sheet.roads,joints:sheet.joints});
+    const restoreGeometry = (sheet,before,roadId) => {
+      Object.assign(sheet,before);
+      selectedRoad=roadOf(sheet,roadId);
+      snapTarget=null;
+      render();
+    };
     const attachments = (sheet, joint, solved) => solved?.byJoint ? (solved.byJoint.get(joint.id)??[]) : sheet.roads.flatMap(road => road.ends
       .map((end, e) => ({ road, e, end }))).filter(({ end }) => end.joint === joint.id);
     // Sideways position of a lane's center (or the left edge), right of travel.
@@ -144,9 +156,6 @@
     const pairLinks = (sheet, road, pair) => road.ends.flatMap(end => jointOf(sheet, end.joint).links)
       .filter(link => link.pair && [link.a, link.b].includes(road.id) && [link.a, link.b].includes(pair.id));
 
-    function save() {
-      if (sheets.selected) sheets.save(sheets.selected);
-    }
     function layerFor(sheet) {
       if (!sheet.roadLayer) {
         sheet.roads = (sheet.roads ?? []).filter(road => road.ends);
@@ -232,7 +241,7 @@
               const reference = link.pair
                 ? offsets.get(from) + a.end.sign * (solvedLateral(sheet, a.road, LEFT_EDGE, a.e) - separation - feetToPixels(sheet, link.median ?? 0))
                 : offsets.get(from) + a.end.sign * solvedLinkLateral(sheet, a.road, fromLane, a.e);
-              offsets.set(to, reference - b.end.sign * (link.pair ? solvedLateral(sheet, b.road, LEFT_EDGE, b.e) : solvedLinkLateral(sheet, b.road, toLane, b.e)));
+              offsets.set(to, link.centered ? offsets.get(from) : reference - b.end.sign * (link.pair ? solvedLateral(sheet, b.road, LEFT_EDGE, b.e) : solvedLinkLateral(sheet, b.road, toLane, b.e)));
               grew = true;
             }
           }
@@ -275,7 +284,7 @@
       // not forced onto one common transverse cut. Keep the hosts untouched.
       solved.arcFits = new Map();
       for(const road of sheet.roads) {
-        if(road.arcAngle==null||road.arcLoop||road.arcJoinFit===false||pairOf(sheet,road))continue;
+        if(road.straightened||road.arcAngle==null||road.arcLoop||road.arcJoinFit===false||pairOf(sheet,road))continue;
         if(arcJoinGroup(sheet,road).length<2)continue;
         const hosts=road.ends.map((end,e)=>{
           const joint=jointOf(sheet,end.joint);
@@ -384,10 +393,10 @@
     }
     // BEGIN SIGNMAKER ATTACHED ARC CONSTRAINTS
     function diagrammaticArcAnchor(sheet,road,solved=null) {
-      if(!window.StripeMaker.diagrammatic||road.arcAngle==null||road.arcLoop||pairOf(sheet,road))return null;
+      if(!window.StripeMaker.diagrammatic||road.arcAnchorEnd===null||road.arcAngle==null||road.arcLoop||pairOf(sheet,road))return null;
       solved ||= solve(sheet);
       const neighbors=road.ends.map(end=>attachments(sheet,jointOf(sheet,end.joint),solved).filter(item=>item.road!==road));
-      const e=neighbors[0].length&&!neighbors[1].length?0:neighbors[1].length&&!neighbors[0].length?1:null;
+      const e=road.arcAnchorEnd??(neighbors[0].length&&!neighbors[1].length?0:neighbors[1].length&&!neighbors[0].length?1:null);
       if(e==null)return null;
       const host=neighbors[e].find(item=>item.e!==e&&item.end.sign===road.ends[e].sign);
       if(!host)return null;
@@ -415,6 +424,7 @@
     function diagrammaticSyncArcJoins(sheet) {
       if(!window.StripeMaker.diagrammatic)return;
       for(const road of sheet.roads){
+        if(road.straightened)continue;
         const anchor=diagrammaticArcAnchor(sheet,road);if(!anchor)continue;
         const {e,at,free,direction:t}=anchor,v=e?{x:at.x-free.x,y:at.y-free.y}:{x:free.x-at.x,y:free.y-at.y};
         if(Math.hypot(v.x,v.y)<1e-6)continue;
@@ -442,7 +452,7 @@
           const hasFreeformNeighbor=attachments(sheet,joint,solved).some(item=>item.road!==road&&item.road!==partner&&curveAngle(item.road)==null);
           // Fitting an exact curve must not rewrite a neighboring Bézier's
           // shared heading or sideways placement. Only the exact curve bends.
-          if(hasFreeformNeighbor){
+          if(hasFreeformNeighbor||joint.root!==road.id&&joint.root!==partner?.id){
             end.dir={...tangent};
             if(partner)partner.ends[1-e].dir={x:-tangent.x,y:-tangent.y};
           }else{
@@ -478,7 +488,7 @@
         const start=jointOf(sheet,road.ends[0].joint),end=jointOf(sheet,road.ends[1].joint);end.x=start.x;end.y=start.y;
       }
       for(const r of [road,partner].filter(Boolean)) {
-        delete r.arcAngle;delete r.clothoid;delete r.arcLoop;
+        delete r.arcAngle;delete r.clothoid;delete r.arcLoop;delete r.straightened;
         if(angle==null||mode!=='arc'){delete r.arcJoinFit;delete r.arcJoinRadius;}
         if(angle!=null && mode==='clothoid')r.clothoid=r===road?{...spiral}:{start:-spiral.end,end:-spiral.start};
         else if(angle!=null){r.arcAngle=r===road?angle:-angle;if(loop)r.arcLoop=r===road?structuredClone(loop):{radius:loop.radius,heading:{x:-loop.heading.x,y:-loop.heading.y}};}
@@ -828,56 +838,75 @@
 
 
 
-    // Where a road end is curved on its own (end.dir), it meets the road joined
-    // to it at an angle: each end is cut square to its own direction, leaving a
-    // wedge open on the outside of the bend. Pave that wedge as a rounded corner
-    // about the point where the two end cuts cross, and carry each line round it.
+    // Bridge the actual cross-sections on each side of a joint. Keeping the
+    // patch to the matched lanes leaves the space between diverging exits open.
     function drawKinks(sheet, solved, layers) {
-      const margin = inchesToPixels(sheet, PAVEMENT_MARGIN_INCHES);
-      for (const joint of sheet.joints) {
-        const here = attachments(sheet, joint, solved);
-        for (const a of here) for (const b of here) {
-          if (a.e !== 1 || b.e !== 0 || a.road === b.road || a.end.sign !== b.end.sign) continue;
-          const link = joint.links.find(link => !link.pair && !link.beside &&
-            Number.isInteger(link.ai) && Number.isInteger(link.bi) &&
-            ((link.a === a.road.id && link.b === b.road.id) || (link.b === a.road.id && link.a === b.road.id)));
-          if (!link) continue;
+      const cross = (o, a, b) => (a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);
+      const hull = points => {
+        const sorted=points.slice().sort((a,b)=>a.x-b.x||a.y-b.y);
+        const side=items=>{
+          const edge=[];
+          for(const point of items){
+            while(edge.length>1&&cross(edge.at(-2),edge.at(-1),point)<=0)edge.pop();
+            edge.push(point);
+          }
+          return edge.slice(0,-1);
+        };
+        return [...side(sorted),...side(sorted.reverse())];
+      };
+      const at=(shape,e,k)=>boundary(shape,k).at(e?-1:0);
+      for(const joint of sheet.joints){
+        const here=attachments(sheet,joint,solved),byId=new Map(here.map(item=>[item.road.id,item]));
+        for(const link of joint.links){
+          if(link.pair)continue;
+          let a=byId.get(link.a),b=byId.get(link.b),ai=link.ai,bi=link.bi;
+          if(!a||!b)continue;
+          if(!a.e){[a,b]=[b,a];[ai,bi]=[bi,ai];}
+          const edgeLink=typeof ai==="string"&&typeof bi==="string";
+          if(a.e===b.e&&!edgeLink)continue;
           if(solved.arcFits?.get(a.road.id)?.hosts[1].road===b.road.id||
             solved.arcFits?.get(b.road.id)?.hosts[0].road===a.road.id)continue;
-          // A branch only continues its matching lane span, not the full width
-          // of the highway feeding it. Links may be stored in either order.
-          const shift = link.a === a.road.id ? link.ai - link.bi : link.bi - link.ai;
-          const first = Math.max(0, shift), last = Math.min(a.road.lanes, b.road.lanes + shift);
-          if (first >= last) continue;
-          const sa = shapeOf(sheet, a.road, solved), sb = shapeOf(sheet, b.road, solved);
-          const da = unit(sa.line.at(-1).tangent ?? travelAt(a.road, 1, solved)), db = unit(sb.line[0].tangent ?? travelAt(b.road, 0, solved));
-          const turn = Math.atan2(da.x * db.y - da.y * db.x, dot(da, db));
-          if (Math.abs(turn) < 0.01) continue;
-          // The two end cuts, and where they cross.
-          const ends = [boundary(sa, first, first === 0 ? -margin : 0).at(-1), boundary(sa, last, last === a.road.lanes ? margin : 0).at(-1)];
-          const starts = [boundary(sb, first - shift, first === shift ? -margin : 0)[0], boundary(sb, last - shift, last - shift === b.road.lanes ? margin : 0)[0]];
-          const na = rightOf(da), nb = rightOf(db);
-          const den = na.x * nb.y - na.y * nb.x;
-          if (Math.abs(den) < 1e-9) continue;
-          const w = { x: starts[0].x - ends[0].x, y: starts[0].y - ends[0].y };
-          const t = (w.x * nb.y - w.y * nb.x) / den;
-          const center = { x: ends[0].x + na.x * t, y: ends[0].y + na.y * t };
-          // The open side is away from the turn: right of travel for a left turn.
-          const side = turn < 0 ? 1 : -1;
-          const reach = p => side * dot({ x: p.x - center.x, y: p.y - center.y }, na);
-          const [r1, r2] = [Math.max(0, Math.min(...ends.map(reach))), Math.max(...ends.map(reach))];
-          if (r2 <= 0) continue;
-          const steps = Math.max(4, Math.ceil(Math.abs(turn) / 0.08));
-          const arc = r => Array.from({ length: steps + 1 }, (_, i) => {
-            const angle = turn * i / steps, c = Math.cos(angle), sn = Math.sin(angle);
-            const v = { x: na.x * side * r, y: na.y * side * r };
-            return { x: center.x + v.x * c - v.y * sn, y: center.y + v.x * sn + v.y * c };
-          });
-          const band = document.createElementNS(SVG, "path");
-          band.setAttribute("class", "roadBand");
-          band.setAttribute("fill", "white");
-          band.setAttribute("d", `${pathData([...arc(r2), ...(r1 > 0 ? arc(r1).reverse() : [center])])}Z`);
+          const sa=shapeOf(sheet,a.road,solved),sb=shapeOf(sheet,b.road,solved);
+          const heading=(item,shape)=>shape.line.at(item.e?-1:0).tangent??travelAt(item.road,item.e,solved);
+          const tail=heading(a,sa),head=heading(b,sb),reach=inchesToPixels(sheet, .6);
+          const overlap=(point,dir,sign)=>({x:point.x+dir.x*reach*sign,y:point.y+dir.y*reach*sign});
+          const match=Number.isInteger(ai)&&Number.isInteger(bi)&&(!link.beside||link.centered);
+          if(!match&&!edgeLink)continue;
+          if(edgeLink){
+            const edgePoint=(shape,item,side)=>at(shape,item.e,side==="R"?item.road.lanes:0);
+            const p=edgePoint(sa,a,ai),q=edgePoint(sb,b,bi);
+            if(Math.hypot(p.x-q.x,p.y-q.y)>reach*4)continue;
+            const line=document.createElementNS(SVG,"path");
+            line.setAttribute("class","diagrammaticJoint");
+            line.setAttribute("d",pathData([overlap(p,tail,a.e?-1:1),p,q,overlap(q,head,b.e?-1:1)]));
+            line.setAttribute("fill","none");line.setAttribute("stroke","white");line.setAttribute("stroke-width",reach);
+            layers.pavement.append(line);
+            continue;
+          }
+          const shift=ai-bi,start=Math.max(0,shift),end=Math.min(a.road.lanes,b.road.lanes+shift);
+          if(start>=end)continue;
+          const aEnds=[at(sa,1,start),at(sa,1,end)],bEnds=[at(sb,0,start-shift),at(sb,0,end-shift)];
+          const points=hull([...aEnds,...bEnds,...aEnds.map(p=>overlap(p,tail,-1)),...bEnds.map(p=>overlap(p,head,1))]);
+          if(points.length<3)continue;
+          const band=document.createElementNS(SVG,"path");
+          band.setAttribute("class","diagrammaticJoint");
+          band.setAttribute("fill","white");
+          band.setAttribute("d",`${pathData(points)}Z`);
           layers.pavement.append(band);
+          // An active dash can cross the short white bridge at an angled seam.
+          const dash=a.road.laneWidth*12/sheet.inchesPerPixel/5*6;
+          const phase=dashPhase(sheet,a.road,solved)+polylineLength(boundary(sa,a.road.lanes));
+          if(phase%(dash*2)>=dash||sheet.consistentGapsOnTurns===false)continue;
+          const marks=document.createElementNS(SVG,"g");marks.setAttribute("class","diagrammaticJointLines");
+          for(let k=start+1;k<end;k++){
+            const p=at(sa,1,k),q=at(sb,0,k-shift);
+            if(Math.hypot(p.x-q.x,p.y-q.y)<1e-6)continue;
+            const line=document.createElementNS(SVG,"path");
+            line.setAttribute("d",pathData([overlap(p,tail,-1),p,q,overlap(q,head,1)]));
+            line.setAttribute("fill","none");line.setAttribute("stroke","black");line.setAttribute("stroke-width",dash/6);
+            marks.append(line);
+          }
+          if(marks.childNodes.length)layers.markings.append(marks);
         }
       }
     }
@@ -1019,7 +1048,7 @@
       const line = drawing.end ? [drawing.cursor, drawing.end] : [drawing.start, drawing.cursor];
       drawRoad(sheet, defaults, buildShape(sheet, defaults, line, new Map()), layers, "preview");
     }
-    function changed(change = null) {
+    function changed(change = null, record = true) {
       // A lane-count edit replaces the automatic cross-section with an
       // ordinary road; never retain profiles with missing lane entries.
       for (const road of sheets.selected?.roads ?? []) if (road.centerlineTransition &&
@@ -1032,8 +1061,7 @@
       if(change && sheets.selected?.roads.some(r=>r.ends.some(e=>e.curveLink)))change=null;
       if (change) drawSheet(change);
       else render();
-      save();
-      window.StripeMaker.history.record();
+      if (record) window.StripeMaker.history.record();
     }
 
     function place(element, point) {
@@ -1187,7 +1215,7 @@
         for(const [key,value]of Object.entries({x1:from.x,y1:from.y,x2:at.x,y2:at.y}))line.setAttribute(key,value);
       }
     }
-    function moveArcHandle(state,kind,point) {
+    function moveArcHandle(state,kind,point,free=false) {
       const {road,a,b,chord,normal,mid}=state,sheet=sheets.selected,sign=Math.sign(state.angle)||1;
       // BEGIN SIGNMAKER ARC RADIUS HANDLE
       if(kind==='radius'&&state.anchor){
@@ -1228,6 +1256,15 @@
           let lo=Math.max(-360,best-10),hi=Math.min(360,best+10);for(let i=0;i<20;i++){const x=lo+(hi-lo)/3,y=hi-(hi-lo)/3;if(score(x)<score(y))hi=y;else lo=x;}angle=(lo+hi)/2;
         }else angle=-4*Math.atan2(2*sagitta,chord)*180/Math.PI;
       }
+      if(kind==='angle'&&!free&&window.StripeMaker.diagrammaticSnapping){
+        const candidates=[Math.round(angle/15)*15];
+        for(const other of sheet.roads){
+          const sweep=curveAngle(other);
+          if(other!==road&&sweep!=null)candidates.push(sweep,-sweep);
+        }
+        const best=candidates.reduce((a,b)=>Math.abs(a-angle)<=Math.abs(b-angle)?a:b);
+        if(Math.abs(best-angle)<=3)angle=best;
+      }
       setRoadCurve(road,Math.max(-360,Math.min(360,angle)),false,road.clothoid?'clothoid':'arc');
     }
     for(const {button,kind}of arcHandles){
@@ -1235,14 +1272,20 @@
       button.addEventListener('pointerdown',event=>{
         if(event.button!==0)return;const state=arcHandleState();if(!state)return;
         event.stopPropagation();event.preventDefault();button.focus({preventScroll:true});
-        drag={state,before:structuredClone({roads:sheets.selected.roads,joints:sheets.selected.joints}),moved:false};button.setPointerCapture(event.pointerId);
+        drag={state,sheet:sheets.selected,pointerId:event.pointerId,before:snapshotGeometry(sheets.selected),moved:false};button.setPointerCapture(event.pointerId);
       });
-      button.addEventListener('pointermove',event=>{if(!drag||!button.hasPointerCapture(event.pointerId))return;drag.moved=true;moveArcHandle(drag.state,kind,sheets.toImage(event.clientX,event.clientY));});
-      const finish=event=>{if(!drag)return;const current=drag;drag=null;if(button.hasPointerCapture(event.pointerId))button.releasePointerCapture(event.pointerId);
-        if(event.type==='pointercancel'){Object.assign(sheets.selected,current.before);selectedRoad=roadOf(sheets.selected,current.state.road.id);render();}
+      button.addEventListener('pointermove',event=>{if(!drag||!button.hasPointerCapture(event.pointerId))return;drag.moved=true;moveArcHandle(drag.state,kind,sheets.toImage(event.clientX,event.clientY),event.altKey);});
+      const finish=event=>{
+        if(drag?.pointerId!==event.pointerId)return;
+        const current=drag;
+        drag=null;
+        if(button.hasPointerCapture(event.pointerId))button.releasePointerCapture(event.pointerId);
+        if(sheets.selected!==current.sheet)return;
+        if(event.type!=='pointerup')restoreGeometry(current.sheet,current.before,current.state.road.id);
         else if(current.moved)changed();
       };
       button.addEventListener('pointerup',finish);button.addEventListener('pointercancel',finish);
+      button.addEventListener('lostpointercapture',finish);
       button.addEventListener('dblclick',event=>event.stopPropagation());
       nudgeKeys(button,(dx,dy)=>{const state=arcHandleState();if(!state)return false;const p=kind==='angle'?state.geo.point(.5):state.geo.center;if(!p)return false;moveArcHandle(state,kind,{x:p.x+dx,y:p.y+dy});});
     }
@@ -1367,11 +1410,15 @@
 
     function updatePanel(solved) {
       const sheet = sheets.selected;
+      const beingEdited = field => !restoringControls && document.activeElement===field;
       const ready = Boolean(sheet?.inchesPerPixel);
       addButton.disabled = !ready;
       addButton.setAttribute("aria-pressed", String(Boolean(drawing)));
       deleteButton.disabled = !selectedRoad;
       document.getElementById('roadCurveFields').hidden=!selectedRoad;
+      if(selectedRoad&&!beingEdited(headSizeInput))headSizeInput.value=selectedRoad.arrowHeadSize??sheet.arrowHeadSize;
+      headSizeValue.textContent=headSizeInput.value+'%';
+      resetHeadSize.disabled=!selectedRoad||selectedRoad.arrowHeadSize==null;
       document.getElementById('roadArcFields').hidden=!selectedRoad||curveAngle(selectedRoad)==null;
       document.getElementById('roadCurveType').value=selectedRoad?.clothoid?'clothoid':selectedRoad?.arcAngle!=null?'arc':'freeform';
       const fitted=solved?.arcFits?.get(selectedRoad?.id),fitGroup=arcJoinGroup(sheet,selectedRoad);
@@ -1387,26 +1434,30 @@
           : 'Turn on to stagger the circular entries and exits along the joined roads. Applies to all arcs in this split/merge.';
       for(const id of ['roadArcAngle','roadArcAngleValue'])document.getElementById(id).disabled=Boolean(fitted);
       if(selectedRoad&&curveAngle(selectedRoad)!=null) {
-        for(const id of ['roadArcAngle','roadArcAngleValue'])if(document.activeElement!==document.getElementById(id))document.getElementById(id).value=Number((fitted?.degrees??curveAngle(selectedRoad)).toFixed(2));
+        for(const id of ['roadArcAngle','roadArcAngleValue']){
+          const input=document.getElementById(id);
+          if(!beingEdited(input))input.value=Number((fitted?.degrees??curveAngle(selectedRoad)).toFixed(2));
+        }
         const {a,b}=curveOf(sheet,selectedRoad,solved),arc=curveGeometry(selectedRoad,a,b);
         const radius=document.getElementById('roadArcRadius'),feet=sheet.inchesPerPixel/12;
         radius.min=fitted?selectedRoad.lanes*selectedRoad.laneWidth/2+1/12:selectedRoad.arcLoop?0:Math.hypot(b.x-a.x,b.y-a.y)*feet/2;
         document.getElementById('roadArcRadiusRow').hidden=Boolean(selectedRoad.clothoid);
-        if(document.activeElement!==radius)radius.value=Number.isFinite(arc.radius)?Number((arc.radius*feet).toFixed(3)):'';
+        if(!beingEdited(radius))radius.value=Number.isFinite(arc.radius)?Number((arc.radius*feet).toFixed(3)):'';
       }
       const values = selectedRoad ?? drawingDefaults();
       updateAddElement();
-      if (document.activeElement !== lanesInput) lanesInput.value = values.lanes;
-      if (document.activeElement !== widthInput) widthInput.value = values.laneWidth;
+      if (!beingEdited(lanesInput)) lanesInput.value = values.lanes;
+      if (!beingEdited(widthInput)) widthInput.value = values.laneWidth;
       updateCurveFields();
       const lane = selectedRoad && selectedLane?.lane < selectedRoad.lanes ? selectedLane : null;
+      window.StripeMaker.onRoadSelection?.(selectedRoad,drawing);
       laneFields.hidden = !lane || !solved;
       if (!laneFields.hidden) {
         const key = `${lane.e}:${lane.lane}`;
         const setting = selectedRoad.tapers?.[key];
         laneTitle.textContent = `Lane ${lane.lane + 1} ${lane.e ? "end" : "start"}`;
-        if (document.activeElement !== taperSelect) taperSelect.value = setting?.mode ?? "auto";
-        if (document.activeElement !== taperLength) taperLength.value = setting?.length ?? DEFAULT_TAPER_FEET;
+        if (!beingEdited(taperSelect)) taperSelect.value = setting?.mode ?? "auto";
+        if (!beingEdited(taperLength)) taperLength.value = setting?.length ?? DEFAULT_TAPER_FEET;
         const tapering = shapeOf(sheet, selectedRoad, solved).tapers.has(key);
         const autoOff = (setting?.mode ?? "auto") === "auto" && !sheet.autoTapers && solved.auto.has(`${selectedRoad.id}:${key}`);
         taperState.textContent = autoOff ? "Auto tapers are off, so this lane stays full width. Choose Taper to taper it."
@@ -1415,6 +1466,7 @@
       }
       autoTapersInput.disabled = !ready;
       autoTapersInput.checked = Boolean(sheet?.autoTapers);
+      independentInput.checked = Boolean(sheet?.independentCurves);
       workspace.classList.toggle("drawing", Boolean(drawing));
       workspace.classList.toggle("elementsActive", active());
       if (!sheet || !ready) hint.textContent = "";
@@ -1426,7 +1478,9 @@
       else if (drawing) hint.textContent = drawing.last
         ? "Click to add the next node, or a lane's start node or edge to join it. Double-click or press Esc to finish."
         : "Click the next node, a lane's start node to join it, or a stem's edge to merge into it. Keep clicking to continue; double-click or press Esc to finish.";
-      else if (lane) hint.textContent = "Lane end selected. Set its taper below, drag the node to move the stem end, or right-click it for more actions.";
+      else if (lane) hint.textContent = sheet.straightenOnShiftClick
+        ? "Shift-click another connected end to straighten the arrow between the two points."
+        : "Lane end selected. Drag this node to move it, or right-click it for more actions.";
       else if (selectedRoad) hint.textContent = "Drag a lane node to move the stem end, onto another stem's node to join them, or onto a stem's edge to feed its edge lane. Hold Shift while dragging a node or curve handle to keep its original direction.";
       else hint.textContent = "Add an arrow stem, or click one to edit it. Right-click a lane node for curves, tapers, and overlap order.";
     }
@@ -1468,6 +1522,7 @@
       if (drawing?.last) selectedRoad = roadOf(sheets.selected, drawing.last) ?? null;
       drawing = null;
       snapTarget = null;
+      window.StripeMaker.alignmentGuides();
       render();
     }
 
@@ -1526,7 +1581,8 @@
     function roadAt(sheet, point) {
       const solved = solve(sheet);
       const slop = 6 / sheet.view.scale;
-      for (const road of [...sheet.roads].reverse()) {
+      const order=sheet.overlapOrder||[];
+      for (const road of [...sheet.roads].reverse().sort((a,b)=>order.indexOf(b.id)-order.indexOf(a.id))) {
         const shape = shapeOf(sheet, road, solved);
         if (insidePolygon(point, [...boundary(shape, 0, -slop), ...boundary(shape, road.lanes, slop).reverse()])) return road;
       }
@@ -1584,7 +1640,7 @@
       reanchor(sheet, baseline, [cut.joint]);
       return section;
     }
-    function connect(sheet, road, e, lane, target) {
+    function connect(sheet, road, e, lane, target, drawingNewStem = false) {
       const host = jointOf(sheet, target.road.ends[target.e].joint);
       if (road.ends[e].joint === host.id || road.ends[1 - e].joint === host.id) return;
       const transition = prepareCenterlineTransition(sheet, road, e, target);
@@ -1596,10 +1652,15 @@
       const moving = jointOf(sheet, road.ends[e].joint);
       // A physical lane join supersedes a separate curve constraint.
       curveLinks.unlink(sheet,road.ends[e].curveLink);
-      curveLinks.unlink(sheet,target.road.ends[target.e].curveLink);
+      if(!drawingNewStem)curveLinks.unlink(sheet,target.road.ends[target.e].curveLink);
       const solved = solve(sheet);
-      const pair = dot(travelAt(road, e, solved), travelAt(target.road, target.e, solved)) < 0;
+      const pair = !drawingNewStem && dot(travelAt(road, e, solved), travelAt(target.road, target.e, solved)) < 0;
       host.dir ??= travelAt(target.road, target.e, solved);
+      if(drawingNewStem){
+        for(const item of attachments(sheet,host,solved)){
+          if(curveAngle(item.road)==null&&!solved.get(`${item.road.id}:${item.e}`).travel)item.end.length=0;
+        }
+      }
       for (const item of attachments(sheet, moving)) {
         item.end.sign = dot(travelAt(item.road, item.e, solved), host.dir) < 0 ? -1 : 1;
         item.end.joint = host.id;
@@ -1907,6 +1968,22 @@
       sheets.selected.autoTapers = autoTapersInput.checked;
       changed();
     });
+    independentInput.addEventListener("change", () => {
+      if(!sheets.selected)return;
+      sheets.selected.independentCurves=independentInput.checked;
+      changed();
+    });
+    headSizeInput.addEventListener("input", () => {
+      if(!selectedRoad)return;
+      selectedRoad.arrowHeadSize=headSizeInput.valueAsNumber;
+      changed(null,false);
+    });
+    headSizeInput.addEventListener("change", () => window.StripeMaker.history.record());
+    resetHeadSize.addEventListener("click", () => {
+      if(!selectedRoad)return;
+      delete selectedRoad.arrowHeadSize;
+      changed();
+    });
     // Deleting a two-way road deletes both sides.
     function deleteRoad() {
       const sheet = sheets.selected;
@@ -1928,7 +2005,7 @@
         regroup(sheet, joint, before);
       }
     }
-    function setTaper(changes) {
+    function setTaper(changes, record = true) {
       if (!selectedRoad || !selectedLane) return;
       const key = `${selectedLane.e}:${selectedLane.lane}`;
       const keys = [key];
@@ -1951,15 +2028,16 @@
       for (const taperKey of keys) {
         selectedRoad.tapers[taperKey] = { mode: "auto", length: DEFAULT_TAPER_FEET, ...selectedRoad.tapers[taperKey], ...changes };
       }
-      changed();
+      changed(null,record);
     }
     taperSelect.addEventListener("change", () => setTaper({ mode: taperSelect.value }));
     taperLength.addEventListener("input", () => {
       const feet = Number(taperLength.value);
-      if (feet >= MIN_TAPER_FEET && feet <= MAX_TAPER_FEET) setTaper({ length: feet });
+      if (feet >= MIN_TAPER_FEET && feet <= MAX_TAPER_FEET) setTaper({ length: feet },false);
     });
     taperLength.addEventListener("change", () => {
       taperLength.value = selectedRoad?.tapers?.[`${selectedLane?.e}:${selectedLane?.lane}`]?.length ?? DEFAULT_TAPER_FEET;
+      window.StripeMaker.history.record();
     });
     document.getElementById('roadCurveType').addEventListener('change',event=>{if(selectedRoad){delete selectedRoad.arcJoinFit;delete selectedRoad.arcJoinRadius;}setRoadCurve(selectedRoad,event.target.value==='freeform'?null:fitCurve(selectedRoad,event.target.value),true,event.target.value);});
     document.getElementById('roadArcFit').addEventListener('change',event=>setArcJoinFit(selectedRoad,event.target.checked));
@@ -1967,9 +2045,10 @@
       const value=event.target.valueAsNumber;
       if(selectedRoad&&Number.isFinite(value)&&Math.abs(value)<=360){
         if(solve(sheets.selected).arcFits?.has(selectedRoad.id))return;
-        setRoadCurve(selectedRoad,value,true,selectedRoad.clothoid?'clothoid':'arc');
+        setRoadCurve(selectedRoad,value,false,selectedRoad.clothoid?'clothoid':'arc');
       }
     });
+    for(const id of ['roadArcAngle','roadArcAngleValue'])document.getElementById(id).addEventListener('change',()=>window.StripeMaker.history.record());
     document.getElementById('roadArcRadius').addEventListener('input',event=>{
       const radius=event.target.valueAsNumber,sheet=sheets.selected;
       if(!selectedRoad||!Number.isFinite(radius)||radius<=0)return;
@@ -1978,25 +2057,26 @@
         if(radius<selectedRoad.lanes*selectedRoad.laneWidth/2+1/12)return;
         const G=window.StripeMaker.circularArc,fit=solved.arcFits.get(selectedRoad.id);
         if(!G.fitCurves(...fit.hostCurves.map(G.laneCurve),feetToPixels(sheet,radius),selectedRoad.arcAngle))return;
-        selectedRoad.arcJoinRadius=radius;changed();return;
+        selectedRoad.arcJoinRadius=radius;changed(null,false);return;
       }
-      /* SIGNMAKER */ if(diagrammaticSetArc(sheet,selectedRoad,selectedRoad.arcAngle,feetToPixels(sheet,radius))){syncRoadCurves(sheet);changed();return;}
+      /* SIGNMAKER */ if(diagrammaticSetArc(sheet,selectedRoad,selectedRoad.arcAngle,feetToPixels(sheet,radius))){syncRoadCurves(sheet);changed(null,false);return;}
       const {a,b}=curveOf(sheet,selectedRoad,solved),half=Math.hypot(b.x-a.x,b.y-a.y)*sheet.inchesPerPixel/24;
-      if(selectedRoad.arcLoop){selectedRoad.arcLoop.radius=feetToPixels(sheet,radius);syncRoadCurves(sheet);changed();return;}
+      if(selectedRoad.arcLoop){selectedRoad.arcLoop.radius=feetToPixels(sheet,radius);syncRoadCurves(sheet);changed(null,false);return;}
       if(radius<half)return;
       let angle=2*Math.asin(Math.min(1,half/radius))*180/Math.PI;
       if(Math.abs(selectedRoad.arcAngle)>180)angle=360-angle;
-      setRoadCurve(selectedRoad,(selectedRoad.arcAngle<0?-1:1)*angle);
+      setRoadCurve(selectedRoad,(selectedRoad.arcAngle<0?-1:1)*angle,false);
     });
     document.getElementById('roadArcRadius').addEventListener('change',event=>{
       const fit=selectedRoad&&solve(sheets.selected).arcFits?.get(selectedRoad.id);
       if(fit)event.target.value=Number((fit.radius*sheets.selected.inchesPerPixel/12).toFixed(3));
+      window.StripeMaker.history.record();
     });
     function bindNumber(input, key, min, max, round) {
       input.addEventListener("input", () => {
         const value = round(Number(input.value));
         if (!(value >= min && value <= max)) return;
-        defaults[key] = value;
+        if (!sheets.selected) return;
         if (selectedRoad) {
           const oldWidth = selectedRoad.laneWidth;
           selectedRoad[key] = value;
@@ -2008,11 +2088,16 @@
               road.centerlineTransition[key] = road.centerlineTransition[key].map(width => width * value / oldWidth);
             delete road.widthProfiles;
           }
-          changed();
-        } else render();
+          changed(null,false);
+        } else {
+          defaults[key] = value;
+          sheets.selected.stemDefaults={...defaults};
+          render();
+        }
       });
       input.addEventListener("change", () => {
         input.value = (selectedRoad ?? defaults)[key];
+        window.StripeMaker.history.record();
       });
     }
     bindNumber(lanesInput, "lanes", 1, MAX_LANES, Math.round);
@@ -2103,7 +2188,14 @@
       };
       // The far end's tapers travel with the part after the cut.
       const split = (from, to) => {
-        if(from.arcAngle!=null){const f=from===road?t:1-t,angle=from.arcAngle;from.arcAngle=angle*f;to.arcAngle=angle*(1-f);delete from.arcLoop;delete to.arcLoop;}
+        if(from.arrowHeadSize!=null)to.arrowHeadSize=from.arrowHeadSize;
+        if(from.straightened)to.straightened=true;
+        if(from.arcAngle!=null){
+          const f=from===road?t:1-t,angle=solved.get(`${from.id}:0`).fittedAngle??from.arcAngle;
+          from.arcAngle=angle*f;to.arcAngle=angle*(1-f);
+          from.arcAnchorEnd=to.arcAnchorEnd=null;
+          delete from.arcLoop;delete to.arcLoop;
+        }
         if(from.clothoid)[from.clothoid,to.clothoid]=window.StripeMaker.clothoid.split(from.clothoid,from===road?t:1-t);
         if (from.centerlineTransition) {
           const profile = from.centerlineTransition, f = from === road ? fraction : 1-fraction;
@@ -2126,7 +2218,7 @@
       if(Object.keys(gaps[0]).length)[road.gapProfiles,after.gapProfiles]=gaps;
       road.ends[0].length = pulls.start;
       road.ends[1] = { joint: joint.id, sign: 1, length: pulls.before };
-      joint.links.push({ a: road.id, ai: 0, b: after.id, bi: 0 });
+      joint.links.push({ a: road.id, ai: 0, b: after.id, bi: 0, continuation:true });
       let back = null;
       if (partner) {
         const median = pairLinks(sheet, road, partner)[0]?.median ?? 0;
@@ -2175,22 +2267,97 @@
       sheet.joints.splice(sheet.joints.indexOf(moving), 1);
     }
 
+    function snapAlignment(sheet,solved,point,anchor,jointId,skip=null) {
+      const limit=SNAP_PIXELS/(sheet.view.scale||1);
+      const here=jointId==null?[]:attachments(sheet,jointOf(sheet,jointId),solved);
+      const movingEnd=here.find(item=>item.road===skip)?.e??0;
+      const trunk=here.find(item=>item.road!==skip&&item.e!==movingEnd);
+      const line=trunk&&shapeOf(sheet,trunk.road,solved).line;
+      const axis=trunk?(line.at(trunk.e?-1:0).tangent??travelAt(trunk.road,trunk.e,solved)):{x:0,y:-1};
+      const pivot=trunk?solved.get(`${trunk.road.id}:${trunk.e}`):anchor;
+      const reflect=({x,y})=>{
+        const delta={x:x-pivot.x,y:y-pivot.y},projection=dot(delta,axis);
+        return {x:pivot.x+2*projection*axis.x-delta.x,y:pivot.y+2*projection*axis.y-delta.y};
+      };
+      const vector={x:point.x-anchor.x,y:point.y-anchor.y},length=Math.hypot(vector.x,vector.y);
+      if(length<1e-6)return point;
+      const angle=Math.atan2(vector.y,vector.x);
+      let mirror=null,alignedAngle=null,alignedLength=null,bestX=null,bestY=null;
+      const nearest=(current,value,error)=>error<=limit&&(!current||error<current.error)?{value,error}:current;
+      for(const other of sheet.roads){
+        if(other===skip)continue;
+        const atJoint=here.find(item=>item.road===other),peer=atJoint&&atJoint.e===movingEnd;
+        const e=peer?1-atJoint.e:1-movingEnd;
+        const end=solved.get(`${other.id}:${e}`),start=solved.get(`${other.id}:${1-e}`);
+        if(!end||!start)continue;
+        if(atJoint&&!peer)continue;
+        bestX=nearest(bestX,end.x,Math.abs(end.x-point.x));
+        bestY=nearest(bestY,end.y,Math.abs(end.y-point.y));
+        const vx=end.x-start.x,vy=end.y-start.y,size=Math.hypot(vx,vy),heading=Math.atan2(vy,vx);
+        let delta=heading-angle;
+        if(!peer&&Math.cos(delta)<0)delta+=Math.PI;
+        if(Math.cos(delta)>0)alignedAngle=nearest(alignedAngle,angle+delta,length*Math.abs(Math.sin(delta)));
+        alignedLength=nearest(alignedLength,size,Math.abs(size-length));
+        if(peer){
+          const reflected=reflect(end),source=reflect(start);
+          // Matching branches use the trunk's axis. A differently positioned
+          // branch can still inherit its sibling's length and heading.
+          const symmetric=Math.hypot(source.x-anchor.x,source.y-anchor.y)<=limit;
+          const goal=symmetric?reflected:{x:reflected.x+anchor.x-source.x,y:reflected.y+anchor.y-source.y};
+          mirror=nearest(mirror,goal,Math.hypot(goal.x-point.x,goal.y-point.y));
+        }
+      }
+      const vertical=Math.abs(vector.x)<=limit;
+      if(mirror){window.StripeMaker.alignmentGuides(mirror.value);return mirror.value;}
+      if(vertical){
+        window.StripeMaker.alignmentGuides({x:anchor.x,y:bestY?.value});
+        return {x:anchor.x,y:bestY?.value??anchor.y+Math.sign(vector.y)*(alignedLength?.value??length)};
+      }
+      if(alignedAngle||alignedLength){
+        const heading=alignedAngle?.value??angle,size=alignedLength?.value??length;
+        const result={x:anchor.x+Math.cos(heading)*size,y:anchor.y+Math.sin(heading)*size};
+        window.StripeMaker.alignmentGuides(result);
+        return result;
+      }
+      window.StripeMaker.alignmentGuides({x:bestX?.value,y:bestY?.value});
+      return {x:bestX?.value??point.x,y:bestY?.value??point.y};
+    }
+
     // While drawing, points snap to lane nodes so the new road joins them, or to a
     // road's edge line to branch off it (one-way roads only).
     let drawingPointer=null;
-    function drawingPoint(sheet, clientX, clientY, direct=false) {
+    function drawingPoint(sheet, clientX, clientY, direct=false, free=false) {
       drawingPointer={clientX,clientY};
-      const point = sheets.toImage(clientX, clientY);
-      // BEGIN SIGNMAKER DRAWING DIRECTION
-      const anchor=window.StripeMaker.diagrammatic&&(drawing.start||drawing.end);
-      if(anchor){
+      let point=sheets.toImage(clientX,clientY);
+      const anchor=drawing.start||drawing.end;
+      const solved=solve(sheet);
+      const e=drawing.start?1:drawing.end?0:window.StripeMaker.traffic.reversed?1:0;
+      const base=anchor&&!anchor.target;
+      const snapping=window.StripeMaker.diagrammaticSnapping&&!free;
+      window.StripeMaker.alignmentGuides();
+      if(base&&snapping&&!direct){
+        // Start standalone stems pointing straight up. An intentional join on
+        // an existing lane or edge still uses the actual connection point.
+        const target=snapLane(sheet,solved,point,e)??snapEdge(sheet,solved,point,SNAP_PIXELS/sheet.view.scale);
+        if(target){snapTarget=target;return {x:target.x,y:target.y,target};}
+        point={x:anchor.x,y:Math.max(0,anchor.y-Math.abs(point.y-anchor.y))};
+        window.StripeMaker.alignmentGuides({x:anchor.x});
+      }else if(anchor&&snapping){
         const dx=point.x-anchor.x,dy=point.y-anchor.y;
         const angle=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*Math.PI/4,length=Math.hypot(dx,dy);
-        point.x=anchor.x+Math.cos(angle)*length;point.y=anchor.y+Math.sin(angle)*length;
+        const ray={x:anchor.x+Math.cos(angle)*length,y:anchor.y+Math.sin(angle)*length};
+        const jointId=anchor.target?.road.ends[anchor.target.e]?.joint;
+        let center=anchor;
+        if(jointId!=null&&!anchor.target.edge){
+          const {road,e:hostEnd,lane}=anchor.target,joint=jointOf(sheet,jointId);
+          const axis=joint.dir??travelAt(road,hostEnd,solved),normal=rightOf(axis),values=drawingDefaults();
+          const sign=dot(axis,{x:dx,y:dy})*(e===1?1:-1)<0?-1:1;
+          const lateral=feetToPixels(sheet,values.laneWidth)*(Math.min(lane,values.lanes-1)-(values.lanes-1)/2)*sign;
+          center={x:anchor.x-normal.x*lateral,y:anchor.y-normal.y*lateral};
+        }
+        const snapped=direct?point:snapAlignment(sheet,solved,point,center,jointId);
+        point=snapped.x!==point.x||snapped.y!==point.y?snapped:ray;
       }
-      // END SIGNMAKER DRAWING DIRECTION
-      const solved = solve(sheet);
-      const e = drawing.start ? 1 : drawing.end ? 0 : window.StripeMaker.traffic.reversed ? 1 : 0;
       snapTarget = snapLane(sheet, solved, point, e);
       snapTarget ??= drawingDefaults().opposite ? null : snapEdge(sheet, solved, point, SNAP_PIXELS / sheet.view.scale);
       if(snapTarget?.edge&&direct)snapTarget={...snapTarget,direct:true,
@@ -2221,8 +2388,8 @@
     }
 
     for(const type of ["keydown","keyup"])window.addEventListener(type,event=>{
-      if(event.key!=="Shift"||!drawing||!drawingPointer||!active()||!sheets.selected?.inchesPerPixel)return;
-      const point=drawingPoint(sheets.selected,drawingPointer.clientX,drawingPointer.clientY,type==="keydown");
+      if(!["Shift","Alt"].includes(event.key)||!drawing||!drawingPointer||!active()||!sheets.selected?.inchesPerPixel)return;
+      const point=drawingPoint(sheets.selected,drawingPointer.clientX,drawingPointer.clientY,event.shiftKey,event.altKey);
       if(drawing.start||drawing.end)drawing.cursor=point;
       render();
     });
@@ -2235,7 +2402,7 @@
     workspace.addEventListener("pointermove", event => {
       const sheet = sheets.selected;
       if (!drawing || event.buttons || !sheet?.inchesPerPixel || !active()) return;
-      const point = drawingPoint(sheet, event.clientX, event.clientY, event.shiftKey);
+      const point = drawingPoint(sheet, event.clientX, event.clientY, event.shiftKey, event.altKey);
       if (drawing.start || drawing.end) drawing.cursor = point;
       renderPreviewSoon();
     });
@@ -2275,7 +2442,7 @@
       if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 4) return;
       if (!drawing) return selectRoad(roadAt(sheet, sheets.toImage(event.clientX, event.clientY)));
       layerFor(sheet);
-      const point = drawingPoint(sheet, event.clientX, event.clientY, event.shiftKey);
+      const point = drawingPoint(sheet, event.clientX, event.clientY, event.shiftKey, event.altKey);
       if (!drawing.start && !drawing.end) {
         drawing[window.StripeMaker.traffic.reversed ? 'end' : 'start'] = point;
         drawing.cursor = point;
@@ -2284,8 +2451,13 @@
       const [start, end] = drawing.start ? [drawing.start, point] : [point, drawing.end];
       if (Math.hypot(end.x - start.x, end.y - start.y) * sheet.view.scale < 4) return;
       const values = drawingDefaults();
+      // A new branch may fit to its host. The host keeps the constraints it
+      // already had, including a free end that had no tangent constraint.
+      for(const existing of sheet.roads)if(existing.arcAngle!=null&&existing.arcAnchorEnd===undefined){
+        existing.arcAnchorEnd=diagrammaticArcAnchor(sheet,existing)?.e??null;
+      }
       // Stems start as circular arcs (straight until bent).
-      const road = { id: nextId(sheet.roads), lanes: values.lanes, laneWidth: values.laneWidth, arcAngle: 0, ends: [] };
+      const road = { id: nextId(sheet.roads), lanes: values.lanes, laneWidth: values.laneWidth, arcAngle: 0, straightened:true, ends: [] };
       road.ends = [start, end].map(p => ({ joint: newJoint(sheet, p, road.id).id, sign: 1, length: null }));
       sheet.roads.push(road);
       // A new road lines its matching lane up with the lane it was drawn from or to.
@@ -2293,9 +2465,11 @@
         if(p.target?.edge&&p.target.direct)feedEdge(sheet,road,e,
           Math.min(p.target.side==="R"?p.target.road.lanes-1:0,road.lanes-1),p.target.edgePoint);
         else if (p.target?.edge) attachToEdge(sheet, road, e, p);
-        else if (p.target) connect(sheet, road, e, Math.min(p.target.lane, road.lanes - 1), p.target);
+        else if (p.target) connect(sheet, road, e, Math.min(p.target.lane, road.lanes - 1), p.target,true);
       });
-      snapTarget = null;
+      const anchor=diagrammaticArcAnchor(sheet,road);
+      road.arcAnchorEnd=anchor?.e??null;
+      snapTarget = null;window.StripeMaker.alignmentGuides();
       // Like Cities: Skylines, each click adds a node: the road carries on from the
       // segment just drawn until a double-click or Esc, or until it joins a lane
       // or edge line. A two-way road carries on from its centerline.
@@ -2385,13 +2559,18 @@
         if (curvePick) { pickCurveNode(node); return; }
         button.setPointerCapture(event.pointerId);
         const was = selectedRoad?.id;
+        const firstEnd = node.sheet.straightenOnShiftClick&&event.shiftKey&&!event.altKey&&selectedRoad&&selectedLane
+          ? {road:selectedRoad,e:selectedLane.e} : null;
+        const straightenOnClick = firstEnd&&(firstEnd.road!==node.road||firstEnd.e!==node.e);
         selectedRoad = node.road;
         selectedLane = { e: node.e, lane: node.lane };
+        const before=snapshotGeometry(node.sheet);
         // Option/Alt-drag gives this road's end its own joint, pulling it free.
         if (event.altKey) detach(node.sheet, node.road, node.e);
         const solved = solve(node.sheet);
         const dir = jointOf(node.sheet, node.road.ends[node.e].joint).dir;
-        drag = { ...node, from: lanePoint(node.sheet, node.road, node.e, node.lane, solved), pointer: sheets.toImage(event.clientX, event.clientY),
+        drag = { ...node, before, button, pointerId:event.pointerId, firstEnd, straightenOnClick, origin:{x:event.clientX,y:event.clientY}, detached:event.altKey,
+          from: lanePoint(node.sheet, node.road, node.e, node.lane, solved), pointer: sheets.toImage(event.clientX, event.clientY),
           // A fitted mouth moves along its host curve when the joint moves.
           // Reusing that projected point as the next correction feeds fitting
           // back into the drag and moves the road even at a stationary pointer.
@@ -2405,6 +2584,8 @@
         });
       button.addEventListener("pointermove", event => {
         if (!drag || !button.hasPointerCapture(event.pointerId)) return;
+        if (drag.straightenOnClick && Math.hypot(event.clientX-drag.origin.x,event.clientY-drag.origin.y)<4) return;
+        drag.straightenOnClick=false;
         const { sheet, road, e, lane } = drag;
         const pointer = sheets.toImage(event.clientX, event.clientY);
         let wanted = { x: drag.from.x + (pointer.x - drag.pointer.x), y: drag.from.y + (pointer.y - drag.pointer.y) };
@@ -2424,6 +2605,13 @@
         drag.moved = true;
         const edge = !event.shiftKey && !snapTarget && snapEdge(sheet, solved, wanted, SNAP_PIXELS / sheet.view.scale, [...moving, road]);
         if (edge) snapTarget = { ...edge, x: edge.center.x, y: edge.center.y, edgePoint: { x: edge.x, y: edge.y } };
+        if(!event.shiftKey&&!event.altKey&&!snapTarget&&moving.length===1&&window.StripeMaker.diagrammaticSnapping){
+          const anchor=solved.get(`${road.id}:${1-e}`),current=solved.get(`${road.id}:${e}`);
+          const currentLane=lanePoint(sheet,road,e,lane,solved);
+          const offset={x:currentLane.x-current.x,y:currentLane.y-current.y};
+          const snapped=snapAlignment(sheet,solved,{x:wanted.x-offset.x,y:wanted.y-offset.y},anchor,road.ends[1-e].joint,road);
+          wanted={x:snapped.x+offset.x,y:snapped.y+offset.y};
+        }else window.StripeMaker.alignmentGuides();
         const transition = snapTarget?.road && !snapTarget.edge && centerlineTransitionCandidate(sheet, road, e, snapTarget);
         const goal = transition ? lanePoint(sheet, snapTarget.road, snapTarget.e, snapTarget.road.lanes - 1, solved) : snapTarget ?? wanted;
         if(!drag.jointOrigin||snapTarget){
@@ -2435,19 +2623,31 @@
         renderSoon({ joints: [joint.id] });
       });
       const finish = event => {
-        if (!drag || !button.hasPointerCapture(event.pointerId)) return;
-        button.releasePointerCapture(event.pointerId);
-        if (snapTarget?.edge && event.type === "pointerup") feedEdge(drag.sheet, drag.road, drag.e, drag.lane, snapTarget.edgePoint);
-        else if (snapTarget && event.type === "pointerup") connect(drag.sheet, drag.road, drag.e, drag.lane, snapTarget);
+        if (!drag||drag.button!==button||drag.pointerId!==event.pointerId)return;
+        const {sheet,road,e,lane,before,origin,firstEnd,straightenOnClick,moved,detached}=drag;
+        drag=null;
+        window.StripeMaker.alignmentGuides();
+        if(button.hasPointerCapture(event.pointerId))button.releasePointerCapture(event.pointerId);
+        if(event.type!=="pointerup"){
+          if(moved||detached)restoreGeometry(sheet,before,road.id);
+          return;
+        }
+        if (straightenOnClick&&Math.hypot(event.clientX-origin.x,event.clientY-origin.y)<4) {
+          straightenPath(sheet,firstEnd,{road,e});
+          return;
+        }
+        if(!moved&&!detached)return;
+        if (snapTarget?.edge) feedEdge(sheet,road,e,lane,snapTarget.edgePoint);
+        else if (snapTarget) connect(sheet,road,e,lane,snapTarget);
         // Joining roads changes the sheet's structure, so it redraws everything;
         // a plain move redraws the moved roads now and the rest shortly after.
-        const moved = !snapTarget && { joints: [drag.road.ends[drag.e].joint] };
-        drag = null;
+        const change = !snapTarget && { joints: [road.ends[e].joint] };
         snapTarget = null;
-        changed(moved || null);
+        changed(change || null);
       };
       button.addEventListener("pointerup", finish);
       button.addEventListener("pointercancel", finish);
+      button.addEventListener("lostpointercapture",finish);
       nudgeKeys(button, (dx, dy) => {
         const node = nodeTarget(button);
         if (!node) return false;
@@ -2504,6 +2704,81 @@
     function hideCurve(node) {
       openCurves.delete(`${node.road.id}:${node.e}`);
       render();
+    }
+    function connectedPath(sheet,first,last) {
+      const endJoint=last.road.ends[last.e].joint;
+      const queue=[{road:first.road,e:first.e,previous:null}],seen=new Set();
+      let destination=null,atJoint=null;
+      for(let i=0;i<queue.length;i++){
+        const step=queue[i],key=`${step.road.id}:${step.e}`;
+        if(seen.has(key))continue;
+        seen.add(key);
+        if(step.road===last.road&&1-step.e===last.e){destination=step;break;}
+        const joint=jointOf(sheet,step.road.ends[1-step.e].joint);
+        if(joint.id===endJoint)atJoint??=step;
+        const neighbors=attachments(sheet,joint).filter(({road})=>road!==step.road&&road!==pairOf(sheet,step.road));
+        const rank=neighbor=>1-Number(joint.links.some(link=>link.continuation&&
+          [link.a,link.b].includes(step.road.id)&&[link.a,link.b].includes(neighbor.road.id)));
+        neighbors.sort((a,b)=>rank(a)-rank(b));
+        for(const next of neighbors)queue.push({road:next.road,e:next.e,previous:step});
+      }
+      const path=[];
+      for(let step=destination??atJoint;step;step=step.previous)path.unshift(step);
+      return path;
+    }
+    function straightenStem(sheet,road) {
+      const partner=pairOf(sheet,road);
+      for(const stem of [road,partner].filter(Boolean)){
+        stem.straightened=true;
+        stem.arcAngle=0;
+        delete stem.clothoid;delete stem.arcLoop;delete stem.arcJoinFit;delete stem.arcJoinRadius;
+        stem.ends.forEach((end,e)=>{
+          curveLinks.unlink(sheet,end.curveLink);
+          openCurves.delete(`${stem.id}:${e}`);
+        });
+      }
+    }
+    function straightenPath(sheet,first,last) {
+      const path=connectedPath(sheet,first,last);
+      if(!path.length)return;
+      const lastStep=path.at(-1),solved=solve(sheet);
+      const start=solved.get(`${first.road.id}:${first.e}`);
+      let finish=solved.get(`${lastStep.road.id}:${1-lastStep.e}`);
+      if(Math.hypot(finish.x-start.x,finish.y-start.y)<1e-6){
+        if(path.length!==1||!first.road.arcLoop)return;
+        const end=first.road.ends[1-first.e],joint=jointOf(sheet,end.joint),partner=pairOf(sheet,first.road);
+        if(attachments(sheet,joint).some(item=>item.road!==first.road&&item.road!==partner))return;
+        const {a,b}=curveOf(sheet,first.road,solved);
+        const opposite=curveGeometry(first.road,a,b).point(.5);
+        joint.x+=opposite.x-finish.x;joint.y+=opposite.y-finish.y;finish=opposite;
+      }
+      const lengths=path.map(({road})=>Math.max(1,polylineLength(centerline(road,solved))));
+      const total=lengths.reduce((sum,length)=>sum+length,0);
+      const direction=unit({x:finish.x-start.x,y:finish.y-start.y});
+      const centers=[];
+      let travelled=0;
+      for(let i=0;i<path.length;i++){
+        const {road,e}=path[i];
+        straightenStem(sheet,road);
+        if(i+1===path.length)continue;
+        travelled+=lengths[i];
+        const end=road.ends[1-e],joint=jointOf(sheet,end.joint),next=path[i+1];
+        const through=joint.links.find(link=>!link.pair&&[link.a,link.b].includes(road.id)&&[link.a,link.b].includes(next.road.id));
+        const link=through??{a:road.id,ai:0,b:next.road.id,bi:0,beside:true};
+        if(through)joint.links.splice(joint.links.indexOf(through),1);
+        if(through?.beside||!through||road.lanes!==next.road.lanes||road.laneWidth!==next.road.laneWidth||through.ai!==through.bi)link.centered=true;
+        joint.links.unshift(link);
+        const directionSign=(e?-1:1)*end.sign;
+        joint.dir={x:direction.x*directionSign,y:direction.y*directionSign};
+        const fraction=travelled/total;
+        centers.push({joint,road,e:1-e,x:start.x+(finish.x-start.x)*fraction,y:start.y+(finish.y-start.y)*fraction});
+      }
+      const aligned=solve(sheet);
+      for(const {joint,road,e,x,y} of centers){
+        const point=aligned.get(`${road.id}:${e}`);
+        joint.x+=x-point.x;joint.y+=y-point.y;
+      }
+      changed();
     }
     // Returns a road end to its default pull; a free end goes straight again.
     function straighten(sheet, road, e) {
@@ -2708,13 +2983,14 @@
         const sheet=sheets.selected,road=selectedRoad;
         const {from,at}=handlePoint(sheet,road,e,solve(sheet));
         const joint=jointOf(sheet,road.ends[e].joint),pair=pairOf(sheet,road);
-        constraint={from,axis:unit({x:at.x-from.x,y:at.y-from.y}),joint,dir:joint.dir&&{...joint.dir},
+        constraint={sheet,before:snapshotGeometry(sheet),pointerId:event.pointerId,from,axis:unit({x:at.x-from.x,y:at.y-from.y}),joint,dir:joint.dir&&{...joint.dir},
           road,endDir:road.ends[e].dir&&{...road.ends[e].dir},pair,pairDir:pair?.ends[1-e].dir&&{...pair.ends[1-e].dir}};
         event.stopPropagation();
         button.setPointerCapture(event.pointerId);
       });
       button.addEventListener("pointermove", event => {
         if (!button.hasPointerCapture(event.pointerId) || !selectedRoad) return;
+        if(constraint)constraint.moved=true;
         let point=sheets.toImage(event.clientX,event.clientY);
         if(event.shiftKey&&constraint) {
           const c=constraint;
@@ -2730,13 +3006,17 @@
         renderSoon({ joints: [selectedRoad.ends[e].joint] });
       });
       const finishHandle=event=>{
-        if (!button.hasPointerCapture(event.pointerId)) return;
-        button.releasePointerCapture(event.pointerId);
+        if(constraint?.pointerId!==event.pointerId)return;
+        const current=constraint;
         constraint=null;
-        changed();
+        if(button.hasPointerCapture(event.pointerId))button.releasePointerCapture(event.pointerId);
+        if(!current.moved||sheets.selected!==current.sheet)return;
+        if(event.type==="pointerup")changed();
+        else restoreGeometry(current.sheet,current.before,current.road.id);
       };
       button.addEventListener("pointerup",finishHandle);
       button.addEventListener("pointercancel",finishHandle);
+      button.addEventListener("lostpointercapture",finishHandle);
       nudgeKeys(button, (dx, dy) => {
         if (!selectedRoad) return false;
         const { at } = handlePoint(sheets.selected, selectedRoad, e, solve(sheets.selected));
@@ -2792,6 +3072,7 @@
     // Undo and redo replace the sheet's roads, so selection follows by id.
     document.addEventListener("sheethistory", () => {
       curvePick = null;
+      restoreDefaults();
       const sheet = sheets.selected;
       selectedRoad = sheet?.roads && selectedRoad ? roadOf(sheet, selectedRoad.id) ?? null : null;
       if (!(selectedRoad && selectedLane?.lane < selectedRoad.lanes)) selectedLane = null;
@@ -2800,22 +3081,43 @@
       drag = null;
       snapTarget = null;
       closeMenu();
-      render();
+      restoringControls=true;
+      try { render(); } finally { restoringControls=false; }
     });
     document.addEventListener("sheetchange", () => {
       curvePick = null;
+      restoreDefaults();
       curveLinks.prune(sheets.selected);
       if (!sheets.selected?.roads?.includes(selectedRoad)) {
         selectedRoad = null;
         selectedLane = null;
       }
       drawing = null;
+      drag = null;
       snapTarget = null;
       closeMenu();
-      render();
+      restoringControls=true;
+      try { render(); } finally { restoringControls=false; }
     });
     window.StripeMaker.roadEditor = { render,
+      renderAfterTranslation(){
+        if(selectedRoad)selectedRoad=roadOf(sheets.selected,selectedRoad.id);
+        render();
+      },
+      renderArtwork(sheet){
+        syncRoadCurves(sheet);
+        window.StripeMaker.roadWidths.withSnapshot(sheet,()=>{
+          const solved=solve(sheet),layers=groups();
+          for(const road of sheet.roads)drawRoad(sheet,road,shapeOf(sheet,road,solved),layers,"",solved);
+          drawKinks(sheet,solved,layers);
+          for(const name of LAYERS)layers[name].setAttribute("class",`road${name[0].toUpperCase()}${name.slice(1)}`);
+          sheet.roadLayer.append(...LAYERS.map(name=>layers[name]));
+          window.StripeMaker.diagrammaticRender(sheet);
+        });
+      },
+      draggableRoadAt:(point,target)=>!drawing&&!curvePick&&!target.closest('button')&&roadAt(sheets.selected,point),
       diagnostics: () => structuredClone({selectedRoad,selectedLane,defaults,openCurves:[...openCurves]}),
+      clearSelection: () => { drawing=null;curvePick=null;snapTarget=null;closeMenu();selectRoad(null); },
       // Opens a road in the Elements panel, selected.
       focusRoad: road => { window.StripeMaker.showEditor("elementsEditor"); selectRoad(road); } };
     render();

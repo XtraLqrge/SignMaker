@@ -46,6 +46,14 @@ Serves as the most minimum needed to support sign making before adopting MUTCDs
   padding-bottom: calc(var(--blockBleedBottom, 0rem) + var(--blockPaddingBottomExtra, 0rem));
 }
 
+/* Bounded rows paint their border on the row itself, inside the content box. */
+.blockElementRow[data-row-full-border]:not(.fullBleed),
+.sign .bE-groupedBlockElement .blockElementRow[data-row-full-border].fullBleed {
+  --rowFullBorderWidth: max(1px, var(--panelBorderWidth, 0.2rem));
+  outline: var(--rowFullBorderWidth) solid var(--rowFullBorderColor, currentColor) !important;
+  outline-offset: calc(-1 * var(--rowFullBorderWidth));
+}
+
 .bE-textElement {
   --fhwaBaselineOffset: 0px;
   font-family: var(--fontFamily), "Series EM";

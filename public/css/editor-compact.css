@@ -18,7 +18,88 @@
 #sMSPElement>.SMSPNewElementHolder { width:100%; min-width:0; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0.3rem; background:none; }
 #sMSPElement #SMSPElementLabel { flex:0 0 auto; white-space:nowrap; margin:0 0.35rem 0 0; font-size:0.8rem; line-height:1.25; }
 #sMSPTextEditor>#smSPProperties { margin:0; padding:0; }
-#smSPProperties>.sdCtrlTextLayout>.sdCtrlTextTopRow { margin-top:0; }
+.subPanelBlockBar, #subPanelVerticalAlignRow:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+}
+#subPanelVerticalAlignRow > label { width: auto; margin: 0; }
+.subPanelBlockBar { column-gap: 0.85rem; }
+html[data-mobile-ui] .subPanelBlockBar:has(> #subPanelVerticalAlignRow[hidden]) { display: none; }
+
+/* Shared desktop layout for the text and variable message editors. */
+html:not([data-mobile-ui]) #smSPProperties > .sdTextEditorLayout {
+  box-sizing: border-box;
+  padding: 0.25rem 0.45rem;
+}
+html:not([data-mobile-ui]) #smSPProperties > .sdTextEditorLayout > div {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem !important;
+  width: 100% !important;
+  margin: 0 0 0.45rem;
+}
+html:not([data-mobile-ui]) .sdTextEditorField {
+  flex: 1 1 min(16rem, 100%);
+  max-width: calc((100% - 0.6rem) / 2);
+  min-width: min(16rem, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 6.9rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.45rem;
+}
+html:not([data-mobile-ui]) #smSPProperties .sdTextEditorField > label {
+  width: auto !important;
+  min-width: 0 !important;
+  margin: 0;
+  text-align: right !important;
+  white-space: normal;
+}
+html:not([data-mobile-ui]) .sdTextEditorFontSizeRow > .sdTextEditorField { margin-inline-start: auto; }
+html:not([data-mobile-ui]) .sdTextEditorControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+}
+html:not([data-mobile-ui]) #smSPProperties .sdTextEditorControl >
+  :is(input[type="text"], select, .fontPicker, .colorPicker, .symbolPicker, .alignmentButtons) {
+  --sm-color-width: 100%;
+  box-sizing: border-box;
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+html:not([data-mobile-ui]) #smSPProperties .sdTextEditorControl
+  :is(.fontPickerTrigger, .colorPickerTrigger, .nativeSelectTrigger) {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+html:not([data-mobile-ui]) #smSPProperties .sdTextEditorControl > input[type="range"] {
+  flex: 1 1 3rem;
+  width: 3rem !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+html:not([data-mobile-ui]) #smSPProperties .sdTextEditorControl > input[type="number"] {
+  box-sizing: border-box;
+  width: 3.5rem !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+html:not([data-mobile-ui]) .sdTextEditorCheckRow > .sdTextEditorField {
+  flex: 1 0 auto;
+  grid-template-columns: max-content minmax(0, 1fr);
+  min-width: 0;
+  max-width: 100%;
+}
 #sMSPCreate { display:flex!important; align-items:center; justify-content:center; flex-wrap:wrap; gap:0.3rem; }
 #sMSPCreate>.symbolPicker { --sm-color-width:8.5rem; flex:0 1 8.5rem; min-width:0; max-width:8.5rem; }
 .mergeBlockTools { padding:0.2rem 0; }

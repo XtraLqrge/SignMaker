@@ -57,8 +57,8 @@ html[data-mobile-ui] nav#sMConfigBar > .sMConfigOption:first-child > .material-s
 html[data-mobile-ui] nav#sMConfigBar > :is(#hideConfig, .historyBar, #copyPanelContextMenu) { display: none !important; }
 html[data-mobile-ui] #mobileMore { display: flex !important; }
 html[data-mobile-ui] #mobileMoreActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; }
-html[data-mobile-ui] #mobileMoreActions > .sMConfigOption { display: flex !important; gap: 10px; align-items: center; justify-content: flex-start; width: 100% !important; min-width: 0 !important; height: auto !important; min-height: 56px; padding: 12px !important; box-sizing: border-box; }
-html[data-mobile-ui] #mobileMoreActions > .sMConfigOption > span:not(.material-symbols-outlined) { position: static; font-size: 13px !important; white-space: normal; }
+html[data-mobile-ui] #mobileMoreActions > :is(.sMConfigOption, #signMakerHelp) { display: flex !important; gap: 10px; align-items: center; justify-content: flex-start; width: 100% !important; min-width: 0 !important; height: auto !important; min-height: 56px; padding: 12px !important; box-sizing: border-box; }
+html[data-mobile-ui] #mobileMoreActions > :is(.sMConfigOption, #signMakerHelp) > span:not(.material-symbols-outlined) { position: static; font-size: 13px !important; white-space: normal; }
 html[data-mobile-ui] #mobileMoreActions .configIcon { width: 24px; height: 24px; }
 
 html[data-mobile-ui] #mobileEditor { display: block; flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; margin: 0; padding: 0 0 80px; box-sizing: border-box; background: var(--hotbarColor); border-radius: 18px 18px 0 0; box-shadow: 0 -3px 16px rgba(0,0,0,0.12); }
@@ -107,7 +107,7 @@ html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtr
 html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow, .sdShieldEditorRow, .sdShieldCountyRow, .sdShieldBannerRow, .sdShieldRoadNameRow) > * { grid-column: auto !important; grid-row: auto !important; min-width: 0 !important; max-width: 100% !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow) > label { flex: 0 0 95px; width: auto !important; margin: 0 !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow) > :is(.symbolPicker, .fontPicker, .colorPicker) { flex: 1 1 120px; width: auto !important; }
-html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdCtrlTextTopRow, .sdCtrlTextSecondRow, .sdCtrlTextSettingsRow) > input[type="text"] { flex: 1 1 100%; width: 100% !important; }
+html[data-mobile-ui] #mobileEditor #smSPProperties .sdTextEditorControl > input[type="text"] { flex: 1 1 100%; width: 100% !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties .sdShieldTopRow > .sdShieldBasePickerHost { flex: 1 1 calc(100% - 80px); }
 html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdShieldBasePickerHost, .sdShieldVariantPickerHost) { min-width: 0 !important; max-width: 100% !important; }
 html[data-mobile-ui] #mobileEditor #smSPProperties :is(.sdShieldBannerRow, .sdShieldRoadNameRow) > :is(.fontPicker, .colorPicker, .symbolPicker, input[type="text"]) { width: 100% !important; flex: 1 1 100%; }

@@ -14,7 +14,7 @@ nav#sMConfigBar {
   background: var(--hotbarColor);
   width: max-content;
   position: fixed;
-  top: 50%;
+  top: var(--sm-toolbar-top, 50%);
   right: 1rem;
   left: auto;
   bottom: auto;
@@ -34,14 +34,16 @@ nav#sMConfigBar:not([data-position]) {
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
-  top: 50%;
   right: 1rem;
   left: auto;
   bottom: auto;
   width: max-content;
   max-width: none;
-  overflow: visible;
-  transform: translateY(-50%) translateX(0) scale(var(--sm-app-zoom));
+  max-height: var(--sm-right-toolbar-max-height, none);
+  box-sizing: border-box;
+  overflow: var(--sm-right-toolbar-overflow, visible);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
   transform-origin: right center;
 }
 
@@ -70,7 +72,7 @@ nav#sMConfigBar[data-position="bottom"] {
 }
 
 nav#sMConfigBar[data-position="top"] {
-  top: 1rem;
+  top: var(--sm-toolbar-top, 1rem);
   bottom: auto;
   transform: translateX(-50%) scale(var(--sm-toolbar-zoom));
   transform-origin: top center;
@@ -124,7 +126,7 @@ nav#sMConfigBar[data-position="bottom"].invisible {
 }
 
 nav#sMConfigBar[data-position="top"].invisible {
-  top: 1rem;
+  top: var(--sm-toolbar-top, 1rem);
   right: auto;
   left: 50%;
   bottom: auto;
@@ -9878,9 +9880,6 @@ label .colorPickerTrigger {
 }
 
 
-.sdBlockStretchControls {
-  display: none !important;
-}
 
 /* Color dropdowns stay detached like the font/shield menus, but their open list
    is compact and scrolls inside the available viewport height instead of running
@@ -14559,22 +14558,22 @@ input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-
 }
 
 
-/* Keep the Subpanels editor sized to its visible content instead of leaving
-   a scrollable empty region below the editor. */
+/* Let the Subpanels editor follow its content as disclosures expand or collapse. */
 .sMModal.subPanelConfig {
-  height: fit-content !important;
+  height: auto !important;
   min-height: 0 !important;
 }
 
 .sMModal.subPanelConfig .sMModalContent {
   height: fit-content !important;
   min-height: 0 !important;
+  box-sizing: border-box !important;
   max-height: calc((100vh - 7rem) / var(--sm-app-zoom, 1)) !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
 }
 
-.sMModal.subPanelConfig .sMModalContent > div,
+.sMModal.subPanelConfig .sMModalContent > :not(.tabHidden),
 .sMModal.subPanelConfig #sMSPSettings > div,
 .sMModal.subPanelConfig #sMSPBlocks,
 .sMModal.subPanelConfig #sMSPTextEditor {
@@ -14585,23 +14584,7 @@ input[type="number"]:not(.sliderNumberInputNoStepper):focus::-webkit-inner-spin-
 }
 
 
-/* Subpanels content-height guard: JavaScript measures the actual visible editor
-   and only enables scrolling when that content exceeds the viewport. */
-.sMModal.subPanelConfig {
-  height: auto !important;
-  min-height: 0 !important;
-}
-
-.sMModal.subPanelConfig .sMModalContent {
-  min-height: 0 !important;
-  box-sizing: border-box !important;
-}
-
-.sMModal.subPanelConfig .sMModalContent > :not(.tabHidden) {
-  height: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-}/* Block-label chevrons stay white in every theme. */
+/* Block-label chevrons stay white in every theme. */
 
 /* Icon picker pages, favorites, and the shared grid/list presentation. */
 #iconSelectorModal[open] {
@@ -15056,13 +15039,28 @@ nav#sMConfigBar:is([data-position="top"], [data-position="bottom"])
 #signJSONStatus:empty { display: none; }
 
 /* Diagrammatics uses StripeMaker's road editor in an isolated sign workspace. */
-.sMModal.guideArrowConfig > .sMModalBar { flex-wrap: wrap; row-gap: .5rem; }
+.sMModal.guideArrowConfig > .sMModalBar {
+  contain: inline-size;
+  flex-wrap: wrap;
+  white-space: normal;
+}
+.guideArrowExtraTabs {
+  display: flex;
+  flex: 0 0 100%;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+#diagrammaticTemplates { min-width: 0; margin: 0 0 .75rem; padding: .4rem .6rem .6rem; border: 1px solid var(--modalBorderColor, #7184af); }
+#diagrammaticTemplates[hidden] { display: none; }
+.diagrammaticTemplateChoices { display: flex; flex-wrap: wrap; gap: .3rem; }
+.diagrammaticTemplateChoices button { padding: .25rem .45rem; }
+.diagrammaticTemplateChoices button[aria-pressed="true"] { background-color: var(--selectedColor); font-weight: 700; }
 .sMModal.guideArrowConfig[data-current-menu="sMDiagrammatics"] { width: 28rem !important; }
 .diagrammaticSettings { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; margin: .75rem 0; }
 #sMDiagrammatics .diagrammaticEnable { display:flex; align-items:center; gap:.5rem; width:auto; text-align:left; }
 #sMDiagrammatics .diagrammaticTransfer { display:flex; gap:.5rem; margin:.75rem 0; }
 #sMDiagrammatics .diagrammaticTransfer button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:.35rem; }
-.diagrammaticSign { box-sizing:content-box; padding:0 !important; }
+.signContainer > .sign.diagrammaticSign { box-sizing:content-box; min-width:0; min-height:0; flex:none; padding:0 !important; }
 .diagrammaticDrawing { display:block; width:100%; height:auto; }
 .diagrammaticStart { margin:2rem; }
 
@@ -15076,13 +15074,18 @@ html[data-mobile-ui] #mobileEditor .guideArrowConfig[data-current-menu="sMDiagra
 
 .diagrammaticSign > .diagrammaticSubpanel { position:absolute; z-index:2; box-sizing:border-box; min-width:0; min-height:0; margin:0; overflow:hidden; }
 .diagrammaticSubpanel > .signContentContainer { width:100%; height:100%; box-sizing:border-box; padding:.25rem; }
-.diagrammaticEditing > .diagrammaticSubpanel:hover { outline:1px dashed white; outline-offset:-1px; }
+.diagrammaticEditing > .diagrammaticSubpanel { touch-action:none; }
+.diagrammaticEditing > .diagrammaticSubpanel:hover { outline:1px dashed white; outline-offset:-1px; cursor:move; }
 
 .diagrammaticSign > .diagrammaticSubpanel { border:.12rem solid transparent; }
-.diagrammaticSign.diagrammaticEditing > .diagrammaticSubpanel { border-color:white; }
+.diagrammaticSign.diagrammaticEditing > .diagrammaticAssemblySelected { border-color:white; }
 .diagrammaticSubpanel > .signContentContainer { justify-content:center; align-items:center; }
 
 .sign.diagrammaticSign > .diagrammaticSubpanel > .signContentContainer { width:100%; min-width:0; height:100%; justify-content:center; align-items:center; }
+.sign.diagrammaticSign > .diagrammaticSubpanel > .diagrammaticMeasuring { width:max-content; max-width:none; }
+#sMDiagrammatics .diagrammaticHeadSizeSetting { grid-template-columns:auto minmax(0,1fr) auto; }
+#sMDiagrammatics #diagrammaticHeadSize { width:100%; min-width:0; }
+#sMDiagrammatics #diagrammaticHeadSizeValue { min-width:3.25em; text-align:right; }
 
 #roundaboutOptions { display: flex; flex-direction: column; gap: .75rem; margin-top: .75rem; }
 #roundaboutOptions > div { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
@@ -15102,14 +15105,20 @@ html[data-mobile-ui] #mobileEditor .guideArrowConfig[data-current-menu="sMRounda
 .diagrammaticSign > .diagrammaticSubpanel { overflow:visible; }
 .diagrammaticSubpanel > .signContentContainer { overflow:hidden; }
 .diagrammaticSubpanelHandle { display:none !important; }
-.diagrammaticEditing > .diagrammaticSubpanel > .diagrammaticSubpanelHandle {
+.diagrammaticEditing > .diagrammaticPanelHandle,
+.diagrammaticEditing > .diagrammaticAssemblySelected > .diagrammaticSubpanelHandle {
   display:block !important; position:absolute; z-index:5; width:12px; height:12px;
   min-width:0; min-height:0; margin:0; padding:0; border:1px solid #1475cc;
   border-radius:2px; background:white; color:#1475cc; box-sizing:border-box;
   transform:translate(-50%,-50%) scale(var(--diagrammatic-handle-scale,1));
   touch-action:none; transition:none !important;
 }
-.diagrammaticEditing > .diagrammaticSubpanel > .diagrammaticSubpanelMove {
+.diagrammaticEditing > .diagrammaticPanelHandle { z-index:60; }
+.diagrammaticEditing > .diagrammaticAssemblySelected > .diagrammaticSubpanelMove {
   width:24px; height:24px; font:20px/22px sans-serif;
   transform:translate(-50%,-50%) scale(var(--diagrammatic-handle-scale,1)) translateY(22px);
 }
+
+.diagrammaticSign > .qcExitMarker[data-exit-tab-index] { pointer-events:auto; cursor:pointer; }
+
+.diagrammaticEditing:has(> .diagrammaticLiveLayer.placingSubpanel) > :is(.diagrammaticSubpanel,.diagrammaticPanelHandle,.qcExitMarker) { pointer-events:none; }

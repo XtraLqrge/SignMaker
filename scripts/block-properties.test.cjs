@@ -8,16 +8,54 @@ test('block and row properties are separate siblings and blocks expose four marg
  const tree=parse(html),properties=tree.querySelector('#smSPProperties'),block=tree.querySelector('#smSPElementProperties');
  assert.equal(properties.nextElementSibling,block);assert.equal(block.nextElementSibling.id,'smSPBlockProperties');
  assert.equal(properties.querySelectorAll('.sdElementBlockProperties').length,0);
- for(const field of ['topPadding','bottomPadding','leftMargin','rightMargin','backgroundColor','borderColor','backgroundFullWidth','width','stretchLeft','stretchCenter','stretchRight'])assert.ok(tree.querySelector('#sdElement_'+field),field);
+ for(const field of ['topPadding','bottomPadding','leftMargin','rightMargin','backgroundColor','borderColor','backgroundFullWidth','width'])assert.ok(tree.querySelector('#sdElement_'+field),field);
  assert.equal(block.querySelectorAll('.propertySpacingField').length,4);
  assert.equal(block.querySelectorAll('[data-element-padding]').length,0);
  assert.equal(block.querySelector('#sdElement_leftPadding'),null);assert.equal(block.querySelector('#sdElement_rightPadding'),null);
+ const row = tree.querySelector('#smSPBlockProperties');
+ assert.equal(row.querySelector('#sdBlock_fullBorder').hasAttribute('checked'), false);
+ assert.equal(row.querySelector('#sdBlock_backgroundFullWidth'), null);
+ for (const suffix of ['Left', 'Center', 'Right']) {
+  assert.equal(row.querySelector('#sdBlock_stretch' + suffix), null);
+  assert.equal(block.querySelector('#sdElement_stretch' + suffix), null);
+ }
  const legacy=tree.querySelector('#legacyElementPadding');assert.equal(legacy.hidden,true);
  for(const prefix of paneNames){const slot=legacy.querySelector(`[data-element-padding="${prefix}"]`);assert.ok(slot,prefix);assert.equal(slot.querySelectorAll('.sdElementPaddingControl').length,2);}
  const ids=tree.querySelectorAll('[id]').map(node=>node.id);assert.equal(ids.length,new Set(ids).size);
 });
+test('the two property disclosures start closed, and vertical alignment follows the grouping buttons', () => {
+  for (const markup of [html, read('public/index.html')]) {
+    const tree = parse(markup);
+    for (const [id, title] of [['smSPElementProperties', 'Block Properties'], ['smSPBlockProperties', 'Row Properties']]) {
+      const panel = tree.querySelector('#' + id);
+      assert.equal(panel.tagName, 'DETAILS');
+      assert.equal(panel.hasAttribute('open'), false);
+      assert.equal(panel.children[0].tagName, 'SUMMARY');
+      assert.equal(panel.children[0].textContent, title);
+      assert.ok(panel.querySelector('.propertyDisclosureContent .propertySpacingRow'));
+    }
+    const grouping = tree.querySelector('.subPanelBlockBar > .mergeBlockTools');
+    const align = grouping.nextElementSibling;
+    assert.equal(align.id, 'subPanelVerticalAlignRow');
+    assert.deepEqual(align.querySelectorAll('option').map(option => option.value), ['Top', 'Middle', 'Bottom']);
+  }
+});
+test('Help is the first external link and Side Spacing stays beside Letter Spacing', () => {
+  const tree = parse(html);
+  const guide = tree.querySelector('.top-right-links').children[0];
+  assert.equal(guide.id, 'signMakerHelp');
+  assert.equal(guide.getAttribute('href'), 'help.html');
+  assert.match(read('public/help.html'), /<title>SignMaker User Guide<\/title>/);
+  for (const prefix of ['sdCtrlText', 'sdAdvisory', 'sdActionMessage']) {
+    const side = tree.querySelector('#' + prefix + '_spacing');
+    const letter = tree.querySelector('#' + prefix + '_letterSpacing');
+    assert.equal(letter.closest('.sdTextEditorField').nextElementSibling, side.closest('.sdTextEditorField'));
+    assert.equal(tree.querySelector('label[for="' + prefix + '_spacing"]').textContent, 'Side Spacing:');
+    assert.deepEqual([side.min, side.max, side.step], ['-10', '10', '.25']);
+  }
+});
 function models(){
- const make=tag=>{const node=new Node(tag);node.style.setProperty=(key,value)=>node.style[key]=value;return node;};
+ const make=tag=>{const node=new Node(tag);node.style.setProperty=(key,value)=>node.style[key]=value;node.style.removeProperty=key=>delete node.style[key];return node;};
  const document={baseURI:'https://signmaker.test/',currentScript:{src:'https://signmaker.test/js/Control.js'},documentElement:make('html'),body:make('body'),createElement:make,querySelectorAll(){return[];},getElementById(){return null;},addEventListener(){}};
  const c=vm.createContext({document,window:{localStorage:{getItem(){return null;}},addEventListener(){}},URL,console,structuredClone,setTimeout,clearTimeout,Event});
  for(const name of ['lib','Shield','Sign','ExitTab','Panel','VmsPanel','Post','Arrows','Control','SubPanels'])vm.runInContext(read('public/js/'+name+'.js'),c,{filename:name+'.js'});
@@ -32,6 +70,29 @@ test('nested block spacing and row-side padding survive typed loading and duplic
   return {horizontal:text.paddingHorizontal,vertical:text.paddingVertical,groupHorizontal:group.padding,groupVertical:group.paddingVertical,left:copy.blockProperties[0].leftPadding,right:copy.blockProperties[0].rightPadding,nestedLeft:group.blockElements.blockProperties[0].leftPadding,legacy:new ControlTextElement().paddingHorizontal,legacyRow:new Block().leftPadding};
  })()`,c);
  assert.deepEqual(JSON.parse(JSON.stringify(result)),{horizontal:2,vertical:0.7,groupHorizontal:1.25,groupVertical:1.25,left:0.6,right:0.8,nestedLeft:1.1,legacy:0,legacyRow:0});
+});
+test('full row borders survive cloning and legacy row background width stays intact', () => {
+  const { c } = models();
+  const result = vm.runInContext(`(() => {
+    const control = Control.fromData({
+      rows: [[], [], []],
+      blockProperties: [
+        { fullBorder: true, borderColor: 'Red' },
+        { backgroundFullWidth: false, borderColor: 'Blue', fullBorder: true },
+        {},
+      ],
+    }).clone();
+    return control.createElement().children.map((row, index) => ({
+      full: row.dataset.rowFullBorder === 'true',
+      bleed: row.classList.contains('fullBleed'),
+      colorMatches: row.style['--rowFullBorderColor'] === lib.colors[control.blockProperties[index].borderColor],
+    }));
+  })()`, c);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), [
+    { full: true, bleed: true, colorMatches: true },
+    { full: true, bleed: false, colorMatches: true },
+    { full: false, bleed: true, colorMatches: true },
+  ]);
 });
 test('element spacing applies to its own rendered box and leaves an untouched legacy box unchanged',()=>{
  const {c,make}=models();c.box=make('div');
@@ -113,7 +174,7 @@ for(const [label,css] of [['source',[...html.matchAll(/<link\b[^>]*href="(css\/[
   }
  });
 }
-test('diagrammatic and roundabout artwork, controls, and road geometry retain the supplied branch bytes',()=>{
+test('diagrammatic and roundabout source files match their reviewed versions',()=>{
  const crypto=require('node:crypto'),expected=JSON.parse(read('scripts/fixtures/diagrammatic-source-integrity.json'));
  for(const [file,hash] of Object.entries(expected))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'public',file))).digest('hex'),hash,file);
 });
@@ -128,18 +189,21 @@ for(const file of ['public/js/SpecialPanelLayout.js']){
   const standard=render('standard');assert.equal(standard.handled,false);assert.equal(standard.signElmt.children.length,0);
   const roundabout=render('roundabout');assert.equal(roundabout.handled,true);assert.deepEqual(roundabout.signElmt.children.map(n=>n.dataset.subpanelIndex),['0','2']);
   roundabout.signElmt.children[1].dispatchEvent(new (require('./fixtures/mobile-dom.cjs').Event)('click'));assert.equal(selected.at(-1).subPanelIndex,2);assert.equal(selected.at(-1).panelIndex,4);
-  const diagrammatic=render('diagrammatic');assert.equal(diagrammatic.handled,true);assert.deepEqual(attached,[0,2]);assert.deepEqual(bound,[0,2,0,2]);
+  const diagrammatic=render('diagrammatic');assert.equal(diagrammatic.handled,true);assert.deepEqual(attached,[0,1,2]);assert.deepEqual(bound,[0,2,0,1,2]);
   assert.equal(sign.subPanels.length,3);assert.equal(sign.subPanels[1].diagrammaticBounds,null);
  });
 }
-test('placing a diagrammatic destination reuses an unplaced subpanel and keeps invalid bounds out of the model',()=>{
- const {c}=models();vm.runInContext(read('public/js/SpecialPanelLayout.js'),c);
+test('placing a diagrammatic destination adds a new subpanel and preserves existing destinations',()=>{
+ const {c}=models();
+ for(const file of ['Diagrammatics','SpecialPanelLayout'])vm.runInContext(read('public/js/'+file+'.js'),c);
  const sign=vm.runInContext("new Sign({arrowMode:'diagrammatic'})",c),selections=[];let updates=0,draws=0;
  sign.newSubPanel();
  const run=bounds=>c.window.SignMakerSpecialPanelLayout.addSubpanel({sign,bounds,panelIndex:2,selectRenderedPanelArea:value=>selections.push(value),updateForm:()=>updates++,redraw:()=>draws++,clamp:(v,min,max)=>Math.min(max,Math.max(min,v))});
- const count=sign.subPanels.length;run({x:.2,y:.3,width:.4,height:.3});assert.equal(sign.subPanels.length,count);assert.equal(selections[0].subPanelIndex,0);
- assert.deepEqual(JSON.parse(JSON.stringify(sign.subPanels[0].diagrammaticBounds)),{x:.2,y:.3,width:.4,height:.3});assert.equal(updates,1);assert.equal(draws,1);
- run({x:NaN,y:0,width:.2,height:.2});assert.equal(updates,1);assert.equal(sign.subPanels.length,count);
+ const count=sign.subPanels.length;const existing=sign.subPanels[0];run({x:.2,y:.3,width:.4,height:.3});assert.equal(sign.subPanels.length,count+1);assert.equal(selections[0].subPanelIndex,count);
+ assert.equal(sign.subPanels[0],existing);assert.equal(sign.subPanels[count].blockElements.rows[0][0].textContent,"Control");
+ assert.equal(selections[0].menu,'guideArrows');assert.equal(selections[0].guideMode,'diagrammatic');
+ assert.deepEqual(JSON.parse(JSON.stringify(sign.subPanels[count].diagrammaticBounds)),{x:.2,y:.3,width:.4,height:.3});assert.equal(updates,1);assert.equal(draws,1);
+ run({x:NaN,y:0,width:.2,height:.2});assert.equal(updates,1);assert.equal(sign.subPanels.length,count+1);
 });
 test('special-panel edits retain the live-preview redraw option and independent roundabout settings',()=>{
  const {c}=models();for(const file of ['Diagrammatics','Roundabout','SpecialPanelLayout'])vm.runInContext(read('public/js/'+file+'.js'),c);

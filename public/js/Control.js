@@ -6891,6 +6891,7 @@ class Block {
     backgroundColor = "Inherit",
     borderColor = "Match BG",
     backgroundFullWidth = true,
+    fullBorder = false,
     width = 0,
     stretchLeft = true,
     stretchCenter = true,
@@ -6904,6 +6905,7 @@ class Block {
     this.backgroundColor = backgroundColor;
     this.borderColor = borderColor;
     this.backgroundFullWidth = backgroundFullWidth;
+    this.fullBorder = fullBorder === true;
     this.width = width;
     this.stretchLeft = stretchLeft;
     this.stretchCenter = stretchCenter;
@@ -7393,6 +7395,26 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         properties.backgroundColor == "Fluorescent Yellow-Green" ||
         properties.backgroundColor == "Fluorescent Pink";
 
+      const chosenBorderColor =
+        typeof properties.borderColor === "string" &&
+          properties.borderColor.trim().length
+          ? properties.borderColor
+          : Block.defaultBorderColor;
+      const resolvedBorderColor =
+        chosenBorderColor === Block.defaultBorderColor
+          ? usesLightBleedBackground
+            ? (lib.colors && lib.colors.Black) || "black"
+            : (lib.colors && lib.colors.White) || "white"
+          : resolveColorValue(chosenBorderColor);
+      if (properties.fullBorder === true) {
+        flexRow.dataset.rowFullBorder = "true";
+        flexRow.style.setProperty(
+          "--rowFullBorderColor",
+          chosenBorderColor === Block.defaultBorderColor && !resolvedBackgroundColor
+            ? "currentColor"
+            : resolvedBorderColor
+        );
+      }
       let appliedFullBleedBorderColor = "";
       const rowWidthValue = parseFloat(properties.width);
       const rowWidthStyle =
@@ -7411,17 +7433,6 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         flexRow.style.setProperty("--marginBottom", bottomNegativeSpacing);
         flexRow.style.setProperty("--blockPaddingTopExtra", topPositiveSpacing);
         flexRow.style.setProperty("--blockPaddingBottomExtra", bottomPositiveSpacing);
-        const chosenBorderColor =
-          typeof properties.borderColor === "string" &&
-            properties.borderColor.trim().length
-            ? properties.borderColor
-            : Block.defaultBorderColor;
-        const resolvedBorderColor =
-          chosenBorderColor === Block.defaultBorderColor
-            ? usesLightBleedBackground
-              ? (lib.colors && lib.colors.Black) || "black"
-              : (lib.colors && lib.colors.White) || "white"
-            : resolveColorValue(chosenBorderColor);
         if (resolvedBorderColor) {
           flexRow.dataset.fullBleedBorderColor = resolvedBorderColor;
           appliedFullBleedBorderColor = resolvedBorderColor;
@@ -7440,7 +7451,9 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
             resolvedBackgroundColor
           );
         } else {
-          delete flexRow.dataset.fullBleedBorderColor;
+          if (properties.fullBorder !== true || chosenBorderColor === Block.defaultBorderColor) {
+            delete flexRow.dataset.fullBleedBorderColor;
+          }
           delete flexRow.dataset.fullBleedBackgroundColor;
           flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
           flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");

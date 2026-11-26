@@ -7,25 +7,62 @@ html:not([data-mobile-ui]) .sMModal.subPanelConfig #sMSPTextEditor {
 }
 html:not([data-mobile-ui]) #sMSPTextEditor > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
 html:not([data-mobile-ui]) #sMSPTextEditor > #smSPProperties { width: 100%; }
-html:not([data-mobile-ui]) #smSPProperties > :is([data-property="sdCtrlText"], [data-property="sdShield"], [data-property="sdActionMessage"]) {
+html:not([data-mobile-ui]) #smSPProperties > :is(.sdTextEditorLayout, [data-property="sdShield"]) {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }
-/* Element and row settings are separate siblings of the main editor. */
+/* Disclosures retain their inputs so edits and the selection stay in sync. */
 :is(#smSPElementProperties, #smSPBlockProperties).propertyPanel {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  margin: 0.35rem 0 0;
-  padding: 0.5rem;
+  margin: 0;
+  padding: 0;
   background: rgba(var(--baseColor), 0.2);
 }
 #smSPElementProperties[hidden] { display: none !important; }
-:is(#smSPElementProperties, #smSPBlockProperties) > h4 {
-  margin: 0 0 0.4rem;
-  font: 700 1rem/1.3 Inter, sans-serif;
+.propertyPanel > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  box-sizing: border-box;
+  cursor: pointer;
+  font: 600 0.9rem/1.3 Inter, sans-serif;
+  list-style: none;
+}
+.propertyPanel > summary::-webkit-details-marker { display: none; }
+.propertyPanel > summary::before {
+  content: "";
+  flex: none;
+  border: 0.24rem solid transparent;
+  border-inline-end: 0;
+  border-inline-start-color: currentColor;
+  transform-origin: 40% 50%;
+  transition: transform 0.18s ease;
+}
+.propertyPanel[open] > summary::before { transform: rotate(90deg); }
+.propertyPanel > summary:hover { background: rgba(var(--baseColor), 0.15); }
+.propertyPanel > summary:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+.propertyDisclosureFields { padding: 0.25rem 0.5rem 0.5rem; }
+
+@supports selector(details::details-content) {
+  .propertyPanel::details-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.18s ease, content-visibility 0.18s allow-discrete;
+  }
+  .propertyPanel[open]::details-content { grid-template-rows: 1fr; }
+  .propertyDisclosureContent { min-height: 0; overflow: clip; }
+}
+:root[data-dropdown-animations="false"] .propertyPanel::details-content {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .propertyPanel::details-content { transition: none; }
+  .propertyPanel > summary::before { transition: none; }
 }
 /* Two rows of spacing editors, each with two full slider/value pairs. */
 :is(#smSPElementProperties, #smSPBlockProperties) .propertySpacingRow {
@@ -111,8 +148,7 @@ html:not([data-mobile-ui]) #smSPProperties > :is([data-property="sdCtrlText"], [
   min-width: 0 !important;
   max-width: 100% !important;
 }
-:is(#smSPElementProperties, #smSPBlockProperties) :is(.propertyWidthField, .propertyCheckField),
-#smSPElementProperties :is(.propertyStretchRow, .propertyStretchRow label) {
+:is(#smSPElementProperties, #smSPBlockProperties) :is(.propertyWidthField, .propertyCheckField) {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -130,7 +166,6 @@ html:not([data-mobile-ui]) #smSPProperties > :is([data-property="sdCtrlText"], [
   font-size: 0.75rem;
 }
 #smSPElementProperties #sdElement_widthSlider { display: none; }
-#smSPElementProperties .propertyStretchRow { margin-top: 0.4rem; flex-wrap: wrap; font-size: 0.8rem; }
 /* The dropdown trigger must use the compact track, including after enhancement. */
 @layer pickerAppearance {
   html:not([data-mobile-ui]) :is(#smSPElementProperties, #smSPBlockProperties) .propertyColorField .colorPicker {
@@ -145,9 +180,13 @@ html[data-mobile-ui] #mobileEditor :is(#smSPElementProperties, #smSPBlockPropert
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
-  margin-top: 10px !important;
-  padding: 10px;
+  margin: 0 !important;
 }
+html[data-mobile-ui] #mobileEditor .propertyPanel > summary {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+html[data-mobile-ui] #mobileEditor .propertyDisclosureFields { padding: 4px 10px 10px; }
 html[data-mobile-ui] #mobileEditor :is(#smSPElementProperties, #smSPBlockProperties) .propertySpacingRow {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -181,7 +220,6 @@ html[data-mobile-ui] #mobileEditor #smSPElementProperties .mobileNumberButtons b
 html[data-mobile-ui] #mobileEditor #smSPElementProperties .propertyReset { display: inline-flex; align-items: center; justify-content: center; }
 html[data-mobile-ui] #mobileEditor #smSPElementProperties .propertyAppearanceRow { display: grid; grid-template-columns: minmax(0, 1fr); }
 html[data-mobile-ui] #mobileEditor #smSPElementProperties .propertyColorField { width: 100%; }
-html[data-mobile-ui] #mobileEditor #smSPElementProperties .propertyStretchRow { gap: 8px; font-size: 12px; }
 html[data-mobile-ui] #mobileEditor #smSPElementProperties .propertyWidthField { display: block; width: 100%; }
 html[data-mobile-ui] #mobileEditor #smSPElementProperties .propertyWidthField > .mobileNumericField { width: 100%; }
 

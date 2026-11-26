@@ -6,6 +6,8 @@ const {chromium,webkit}=require('playwright'),assert=require('node:assert/strict
  page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);
  await page.goto(process.argv[2]);await page.waitForFunction(()=>document.documentElement.dataset.appReady==='true');
  await page.locator('#guideArrowConfig').click();await page.locator('[data-tab="sMDiagrammatics"]').click();
+ // These fixture coordinates use the historical 1600 × 1000 road graph.
+ await page.evaluate(()=>SignMakerDiagrammatics.engine.editSettings(model=>{model.width=40;model.height=25;},{resize:true}));
  const seed=async(reverse=false,turn=1)=>page.evaluate(({reverse,turn})=>{
   const e=SignMakerDiagrammatics.engine,s=e.app.sheets.selected;
   s.roads=[{id:1,lanes:3,laneWidth:12,ends:[{joint:1,sign:1,length:null},{joint:2,sign:1,length:null}]},{id:2,lanes:3,laneWidth:12,arcAngle:90*turn,ends:[{joint:2,sign:1,length:null},{joint:3,sign:1,length:null}]}];

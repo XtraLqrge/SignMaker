@@ -16,6 +16,7 @@
         <div hidden><button type="button" id="addRoad" aria-pressed="false">Add Road</button></div>
         <div class="headActions"><button type="button" id="deleteRoad" disabled>Delete</button></div>
         <p id="elementsHint" class="elementsHint" aria-live="polite"></p>
+        <p id="selectedDiagrammaticAssembly" class="elementsHint" role="status" hidden></p>
         <div class="fieldRow">
           <label for="roadLanes">Lanes</label>
           <input id="roadLanes" type="number" min="1" max="999" step="1" value="1" />
@@ -25,6 +26,12 @@
           <input id="roadLaneWidth" type="number" min="8" max="50" step="0.5" value="12" />
         </div>
         <div id="roadCurveFields" hidden>
+          <div class="fieldRow">
+            <label for="roadArrowHeadSize">Arrowhead size</label>
+            <input id="roadArrowHeadSize" type="range" min="50" max="200" step="5" value="100">
+            <output id="roadArrowHeadSizeValue" for="roadArrowHeadSize">100%</output>
+            <button id="resetRoadArrowHeadSize" type="button" title="Use the default arrowhead size" aria-label="Use the default arrowhead size">↺</button>
+          </div>
           <div class="fieldRow"><label for="roadCurveType">Curve</label><select id="roadCurveType"><option value="arc">Circular arc</option><option value="freeform">Freeform</option><option value="clothoid">Clothoid</option></select></div>
           <div id="roadArcFields" hidden>
             <div id="roadArcFitRow" class="fieldRow" hidden><label for="roadArcFit">Fit split/merge arcs</label><input id="roadArcFit" type="checkbox" aria-describedby="roadArcFitHint" /></div>

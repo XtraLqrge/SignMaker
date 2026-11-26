@@ -168,8 +168,9 @@ window.SignMakerMobile = (() => {
     more = document.createElement('div');
     more.id = 'mobileMoreActions';
     more.hidden = true;
-    for (const id of ['export', 'importJSON', 'copySign', 'templates', 'postStyleConfig', 'nightMode', 'appSettingsConfig']) {
+    for (const id of ['export', 'importJSON', 'copySign', 'templates', 'postStyleConfig', 'nightMode', 'appSettingsConfig', 'signMakerHelp']) {
       const node = document.getElementById(id);
+      if (!node) continue;
       utilityHomes.push([markHome(node), node]);
       more.append(node);
     }

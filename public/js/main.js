@@ -2939,12 +2939,12 @@ const ungroupSelectedBlockElement = () => {
 
     const fullBleedRows = Array.from(
       signElmt.querySelectorAll(
-        ".blockElementRow[data-full-bleed-background-color], .blockElementRow[data-full-bleed-border-color]"
+        ".blockElementRow[data-full-bleed-background-color], .blockElementRow[data-full-bleed-border-color], .blockElementRow.fullBleed[data-row-full-border]"
       )
     ).filter(
       (row, index, rows) =>
         rows.indexOf(row) === index &&
-        (row.dataset.fullBleedBackgroundColor || row.dataset.fullBleedBorderColor)
+        (row.dataset.fullBleedBackgroundColor || row.dataset.fullBleedBorderColor || row.dataset.rowFullBorder)
     );
 
     if (!fullBleedRows.length) {
@@ -3387,6 +3387,7 @@ const ungroupSelectedBlockElement = () => {
 
     const contentLayers = [];
     const fullBleedDividerLayers = [];
+    const rowBorderLayers = [];
     const fillInfos = [];
     const resolvedBackdropRows = [];
     const rowInfos = [];
@@ -3456,9 +3457,22 @@ const ungroupSelectedBlockElement = () => {
         }));
         divider.classList.add("fullBleedDividerPainted");
       }
+      const fullRowBorder =
+        rowEl.dataset.rowFullBorder === "true" && !rowEl.closest(".bE-groupedBlockElement");
       const borderColor =
         rowEl.dataset.fullBleedBorderColor ||
-        (backgroundColor ? getContrastingBorderColor(backgroundColor) : "");
+        (backgroundColor || fullRowBorder ? getContrastingBorderColor(backgroundColor || fillColor) : "");
+
+      if (fullRowBorder) {
+        const { left, top, width, height } = rect;
+        const line = Math.min(borderWidth, width / 2, height / 2);
+        rowBorderLayers.push(
+          makeRectLayer(borderColor, { left, top, width, height: line }),
+          makeRectLayer(borderColor, { left, top: top + height - line, width, height: line }),
+          makeRectLayer(borderColor, { left, top, width: line, height }),
+          makeRectLayer(borderColor, { left: left + width - line, top, width: line, height })
+        );
+      }
       const reachesTop = touchesSignEdge(rect, "top");
       const reachesRight = touchesSignEdge(rect, "right");
       const reachesBottom = touchesSignEdge(rect, "bottom");
@@ -4134,6 +4148,7 @@ const ungroupSelectedBlockElement = () => {
     // Paint full-bleed row fills on the sign background itself, not in an
     // absolutely positioned child. Background layers are clipped by the sign's
     // own radius, which keeps colored edge rows consistent with normal panels.
+    rowBorderLayers.forEach((layer) => addLayer(layer, "border-box"));
     fullBleedDividerLayers.forEach((layer) => addLayer(layer, "border-box"));
     contentLayers.forEach((layer) => addLayer(layer, "border-box"));
 
@@ -4532,6 +4547,44 @@ const ungroupSelectedBlockElement = () => {
       setTransform(`translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`);
     };
 
+    const fitToolbarAroundExternalLinks = () => {
+      const links = document.querySelector(".top-right-links");
+      const toolbar = document.getElementById("sMConfigBar");
+      if (!links || !toolbar) return;
+
+      const root = document.documentElement;
+      const { left, right, bottom, height } = links.getBoundingClientRect();
+      let top = "";
+      let maxHeight = "";
+
+      if (height && toolbar.scrollHeight) {
+        const rootStyle = getComputedStyle(root);
+        const gap = (parseFloat(rootStyle.fontSize) || 20) / 2;
+        const clearTop = bottom + gap;
+        const position = toolbar.dataset.position || "right";
+
+        if (position === "right" && !toolbar.classList.contains("invisible")) {
+          const zoom = parseFloat(rootStyle.getPropertyValue("--sm-app-zoom")) || 1;
+          const naturalHeight = toolbar.scrollHeight * zoom;
+          const available = Math.max(1, root.clientHeight - clearTop - gap);
+          const center = clearTop + Math.min(naturalHeight, available) / 2;
+          if (center > root.clientHeight / 2) top = `${center}px`;
+          if (naturalHeight > available) maxHeight = `${available / zoom}px`;
+        } else if (position === "top") {
+          const toolbarRect = toolbar.getBoundingClientRect();
+          if (toolbarRect.right > left && toolbarRect.left < right) top = `${clearTop}px`;
+        }
+      }
+
+      for (const [name, value] of [
+        ["--sm-toolbar-top", top],
+        ["--sm-right-toolbar-max-height", maxHeight],
+        ["--sm-right-toolbar-overflow", maxHeight ? "hidden auto" : ""],
+      ]) {
+        if (toolbar.style.getPropertyValue(name) !== value) toolbar.style.setProperty(name, value);
+      }
+    };
+
     const schedulePostViewportLayoutUpdate = () => {
       if (postViewportLayoutFrame !== null) {
         return;
@@ -4539,6 +4592,7 @@ const ungroupSelectedBlockElement = () => {
 
       postViewportLayoutFrame = window.requestAnimationFrame(() => {
         postViewportLayoutFrame = null;
+        fitToolbarAroundExternalLinks();
         updatePostViewportLayout();
         VmsPanel.refreshPreviews();
       });
@@ -4661,6 +4715,7 @@ const ungroupSelectedBlockElement = () => {
             "data-current-menu",
             "data-position",
             "data-shrink-signs-for-panels",
+            "data-mobile-ui",
           ],
         });
       }
@@ -4668,7 +4723,12 @@ const ungroupSelectedBlockElement = () => {
       // Observe sizes, not the descendants' inline styles or the preview transform.
       if (typeof ResizeObserver === "function") {
         const sizes = new ResizeObserver(schedule);
-        for (const target of [document.getElementById("postContainer"), ...document.querySelectorAll(".sMModal"), document.getElementById("sMConfigBar"), document.getElementById("panelSelect")].filter(Boolean)) sizes.observe(target);
+        const layoutTargets = [
+          document.getElementById("postContainer"), document.getElementById("sMConfigBar"),
+          document.getElementById("panelSelect"), document.querySelector(".top-right-links"),
+          ...document.querySelectorAll(".sMModal"),
+        ];
+        layoutTargets.filter(Boolean).forEach(target => sizes.observe(target));
       }
       for (const target of document.querySelectorAll(".modals, #sMConfigBar, #panelSelect")) target.addEventListener("transitionend", schedule);
 
@@ -9163,6 +9223,7 @@ const ungroupSelectedBlockElement = () => {
             const nextMode = normalizeArrowMode(mode);
             sign.arrowMode = nextMode;
             if (nextMode === "roundabout") window.SignMakerRoundabout.ensureSubpanels(sign);
+            if (nextMode === "diagrammatic") window.SignMakerDiagrammatics.ensureStarter(sign);
 
             if (nextMode === "apl") {
               sign.guideArrow = "None";
@@ -12790,7 +12851,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             }
           }
 
-          if (!qcVariantExitTab) {
+          if (!qcVariantExitTab || panel.sign.arrowMode === "diagrammatic") {
           
           for (
                let exitTabIndex = panel.exitTabs.length - 1;

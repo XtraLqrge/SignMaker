@@ -1,0 +1,125 @@
+{
+  "runs": [
+    {
+      "file": "dev2-desktop-1",
+      "performance": 98.0,
+      "fcpMs": 449.3091,
+      "lcpMs": 1095.3091,
+      "tbtMs": 0,
+      "cpuMs": 469.073000000011,
+      "transferBytes": 1045774,
+      "requests": 39
+    },
+    {
+      "file": "dev2-desktop-2",
+      "performance": 98.0,
+      "fcpMs": 485.47180000000003,
+      "lcpMs": 1095.9718,
+      "tbtMs": 0,
+      "cpuMs": 467.92800000001034,
+      "transferBytes": 1045673,
+      "requests": 39
+    },
+    {
+      "file": "dev2-desktop-3",
+      "performance": 98.0,
+      "fcpMs": 416.8089,
+      "lcpMs": 1062.8089,
+      "tbtMs": 0,
+      "cpuMs": 488.76400000001115,
+      "transferBytes": 1045939,
+      "requests": 39
+    },
+    {
+      "file": "dev2-mobile-1",
+      "performance": 77.0,
+      "fcpMs": 1565.2456,
+      "lcpMs": 5637.7456,
+      "tbtMs": 153.5,
+      "cpuMs": 1572.4480000000437,
+      "transferBytes": 1045935,
+      "requests": 39
+    },
+    {
+      "file": "dev2-mobile-2",
+      "performance": 77.0,
+      "fcpMs": 1559.3355999999999,
+      "lcpMs": 5636.3356,
+      "tbtMs": 158,
+      "cpuMs": 1573.7200000000448,
+      "transferBytes": 1045948,
+      "requests": 39
+    },
+    {
+      "file": "dev2-mobile-3",
+      "performance": 77.0,
+      "fcpMs": 1589.8033,
+      "lcpMs": 5794.8033,
+      "tbtMs": 142,
+      "cpuMs": 1542.1000000000456,
+      "transferBytes": 1045793,
+      "requests": 39
+    }
+  ],
+  "medians": {
+    "dev2-mobile": {
+      "performance": 77.0,
+      "fcpMs": 1565.2456,
+      "lcpMs": 5637.7456,
+      "tbtMs": 153.5,
+      "cpuMs": 1572.4480000000437,
+      "transferBytes": 1045935,
+      "requests": 39
+    },
+    "dev2-desktop": {
+      "performance": 98.0,
+      "fcpMs": 449.3091,
+      "lcpMs": 1095.3091,
+      "tbtMs": 0,
+      "cpuMs": 469.073000000011,
+      "transferBytes": 1045774,
+      "requests": 39
+    }
+  },
+  "build": {
+    "scriptCount": 21,
+    "startupJS": {
+      "bytes": 1662159,
+      "gzipBytes": 339695,
+      "brotliBytes": 271740
+    },
+    "inlineFontHelper": {
+      "bytes": 8187,
+      "gzipBytes": 2302,
+      "brotliBytes": 1996
+    }
+  },
+  "domSmoke": {
+    "status": "passed",
+    "domNodes": 3464,
+    "pendingPickers": 105,
+    "startupImages": 18,
+    "hiddenOptions": 0,
+    "fontRequests": [
+      "400 16px \"Series EM\""
+    ],
+    "iconSources": [],
+    "modelFonts": [
+      [
+        "post.panels.0.sign.subPanels.0.blockElements.rows.0.0.fontFamily",
+        "Series EM"
+      ],
+      [
+        "post.panels.0.sign.exitTextFont",
+        "Series E"
+      ],
+      [
+        "post.panels.0.exitTabs.0.fontFamily",
+        "Series EEM"
+      ]
+    ],
+    "legacyGalleryImages": 105,
+    "localResourceLoads": 22,
+    "limitations": "Simulated DOM, fonts, canvas and geometry. No visual or browser timing verification."
+  }
+}

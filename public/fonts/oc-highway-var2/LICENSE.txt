@@ -1,0 +1,50 @@
+
+-----------------------------------------------------------
+Font End User License Agreement 15 November 2022
+-----------------------------------------------------------
+
+Copyright © 2022 Otherwhere Collective with Reserved Font Name “Highway VAR2”
+
+
+The Terms of this Font Licence Agreement will apply between Otherwhere Collective (Author) and You (You, Your, Yours) if You download and use OC Highway VAR2 (Font Software).  If you do not wish to be bound by the EULA, do not access, download and/or install or otherwise use the Font Software.
+
+Please read all of the EULA before agreeing to be bound by its terms and conditions.
+
+
+PERMISSION & CONDITIONS
+
+The Font Software may be used freely in your personal or commercial products and projects.  
+
+You may not modify, adapt, translate, reverse engineer, decompile, disassemble, or alter the font software in any case. You may not commission a third party to modify, adapt, translate, reverse engineer, decompile, disassemble, or alter the font software. We offer full customization service to all of our typefaces, from just a few glyphs to whole families. Please contact us with your request and we will send you a quote. 
+
+You may not distribute, lend, lease, rent, sell, give away, publicly or privately share any modified or unmodified version of the fonts.
+
+From the moment the use of a license is made in any way public by You, Author is entitled to use Your company’s name, as well as other trademarks, websites, images and videos of the use, for marketing reasons only. 
+
+Otherwhere Collective simply provides the Font Software "as is," and is not responsible for tech and/or design support.
+
+
+DEFINITIONS
+“Author” means Otherwhere Collective.
+
+“End User(s)” means the individual or entity which downloads the Font Software to run on a platform designed to run such Font Software.
+"Font Software" refers to the set of files released by the Copyright Holder under this license and clearly marked as such. This may include source files, build scripts and documentation.
+
+“Otherwhere Collective” means We Made This LLC, doing business as Otherwhere Collective located in Florida, USA. 
+
+"Reserved Font Name" refers to any names specified as such after the copyright statement(s).
+
+“Use” of the Font Software shall occur when an individual is able to give commands (whether by keyboard or otherwise) that are followed by the Font Software, regardless of the location in which the Font Software resides. “Use” of the Font Software shall also occur when the software or instructions are executed.
+
+
+TERMINATION
+This license becomes null and void if any of the above conditions are not met.
+
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM OTHER DEALINGS IN THE FONT SOFTWARE.
+
+Any and all rights reserved Otherwhere Collective.
+
+For more information about the font visit: 
+https://otherwherecollective.com/highway-var

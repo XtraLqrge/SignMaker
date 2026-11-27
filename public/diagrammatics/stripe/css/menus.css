@@ -1,0 +1,225 @@
+/* SignalMaker's workspace, field, and popover-menu styles (GPL-3.0). */
+#workspace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem 4.5rem;
+}
+
+#previewStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.modals { z-index: 1; }
+.editorContent { max-height: calc(100dvh - 8rem); }
+
+input, select {
+  appearance: auto;
+  margin: 0;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 0.7rem;
+}
+
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+label { font-size: 0.75rem; }
+.fieldRow { display: flex; align-items: center; gap: 0.4rem; margin: 0.35rem 0; }
+.fieldRow > label { flex: 0 0 8.5rem; text-align: right; }
+.fieldRow.elementAddRow > label { flex: 0 0 auto; }
+.elementAddRow > .dimensionInputs { flex: 1; min-width: 0; }
+.elementAddRow > button { flex: 0 0 auto; padding: .25rem; }
+.fieldRow > input:not([type="checkbox"]), .fieldRow > select { flex: 1; width: 100%; }
+.editorContent button { padding: 0.25rem 0.4rem; font-size: 0.7rem; }
+.editorContent button:hover { background: var(--selectedColor); }
+button:disabled { cursor: default; opacity: 0.5; }
+h3 { font-family: "Overpass", sans-serif; font-size: 0.8rem; font-weight: 600; }
+hr { border: 0; border-top: 1px solid rgba(var(--baseColor), 0.45); margin: 0.75rem 0; }
+
+.headActions { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem; }
+.headActions button { flex: 1; padding: 0.25rem; }
+
+@media (max-width: 768px) {
+  #workspace { padding: 1rem 0.5rem 4rem; }
+  .editorContent { max-height: 42dvh; }
+  .fieldRow > label { flex-basis: 8rem; }
+}
+
+@keyframes textEditorBlockWiggle {
+  from { transform: rotate(-2deg) scale(1.02); }
+  to { transform: rotate(2deg) scale(1.02); }
+}
+
+/* Sheet viewer: the stage keeps its padded fit area; the image pans beyond it. */
+#workspace { position: relative; overflow: hidden; -webkit-user-select: none; user-select: none; }
+
+.roadNode::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+button.roadNode:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+.elementsHint { font-size: 0.75rem; line-height: 1.35; }
+
+/* Elements: roads live in sheet pixels so markings are true size; outlines and
+   handles stay a constant screen size. */
+.roadLayer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: var(--drawing-opacity, 1); }
+.roadBand { fill: var(--pavement-color, #3a3b3d); stroke: var(--pavement-color, #3a3b3d); stroke-width: calc(1px / var(--zoom, 1)); }
+.roadBand.preview, .roadMarkings .preview { opacity: 0.75; }
+.roadOutline { fill: none; stroke: none; }
+/* The selected road's outline and curve handles take its node color (--roadColor). */
+#workspace.elementsActive .roadOutline { stroke: var(--roadColor, #ffdf00); stroke-width: calc(2px / var(--zoom, 1)); }
+.roadSnap { fill: none; stroke: #ffdf00; stroke-width: 2px; filter: drop-shadow(0 0 1px #252628); }
+/* Lane nodes: a circle with an arrow in the lane's direction of travel. */
+.roadNode {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23252628' fill-opacity='.55' stroke='%23252628' stroke-width='4'/%3E%3Ccircle cx='12' cy='12' r='10' fill='none' stroke='%23ffdf00' stroke-width='2'/%3E%3Cpath d='M6.5 12h10M12.5 7.5L17 12l-4.5 4.5' fill='none' stroke='%23ffdf00' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  border: 0;
+  border-radius: 50%;
+  cursor: move;
+  touch-action: none;
+  pointer-events: auto;
+}
+.roadNode::before { inset: -6px; }
+.roadNode.selected { width: 26px; height: 26px; }
+.roadNode.laneSelected { width: 30px; height: 30px; filter: drop-shadow(0 0 3px #ffdf00); }
+#laneFields h3 { margin: 0 0 0.25rem; }
+.fieldHint { margin: -0.25rem 0 0.35rem 8.9rem; font-size: 0.65rem; opacity: 0.8; }
+.roadNode.preview { opacity: 0.85; pointer-events: none; }
+.roadOverlay.drawing .roadNode { pointer-events: none; }
+.roadOverlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.roadOverlay svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.roadControlLine { stroke: var(--roadColor, #ffdf00); stroke-width: 1.5px; filter: drop-shadow(0 0 1px #252628); }
+/* A wedge badge marks a tapered lane end, narrowing toward the lane's
+   zero-width end. */
+.roadTaper {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  pointer-events: none;
+}
+.roadTaper {
+  width: 13px;
+  height: 13px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23252628' stroke='%23ffdf00' stroke-width='2'/%3E%3Cpath d='M5 6.5L19 11v2L5 17.5z' fill='%23ffdf00'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.roadOverlay.drawing .roadTaper { opacity: 0.6; }
+/* Add-lane buttons: a + triangle pointing out from the selected road's edge. */
+.laneAdd {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle, 0rad));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 2.5L22 12L3 21.5Z' fill='%23252628' stroke='%23ffdf00' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M5.5 12h7M9 8.5v7' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.laneAdd::before { content: ""; position: absolute; inset: -6px; }
+.laneAdd:hover { filter: drop-shadow(0 0 3px #ffdf00); }
+.laneAdd:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+.roadOverlay.drawing .laneAdd { display: none; }
+.dimensionInputs { display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0; }
+.dimensionInputs input[type="range"] { flex: 1; min-width: 2.5rem; padding: 0; cursor: pointer; }
+.dimensionInputs input[type="number"] { width: 3.5rem; }
+button.roadControl {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  background: var(--roadColor, #ffdf00);
+  border: 2px solid #665900;
+  border-radius: 50%;
+  cursor: move;
+  touch-action: none;
+  pointer-events: auto;
+}
+button.roadControl::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+button.roadControl:focus-visible { outline: 2px solid var(--textColor); outline-offset: 3px; }
+/* Lane node menu: SignalMaker's copy context menu, opened beside the node with a
+   pointer aimed at it, like a macOS popover. */
+.nodeMenu {
+  position: fixed;
+  z-index: 6;
+  min-width: 9rem;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 0.25rem;
+  background: var(--hotbarColor);
+  border: 1px solid rgba(var(--baseColor), 0.4);
+  box-shadow: 0 0.35rem 0.8rem rgba(0, 0, 0, 0.2);
+  font-family: "Overpass", sans-serif;
+  list-style: none;
+}
+.nodeMenu::before {
+  content: "";
+  position: absolute;
+  top: var(--pointer-y, 1rem);
+  left: -6px;
+  width: 10px;
+  height: 10px;
+  background: var(--hotbarColor);
+  border: 1px solid rgba(var(--baseColor), 0.4);
+  border-top-color: transparent;
+  border-right-color: transparent;
+  transform: translateY(-50%) rotate(45deg);
+}
+.nodeMenu[data-side="left"]::before { left: auto; right: -6px; transform: translateY(-50%) rotate(-135deg); }
+.nodeMenu li { margin: 0; padding: 0; }
+.nodeMenu li[role="separator"] { margin: 0.2rem 0.25rem; border-top: 1px solid rgba(var(--baseColor), 0.45); }
+.nodeMenu button {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.4rem 0.25rem 1.2rem;
+  font-size: 0.7rem;
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+}
+.nodeMenu button:hover, .nodeMenu button:focus-visible { background: var(--selectedColor); }
+.nodeMenu button[aria-checked="true"]::before { content: "✓"; position: absolute; left: 0.35rem; }
+#elementsEditor { width: 20rem; }
+#elementsEditor .headActions { margin: 0 0 0.5rem; }
+.editorContent button[aria-pressed="true"] { background: var(--selectedColor); }
+
+/* Download popover. The sheet's title header uses osifont, an ISO 3098 CAD
+   lettering font like the lettering on engineering plan sheets and roll plots. */
+@font-face {
+  font-family: "osifont";
+  src: url("../fonts/osifont.woff") format("woff");
+  font-display: swap;
+}
+
+/* SignalMaker's action status (Undone. / Redone.) above the toolbar. */
+#actionStatus {
+  position: fixed;
+  bottom: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 1rem);
+  margin: 0;
+  background: var(--hotbarColor);
+  font-size: 0.7rem;
+  z-index: 4;
+}
+#actionStatus:not(:empty) { padding: 0.35rem 0.6rem; }
+
+@media (max-width: 768px) {
+  #elementsEditor { width: 100%; }
+}
+
+.nodeMenu button:disabled { opacity: 0.45; cursor: default; }
+

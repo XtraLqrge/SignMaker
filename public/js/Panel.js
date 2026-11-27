@@ -1,0 +1,153 @@
+class Panel {
+  /**
+   * Creates a new Panel consisting of a sign and an exit tab.
+   * @param {string} color - Background color of the sign and exit tab.
+   * @param {Sign} sign - Sign to make up the panel.
+   * @param {String} corner - Choice of Sharp or Rounded Corners on the Panel
+   * @param {ExitTab} [exitTab=null] - Optional exit tab to include in the panel.
+   */
+  constructor(sign, color, exitTabs = [], corner, borderRadius) {
+    if (Object.keys(lib.colors).includes(color)) {
+      this.color = color;
+    } else {
+      this.color = "Green";
+    }
+    if (this.cornerType.includes(corner)) {
+      this.corner = corner;
+    } else {
+      this.corner = this.cornerType[0];
+    }
+
+    this.sign = sign;
+    this.exitTabs = exitTabs;
+    this.verticalOffsetRem = 0;
+    this.isVms = false;
+    this.borderThickness = 0.2;
+    this.borderColor = "Inherit";
+    this.outerBorder = false;
+    this.outerBorderThickness = null;
+    this.vmsResolution = "medium";
+    this.vmsResolutionVersion = 5;
+    this.vmsAntialias = true;
+    this.vmsFrameColor = "#3c3e42";
+
+    if (typeof borderRadius === "number" && borderRadius >= 0) {
+      this.borderRadius = borderRadius;
+    } else {
+      this.borderRadius = Panel.prototype.defaultBorderRadius;
+    }
+  }
+
+  newExitTab() {
+    const exitTab = new ExitTab();
+    exitTab.borderThickness = Panel.getBorderThickness(this);
+
+    this.exitTabs.push(exitTab);
+  }
+
+  static get maxVerticalOffset() { return 6; }
+
+  static normalizeVerticalOffset(value) {
+    const offset = Number(value);
+    return Number.isFinite(offset)
+      ? Math.max(-Panel.maxVerticalOffset, Math.min(Panel.maxVerticalOffset, offset)) : 0;
+  }
+
+  static getBorderThickness(panel = {}) {
+    if (panel.hideBorder === true && panel.borderThickness == null) return 0;
+    const value = parseFloat(panel.borderThickness);
+    return Number.isFinite(value) ? Math.round(Math.max(0, Math.min(0.4, value)) * 100) / 100 : 0.2;
+  }
+
+  static getOuterBorderThickness(panel = {}) {
+    return panel.outerBorderThickness == null
+      ? Panel.getBorderThickness(panel)
+      : Panel.getBorderThickness({ borderThickness: panel.outerBorderThickness });
+  }
+
+  static setOuterBorderEnabled(panel, enabled) {
+    if (enabled && panel.outerBorderThickness == null) {
+      panel.outerBorderThickness = Panel.getBorderThickness(panel);
+    }
+    panel.outerBorder = enabled === true;
+  }
+
+  static getExitTabOuterClearance(panel, { bottomBorder = 0, embedded = false } = {}) {
+    // A separately bordered tab needs room for its lower material and the
+    // panel's upper material. Existing normal-border spacing is retained.
+    return panel.outerBorder === true && !embedded && parseFloat(bottomBorder) > 0
+      ? Panel.getOuterBorderThickness(panel) * 2 : 0;
+  }
+
+  static setBorderThickness(panel, value) {
+    panel.borderThickness = Panel.getBorderThickness({ borderThickness: value });
+    delete panel.hideBorder;
+    const syncTabs = (tabs) => (tabs || []).forEach((tab) => {
+      tab.borderThickness = panel.borderThickness;
+      syncTabs(tab.nestedExitTabs);
+    });
+    syncTabs(panel.exitTabs);
+  }
+
+  deleteExitTab(index, secondaryIndex) {
+    const exitTab = this.exitTabs[index];
+    if (!exitTab) {
+      return;
+    }
+
+    if (
+      typeof secondaryIndex === "number" &&
+      secondaryIndex > -1 &&
+      exitTab.nestedExitTabs &&
+      secondaryIndex < exitTab.nestedExitTabs.length
+    ) {
+      exitTab.nestedExitTabs.splice(secondaryIndex, 1);
+      return;
+    }
+
+    this.exitTabs.splice(index, 1);
+  }
+
+  duplicateExitTab(index) {
+    const exisitingTab = this.exitTabs[index];
+
+    const newNest = [];
+
+    const maxNested =
+      typeof ExitTab !== "undefined" && ExitTab.prototype.maxNested != null
+        ? ExitTab.prototype.maxNested
+        : exisitingTab.nestedExitTabs.length;
+
+    for (const nest of exisitingTab.nestedExitTabs) {
+      if (newNest.length >= maxNested) {
+        break;
+      }
+      newNest.push(Object.assign(new ExitTab(), nest));
+    }
+
+    const exitTab = new ExitTab({
+      number: exisitingTab.number,
+      position: exisitingTab.position,
+      width: exisitingTab.width,
+      color: exisitingTab.color,
+      variant: exisitingTab.variant,
+      icon: exisitingTab.icon,
+      squareCorners: exisitingTab.squareCorners,
+      fullBorder: exisitingTab.fullBorder,
+      borderThickness: exisitingTab.borderThickness,
+      minHeight: exisitingTab.minHeight,
+      nestedExitTabs: newNest,
+      verticalArrangement: exisitingTab.verticalArrangement,
+      caStyle: exisitingTab.caStyle,
+      profileId: exisitingTab.profileId,
+    });
+
+    this.exitTabs.push(exitTab);
+  }
+}
+
+/* vvv DO NOT CHANGE THIS, IDK WHY BUT THE ENTIRE PROGRAM BREAKS WITHOUT THIS LINE vvv */
+Panel.prototype.cornerType = ["Sharp", "Round"];
+/* ^^^ DO NOT CHANGE THIS, IDK WHY BUT THE ENTIRE PROGRAM BREAKS WITHOUT THIS LINE ^^^ */
+
+Panel.prototype.defaultBorderRadius = 0.75;

@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg:svg xmlns:svg="http://www.w3.org/2000/svg" version="1.1" id="Shield" x="0px" y="0px" viewBox="0 0 639.8 512" style="enable-background:new 0 0 639.8 512;" xml:space="preserve">
+<svg:style type="text/css">
+	.st0{fill:#FFFFFF;}
+</svg:style>
+<svg:g id="Back">
+	<svg:path class="st0" d="M42.5,508.3c-21.5,0-39-17.5-39-39V42.6c0-21.5,17.5-39,39-39h554.7c21.5,0,39,17.5,39,39v426.7   c0,21.5-17.5,39-39,39H42.5z" />
+	</svg:g>
+</svg:svg>

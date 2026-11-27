@@ -1,0 +1,137 @@
+[
+  {
+    "family": "Highway VAR Series 1",
+    "file": "OCHighwayVAR2-Series1.woff2",
+    "sha256": "63009422e0995bc150ecaf54313748e215e25b995b6b838a18f73af1f8f9be58"
+  },
+  {
+    "family": "Highway VAR Series 2",
+    "file": "OCHighwayVAR2-Series2.woff2",
+    "sha256": "40a9598eef6cf67e104fe3a6e2bed95118c9f45bf4eea37a926ae6461fe2fe72"
+  },
+  {
+    "family": "Highway VAR Series 3",
+    "file": "OCHighwayVAR2-Series3.woff2",
+    "sha256": "08ff4af8b83ac82fc4e062cd9ab3d66350eedbb330caee480d811ef96cba6c89"
+  },
+  {
+    "family": "Highway VAR Series 4",
+    "file": "OCHighwayVAR2-Series4.woff2",
+    "sha256": "57b65ac46d5b79811886c1f5d527d58e2f5c90b9816d945af58cfecec7102610"
+  },
+  {
+    "family": "Highway VAR Series 5",
+    "file": "OCHighwayVAR2-Series5.woff2",
+    "sha256": "5760e37fb1223c935354f24b5c55b256b69855795625d4a38f5a18b7e13e6484"
+  },
+  {
+    "family": "Highway VAR Series 6",
+    "file": "OCHighwayVAR2-Series6.woff2",
+    "sha256": "a8e1f46f9bf433243bceebd89327adee169789cfdf0f7f8bf76331fb2f4f55a7"
+  },
+  {
+    "family": "Highway VAR Series 7",
+    "file": "OCHighwayVAR2-Series7.woff2",
+    "sha256": "fa8e05eb1d9386e644846a1c2df10a0884816a90be43c12808a48685ffdf5a9e"
+  },
+  {
+    "family": "Highway VAR Series 8",
+    "file": "OCHighwayVAR2-Series8.woff2",
+    "sha256": "40063f7b403edcb4c952f70eba76283cd930fef6cdaff7e2bcfaf90857047040"
+  },
+  {
+    "family": "Highway VAR Series 9",
+    "file": "OCHighwayVAR2-Series9.woff2",
+    "sha256": "fb20e63d4c8dfc508947d7457a290f15758c7cec212238ba07c77906a5870479"
+  },
+  {
+    "family": "Highway VAR Series 1 G-1",
+    "file": "OCHighwayVAR2-Series1G-1.woff2",
+    "sha256": "0db246046271d868c50618a5409609519f01661ea22db7eab0b8edbb41567d4c"
+  },
+  {
+    "family": "Highway VAR Series 2 G-1",
+    "file": "OCHighwayVAR2-Series2G-1.woff2",
+    "sha256": "d9f6bb75b0143804eab3df1158d2580aaa470300592568888d36eb35c43b4234"
+  },
+  {
+    "family": "Highway VAR Series 3 G-1",
+    "file": "OCHighwayVAR2-Series3G-1.woff2",
+    "sha256": "25fec68961952233f08b006dbac71f1dea4b7e7417df9293aa40379676042404"
+  },
+  {
+    "family": "Highway VAR Series 4 G-1",
+    "file": "OCHighwayVAR2-Series4G-1.woff2",
+    "sha256": "811dc13002f04cd62bba62ef1af2e73b40ee6c5a89eef3ab3178e60346579157"
+  },
+  {
+    "family": "Highway VAR Series 5 G-1",
+    "file": "OCHighwayVAR2-Series5G-1.woff2",
+    "sha256": "194e27d9ee3d30d358bfaf28fb4a831be2398e7248ad306121c77ff06991ca49"
+  },
+  {
+    "family": "Highway VAR Series 6 G-1",
+    "file": "OCHighwayVAR2-Series6G-1.woff2",
+    "sha256": "eb54b26124a240e3eb3d86ab4d07ba537e688515492413be692beac73d354105"
+  },
+  {
+    "family": "Highway VAR Series 7 G-1",
+    "file": "OCHighwayVAR2-Series7G-1.woff2",
+    "sha256": "bace359e1619b40e4de4154dde54b8185df19f8416be0e0721236225371716d8"
+  },
+  {
+    "family": "Highway VAR Series 8 G-1",
+    "file": "OCHighwayVAR2-Series8G-1.woff2",
+    "sha256": "d081a6d1d5a491ae043c9461608017c0a7e70c1ae730e9d6a9ebf01256c9fb0b"
+  },
+  {
+    "family": "Highway VAR Series 9 G-1",
+    "file": "OCHighwayVAR2-Series9G-1.woff2",
+    "sha256": "3c2aab4f92077893eecef5e88f043082574e487ffb46e1f8536dfa69111ccc8c"
+  },
+  {
+    "family": "Highway VAR Series 1 G-2",
+    "file": "OCHighwayVAR2-Series1G-2.woff2",
+    "sha256": "1c724c10a4260277f6b72a18ac1115099a22cf1fabcc140ad2eec7c01db9aa5c"
+  },
+  {
+    "family": "Highway VAR Series 2 G-2",
+    "file": "OCHighwayVAR2-Series2G-2.woff2",
+    "sha256": "045899c13363e51d8aa0cf3f6ccb2bfec62a29e6e0554eee77046ed41dd3f5da"
+  },
+  {
+    "family": "Highway VAR Series 3 G-2",
+    "file": "OCHighwayVAR2-Series3G-2.woff2",
+    "sha256": "3fe3178d032b6cb662efd3a4c0e6be9eb6a1fe50408ad1cc367ac0ab0d4a9171"
+  },
+  {
+    "family": "Highway VAR Series 4 G-2",
+    "file": "OCHighwayVAR2-Series4G-2.woff2",
+    "sha256": "f7854b6fc1f8fd6768b09e93d14cd1d2a3aff23ca5df0079b2915b3c6555ce8d"
+  },
+  {
+    "family": "Highway VAR Series 5 G-2",
+    "file": "OCHighwayVAR2-Series5G-2.woff2",
+    "sha256": "d8b91a0dd27356708bc345a89fdac3f2644a025ac66591e573f4bf8ecdfd0ee3"
+  },
+  {
+    "family": "Highway VAR Series 6 G-2",
+    "file": "OCHighwayVAR2-Series6G-2.woff2",
+    "sha256": "7591df386a3d61019ec0c3fe2d761dd8fc4342273090a3a35726266ae7ab7d1b"
+  },
+  {
+    "family": "Highway VAR Series 7 G-2",
+    "file": "OCHighwayVAR2-Series7G-2.woff2",
+    "sha256": "82ab5aa52759d463d6e97d5c5dce81eaec44717d7061f657c905aab2f919dede"
+  },
+  {
+    "family": "Highway VAR Series 8 G-2",
+    "file": "OCHighwayVAR2-Series8G-2.woff2",
+    "sha256": "e407c0f039bcbfd55fafded9ef8b71bc0a67c29ce76c129b3a4ca88e4fb6f51b"
+  },
+  {
+    "family": "Highway VAR Series 9 G-2",
+    "file": "OCHighwayVAR2-Series9G-2.woff2",
+    "sha256": "80bed75f3c39534ae1889818b32a2aa2eacd785e89fc4d17cdb87c08386e5e34"
+  }
+]

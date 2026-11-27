@@ -1,0 +1,15 @@
+{
+  "repository": "/Users/nick/Documents/Apps/MUTCDMakers/StripeMaker",
+  "commit": "717c5609bf8edd323cd5cd1b0b61806c0bdd7139",
+  "files": [
+    "js/road-widths.js",
+    "js/curve-links.js",
+    "js/circular-arc.js",
+    "js/clothoid.js",
+    "js/elements.js",
+    "css/page.css",
+    "css/form.css",
+    "css/menus.css"
+  ],
+  "adaptation": "Trimmed to diagrammatic arrow-stem editing. elements.js keeps road geometry, lane links, curves (freeform, circular arc, clothoid), curve links, tapers, and per-lane widths; StripeMaker's markings, bike lanes, medians, gores, intersections, levels, two-way roads, and simulator hooks are removed. SignMaker's DiagrammaticRoadRenderer draws every road. CSS keeps only rules that match the remaining controls. elements.js delegates paintRoad to DiagrammaticRoadRenderer, calls diagrammaticRender after drawing, adds stem ordering commands, and filters unrelated context-menu actions. Diagrammatics.js adapts sheets.js pointer-anchored zoom, wheel device detection, Safari gestures, and drag/pinch panning to the sign viewport. The Add command map includes a native Place subpanel action; the adapter routes editing keys and counter-scales handle UI for whole-preview zoom. Diagrammatic-only attached-arc constraints preserve the host tangent and connected mouth when radius, sweep, or free-end position changes. New diagrammatic drawing points snap to eight compass directions; off-axis connection targets cannot override the angular constraint."
+}

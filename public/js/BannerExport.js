@@ -136,7 +136,10 @@ window.SignMakerBannerExport = (() => {
         const widthPx = normalizeMeasurement(rect.width) + "px";
         const heightPx = normalizeMeasurement(rect.height) + "px";
 
+        // Diagrammatic faces use content-box in the editor, while the
+        // measured rectangle already includes the border on all four sides.
         const shouldFreezeAsBorderBox =
+          sourceNode.classList.contains("diagrammaticSign") ||
           sourceNode.classList.contains("hasPanelOuterBorder") ||
           sourceNode.classList.contains("sign") && sourceNode.classList.contains("hasSideGuideArrow");
 

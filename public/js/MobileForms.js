@@ -231,10 +231,12 @@ window.SignMakerMobileForms = (() => {
       const options = group(record, second, 'mobileShieldOptionsGrid');
       const alignment = get('alignment'), buttons = second.querySelector('.sdShieldAlignmentButtons');
       pack(record, options, { input: alignment, nodes: [buttons], visible: buttons, title: 'Alignment', label: labelFor(alignment) });
-      for (const [suffix, title] of [['to', 'Show TO'], ['scaleBannersWithShield', 'Scale banners'], ['numberStyle', 'Legacy route numbers'], ['shieldBacks', 'Shield backs']]) {
+      for (const [suffix, title] of [['to', 'Show TO'], ['scaleBannersWithShield', 'Scale banners'], ['shieldBacks', 'Shield backs']]) {
         const input = get(suffix);
         pack(record, options, { input, title, label: labelFor(input) });
       }
+      const editShield = get('editShield');
+      if (editShield) move(record, editShield, options);
       second.querySelectorAll('.sdShieldOption').forEach(node => addClass(record, node, 'mobileOriginalRow'));
     }
     root.querySelectorAll('.sdShieldBannerRow').forEach((row, index) => {

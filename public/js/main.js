@@ -11189,9 +11189,10 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     const rects = [];
     const addRect = (node, { force = false } = {}) => {
       if (node?.id === "alignmentGuides") return;
-      // The VMS housing already bounds its entire screen. Content beyond a
-      // fixed-width screen is clipped and must not enlarge the export crop.
-      if (node?.closest?.(".panel.vmsPanel > .signContainer, .panel.vmsPanel > .vmsPanelDisplay")) {
+      // The diagrammatic face and VMS housing bound their clipped contents.
+      // Their descendants, including diagrammatic editor handles, cannot
+      // extend the crop beyond the visible face.
+      if (node?.closest?.(".panel.vmsPanel > .signContainer, .panel.vmsPanel > .vmsPanelDisplay, .diagrammaticSign *")) {
         return;
       }
       const isTransparentPanelWrapper =
@@ -11426,7 +11427,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     window.SignMakerBannerExport.freeze(element, clone, layoutScale, getExportPixelRatio());
     clone.classList.remove("showBlockBoundingBoxes");
     clone.querySelectorAll(".diagrammaticEditing").forEach(node=>node.classList.remove("diagrammaticEditing"));
-    clone.querySelectorAll("#alignmentGuides, .diagrammaticLiveLayer, .diagrammaticSubpanelHandle").forEach(guide=>guide.remove());
+    clone.querySelectorAll("#alignmentGuides, .diagrammaticLiveLayer, .diagrammaticPanelHandle, .diagrammaticSubpanelHandle").forEach(guide=>guide.remove());
     Array.from(clone.querySelectorAll(".panelHiddenFromPost")).forEach(
       (hiddenPanelClone) => hiddenPanelClone.remove()
     );
@@ -11529,7 +11530,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       ) {
         const paintedRects = Array.from(
           sourceElement.querySelectorAll(
-            ".sign, .warningDiamondFace, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace"
+            ".sign, .warningDiamondFace, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace, .qcDiagrammaticFooter"
           )
         )
           .filter(isElementVisibleForExport)
@@ -11598,7 +11599,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       const clone = sourceElement.cloneNode(true);
       freezeStaticCloneLayoutMetrics(sourceElement, clone);
       window.SignMakerBannerExport.freeze(sourceElement, clone, layoutScale, getExportPixelRatio());
-      clone.querySelectorAll('.diagrammaticLiveLayer, .diagrammaticSubpanelHandle').forEach(node=>node.remove());
+      clone.querySelectorAll('.diagrammaticLiveLayer, .diagrammaticPanelHandle, .diagrammaticSubpanelHandle').forEach(node=>node.remove());
       clone.querySelectorAll('.diagrammaticEditing').forEach(node=>node.classList.remove('diagrammaticEditing'));
 
       if (clone.classList.contains("panelHiddenFromPost")) {

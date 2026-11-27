@@ -735,3 +735,11 @@ html[data-mobile-ui] #customShieldMaker.mobileShieldMaker :is(#customShieldMaker
 html[data-mobile-ui] #customShieldMaker.mobileShieldMaker .mobileShieldPage > * { grid-area: auto !important; }
 html[data-mobile-ui] #mobileEditor .templates #sMTemplatesPreset > h4 { display: none; }
 html[data-mobile-ui] #mobileEditor .templates #presetTemplateSearch { width: 100% !important; min-width: 0 !important; height: 40px !important; min-height: 40px !important; margin: 0 0 8px; padding: 8px; font-size: 16px !important; box-sizing: border-box; }
+
+html[data-mobile-ui] #mobileEditor #sMShieldPickerSettings button {
+  min-height: 36px;
+}
+
+html[data-mobile-ui] #mobileEditor #sdShield_editShield {
+  min-height: 32px;
+}

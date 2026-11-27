@@ -189,6 +189,17 @@ for(const file of bannerExports){
     assert.equal(clone.style.width,'200px');assert.equal(clone.style.minWidth,'200px');assert.equal(clone.style.maxWidth,'200px');assert.equal(clone.style.height,'80px');assert.equal(clone.style.minHeight,'80px');assert.equal(clone.style.boxSizing,'content-box');
     assert.equal(source.style.width,undefined);
   });
+  test(`${file}: diagrammatic export dimensions already include the border`,()=>{
+    const h=bannerExportHarness(file), source=h.document.createElement('div'), clone=h.document.createElement('div');
+    source.className=clone.className='sign diagrammaticSign';
+    source.getBoundingClientRect=()=>({width:932.5,height:403.75});
+    h.styles.boxSizing='content-box';
+    h.freezeLayout(source,clone,value=>value/1.25);
+    assert.equal(clone.style.boxSizing,'border-box');
+    assert.equal(clone.style.width,'746px');
+    assert.equal(clone.style.height,'323px');
+    assert.equal(source.style.boxSizing,undefined);
+  });
 }
 test('full-post and selected-panel exports capture banners before clone descendants are changed',()=>{
   const main=read('public/js/main.js');

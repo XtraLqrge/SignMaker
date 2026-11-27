@@ -14,12 +14,13 @@
     "js/IconPicker.f07693de1a9e8c8f.js",
     "js/HighwayVarFonts.a64ac12e2b96146a.js",
     "js/PickerSearch.c28526c28f803968.js",
-    "js/form.0ece03937d7ed187.js",
+    "js/ShieldPickerSettings.ba5aff1fb8408a92.js",
+    "js/form.d326c525b477da9a.js",
     "js/IndexDB.ed3f5570a8a35ea9.js",
     "js/CustomShields.85049f03f2f32351.js",
     "js/SignDocument.049462d0df09a6fc.js",
     "js/SignMigrations.b2fa30175c714ab4.js",
-    "js/BannerExport.03161132c4d841de.js",
+    "js/BannerExport.1efadebb995832a2.js",
     "js/VmsElement.a1bac1137d0dd618.js",
     "js/CaliforniaExit.0c392f8cf54132fb.js",
     "js/GuideArrowDefaults.d03e7a287ff870d8.js",
@@ -30,24 +31,24 @@
     "js/MobileGestures.7a19b39ba2013f29.js",
     "js/MobileSubpanels.c64e39f0eb70dce2.js",
     "js/MobileExitTabs.2cc9631b990c501f.js",
-    "js/MobileForms.b43a012bd224276c.js",
+    "js/MobileForms.d8ac2c41bd60d593.js",
     "js/MobileShieldMaker.3aef7ec77a808b44.js",
     "js/MobileUI.303d188cf85d4475.js",
     "js/MobileDropdowns.82efb2293f24f97e.js",
-    "js/MergeUI.9ec01c73c294f303.js",
-    "js/Settings22.4e2c85b4aff66944.js",
+    "js/MergeUI.4936fb8cce48c546.js",
+    "js/Settings22.27f014581ec95ee2.js",
     "js/DropdownTheme.483f02b41085e153.js"
   ],
-  "deferredStyles": "css/app.2c42750f53e11ed9.css",
+  "deferredStyles": "css/app.87fe7a0792437a5e.css",
   "startupJS": {
-    "bytes": 626037,
-    "gzipBytes": 172092,
-    "brotliBytes": 142870
+    "bytes": 626175,
+    "gzipBytes": 172122,
+    "brotliBytes": 142887
   },
   "criticalCSS": {
-    "bytes": 293175,
-    "gzipBytes": 62961,
-    "brotliBytes": 54110
+    "bytes": 293253,
+    "gzipBytes": 62985,
+    "brotliBytes": 54147
   },
   "inlineFontHelper": {
     "bytes": 8557,
@@ -574,16 +575,16 @@
     },
     {
       "source": "js/main.js",
-      "output": "js/main.a7a1c0d2fb70ed81.js",
+      "output": "js/main.aadc7657c3bf0c2b.js",
       "original": {
-        "bytes": 763546,
-        "gzipBytes": 135482,
-        "brotliBytes": 106862
+        "bytes": 763690,
+        "gzipBytes": 135508,
+        "brotliBytes": 106908
       },
       "optimized": {
-        "bytes": 332279,
-        "gzipBytes": 88996,
-        "brotliBytes": 72868
+        "bytes": 332417,
+        "gzipBytes": 89026,
+        "brotliBytes": 72885
       }
     },
     {
@@ -741,17 +742,31 @@
       }
     },
     {
-      "source": "js/form.js",
-      "output": "js/form.0ece03937d7ed187.js",
+      "source": "js/ShieldPickerSettings.js",
+      "output": "js/ShieldPickerSettings.ba5aff1fb8408a92.js",
       "original": {
-        "bytes": 957896,
-        "gzipBytes": 164925,
-        "brotliBytes": 126004
+        "bytes": 16483,
+        "gzipBytes": 4623,
+        "brotliBytes": 4049
       },
       "optimized": {
-        "bytes": 490779,
-        "gzipBytes": 113435,
-        "brotliBytes": 89253
+        "bytes": 9731,
+        "gzipBytes": 3701,
+        "brotliBytes": 3275
+      }
+    },
+    {
+      "source": "js/form.js",
+      "output": "js/form.d326c525b477da9a.js",
+      "original": {
+        "bytes": 958484,
+        "gzipBytes": 165077,
+        "brotliBytes": 125983
+      },
+      "optimized": {
+        "bytes": 491255,
+        "gzipBytes": 113588,
+        "brotliBytes": 89391
       }
     },
     {
@@ -812,16 +827,16 @@
     },
     {
       "source": "js/BannerExport.js",
-      "output": "js/BannerExport.03161132c4d841de.js",
+      "output": "js/BannerExport.1efadebb995832a2.js",
       "original": {
-        "bytes": 7696,
-        "gzipBytes": 2324,
-        "brotliBytes": 1943
+        "bytes": 7907,
+        "gzipBytes": 2397,
+        "brotliBytes": 2009
       },
       "optimized": {
-        "bytes": 4598,
-        "gzipBytes": 1877,
-        "brotliBytes": 1579
+        "bytes": 4640,
+        "gzipBytes": 1887,
+        "brotliBytes": 1586
       }
     },
     {
@@ -966,16 +981,16 @@
     },
     {
       "source": "js/MobileForms.js",
-      "output": "js/MobileForms.b43a012bd224276c.js",
+      "output": "js/MobileForms.d8ac2c41bd60d593.js",
       "original": {
-        "bytes": 34288,
-        "gzipBytes": 8496,
-        "brotliBytes": 7461
+        "bytes": 34348,
+        "gzipBytes": 8501,
+        "brotliBytes": 7466
       },
       "optimized": {
-        "bytes": 22073,
-        "gzipBytes": 7058,
-        "brotliBytes": 6256
+        "bytes": 22075,
+        "gzipBytes": 7052,
+        "brotliBytes": 6248
       }
     },
     {
@@ -1022,30 +1037,30 @@
     },
     {
       "source": "js/MergeUI.js",
-      "output": "js/MergeUI.9ec01c73c294f303.js",
+      "output": "js/MergeUI.4936fb8cce48c546.js",
       "original": {
-        "bytes": 8349,
-        "gzipBytes": 2612,
-        "brotliBytes": 2235
+        "bytes": 8326,
+        "gzipBytes": 2600,
+        "brotliBytes": 2224
       },
       "optimized": {
-        "bytes": 6188,
-        "gzipBytes": 2249,
-        "brotliBytes": 1925
+        "bytes": 6165,
+        "gzipBytes": 2235,
+        "brotliBytes": 1907
       }
     },
     {
       "source": "js/Settings22.js",
-      "output": "js/Settings22.4e2c85b4aff66944.js",
+      "output": "js/Settings22.27f014581ec95ee2.js",
       "original": {
-        "bytes": 5066,
-        "gzipBytes": 1472,
-        "brotliBytes": 1269
+        "bytes": 5159,
+        "gzipBytes": 1501,
+        "brotliBytes": 1280
       },
       "optimized": {
-        "bytes": 4088,
-        "gzipBytes": 1284,
-        "brotliBytes": 1096
+        "bytes": 4167,
+        "gzipBytes": 1312,
+        "brotliBytes": 1122
       }
     },
     {
@@ -1085,25 +1100,25 @@
         "css/custom-shield-maker.css",
         "css/block-properties.css"
       ],
-      "output": "css/app.2c42750f53e11ed9.css",
+      "output": "css/app.87fe7a0792437a5e.css",
       "original": {
-        "bytes": 918920,
-        "gzipBytes": 147752,
-        "brotliBytes": 115880
+        "bytes": 921761,
+        "gzipBytes": 148243,
+        "brotliBytes": 116226
       },
       "optimized": {
-        "bytes": 777433,
-        "gzipBytes": 124105,
-        "brotliBytes": 97808
+        "bytes": 779834,
+        "gzipBytes": 124524,
+        "brotliBytes": 98055
       }
     },
     {
       "critical": true,
-      "output": "css/sign.efba7868e6761f67.css",
+      "output": "css/sign.153c97e66fd02f33.css",
       "optimized": {
-        "bytes": 293175,
-        "gzipBytes": 62961,
-        "brotliBytes": 54110
+        "bytes": 293253,
+        "gzipBytes": 62985,
+        "brotliBytes": 54147
       }
     },
     {

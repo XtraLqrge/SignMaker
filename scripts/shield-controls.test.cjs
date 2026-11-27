@@ -302,3 +302,80 @@ test('exit tab defaults use Series E while Series EEM remains an explicit select
   assert.equal(vm.runInContext('new ExitTab({fontFamily:"Series EEM"}).fontFamily',c),'Series EEM');
   assert.equal(vm.runInContext('TextElement.prototype.fontFamily.includes("Series EEM")',c),true);
 });
+
+test('shield picker folders can be hidden, reordered, and receive built-in and custom shields', () => {
+  const context = vm.createContext({window:{}});
+  vm.runInContext(read('public/js/ShieldPickerSettings.js'), context);
+  const {buildLayout} = context.window.SignMakerShieldPickerSettings;
+  const maker = {id:'maker', value:'__customShieldMaker', customShieldMaker:true};
+  const duplicate = {value:'PIP', label:'Palisades Interstate Parkway'};
+  const custom = {value:'CUSTOM-1', label:'My shield', customSavedShield:true, asset:'sample.svg'};
+  const interstate = {value:'I', label:'Interstate'};
+  const catalogue = [maker, custom,
+    {id:'us', label:'United States', children:[
+      {id:'nj', label:'New Jersey', children:[duplicate, interstate]},
+      {id:'ny', label:'New York', children:[duplicate]},
+    ]},
+  ];
+  const folder = 'folder:my-folder';
+  const customKey = 'shield::CUSTOM-1';
+  const duplicateKey = 'shield:folder:nj:PIP';
+  const settings = JSON.parse(JSON.stringify({
+    folders:[{id:'my-folder', label:'Favorite shields', parent:''}],
+    hidden:['folder:us'],
+    moves:{[customKey]:folder, [duplicateKey]:folder},
+    orders:{[folder]:[duplicateKey,customKey]},
+  }));
+  const layout = buildLayout(catalogue, settings);
+  const visible = Array.from(layout.pickerTree());
+  assert.deepEqual(visible.map(node=>node.id),['maker','my-folder']);
+  assert.deepEqual(Array.from(visible[1].children),[duplicate,custom]);
+  assert.deepEqual(Array.from(layout.children.get('folder:nj'), entry=>entry.node.value),['I']);
+  assert.deepEqual(Array.from(layout.children.get('folder:ny'), entry=>entry.node.value),['PIP']);
+  assert.equal(catalogue[1],custom);
+  assert.equal(catalogue[2].children[0].children[1],interstate);
+
+  const restored = buildLayout(catalogue, {...settings,hidden:[],moves:{[customKey]:folder,[duplicateKey]:''}});
+  assert.deepEqual(Array.from(restored.pickerTree(), node=>node.id || node.value),['maker','us','PIP','my-folder']);
+  assert.deepEqual(Array.from(restored.children.get(folder), entry=>entry.node.value),['CUSTOM-1']);
+});
+
+test('shield picker drag placements survive reload and reject nesting a folder inside itself', () => {
+  const context = vm.createContext({window:{}});
+  vm.runInContext(read('public/js/ShieldPickerSettings.js'), context);
+  const {buildLayout, placeItem} = context.window.SignMakerShieldPickerSettings;
+  const catalogue = [
+    {id:'roads', label:'Roads', children:[{value:'US', label:'U.S. Route'}]},
+    {value:'I', label:'Interstate'},
+    {value:'CUSTOM-1', label:'My shield', customSavedShield:true},
+  ];
+  const roads = 'folder:roads';
+  const favorites = 'folder:favorites';
+  const interstate = 'shield::I';
+  const custom = 'shield::CUSTOM-1';
+  const route = 'shield:folder:roads:US';
+  const settings = {
+    folders:[{id:'favorites', label:'Favorites', parent:roads}],
+    hidden:[], moves:{}, orders:{},
+  };
+  const move = (key, placement) => placeItem(buildLayout(catalogue, settings), settings, key, placement);
+  const orderIn = (parent) => Array.from(
+    buildLayout(catalogue, JSON.parse(JSON.stringify(settings))).children.get(parent), item => item.key);
+
+  assert.equal(move(custom, {destination:'', anchor:interstate}), true);
+  assert.deepEqual(orderIn(''), [roads, custom, interstate]);
+  assert.equal(move(custom, {destination:'', anchor:interstate}), false);
+  assert.equal(move(custom, {destination:'', anchor:interstate, after:true}), true);
+  assert.deepEqual(orderIn(''), [roads, interstate, custom]);
+  assert.equal(move(custom, {destination:favorites}), true);
+  assert.deepEqual(orderIn(favorites), [custom]);
+  assert.equal(move(custom, {destination:roads, anchor:route}), true);
+  assert.deepEqual(orderIn(roads), [custom, route, favorites]);
+  assert.equal(move(roads, {destination:favorites}), false);
+  assert.equal(move(favorites, {destination:favorites}), false);
+  assert.equal(move(favorites, {destination:''}), true);
+  assert.equal(move(roads, {destination:favorites}), true);
+  assert.deepEqual(orderIn(''), [interstate, favorites]);
+  assert.deepEqual(orderIn(favorites), [roads]);
+  assert.deepEqual(orderIn(roads), [custom, route]);
+});

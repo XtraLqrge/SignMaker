@@ -312,10 +312,12 @@ for (const source of sources) {
       assert.equal(shieldStyle(button,'height'),'32px');assert.equal(shieldStyle(button,'min-height'),'32px');
       assert.equal(shieldStyle(button,'max-height'),'32px');
     }
-    for(const suffix of ['to','scaleBannersWithShield','numberStyle','shieldBacks']) {
+    for(const suffix of ['to','scaleBannersWithShield','shieldBacks']) {
       const input=h.byId('sdShield_'+suffix),field=input.closest('.mobileField');
       assert.equal(field.parentElement,grid);assert.equal(field.querySelector('label').htmlFor,input.id);
     }
+    assert.equal(h.byId('sdShield_numberStyle'),null);
+    assert.equal(h.byId('sdShield_editShield').parentElement,grid);
     const backs=h.byId('sdShield_shieldBacks'),field=backs.closest('.mobileField');
     backs.hidden=true;h.api.refresh();assert.equal(field.hidden,true);
     backs.hidden=false;h.api.refresh();assert.equal(field.hidden,false);

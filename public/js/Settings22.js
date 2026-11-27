@@ -37,7 +37,10 @@ window.SignMakerSettings22=(()=>{
   modal.querySelectorAll('.sMModalContent > div').forEach(pane=>pane.classList.toggle('tabHidden',pane.id!==id));
   modal.querySelectorAll('.sMModalTab').forEach(tab=>tab.classList.toggle('selected',tab.dataset.tab===id));
   if(id==='sMDefaults')showDefaults();
-  else refreshPickers();
+  else {
+   if(id==='sMShieldPickerSettings')window.SignMakerShieldPickerSettings?.render();
+   refreshPickers();
+  }
  };
  const init=api=>{
   preferences=api;

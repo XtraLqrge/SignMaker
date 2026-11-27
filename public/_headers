@@ -68,7 +68,7 @@
 /js/PresetTemplates.12d6e48cb9eed8b7.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/main.a7a1c0d2fb70ed81.js
+/js/main.aadc7657c3bf0c2b.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/AlignmentButtons.f1278edc85d1f9aa.js
@@ -104,7 +104,10 @@
 /js/PickerSearch.c28526c28f803968.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/form.0ece03937d7ed187.js
+/js/ShieldPickerSettings.ba5aff1fb8408a92.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/form.d326c525b477da9a.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/IndexDB.ed3f5570a8a35ea9.js
@@ -119,7 +122,7 @@
 /js/SignMigrations.b2fa30175c714ab4.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/BannerExport.03161132c4d841de.js
+/js/BannerExport.1efadebb995832a2.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/VmsElement.a1bac1137d0dd618.js
@@ -152,7 +155,7 @@
 /js/MobileExitTabs.2cc9631b990c501f.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MobileForms.b43a012bd224276c.js
+/js/MobileForms.d8ac2c41bd60d593.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/MobileShieldMaker.3aef7ec77a808b44.js
@@ -164,19 +167,19 @@
 /js/MobileDropdowns.82efb2293f24f97e.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/MergeUI.9ec01c73c294f303.js
+/js/MergeUI.4936fb8cce48c546.js
   Cache-Control: public, max-age=31536000, immutable
 
-/js/Settings22.4e2c85b4aff66944.js
+/js/Settings22.27f014581ec95ee2.js
   Cache-Control: public, max-age=31536000, immutable
 
 /js/DropdownTheme.483f02b41085e153.js
   Cache-Control: public, max-age=31536000, immutable
 
-/css/app.2c42750f53e11ed9.css
+/css/app.87fe7a0792437a5e.css
   Cache-Control: public, max-age=31536000, immutable
 
-/css/sign.efba7868e6761f67.css
+/css/sign.153c97e66fd02f33.css
   Cache-Control: public, max-age=31536000, immutable
 
 /js/Startup.9d75b1c853e51bc9.js

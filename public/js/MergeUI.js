@@ -100,7 +100,7 @@ window.SignMakerMergeUI = (() => {
     });
     window.addEventListener("resize", () => app.closeCopyPanelContextMenu(true));
     element("sMSPExitGroup").addEventListener("click", () => app.exitGroupElement());
-    document.querySelectorAll('[data-property="sdGroupedBlock"] input, [data-property="sdGroupedBlock"] select, #sdShield_numberStyle')
+    document.querySelectorAll('[data-property="sdGroupedBlock"] input, [data-property="sdGroupedBlock"] select')
       .forEach(field => {
         const event = field.tagName === "SELECT" || field.type === "checkbox" ? "change" : "input";
         field.addEventListener(event, () => { formHandler.readForm(); queueSync(); });

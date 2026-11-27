@@ -4291,6 +4291,7 @@ const formHandler = (function () {
   const refreshCustomShieldMakerRegistry = () => {
     syncCustomShieldMakerConfigs();
     syncCustomShieldMakerPickerTree();
+    window.SignMakerShieldPickerSettings?.refresh();
 
     if (typeof refreshAllShieldPickers === "function") {
       refreshAllShieldPickers();
@@ -8427,6 +8428,14 @@ const formHandler = (function () {
       }
       openCustomShieldMaker();
     });
+    document.getElementById("sdShield_editShield")?.addEventListener("click", () => {
+      const shield = exposed?.getCurrentBlockElem?.();
+      if (!(shield instanceof ShieldElement)) return;
+      const record = getCustomShieldMakerRecordByValue(shield.shieldBase || shield.type);
+      dialog._customShieldMakerSource = null;
+      if (record) dialog._openSavedCustomShield(record.id);
+      else openButton?.click();
+    });
     saveButton?.addEventListener("click", saveCustomShieldMakerRecordFromEditor);
     exportButton?.addEventListener("click", async () => {
       const record = collectCustomShieldMakerRecordFromEditor();
@@ -11960,6 +11969,12 @@ const formHandler = (function () {
     patchShieldPickerTreeForUploadedStateFolders();
 
     SHIELD_PICKER_TREE.forEach(applyManualShieldPickerOrder);
+    window.SignMakerShieldPickerSettings?.init({
+      catalog: SHIELD_PICKER_TREE,
+      load: () => getStoredItem("signMaker.shieldPickerLayout"),
+      save: (layout) => setStoredItem("signMaker.shieldPickerLayout", layout),
+      refreshPickers: refreshAllShieldPickers,
+    });
     const customShieldMakerLoadPromise = loadCustomShieldMakerRecords();
     refreshCustomShieldMakerRegistry();
     customShieldMakerLoadPromise
@@ -12740,7 +12755,11 @@ const formHandler = (function () {
       let currentValue = value || "";
       const expandedIds = new Set(["us", "canada"]);
 
-      const expandPathToValue = (targetValue, nodes = rootNodes, parents = []) => {
+      const visibleRootNodes = () => rootNodes === SHIELD_PICKER_TREE
+        ? window.SignMakerShieldPickerSettings?.getPickerTree() ?? rootNodes
+        : rootNodes;
+
+      const expandPathToValue = (targetValue, nodes = visibleRootNodes(), parents = []) => {
         for (const node of nodes) {
           if (node.value === targetValue) {
             parents.forEach((id) => expandedIds.add(id));
@@ -12834,7 +12853,8 @@ const formHandler = (function () {
         if (treeDirty || !tree.childElementCount) {
           treeDirty = false;
           const scrollTop = popover.scrollTop;
-          const results = window.SignMakerPickerSearch?.filterTree(rootNodes, search?.query || "") || { nodes: rootNodes };
+          const nodes = visibleRootNodes();
+          const results = window.SignMakerPickerSearch?.filterTree(nodes, search?.query || "") || { nodes };
           if (search?.query && !searchExpanded) searchExpanded = new Set(results.expanded);
           search?.setCount(results.nodes.length);
           const activeExpanded = search?.query ? searchExpanded : expandedIds;
@@ -21565,9 +21585,7 @@ const formHandler = (function () {
           continue;
         }
 
-        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
-          currentBlockElem.numberStyle=element.checked?'legacy':'current';
-        } else if (element.type === "checkbox") {
+        if (element.type === "checkbox") {
           currentBlockElem[propertyName] = element.checked;
         } else if (element.type === "radio") {
           if (element.checked) {
@@ -22536,10 +22554,7 @@ const formHandler = (function () {
         }
 
 
-        if (blockElemType === "sdShield" && propertyName === "numberStyle") {
-          element.checked=currentBlockElem.numberStyle==='legacy';
-          element.addEventListener('change',formReadHandler,{once:true});
-        } else if (element.type === "checkbox") {
+        if (element.type === "checkbox") {
           element.checked = currentBlockElem[propertyName];
           element.addEventListener("change", formReadHandler, { once: true });
         } else if (element.type === "radio") {

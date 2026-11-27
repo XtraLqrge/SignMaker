@@ -200,3 +200,136 @@
 #settings22Modal .guideArrowDefaults input[type="number"],
 #settings22Modal .guideArrowDefaults select { width:100%; min-width:0; box-sizing:border-box; }
 #settings22Modal .guideArrowDefaults > button { grid-column:1/-1; }
+
+html:not([data-mobile-ui]) #settings22Modal[data-current-menu="sMShieldPickerSettings"] {
+  min-width: 0 !important;
+}
+
+#settings22Modal #sMShieldPickerSettings:not(.tabHidden) {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  box-sizing: border-box;
+}
+
+#sMShieldPickerSettings .shieldCatalogField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+#sMShieldPickerSettings .shieldCatalogLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+#sMShieldPickerSettings .shieldCatalogField > :is(input, select, .symbolPicker) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+#sMShieldPickerSettings button {
+  margin: 0;
+  min-height: 1.7rem;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.shieldCatalogList {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+  max-height: min(12rem, 36dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem;
+  background: rgba(var(--baseColor), 0.12);
+}
+
+#sMShieldPickerSettings .shieldCatalogList button {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
+  user-select: none;
+}
+
+.shieldCatalogList button[aria-pressed="true"] {
+  background: rgba(var(--baseColor), 0.25);
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+}
+
+.shieldCatalogList button > .shieldCatalogItemLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shieldCatalogList button .material-symbols-outlined {
+  flex: none;
+  font-size: 1rem;
+}
+
+.shieldCatalogGrip {
+  cursor: grab;
+  touch-action: none;
+  opacity: 0.65;
+}
+
+.shieldCatalogList [data-dragging] {
+  opacity: 0.45;
+}
+
+#sMShieldPickerSettings [data-drop="before"] {
+  box-shadow: inset 0 2px currentColor;
+}
+
+#sMShieldPickerSettings [data-drop="after"] {
+  box-shadow: inset 0 -2px currentColor;
+}
+
+#sMShieldPickerSettings [data-drop="into"] {
+  background: rgba(var(--baseColor), 0.3);
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.shieldCatalogActions:not([hidden]) {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shieldCatalogButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+#sMShieldPickerSettings [hidden] {
+  display: none !important;
+}
+
+#sMShieldPickerSettings p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.shieldCatalogStatus:empty {
+  display: none;
+}
+

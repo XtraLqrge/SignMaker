@@ -100,8 +100,14 @@ window.SignMakerSpecialPanelLayout = (() => {
         face.style.backgroundColor = color;
         face.style.borderColor = getComputedStyle(signElmt).color;
         // A centered upright rectangle fits a diamond whose diagonal is w+h.
-        const extent = Math.ceil(signElmt.offsetWidth + signElmt.offsetHeight);
+        const extent = Math.max(1, Math.ceil(signElmt.offsetWidth + signElmt.offsetHeight));
         container.style.setProperty('--warningDiamondExtent', extent + 'px');
+        if (container.classList.contains('panelFixedWidth')) {
+          container.style.setProperty('--warningDiamondScaleX', container.offsetWidth / extent);
+        }
+        if (container.classList.contains('panelFixedHeight')) {
+          container.style.setProperty('--warningDiamondScaleY', container.offsetHeight / extent);
+        }
         return true;
       }
     return false;

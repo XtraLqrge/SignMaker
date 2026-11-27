@@ -27,7 +27,7 @@ const {webkit} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
    for (const scale of [75,100,150]) {
     await page.evaluate(({position,scale}) => {
      document.getElementById('sMConfigBar').dataset.position = position;
-     const field = document.getElementById('appUiScale'); field.value=scale; field.dispatchEvent(new Event('input',{bubbles:true}));
+     const field = document.getElementById('appUiScale'); field.value=scale; field.dispatchEvent(new Event('change',{bubbles:true}));
     }, {position,scale});
     await button.click({button:'right'});
     assert.deepEqual(await menu.locator('button').allTextContents(), ['Copy Panel 1','Copy Panel 2 (stacked)']);
@@ -41,7 +41,7 @@ const {webkit} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await button.evaluate(node => document.activeElement === node), true);
    }
   }
-  await page.evaluate(() => {document.getElementById('sMConfigBar').dataset.position='bottom'; const f=document.getElementById('appUiScale');f.value=100;f.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.evaluate(() => {document.getElementById('sMConfigBar').dataset.position='bottom'; const f=document.getElementById('appUiScale');f.value=100;f.dispatchEvent(new Event('change',{bubbles:true}));});
   await button.focus();
   await page.keyboard.press('Shift+F10');
   await page.keyboard.press('ArrowDown');

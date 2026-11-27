@@ -47,8 +47,9 @@ window.SignMakerSettings22=(()=>{
   if(initialized){sync();return;}
   initialized=true;
   field('appThemeMode').addEventListener('change',()=>{preferences.setTheme(field('appThemeMode').value);sync();});
-  field('appUiScale').addEventListener('input',()=>{preferences.setScale(field('appUiScale').value);sync();});
-  field('appUiScale').addEventListener('change',()=>{preferences.setScale(field('appUiScale').value);sync();});
+  const scaleSlider=field('appUiScale');
+  scaleSlider.addEventListener('input',()=>{field('appUiScaleValue').textContent=scaleSlider.value+'%';});
+  scaleSlider.addEventListener('change',()=>{preferences.setScale(scaleSlider.value);sync();});
   field('appShrinkSignsForPanels').addEventListener('change',()=>{preferences.setShrinkSignsForPanels(field('appShrinkSignsForPanels').checked);sync();});
   field('appToolbarPosition').addEventListener('change',()=>{preferences.setToolbar(field('appToolbarPosition').value);sync();});
   field('appKeybindMode').addEventListener('change',()=>{preferences.setKeybind(field('appKeybindMode').value);sync();});

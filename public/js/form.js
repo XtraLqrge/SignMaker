@@ -20874,6 +20874,7 @@ const formHandler = (function () {
   };
 
   // Read the form and update the page by redrawing it.
+  const panelDimensionSelector = "#fixedWidthRem, #fixedHeightRem";
   const readForm = function (options = {}) {
     if (mergeLiveInputActive && !mergeLiveInputValid) return;
     mergeLiveInputRead = true;
@@ -20893,6 +20894,20 @@ const formHandler = (function () {
     try {
     syncPostReference();
     const form = document.forms[0];
+    if (field?.matches?.(panelDimensionSelector)) {
+      const panel = exposed.getCurrentPanel();
+      if (!panel) return;
+      const dimension = Panel.fixedDimension(field.value);
+      if (dimension === null && field.value !== "") {
+        if (!mergeLiveInputActive) field.value = Panel.fixedDimension(panel[field.id]) ?? "";
+        return;
+      }
+      if (dimension === null) delete panel[field.id];
+      else panel[field.id] = dimension;
+      updateForm();
+      exposed.redraw({ preserveOtherPanels: true, changedPanelIndex: exposed.vars.currentlySelectedPanelIndex });
+      return;
+    }
     if (field?.matches?.("#disableFlash, #showBlockBoundingBoxes, #showAlignmentGuides, #alignmentGuideSpacing, #alignmentGuidePhase")) {
       readDisplaySettings(form);
       syncDisplaySettings();
@@ -22010,7 +22025,8 @@ const formHandler = (function () {
 
   const liveEditorSelector = ".panelStyleConfig,.postStyleConfig,.exitTabConfig,.subPanelConfig,.guideArrowConfig";
   const isUsableLiveInput = field => field?.type !== "number" ||
-    (field.value !== "" && !field.validity.badInput && Number.isFinite(field.valueAsNumber));
+    (!field.validity.badInput && (field.matches(panelDimensionSelector) && field.value === "" ||
+      field.value !== "" && Number.isFinite(field.valueAsNumber)));
   const isLiveEditorField = field => (!!field?.closest?.(liveEditorSelector) ||
     field?.matches?.("#panelSpacing,#panelSpacingValue,#alignmentGuideSpacing,#alignmentGuidePhase,.stackedPanelSpacingSlider,.stackedPanelSpacingInput")) &&
     !field.closest("#exitTabProfileManagerPicker,#standardArrowIndividualRows") &&
@@ -24856,6 +24872,8 @@ const formHandler = (function () {
     // Panel Setting Config
 
     // Panel Config
+    document.getElementById("fixedWidthRem").value = Panel.fixedDimension(panel.fixedWidthRem) ?? "";
+    document.getElementById("fixedHeightRem").value = Panel.fixedDimension(panel.fixedHeightRem) ?? "";
     const panelColorSelectElmt = document.getElementById("panelColor");
     ensureCustomColorOptionsForSelect(panelColorSelectElmt);
     ensureNativeColorSelectOption(panelColorSelectElmt, panel.color);

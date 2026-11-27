@@ -116,11 +116,19 @@ const PanelBorders = (() => {
     const scaleX = panelRect.width / layoutSize(panel, panelStyle, 'width') || 1;
     const scaleY = panelRect.height / layoutSize(panel, panelStyle, 'height') || scaleX;
     const surfaces = [];
-    for (const element of panel.querySelectorAll('.signContainer > .sign,.signContainer > .guideArrows,.signContainer > .aplArrows,.exitTab')) {
+    const fixedFace = panel.querySelector(':scope > .signContainer:is(.panelFixedWidth,.panelFixedHeight)');
+    const faceRect = fixedFace?.getBoundingClientRect();
+    for (const element of panel.querySelectorAll('.signContainer > .sign,.signContainer > .guideArrows,.signContainer > .aplArrows,.signContainer:is(.panelFixedWidth,.panelFixedHeight) > .qcDiagrammaticFooter,.exitTab')) {
       if (element.closest('.panel') !== panel || element.classList.contains('transparentAsset')) continue;
       const style = getComputedStyle(element), rect = element.getBoundingClientRect();
-      if (style.display === 'none' || style.visibility === 'hidden' || !rect.width || !rect.height) continue;
-      const width = rect.width / scaleX, height = rect.height / scaleY;
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      const clip = element.parentElement === fixedFace ? faceRect : null;
+      const left = clip ? Math.max(rect.left, clip.left) : rect.left;
+      const top = clip ? Math.max(rect.top, clip.top) : rect.top;
+      const right = clip ? Math.min(rect.right, clip.right) : rect.right;
+      const bottom = clip ? Math.min(rect.bottom, clip.bottom) : rect.bottom;
+      if (right <= left || bottom <= top) continue;
+      const width = (right - left) / scaleX, height = (bottom - top) / scaleY;
       let color = style.backgroundColor;
       for (let parent = element.parentElement; transparent(color) && parent && parent !== panel; parent = parent.parentElement) color = getComputedStyle(parent).backgroundColor;
       if (transparent(color)) color = panel.style.getPropertyValue('--panelFillColor') || '#005a4a';
@@ -129,9 +137,9 @@ const PanelBorders = (() => {
         const laneColor = getComputedStyle(lane).backgroundColor;
         if (transparent(laneColor)) continue;
         const box = lane.getBoundingClientRect();
-        regions.push({color: laneColor, rect: {left: (box.left - rect.left) / scaleX, top: (box.top - rect.top) / scaleY, width: box.width / scaleX, height: box.height / scaleY}});
+        regions.push({color: laneColor, rect: {left: (box.left - left) / scaleX, top: (box.top - top) / scaleY, width: box.width / scaleX, height: box.height / scaleY}});
       }
-      surfaces.push({x: (rect.left - panelRect.left) / scaleX, y: (rect.top - panelRect.top) / scaleY, width, height,
+      surfaces.push({x: (left - panelRect.left) / scaleX, y: (top - panelRect.top) / scaleY, width, height,
         corners: radiusNames.map(name => parseFloat(style[name]) || 0), roundOuter:panel.classList.contains('round'), color, regions});
     }
     if (!surfaces.length) { existing?.remove(); return; }

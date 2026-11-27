@@ -4912,6 +4912,73 @@ img.exitOnlyArrow:last-child {
 }
 .panel.sharp .warningDiamondFace { border-radius:0; }
 
+/* The face owns these dimensions, including any attached arrow band. */
+.panel > .signContainer.panelFixedWidth {
+  width: var(--panelFixedWidth) !important;
+  min-width: 0 !important;
+}
+
+.panel > .signContainer.panelFixedHeight {
+  height: var(--panelFixedHeight) !important;
+  min-height: 0 !important;
+}
+
+.panel > .signContainer:is(.panelFixedWidth, .panelFixedHeight) {
+  box-sizing: border-box;
+  overflow: hidden !important;
+}
+
+.panel:not(.warningDiamond) > .signContainer:is(.panelFixedWidth, .panelFixedHeight) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.panel:not(.warningDiamond) > .signContainer.panelFixedWidth > .sign {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.panel > .signContainer.panelFixedWidth > :is(.guideArrows, .aplArrows, .qcDiagrammaticFooter) {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.panel:not(.warningDiamond) > .signContainer.panelFixedHeight > .sign {
+  flex: 1 1 0px !important;
+  height: auto !important;
+  min-height: 0;
+}
+
+.signContainer.panelFixedHeight > :is(.guideArrows, .aplArrows, .qcDiagrammaticFooter) {
+  flex: 0 0 auto;
+}
+
+.signContainer.panelFixedHeight > .sign:not(.diagrammaticSign, .roundaboutSign) {
+  align-content: safe center;
+}
+
+.signContainer.panelFixedWidth > .roundaboutSign {
+  justify-content: safe center;
+}
+
+.signContainer:is(.panelFixedWidth, .panelFixedHeight) > .diagrammaticSign > .diagrammaticDrawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.panel.warningDiamond > .signContainer:is(.panelFixedWidth, .panelFixedHeight) > .warningDiamondFace {
+  width: calc(var(--warningDiamondExtent) * 0.70710678);
+  height: calc(var(--warningDiamondExtent) * 0.70710678);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(var(--warningDiamondScaleX, 1), var(--warningDiamondScaleY, 1)) rotate(45deg);
+}
+
 /* Settings → "Export without panel background": copied and downloaded images
    keep the sign's content but drop every panel-colored surface. Borders keep
    their width so the layout matches the editor. */

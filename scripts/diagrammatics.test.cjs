@@ -20,6 +20,29 @@ test('independent diagrammatic dimensions preserve legacy proportions and gap pr
  assert.equal(normalize({}).consistentGapsOnTurns,true);
  assert.equal(normalize({consistentGapsOnTurns:false}).consistentGapsOnTurns,false);
 });
+test('Panel Style fixes either diagrammatic axis without replacing the saved drawing size',()=>{
+ const editor=require('./fixtures/diagrammatic-editor.cjs')({withStarter:true});
+ const width=editor.doc.getElementById('diagrammaticWidth'),height=editor.doc.getElementById('diagrammaticHeight');
+ editor.setPanelSize(50,null);
+ assert.equal(width.disabled,true);
+ assert.equal(height.disabled,false);
+ assert.equal(Number(width.value),50);
+ assert.equal(editor.engine.app.sheets.selected.width,(50-.4)*40);
+ assert.equal(editor.engine.app.sheets.selected.height,25*40);
+ assert.deepEqual(editor.host.querySelectorAll('.diagrammaticPanelHandle').map(handle=>handle.dataset.edge),['n','s']);
+ editor.setPanelSize(50,32);
+ assert.equal(height.disabled,true);
+ assert.equal(editor.host.querySelectorAll('.diagrammaticPanelHandle').length,0);
+ assert.equal(editor.engine.app.sheets.selected.height,(32-.4)*40);
+ editor.engine.editSettings(model=>{model.arrowHeadSize=125;});
+ assert.equal(editor.sign.diagrammatic.roadGraph.width,40*40);
+ assert.equal(editor.sign.diagrammatic.roadGraph.height,25*40);
+ editor.setPanelSize(null,null);
+ assert.equal(width.disabled,false);
+ assert.equal(height.disabled,false);
+ assert.equal(editor.engine.app.sheets.selected.width,40*40);
+ assert.equal(editor.engine.app.sheets.selected.height,25*40);
+});
 test('turn dashes share right-edge stations across lanes of different lengths',()=>{
  const draw=c.window.SignMakerDiagrammatics.alignedDashes;
  const right=[{x:0,y:0},{x:20,y:0},{x:20,y:20}];

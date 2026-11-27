@@ -63,12 +63,13 @@ module.exports=function createDiagrammaticEditor({withStarter=false}={}){
     html.querySelector('#sMDiagrammatics').replaceWith(tab);
   }
   const body=html.querySelector('body');
-  const doc={body,querySelector:s=>html.querySelector(s),getElementById:id=>html.querySelector('#'+id),addEventListener(){},createTextNode:value=>new Node("#text",value),createElement:make,createElementNS:(_,tag)=>make(tag)};
+  const doc={body,documentElement:html,querySelector:s=>html.querySelector(s),getElementById:id=>html.querySelector('#'+id),addEventListener(){},createTextNode:value=>new Node("#text",value),createElement:make,createElementNS:(_,tag)=>make(tag)};
   const sign0={arrowMode:'diagrammatic',subPanels:[],diagrammatic:{width:40,height:25,unitsPerRem:40}};
   let sign=structuredClone(sign0),previous=[],next=[];
   const win={addEventListener(){}};
   const placements=[];
-  const bridge={getCurrentPanel:()=>({sign}),getCurrentSubPanel:()=>sign.subPanels[0],addDiagrammaticSubpanel:bounds=>placements.push(bounds),editDiagrammatic(change,{redraw=false}={}){
+  const panelSize={};
+  const bridge={getCurrentPanel:()=>({sign,...panelSize}),getCurrentSubPanel:()=>sign.subPanels[0],addDiagrammaticSubpanel:bounds=>placements.push(bounds),editDiagrammatic(change,{redraw=false}={}){
     const before=structuredClone(sign);
     sign.diagrammatic=win.SignMakerDiagrammatics.normalize(sign.diagrammatic);
     change(sign.diagrammatic,sign);
@@ -76,11 +77,12 @@ module.exports=function createDiagrammaticEditor({withStarter=false}={}){
     if(redraw)draw();
   }};
   const context=vm.createContext({window:win,document:doc,app:{exposeToFormHandler:bridge},
-    Event,EventTarget,structuredClone,setTimeout,clearTimeout,console,requestAnimationFrame:()=>1,cancelAnimationFrame(){},
+    Event,EventTarget,structuredClone,setTimeout,clearTimeout,console,getComputedStyle:()=>({fontSize:"20px"}),requestAnimationFrame:()=>1,cancelAnimationFrame(){},
     ResizeObserver:class{observe(){}},MutationObserver:class{observe(){}},matchMedia:()=>({matches:true}),
     XMLSerializer:class{serializeToString(node){return JSON.stringify(node.querySelectorAll('path').map(n=>n.getAttribute('d')));}}
   });
   vm.runInContext(require('../build-diagrammatics.cjs')(root),context);
+  vm.runInContext(read('public/js/Panel.js'),context);
   vm.runInContext(read('public/js/Diagrammatics.js'),context);
   const service=win.SignMakerDiagrammatics;
   const host=make('div');host.className='sign';const panel=make('div');panel.className='panel';panel.dataset.panelIndex='0';panel.append(host);doc.getElementById("panelContainer").append(panel);
@@ -94,5 +96,12 @@ module.exports=function createDiagrammaticEditor({withStarter=false}={}){
   draw();
   const engine=service.engine,roadEditor=engine.app.roadEditor,workspace=engine.live.shadowRoot.getElementById('workspace'),controls=engine.controlsHost.shadowRoot;
   function pointer(node,type,options={}){node.dispatchEvent(new DomEvent(type,{button:0,pointerId:1,isPrimary:true,clientX:0,clientY:0,...options}));}
-  return {service,engine,roadEditor,workspace,controls,previous,placements,host,doc,make,context,pointer,undo:()=>restore(previous,next),redo:()=>restore(next,previous),get sign(){return sign;}};
+  function setPanelSize(width,height){
+    panelSize.fixedWidthRem=width;panelSize.fixedHeightRem=height;
+    panel.classList.toggle('panelFixedWidth',width!=null);
+    panel.classList.toggle('panelFixedHeight',height!=null);
+    host.clientWidth=width*20-8;host.clientHeight=height*20-8;
+    draw();
+  }
+  return {service,engine,roadEditor,workspace,controls,previous,placements,host,doc,make,context,pointer,setPanelSize,undo:()=>restore(previous,next),redo:()=>restore(next,previous),get sign(){return sign;}};
 };

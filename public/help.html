@@ -504,9 +504,12 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
  <p>A stack gives each face its own panel styling and content. A row keeps the content within the same face. If you want a colored message band inside the sign, add a row and use <strong>Row Properties</strong> before adding a whole panel.</p>
  <p class="related">See also <a href="#spacing">Space and color rows and blocks</a> · <a href="#export">Export a sign or post</a></p>
 </article>
-<article id="panel-style" data-title="Style a panel" data-keywords="appearance padding color background border thickness radius corners outer border warning diamond rem">
+<article id="panel-style" data-title="Style a panel" data-keywords="appearance width height fixed size padding color background border thickness radius corners outer border warning diamond rem">
  <h1>Style a panel</h1>
  <p class="lead">Open <strong>Panel Style</strong> after selecting the face you want to change. Use <strong>Appearance</strong> for the face and border, and <strong>Padding</strong> for the space around its content.</p>
+ <h2>Set the panel dimensions</h2>
+ <p>At the bottom of <strong>Panel Style → Appearance</strong>, enter <strong>Set Width</strong>, <strong>Set Height</strong>, or both. Clear either field to return that dimension to automatic sizing. These fields apply to all panel types and take priority over the diagrammatic editor’s dimensions.</p>
+ <p>The measurements cover the sign face and its built-in arrow bands. Exit tabs, the outer border, and VMS housing add to the outside size. Content that extends past the face is clipped, so use the preview to check that everything fits.</p>
  <h2>Change the face and border</h2>
  <ul>
   <li><strong>Panel color.</strong> Choose a preset or use the color picker for a custom color. Look at the preview to check text and border contrast.</li>
@@ -880,7 +883,7 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
  <h1>Change the interface</h1>
  <p class="lead">Open <strong>Settings → General → Interface</strong> to change how SignMaker looks and responds. Preferences are saved in the current browser.</p>
  <dl class="definitions">
-  <dt>Theme and toolbar</dt><dd>Use System, Light, or Dark and choose the toolbar position where available. Adjust UI Scale or Text Size when the controls are hard to read.</dd>
+  <dt>Theme and toolbar</dt><dd>Use System, Light, or Dark and choose the toolbar position where available. Adjust UI Scale or Text Size when the controls are hard to read. The UI Scale slider shows the selected percentage as you drag and resizes the interface when you release it.</dd>
   <dt>Preview space</dt><dd>Use Shrink signs to fit panels to make room for open editors. Use Hide Menu to see the canvas with fewer controls.</dd>
   <dt>Editing feedback</dt><dd>Control selection flash, block bounds, alignment guides and their spacing, and interface animations.</dd>
   <dt>Pickers and fonts</dt><dd>Enable Advanced dropdowns for the full mobile pickers. Use Enable Highway VAR fonts to show that family in font lists.</dd>

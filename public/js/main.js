@@ -11182,6 +11182,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     return rect.width > 0 && rect.height > 0;
   };
 
+  const fixedPanelFaceSelector = ".signContainer:is(.panelFixedWidth, .panelFixedHeight)";
+
   const getElementAndDescendantBounds = (
     element,
     { includeSelf = true, includePanelContainerBackground = false } = {}
@@ -11195,6 +11197,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       if (node?.closest?.(".panel.vmsPanel > .signContainer, .panel.vmsPanel > .vmsPanelDisplay, .diagrammaticSign *")) {
         return;
       }
+      const fixedFace = node?.closest?.(fixedPanelFaceSelector);
+      if (fixedFace && node !== fixedFace) return;
+      if (fixedFace) force = true;
       const isTransparentPanelWrapper =
         node &&
         node.classList &&
@@ -11369,6 +11374,9 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     return Math.max(0.01, Math.min(...scales));
   };
 
+  // Undoing the preview scale can add a tiny fraction to a whole-pixel edge.
+  const roundExportExtent = (size) => Math.ceil(size - 0.0001);
+
   const createFullPostStaticExportClone = (element) => {
     if (!element || element.id !== "postContainer" || !element.isConnected) {
       return null;
@@ -11395,8 +11403,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       includePanelContainerBackground: panelContainerHasPaintedBackground,
     });
     const padding = 0;
-    const exportWidth = Math.ceil(normalizeMeasurement(bounds.width) + padding * 2);
-    const exportHeight = Math.ceil(normalizeMeasurement(bounds.height) + padding * 2);
+    const exportWidth = roundExportExtent(normalizeMeasurement(bounds.width) + padding * 2);
+    const exportHeight = roundExportExtent(normalizeMeasurement(bounds.height) + padding * 2);
 
     const host = document.createElement("div");
     host.className = "exportStaticCaptureHost";
@@ -11530,10 +11538,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       ) {
         const paintedRects = Array.from(
           sourceElement.querySelectorAll(
-            ".sign, .warningDiamondFace, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace, .qcDiagrammaticFooter"
+            `${fixedPanelFaceSelector}, .sign, .warningDiamondFace, .exitTab, .globalTop, .globalBottom, .vmsPanelFrame, .panelOuterFace, .qcDiagrammaticFooter`
           )
         )
-          .filter(isElementVisibleForExport)
+          .filter(node => {
+            const fixedFace = node.closest(fixedPanelFaceSelector);
+            return fixedFace ? fixedFace === node : isElementVisibleForExport(node);
+          })
           .map((node) => node.getBoundingClientRect());
 
         if (paintedRects.length) {
@@ -11557,13 +11568,13 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
       return totalWidth + boundsWidth + (index > 0 ? selectedPanelGap : 0);
     }, 0);
 
-    const exportWidth = Math.ceil(
+    const exportWidth = roundExportExtent(
       (shouldCompactSelectedPanels
         ? compactContentWidth
         : normalizeMeasurement(right - left)) +
         padding * 2
     );
-    const exportHeight = Math.ceil(normalizeMeasurement(bottom - top) + padding * 2);
+    const exportHeight = roundExportExtent(normalizeMeasurement(bottom - top) + padding * 2);
 
     const host = document.createElement("div");
     host.className = "exportStaticCaptureHost";
@@ -14287,6 +14298,16 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
           
           const signCont = document.createElement("div");
           signCont.className = `signContainer ${signShapeWidthClass}`;
+          const fixedWidth = Panel.fixedDimension(panel.fixedWidthRem);
+          const fixedHeight = Panel.fixedDimension(panel.fixedHeightRem);
+          if (fixedWidth !== null) {
+            signCont.classList.add("panelFixedWidth");
+            signCont.style.setProperty("--panelFixedWidth", fixedWidth + "rem");
+          }
+          if (fixedHeight !== null) {
+            signCont.classList.add("panelFixedHeight");
+            signCont.style.setProperty("--panelFixedHeight", fixedHeight + "rem");
+          }
           panelElmt.appendChild(signCont);
           
           const signElmt = document.createElement("div");
@@ -14350,18 +14371,18 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             QuebecExitMarker.appendFooter(signElmt, makeQuebecMarker(side), side);
           };
 
+          const arrowMode = normalizeArrowMode(sign.arrowMode);
+          if (qcMarkerEnabled && arrowMode === "diagrammatic") {
+            const side = QuebecExitMarker.side(qcMarker.tab, "Center");
+            const footer = QuebecExitMarker.appendFooter(signCont, makeQuebecMarker(side), side);
+            footer.classList.add("qcDiagrammaticFooter");
+            footer.style.backgroundColor = panelFillColor;
+          }
           if (window.SignMakerSpecialPanelLayout?.render({
-            mode: normalizeArrowMode(panel.sign.arrowMode), panel, index, signElmt,
+            mode: arrowMode, panel, index, signElmt,
             createShield, markSelectedRenderedSubpanel, bindRenderedBlockSelection, selectRenderedPanelArea
           })) {
-            if (qcMarkerEnabled && signElmt.classList.contains("diagrammaticSign")) {
-              const side = QuebecExitMarker.side(qcMarker.tab, "Center");
-              const footer = QuebecExitMarker.appendFooter(signCont, makeQuebecMarker(side), side);
-              footer.classList.add("qcDiagrammaticFooter");
-              footer.style.backgroundColor = panelFillColor;
-            } else if (qcMarkerEnabled) {
-              appendQuebecFooter();
-            }
+            if (qcMarkerEnabled && arrowMode !== "diagrammatic") appendQuebecFooter();
             window.CaliforniaExit?.mount(panelElmt, panel, caStyleExitTabs);
             refreshDynamicPanelBorders(panelElmt);
             continue;

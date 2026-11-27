@@ -53,6 +53,12 @@ class Panel {
       ? Math.max(-Panel.maxVerticalOffset, Math.min(Panel.maxVerticalOffset, offset)) : 0;
   }
 
+  static fixedDimension(value) {
+    if (typeof value !== "number" && typeof value !== "string") return null;
+    const dimension = Number(value);
+    return Number.isFinite(dimension) && dimension >= 1 ? dimension : null;
+  }
+
   static getBorderThickness(panel = {}) {
     if (panel.hideBorder === true && panel.borderThickness == null) return 0;
     const value = parseFloat(panel.borderThickness);

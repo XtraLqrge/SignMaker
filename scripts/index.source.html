@@ -1066,6 +1066,11 @@
                 </select>
                 <br>
               </div>
+              <label for="fixedWidthRem">Set Width (rem):</label>
+              <input type="number" id="fixedWidthRem" min="1" step="any" placeholder="Auto" onchange="formHandler.readForm(event);">
+              <br>
+              <label for="fixedHeightRem">Set Height (rem):</label>
+              <input type="number" id="fixedHeightRem" min="1" step="any" placeholder="Auto" onchange="formHandler.readForm(event);">
             </div>
           </div>
           <div id="sMPanelPadding" class="tabHidden"><div class="panelPaddingRow"><label for="paddingTop">Top:</label><input class="panelPaddingSlider" type="range" id="paddingTopSlider" min="0" max="20" step="0.05" value="0.30" aria-label="Top padding">
@@ -2518,6 +2523,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
             <div id="diagrammaticRoadControls"></div>
             <div class="diagrammaticSettings"><label for="diagrammaticWidth">Width (rem)</label><input id="diagrammaticWidth" type="number" min="1" max="80" step="0.25" value="24"></div>
             <div class="diagrammaticSettings"><label for="diagrammaticHeight">Height (rem)</label><input id="diagrammaticHeight" type="number" min="1" max="80" step="0.25" value="15"></div>
+            <p id="diagrammaticFixedSizeNote" hidden>Fixed dimensions come from Panel Style.</p>
             <div class="diagrammaticSettings diagrammaticHeadSizeSetting"><label for="diagrammaticHeadSize">Default arrowhead size</label><input id="diagrammaticHeadSize" type="range" min="50" max="200" step="5" value="100"><output id="diagrammaticHeadSizeValue" for="diagrammaticHeadSize">100%</output></div>
             <label class="diagrammaticEnable"><input id="diagrammaticConsistentGaps" type="checkbox" checked> Consistent gaps on turns</label>
             <label class="diagrammaticEnable"><input id="diagrammaticStraightenOnShiftClick" type="checkbox" checked> Straighten on Shift-click</label>

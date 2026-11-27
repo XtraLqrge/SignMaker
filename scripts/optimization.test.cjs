@@ -22,6 +22,13 @@ function declaration(file,name,functionOnly=false) {
 }
 const context=extras=>vm.createContext({console,URL,Promise,setTimeout,clearTimeout,queueMicrotask,...extras});
 
+test('undoing a preview scale does not add an export pixel to an integer dimension',()=>{
+  const c=context({});
+  vm.runInContext(declaration('public/js/main.js','roundExportExtent')+'this.round=roundExportExtent;',c);
+  assert.equal(c.round(219.48837280273438 / (402.39532470703125 / 605)),330);
+  assert.equal(c.round(330.125),331);
+});
+
 test('missing panel spacing uses one while saved zero and custom spacing survive',()=>{
   for(const [file,name] of [['public/js/main.js','normalizeDefaultPanelSpacingValue'],['public/js/form.js','normalizePanelSpacingPreference']]){
     const c=context({DEFAULT_PANEL_SPACING:1});
@@ -1416,7 +1423,7 @@ test('expanded faces stay inside the enlarged layout at every canvas scale', () 
     const panel = {isConnected:true, classList:classes(['panel','round','hasPanelOuterBorder']),
       style:{getPropertyValue: key => key==='--panelOuterBorderWidth' ? '0.25rem' : '#005f4d'},
       getBoundingClientRect:() => rect(0,0,230,180),
-      querySelector:() => rendered[0] || null,
+      querySelector:selector => selector === ':scope > .panelOuterFace' ? rendered[0] || null : null,
       querySelectorAll: selector => selector==='.panel' ? [] : surfaces,
       prepend:image => rendered.unshift(image)};
     const face = (box, color, css = {}) => ({classList:classes([]), closest:() => panel,
@@ -1698,6 +1705,45 @@ test('open settings stay eight pixels from the final toolbar bounds during UI sc
       assert.equal(root.dataset.interfaceScaleChanging,undefined);
     }
   }
+});
+
+test('UI Scale updates the percentage while dragging and commits only on change', () => {
+  const { Event, parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
+  const tree = parseDOM(read('scripts/index.source.html').split('<body>')[1].split('</body>')[0]);
+  const byId = id => tree.querySelector('#' + id);
+  const committedScales = [];
+  let scale = 100;
+  const c = context({
+    window: {SignMakerDropdowns: {getAnimationsEnabled: () => true}},
+    document: {getElementById: byId, documentElement: tree},
+    MutationObserver: class { observe() {} },
+  });
+  vm.runInContext(read('public/js/Settings22.js'), c);
+  c.window.SignMakerSettings22.init({
+    getTheme: () => 'dark',
+    getScale: () => scale,
+    getShrinkSignsForPanels: () => true,
+    getToolbar: () => 'right',
+    getKeybind: () => 'all',
+    getRestore: () => 'restore',
+    setScale(value) {
+      scale = Number(value);
+      committedScales.push(scale);
+    },
+  });
+
+  const slider = byId('appUiScale');
+  const label = byId('appUiScaleValue');
+  for (const value of ['90', '80']) {
+    slider.value = value;
+    slider.dispatchEvent(new Event('input'));
+    assert.equal(label.textContent, value + '%');
+    assert.equal(scale, 100);
+  }
+  assert.deepEqual(committedScales, []);
+  slider.dispatchEvent(new Event('change'));
+  assert.equal(label.textContent, '80%');
+  assert.deepEqual(committedScales, [80]);
 });
 
 test('row sizing sliders keep live values in sync and reset one property per undoable edit',()=>{

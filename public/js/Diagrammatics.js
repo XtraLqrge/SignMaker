@@ -217,10 +217,25 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     consistentGapsOnTurns:model.consistentGapsOnTurns,arrowHeadSize:model.arrowHeadSize,straightenOnShiftClick:model.straightenOnShiftClick,
     content,view:{x:0,y:0,scale:screenWidth/(model.width*model.unitsPerRem)}
   });
-  const serializeArtwork=layer=>{
+  const serializeArtwork=(layer,model)=>{
     const drawing=layer.cloneNode(true);
     drawing.querySelectorAll('.roadSelection,.roadMarkings,.diagrammaticRoad.preview').forEach(n=>n.remove());
+    if(model)drawing.setAttribute('viewBox',`0 0 ${model.width*model.unitsPerRem} ${model.height*model.unitsPerRem}`);
     return new XMLSerializer().serializeToString(drawing);
+  };
+  const fixedAxes=host=>({
+    width:host?.parentElement?.classList.contains('panelFixedWidth'),
+    height:host?.parentElement?.classList.contains('panelFixedHeight')
+  });
+  const viewportModel=(model,host)=>{
+    const fixed=fixedAxes(host);
+    if(!fixed.width&&!fixed.height)return model;
+    const rem=parseFloat(getComputedStyle(document.documentElement).fontSize)||16;
+    return {
+      ...model,
+      width:fixed.width&&host.clientWidth?host.clientWidth/rem:model.width,
+      height:fixed.height&&host.clientHeight?host.clientHeight/rem:model.height
+    };
   };
   const artworkCache=new WeakMap();
   const setArtwork=(image,artwork)=>{
@@ -405,7 +420,9 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     model.width=next.width;model.height=next.height;
   };
   const attachPanelHandles=(host,sign)=>{
+    const fixed=fixedAxes(host);
     for(const [edge,label,x,y]of edges){
+      if((x!==.5&&fixed.width)||(y!==.5&&fixed.height))continue;
       const handle=addHandle(host,edge,`Resize panel ${label}`,x,y);handle.classList.add('diagrammaticPanelHandle');
       const restore=drag=>{
         const {original,live,frames}=drag;
@@ -419,7 +436,8 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
           const original={width:parseFloat(host.style.width),height:parseFloat(host.style.height)},rect=host.getBoundingClientRect();
           const frames=[...host.querySelectorAll('.diagrammaticSubpanel')].map(frame=>[frame,
             Object.fromEntries(['left','top','width','height'].map(key=>[key,frame.style[key]]))]);
-          return {original,next:original,scale:rect.width/host.offsetWidth*host.clientWidth/original.width,live:engine.live,frames};
+          const rem=parseFloat(getComputedStyle(document.documentElement).fontSize)||16;
+          return {original,next:original,scale:rect.width/host.offsetWidth*rem,live:engine.live,frames};
         },
         update(drag,dx,dy){
           const original=drag.original,west=edge.includes('w'),north=edge.includes('n');
@@ -428,7 +446,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
           const height=edge.includes('s')||north?size(original.height,north?-dy:dy):original.height;
           const next=drag.next={width,height,dx:west?width-original.width:0,dy:north?height-original.height:0};
           Object.assign(host.style,{width:width+'rem',height:height+'rem'});
-          Object.assign(drag.live.style,{width:original.width+'rem',height:original.height+'rem',left:next.dx+'rem',top:next.dy+'rem'});
+          Object.assign(drag.live.style,{width:fixed.width?'':original.width+'rem',height:fixed.height?'':original.height+'rem',left:next.dx+'rem',top:next.dy+'rem'});
           for(const [frame,props] of drag.frames){
             const bounds=frameBounds({style:props});
             applyBounds(frame,resizeAssembly(bounds,original,next));
@@ -558,18 +576,26 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     };
     let sign=null,sheet=null,committing=false,modelKey='',graphKey='',panelIndex=null;
     const snapshot=()=>Object.fromEntries(['width','height','inchesPerPixel','roads','joints','autoTapers','overlapOrder','stemDefaults','independentCurves'].map(k=>[k,structuredClone(sheet[k])]));
-    const drawArtwork=()=>serializeArtwork(sheet.roadLayer);
-    const modelSignature=model=>JSON.stringify([model.width,model.height,model.unitsPerRem,model.consistentGapsOnTurns,model.arrowHeadSize,model.straightenOnShiftClick,model.roadGraph]);
+    const drawArtwork=model=>serializeArtwork(sheet.roadLayer,model);
+    const modelSignature=model=>{
+      const viewport=viewportModel(model,live.parentElement);
+      return JSON.stringify([model.width,model.height,viewport.width,viewport.height,model.unitsPerRem,model.consistentGapsOnTurns,model.arrowHeadSize,model.straightenOnShiftClick,model.roadGraph]);
+    };
     const updateArtwork=model=>{
       const image=live.parentElement?.querySelector('.diagrammaticDrawing');
       if(image)setArtwork(image,model.artwork);
     };
     const saveDrawing=model=>{
-      model.roadGraph=snapshot();
-      model.artwork=drawArtwork();
-      graphKey=JSON.stringify(model.roadGraph);
+      const graph=snapshot();
+      graphKey=JSON.stringify(graph);
+      // The override changes the viewport, so keep portable drawings at their
+      // own dimensions when the panel is resized or the override is cleared.
+      model.roadGraph={...graph,width:model.width*model.unitsPerRem,height:model.height*model.unitsPerRem};
+      const resized=graph.width!==model.roadGraph.width||graph.height!==model.roadGraph.height;
+      const artwork=drawArtwork();
+      model.artwork=resized?drawArtwork(model):artwork;
       modelKey=modelSignature(model);
-      updateArtwork(model);
+      updateArtwork({artwork});
       syncTemplates(sign,model);
     };
     const commit=()=>{
@@ -580,7 +606,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
       finally {committing=false;}
     };
     const loadDrawing=(model,event)=>{
-      sheet=makeSheet(model,content,stage.getBoundingClientRect().width);
+      sheet=makeSheet(viewportModel(model,live.parentElement),content,stage.getBoundingClientRect().width);
       content.replaceChildren();
       events.dispatchEvent(new Event(event));
       modelKey=modelSignature(model);
@@ -878,19 +904,22 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
   };
   const render=(host,sign)=>{
     const model=normalize(sign.diagrammatic);host.style.width=model.width+'rem';host.style.height=model.height+'rem';
+    const viewport=viewportModel(model,host);
+    const sizeKey=`${viewport.width}:${viewport.height}`;
+    const resized=viewport.width!==model.width||viewport.height!==model.height;
     const image=document.createElement('img');image.className='diagrammaticDrawing';image.alt='Diagrammatic guide arrows';
     if(model.artwork)setArtwork(image,model.artwork);else image.style.visibility='hidden';
     host.append(image);
     if(api()?.getCurrentPanel()?.sign===sign){ensureEngine().mount(host,sign);attachPanelHandles(host,sign);}
-    else if(model.roadGraph?.roads?.length&&!model.artwork.includes('diagrammaticVisibleLaneLines')){
-      let artwork=artworkCache.get(sign.diagrammatic);
-      if(!artwork){
-        const sheet=makeSheet(model,document.createElement('div'),model.width*model.unitsPerRem);
+    else if(model.roadGraph?.roads?.length&&(resized||!model.artwork.includes('diagrammaticVisibleLaneLines'))){
+      let cached=artworkCache.get(sign.diagrammatic);
+      if(cached?.sizeKey!==sizeKey){
+        const sheet=makeSheet(viewport,document.createElement('div'),viewport.width*model.unitsPerRem);
         ensureEngine().app.roadEditor.renderArtwork(sheet);
-        artwork=serializeArtwork(sheet.roadLayer);
-        artworkCache.set(sign.diagrammatic,artwork);
+        cached={sizeKey,artwork:serializeArtwork(sheet.roadLayer)};
+        artworkCache.set(sign.diagrammatic,cached);
       }
-      setArtwork(image,artwork);
+      setArtwork(image,cached.artwork);
     }
   };
   const applyTemplate=name=>{
@@ -905,8 +934,8 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
         const button=event.target.closest('[data-diagrammatic-template]');
         if(button)applyTemplate(button.dataset.diagrammaticTemplate);
       });
-      document.getElementById('diagrammaticWidth').addEventListener('change',e=>engine?.editSettings((m,current)=>resizePanel(m,current,{width:normalize({width:e.target.value}).width,height:m.height,dx:0,dy:0}),{resize:true}));
-      document.getElementById('diagrammaticHeight').addEventListener('change',e=>engine?.editSettings((m,current)=>resizePanel(m,current,{width:m.width,height:clamp(Number(e.target.value)||15,1,80),dx:0,dy:0}),{resize:true}));
+      document.getElementById('diagrammaticWidth').addEventListener('change',e=>{if(!e.target.disabled)engine?.editSettings((m,current)=>resizePanel(m,current,{width:normalize({width:e.target.value}).width,height:m.height,dx:0,dy:0}),{resize:true});});
+      document.getElementById('diagrammaticHeight').addEventListener('change',e=>{if(!e.target.disabled)engine?.editSettings((m,current)=>resizePanel(m,current,{width:m.width,height:clamp(Number(e.target.value)||15,1,80),dx:0,dy:0}),{resize:true});});
       document.getElementById('diagrammaticConsistentGaps').addEventListener('change',e=>engine?.editSettings(m=>{m.consistentGapsOnTurns=e.target.checked;}));
       document.getElementById('diagrammaticStraightenOnShiftClick').addEventListener('change',e=>engine?.editSettings(m=>{m.straightenOnShiftClick=e.target.checked;}));
       const size=document.getElementById('diagrammaticHeadSize'),label=document.getElementById('diagrammaticHeadSizeValue');
@@ -936,10 +965,16 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
         finally{importInput.value='';}
       });}
     const model=normalize(sign?.diagrammatic);
+    const panel=api()?.getCurrentPanel();
+    const width=Panel.fixedDimension(panel?.fixedWidthRem),height=Panel.fixedDimension(panel?.fixedHeightRem);
+    const widthInput=document.getElementById('diagrammaticWidth'),heightInput=document.getElementById('diagrammaticHeight');
+    widthInput.disabled=width!==null;
+    heightInput.disabled=height!==null;
+    widthInput.value=width??model.width;
+    heightInput.value=height??model.height;
+    document.getElementById('diagrammaticFixedSizeNote').hidden=width===null&&height===null;
     syncTemplates(sign,model);
-    document.getElementById('diagrammaticHeight').value=model.height;
     document.getElementById('diagrammaticConsistentGaps').checked=model.consistentGapsOnTurns;
-    document.getElementById('diagrammaticWidth').value=model.width;
     document.getElementById('diagrammaticStraightenOnShiftClick').checked=model.straightenOnShiftClick;
     document.getElementById('diagrammaticHeadSize').value=model.arrowHeadSize;
     document.getElementById('diagrammaticHeadSizeValue').textContent=model.arrowHeadSize+'%';

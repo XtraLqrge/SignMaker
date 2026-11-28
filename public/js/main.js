@@ -17911,6 +17911,16 @@ const serializePostWithElementTypes = (space) => {
       presetRevision: 1,
     },
     {
+      // mile_marker.json holds both panels: the base is the first, each variant names its own.
+      id: "default-mile-marker",
+      name: "Mile Marker",
+      document: "mile_marker",
+      presetRevision: 1,
+      panel: 0,
+      baseName: "Enhanced",
+      variants: [{ id: "standard", name: "Standard", panel: 1 }],
+    },
+    {
       id: "default-tolled-exit",
       name: "Tolled Exit",
       build: buildTolledExitTemplate,
@@ -17996,13 +18006,22 @@ const serializePostWithElementTypes = (space) => {
           if (existing && (!definition.document || existing.presetRevision === definition.presetRevision)) continue;
           const snapshot = definition.document ? documents[definition.document]?.post : null;
           if (definition.document && !snapshot?.panels?.length) throw new Error(`Invalid preset: ${definition.document}`);
+          const presetPanel = (index) => {
+            if (index === undefined) return JSON.stringify(snapshot);
+            if (!snapshot.panels[index]) throw new Error(`Invalid preset panel: ${definition.document}[${index}]`);
+            return JSON.stringify({ ...snapshot, panels: [snapshot.panels[index]] });
+          };
+          // Preset variants are refreshed with each revision; variants the user added are kept.
+          const presetVariants = (definition.variants || []).map(({ id, name, panel }) => ({ id, name, data: presetPanel(panel) }));
+          const presetVariantIds = new Set(presetVariants.map(variant => variant.id));
           await db.saveTemplate({
             ...existing,
             id: definition.id,
             name: definition.name,
-            data: snapshot ? JSON.stringify(snapshot) : createDefaultTemplateData(definition.build),
+            data: snapshot ? presetPanel(definition.panel) : createDefaultTemplateData(definition.build),
             templateScope: "panel",
-            variants: existing?.variants || [],
+            variants: [...presetVariants, ...(existing?.variants || []).filter(variant => !presetVariantIds.has(String(variant?.id)))],
+            ...(definition.baseName ? { baseName: definition.baseName } : {}),
             isDefault: true,
             ...(definition.document ? { presetRevision: definition.presetRevision } : {}),
             dateCreated: existing?.dateCreated || DEFAULT_TEMPLATE_DATE,
@@ -18616,7 +18635,7 @@ const serializePostWithElementTypes = (space) => {
       : activeTemplateEditor.activeVariantId
         ? String(variantNameInput?.value || activeVariant?.name || "").trim() ||
           "Missing Variant"
-        : "Base";
+        : activeTemplateEditor.draft.baseName || "Base";
     const statusText = hasEditor
       ? `Editing “${templateName}” - ${versionName}`
       : "";
@@ -18770,7 +18789,7 @@ const serializePostWithElementTypes = (space) => {
     versionSelect.innerHTML = "";
     const baseOption = document.createElement("option");
     baseOption.value = "";
-    baseOption.textContent = "Base";
+    baseOption.textContent = draft.baseName || "Base";
     versionSelect.appendChild(baseOption);
     for (const variant of draft.variants) {
       const option = document.createElement("option");
@@ -18782,7 +18801,7 @@ const serializePostWithElementTypes = (space) => {
 
     const activeVariant = getActiveTemplateEditorVariant();
     variantNameInput.disabled = !activeVariant;
-    variantNameInput.value = activeVariant?.name || "Base";
+    variantNameInput.value = activeVariant?.name || draft.baseName || "Base";
     populateTemplateFontSelect(variantFontSelect, "Keep Current Fonts");
     variantFontSelect.disabled = !activeVariant;
     variantFontSelect.value = activeVariant?.fontFamily || "";
@@ -19133,7 +19152,7 @@ const serializePostWithElementTypes = (space) => {
           variantSelect.setAttribute("aria-label", `${template.name} variant`);
           const baseOption = document.createElement("option");
           baseOption.value = "";
-          baseOption.textContent = "Base";
+          baseOption.textContent = template.baseName || "Base";
           variantSelect.appendChild(baseOption);
           for (const variant of variants) {
             const option = document.createElement("option");

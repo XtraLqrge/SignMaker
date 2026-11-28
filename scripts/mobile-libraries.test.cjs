@@ -150,7 +150,7 @@ for (const [version, css] of styles) {
 }
 
 test('supplied preset documents migrate stock IDs in place and preserve saved user templates', async () => {
-  const documents = Object.fromEntries(['simple_exit','mileage_sign','standard_apl','vms'].map(name=>[name,JSON.parse(read('public/presets/'+name+'.json'))]));
+  const documents = Object.fromEntries(['simple_exit','mileage_sign','mile_marker','standard_apl','vms'].map(name=>[name,JSON.parse(read('public/presets/'+name+'.json'))]));
   const saved = {id:'user',name:'My template',data:'unchanged'}, variants = [{id:'variant',data:'custom'}];
   const existing = [saved,{id:'default-simple-exit',data:'old',variants,dateCreated:'2026-01-01',dateLastUsed:'2026-02-01'}, {id:'default-mileage-sign',data:'old'}, {id:'default-tolled-exit'}, {id:'default-control-cities-advance-junction'}];
   const written = [], c = vm.createContext({window:{SignMakerPresetTemplates:documents},Promise,URL,
@@ -158,18 +158,23 @@ test('supplied preset documents migrate stock IDs in place and preserve saved us
     DEFAULT_TEMPLATE_DATE:'2026-08-24T00:00:00.000Z',createDefaultTemplateData:()=>{throw Error('Unexpected legacy preset regeneration');}});
   vm.runInContext(main('DEFAULT_TEMPLATE_DEFINITIONS')+main('loadPresetDocuments')+'let defaultTemplatesPromise;'+main('ensureDefaultTemplates')+';this.ensure=ensureDefaultTemplates;',c);
   await c.ensure({getAllTemplates:async()=>existing,saveTemplate:async data=>written.push(data)});
-  assert.equal(written.length,4); assert.equal(saved.data,'unchanged');
+  assert.equal(written.length,5); assert.equal(saved.data,'unchanged');
   for(const [id, key] of [['simple-exit','simple_exit'],['mileage-sign','mileage_sign'],['standard-apl','standard_apl'],['vms','vms']]) {
     const record=written.find(item=>item.id==='default-'+id);
     assert.deepEqual(JSON.parse(record.data),documents[key].post); assert.equal(record.presetRevision,1);
   }
   const replacement=written.find(item=>item.id==='default-simple-exit');
-  assert.deepEqual(replacement.variants,variants); assert.equal(replacement.dateLastUsed,'2026-02-01'); assert.equal(replacement.dateCreated,'2026-01-01');
+  assert.deepEqual([...replacement.variants],variants); assert.equal(replacement.dateLastUsed,'2026-02-01'); assert.equal(replacement.dateCreated,'2026-01-01');
+  const mileMarker=written.find(item=>item.id==='default-mile-marker'), [enhanced, standard]=documents.mile_marker.post.panels;
+  assert.equal(mileMarker.name,'Mile Marker'); assert.equal(mileMarker.baseName,'Enhanced'); assert.equal(mileMarker.presetRevision,1);
+  assert.deepEqual(JSON.parse(mileMarker.data).panels,[enhanced]);
+  assert.deepEqual(JSON.parse(JSON.stringify(mileMarker.variants.map(({id,name})=>({id,name})))),[{id:'standard',name:'Standard'}]);
+  assert.deepEqual(JSON.parse(mileMarker.variants[0].data).panels,[standard]);
 });
 test('preset artwork is emitted as a separate lazy asset and matches the supplied documents', () => {
   const bundle=manifest.assets.find(asset=>asset.source==='js/PresetTemplates.js'); assert.ok(bundle);
   const c=vm.createContext({window:{}}); vm.runInContext(read('public/'+bundle.output),c);
-  for(const name of ['simple_exit','mileage_sign','standard_apl','vms']) assert.deepEqual(JSON.parse(JSON.stringify(c.window.SignMakerPresetTemplates[name])), JSON.parse(read('public/presets/'+name+'.json')));
+  for(const name of ['simple_exit','mileage_sign','mile_marker','standard_apl','vms']) assert.deepEqual(JSON.parse(JSON.stringify(c.window.SignMakerPresetTemplates[name])), JSON.parse(read('public/presets/'+name+'.json')));
   assert.ok(!read('public/index.html').includes(bundle.output));
   const startup=manifest.assets.find(asset=>asset.source==='js/Startup.js');assert.ok(!read('public/'+startup.output).includes(bundle.output));
   const mainAsset=manifest.assets.find(asset=>asset.source==='js/main.js');assert.ok(read('public/'+mainAsset.output).includes(bundle.output));

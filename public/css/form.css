@@ -984,6 +984,20 @@ dialog {
   text-decoration: underline;
 }
 
+#welcomeToSignMaker [aria-pressed="true"] {
+  box-shadow: inset 0 -2px currentColor;
+}
+
+@media (max-width: 36rem) {
+  .welcomeBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcomeSignPreview {
+    padding: 0.6rem;
+  }
+}
+
 div.options {
   display: flex;
   flex-direction: row;

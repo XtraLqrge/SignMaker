@@ -876,10 +876,10 @@ dialog {
   display: none;
   position: fixed;
   inset: 0;
-  width: min(29rem, calc(100vw - 2rem));
-  max-height: calc(100dvh - 2rem);
+  width: min(36rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 1.5rem);
   margin: auto;
-  padding: clamp(1rem, 4vw, 1.5rem);
+  padding: 0;
   box-sizing: border-box;
   background: var(--hotbarColor);
   color: var(--textColor);
@@ -887,9 +887,7 @@ dialog {
 }
 
 #welcomeToSignMaker[open] {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: block;
 }
 
 #welcomeToSignMaker::backdrop {
@@ -903,49 +901,112 @@ dialog {
 }
 
 .welcomeHeader,
-.welcomeActions,
-.welcomeDirections {
+.welcomeActions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.welcomeHeader {
+  background: rgba(var(--baseColor), 0.15);
+}
+
+:root[data-theme="dark"] .welcomeHeader {
+  background: rgb(50, 50, 200);
 }
 
 .welcomeHeader h2 {
-  font-size: clamp(1rem, 4vw, 1.25rem);
+  font-size: 0.9rem;
 }
 
 .welcomeHeader img {
   flex: none;
+  width: auto;
+  height: 1.3rem;
 }
 
-#welcomeToSignMaker #closeWelcome {
-  margin-inline-start: auto;
+.welcomeBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem;
+}
+
+.welcomeSignPreview {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  padding: 1rem 0.75rem;
+  background: var(--backgroundColor);
 }
 
 .welcomeSample {
   display: grid;
   justify-items: center;
-  gap: 0.15rem;
-  padding: 0.5rem 0.75rem;
-  background: #005b49;
-  border: 3px solid white;
-  border-radius: 0.35rem;
+  gap: 0.4rem;
+  width: min(14rem, 100%);
+  padding: 0.55rem 0.6rem 0.25rem;
+  box-sizing: border-box;
+  background: var(--green);
+  border: 0.18rem solid white;
+  border-radius: 0.6rem;
   color: white;
-  font: 600 1.35rem/1.25 "Series EM", Inter, sans-serif;
+  font: 400 1.4rem/1.15 "Series EM", Inter, sans-serif;
   overflow-wrap: anywhere;
   text-align: center;
 }
 
-#welcomePreviewArrow {
-  font: 700 1.6rem/1 Inter, sans-serif;
+.welcomeShield {
+  position: relative;
+  width: 2.65rem;
+  font: 400 1.11rem/1 "Series E", Inter, sans-serif;
+}
+
+.welcomeShield img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.welcomeShield span {
+  position: absolute;
+  top: 47%;
+  left: 50%;
+  transform: translate(-50%, -30%);
+}
+
+.welcomeSignDirection {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 2.75rem;
+}
+
+.welcomeGuideArrow {
+  display: block;
+}
+
+[data-welcome-direction="left"] > .welcomeGuideArrow {
+  transform: rotate(-45deg);
+}
+
+[data-welcome-direction="right"] > .welcomeGuideArrow {
+  transform: rotate(45deg);
+}
+
+#welcomeToSignMaker h3 {
+  font-size: 1.05rem;
 }
 
 #welcomeToSignMaker .welcomeStep > * + * {
-  margin-top: 0.55rem;
+  margin-top: 0.5rem;
 }
 
 #welcomeToSignMaker label {
   display: block;
+  font-weight: 600;
 }
 
 #welcomeToSignMaker input,
@@ -963,13 +1024,27 @@ dialog {
   padding: 0.35rem 0.5rem;
 }
 
-.welcomeActions,
 .welcomeDirections {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+#welcomeToSignMaker .welcomeDirections button {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.1rem;
+  font-size: 0.7rem;
+}
+
+:root[data-theme="light"] .welcomeDirections .welcomeGuideArrow {
+  filter: invert(1);
 }
 
 .welcomeActions {
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(var(--baseColor), 0.2);
 }
 
 #welcomeToSignMaker [hidden] {
@@ -980,9 +1055,37 @@ dialog {
   padding: 0.35rem 0.55rem;
 }
 
+#welcomeToSignMaker :is(#skipWelcome, #closeWelcome) {
+  background: transparent;
+}
+
+#welcomeToSignMaker #skipWelcome {
+  margin-inline-end: auto;
+}
+
+#welcomeToSignMaker #closeWelcome {
+  display: grid;
+  place-items: center;
+  margin-inline-start: auto;
+}
+
 #welcomeNext,
 #welcomeToSignMaker [aria-pressed="true"] {
   background: var(--selectedColor);
+}
+
+#welcomeToSignMaker [aria-pressed="true"] {
+  box-shadow: inset 0 -2px currentColor;
+}
+
+@media (max-width: 36rem) {
+  .welcomeBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcomeSignPreview {
+    padding: 0.6rem;
+  }
 }
 
 div.options {
@@ -5554,56 +5657,37 @@ dialog:not([open]) {
 }
 
 .exitTabMainSettingsGrid {
-  --exit-tab-type-width: 10rem;
-  --exit-tab-width-width: 6.25rem;
+  --exit-tab-text-width: minmax(0, 8rem);
+  --exit-tab-type-width: minmax(0, 10rem);
+  --exit-tab-alignment-width: minmax(0, 5rem);
+  --exit-tab-position-width: minmax(0, 6.25rem);
   display: grid;
-  grid-template-columns: max-content minmax(4rem, 8rem) minmax(0, var(--exit-tab-type-width)) 5rem minmax(0, var(--exit-tab-width-width));
-  column-gap: 0.55rem;
-  row-gap: 0.55rem;
-  align-items: center;
-  width: min(100%, calc(16rem + var(--exit-tab-type-width) + var(--exit-tab-width-width)));
+  grid-template-columns: var(--exit-tab-text-width) var(--exit-tab-type-width) var(--exit-tab-alignment-width) var(--exit-tab-position-width);
+  gap: 0.55rem;
+  align-items: end;
 }
 
-.exitTabMainSettingsGrid label {
-  width: auto;
-  margin: 0;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.exitTabMainSettingsGrid input,
-.exitTabMainSettingsGrid select {
-  margin: 0;
+.exitTabMainField {
+  display: grid;
+  gap: 0.25rem;
   min-width: 0;
 }
 
-.exitTabMainTextLabel {
-  grid-column: 1;
-  grid-row: 1;
+.exitTabMainField > label {
+  width: auto;
+  margin: 0;
+  text-align: left;
+  white-space: nowrap;
 }
 
-.exitTabMainTextInput {
-  grid-column: 2;
-  grid-row: 1;
+.exitTabMainField > :is(input, select, .symbolPicker, .alignmentButtons) {
   width: 100%;
+  min-width: 0;
+  margin: 0;
 }
 
-:is(.exitTabVariantSelect, #exitVariant + .symbolPicker) {
-  grid-column: 3;
-  grid-row: 1;
-  width: 100%;
-}
-
-.exitTabPositionSelect {
-  grid-column: 4;
-  grid-row: 1;
-  width: 5rem;
-}
-
-:is(.exitTabWidthSelect, #exitTabWidth + .symbolPicker) {
-  grid-column: 5;
-  grid-row: 1;
-  width: 100%;
+.exitTabMainField > .alignmentButtons {
+  width: 100% !important;
 }
 
 .exitTabColorSelect,
@@ -5611,20 +5695,12 @@ dialog:not([open]) {
   width: 8rem;
 }
 
-.exitTabBottomTextLabel {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.exitTabBottomTextInput {
-  grid-column: 2;
-  grid-row: 2;
-  width: 8rem;
-}
-
-.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextLabel,
-.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextInput {
+.exitTabMainSettingsGrid:not(.bilingualMode) .exitTabBottomTextField {
   display: none;
+}
+
+.exitTabBottomTextField {
+  grid-column: 1;
 }
 
 #exitTabBilingualLabel {
@@ -6883,8 +6959,7 @@ label[for="sdShield_bannerFontSize"] {
 }
 
 #sMExitTabSetting.quebecExitTabMode :is(.exitTabStyleSettingsGrid, .exitTabSettingsLayout),
-#sMExitTabSetting.quebecExitTabMode .exitTabMainSettingsGrid > :has(> #exitTabWidth),
-#sMExitTabSetting.quebecExitTabMode #exitTabWidth,
+#sMExitTabSetting.quebecExitTabMode .exitTabPlacementField,
 #sMExitTabSetting.fullLeftExitTabMode :is(#exitTabBilingual, #exitTabBilingualLabel, #showLeft, #showLeftLabel, #verticalArrangement, label[for="verticalArrangement"]) {
   display: none !important;
 }
@@ -10339,37 +10414,12 @@ html[data-config-position="bottom"] .modals {
 }
 
 
-.sMModal.exitTabConfig.defaultConfigMode #exitNumberLabel,
-.sMModal.exitTabConfig.defaultConfigMode #exitNumber {
-  display: none !important;
+.sMModal.exitTabConfig.defaultConfigMode .exitTabMainSettingsGrid:not(.exitTabAssetMode) {
+  grid-template-columns: var(--exit-tab-type-width) var(--exit-tab-alignment-width) var(--exit-tab-position-width);
 }
 
-.sMModal.exitTabConfig.defaultConfigMode .exitTabMainSettingsGrid {
-  grid-template-columns: minmax(0, var(--exit-tab-type-width)) 5rem minmax(0, var(--exit-tab-width-width));
-}
-
-.sMModal.exitTabConfig.defaultConfigMode :is(#exitVariant, #exitVariant + .symbolPicker) {
-  grid-column: 1;
-}
-
-.sMModal.exitTabConfig.defaultConfigMode :is(#exitTabPosition, .exitTabMainSettingsGrid > .alignmentButtons) {
-  grid-column: 2;
-}
-
-.sMModal.exitTabConfig.defaultConfigMode :is(#exitTabWidth, #exitTabWidth + .symbolPicker) {
-  grid-column: 3;
-}
-
-.sMModal.exitTabConfig.defaultConfigMode .exitTabAssetPickerRow {
-  grid-column: 1 / span 1;
-}
-
-.sMModal.exitTabConfig.defaultConfigMode #exitTabBilingualBottomTextLabel {
-  grid-column: 1;
-}
-
-.sMModal.exitTabConfig.defaultConfigMode #exitTabBilingualBottomText {
-  grid-column: 2 / span 2;
+.sMModal.exitTabConfig.defaultConfigMode .exitTabMainSettingsGrid:not(.exitTabAssetMode) .exitTabTextField {
+  display: none;
 }
 
 #exitTabFontFamily + .fontPicker .fontPickerTrigger {
@@ -10932,10 +10982,6 @@ html[data-config-position="bottom"] .modals {
 
 .exitTabMainSettingsGrid .hidden {
   display: none !important;
-}
-
-.exitTabMainSettingsGrid.exitTabAssetMode {
-  align-items: center;
 }
 
 .exitTabGroup {

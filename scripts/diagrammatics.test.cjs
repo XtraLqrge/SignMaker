@@ -501,6 +501,92 @@ test('template buttons build a fork, undo restores the starter, and a custom edi
   assert.equal(JSON.stringify(editor.sign.diagrammatic),custom);
 });
 
+test('new diagrammatic stems start with automatic tapers off', () => {
+  const createEditor = require('./fixtures/diagrammatic-editor.cjs');
+  const blank = createEditor();
+  assert.equal(blank.engine.app.sheets.selected.autoTapers, false);
+  const editor = createEditor({withStarter: true});
+  const tapers = editor.controls.getElementById('autoTapers');
+  assert.equal(tapers.checked, false);
+  const choose = name => editor.doc.querySelector(`[data-diagrammatic-template="${name}"]`).click();
+  for (const name of ['left', 'right', 'split', 'straight']) {
+    choose(name);
+    assert.equal(tapers.checked, false);
+    assert.equal(editor.sign.diagrammatic.roadGraph.autoTapers, false);
+  }
+  tapers.checked = true;
+  editor.pointer(tapers, 'change');
+  assert.equal(editor.sign.diagrammatic.roadGraph.autoTapers, true);
+  editor.undo();
+  assert.equal(tapers.checked, false);
+  editor.redo();
+  assert.equal(tapers.checked, true);
+});
+
+test('Mirror fork uses the selected branch and restores the original geometry with undo', () => {
+  const editor = require('./fixtures/diagrammatic-editor.cjs')({withStarter: true});
+  const mirror = editor.controls.getElementById('mirrorFork');
+  assert.equal(mirror.disabled, true);
+  editor.doc.querySelector('[data-diagrammatic-template="left"]').click();
+  const sheet = editor.engine.app.sheets.selected;
+  const [trunk, left, right] = sheet.roads;
+  const leftTip = sheet.joints.find(node => node.id === left.ends[1].joint);
+  const rightTip = sheet.joints.find(node => node.id === right.ends[1].joint);
+  rightTip.x += 155;
+  rightTip.y -= 40;
+  right.arcAngle = 62;
+  right.straightened = false;
+  right.arrowHeadSize = 125;
+  editor.roadEditor.focusRoad(right);
+  editor.engine.commit();
+  const before = structuredClone(editor.sign.diagrammatic.roadGraph);
+  const history = editor.previous.length;
+  assert.equal(mirror.disabled, false);
+  const join = sheet.joints.find(node => node.id === trunk.ends[1].joint);
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, `${a} vs ${b}`);
+  mirror.click();
+  near(leftTip.x, 2 * join.x - rightTip.x);
+  near(leftTip.y, rightTip.y);
+  near(left.arcAngle, -right.arcAngle);
+  assert.equal(left.arrowHeadSize, 125);
+  for (const id of [trunk.id, right.id]) {
+    assert.deepEqual(editor.sign.diagrammatic.roadGraph.roads.find(road => road.id === id), before.roads.find(road => road.id === id));
+  }
+  assert.deepEqual(editor.sign.diagrammatic.roadGraph.joints.find(node => node.id === join.id), before.joints.find(node => node.id === join.id));
+  assert.equal(editor.previous.length, history + 1);
+  mirror.click();
+  assert.equal(editor.previous.length, history + 1, 'Repeating an applied mirror does not save an extra edit');
+  editor.undo();
+  assert.deepEqual(editor.sign.diagrammatic.roadGraph, before);
+  editor.redo();
+  near(editor.sign.diagrammatic.roadGraph.joints.find(node => node.id === leftTip.id).y, rightTip.y);
+});
+
+test('mirrored multi-lane branches use matching painted dash positions', () => {
+  const editor = require('./fixtures/diagrammatic-editor.cjs')({withStarter: true});
+  editor.doc.querySelector('[data-diagrammatic-template="left"]').click();
+  const sheet = editor.engine.app.sheets.selected;
+  const [trunk, left, right] = sheet.roads;
+  const fork = sheet.joints.find(node => node.id === trunk.ends[1].joint);
+  trunk.lanes = 4;
+  left.lanes = right.lanes = 2;
+  fork.links[1].ai = 2;
+  editor.roadEditor.focusRoad(left);
+  editor.controls.getElementById('mirrorFork').click();
+  const getDashes = road => sheet.roadLayer.querySelector(
+    `.diagrammaticVisibleLaneLines [data-road-id="${road.id}"] path`
+  ).getAttribute('d');
+  const moves = road => [...getDashes(road).matchAll(/M([^,]+),([^L ]+)/g)]
+    .map(([, x, y]) => [Number(x), Number(y)]);
+  const leftDash = moves(left), rightDash = moves(right);
+  assert.ok(leftDash.length > 1);
+  assert.equal(leftDash.length, rightDash.length);
+  for (const [i, [x, y]] of leftDash.entries()) {
+    assert.ok(Math.abs(x + rightDash[i][0] - 2 * fork.x) < 1e-7);
+    assert.ok(Math.abs(y - rightDash[i][1]) < 1e-7);
+  }
+});
+
 test('Diagrammatics and Roundabout occupy a separate row without imposing the tab widths on Guide Arrows',()=>{
   const {parse}=require('./fixtures/mobile-dom.cjs');
   const {cascade}=require('./fixtures/css-cascade.cjs');

@@ -68,7 +68,6 @@ body .alignmentButtons>button.selected { background:var(--selectedColor); }
 body .alignmentButtons>button:hover:not(:disabled) { background:var(--hoverColor); }
 body .alignmentButtons>button:focus-visible { outline:2px solid Highlight; outline-offset:1px; }
 body .alignmentButtons>button:disabled { opacity:0.4; cursor:default; }
-.exitTabMainSettingsGrid>.alignmentButtons { grid-column:4; grid-row:1; }
 #smSPProperties>[data-property="sdShield"] .sdShieldTopRow { --sd-shield-top-control-height:1.55rem!important; }
 
 /* The Defaults controls shrink and wrap inside their own grid column. */

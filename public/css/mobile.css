@@ -93,9 +93,8 @@ html[data-mobile-ui] #mobileEditor .listNavOptions button { min-width: 44px; pad
 
 /* Compact desktop grids become vertically ordered fields on a phone. */
 html[data-mobile-ui] #mobileEditor :is(#sMPanelAppearance, #sMPanelPadding, #sMExitTabSetting, #sMSPSettings, #sMGuideArrows, #sMExitOnlyArrows, #sMAPL, #sMSPBlocks, #sMSPTextEditor) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: auto !important; }
-html[data-mobile-ui] #mobileEditor :is(.panelAppearanceGrid, .exitTabMainSettingsGrid, .exitTabFontSettingsGrid, #sMPanelAppearance, #sMPanelPadding, #sMSPSettings) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) !important; gap: 10px 8px !important; }
-html[data-mobile-ui] #mobileEditor :is(.exitTabMainSettingsGrid, .exitTabFontSettingsGrid) > * { grid-row: auto !important; grid-column: auto !important; width: 100% !important; min-width: 0 !important; }
-html[data-mobile-ui] #mobileEditor .exitTabMainSettingsGrid > :is(.exitTabAssetPickerRow, .exitTabMainTextInput, .exitTabMainTextLabel) { grid-column: 1 / -1 !important; }
+html[data-mobile-ui] #mobileEditor :is(.panelAppearanceGrid, .exitTabFontSettingsGrid, #sMPanelAppearance, #sMPanelPadding, #sMSPSettings) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) !important; gap: 10px 8px !important; }
+html[data-mobile-ui] #mobileEditor .exitTabFontSettingsGrid > * { grid-row: auto !important; grid-column: auto !important; width: 100% !important; min-width: 0 !important; }
 html[data-mobile-ui] #mobileEditor :is(.panelStyleSliderControl, .panelPaddingRow, .settingsRangeControl, .standardArrowRow, .exitArrowRow, .sdBlockMarginControl) { display: flex !important; align-items: center; flex-wrap: wrap; gap: 8px !important; width: 100% !important; min-width: 0 !important; max-width: 100%; }
 html[data-mobile-ui] #mobileEditor :is(.standardArrowRow, .exitArrowRow) > label { flex: 0 0 95px; }
 html[data-mobile-ui] #mobileEditor :is(.standardArrowPickerHost, .standardArrowEditor) { width: 100% !important; min-width: 0 !important; }
@@ -316,11 +315,7 @@ html[data-mobile-ui] #mobileEditor #sMExitTabSetting { display: flex !important;
 html[data-mobile-ui] #mobileEditor .exitTabConfig #sMExitTabSetting :is(.symbolPicker, .fontPicker, .colorPicker, .nativeSelectTrigger, .fontPickerTrigger, .colorPickerTrigger, select, input:not([type="checkbox"], [type="hidden"])) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box; }
 html[data-mobile-ui] #mobileEditor #sMExitTabSetting :is(.exitTabMainSettingsGrid, .exitTabStyleSettingsGrid, .exitTabSettingsLayout, .exitTabCheckboxPanel, .exitTabSliderStack) { width: 100% !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; }
 html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
-html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid > label { text-align: left !important; margin: 0 !important; }
-html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid :is(#exitNumberLabel, #exitNumber, .exitTabAssetPickerRow, .exitTabBottomTextLabel, .exitTabBottomTextInput) { grid-column: 1 / -1 !important; }
-html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid > :is(#exitVariant, #exitVariant + .symbolPicker) { grid-column: 1 !important; }
-html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid > :is(#exitTabPosition, .alignmentButtons) { grid-column: 2 !important; }
-html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid > :is(#exitTabWidth, #exitTabWidth + .symbolPicker) { grid-column: 1 / -1 !important; }
+html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid > :is(.exitTabTextField, .exitTabPlacementField, .exitTabBottomTextField) { grid-column: 1 / -1; }
 html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid .alignmentButtons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100% !important; min-width: 0; gap: 4px; }
 html[data-mobile-ui] #mobileEditor #exitTabMainSettingsGrid .alignmentButtons button { width: 100% !important; min-width: 0 !important; padding: 6px 2px; }
 html[data-mobile-ui] #mobileEditor #sMExitTabSetting .exitTabStyleSettingsGrid { display: grid; grid-template-columns: 76px minmax(0, 1fr) !important; gap: 8px !important; }

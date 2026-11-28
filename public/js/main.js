@@ -4835,9 +4835,7 @@ const ungroupSelectedBlockElement = () => {
           if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.defaultPrevented) return;
           const key = event.key.toLowerCase();
           if (!["c", "x", "v"].includes(key)) return;
-          const target = event.target;
-          if (document.querySelector("dialog[open]")) return;
-          if (target?.isContentEditable || target?.closest?.("input, textarea, select, [contenteditable], [role='dialog']")) return;
+          if (event.isComposing || formHandler.isAppMenuOpen(event) || formHandler.isNativeKeyboardTarget(event)) return;
           if (key === "v" && !copiedGuideArrowArea) return;
           if (key !== "v" && (selectedGuideArrowPanelIndex !== currentlySelectedPanelIndex ||
               getCurrentPanel()?.sign?.guideArrow === "None" && getCurrentPanel()?.sign?.arrowMode !== "apl")) return;
@@ -4873,15 +4871,8 @@ const ungroupSelectedBlockElement = () => {
             return;
           }
 
-          const activeTag = document.activeElement?.tagName;
-          const isTyping =
-            activeTag === "INPUT" ||
-            activeTag === "TEXTAREA" ||
-            document.activeElement?.isContentEditable;
-
-          if (isTyping) {
-            return;
-          }
+          if (event.defaultPrevented || event.isComposing ||
+              formHandler.isAppMenuOpen(event) || formHandler.isNativeKeyboardTarget(event)) return;
 
           if (event.key === "." && event.shiftKey) {
             event.preventDefault();

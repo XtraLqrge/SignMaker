@@ -51,7 +51,7 @@ window.SignMakerDiagrammatics=(()=>{
         fork.links.push({a:1,b:branch.id,ai:side<0?0:1,bi:0});
       }
     }
-    return {width,height,inchesPerPixel,roads,joints,autoTapers:true,overlapOrder:[]};
+    return {width,height,inchesPerPixel,roads,joints,autoTapers:false,overlapOrder:[]};
   };
   const useTemplate=(model,name)=>{
     model.template=name;model.roadGraph=templateGraph(model,name);model.artwork='';
@@ -110,8 +110,7 @@ const arrowHeadPath=percent=>{
   };
   return `M${point(202.043,478)} L${point(63.84,521.875)} C${point(27.613,533.479)} ${point(-16.01,488.063)} ${point(5.888,456.427)} L${point(320.543,0)} L${point(634.811,458.837)} C${point(654.829,489.989)} ${point(614.017,534.94)} ${point(572.983,521.875)} L${point(444.259,477.78)} Z`;
 };
-// Use the right edge's stations for every separator so dash ends line up
-// across a turn, rather than drifting with each lane's different arc length.
+// Share dash stations across all separators so dash ends line up on a turn.
 // `start` continues the pattern from the roads feeding into this one.
 const alignedDashes=(points,reference,dash,start=0)=>{
   let distance=start,d='',continuous=false;
@@ -133,7 +132,7 @@ const alignedDashes=(points,reference,dash,start=0)=>{
   }
   return d;
 };
-const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[false,false],dashPhase=0}={})=>{
+const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[false,false],dashPhase=0,centerDashReference=false}={})=>{
   const band=svg('g',{'class':`diagrammaticRoad ${className}`,'data-road-id':road.id??''});
   const group=svg('g',{class:`diagrammaticLaneLines ${className}`,'data-road-id':road.id??''});
   const left=boundary(0),right=boundary(road.lanes);
@@ -154,9 +153,12 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
   };
   const outline=edge=>extend(extend(edge,0),1);
   band.append(svg('path',{d:path([...outline(left),...[...outline(right)].reverse()])+' Z',fill:'white','data-silhouette':''}));
+  // Both branches of a fork use their centerlines so mirrored bends have
+  // matching dash lengths and gaps.
+  const dashReference=centerDashReference?shape.line:right;
   for(let k=1;k<road.lanes;k++){
-    const points=boundary(k),aligned=sheet.consistentGapsOnTurns!==false&&points.length===right.length;
-    group.append(svg('path',{d:aligned?alignedDashes(points,right,unit*6,dashPhase):path(points),fill:'none',stroke:'black','stroke-width':unit,
+    const points=boundary(k),aligned=sheet.consistentGapsOnTurns!==false&&points.length===dashReference.length;
+    group.append(svg('path',{d:aligned?alignedDashes(points,dashReference,unit*6,dashPhase):path(points),fill:'none',stroke:'black','stroke-width':unit,
       ...(aligned?{'data-aligned-gaps':''}:{'stroke-dasharray':`${unit*6} ${unit*6}`,'stroke-dashoffset':dashPhase})}));
   }
   if(terminal&&shape.line.length>1){
@@ -212,7 +214,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     }
   };
   const makeSheet=(model,content,screenWidth)=>({
-    id:1,name:'Diagrammatic sign',inchesPerPixel:6,roads:[],joints:[],autoTapers:true,overlapOrder:[],...structuredClone(model.roadGraph||{}),
+    id:1,name:'Diagrammatic sign',inchesPerPixel:6,roads:[],joints:[],autoTapers:false,overlapOrder:[],...structuredClone(model.roadGraph||{}),
     width:model.width*model.unitsPerRem,height:model.height*model.unitsPerRem,
     consistentGapsOnTurns:model.consistentGapsOnTurns,arrowHeadSize:model.arrowHeadSize,straightenOnShiftClick:model.straightenOnShiftClick,
     content,view:{x:0,y:0,scale:screenWidth/(model.width*model.unitsPerRem)}
@@ -531,8 +533,7 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     window.addEventListener('keydown',e=>{
       if(activeBoxDrag&&e.key==='Escape'){activeBoxDrag.cancel();e.preventDefault();e.stopImmediatePropagation();return;}
       if(!editingActive||!live.isConnected||(!ownsKeyboard&&!inEditor(e))||!['Escape','Delete','Backspace'].includes(e.key)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]'))return;
-      const target=e.composedPath()[0];
-      if(e.key!=='Escape'&&target?.closest?.('input,textarea,select,[contenteditable]')){e.stopImmediatePropagation();return;}
+      if(e.key!=='Escape'&&(formHandler.isAppMenuOpen(e)||formHandler.isNativeKeyboardTarget(e)))return;
       if(movingAssemblies||moveDrag){if(e.key==='Escape')cancelMove();}
       else if(placingSubpanel){if(e.key==='Escape')cancelPlacement();}
       else for(const handler of editKeyHandlers)handler(wrapEvent(e));
@@ -802,8 +803,8 @@ const renderer=(sheet,road,shape,layers,className,boundary,terminal,{joined=[fal
     mode.addEventListener('change',()=>{trackpadScrollUntil=0;});
     window.addEventListener('keydown',e=>{
       if(!editingActive||!e.composedPath().some(n=>n===preview||n===controlsHost)||e.ctrlKey||e.metaKey||e.altKey)return;
-      if(e.composedPath()[0]?.matches?.('input,select,textarea,[contenteditable]'))return;
       if(!['=','+','-','f','F'].includes(e.key))return;
+      if(formHandler.isAppMenuOpen(e)||formHandler.isNativeKeyboardTarget(e))return;
       e.preventDefault();e.stopImmediatePropagation();
       if(e.key.toLowerCase()==='f')appState.sheets.recenter();else appState.sheets.zoomBy(e.key==='-'?.8:1.25);
     },true);

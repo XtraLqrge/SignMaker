@@ -22,6 +22,120 @@ function declaration(file,name,functionOnly=false) {
 }
 const context=extras=>vm.createContext({console,URL,Promise,setTimeout,clearTimeout,queueMicrotask,...extras});
 
+test('the tutorial uses Type A artwork and updates the practice sign direction', () => {
+  const { Event, parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
+  const html = read('scripts/index.source.html');
+  const start = html.indexOf('<dialog id="welcomeToSignMaker"');
+  const markup = html.slice(start, html.indexOf('</dialog>', start) + '</dialog>'.length);
+  const tree = parseDOM(markup);
+  const dialog = tree.querySelector('#welcomeToSignMaker');
+  dialog.showModal = () => {};
+  dialog.querySelectorAll('h3').forEach(heading => { heading.focus = () => {}; });
+  const byId = id => tree.querySelector('#' + id);
+  const c = context({document: {getElementById: byId}, getStoredItem: () => null});
+  vm.runInContext(declaration('public/js/form.js', 'showWelcomeTutorial') + 'showWelcomeTutorial();', c);
+
+  const arrow = byId('welcomePreviewArrow');
+  const directions = dialog.querySelectorAll('.welcomeDirections button');
+  assert.equal(arrow.getAttribute('src'), 'img/arrows/TYPE_A.svg');
+  assert.equal(directions.length, 3);
+  const click = node => node.dispatchEvent(new Event('click'));
+  click(byId('welcomeNext'));
+  const destination = byId('welcomeDestination');
+  destination.value = 'Main Street';
+  destination.dispatchEvent(new Event('input'));
+  assert.equal(byId('welcomePreviewDestination').textContent, 'Main Street');
+  click(byId('welcomeNext'));
+  for (const button of directions) {
+    assert.equal(button.querySelector('img').getAttribute('src'), arrow.getAttribute('src'));
+    click(button);
+    assert.equal(arrow.parentElement.dataset.welcomeDirection, button.dataset.welcomeDirection);
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.equal(directions.filter(option => option.getAttribute('aria-pressed') === 'true').length, 1);
+  }
+  assert.equal(arrow.alt, 'Arrow pointing up right');
+});
+
+test('the exit tab editor labels each top control and the LEFT marker', () => {
+  const { parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
+  const tree = parseDOM(read('scripts/index.source.html'));
+  const fields = tree.querySelector('#exitTabMainSettingsGrid').children.slice(0, 4);
+  assert.deepEqual(fields.map(field => field.querySelector('label').textContent), [
+    'Text', 'Type', 'Alignment', 'Position',
+  ]);
+  assert.deepEqual(fields.map(field => field.querySelector('label').getAttribute('for')), [
+    'exitNumber', 'exitVariant', 'exitTabPosition', 'exitTabWidth',
+  ]);
+  assert.equal(tree.querySelector('#showLeftLabel').textContent, 'LEFT Marker');
+});
+
+test('menus leave native keys alone and admit only app history shortcuts', () => {
+  const form = 'public/js/form.js';
+  const bar = {dataset: {currentMenu: ''}};
+  const overlay = {style: {display: ''}};
+  const closedContext = {getClientRects: () => []};
+  let popup = null;
+  let contextMenus = [closedContext];
+  const calls = [];
+  const shortcutActions = [
+    ['2', 'settingsControlPanelMenu'],
+    ['r', 'settingsControlNewRow'],
+    ['r-alt', 'settingsControlDeleteRow'],
+    ['z', 'settingsControlUndoEdit'],
+    ['z-shift', 'settingsControlRedoEdit'],
+  ].map(([key, fieldId]) => ({key, fieldId, run: () => calls.push(key)}));
+  const c = context({
+    document: {
+      getElementById: id => id === 'sMConfigBar' ? bar : overlay,
+      querySelector: () => popup,
+      querySelectorAll: () => contextMenus,
+    },
+    shortcutActions,
+    shortcutFieldMatchesEvent: (fieldId, event) => shortcutActions.some(action => action.fieldId === fieldId && action.key === event.key),
+    isShortcutActionAllowedByMode: () => true,
+  });
+  const names = ['isNativeKeyboardTarget', 'hasOpenContextMenu', 'isAppMenuOpen', 'isUndoRedoShortcutField', 'editorKeydown'];
+  vm.runInContext(names.map(name => declaration(form, name)).join('\n') + 'this.editorKeydown = editorKeydown;', c);
+
+  const press = (key, originalTarget) => {
+    const event = {
+      key,
+      target: {},
+      composedPath: () => originalTarget ? [originalTarget, event.target] : [event.target],
+      defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; },
+      stopPropagation() {},
+    };
+    c.editorKeydown(event);
+    return event.defaultPrevented;
+  };
+
+  for (const menu of ['panelSelector', 'panelStyleConfig', 'postStyleConfig', 'exitTabConfig', 'subPanelConfig', 'guideArrowConfig', 'templates', 'appSettingsConfig', 'mobileMore']) {
+    bar.dataset.currentMenu = menu;
+    assert.equal(press('2'), false, menu);
+    assert.equal(press('r'), false, menu);
+    assert.equal(press('r-alt'), false, menu);
+  }
+  assert.equal(press('z'), true);
+  assert.equal(press('z-shift'), true);
+  bar.dataset.currentMenu = '';
+  overlay.style.display = 'flex';
+  assert.equal(press('2'), false);
+  overlay.style.display = '';
+  popup = {};
+  assert.equal(press('r'), false);
+  popup = null;
+  contextMenus = [{getClientRects: () => [{}]}];
+  assert.equal(press('r-alt'), false);
+  contextMenus = [closedContext];
+  const shadowInput = {matches: selector => selector.includes('input:not')};
+  assert.equal(press('2', shadowInput), false);
+  assert.equal(press('z', shadowInput), false);
+  assert.equal(press('2'), true);
+  assert.equal(press('r'), true);
+  assert.deepEqual(calls, ['z', 'z-shift', '2', 'r']);
+});
+
 test('undoing a preview scale does not add an export pixel to an integer dimension',()=>{
   const c=context({});
   vm.runInContext(declaration('public/js/main.js','roundExportExtent')+'this.round=roundExportExtent;',c);

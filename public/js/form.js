@@ -4,6 +4,7 @@ const formHandler = (function () {
     let blockDragState = null;
     let panelDragState = null;
     let showHiddenPanelsInPanelList = true;
+    let panelGapShiftPressed = false;
     let exitTabDragState = null;
     let exitTabRowDragState = null;
     let nestedExitTabDragState = null;
@@ -14,6 +15,26 @@ const formHandler = (function () {
     let ensureExitTabMenuOpenPublic = () => {};
     let ensureGuideArrowMenuOpenPublic = () => {};
     let exitTabFontCheckboxChangedByUser = false;
+
+    const isNativeKeyboardTarget = (event) => {
+      // Diagrammatic controls live in a shadow root, so event.target can be the host.
+      const target = event.composedPath()[0];
+      return target?.isContentEditable || target?.matches?.(
+        "textarea, select, input:not([type='button'], [type='checkbox'], [type='color'], [type='file'], [type='hidden'], [type='image'], [type='radio'], [type='range'], [type='reset'], [type='submit'])"
+      );
+    };
+
+    const hasOpenContextMenu = () =>
+      [...document.querySelectorAll("[role='menu']:not([hidden], .hidden)")].some(
+        menu => menu.getClientRects().length
+      );
+
+    const isAppMenuOpen = (event) =>
+      !!document.getElementById("sMConfigBar")?.dataset.currentMenu ||
+      document.getElementById("modalHolder")?.style.display === "flex" ||
+      !!document.querySelector("dialog[open], .smDropdownMenu.open:not([inert])") ||
+      hasOpenContextMenu() ||
+      event.composedPath().some(node => node.matches?.("[role='menu']:not([hidden], .hidden)"));
 
     const syncPostReference = () => {
       if (exposed && typeof exposed.getPost === "function") {
@@ -3502,50 +3523,7 @@ const formHandler = (function () {
     announceSubpanelClipboardSelectionCount();
   };
 
-  const copyCurrentSubpanelClipboardSelection = () => {
-    const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
-    const result =
-      exposed && typeof exposed.copySubpanelClipboard === "function"
-        ? exposed.copySubpanelClipboard(getSubpanelClipboardSelectionPayload(rows))
-        : { copied: false, copiedBlockCount: 0, reason: "Copy is not available." };
-
-    if (result?.copied) {
-      const count = result.copiedBlockCount || 0;
-      showSubpanelClipboardNotice(
-        `${count} element${count === 1 ? "" : "s"} copied`
-      );
-      if (typeof updateForm === "function") {
-        updateForm();
-      }
-    } else {
-      showSubpanelClipboardNotice(result?.reason || "No elements selected");
-    }
-  };
-
-  const cutCurrentSubpanelClipboardSelection = () => {
-    const rows = exposed?.getCurrentSubPanel?.()?.blockElements?.rows || [];
-    const result =
-      exposed && typeof exposed.cutSubpanelClipboard === "function"
-        ? exposed.cutSubpanelClipboard(getSubpanelClipboardSelectionPayload(rows))
-        : { cut: false, copiedBlockCount: 0, reason: "Cut is not available." };
-
-    if (result?.cut) {
-      const count = result.copiedBlockCount || 0;
-      showSubpanelClipboardNotice(
-        `${count} element${count === 1 ? "" : "s"} cut`
-      );
-      if (typeof updateForm === "function") {
-        updateForm();
-      }
-    } else {
-      showSubpanelClipboardNotice(result?.reason || "No elements selected");
-    }
-  };
-
-  const pasteCurrentSubpanelClipboardSelection = (
-    targetRowIndex = null,
-    { pasteAfter = false } = {}
-  ) => {
+  const pasteCurrentSubpanelClipboardSelection = (targetRowIndex) => {
     if (!exposed || typeof exposed.pasteSubpanelClipboard !== "function") {
       showSubpanelClipboardNotice("Paste is not available.");
       return;
@@ -3555,14 +3533,12 @@ const formHandler = (function () {
     const result = exposed.pasteSubpanelClipboard({
       targetRowIndex,
       selection: getSubpanelClipboardSelectionPayload(rows),
-      pasteAfter,
     });
 
     if (result?.pasted) {
       const count = result.pastedBlockCount || 0;
-      const suffix = pasteAfter ? " pasted after" : " pasted";
       showSubpanelClipboardNotice(
-        `${count} element${count === 1 ? "" : "s"}${suffix}`
+        `${count} element${count === 1 ? "" : "s"} pasted`
       );
     } else {
       showSubpanelClipboardNotice(result?.reason || "Nothing to paste");
@@ -5334,13 +5310,8 @@ const formHandler = (function () {
 
     const exitNumberLabel = document.getElementById("exitNumberLabel");
     if (exitNumberLabel) {
-      exitNumberLabel.classList.toggle("hidden", profileEditorMode);
-      exitNumberLabel.hidden = profileEditorMode;
-      exitNumberLabel.textContent = isTollLogo
-          ? "Logo:"
-          : isIcon
-            ? "Icon:"
-            : isQuebec ? "Number:" : "Text:";
+      const bilingual = document.getElementById("exitTabMainSettingsGrid")?.classList.contains("bilingualMode");
+      exitNumberLabel.textContent = isTollLogo ? "Logo" : isIcon ? "Icon" : isQuebec ? "Number" : bilingual ? "Top" : "Text";
     }
 
     const isAssetVariant = isTollLogo || isIcon;
@@ -8881,7 +8852,7 @@ const formHandler = (function () {
     const destination = dialog.querySelector("#welcomeDestination");
     const previewDestination = dialog.querySelector("#welcomePreviewDestination");
     const previewArrow = dialog.querySelector("#welcomePreviewArrow");
-    const directionButtons = dialog.querySelectorAll("[data-arrow]");
+    const directionButtons = dialog.querySelectorAll(".welcomeDirections button");
     let step = 0;
 
     const showStep = (index) => {
@@ -8891,8 +8862,8 @@ const formHandler = (function () {
       back.hidden = step === 0;
       next.textContent = step === 0 ? "Start tutorial" :
         step === steps.length - 1 ? "Open editor" : "Next";
-      (steps[step].querySelector("h3") || next).focus();
       dialog.scrollTop = 0;
+      (steps[step].querySelector("h3") || next).focus();
     };
 
     destination.addEventListener("input", () => {
@@ -8903,8 +8874,8 @@ const formHandler = (function () {
         for (const option of directionButtons) {
           option.setAttribute("aria-pressed", String(option === button));
         }
-        previewArrow.textContent = button.dataset.arrow;
-        previewArrow.setAttribute("aria-label", button.textContent);
+        previewArrow.parentElement.dataset.welcomeDirection = button.dataset.welcomeDirection;
+        previewArrow.alt = "Arrow pointing " + button.textContent.trim().toLowerCase();
       });
     }
     back.addEventListener("click", () => showStep(step - 1));
@@ -10068,6 +10039,10 @@ const formHandler = (function () {
 
       if (lowerValue === "inherit" || lowerValue === "panel color" || lowerValue === "default") {
         if (selectEl?.id === "panelBorderColor") return exposed?.getPanelContrastColor?.() || "White";
+        if (selectEl?.id === "sdGroupedBlock_borderColor" || selectEl?.id === "sdBlocker_dividerColor") {
+          const border = exposed?.getCurrentPanel?.()?.borderColor;
+          return border && border !== "Inherit" ? border : exposed?.getPanelContrastColor?.() || "White";
+        }
         const effectiveOverride = selectEl?.dataset?.colorPickerEffectiveColor || "";
         return effectiveOverride || getCurrentPanelColorForPicker();
       }
@@ -10078,8 +10053,11 @@ const formHandler = (function () {
           let blockBackgroundValue = blockBackgroundSelect?.value || "Inherit";
 
           if (/^(inherit|panel color|default)$/i.test(blockBackgroundValue)) {
-            blockBackgroundValue = getCurrentPanelColorForPicker();
+            const border = exposed?.getCurrentPanel?.()?.borderColor;
+            return border && border !== "Inherit" ? border : exposed?.getPanelContrastColor?.() || "White";
           }
+          const border = exposed?.getCurrentPanel?.()?.borderColor;
+          if (border && border !== "Inherit") return border;
 
           const lightBlockBackgrounds = new Set([
             "orange",
@@ -14868,7 +14846,8 @@ const formHandler = (function () {
         exitTextField(name).value = Math.max(Number(exitTextField(name).min), Math.min(Number(exitTextField(name).max), value));
         exitTextField(`${name}Value`).value = value.toFixed(digits);
       }
-      const bg = getResolvedColorValue(sign.exitBackgroundColor || "Yellow");
+      const exitBackgroundInherits = sign.exitBackgroundColor === "Inherit";
+      const bg = getResolvedColorValue(exitBackgroundInherits ? panel.color : sign.exitBackgroundColor || "Yellow");
       let rgb = String(bg).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
       if (!rgb && /^#[0-9a-f]{6}$/i.test(bg)) {
         rgb = [bg, parseInt(bg.slice(1, 3), 16), parseInt(bg.slice(3, 5), 16), parseInt(bg.slice(5, 7), 16)];
@@ -14880,9 +14859,10 @@ const formHandler = (function () {
       const luminance = rgb && (0.2126 * linear(rgb[1]) + 0.7152 * linear(rgb[2]) + 0.0722 * linear(rgb[3]));
       const inheritedColor = luminance !== null && luminance > 0.179
         ? "Black" : "White";
-      for (const id of ["exitTextColor", "exitBorderColor"]) {
-        document.getElementById(id).dataset.colorPickerEffectiveColor = inheritedColor;
-      }
+      document.getElementById("exitTextColor").dataset.colorPickerEffectiveColor = inheritedColor;
+      const panelBorder = panel?.borderColor;
+      document.getElementById("exitBorderColor").dataset.colorPickerEffectiveColor =
+        panelBorder && panelBorder !== "Inherit" ? panelBorder : inheritedColor;
       for (const [id, value] of [
         ["exitTextColor", sign.exitTextColor || "Inherit"],
         ["exitBackgroundColor", sign.exitBackgroundColor || "Yellow"],
@@ -15063,6 +15043,23 @@ const formHandler = (function () {
 
     bindPanelStylePopoverPositioning();
     bindPanelSelectorPopoverPositioning();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.repeat && event.key === "Shift") return;
+      panelGapShiftPressed = !window.SignMakerMobile?.active &&
+        panelSelectorPopoverIsOpen() && event.key === "Shift" &&
+        !event.ctrlKey && !event.metaKey && !event.altKey;
+    });
+    document.addEventListener("pointerdown", () => { panelGapShiftPressed = false; });
+    window.addEventListener("blur", () => { panelGapShiftPressed = false; });
+    document.addEventListener("keyup", (event) => {
+      if (event.key !== "Shift") return;
+      if (panelGapShiftPressed && panelSelectorPopoverIsOpen()) {
+        document.getElementById("panelSelect").classList.toggle("showSubpanelGapInputs");
+        schedulePanelSelectorPopoverPosition();
+      }
+      panelGapShiftPressed = false;
+    });
 
     const normalizeInterfaceThemeMode = (value) => {
       const normalized = String(value || "").toLowerCase();
@@ -15351,7 +15348,6 @@ const formHandler = (function () {
           }
         });
       }
-      const isSettingsOpen=()=>sMConfigBar.dataset.currentMenu==='appSettingsConfig';
       const settingsSideTabs = document.querySelectorAll(".settingsSideTab");
       const settingsPages = document.querySelectorAll(".settingsPage");
       let currentSettingsPageId = "settingsGeneral";
@@ -16020,55 +16016,6 @@ const formHandler = (function () {
         return configuredTokens.includes(eventToken);
       };
 
-      const shouldSuppressAllAppShortcuts = (event) => {
-        const activeEl = document.activeElement;
-        if (!activeEl) {
-          return false;
-        }
-
-        const tagName = activeEl.tagName;
-        const inputType = (activeEl.type || "").toLowerCase();
-
-        const isTypingField =
-          activeEl.isContentEditable ||
-          tagName === "TEXTAREA" ||
-          tagName === "SELECT" ||
-          (tagName === "INPUT" &&
-            ![
-              "button",
-              "checkbox",
-              "color",
-              "file",
-              "hidden",
-              "image",
-              "radio",
-              "range",
-              "reset",
-              "submit",
-            ].includes(inputType));
-
-        const isInsideCustomShieldPicker =
-          !!activeEl.closest?.(".shieldPicker") ||
-          !!document.querySelector(".shieldPicker.open");
-
-        if (!isTypingField && !isInsideCustomShieldPicker) {
-          return false;
-        }
-
-        const eventToken = event ? getEventShortcutToken(event) : "";
-        const isEscape = eventToken === "ESC";
-        const isUndo =
-          eventToken === normalizeShortcutToken("CTRL+Z") ||
-          eventToken === normalizeShortcutToken("CMD+Z");
-        const isRedo =
-          eventToken === normalizeShortcutToken("CTRL+SHIFT+Z") ||
-          eventToken === normalizeShortcutToken("CMD+SHIFT+Z") ||
-          eventToken === normalizeShortcutToken("CTRL+Y") ||
-          eventToken === normalizeShortcutToken("CMD+Y");
-
-        return !(isEscape || isUndo || isRedo);
-      };
-
       const closeCurrentSidebarMenu = () => {
         if (!sMConfigBar) {
           return;
@@ -16136,98 +16083,30 @@ const formHandler = (function () {
       };
       
       const closeTopmostUI = () => {
-        const downloadDialog = document.getElementById("downloadContent");
-        const welcomeDialog = document.getElementById("welcomeToSignMaker");
-        const shieldDialog = document.getElementById("shieldImgSelector");
-        const iconDialog = document.getElementById("iconSelectorModal");
-        const tollDialog = document.getElementById("tollLogoSelectorModal");
-        const arrowDialog = document.getElementById("arrowSelectorModal");
-
-        if (isSettingsOpen()) {
-          sMConfigBar.dataset.currentMenu="";reDisplay();
-          return true;
+        if (downloadDialog?.style.display === "flex") {
+          downloadDialog.style.display = "none";
+          modalHolder.style.display = "none";
+          return;
         }
 
-          if (
-            downloadDialog &&
-            downloadDialog.style.display !== "none" &&
-            downloadDialog.style.display !== ""
-          ) {
-            downloadDialog.style.display = "none";
-            const modalHolder = document.getElementById("modalHolder");
-            if (modalHolder) {
-              modalHolder.style.display = "none";
-            }
-            return true;
-          }
+        const menuId = sMConfigBar.dataset.currentMenu;
+        const currentMenu = menuId === "panelSelector"
+          ? document.getElementById("panelSelect")
+          : document.querySelector(`.sMModal.${menuId}`);
+        const picker = currentMenu?.querySelector(
+          ".colorPicker.open, .shieldPicker.open, .fontPicker.open, .profilePicker.open"
+        );
 
-        if (welcomeDialog && welcomeDialog.open) {
-          welcomeDialog.close();
-          return true;
-        }
-
-        if (shieldDialog && shieldDialog.open) {
-          shieldDialog.close();
-          return true;
-        }
-
-        if (iconDialog && iconDialog.open) {
-          iconDialog.close();
-          return true;
-        }
-
-        if (tollDialog && tollDialog.open) {
-          tollDialog.close();
-          return true;
-        }
-
-        if (arrowDialog && arrowDialog.open) {
-          arrowDialog.close();
-          return true;
-        }
-
-        if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
-          const currentMenuId = sMConfigBar.dataset.currentMenu;
-          const currentMenuRoot =
-            currentMenuId === "panelSelector"
-              ? document.getElementById("panelSelect")
-              : document.querySelector(`.sMModal.${currentMenuId}`);
-
-          const openNestedPicker = currentMenuRoot?.querySelector(
-            ".colorPicker.open, .shieldPicker.open, .fontPicker.open, .profilePicker.open"
-          );
-
-          if (openNestedPicker) {
-            openNestedPicker.classList.remove("open");
-            document.activeElement?.blur?.();
-            return true;
-          }
-
-          const activeEl = document.activeElement;
-          const activeEditorControl =
-            activeEl &&
-            currentMenuRoot?.contains(activeEl) &&
-            activeEl.matches?.("input, textarea, select, [contenteditable='true']");
-
-          if (activeEditorControl) {
-            activeEl.blur();
-            return true;
-          }
-
+        if (picker) {
+          picker.classList.remove("open");
+          document.activeElement?.blur?.();
+        } else if (currentMenu?.contains(document.activeElement) &&
+            document.activeElement?.matches("input, textarea, select, [contenteditable='true']")) {
+          document.activeElement.blur();
+        } else {
           closeCurrentSidebarMenu();
-          return true;
         }
-
-        return false;
       };
-      
-      const isDownloadMenuOpen = () =>
-        !!downloadDialog &&
-        downloadDialog.style.display !== "" &&
-        downloadDialog.style.display !== "none";
-
-      const isShortcutBlockingOverlayOpen = () =>
-        isSettingsOpen() || isDownloadMenuOpen() || document.getElementById("welcomeToSignMaker")?.open;
 
       const ensureSubpanelMenuOpen = () => {
         if (!sMConfigBar) {
@@ -16352,12 +16231,6 @@ const formHandler = (function () {
 
       const secondaryShortcutActions = [
         {
-          fieldId: "settingsControlCloseMenu",
-          run: () => {
-            closeTopmostUI();
-          },
-        },
-        {
           fieldId: "settingsControlShowHideMenus",
           run: () => {
             const hideConfigButton = document.getElementById("hideConfig");
@@ -16387,44 +16260,6 @@ const formHandler = (function () {
           },
         },
         {
-          fieldId: "settingsControlCopyElements",
-          run: () => {
-            if (!subpanelMenuIsOpen()) {
-              return;
-            }
-            copyCurrentSubpanelClipboardSelection();
-          },
-        },
-        {
-          fieldId: "settingsControlCutElements",
-          run: () => {
-            if (!subpanelMenuIsOpen()) {
-              return;
-            }
-            cutCurrentSubpanelClipboardSelection();
-          },
-        },
-        {
-          fieldId: "settingsControlPasteElements",
-          run: () => {
-            if (!subpanelMenuIsOpen()) {
-              return;
-            }
-            pasteCurrentSubpanelClipboardSelection();
-          },
-        },
-        {
-          fieldId: "settingsControlPasteElementsAfter",
-          run: () => {
-            if (!subpanelMenuIsOpen()) {
-              return;
-            }
-            pasteCurrentSubpanelClipboardSelection(null, {
-              pasteAfter: true,
-            });
-          },
-        },
-        {
           fieldId: "settingsControlClearAll",
           run: () => {
             if (typeof app !== "undefined" && typeof app.clearAll === "function") {
@@ -16436,7 +16271,7 @@ const formHandler = (function () {
         },
         {
           fieldId: "settingsControlPostSettings",
-          run: () => toggleConfigMenuById("postConfig"),
+          run: () => toggleConfigMenuById("postStyleConfig"),
         },
         {
           fieldId: "settingsControlPanelMenu",
@@ -16650,25 +16485,18 @@ const formHandler = (function () {
         },
       ];
 
-      document.addEventListener("keydown", (event) => {
-        if (event.defaultPrevented) {
+      const shortcutActions = [...firstColumnShortcutActions, ...secondaryShortcutActions];
+      const editorKeydown = (event) => {
+        if (event.defaultPrevented || event.isComposing || isNativeKeyboardTarget(event)) {
           return;
         }
 
-        if (event.key !== "Escape" && isShortcutBlockingOverlayOpen()) {
-          return;
-        }
+        const menuOpen = isAppMenuOpen(event);
+        for (const action of shortcutActions) {
+          if (menuOpen && !isUndoRedoShortcutField(action.fieldId)) {
+            continue;
+          }
 
-        if (shouldSuppressAllAppShortcuts(event)) {
-          return;
-        }
-
-        const allShortcutActions = [
-          ...firstColumnShortcutActions,
-          ...secondaryShortcutActions,
-        ];
-
-        for (const action of allShortcutActions) {
           if (!shortcutFieldMatchesEvent(action.fieldId, event)) {
             continue;
           }
@@ -16682,7 +16510,8 @@ const formHandler = (function () {
           action.run();
           return;
         }
-      });
+      };
+      document.addEventListener("keydown", editorKeydown);
 
     for (const button of document.querySelectorAll(".sMModalTab")) {
       button.onclick = function () {
@@ -16820,52 +16649,14 @@ const formHandler = (function () {
     }
       
       document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape" || event.defaultPrevented) {
-          return;
-        }
-
-        const settingsModal = document.getElementById("settings22Modal");
-
-        if (settingsModal && isSettingsOpen()) {
-          const activeEl = document.activeElement;
-          const activeIsControlsShortcut =
-            activeEl &&
-            activeEl.matches &&
-            activeEl.matches('#settingsControls input[type="text"]');
-
-          if (activeIsControlsShortcut) {
-            event.preventDefault();
-            event.stopPropagation();
-            activeEl.blur();
-            return;
-          }
-
-          event.preventDefault();
-          event.stopPropagation();
-          sMConfigBar.dataset.currentMenu="";reDisplay();
-          return;
-        }
-
-        const openDialogs = [
-          document.getElementById("downloadContent"),
-          document.getElementById("welcomeToSignMaker"),
-          document.getElementById("shieldImgSelector"),
-          document.getElementById("customShieldMaker"),
-        ].filter((dialog) => dialog && dialog.open);
-
-        if (!openDialogs.length) {
-          if (sMConfigBar && sMConfigBar.dataset.currentMenu) {
-            event.preventDefault();
-            event.stopPropagation();
-            closeTopmostUI();
-          }
-          return;
-        }
+        // Native dialogs and individual dropdowns handle their own Escape key.
+        if (event.key !== "Escape" || event.defaultPrevented ||
+            document.querySelector("dialog[open]") || hasOpenContextMenu()) return;
+        if (!sMConfigBar.dataset.currentMenu && downloadDialog?.style.display !== "flex") return;
 
         event.preventDefault();
         event.stopPropagation();
-
-        openDialogs[openDialogs.length - 1].close();
+        closeTopmostUI();
       });
 
     document.querySelector("#panelSelector").onclick = function () {
@@ -17045,16 +16836,49 @@ const formHandler = (function () {
       event.preventDefault();
       postThicknessValueInput.blur();
     });
-    for (const id of ["postTrussDepth", "postTrussPanelLength", "postMonotubeRadius"]) {
-      const slider = document.getElementById(id);
+    for (const id of postStructureFields.keys()) {
       const number = document.getElementById(`${id}Value`);
-      slider?.addEventListener("input", () => { number.value = slider.value; });
-      number?.addEventListener("keydown", event => {
+      number.addEventListener("blur", () => {
+        syncPostReference();
+        syncPostStructureControls(number);
+      });
+      number.addEventListener("keydown", event => {
         if (event.key !== "Enter") return;
         event.preventDefault();
         number.blur();
       });
     }
+
+    const postStyle = document.getElementById("postStyleModal");
+    postStyle.addEventListener("click", event => {
+      const button = event.target.closest("[data-reset-post]");
+      if (!button) return;
+      const id = button.dataset.resetPost;
+      if (id === "settingsPanelSpacing") {
+        commitPanelSpacingChange(getDefaultPanelSpacingPreference());
+        return;
+      }
+      if (id === "settingsDefaultPanelSpacing") {
+        commitDefaultPanelSpacingChange(document.getElementById(id).defaultValue);
+        return;
+      }
+
+      const field = document.getElementById(`${id}Value`) || document.getElementById(id);
+      if (id === "showPost") {
+        if (!field.checked) return;
+        field.checked = false;
+      } else {
+        const defaultValue = {
+          postPosition: "Right",
+          postType: document.getElementById("postPosition").value,
+          postColor: Post.prototype.colors[0],
+        }[id] ?? field.defaultValue;
+        if (field.value === defaultValue) return;
+        field.value = defaultValue;
+      }
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      window.getNativeSelectPicker?.(field)?.sync();
+    });
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
     bindSubpanelDisclosureScroll();
@@ -20488,17 +20312,12 @@ const formHandler = (function () {
     const isBilingual = exitTab.bilingual === true;
 
     const mainSettingsGrid = document.getElementById("exitTabMainSettingsGrid");
-    const exitNumberLabel = document.getElementById("exitNumberLabel");
     const bilingualCheckbox = document.getElementById("exitTabBilingual");
     const bottomTextLabel = document.getElementById("exitTabBilingualBottomTextLabel");
     const bottomTextInput = document.getElementById("exitTabBilingualBottomText");
 
     if (mainSettingsGrid) {
       mainSettingsGrid.classList.toggle("bilingualMode", isBilingual);
-    }
-
-    if (exitNumberLabel) {
-      exitNumberLabel.textContent = exitTab.variant === "Quebec Exit Marker" ? "Number:" : isBilingual ? "Top:" : "Text:";
     }
 
     if (bilingualCheckbox) {
@@ -20782,45 +20601,41 @@ const formHandler = (function () {
     syncPostStructureControls();
   };
 
-  // Overhead structure sizes (truss height and panel length, monotube corner radius)
-  // are saved with each sign, not as device defaults.
-  // field id → [post property, settings function on SignMakerFDOTSupports, setting key]
+  // These dimensions belong to the sign, including after a switch between post types.
   const postStructureFields = new Map([
     ["postTrussDepth", ["trussDepth", "trussSettings", "depth"]],
-    ["postTrussDepthValue", ["trussDepth", "trussSettings", "depth"]],
     ["postTrussPanelLength", ["trussPanelLength", "trussSettings", "panelLength"]],
-    ["postTrussPanelLengthValue", ["trussPanelLength", "trussSettings", "panelLength"]],
     ["postMonotubeRadius", ["monotubeRadius", "monotubeSettings", "radius"]],
-    ["postMonotubeRadiusValue", ["monotubeRadius", "monotubeSettings", "radius"]],
   ]);
 
-  const syncPostStructureControls = () => {
+  const syncPostStructureControls = (forceField = null) => {
     const supports = window.SignMakerFDOTSupports;
-    const support = supports?.get(post.polePosition);
+    const support = supports.get(post.polePosition);
     const visible = {
       postTrussSetting: support?.kind === "truss",
       postMonotubeSetting: support?.kind === "monotube" && support.corners === "curved",
     };
     for (const [className, show] of Object.entries(visible)) {
-      document.querySelectorAll(`.${className}`).forEach((row) => { row.hidden = !show; });
+      document.querySelectorAll(`#postStyleModal .${className}`).forEach(row => { row.hidden = !show; });
     }
     for (const [id, [, settings, key]] of postStructureFields) {
-      const input = document.getElementById(id);
-      if (!input || typeof supports?.[settings] !== "function") continue;
       const value = String(supports[settings](post)[key]);
-      if (input.value !== value) input.value = value;
+      for (const fieldId of [id, `${id}Value`]) {
+        const field = document.getElementById(fieldId);
+        if (field && (field === forceField || !mergeLiveInputActive || liveEditingField !== field) && field.value !== value) {
+          field.value = value;
+        }
+      }
     }
   };
 
-  const readPostStructure = (field) => {
-    const supports = window.SignMakerFDOTSupports;
-    const [property, settings, key] = postStructureFields.get(field.id);
-    const raw = String(field.value || "").trim();
-    if (typeof supports?.[settings] !== "function" || !raw || !Number.isFinite(Number(raw))) {
-      syncPostStructureControls();
+  const readPostStructure = (field, [property, settings, key]) => {
+    const raw = field.value.trim();
+    if (!raw || !Number.isFinite(Number(raw))) {
+      syncPostStructureControls(field);
       return false;
     }
-    const value = Math.round(supports[settings]({ [property]: raw })[key] * 100) / 100;
+    const value = Math.round(window.SignMakerFDOTSupports[settings]({ [property]: raw })[key] * 100) / 100;
     const changed = post[property] !== value;
     post[property] = value;
     syncPostStructureControls();
@@ -20831,6 +20646,7 @@ const formHandler = (function () {
     ["postPosition", "polePosition"], ["postType", "polePosition"],
     ["postColor", "color"], ["showPost", "showPost"],
     ["postThickness", "thickness"], ["postThicknessValue", "thickness"],
+      ["postHeight", "height"], ["postHeightValue", "height"],
   ]);
   const postAppearanceStorage = new Map([
     ["polePosition", STORAGE_KEYS.postPosition], ["color", STORAGE_KEYS.postColor],
@@ -20865,6 +20681,14 @@ const formHandler = (function () {
       syncPostPositionControls();
     } else if (property === "thickness") {
       syncPostThicknessControls(true);
+    } else if (property === "height") {
+      const height = String(Post.normalizeHeight(post.height));
+      for (const id of ["postHeight", "postHeightValue"]) {
+        const input = document.getElementById(id);
+        if (!(mergeLiveInputActive && input === liveEditingField) && input.value !== height) {
+          input.value = height;
+        }
+      }
     } else if (property === "showPost") {
       document.getElementById("showPost").checked = !!post.showPost;
     } else if (property === "color") {
@@ -20883,6 +20707,8 @@ const formHandler = (function () {
     if (property === "thickness") {
       if (!value.trim() || !Number.isFinite(Number(value))) return false;
       value = Math.round(post.normalizeThickness(value) * 10) / 10;
+    } else if (property === "height") {
+      value = Math.round(Post.normalizeHeight(value) * 2) / 2;
     } else if (fieldId === "postType") {
       const supports = window.SignMakerFDOTSupports;
       const position = supports?.get(previous)?.position ?? previous;
@@ -20896,7 +20722,7 @@ const formHandler = (function () {
     post[property] = value;
     syncPostAppearanceField(property);
     if (previous === value) return false;
-    setStoredItem(postAppearanceStorage.get(property), value);
+    if (postAppearanceStorage.has(property)) setStoredItem(postAppearanceStorage.get(property), value);
     return true;
   };
 
@@ -20979,8 +20805,9 @@ const formHandler = (function () {
       if (readPostAppearance(postField, postValue)) exposed.redraw();
       return;
     }
-    if (postStructureFields.has(field?.id)) {
-      if (readPostStructure(field)) exposed.redraw();
+    const structureField = postStructureFields.get(field?.id?.replace(/Value$/, ""));
+    if (structureField) {
+      if (readPostStructure(field, structureField)) exposed.redraw();
       return;
     }
 
@@ -23388,6 +23215,7 @@ const formHandler = (function () {
     syncPostPositionControls();
 
     syncPostAppearanceField("color");
+    syncPostAppearanceField("height");
 
     const showPostCheckbox = document.getElementById("showPost");
     if (showPostCheckbox) {
@@ -23465,6 +23293,38 @@ const formHandler = (function () {
         const panelLabelText = getPanelListLabel(panelIndex);
         label.textContent = panelLabelText;
         panelButton.appendChild(label);
+
+        const gapField = document.createElement("label");
+        gapField.className = "panelSubpanelGapField";
+        const gapLabel = document.createElement("span");
+        gapLabel.textContent = "Gap";
+        gapLabel.setAttribute("aria-hidden", "true");
+        const subpanelGapInput = document.createElement("input");
+        subpanelGapInput.type = "number";
+        subpanelGapInput.className = "panelSubpanelGap";
+        subpanelGapInput.min = "0";
+        subpanelGapInput.max = "12";
+        subpanelGapInput.step = "0.1";
+        subpanelGapInput.inputMode = "decimal";
+        subpanelGapInput.value = String(Panel.normalizeSubpanelGap(post.panels[panelIndex].subpanelGap));
+        subpanelGapInput.title = panelLabelText + " subpanel gap (rem)";
+        subpanelGapInput.setAttribute("aria-label", subpanelGapInput.title);
+        gapField.append(gapLabel, subpanelGapInput);
+        const commitGap = () => {
+          if (subpanelGapInput.validity.badInput) {
+            subpanelGapInput.value = String(Panel.normalizeSubpanelGap(post.panels[panelIndex]?.subpanelGap));
+            return;
+          }
+          subpanelGapInput.value = String(exposed.setSubpanelGap(panelIndex, subpanelGapInput.value));
+        };
+        subpanelGapInput.addEventListener("change", commitGap);
+        subpanelGapInput.addEventListener("blur", commitGap);
+        subpanelGapInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            subpanelGapInput.blur();
+          }
+        });
 
         panelButton.addEventListener("click", function () {
           if (panelHiddenFromPost) {
@@ -23575,6 +23435,7 @@ const formHandler = (function () {
             app.deletePanelAt(panelIndex);
           });
         panelRow.appendChild(panelButton);
+        panelRow.appendChild(gapField);
         panelRow.appendChild(copyButton);
         panelRow.appendChild(hideButton);
         panelRow.appendChild(deleteButton);
@@ -26359,6 +26220,8 @@ const formHandler = (function () {
       },
       migrateSavedTypographyPreferences,
       init: initialize,
+      isAppMenuOpen,
+      isNativeKeyboardTarget,
       showWelcomeTutorial,
       readForm,
       persistPostAppearance,

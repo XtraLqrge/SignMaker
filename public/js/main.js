@@ -20,6 +20,7 @@ const app = (function () {
   let currentlySelectedAPLArrowIndex = 0;
   let downloadPreviewRequestId = 0;
   const DEFAULT_POST_POSITION = "Right";
+  const FIRST_RUN_POST_TYPE = "FDOTCantileverRight";
   const DEFAULT_PANEL_SPACING = 1;
   const DEFAULT_PANEL_SPACING_STORAGE_KEY = "signMaker.defaultPanelSpacing";
   const DEFAULT_STACKED_PANEL_SPACING = 0;
@@ -2879,6 +2880,7 @@ const ungroupSelectedBlockElement = () => {
         : computed.color && !isTransparentColor(computed.color)
           ? computed.color
           : getNamedColor("White", "white"));
+    const hasCustomPanelBorder = signElmt.closest(".panel")?.classList.contains("customPanelBorder");
 
     const getSignContainer = () => signElmt.closest(".signContainer");
 
@@ -3465,7 +3467,10 @@ const ungroupSelectedBlockElement = () => {
         rowEl.dataset.rowFullBorder === "true" && !rowEl.closest(".bE-groupedBlockElement");
       const borderColor =
         rowEl.dataset.fullBleedBorderColor ||
-        (backgroundColor || fullRowBorder ? getContrastingBorderColor(backgroundColor || fillColor) : "");
+        (backgroundColor || fullRowBorder
+          ? hasCustomPanelBorder || !backgroundColor
+            ? defaultBorderColor : getContrastingBorderColor(backgroundColor)
+          : "");
 
       if (fullRowBorder) {
         const { left, top, width, height } = rect;
@@ -4106,7 +4111,7 @@ const ungroupSelectedBlockElement = () => {
           const cellClipId = `dynamicBorderCell${index}`;
           svgParts.push(
             `<defs><clipPath id="${cellClipId}" clipPathUnits="userSpaceOnUse"><rect x="${snapCssValue(cell.left)}" y="${snapCssValue(cell.top)}" width="${snapCssValue(cell.right - cell.left)}" height="${snapCssValue(cell.bottom - cell.top)}" shape-rendering="crispEdges"/></clipPath></defs>`,
-            `<use href="#${ringPathId}" fill="${escapeXml(cell.color)}" clip-path="url(#${cellClipId})" shape-rendering="geometricPrecision"/>`
+            `<use href="#${ringPathId}" fill="${escapeXml(resolveCssColor(cell.color))}" clip-path="url(#${cellClipId})" shape-rendering="geometricPrecision"/>`
           );
         });
 
@@ -4335,7 +4340,8 @@ const ungroupSelectedBlockElement = () => {
         const rect = part.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 ? Math.max(bottom, rect.bottom) : bottom;
       }, mainRect.bottom);
-      const height = Math.max(8 * rem, (lowestSignBottom - mainRect.top) / unitY + 6 * rem);
+      const heightAdjustment = Post.normalizeHeight(post.height) - Post.defaultHeight;
+      const height = Math.max(2 * rem, Math.max(8 * rem, (lowestSignBottom - mainRect.top) / unitY + 6 * rem) + heightAdjustment * rem);
 
       posts.forEach((support, index) => {
         const centerX = mainRect.left + mainRect.width * (index === 0 ? 0.1 : 0.9);
@@ -4763,10 +4769,11 @@ const ungroupSelectedBlockElement = () => {
       let savedSnapshot = getRestoreOnRefreshMode() === "never"
         ? null : await readSavedAppStateSnapshot();
       let restored = false;
-      const paintSign = async () => {
+      const paintSign = async ({ withPostSupports = false } = {}) => {
         await Promise.all([
           prepareIconImagesForPost(post),
           window.SignMakerFonts?.preparePost(post),
+          withPostSupports && window.SignMakerBoot?.loadPostSupports(),
         ]);
         redraw();
         await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
@@ -4783,7 +4790,10 @@ const ungroupSelectedBlockElement = () => {
           .some(key => window.localStorage.getItem(key) !== null);
       } catch (_) {}
       const paintedFreshSign = !savedSnapshot && !hasStoredPostPreferences;
-      if (paintedFreshSign) await paintSign();
+      if (paintedFreshSign) {
+        post.polePosition = FIRST_RUN_POST_TYPE;
+        await paintSign({ withPostSupports: true });
+      }
       await window.SignMakerBoot?.loadEditor();
       initializeVmsRendering();
       savedSnapshot = await migrateSavedSignTypographyOnce() ?? savedSnapshot;
@@ -4835,9 +4845,7 @@ const ungroupSelectedBlockElement = () => {
           if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.defaultPrevented) return;
           const key = event.key.toLowerCase();
           if (!["c", "x", "v"].includes(key)) return;
-          const target = event.target;
-          if (document.querySelector("dialog[open]")) return;
-          if (target?.isContentEditable || target?.closest?.("input, textarea, select, [contenteditable], [role='dialog']")) return;
+          if (event.isComposing || formHandler.isAppMenuOpen(event) || formHandler.isNativeKeyboardTarget(event)) return;
           if (key === "v" && !copiedGuideArrowArea) return;
           if (key !== "v" && (selectedGuideArrowPanelIndex !== currentlySelectedPanelIndex ||
               getCurrentPanel()?.sign?.guideArrow === "None" && getCurrentPanel()?.sign?.arrowMode !== "apl")) return;
@@ -4873,15 +4881,8 @@ const ungroupSelectedBlockElement = () => {
             return;
           }
 
-          const activeTag = document.activeElement?.tagName;
-          const isTyping =
-            activeTag === "INPUT" ||
-            activeTag === "TEXTAREA" ||
-            document.activeElement?.isContentEditable;
-
-          if (isTyping) {
-            return;
-          }
+          if (event.defaultPrevented || event.isComposing ||
+              formHandler.isAppMenuOpen(event) || formHandler.isNativeKeyboardTarget(event)) return;
 
           if (event.key === "." && event.shiftKey) {
             event.preventDefault();
@@ -5470,6 +5471,19 @@ const ungroupSelectedBlockElement = () => {
         formHandler.updateForm();
         redraw();
       }, options);
+    };
+
+    const setSubpanelGap = (panelIndex, value) => {
+      const panel = post.panels[panelIndex];
+      if (!panel) return 0;
+      const gap = Panel.normalizeSubpanelGap(value);
+      if (gap !== Panel.normalizeSubpanelGap(panel.subpanelGap)) {
+        runWithUndo(() => {
+          panel.subpanelGap = gap;
+          redraw({ preserveOtherPanels: true, changedPanelIndex: panelIndex });
+        });
+      }
+      return gap;
     };
 
     const addSubPanel = function () {
@@ -12585,6 +12599,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     postContainerElmt.classList.toggle("showBlockBoundingBoxes", !!post.showBlockBoundingBoxes);
     applyCustomPostColorVars(postContainerElmt, postUsesCustomColor ? post.color : "");
     const normalizedThickness = post.normalizeThickness(post.thickness);
+    postContainerElmt.style.setProperty("--post-height", `${Post.normalizeHeight(post.height)}rem`);
     post.thickness = normalizedThickness;
     postContainerElmt.style.setProperty(
       "--postThickness",
@@ -12690,15 +12705,21 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             ? "customPanelColor"
             : getColorClassToken(panel.color, "green");
           panelElmt.className = `panel ${panelColorClass} ${panel.corner.toLowerCase()}`;
+          const subpanelGap = Panel.normalizeSubpanelGap(panel.subpanelGap);
+          if (subpanelGap > 0) {
+            panelElmt.classList.add("hasSubpanelGap");
+            panelElmt.style.setProperty("--subpanel-gap", `${subpanelGap}rem`);
+          }
           panelElmt.classList.toggle("warningDiamond", panel.warningDiamond === true);
           const panelBorderThickness = Panel.getBorderThickness(panel);
           panelElmt.classList.toggle("panelBorderHidden", panelBorderThickness === 0);
           panelElmt.style.setProperty("--panelBorderWidth", `${panelBorderThickness}rem`);
           const panelFillColor = getResolvedCssColorValue(panel.color) || "var(--green)";
           const customPanelBorder = !!panel.borderColor && panel.borderColor !== "Inherit";
+          const panelBorderColor = (customPanelBorder && getResolvedCssColorValue(panel.borderColor)) ||
+            getExitOnlyContrastColor(panelFillColor);
           panelElmt.style.setProperty("--panelFillColor", panelFillColor);
-          panelElmt.style.setProperty("--panelBorderColor", customPanelBorder
-            ? getResolvedCssColorValue(panel.borderColor) : getExitOnlyContrastColor(panelFillColor));
+          panelElmt.style.setProperty("--panelBorderColor", panelBorderColor);
           panelElmt.classList.toggle("customPanelBorder", customPanelBorder);
           panelElmt.classList.toggle("hasPanelOuterBorder", panel.outerBorder === true);
           const outerBorderWidth = Panel.getOuterBorderThickness(panel);
@@ -12831,8 +12852,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 });
               },
             });
+          } else {
+            const offset = Panel.normalizeVerticalOffset(post.panels[stackTopIndex].verticalOffsetRem);
+            if (offset) (currentPanelStackElmt || panelElmt).style.top = `${offset}rem`;
           }
-          
+
           // Store CA style exit tabs to append inside sign later
           const caStyleExitTabs = [];
           let firstExitTab = null;
@@ -13305,7 +13329,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                        }
                        
                        const resolvedExitTabColor =
-                         exitTab.color != "Panel Color" && exitTab.color != undefined
+                         exitTab.color && !/^(Panel Color|Inherit)$/i.test(exitTab.color)
                            ? exitTab.color
                            : panel.color;
 
@@ -16631,12 +16655,15 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 (["DOWN", "DOWN_ALT"].includes(key) ? 0.9 :
                  ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 * extendedScale :
                  key === "TYPE_B" ? 0.55 : 0) * size / 3 * diagonalAmount;
-            const background = getResolvedCssColorValue(sign.exitBackgroundColor || "Yellow") || "var(--yellow)";
+            const exitBackgroundInherits = sign.exitBackgroundColor === "Inherit";
+            const background = exitBackgroundInherits ? panelFillColor
+                : getResolvedCssColorValue(sign.exitBackgroundColor || "Yellow") || "var(--yellow)";
             const inherited = getExitOnlyContrastColor(background);
             const textColor = sign.exitTextColor && sign.exitTextColor !== "Inherit"
                 ? getResolvedCssColorValue(sign.exitTextColor) : inherited;
             const borderColor = sign.exitBorderColor && sign.exitBorderColor !== "Inherit"
-                ? getResolvedCssColorValue(sign.exitBorderColor) : inherited;
+                ? getResolvedCssColorValue(sign.exitBorderColor)
+                : customPanelBorder || exitBackgroundInherits ? panelBorderColor : inherited;
             const cornerColored = sign.exitColorEdges === true && panel.corner === "Sharp" && variant !== "boxed";
             const borderWidth = `${panelBorderThickness}rem`;
 
@@ -16655,9 +16682,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             signCont.style.setProperty("--exitOnlyBackground", background);
             guideArrowsElmt.style.setProperty("--exitOnlyTextColor", textColor);
             guideArrowsElmt.style.setProperty("--exitOnlyBorderColor", borderColor);
-            guideArrowsElmt.style.setProperty("--exitOnlyPanelColor", getResolvedCssColorValue(panel.color) || "var(--green)");
-            guideArrowsElmt.style.setProperty("--exitOnlyPanelBorderColor",
-                getExitOnlyContrastColor(getResolvedCssColorValue(panel.color) || "var(--green)"));
+            guideArrowsElmt.style.setProperty("--exitOnlyPanelColor", panelFillColor);
+            guideArrowsElmt.style.setProperty("--exitOnlyPanelBorderColor", panelBorderColor);
             guideArrowsElmt.style.setProperty("--exitOnlyTopBorder", sign.exitTopBorder ? borderWidth : "0px");
             guideArrowsElmt.style.setProperty("--exitOnlyVerticalPadding", `${verticalPadding}rem`);
             guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding * horizontalPaddingScale}rem`);
@@ -17737,6 +17763,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),
         setPanelSpacing: setPanelSpacing,
+        setSubpanelGap,
         setSubpanelDividerVisible,
         isSubpanelDividerVisible,
         canUseAplEdgeExitTab,

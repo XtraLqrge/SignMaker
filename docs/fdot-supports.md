@@ -82,7 +82,7 @@ sign.
   structures shall be monotube structures with mitered corners matching the
   aesthetic of the existing monotube structures along the East Selmon
   Expressway." Exposed galvanized surfaces are painted Pro-Tech PT211W57
-  (Textured White); use a custom post color for that finish.
+  (Textured White).
   [THEA design-build RFP O-02520](https://www.tampa-xway.com/wp-content/uploads/2020/12/O-02520_ASDB_RFP_Final_12-03-2020-1.pdf)
 - **Curved corners** have no Tampa standard sheet behind them. The bend is
   drawn at the tube centerline with an adjustable **Corner Radius** (default
@@ -94,6 +94,8 @@ sign.
   available.
 
 ## Verification
+
+Switch between support types within the same Position and check that the mounted panels keep their vertical placement. Each Post Style row has a reset button. Panel Spacing resets to the saved Default Panel Spacing.
 
 Choose each Post Position and try its available Post Type options. Check
 the support color, thickness, visibility, and restore behavior. Export

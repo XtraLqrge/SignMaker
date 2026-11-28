@@ -28,9 +28,11 @@ const renderDispatch = source.slice(renderStart, renderEnd);
 const program = `
 let initializationStarted=false,post,currentlySelectedPanelIndex=0;
 const currentlySelectedSubPanelIndex=0,currentlySelectedRowIndex=0,currentlySelectedBlockIndex=0,currentlyEditingGroupPath=[];
+${declaration('FIRST_RUN_POST_TYPE')}
 ${declaration('refreshDynamicPanelBorders')}
 const redraw=()=>{
   note('paint');
+  note('post:' + post.polePosition);
   for(const [index,panel] of post.panels.entries()){
     const {panelElmt,signElmt,blockMasterElmt}=createPaintDom();
     const caStyleExitTabs=[];
@@ -54,6 +56,7 @@ function harness({minified=false, snapshot=null, preferences=false} = {}) {
   const html = new Node('html');
   const make = tag => new Node(tag);
   const note = event => events.push(event);
+  const supportSource = manifest.assets.find(asset => asset.source === 'js/FDOTSupports.js').output;
   const createPaintDom = () => {
     const panelElmt=make('div'),signElmt=make('div'),blockMasterElmt=make('div'),row=make('div'),block=make('div');
     panelElmt.className='panel';signElmt.className='sign';blockMasterElmt.className='blockElementMaster';row.className='blockElementRow';
@@ -69,7 +72,14 @@ function harness({minified=false, snapshot=null, preferences=false} = {}) {
   };
   const document={currentScript:{dataset:{editorScripts:JSON.stringify(manifest.deferredEditor),editorCss:manifest.deferredStyles}},
     documentElement:html,visibilityState:'visible',fonts:{ready:Promise.resolve()},createElement:make,
-    head:{appendChild:node=>{requested.push(node);note('editor-request');requestedEditor();}},
+    head:{appendChild:node=>{
+      if (node.src === supportSource) {
+        note('post-support-request');
+        node.onload();
+        return;
+      }
+      requested.push(node);note('editor-request');requestedEditor();
+    }},
     getElementById:()=>nodes.at(-1)?.panelElmt,querySelectorAll:()=>[],addEventListener(){}};
   const c=vm.createContext({window,document,console,Promise,setTimeout,clearTimeout,note,createPaintDom,
     requestAnimationFrame:callback=>callback(),Post:class {constructor(){this.panels=[];}newPanel(){this.panels.push({sign:{arrowMode:'standard',subPanels:[]}});}},
@@ -102,6 +112,8 @@ for(const minified of [false,true]) {
     const h=harness({minified});await h.waitForEditor();
     assert.equal(h.nodes.length,1);assert.equal(h.window.SignMakerSpecialPanelLayout,undefined);
     assert.ok(h.events.indexOf('paint')<h.events.indexOf('editor-request'));
+    assert.ok(h.events.indexOf('post-support-request') < h.events.indexOf('paint'));
+    assert.ok(h.events.includes('post:FDOTCantileverRight'));
     assert.ok(h.events.includes('border-paint'));assert.ok(h.events.includes('border-refresh'));
     assert.notEqual(h.html.dataset.appReady,'true');assert.equal(h.nodes[0].block.events.has('click'),false);
     h.releaseEditor();await h.run;

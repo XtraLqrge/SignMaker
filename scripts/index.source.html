@@ -853,7 +853,7 @@
                 </button>
               </div></div>
           <div id="sMAppShortcuts" class="tabHidden">
-            <p>Click a field and press the new keys. Backspace clears it.</p>
+            <p>Click a field and press the new keys. Backspace clears it. Only Undo and Redo shortcuts work while a menu is open.</p>
             <section id="settingsControls"><div id="appShortcutList" class="appShortcutList"><div class="settingsControlsColumn">
                   <label for="settingsControlNewPanel">New Panel</label>
                   <input id="settingsControlNewPanel" type="text" value="P">
@@ -902,9 +902,6 @@
                 </div>
 
                 <div class="settingsControlsColumn">
-                  <label for="settingsControlCloseMenu">Close Menu</label>
-                  <input id="settingsControlCloseMenu" type="text" value="Escape">
-
                   <label for="settingsControlShowHideMenus">Show/Hide All Menus</label>
                   <input id="settingsControlShowHideMenus" type="text" value="F1">
 
@@ -913,18 +910,6 @@
 
                   <label for="settingsControlRedoEdit">Redo Edit</label>
                   <input id="settingsControlRedoEdit" type="text" value="CTRL+SHIFT+Z">
-
-                  <label for="settingsControlCopyElements">Copy element(s)</label>
-                  <input id="settingsControlCopyElements" type="text" value="CTRL+C">
-
-                  <label for="settingsControlPasteElements">Paste element(s)</label>
-                  <input id="settingsControlPasteElements" type="text" value="CTRL+V">
-
-                  <label for="settingsControlPasteElementsAfter">Paste after</label>
-                  <input id="settingsControlPasteElementsAfter" type="text" value="CTRL+SHIFT+V">
-
-                  <label for="settingsControlCutElements">Cut element(s)</label>
-                  <input id="settingsControlCutElements" type="text" value="CTRL+X">
 
                   <label for="settingsControlClearAll">Clear All</label>
                   <input id="settingsControlClearAll" type="text" value="CTRL+Backspace">
@@ -975,36 +960,84 @@
           <div class="generalSettingsSection">
               <div class="generalSettingRow"><label for="postPosition" data-tooltip="Controls where the supports sit relative to the panels.">
                         Post Position:
-                      </label><div class="generalSettingControl"><select id="postPosition" name="postPosition" onchange="formHandler.readForm(event);"></select></div></div>
-              <div class="generalSettingRow"><label for="postType">Post Type:</label><div class="generalSettingControl"><select id="postType" name="postType" onchange="formHandler.readForm(event);"></select></div></div>
+                      </label><div class="generalSettingControl"><select id="postPosition" name="postPosition" onchange="formHandler.readForm(event);"></select></div>
+                <button type="button" class="postSettingReset" data-reset-post="postPosition" aria-label="Reset post position" title="Reset post position">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
+              <div class="generalSettingRow"><label for="postType">Post Type:</label><div class="generalSettingControl"><select id="postType" name="postType" onchange="formHandler.readForm(event);"></select></div>
+                <button type="button" class="postSettingReset" data-reset-post="postType" aria-label="Reset post type" title="Reset post type">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow"><label for="postColor" data-tooltip="Sets the color of the posts and supports.">
                         Post Color:
-                      </label><div class="generalSettingControl"><select id="postColor" name="postColor" onchange="formHandler.readForm(event);"></select></div></div>
+                      </label><div class="generalSettingControl"><select id="postColor" name="postColor" onchange="formHandler.readForm(event);"></select></div>
+                <button type="button" class="postSettingReset" data-reset-post="postColor" aria-label="Reset post color" title="Reset post color">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow"><label for="postThickness">Post Thickness (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="postThickness" min="0" max="2.5" step="0.5" value="1" onchange="formHandler.readForm(event);">
                         <input type="number" id="postThicknessValue" name="postThicknessValue" min="0" max="2.5" step="0.1" value="1" aria-label="Post thickness in rem" onchange="formHandler.readForm(event);">
-                      </div></div></div>
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="postThickness" aria-label="Reset post thickness" title="Reset post thickness">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
+              <div class="generalSettingRow"><label for="postHeight">Post Height (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="postHeight" min="24" max="60" step="0.5" value="30" onchange="formHandler.readForm(event);">
+                        <input type="number" id="postHeightValue" min="24" max="60" step="0.5" value="30" aria-label="Post height in rem" onchange="formHandler.readForm(event);">
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="postHeight" aria-label="Reset post height" title="Reset post height">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow postTrussSetting" hidden><label for="postTrussDepth" data-tooltip="Distance between the top and bottom chords of the truss.">Truss Height (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="postTrussDepth" min="2" max="12" step="0.05" value="4.35" onchange="formHandler.readForm(event);">
-                        <input type="number" id="postTrussDepthValue" min="2" max="12" step="0.05" value="4.35" aria-label="Truss height in rem" onchange="formHandler.readForm(event);">
-                      </div></div></div>
+                        <input type="number" id="postTrussDepthValue" name="postTrussDepthValue" min="2" max="12" step="0.05" value="4.35" aria-label="Truss height in rem" onchange="formHandler.readForm(event);">
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="postTrussDepth" aria-label="Reset truss height" title="Reset truss height">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow postTrussSetting" hidden><label for="postTrussPanelLength" data-tooltip="Target length of one truss panel, from one vertical to the next. Panels are evened out to fill the span.">Truss Panel Length (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="postTrussPanelLength" min="2" max="15" step="0.1" value="5" onchange="formHandler.readForm(event);">
-                        <input type="number" id="postTrussPanelLengthValue" min="2" max="15" step="0.1" value="5" aria-label="Truss panel length in rem" onchange="formHandler.readForm(event);">
-                      </div></div></div>
+                        <input type="number" id="postTrussPanelLengthValue" name="postTrussPanelLengthValue" min="2" max="15" step="0.1" value="5" aria-label="Truss panel length in rem" onchange="formHandler.readForm(event);">
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="postTrussPanelLength" aria-label="Reset truss panel length" title="Reset truss panel length">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow postMonotubeSetting" hidden><label for="postMonotubeRadius" data-tooltip="Bend radius where each upright turns into the span, measured to the tube centerline.">Corner Radius (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="postMonotubeRadius" min="0.5" max="10" step="0.1" value="3" onchange="formHandler.readForm(event);">
-                        <input type="number" id="postMonotubeRadiusValue" min="0.5" max="10" step="0.1" value="3" aria-label="Monotube corner radius in rem" onchange="formHandler.readForm(event);">
-                      </div></div></div>
+                        <input type="number" id="postMonotubeRadiusValue" name="postMonotubeRadiusValue" min="0.5" max="10" step="0.1" value="3" aria-label="Monotube corner radius in rem" onchange="formHandler.readForm(event);">
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="postMonotubeRadius" aria-label="Reset corner radius" title="Reset corner radius">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow"><label for="settingsPanelSpacing">Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="settingsPanelSpacing" min="0" max="8" step="0.1" value="1">
                         <input type="number" id="settingsPanelSpacingValue" min="0" max="8" step="0.1" value="1">
-                      </div></div></div>
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="settingsPanelSpacing" aria-label="Reset panel spacing" title="Reset panel spacing">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
               <div class="generalSettingRow"><label for="settingsDefaultPanelSpacing">Default Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="settingsDefaultPanelSpacing" min="0" max="8" step="0.1" value="1">
                         <input type="number" id="settingsDefaultPanelSpacingValue" min="0" max="8" step="0.1" value="1">
-                      </div></div></div>
-              <div class="generalSettingRow"><label for="showPost" id="showPostLabel">Hide Post:</label><div class="generalSettingControl"><input type="checkbox" id="showPost" name="showPost" value="showPost" onchange="formHandler.readForm(event);"></div></div>
+                      </div></div>
+                <button type="button" class="postSettingReset" data-reset-post="settingsDefaultPanelSpacing" aria-label="Reset default panel spacing" title="Reset default panel spacing">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
+              <div class="generalSettingRow"><label for="showPost" id="showPostLabel">Hide Post:</label><div class="generalSettingControl"><input type="checkbox" id="showPost" name="showPost" value="showPost" onchange="formHandler.readForm(event);"></div>
+                <button type="button" class="postSettingReset" data-reset-post="showPost" aria-label="Reset post visibility" title="Reset post visibility">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
+              </div>
           </div>
         </div>
       </div>
@@ -1149,34 +1182,46 @@
         <div class="sMModalContent">
           <div id="sMExitTabSetting">
             <div class="exitTabMainSettingsGrid" id="exitTabMainSettingsGrid">
-              <label for="exitNumber" id="exitNumberLabel" class="exitTabMainTextLabel">Text:</label>
-              <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00" class="exitTabMainTextInput" oninput="QuebecExitMarker.filterInput(event);" onchange="formHandler.readForm(event);">
+              <div class="exitTabMainField exitTabTextField">
+                <label for="exitNumber" id="exitNumberLabel">Text</label>
+                <input type="text" id="exitNumber" name="exitNumber" placeholder="Exit 00" oninput="QuebecExitMarker.filterInput(event);" onchange="formHandler.readForm(event);">
 
-              <div id="exitTollLogoPickerRow" class="exitTabAssetPickerRow hidden">
-                <input type="hidden" id="exitTollLogoPickerValue" value="TxTag">
-                <button type="button" id="exitTollLogoChooseButton" class="exitTabAssetChooseButton">
-                  <span class="material-symbols-outlined">image</span>
-                  <span id="exitTollLogoCurrent">TxTag</span>
-                </button>
+                <div id="exitTollLogoPickerRow" class="exitTabAssetPickerRow hidden">
+                  <input type="hidden" id="exitTollLogoPickerValue" value="TxTag">
+                  <button type="button" id="exitTollLogoChooseButton" class="exitTabAssetChooseButton" aria-labelledby="exitNumberLabel exitTollLogoCurrent">
+                    <span class="material-symbols-outlined" aria-hidden="true">image</span>
+                    <span id="exitTollLogoCurrent">TxTag</span>
+                  </button>
+                </div>
+
+                <div id="exitIconPickerRow" class="exitTabAssetPickerRow hidden">
+                  <input type="hidden" id="exitIconPickerValue" value="AIRPORT">
+                  <button type="button" id="exitIconChooseButton" class="exitTabAssetChooseButton" aria-labelledby="exitNumberLabel exitIconCurrent">
+                    <span class="material-symbols-outlined" aria-hidden="true">image</span>
+                    <span id="exitIconCurrent">Airport</span>
+                  </button>
+                </div>
               </div>
 
-              <div id="exitIconPickerRow" class="exitTabAssetPickerRow hidden">
-                <input type="hidden" id="exitIconPickerValue" value="AIRPORT">
-                <button type="button" id="exitIconChooseButton" class="exitTabAssetChooseButton">
-                  <span class="material-symbols-outlined">image</span>
-                  <span id="exitIconCurrent">Airport</span>
-                </button>
+              <div class="exitTabMainField">
+                <label for="exitVariant">Type</label>
+                <select id="exitVariant" class="exitTabVariantSelect" onchange="formHandler.readForm(event);"></select>
               </div>
 
-              <select id="exitVariant" class="exitTabVariantSelect" aria-label="Exit tab type" onchange="formHandler.readForm(event);"></select>
+              <div class="exitTabMainField">
+                <label for="exitTabPosition">Alignment</label>
+                <select id="exitTabPosition" class="exitTabPositionSelect" onchange="formHandler.readForm(event);"></select>
+              </div>
 
-              <select id="exitTabPosition" class="exitTabPositionSelect" onchange="formHandler.readForm(event);"></select>
+              <div class="exitTabMainField exitTabPlacementField">
+                <label for="exitTabWidth">Position</label>
+                <select id="exitTabWidth" class="exitTabWidthSelect" onchange="formHandler.readForm(event);"></select>
+              </div>
 
-              <select id="exitTabWidth" class="exitTabWidthSelect" aria-label="Exit tab width" onchange="formHandler.readForm(event);"></select>
-
-              <label for="exitTabBilingualBottomText" id="exitTabBilingualBottomTextLabel" class="exitTabBottomTextLabel" hidden>Bottom:</label>
-              <input type="text" id="exitTabBilingualBottomText" name="exitTabBilingualBottomText" placeholder="SORTIE" class="exitTabBottomTextInput" onchange="formHandler.readForm();" hidden>
-
+              <div class="exitTabMainField exitTabBottomTextField">
+                <label for="exitTabBilingualBottomText" id="exitTabBilingualBottomTextLabel" hidden>Bottom</label>
+                <input type="text" id="exitTabBilingualBottomText" name="exitTabBilingualBottomText" placeholder="SORTIE" onchange="formHandler.readForm();" hidden>
+              </div>
             </div>
 
             <div class="qcExitMarkerControls" hidden>
@@ -1283,7 +1328,7 @@
 
               <div class="exitTabCheckboxPanel">
                 <legend>Extra Settings</legend>
-                <label for="showLeft" id="showLeftLabel">Left:</label>
+                <label for="showLeft" id="showLeftLabel">LEFT Marker</label>
                 <input type="checkbox" id="showLeft" value="showLeft" name="showLeft" onchange="formHandler.readForm();">
                 <label for="topOffset">Top Offset:</label>
                 <input type="checkbox" id="topOffset" value="topOffset" name="topOffset" onchange="formHandler.readForm();">
@@ -2448,7 +2493,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
               <div class="exitOnlyRow"><label for="exitTextSpacing">Spacing:</label><input type="range" id="exitTextSpacing" min="-0.15" max="0.15" step="0.01" value="0"><input type="number" id="exitTextSpacingValue" step="0.01" value="0.00" aria-label="Exit only letter spacing"><button type="button" class="guideArrowReset" data-exit-reset="TextSpacing" aria-label="Reset exit only letter spacing"><span class="material-symbols-outlined">refresh</span></button></div>
               <div class="exitOnlyRow"><label for="exitTextColor">Color:</label><select id="exitTextColor"><option>Inherit</option></select></div>
               <h4>Background</h4>
-              <div class="exitOnlyRow exitOnlyColorRow"><label for="exitBackgroundColor">Background:</label><select id="exitBackgroundColor"></select><label class="exitOnlyColorOption" for="exitTopBorder">Top border:</label><input type="checkbox" id="exitTopBorder"></div>
+              <div class="exitOnlyRow exitOnlyColorRow"><label for="exitBackgroundColor">Background:</label><select id="exitBackgroundColor"><option>Inherit</option></select><label class="exitOnlyColorOption" for="exitTopBorder">Top border:</label><input type="checkbox" id="exitTopBorder"></div>
               <div class="exitOnlyRow exitOnlyColorRow"><label for="exitBorderColor">Border:</label><select id="exitBorderColor"><option>Inherit</option></select><label class="exitOnlyColorOption" for="exitColorEdges">Color corners:</label><input type="checkbox" id="exitColorEdges" checked></div>
               <div class="exitOnlyRow exitOnlyColorRow exitOnlyTexasRow" hidden><label class="exitOnlyColorOption" for="exitTexasBorder">Texas border:</label><input type="checkbox" id="exitTexasBorder" checked></div>
               <div class="exitOnlyRow exitOnlyForceWidthRow" hidden><label for="exitForceSubpanelWidth">Force subpanel width:</label><input type="checkbox" id="exitForceSubpanelWidth"></div>
@@ -2840,33 +2885,50 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </header>
-    <div class="welcomeSample" role="group" aria-label="Practice sign">
-      <span id="welcomePreviewDestination">Riverside</span>
-      <span id="welcomePreviewArrow" aria-label="Straight ahead">↑</span>
-    </div>
-    <section class="welcomeStep">
-      <p>Design highway signs with your own destinations, route shields, and arrows. Try editing this sample sign to learn the basics.</p>
-    </section>
-    <section class="welcomeStep" hidden>
-      <h3 tabindex="-1">1. Edit the destination</h3>
-      <p>Select text on a sign, or open <strong>Subpanels</strong> (<strong>Blocks</strong> on mobile) and choose a <strong>Control Text</strong> block. Try changing the sample destination.</p>
-      <label for="welcomeDestination">Destination</label>
-      <input id="welcomeDestination" type="text" value="Riverside" maxlength="40" autocomplete="off">
-    </section>
-    <section class="welcomeStep" hidden>
-      <h3 tabindex="-1">2. Set the direction</h3>
-      <p>Open <strong>Guide Arrows</strong> (<strong>Arrows</strong> on mobile) to choose an arrow and set its angle. Give the sample sign a direction.</p>
-      <div class="welcomeDirections" role="group" aria-label="Sample arrow direction">
-        <button type="button" data-arrow="↖" aria-pressed="false">Left</button>
-        <button type="button" data-arrow="↑" aria-pressed="true">Straight ahead</button>
-        <button type="button" data-arrow="↗" aria-pressed="false">Right</button>
+    <div class="welcomeBody">
+      <div class="welcomeSignPreview">
+        <div class="welcomeSample" role="group" aria-label="Practice sign">
+          <div class="welcomeShield" role="img" aria-label="Interstate 215">
+            <img src="img/shields/United%20States/Interstate/I-3Digit.svg" alt="" width="751" height="601" loading="lazy">
+            <span aria-hidden="true">215</span>
+          </div>
+          <span id="welcomePreviewDestination">Riverside</span>
+          <div class="welcomeSignDirection" data-welcome-direction="straight">
+            <img id="welcomePreviewArrow" class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="Arrow straight ahead" width="27" height="42" loading="lazy">
+          </div>
+        </div>
       </div>
-    </section>
-    <section class="welcomeStep" hidden>
-      <h3 tabindex="-1">3. Save your sign</h3>
-      <p>Open <strong>Export</strong> (under <strong>More</strong> on mobile) to save a PNG or SVG image. Choose JSON if you want to reopen the file and keep editing.</p>
-      <p>Use the <strong>Help</strong> button beside Undo to find more examples and editing tips.</p>
-    </section>
+      <section class="welcomeStep">
+        <h3 tabindex="-1">Make a guide sign</h3>
+        <p>Change the destination and arrow on this practice sign, then find those same tools in the editor.</p>
+      </section>
+      <section class="welcomeStep" hidden>
+        <h3 tabindex="-1">Change the destination</h3>
+        <p>Try a town or street name. In the editor, click the destination on a sign to open its <strong>Control Text</strong> block.</p>
+        <label for="welcomeDestination">Content</label>
+        <input id="welcomeDestination" type="text" value="Riverside" maxlength="40" autocomplete="off">
+      </section>
+      <section class="welcomeStep" hidden>
+        <h3 tabindex="-1">Point the arrow</h3>
+        <p>Pick a direction below. In the editor, open <strong>Guide Arrows</strong> (<strong>Arrows</strong> on mobile), pick <strong>Type A</strong> under <strong>Standard Arrows</strong>, and set the <strong>Angle</strong>.</p>
+        <div class="welcomeDirections" role="group" aria-label="Arrow direction">
+          <button type="button" data-welcome-direction="left" aria-pressed="false">
+            <img class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="" width="13" height="20" loading="lazy">Up left
+          </button>
+          <button type="button" data-welcome-direction="straight" aria-pressed="true">
+            <img class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="" width="13" height="20" loading="lazy">Straight
+          </button>
+          <button type="button" data-welcome-direction="right" aria-pressed="false">
+            <img class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="" width="13" height="20" loading="lazy">Up right
+          </button>
+        </div>
+      </section>
+      <section class="welcomeStep" hidden>
+        <h3 tabindex="-1">Save your sign</h3>
+        <p>Open <strong>Export</strong>. Choose <strong>PNG</strong> or <strong>SVG</strong> for an image, or <strong>JSON</strong> to reopen and edit the sign in SignMaker.</p>
+        <p>The <strong>Help</strong> button next to <strong>Undo</strong> opens the user guide.</p>
+      </section>
+    </div>
     <div class="welcomeActions">
       <button id="skipWelcome" type="button">Skip tutorial</button>
       <button id="welcomeBack" type="button" hidden>Back</button>

@@ -50,6 +50,7 @@
       addElement.setAttribute('aria-pressed',command.getAttribute('aria-pressed')??'false');
     }
     const deleteButton = document.getElementById("deleteRoad");
+    const mirrorForkButton = document.getElementById("mirrorFork");
     const hint = document.getElementById("elementsHint");
     const lanesInput = document.getElementById("roadLanes");
     const widthInput = document.getElementById("roadLaneWidth");
@@ -799,9 +800,11 @@
     // SignMaker's diagrammatic renderer draws every road.
     function drawRoad(sheet, road, shape, layers, className = "", solved = null) {
       const others = e => road.ends ? attachments(sheet, jointOf(sheet, road.ends[e].joint)).filter(item => item.road !== road) : [];
+      const fork = solved && road.ends && forkAt(sheet, road.ends[0].joint, solved);
       return window.DiagrammaticRoadRenderer(sheet,road,shape,layers,className,
         k=>boundary(shape,k), !others(1).some(item=>item.e===0),
-        { joined: [others(0).length > 0, others(1).length > 0], dashPhase: solved ? dashPhase(sheet, road, solved) : 0 });
+        { joined: [others(0).length > 0, others(1).length > 0], dashPhase: solved ? dashPhase(sheet, road, solved) : 0,
+          centerDashReference: Boolean(fork) });
     }
     // How far lane-line dashes have already run when this road starts: the
     // right-edge length of the roads feeding into it, so the dash pattern
@@ -810,7 +813,7 @@
       if (!road.ends || seen.has(road.id)) return 0;
       seen.add(road.id);
       const joint = jointOf(sheet, road.ends[0].joint);
-      const from = joint && laneLinks(sheet, joint).find(link => link.to === road)?.from;
+      const from = joint && (forkAt(sheet, joint.id, solved)?.trunk ?? laneLinks(sheet, joint).find(link => link.to === road)?.from);
       if (!from) return 0;
       return dashPhase(sheet, from, solved, seen) + polylineLength(boundary(shapeOf(sheet, from, solved), from.lanes));
     }
@@ -1415,6 +1418,7 @@
       addButton.disabled = !ready;
       addButton.setAttribute("aria-pressed", String(Boolean(drawing)));
       deleteButton.disabled = !selectedRoad;
+      mirrorForkButton.disabled = !selectedFork(sheet, solved);
       document.getElementById('roadCurveFields').hidden=!selectedRoad;
       if(selectedRoad&&!beingEdited(headSizeInput))headSizeInput.value=selectedRoad.arrowHeadSize??sheet.arrowHeadSize;
       headSizeValue.textContent=headSizeInput.value+'%';
@@ -1742,6 +1746,88 @@
       regroup(sheet, joint, before);
     }
 
+    function forkAt(sheet, jointId, solved) {
+      const connected = solved.byJoint.get(jointId);
+      if (connected?.length !== 3) return null;
+      const approaching = connected.filter(item => item.e === 1);
+      if (approaching.length !== 1) return null;
+
+      const { road: trunk, end } = approaching[0];
+      const branches = connected.filter(item => item.e === 0).map(item => item.road);
+      if (branches.includes(trunk) || branches.some(road =>
+        road.ends[0].sign !== end.sign || road.arcLoop ||
+        solved.byJoint.get(road.ends[1].joint)?.length !== 1
+      )) return null;
+      return { trunk, branches, joint: jointOf(sheet, jointId) };
+    }
+
+    function selectedFork(sheet, solved) {
+      if (!solved || drawing || curvePick) return null;
+      const jointIds = selectedRoad ? selectedRoad.ends.map(end => end.joint) : solved.byJoint.keys();
+      let match = null;
+      for (const id of jointIds) {
+        const fork = forkAt(sheet, id, solved);
+        if (!fork) continue;
+        if (match) return null;
+        match = fork;
+      }
+      return match;
+    }
+
+    function mirrorSelectedFork() {
+      const sheet = sheets.selected;
+      if (!sheet) return;
+      const solved = solve(sheet);
+      const fork = selectedFork(sheet, solved);
+      if (!fork) return;
+
+      const { trunk, branches, joint } = fork;
+      const at = (road, end) => solved.get(`${road.id}:${end}`);
+      const [first, second] = branches.map(road => at(road, 0));
+      const pivot = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+      // The shared joint fixes the lateral offsets. Its direction keeps those
+      // starting offsets mirrored even when the two branches have different widths.
+      const direction = joint.dir ?? endOf(centerline(trunk, solved), 1).tangent ?? travelAt(trunk, 1, solved);
+      if (Math.hypot(direction.x, direction.y) < 1e-6) return;
+      const axis = [pivot, { x: pivot.x + direction.x, y: pivot.y + direction.y }];
+      const side = rightOf(direction);
+      const bend = road => {
+        const start = at(road, 0), tip = at(road, 1);
+        return Math.abs(dot({ x: tip.x - start.x, y: tip.y - start.y }, side));
+      };
+      const source = branches.includes(selectedRoad) ? selectedRoad
+        : bend(branches[1]) > bend(branches[0]) ? branches[1] : branches[0];
+      const target = branches.find(road => road !== source);
+
+      for (const key of ["arcAngle", "arcAnchorEnd", "arcJoinFit", "arcJoinRadius", "clothoid", "straightened", "arrowHeadSize"]) {
+        delete target[key];
+      }
+      if (source.arcAngle != null) {
+        target.arcAngle = -source.arcAngle;
+        const anchor = diagrammaticArcAnchor(sheet, source, solved);
+        // A parent with a different tangent cannot also constrain this mirror.
+        target.arcAnchorEnd = anchor && Math.abs(dot(anchor.direction, side)) < 1e-6 ? 0 : null;
+      }
+      if (source.clothoid) target.clothoid = { start: -source.clothoid.start, end: -source.clothoid.end };
+      if (source.straightened != null) target.straightened = source.straightened;
+      if (source.arrowHeadSize != null) target.arrowHeadSize = source.arrowHeadSize;
+
+      const tip = jointOf(sheet, target.ends[1].joint);
+      Object.assign(tip, curveLinks.reflectPoint(at(source, 1), axis));
+      for (const e of [0, 1]) {
+        const end = target.ends[e];
+        curveLinks.unlink(sheet, end.curveLink);
+        const travel = at(source, e).travel;
+        end.length = source.ends[e].length;
+        end.dir = travel ? curveLinks.reflectVector(travel, axis) : null;
+      }
+      tip.dir = target.ends[1].dir && {
+        x: target.ends[1].dir.x * target.ends[1].sign,
+        y: target.ends[1].dir.y * target.ends[1].sign,
+      };
+      changed();
+    }
+
     const nodeRef = (road, e) => ({ road: road.id, e });
     function curveEnd(ref) {
       const road = roadOf(sheets.selected, ref?.road);
@@ -1963,6 +2049,7 @@
       updateAddElement();
     });
     deleteButton.addEventListener("click", deleteRoad);
+    mirrorForkButton.addEventListener("click", mirrorSelectedFork);
     autoTapersInput.addEventListener("change", () => {
       if (!sheets.selected) return;
       sheets.selected.autoTapers = autoTapersInput.checked;

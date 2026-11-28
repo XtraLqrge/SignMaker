@@ -3,7 +3,19 @@ window.SignMakerBoot = (() => {
   const script = document.currentScript;
   const sources = JSON.parse(script?.dataset.editorScripts || "[]");
   const stylesheet = script?.dataset.editorCss;
+  const postSupportSource = sources.find(source => /\/FDOTSupports\./.test(source));
   let loading;
+  let postSupports;
+  const loadScript = source => new Promise((resolve, reject) => {
+    const element = document.createElement("script");
+    element.async = false;
+    element.src = source;
+    element.onload = resolve;
+    element.onerror = () => reject(new Error("Unable to load editor code."));
+    document.head.appendChild(element);
+  });
+  const loadPostSupports = () => postSupports ??=
+    (postSupportSource ? loadScript(postSupportSource) : Promise.resolve());
   const loadEditor = () => {
     if (loading) return loading;
     const styles = !stylesheet ? Promise.resolve() : new Promise((resolve, reject) => {
@@ -14,14 +26,7 @@ window.SignMakerBoot = (() => {
       link.onerror = () => reject(new Error("Unable to load editor styles."));
       document.head.appendChild(link);
     });
-    const scripts = sources.map(source => new Promise((resolve, reject) => {
-      const element = document.createElement("script");
-      element.async = false;
-      element.src = source;
-      element.onload = resolve;
-      element.onerror = () => reject(new Error("Unable to load editor code."));
-      document.head.appendChild(element);
-    }));
+    const scripts = sources.map(source => source === postSupportSource ? loadPostSupports() : loadScript(source));
     loading = Promise.all([styles, ...scripts]);
     return loading;
   };
@@ -34,5 +39,5 @@ window.SignMakerBoot = (() => {
       .some(key => storage.getItem(key) !== null);
     if (hasSnapshot || hasPostPreferences) loadEditor().catch(() => {});
   } catch (_) {}
-  return { loadEditor };
+  return { loadEditor, loadPostSupports };
 })();

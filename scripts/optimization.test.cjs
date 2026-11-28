@@ -22,6 +22,207 @@ function declaration(file,name,functionOnly=false) {
 }
 const context=extras=>vm.createContext({console,URL,Promise,setTimeout,clearTimeout,queueMicrotask,...extras});
 
+test('the tutorial uses Type A artwork and updates the practice sign direction', () => {
+  const { Event, parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
+  const html = read('scripts/index.source.html');
+  const start = html.indexOf('<dialog id="welcomeToSignMaker"');
+  const markup = html.slice(start, html.indexOf('</dialog>', start) + '</dialog>'.length);
+  const tree = parseDOM(markup);
+  const dialog = tree.querySelector('#welcomeToSignMaker');
+  dialog.showModal = () => {};
+  dialog.querySelectorAll('h3').forEach(heading => { heading.focus = () => {}; });
+  const byId = id => tree.querySelector('#' + id);
+  const c = context({document: {getElementById: byId}, getStoredItem: () => null});
+  vm.runInContext(declaration('public/js/form.js', 'showWelcomeTutorial') + 'showWelcomeTutorial();', c);
+
+  const arrow = byId('welcomePreviewArrow');
+  const directions = dialog.querySelectorAll('.welcomeDirections button');
+  assert.equal(arrow.getAttribute('src'), 'img/arrows/TYPE_A.svg');
+  assert.equal(directions.length, 3);
+  const click = node => node.dispatchEvent(new Event('click'));
+  click(byId('welcomeNext'));
+  const destination = byId('welcomeDestination');
+  destination.value = 'Main Street';
+  destination.dispatchEvent(new Event('input'));
+  assert.equal(byId('welcomePreviewDestination').textContent, 'Main Street');
+  click(byId('welcomeNext'));
+  for (const button of directions) {
+    assert.equal(button.querySelector('img').getAttribute('src'), arrow.getAttribute('src'));
+    click(button);
+    assert.equal(arrow.parentElement.dataset.welcomeDirection, button.dataset.welcomeDirection);
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.equal(directions.filter(option => option.getAttribute('aria-pressed') === 'true').length, 1);
+  }
+  assert.equal(arrow.alt, 'Arrow pointing up right');
+});
+
+test('the exit tab editor labels each top control and the LEFT marker', () => {
+  const { parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
+  const tree = parseDOM(read('scripts/index.source.html'));
+  const fields = tree.querySelector('#exitTabMainSettingsGrid').children.slice(0, 4);
+  assert.deepEqual(fields.map(field => field.querySelector('label').textContent), [
+    'Text', 'Type', 'Alignment', 'Position',
+  ]);
+  assert.deepEqual(fields.map(field => field.querySelector('label').getAttribute('for')), [
+    'exitNumber', 'exitVariant', 'exitTabPosition', 'exitTabWidth',
+  ]);
+  assert.equal(tree.querySelector('#showLeftLabel').textContent, 'LEFT Marker');
+});
+
+test('menus leave native keys alone and admit only app history shortcuts', () => {
+  const form = 'public/js/form.js';
+  const bar = {dataset: {currentMenu: ''}};
+  const overlay = {style: {display: ''}};
+  const closedContext = {getClientRects: () => []};
+  let popup = null;
+  let contextMenus = [closedContext];
+  const calls = [];
+  const shortcutActions = [
+    ['2', 'settingsControlPanelMenu'],
+    ['r', 'settingsControlNewRow'],
+    ['r-alt', 'settingsControlDeleteRow'],
+    ['z', 'settingsControlUndoEdit'],
+    ['z-shift', 'settingsControlRedoEdit'],
+  ].map(([key, fieldId]) => ({key, fieldId, run: () => calls.push(key)}));
+  const c = context({
+    document: {
+      getElementById: id => id === 'sMConfigBar' ? bar : overlay,
+      querySelector: () => popup,
+      querySelectorAll: () => contextMenus,
+    },
+    shortcutActions,
+    shortcutFieldMatchesEvent: (fieldId, event) => shortcutActions.some(action => action.fieldId === fieldId && action.key === event.key),
+    isShortcutActionAllowedByMode: () => true,
+  });
+  const names = ['isNativeKeyboardTarget', 'hasOpenContextMenu', 'isAppMenuOpen', 'isUndoRedoShortcutField', 'editorKeydown'];
+  vm.runInContext(names.map(name => declaration(form, name)).join('\n') + 'this.editorKeydown = editorKeydown;', c);
+
+  const press = (key, originalTarget) => {
+    const event = {
+      key,
+      target: {},
+      composedPath: () => originalTarget ? [originalTarget, event.target] : [event.target],
+      defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; },
+      stopPropagation() {},
+    };
+    c.editorKeydown(event);
+    return event.defaultPrevented;
+  };
+
+  for (const menu of ['panelSelector', 'panelStyleConfig', 'postStyleConfig', 'exitTabConfig', 'subPanelConfig', 'guideArrowConfig', 'templates', 'appSettingsConfig', 'mobileMore']) {
+    bar.dataset.currentMenu = menu;
+    assert.equal(press('2'), false, menu);
+    assert.equal(press('r'), false, menu);
+    assert.equal(press('r-alt'), false, menu);
+  }
+  assert.equal(press('z'), true);
+  assert.equal(press('z-shift'), true);
+  bar.dataset.currentMenu = '';
+  overlay.style.display = 'flex';
+  assert.equal(press('2'), false);
+  overlay.style.display = '';
+  popup = {};
+  assert.equal(press('r'), false);
+  popup = null;
+  contextMenus = [{getClientRects: () => [{}]}];
+  assert.equal(press('r-alt'), false);
+  contextMenus = [closedContext];
+  const shadowInput = {matches: selector => selector.includes('input:not')};
+  assert.equal(press('2', shadowInput), false);
+  assert.equal(press('z', shadowInput), false);
+  assert.equal(press('2'), true);
+  assert.equal(press('r'), true);
+  assert.deepEqual(calls, ['z', 'z-shift', '2', 'r']);
+});
+
+test('Post Style provides one reset per row and hides controls for other support types', () => {
+  const { parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
+  const { cascade } = require('./fixtures/css-cascade.cjs');
+  const tree = parseDOM(read('scripts/index.source.html'));
+  const modal = tree.querySelector('#postStyleModal');
+  const style = cascade(read('public/css/dropdown-layout.css'));
+  const rows = modal.querySelectorAll('.generalSettingRow');
+  assert.equal(rows.length, 11);
+  assert.equal(modal.querySelector("#postHeight").getAttribute("value"), "30");
+  assert.equal(modal.querySelector("#postHeightValue").getAttribute("value"), "30");
+  for (const row of rows) {
+    const label = row.querySelector('label');
+    const reset = row.children.at(-1);
+    assert.equal(reset.dataset.resetPost, label.getAttribute('for'));
+    assert.match(reset.getAttribute('aria-label'), /^Reset /);
+  }
+  for (const selector of ['.postTrussSetting', '.postMonotubeSetting']) {
+    const row = modal.querySelector(selector);
+    assert.equal(style(row, 'display'), 'none');
+    row.removeAttribute('hidden');
+    row.hidden = false;
+    assert.equal(style(row, 'display'), 'grid');
+  }
+});
+
+test('FDOT and Tampa geometry uses the post settings and shares the standard mounting line', () => {
+  const { Node } = require('./fixtures/mobile-dom.cjs');
+  const container = new Node('div');
+  const panels = new Node('div');
+  panels.id = 'panelContainer';
+  container.append(panels);
+  container.offsetWidth = 800;
+  container.offsetHeight = 600;
+  container.getBoundingClientRect = () => ({left: 0, width: 800});
+  panels.offsetLeft = 110;
+  panels.offsetWidth = 580;
+  function Post() {}
+  Post.prototype.polePositions = [];
+  const window = {};
+  const colors = { '--post-color-mid': '#bfbfbf', '--post-color-light': '#f0f0f0', '--post-color-dark': '#808080' };
+  const c = context({
+    window, Post, cancelAnimationFrame() {},
+    document: {
+      documentElement: {},
+      createElement(tag) {
+        if (tag === 'canvas') return {getContext: () => ({fillStyle: '#000000'})};
+        return new Node(tag);
+      },
+    },
+    getComputedStyle: () => ({fontSize: '20px', getPropertyValue: key => colors[key] || '7.5rem'}),
+  });
+  container.insertBefore = layer => panels.before(layer);
+  vm.runInContext(read('public/js/FDOTSupports.js'), c);
+  const api = window.SignMakerFDOTSupports;
+  const post = {thickness: 1, polePosition: 'FDOTSpan'};
+  const render = () => {
+    api.prepare(post, container, panels);
+    api.render(post, container, panels);
+    return decodeURIComponent(container.querySelector('.fdotSupport').getAttribute('src').split(',')[1]);
+  };
+  const normal = render();
+  assert.equal(container.style.height, undefined);
+  assert.equal(container.style.padding, undefined);
+  assert.equal(container.dataset.supportPosition, 'Overhead');
+  assert.match(normal, /height="600" viewBox="0 0 40 30"/);
+  const bays = svg => Number(svg.match(/data-panels="(\d+)"/)[1]);
+  assert.match(normal, /data-depth="4\.35"/);
+  post.trussDepth = '7.1';
+  post.trussPanelLength = '2';
+  const adjusted = render();
+  assert.match(adjusted, /data-depth="7\.1"/);
+  assert.ok(bays(adjusted) > bays(normal));
+  assert.equal(bays(adjusted) % 2, 0);
+  post.polePosition = 'TampaMonotubeSpanCurved';
+  assert.match(render(), /data-radius="3"/);
+  post.monotubeRadius = 7;
+  assert.match(render(), /data-radius="7"/);
+  post.polePosition = 'TampaMonotubeSpanMitered';
+  assert.match(render(), /data-radius="0"/);
+  assert.equal(api.trussSettings({trussDepth: null}).depth, 4.35);
+  post.polePosition = 'Overhead';
+  api.prepare(post, container, panels);
+  assert.equal(container.style.paddingInline, '');
+  assert.equal(container.dataset.supportPosition, undefined);
+  assert.equal(container.querySelector('.fdotSupport'), null);
+});
+
 test('undoing a preview scale does not add an export pixel to an integer dimension',()=>{
   const c=context({});
   vm.runInContext(declaration('public/js/main.js','roundExportExtent')+'this.round=roundExportExtent;',c);
@@ -298,6 +499,22 @@ test('returning visits fetch their editor alongside the rendering scripts',async
   }});
   vm.runInContext(read('public/js/Startup.js'),c);assert.equal(added.length,1);
   added[0].onload();await c.window.SignMakerBoot.loadEditor();
+});
+test('the first-run support can load before the rest of the editor and is fetched once', async () => {
+  const added = [];
+  const startup = context({ window: { localStorage: { getItem: () => null } }, document: {
+    currentScript: { dataset: { editorScripts: '["js/FDOTSupports.123.js","js/editor.js"]' } },
+    createElement: () => ({}), head: { appendChild: element => added.push(element) }
+  } });
+  vm.runInContext(read('public/js/Startup.js'), startup);
+  const engine = startup.window.SignMakerBoot.loadPostSupports();
+  assert.deepEqual(added.map(element => element.src), ['js/FDOTSupports.123.js']);
+  added[0].onload();
+  await engine;
+  const editor = startup.window.SignMakerBoot.loadEditor();
+  assert.deepEqual(added.map(element => element.src), ['js/FDOTSupports.123.js', 'js/editor.js']);
+  added[1].onload();
+  await editor;
 });
 test('critical CSS and deferred editor assets are complete and independently cached',()=>{
   const manifest=JSON.parse(read('build-manifest.json')),html=read('public/index.html');

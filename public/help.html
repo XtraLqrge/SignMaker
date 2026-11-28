@@ -488,6 +488,7 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
   <li>Use the panel’s visibility control to hide it while keeping it in the project. Use the delete control to remove it.</li>
  </ol>
  <h2>Arrange the signs</h2>
+ <p>To set the horizontal gap between subpanels on a face, open the panel selector and tap <kbd>Shift</kbd>. Enter a value in the <strong>Gap</strong> field beside that panel in rem. Tap <kbd>Shift</kbd> again to hide the fields. On a phone the fields are always visible in the panel selector.</p>
  <p>On desktop, drag a sign face left or right to reorder it. The insertion marker shows where it will land. Drag up or down on supported posts to change the mounting offset. The dominant drag direction determines which action starts. A stack moves as a unit.</p>
  <p>When panel edges or centers line up, SignMaker shows a snap guide. Hold <kbd>Alt</kbd> or <kbd>Option</kbd> to bypass snapping. Press <kbd>Escape</kbd> during the drag to cancel it.</p>
  <p class="related">See also <a href="#stacks">Stack panels</a> · <a href="#post-style">Choose a post or support</a> · <a href="#mobile">Use SignMaker on a phone</a></p>
@@ -526,12 +527,13 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
  <p class="lead">Open <strong>Post Style</strong> from the toolbar or click the support in the preview. These changes apply to the whole assembly.</p>
  <ol class="procedure">
   <li>Choose a <strong>Post Position</strong>, then select a compatible <strong>Post Type</strong>. Changing position can select that position’s standard support.</li>
-  <li>Use <strong>Post Color</strong> and <strong>Post Thickness</strong> to adjust the appearance. Use <strong>Hide Post</strong> to see the faces by themselves.</li>
+  <li>Use <strong>Post Color</strong>, <strong>Post Thickness</strong>, and <strong>Post Height</strong> to adjust the support. Use <strong>Hide Post</strong> to see the faces by themselves.</li>
   <li>Set <strong>Panel Spacing</strong> for the current assembly. <strong>Default Panel Spacing</strong> sets the starting value for new work.</li>
  </ol>
  <h2>Use an FDOT preset</h2>
  <p>Look in the FDOT group in <strong>Post Type</strong>. Options depend on the position. Presets include ground posts, cantilevers and spans, overhead trusses, walk-in message sign supports, mast arms, and span wires. The support drawing follows the size of the sign assembly.</p>
  <p>Use <strong>Entire Post</strong> in the export preview when you want the support in the image. The support drawings illustrate the appearance of the assembly.</p>
+ <p>Post Style shows Truss Height and Truss Panel Length for trusses, and Corner Radius for curved Tampa monotubes. Use the reset button at the right of a row to restore that setting’s default.</p>
 </article>
 <article id="subpanels" data-title="Work with subpanels" data-keywords="vertical divider left right add duplicate header footer top bottom blocks">
  <h1>Work with subpanels</h1>
@@ -690,8 +692,8 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
  <p class="lead">Open <strong>Exit Tabs</strong> on the selected panel to edit the small sign or label that identifies an exit.</p>
  <ol class="procedure">
   <li>Select a tab in the list, or use <strong>+</strong> to add one. Enter the label in <strong>Text</strong>. If a standard tab is empty, it may stay hidden until you enter text.</li>
-  <li>Pick a type and choose the placement and width. Available settings depend on the type and the sign’s arrow layout.</li>
-  <li>Adjust the font, text spacing, text and background colors, border, minimum height, and padding. The corner radius can follow the sign face or use a custom value.</li>
+  <li>Choose a <strong>Type</strong>, then use <strong>Alignment</strong> to place the tab left, center, or right. Use <strong>Position</strong> to set how it sits along the panel edge.</li>
+  <li>Adjust the font, text spacing, text and background colors, border, minimum height, and padding. The corner radius can follow the sign face or use a custom value. Use <strong>LEFT Marker</strong> to add the yellow LEFT label where available.</li>
  </ol>
  <h2>Work with more than one tab</h2>
  <p>Use the tab list to select, duplicate, or remove tabs. Use <strong>Nest Exit Tab</strong> to attach a tab to the selected tab. Adjust <strong>Nested Tab Spacing</strong> if the attached tabs need more room. Review placement again after changing a panel’s width or subpanels.</p>
@@ -699,7 +701,7 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
 </article>
 <article id="exit-types" data-title="Choose an exit tab type" data-keywords="California Quebec Standard Default Full Left Stacked Vertical Toll Logo Icon bilingual border exit marker">
  <h1>Choose an exit tab type</h1>
- <p class="lead">Use the type picker next to the exit tab text. Choose the artwork and layout first, then set the placement.</p>
+ <p class="lead">Choose the artwork and layout in <strong>Type</strong>, then set the placement.</p>
  <div class="table-wrap"><table><thead><tr><th scope="col">Type or option</th><th scope="col">Use it for</th></tr></thead><tbody>
   <tr><th scope="row">Standard</th><td>An ordinary text tab, such as <strong>EXIT 24A</strong>. Use width and position to fit the tab to the face.</td></tr>
   <tr><th scope="row">California</th><td>An inset tab at the top-left or top-right corner of the sign. The inset type controls its position. Use the available alignment and sizing options.</td></tr>
@@ -776,12 +778,13 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
  <ol class="procedure">
   <li>Choose the arrow stem in the add menu and start drawing. Click where it should start, then click again to place the next point. A new standalone stem starts straight up. Hold <kbd>Shift</kbd> while drawing to choose a different direction.</li>
   <li>Continue clicking to add segments. Start or end near an existing lane endpoint or edge to connect a branch. Double-click or press <kbd>Escape</kbd> to finish drawing.</li>
-  <li>Select a stem to change its lane count, lane width, curve, or arrowhead size. Use the lane node menu for taper and connection controls, or to change overlap order where stems cross.</li>
+  <li>Select a stem to change its lane count, lane width, curve, or arrowhead size. Automatic tapers start off. Turn on <strong>Auto tapers</strong> for the whole diagram, or use the lane node menu to taper an individual lane.</li>
  </ol>
  <h2>Move or shape the arrows</h2>
  <ul>
   <li><strong>Move an assembly.</strong> Drag the body of a stem to move all the stems connected to it. Use <strong>Move assemblies</strong> to move the entire drawing.</li>
   <li><strong>Move one end.</strong> Drag a lane node to adjust that endpoint. Use the curve controls to change the bend or radius.</li>
+  <li><strong>Mirror a fork.</strong> Select the branch to keep and click <strong>Mirror fork</strong>. The other branch follows its length, curve, and arrowhead size. Both branches must have free tips beyond the split.</li>
   <li><strong>Straighten a path.</strong> With <strong>Straighten on Shift-click</strong> enabled, click a lane node, then <kbd>Shift</kbd>-click another node on the connected path.</li>
  </ul>
  <p>Use <strong>Consistent gaps on turns</strong> to keep dashes in step through curves. Use the diagram editor’s JSON controls to exchange the arrow drawing by itself.</p>
@@ -924,9 +927,9 @@ article .related { margin: 1.55rem 0 0; padding-top: 1rem; border-top: 1px solid
   <tr><th scope="row">Delete the selected item</th><td><kbd>Alt</kbd> + <kbd>P</kbd> for a panel, <kbd>Alt</kbd> + <kbd>S</kbd> for a subpanel, or <kbd>Alt</kbd> + <kbd>R</kbd> for a row</td></tr>
   <tr><th scope="row">Close a menu / show or hide menus</th><td><kbd>Esc</kbd> / <kbd>F1</kbd></td></tr>
   <tr><th scope="row">Open an editor</th><td><kbd>1</kbd> Post Style, <kbd>2</kbd> Panels, <kbd>3</kbd> Panel Style, <kbd>4</kbd> Exit Tabs, <kbd>5</kbd> Subpanels, <kbd>6</kbd> Guide Arrows, <kbd>7</kbd> Templates, <kbd>8</kbd> Export, <kbd>9</kbd> theme</td></tr>
-  <tr><th scope="row">Zoom</th><td><kbd>=</kbd> and <kbd>−</kbd>. In Diagrammatics, <kbd>F</kbd> fits the view.</td></tr>
+  <tr><th scope="row">Zoom</th><td><kbd>=</kbd> and <kbd>−</kbd> with the menus closed. Use <strong>Fit</strong> or the zoom buttons in Diagrammatics.</td></tr>
  </tbody></table></div>
- <p>Copy, cut, paste, and paste-after bindings for blocks appear in the same Shortcuts menu. Click the canvas or select a block before using a sign shortcut if a text field currently has focus.</p>
+ <p>With a SignMaker menu open, the app’s Undo and Redo shortcuts work outside text fields. Text fields keep their usual typing and editing commands, and <kbd>Esc</kbd> closes the active menu. Use the block’s context menu to copy, cut, or paste blocks.</p>
 </article>
 <article id="troubleshoot" data-title="Troubleshoot common problems" data-keywords="troubleshooting FAQ missing sign lost work blank arrow not visible can't export clipboard incorrect font lag">
  <h1>Troubleshoot common problems</h1>

@@ -3041,53 +3041,6 @@ dialog:not([open]) {
 }
 
 
-.iconGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 1rem;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 1rem;
-  background: rgba(var(--baseColor), 0.1);
-}
-
-.iconGridItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  text-align: center;
-  background-color: rgba(128, 128, 128, 0.2);
-}
-
-.iconGridItem:hover {
-  background-color: var(--selectedColor);
-}
-
-.iconGridItem img {
-  width: 3rem;
-  height: 3rem;
-  object-fit: contain;
-}
-
-.iconGridItem span {
-  display: none;
-}
-
-#iconSearch {
-  width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
-  font-size: 1rem;
-}
-
-#arrowGrid .iconGridItem img {
-  filter: invert(1);
-}
-
 /* APL Divider Controls */
 .aplDividerRadioGroup {
   display: flex;
@@ -5039,30 +4992,6 @@ dialog:not([open]) {
   border-top-color: rgba(255, 255, 255, 0.2);
 }
 
-:root[data-theme="dark"] .iconGrid {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-:root[data-theme="dark"] .iconGridItem {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-:root[data-theme="dark"] .iconGridItem:hover {
-  background-color: var(--selectedColor);
-}
-
-:root[data-theme="dark"] #iconSearch,
-:root[data-theme="dark"] #arrowSearch,
-:root[data-theme="dark"] #tollLogoSearch {
-  background-color: rgb(50, 50, 50);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-:root[data-theme="dark"] #iconGrid .iconGridItem img {
-  filter: invert(1);
-}
-
 :root[data-theme="dark"] #downloadContent {
   background-color: rgb(28, 34, 52);
   color: rgb(235, 240, 255);
@@ -6975,244 +6904,616 @@ label[for="sdShield_bannerFontSize"] {
   letter-spacing: 0.01em;
 }
 
-/* Image asset selector dialogs: icon, toll logo, arrow */
+/* =========================================================
+   Asset pickers: icons, toll logos and arrows.
+   One windowed dialog, one card, one preview box. Every image
+   is scaled to fit its preview box, whatever its source size.
+   Mobile layouts live in mobile.css.
+   ========================================================= */
+
+:root {
+  --assetPickerDialogBg: #eef3ff;
+  --assetPickerHeaderBg: #dbe6ff;
+  --assetPickerBorder: rgba(0, 0, 0, 0.16);
+  --assetPickerCardBg: rgba(255, 255, 255, 0.78);
+  --assetPickerCardHoverBg: rgba(255, 255, 255, 0.95);
+  --assetPickerPreviewBg: rgba(0, 0, 0, 0.035);
+  --assetPickerText: #121827;
+  --assetPickerMutedText: rgba(18, 24, 39, 0.72);
+  --assetPickerInputBg: #ffffff;
+  --assetPickerInputBorder: rgba(0, 0, 0, 0.28);
+  --assetPickerCloseBg: rgba(0, 0, 0, 0.08);
+  --assetPickerCloseHoverBg: rgba(0, 0, 0, 0.16);
+  /* Icons and arrows are mostly white artwork (a few are colored), so in light
+     mode they sit on a dark tile instead of being recolored. */
+  --assetPickerGlyphTileBg: #4b5568;
+}
+
+:root[data-theme="dark"] {
+  --assetPickerDialogBg: rgb(31, 40, 66);
+  --assetPickerHeaderBg: rgb(18, 23, 38);
+  --assetPickerBorder: rgba(255, 255, 255, 0.14);
+  --assetPickerCardBg: rgba(255, 255, 255, 0.08);
+  --assetPickerCardHoverBg: rgba(255, 255, 255, 0.16);
+  --assetPickerPreviewBg: rgba(255, 255, 255, 0.05);
+  --assetPickerText: #ffffff;
+  --assetPickerMutedText: rgba(255, 255, 255, 0.72);
+  --assetPickerInputBg: rgba(0, 0, 0, 0.22);
+  --assetPickerInputBorder: rgba(255, 255, 255, 0.18);
+  --assetPickerCloseBg: rgba(0, 0, 0, 0.35);
+  --assetPickerCloseHoverBg: rgba(255, 255, 255, 0.12);
+  --assetPickerGlyphTileBg: var(--assetPickerPreviewBg);
+}
+
+/* Window */
 dialog.assetSelectorDialog {
-  width: min(52rem, 90vw);
-  max-width: min(52rem, 90vw);
-  max-height: min(42rem, 88vh);
+  --assetCardWidth: 7.5rem;
+  --assetPreviewHeight: 4.5rem;
+  --assetPickerInset: 1rem;
+  position: fixed;
+  inset: 0;
+  width: min(60rem, calc(100vw - 2rem));
+  height: min(44rem, calc(100vh - 2rem));
+  max-width: none;
+  max-height: none;
+  margin: auto;
   padding: 0;
-  border: 0;
-  background: var(--hotbarColor);
-  color: var(--textColor);
-  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--assetPickerBorder);
+  box-sizing: border-box;
   overflow: hidden;
-  flex-direction: column;
-  gap: 0;
+  background: var(--assetPickerDialogBg);
+  color: var(--assetPickerText);
+  box-shadow: 0 1.25rem 3.5rem rgba(0, 0, 0, 0.5);
+}
+
+/* Outranks the generic themed dialog colors. */
+:root[data-theme] dialog.assetSelectorDialog {
+  background: var(--assetPickerDialogBg);
+  color: var(--assetPickerText);
 }
 
 dialog.assetSelectorDialog[open] {
   display: flex !important;
+  flex-direction: column;
 }
 
 dialog.assetSelectorDialog::backdrop {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
 }
 
+#tollLogoSelectorModal {
+  --assetCardWidth: 9rem;
+}
+
+/* Header */
 .assetSelectorHeader {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.1rem 0.75rem;
-  background: rgba(var(--baseColor), 0.35);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.9rem var(--assetPickerInset) 0.8rem;
+  background: var(--assetPickerHeaderBg);
+  border-bottom: 1px solid var(--assetPickerBorder);
 }
 
 .assetSelectorHeader h3 {
   margin: 0;
-  font-family: "Inter", sans-serif;
-  font-size: 1.25rem;
-  line-height: 1.1;
+  padding: 0;
+  color: var(--assetPickerText);
+  font: 700 1.25rem/1.15 "Inter", sans-serif;
 }
 
 .assetSelectorHeader p {
   margin: 0.25rem 0 0;
-  opacity: 0.75;
-  font-family: "Inter", sans-serif;
-  font-size: 0.85rem;
-  line-height: 1.25;
+  color: var(--assetPickerMutedText);
+  font: 400 0.85rem/1.25 "Inter", sans-serif;
   text-transform: none;
   letter-spacing: normal;
 }
 
 .assetSelectorClose {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
   width: 2.2rem;
   height: 2.2rem;
   min-width: 2.2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--textColor);
+  background: var(--assetPickerCloseBg);
+  color: var(--assetPickerText);
   cursor: pointer;
 }
 
 .assetSelectorClose:hover {
-  background: var(--hoverColor);
+  background: var(--assetPickerCloseHoverBg);
 }
 
+/* Search */
 .assetSelectorSearch {
-  margin: 0.85rem 1rem 0;
-  width: calc(100% - 2rem);
+  flex: 0 0 auto;
+  width: calc(100% - 2 * var(--assetPickerInset));
+  margin: 0.85rem var(--assetPickerInset) 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--assetPickerInputBorder);
   box-sizing: border-box;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--textColor);
-  font-family: "Inter", sans-serif;
-  font-size: 1rem;
+  background: var(--assetPickerInputBg);
+  color: var(--assetPickerText);
+  font: 400 1rem "Inter", sans-serif;
 }
 
-.assetPickerGrid {
+.assetSelectorSearch::placeholder {
+  color: var(--assetPickerMutedText);
+}
+
+/* Gallery */
+.assetSelectorDialog .assetPickerGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  flex: 1 1 auto;
+  grid-template-columns: repeat(auto-fill, minmax(var(--assetCardWidth), 1fr));
+  /* Rows keep their content height; the gallery scrolls instead of squeezing cards. */
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 0.75rem;
-  max-height: min(30rem, 62vh);
+  min-height: 0;
+  max-height: none;
+  margin: 0.85rem 0 0;
+  padding: 0 var(--assetPickerInset) var(--assetPickerInset);
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 1rem;
+  box-sizing: border-box;
   background: transparent;
 }
 
-.assetPickerItem {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.22);
-  color: var(--textColor);
-  min-height: 7.25rem;
-  padding: 0.65rem;
+/* The icon gallery holds sections (Favorites, Other icons), each its own grid. */
+#iconSelectorModal #iconGrid {
+  display: block;
+}
+
+#iconGrid .iconPickerSection + .iconPickerSection {
+  margin-top: 1.35rem;
+}
+
+#iconGrid .iconPickerSectionHeading {
+  margin: 0 0 0.65rem;
+  color: var(--assetPickerMutedText);
+  font: 600 0.95rem "Inter", sans-serif;
+}
+
+#iconGrid .iconPickerItems {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--assetCardWidth), 1fr));
+  grid-auto-rows: max-content;
+  gap: 0.75rem;
+}
+
+/* Card */
+.assetSelectorDialog .assetGridCard {
+  appearance: none;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: space-between;
-  gap: 0.55rem;
-  cursor: pointer;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--assetPickerCardBg);
+  color: var(--assetPickerText);
   font-family: "Inter", sans-serif;
   text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.assetPickerItem:hover {
-  background: var(--hoverColor);
+.assetSelectorDialog .assetGridCard:hover {
+  background: var(--assetPickerCardHoverBg);
 }
 
-.assetPickerItem.selected {
+.assetSelectorDialog .assetGridCard:focus-visible,
+.assetSelectorDialog .assetGridCard:focus-within {
   outline: 2px solid var(--selectedColor);
-  background: rgba(var(--baseColor), 0.45);
+  outline-offset: -2px;
 }
 
-.assetPickerPreview {
-  height: 4.25rem;
-  display: flex !important;
+.assetSelectorDialog .assetGridCard.selected {
+  outline: 2px solid var(--selectedColor);
+  outline-offset: -2px;
+}
+
+/* Preview: a fixed box; the image always fits inside it. */
+.assetSelectorDialog .assetGridPreview {
+  display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: var(--assetPreviewHeight);
+  padding: 0.4rem;
+  box-sizing: border-box;
   overflow: hidden;
+  background: var(--assetPickerPreviewBg);
 }
 
-.assetPickerPreview img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+.assetSelectorDialog .assetGridPreview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  max-width: none;
+  max-height: none;
   object-fit: contain;
+  object-position: center;
+  transform: none;
+  filter: none;
 }
 
-.assetPickerLabel {
-  display: block !important;
-  font-size: 0.78rem;
-  line-height: 1.15;
-  opacity: 0.95;
-  overflow-wrap: anywhere;
+#arrowGrid .assetGridPreview,
+#iconGrid .assetGridPreview {
+  background: var(--assetPickerGlyphTileBg);
 }
 
-.assetPreviewMissing .assetPickerPreview {
-  font-size: 1.4rem;
+.assetSelectorDialog .assetPreviewMissing .assetGridPreview {
+  font-size: 1.6rem;
   opacity: 0.6;
 }
 
-.assetPickerEmpty {
+/* Label: up to two lines, so cards in a gallery line up. */
+.assetSelectorDialog .assetGridLabel {
+  display: -webkit-box;
+  min-height: calc(2 * 1.15em);
+  overflow: hidden;
+  color: var(--assetPickerText);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.assetSelectorDialog .assetGridEmpty {
   grid-column: 1 / -1;
   padding: 2rem;
-  text-align: center;
-  opacity: 0.75;
+  color: var(--assetPickerMutedText);
   font-family: "Inter", sans-serif;
+  text-align: center;
 }
 
-#arrowGrid .assetPickerPreview img,
-.arrowPickerPreviewImage {
-  filter: invert(1);
+/* Icon picker: tabs, upload, sort and view */
+#iconSelectorModal .iconPickerTabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  padding: 0.75rem var(--assetPickerInset) 0;
 }
 
-:root[data-theme="dark"] #iconGrid .assetPickerPreview img {
-  filter: invert(1);
-}
-
-:root[data-theme="dark"] dialog.assetSelectorDialog {
-  background-color: rgb(28, 34, 52);
-  color: rgb(235, 240, 255);
-}
-
-:root[data-theme="dark"] .assetSelectorSearch {
-  background-color: rgb(20, 24, 36);
-  color: white;
-}
-
-
-/* Toll logo picker: full-screen layout */
-#tollLogoSelectorModal.assetSelectorDialog {
-  position: fixed;
-  inset: 0;
-  width: 100vw !important;
-  max-width: none !important;
-  height: 100vh !important;
-  max-height: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
+#iconSelectorModal .iconPickerTabs button {
+  padding: 0.6rem 0.95rem;
   border: 0;
-  overflow: hidden;
+  background: var(--assetPickerCardBg);
+  color: var(--assetPickerText);
+  font: 500 0.95rem "Inter", sans-serif;
+  cursor: pointer;
+}
+
+#iconSelectorModal .iconPickerTabs button[aria-selected="true"] {
+  background: #2262b5;
+  color: white;
+  font-weight: 700;
+}
+
+#iconSelectorModal .iconPickerToolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.65rem var(--assetPickerInset) 0;
   box-sizing: border-box;
 }
 
-#tollLogoSelectorModal.assetSelectorDialog[open] {
-  display: flex !important;
+#iconSelectorModal .customIconUploadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: max-content;
+  padding: 0.5rem 0.8rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--assetPickerCardBg);
+  color: var(--assetPickerText);
+  font: 700 0.95rem "Inter", sans-serif;
+  cursor: pointer;
+}
+
+#iconSelectorModal .customIconUploadButton:hover {
+  background: var(--assetPickerCardHoverBg);
+}
+
+#iconSelectorModal .customIconUploadButton .material-symbols-outlined {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+#iconSelectorModal .iconPickerDisplayControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--assetPickerText);
+  font: 500 0.9rem "Inter", sans-serif;
+}
+
+#iconSelectorModal .iconPickerDisplayControls label {
+  width: auto;
+  margin: 0 0 0 0.5rem;
+}
+
+#iconSelectorModal .iconPickerDisplayControls select {
+  width: auto;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0.4rem 1.65rem 0.4rem 0.65rem;
+  border: 1px solid var(--assetPickerInputBorder);
+  background-color: var(--assetPickerInputBg);
+  color: var(--assetPickerText);
+  font: 500 0.95rem "Inter", sans-serif;
+}
+
+/* Icon card. The choose button covers the whole card, so a click anywhere
+   selects the icon; the caption sits above it and only its rename controls
+   take clicks. Favorite and delete float in the top-right corner. */
+#iconGrid .iconPickerChooseButton {
+  display: flex;
   flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: "Inter", sans-serif;
+  text-align: center;
+  cursor: pointer;
 }
 
-#tollLogoSelectorModal .assetSelectorHeader {
-  flex: 0 0 auto;
+#iconGrid .iconPickerCard .assetGridLabel {
+  position: relative;
+  display: block;
+  -webkit-line-clamp: unset;
 }
 
-#tollLogoSelectorModal .assetSelectorSearch {
-  flex: 0 0 auto;
+#iconGrid .iconPickerLabelText {
+  display: block;
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
-#tollLogoSelectorModal .assetPickerGrid {
-  flex: 1 1 auto;
-  max-height: none !important;
-  height: auto;
-  overflow-y: auto;
-
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  align-content: start;
-  padding: 1rem;
+#iconGrid[data-view="grid"] .iconPickerCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--assetPreviewHeight) auto;
+  row-gap: 0.45rem;
 }
 
-/* Keep huge/wide toll logos from blowing up the cards */
-#tollLogoSelectorModal .assetPickerPreview {
-  height: 4.5rem;
-  max-height: 4.5rem;
-  padding: 0.35rem;
+#iconGrid[data-view="grid"] .iconPickerChooseButton {
+  grid-area: 1 / 1 / 3 / 2;
+  width: calc(100% + 1rem);
+  margin: -0.5rem;
+  padding: 0.5rem;
   box-sizing: border-box;
 }
 
-#tollLogoSelectorModal .assetPickerPreview img,
-#tollLogoSelectorModal .tollLogoPickerPreviewImage {
-  max-width: 6.5rem !important;
-  max-height: 3.5rem !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-}
-
-/* Make toll logo cards consistent */
-#tollLogoSelectorModal .assetPickerItem {
-  min-height: 7.5rem;
-  max-width: 11rem;
-  justify-self: stretch;
+/* IconPicker.fitLabels shrinks long names to fit these three lines. */
+#iconGrid[data-view="grid"] .iconPickerCard .assetGridLabel {
+  grid-area: 2 / 1 / 3 / 2;
+  z-index: 1;
+  height: calc(3 * 1.15 * 0.78rem);
+  min-height: 0;
   overflow: hidden;
+  pointer-events: none;
 }
 
-#tollLogoSelectorModal .assetPickerLabel {
-  min-height: 1.8rem;
+#iconGrid[data-view="grid"] .iconPickerCard .assetGridLabel.renaming {
+  height: auto;
+}
+
+#iconGrid .iconPickerRenameButton,
+#iconGrid .iconPickerRenameInput {
+  pointer-events: auto;
+}
+
+#iconGrid .iconPickerActions {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+#iconGrid .iconPickerActions button {
+  position: static;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  min-width: 1.8rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(25, 29, 38, 0.9);
+  color: white;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  cursor: pointer;
+}
+
+#iconGrid .iconPickerCard:hover .iconPickerActions button,
+#iconGrid .iconPickerActions button:focus-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#iconGrid .iconPickerActions .material-symbols-outlined {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+#iconGrid .iconPickerActions .customIconDeleteButton:hover {
+  background: #8c2b5f;
+}
+
+#iconGrid .iconPickerActions .iconPickerFavoriteButton:hover {
+  background: #4d4424;
+}
+
+#iconGrid .iconPickerFavoriteButton svg {
+  display: block;
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: #ffd44d;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+#iconGrid .iconPickerFavoriteButton[aria-pressed="true"] svg {
+  fill: #ffd44d;
+}
+
+#iconGrid .iconPickerRenameButton {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--assetPickerText);
+  opacity: 0;
+  cursor: pointer;
+}
+
+#iconGrid .assetGridLabel:hover .iconPickerRenameButton,
+#iconGrid .iconPickerCard:hover .iconPickerRenameButton,
+#iconGrid .iconPickerRenameButton:focus-visible {
+  opacity: 1;
+  background: rgba(25, 28, 33, 0.82);
+  color: white;
+  border-radius: 2px;
+}
+
+#iconGrid .iconPickerRenameButton .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+#iconGrid .iconPickerLabelText[hidden],
+#iconGrid .iconPickerRenameButton[hidden] {
+  display: none !important;
+}
+
+#iconGrid .assetGridLabel.renaming {
+  padding: 0;
+}
+
+#iconGrid .iconPickerRenameInput {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 1.7rem;
+  margin: 0;
+  padding: 0.15rem;
+  border: 1px solid #72a9ff;
+  box-sizing: border-box;
+  background: #202838;
+  color: white;
+  font: 500 0.78rem "Inter", sans-serif;
+  text-align: left;
+}
+
+/* Icon list view */
+#iconGrid[data-view="list"] .iconPickerItems {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.8rem;
+}
+
+#iconGrid[data-view="list"] .iconPickerCard {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.35rem 5rem 0.35rem 0.65rem;
+}
+
+#iconGrid[data-view="list"] .iconPickerChooseButton {
+  width: 3.5rem;
+  height: 3.25rem;
+}
+
+#iconGrid[data-view="list"] .iconPickerChooseButton .assetGridPreview {
+  width: 3.5rem;
+  height: 3.25rem;
+  padding: 0.25rem;
+}
+
+#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  min-width: 0;
+  min-height: 0;
+  text-align: left;
+  overflow: visible;
+}
+
+#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel.renaming {
+  width: 100%;
+}
+
+#iconGrid[data-view="list"] .iconPickerLabelText {
+  width: auto;
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+#iconGrid[data-view="list"] .iconPickerRenameButton {
+  position: static;
+  flex: 0 0 auto;
+}
+
+#iconGrid[data-view="list"] .iconPickerRenameInput {
+  font-size: 1rem;
 }
 
 /* Toll Logo block editor: streamlined control layout */
@@ -7411,489 +7712,6 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
 /* Keep hidden controls hidden even with explicit grid placement */
 .sMModal.subPanelConfig [data-property="sdTollLogo"] .hidden {
   display: none !important;
-}
-
-/* Icon picker: full-screen layout */
-#iconSelectorModal.assetSelectorDialog {
-  position: fixed;
-  inset: 0;
-  width: 100vw !important;
-  max-width: none !important;
-  height: 100vh !important;
-  max-height: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-#iconSelectorModal.assetSelectorDialog[open] {
-  display: flex !important;
-  flex-direction: column;
-}
-
-#iconSelectorModal .assetSelectorHeader {
-  flex: 0 0 auto;
-}
-
-#iconSelectorModal .assetSelectorSearch {
-  flex: 0 0 auto;
-}
-
-#iconSelectorModal .assetPickerGrid {
-  flex: 1 1 auto;
-  max-height: none !important;
-  height: auto;
-  overflow-y: auto;
-
-  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-  align-content: start;
-  padding: 1rem;
-}
-
-/* Keep icon cards consistent */
-#iconSelectorModal .assetPickerItem {
-  min-height: 7.5rem;
-  max-width: 11rem;
-  justify-self: stretch;
-  overflow: hidden;
-}
-
-#iconSelectorModal .assetPickerPreview {
-  height: 4.5rem;
-  max-height: 4.5rem;
-  padding: 0.35rem;
-  box-sizing: border-box;
-}
-
-#iconSelectorModal .assetPickerPreview img,
-#iconSelectorModal .iconPickerPreviewImage {
-  max-width: 4rem !important;
-  max-height: 3.6rem !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-}
-
-/* Do not invert icon colors in dark mode */
-:root[data-theme="dark"] #iconGrid .assetPickerPreview img,
-:root[data-theme="dark"] #iconSelectorModal .assetPickerPreview img,
-:root[data-theme="dark"] #iconSelectorModal .iconPickerPreviewImage {
-  filter: none !important;
-}
-
-
-/* =========================
-   Image picker dialogs
-   Icon, Toll Logo, Arrow
-   ========================= */
-
-#iconSelectorModal,
-#tollLogoSelectorModal,
-#arrowSelectorModal {
-  position: fixed;
-  inset: 0;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: none !important;
-  max-height: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0;
-  box-sizing: border-box;
-  overflow: hidden;
-  background: rgb(31, 40, 66);
-  color: white;
-}
-
-#iconSelectorModal[open],
-#tollLogoSelectorModal[open],
-#arrowSelectorModal[open] {
-  display: grid !important;
-  grid-template-rows: auto auto 1fr auto;
-}
-
-#iconSelectorModal h3,
-#tollLogoSelectorModal h3,
-#arrowSelectorModal h3 {
-  margin: 0;
-  padding: 1rem 1.25rem 0.35rem;
-  font-size: 1.45rem;
-  line-height: 1.1;
-  font-family: "Inter", sans-serif;
-}
-
-#iconSearch,
-#tollLogoSearch,
-#arrowSearch {
-  width: calc(100% - 2.5rem);
-  margin: 0 1.25rem 1rem;
-  padding: 0.8rem 0.95rem;
-  font-size: 1rem;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.22);
-  color: white;
-}
-
-#iconGrid,
-#tollLogoGrid,
-#arrowGrid {
-  display: grid !important;
-  justify-content: start;
-  align-content: start;
-  gap: 0.9rem;
-  padding: 1rem 1.25rem 1.25rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: none !important;
-  background: rgba(255, 255, 255, 0.04);
-  box-sizing: border-box;
-}
-
-#iconGrid {
-  grid-template-columns: repeat(auto-fill, minmax(112px, 112px));
-}
-
-#tollLogoGrid {
-  grid-template-columns: repeat(auto-fill, minmax(138px, 138px));
-}
-
-#arrowGrid {
-  grid-template-columns: repeat(auto-fill, minmax(112px, 112px));
-}
-
-.assetGridCard {
-  appearance: none;
-  border: 0;
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.65rem;
-  box-sizing: border-box;
-  cursor: pointer;
-  text-align: center;
-  border-radius: 0;
-  transition: background-color 0.15s ease, outline-color 0.15s ease;
-  font-family: "Inter", sans-serif;
-}
-
-.iconGridCard,
-.arrowGridCard {
-  grid-template-rows: 82px auto;
-  width: 112px;
-  min-height: 132px;
-}
-
-.tollLogoGridCard {
-  grid-template-rows: 82px auto;
-  width: 138px;
-  min-height: 132px;
-}
-
-.assetGridCard:hover,
-.assetGridCard:focus-visible {
-  background: rgba(255, 255, 255, 0.16);
-  outline: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.assetGridCard.selected {
-  outline: 2px solid var(--selectedColor);
-  background: rgba(var(--baseColor), 0.35);
-}
-
-.assetGridPreview {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: rgba(255, 255, 255, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.assetGridPreview img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: none !important;
-}
-
-.tollLogoGridCard .assetGridPreview img {
-  max-width: 6.5rem;
-  max-height: 3.2rem;
-  width: auto;
-  height: auto;
-}
-
-.arrowGridCard .assetGridPreview img {
-  max-width: 4.5rem;
-  max-height: 4.5rem;
-  width: auto;
-  height: auto;
-  filter: invert(1) !important;
-}
-
-.assetGridLabel {
-  font-size: 0.78rem;
-  line-height: 1.15;
-  min-height: 2.1rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.assetGridEmpty {
-  grid-column: 1 / -1;
-  padding: 2rem;
-  text-align: center;
-  opacity: 0.75;
-  font-family: "Inter", sans-serif;
-}
-
-.missingPreview {
-  font-size: 1.7rem;
-  opacity: 0.7;
-}
-
-#iconSelectorModal .options,
-#tollLogoSelectorModal .options,
-#arrowSelectorModal .options {
-  margin: 0;
-  padding: 0.75rem 1.25rem 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.12);
-}
-
-/* Keep the old picker styles from interfering */
-#iconGrid .iconGridItem,
-#tollLogoGrid .iconGridItem,
-#arrowGrid .iconGridItem {
-  all: unset;
-}
-
-/* Dark mode should not invert icon or toll-logo previews */
-:root[data-theme="dark"] #iconGrid .assetGridPreview img,
-:root[data-theme="dark"] #tollLogoGrid .assetGridPreview img {
-  filter: none !important;
-}
-
-/* Arrows should stay visible on the dark preview cards */
-:root[data-theme="dark"] #arrowGrid .assetGridPreview img {
-  filter: invert(1) !important;
-}
-
-/* =========================
-   Image picker light/dark theme fix
-   Icon, Toll Logo, Arrow
-   ========================= */
-
-:root {
-  --assetPickerDialogBg: #eef3ff;
-  --assetPickerHeaderBg: #dbe6ff;
-  --assetPickerGridBg: #e7eeff;
-  --assetPickerCardBg: rgba(255, 255, 255, 0.78);
-  --assetPickerCardHoverBg: rgba(255, 255, 255, 0.95);
-  --assetPickerPreviewBg: rgba(0, 0, 0, 0.035);
-  --assetPickerText: #121827;
-  --assetPickerMutedText: rgba(18, 24, 39, 0.72);
-  --assetPickerInputBg: #ffffff;
-  --assetPickerInputBorder: rgba(0, 0, 0, 0.28);
-  --assetPickerCloseBg: rgba(0, 0, 0, 0.08);
-  --assetPickerCloseHoverBg: rgba(0, 0, 0, 0.16);
-}
-
-:root[data-theme="dark"] {
-  --assetPickerDialogBg: rgb(31, 40, 66);
-  --assetPickerHeaderBg: rgb(18, 23, 38);
-  --assetPickerGridBg: rgba(255, 255, 255, 0.04);
-  --assetPickerCardBg: rgba(255, 255, 255, 0.08);
-  --assetPickerCardHoverBg: rgba(255, 255, 255, 0.16);
-  --assetPickerPreviewBg: rgba(255, 255, 255, 0.05);
-  --assetPickerText: #ffffff;
-  --assetPickerMutedText: rgba(255, 255, 255, 0.72);
-  --assetPickerInputBg: rgba(0, 0, 0, 0.22);
-  --assetPickerInputBorder: rgba(255, 255, 255, 0.18);
-  --assetPickerCloseBg: rgba(0, 0, 0, 0.35);
-  --assetPickerCloseHoverBg: rgba(255, 255, 255, 0.12);
-}
-
-#iconSelectorModal,
-#tollLogoSelectorModal,
-#arrowSelectorModal {
-  background: var(--assetPickerDialogBg) !important;
-  color: var(--assetPickerText) !important;
-}
-
-#iconSelectorModal .assetSelectorHeader,
-#tollLogoSelectorModal .assetSelectorHeader,
-#arrowSelectorModal .assetSelectorHeader {
-  background: var(--assetPickerHeaderBg) !important;
-  color: var(--assetPickerText) !important;
-}
-
-#iconSelectorModal h3,
-#tollLogoSelectorModal h3,
-#arrowSelectorModal h3,
-#iconSelectorModal p,
-#tollLogoSelectorModal p,
-#arrowSelectorModal p {
-  color: var(--assetPickerText) !important;
-}
-
-#iconSelectorModal p,
-#tollLogoSelectorModal p,
-#arrowSelectorModal p {
-  color: var(--assetPickerMutedText) !important;
-}
-
-#iconSearch,
-#tollLogoSearch,
-#arrowSearch {
-  background: var(--assetPickerInputBg) !important;
-  color: var(--assetPickerText) !important;
-  border-color: var(--assetPickerInputBorder) !important;
-}
-
-#iconSearch::placeholder,
-#tollLogoSearch::placeholder,
-#arrowSearch::placeholder {
-  color: var(--assetPickerMutedText) !important;
-}
-
-#iconGrid,
-#tollLogoGrid,
-#arrowGrid {
-  background: var(--assetPickerGridBg) !important;
-}
-
-.assetGridCard,
-#iconGrid .iconGridCard,
-#tollLogoGrid .tollLogoGridCard,
-#arrowGrid .arrowGridCard {
-  background: var(--assetPickerCardBg) !important;
-  color: var(--assetPickerText) !important;
-}
-
-.assetGridCard:hover,
-.assetGridCard:focus-visible,
-#iconGrid .iconGridCard:hover,
-#tollLogoGrid .tollLogoGridCard:hover,
-#arrowGrid .arrowGridCard:hover {
-  background: var(--assetPickerCardHoverBg) !important;
-}
-
-.assetGridPreview,
-.iconGridCardPreview {
-  background: var(--assetPickerPreviewBg) !important;
-}
-
-.assetGridLabel,
-.iconGridCardLabel {
-  color: var(--assetPickerText) !important;
-}
-
-.assetSelectorClose,
-#closeIconSelector,
-#closeTollLogoSelector,
-#closeArrowSelector {
-  background: var(--assetPickerCloseBg) !important;
-  color: var(--assetPickerText) !important;
-}
-
-.assetSelectorClose:hover,
-#closeIconSelector:hover,
-#closeTollLogoSelector:hover,
-#closeArrowSelector:hover {
-  background: var(--assetPickerCloseHoverBg) !important;
-}
-
-/* Light mode: do not invert any picker previews */
-:root[data-theme="light"] #iconGrid img,
-:root[data-theme="light"] #tollLogoGrid img,
-:root[data-theme="light"] #arrowGrid img {
-  filter: none !important;
-}
-
-/* Dark mode: icons/logos stay normal, arrows invert so they remain visible */
-:root[data-theme="dark"] #iconGrid img,
-:root[data-theme="dark"] #tollLogoGrid img {
-  filter: none !important;
-}
-
-:root[data-theme="dark"] #arrowGrid img {
-  filter: invert(1) !important;
-}
-
-/* Toll logo picker: fixed square previews, no overflow */
-#tollLogoGrid {
-  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 8.5rem)) !important;
-  gap: 1rem !important;
-  align-content: start;
-}
-
-#tollLogoGrid .tollLogoGridCard,
-#tollLogoGrid .assetGridCard {
-  width: 8.5rem !important;
-  height: 8.5rem !important;
-  min-height: 8.5rem !important;
-  display: grid !important;
-  grid-template-rows: 5.8rem 1.7rem !important;
-  padding: 0.55rem !important;
-  overflow: hidden !important;
-  box-sizing: border-box !important;
-}
-
-#tollLogoGrid .assetGridPreview {
-  width: 100% !important;
-  height: 5.8rem !important;
-  aspect-ratio: auto !important;
-
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  padding: 0.25rem !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-#tollLogoGrid .assetGridPreview img,
-#tollLogoGrid .tollLogoPickerPreviewImage {
-  display: block !important;
-
-  width: 100% !important;
-  height: 100% !important;
-
-  max-width: 100% !important;
-  max-height: 100% !important;
-
-  object-fit: contain !important;
-  object-position: center !important;
-
-  transform: none !important;
-  filter: none !important;
-}
-
-#tollLogoGrid .assetGridLabel {
-  min-height: 0 !important;
-  height: 1.7rem !important;
-
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  font-size: 0.78rem !important;
-  line-height: 1.05 !important;
-
-  overflow: hidden !important;
-  text-align: center !important;
 }
 
 /* Shield block editor: Road Name banner field */
@@ -8503,74 +8321,6 @@ label[for="sdTollLogo_verticalPadding"]:not(.hidden) {
   border: 1px solid rgba(255, 255, 255, 0.45);
   background: #000000;
   box-sizing: border-box;
-}
-
-
-/* Custom icons inside the icon picker */
-#iconSelectorModal .customIconUploadToolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.65rem 1.25rem 0.35rem;
-  box-sizing: border-box;
-}
-
-#iconSelectorModal .customIconUploadButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  width: max-content;
-  padding: 0.55rem 0.8rem;
-  border: 0;
-  border-radius: 0;
-  background: rgba(255, 255, 255, 0.16);
-  color: white;
-  font-family: "Inter", sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-#iconSelectorModal .customIconUploadButton:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-#iconSelectorModal .customIconUploadButton .material-symbols-outlined {
-  font-size: 1.15rem;
-  line-height: 1;
-}
-
-#iconSelectorModal .customIconGridCard {
-  position: relative;
-}
-
-#iconSelectorModal .customIconDeleteButton {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.25rem;
-  width: 1.55rem;
-  height: 1.55rem;
-  min-width: 1.55rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 0;
-  background: rgba(95, 39, 76, 0.95);
-  color: white;
-  cursor: pointer;
-  z-index: 3;
-}
-
-#iconSelectorModal .customIconDeleteButton:hover {
-  background: rgba(140, 43, 95, 1);
-}
-
-#iconSelectorModal .customIconDeleteButton .material-symbols-outlined {
-  font-size: 1rem;
-  line-height: 1;
 }
 
 
@@ -14650,361 +14400,6 @@ html:not([data-mobile-ui]) .sMModal.subPanelConfig > .sMModalContent {
 
 
 /* Block-label chevrons stay white in every theme. */
-
-/* Icon picker pages, favorites, and the shared grid/list presentation. */
-#iconSelectorModal[open] {
-  display: flex !important;
-  flex-direction: column;
-}
-
-#iconSelectorModal .iconPickerTabs {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 0.35rem;
-  padding: 0.75rem 1.25rem 0;
-}
-
-#iconSelectorModal .iconPickerTabs button {
-  border: 0;
-  padding: 0.6rem 0.95rem;
-  background: var(--assetPickerCardBg);
-  color: var(--assetPickerText);
-  font: 500 0.95rem "Inter", sans-serif;
-  cursor: pointer;
-}
-
-#iconSelectorModal .iconPickerTabs button[aria-selected="true"] {
-  background: #2262b5;
-  color: white;
-  font-weight: 700;
-}
-
-#iconSelectorModal .iconPickerToolbar {
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  padding-bottom: 0.7rem;
-}
-
-#iconSelectorModal .iconPickerDisplayControls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
-  color: var(--assetPickerText);
-  font: 500 0.9rem "Inter", sans-serif;
-}
-
-#iconSelectorModal .iconPickerDisplayControls label {
-  width: auto;
-  margin: 0 0 0 0.5rem;
-}
-
-#iconSelectorModal .iconPickerDisplayControls select {
-  width: auto;
-  min-height: 2.25rem;
-  margin: 0;
-  padding: 0.4rem 1.65rem 0.4rem 0.65rem;
-  border: 1px solid var(--assetPickerInputBorder);
-  background-color: var(--assetPickerInputBg);
-  color: var(--assetPickerText);
-  font: 500 0.95rem "Inter", sans-serif;
-}
-
-#iconSelectorModal #iconGrid {
-  display: block !important;
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none !important;
-  overflow-y: auto;
-  padding-top: 0.85rem;
-}
-
-#iconGrid .iconPickerSection + .iconPickerSection {
-  margin-top: 1.35rem;
-}
-
-#iconGrid .iconPickerSectionHeading {
-  margin: 0 0 0.65rem;
-  color: var(--assetPickerMutedText);
-  font: 600 0.95rem "Inter", sans-serif;
-}
-
-#iconGrid .iconPickerItems {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 112px));
-  align-items: start;
-  gap: 0.9rem;
-}
-
-#iconGrid .iconPickerCard {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 132px;
-  min-height: 0;
-  min-width: 0;
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-}
-
-#iconGrid .iconPickerCard:focus-within {
-  outline: 2px solid var(--selectedColor);
-  outline-offset: -2px;
-}
-
-#iconGrid .iconPickerChooseButton {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  text-align: center;
-  font-family: "Inter", sans-serif;
-  cursor: pointer;
-}
-
-#iconGrid .iconPickerChooseButton .assetGridPreview {
-  position: absolute;
-  inset: 8px auto auto 50%;
-  transform: translateX(-50%);
-  width: 82px;
-  height: 82px;
-  padding: 0;
-  aspect-ratio: auto;
-  background: transparent !important;
-}
-
-#iconGrid .iconPickerChooseButton .iconPickerPreviewImage {
-  max-width: 100% !important;
-  max-height: 100% !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-}
-
-#iconGrid .iconPickerCard .assetGridLabel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-height: 0;
-  max-height: 100%;
-  padding: 0.3rem;
-  overflow: auto;
-  box-sizing: border-box;
-  background: rgba(70, 75, 85, 0.8);
-  color: white !important;
-  text-align: center;
-}
-
-#iconGrid .iconPickerLabelText {
-  display: block;
-  width: 100%;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.15;
-  white-space: normal;
-  word-break: normal;
-  overflow-wrap: anywhere;
-}
-
-#iconGrid .iconPickerActions {
-  position: absolute;
-  top: 0.3rem;
-  right: 0.3rem;
-  display: flex;
-  gap: 0.25rem;
-  z-index: 2;
-  pointer-events: none;
-}
-
-#iconGrid .iconPickerActions button {
-  position: static;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 1.8rem;
-  height: 1.8rem;
-  min-width: 1.8rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: rgba(25, 29, 38, 0.9);
-  color: white;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  cursor: pointer;
-}
-
-#iconGrid .iconPickerCard:hover .iconPickerActions button {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-#iconGrid .iconPickerActions .customIconDeleteButton:hover {
-  background: #8c2b5f;
-}
-
-#iconGrid .iconPickerActions .iconPickerFavoriteButton:hover {
-  background: #4d4424;
-}
-
-#iconGrid .iconPickerFavoriteButton svg {
-  display: block;
-  width: 1.3rem;
-  height: 1.3rem;
-  fill: none;
-  stroke: #ffd44d;
-  stroke-width: 1.8;
-  stroke-linejoin: round;
-}
-
-#iconGrid .iconPickerFavoriteButton[aria-pressed="true"] svg {
-  fill: #ffd44d;
-}
-
-#iconGrid[data-view="list"] .iconPickerItems {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.35rem 0.8rem;
-}
-
-#iconGrid[data-view="list"] .iconPickerCard {
-  display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
-  grid-template-rows: auto;
-  gap: 0.9rem;
-  align-items: center;
-  padding: 0.35rem 5rem 0.35rem 0.65rem;
-  height: auto;
-  min-height: 0;
-}
-
-#iconGrid[data-view="list"] .iconPickerChooseButton {
-  position: static;
-  inset: auto;
-  width: 3.5rem;
-  height: 3.25rem;
-  min-height: 0;
-  padding: 0;
-}
-
-#iconGrid[data-view="list"] .iconPickerChooseButton .assetGridPreview {
-  position: static;
-  transform: none;
-  width: 3.5rem;
-  height: 3.25rem;
-}
-
-#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel {
-  position: relative;
-  inset: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  width: fit-content;
-  min-width: 0;
-  max-height: none;
-  padding: 0;
-  background: transparent;
-  color: var(--assetPickerText) !important;
-  text-align: left;
-  overflow: visible;
-}
-
-#iconGrid[data-view="list"] .iconPickerLabelText {
-  width: auto;
-  min-width: 0;
-  flex: 0 1 auto;
-  font-size: 1rem;
-  line-height: 1.3;
-}
-
-#iconGrid .iconPickerRenameButton {
-  position: absolute;
-  right: 0.15rem;
-  bottom: 0.2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  height: 1.25rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: white;
-  opacity: 0;
-  cursor: pointer;
-}
-
-#iconGrid .assetGridLabel:hover .iconPickerRenameButton,
-#iconGrid .iconPickerRenameButton:focus-visible {
-  opacity: 1;
-  background: rgba(25, 28, 33, 0.82);
-  color: white;
-  border-radius: 2px;
-}
-
-#iconGrid .iconPickerRenameButton .material-symbols-outlined {
-  font-size: 1rem;
-}
-
-#iconGrid .iconPickerLabelText[hidden],
-#iconGrid .iconPickerRenameButton[hidden] {
-  display: none !important;
-}
-
-#iconGrid .assetGridLabel.renaming {
-  padding: 0.2rem;
-}
-
-#iconGrid .iconPickerRenameInput {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  height: 1.7rem;
-  margin: 0;
-  padding: 0.15rem;
-  border: 1px solid #72a9ff;
-  box-sizing: border-box;
-  background: #202838;
-  color: white;
-  font: 500 0.78rem "Inter", sans-serif;
-  text-align: left;
-}
-
-#iconGrid[data-view="list"] .iconPickerRenameButton {
-  position: static;
-  transform: none;
-  flex: 0 0 auto;
-  color: var(--assetPickerText);
-}
-
-#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel {
-  padding-right: 0;
-}
-
-#iconGrid[data-view="list"] .iconPickerCard .assetGridLabel.renaming {
-  width: 100%;
-}
-
-#iconGrid[data-view="list"] .iconPickerRenameInput {
-  font-size: 1rem;
-}
 
 /* VMS display controls use the same two-column rows as Appearance. */
 .sMModal.panelStyleConfig #vmsPanelSettings {

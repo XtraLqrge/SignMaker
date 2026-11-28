@@ -187,6 +187,29 @@ test('full row borders survive cloning and legacy row background width stays int
     { full: false, bleed: true, colorMatches: true },
   ]);
 });
+test('restored full-bleed dividers render with their explicit or inherited color', () => {
+  const { c } = models();
+  const result = vm.runInContext(`(() => {
+    const saved = JSON.stringify({
+      rows: ['Black', 'Default', 'Inherit'].map(dividerColor => [
+        { _elementType: 'DividerElement', fullBleed: true, dividerColor }
+      ]),
+      blockProperties: [{}, {}, {}],
+    });
+    const restored = Control.fromData(JSON.parse(saved));
+    const rows = restored.createElement().children;
+    return rows.map(row => ({
+      edgeColor: row.dataset.fullBleedBorderColor || null,
+      dividerColor: row.querySelector('.dividerElement.fullBleed').style.backgroundColor,
+    }));
+  })()`, c);
+  const black = vm.runInContext('lib.colors.Black', c);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), [
+    { edgeColor: black.toLowerCase(), dividerColor: black },
+    { edgeColor: null, dividerColor: 'var(--panelBorderColor, currentColor)' },
+    { edgeColor: null, dividerColor: 'var(--panelBorderColor, currentColor)' },
+  ]);
+});
 test('element spacing applies to its own rendered box and leaves an untouched legacy box unchanged',()=>{
  const {c,make}=models();c.box=make('div');
  for(const type of ['ControlTextElement','ActionMessageElement','ShieldElement','BeaconElement','DividerElement']){

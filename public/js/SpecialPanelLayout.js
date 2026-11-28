@@ -98,7 +98,7 @@ window.SignMakerSpecialPanelLayout = (() => {
         const index = Number(panel.dataset.panelIndex);
         const color = getResolvedCssColorValue(post.panels[index]?.color) || 'var(--yellow)';
         face.style.backgroundColor = color;
-        face.style.borderColor = getComputedStyle(signElmt).color;
+        face.style.borderColor = "var(--panelBorderColor, currentColor)";
         // A centered upright rectangle fits a diamond whose diagonal is w+h.
         const extent = Math.max(1, Math.ceil(signElmt.offsetWidth + signElmt.offsetHeight));
         container.style.setProperty('--warningDiamondExtent', extent + 'px');

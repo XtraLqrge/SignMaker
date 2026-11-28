@@ -20,6 +20,7 @@ const app = (function () {
   let currentlySelectedAPLArrowIndex = 0;
   let downloadPreviewRequestId = 0;
   const DEFAULT_POST_POSITION = "Right";
+  const FIRST_RUN_POST_TYPE = "FDOTCantileverRight";
   const DEFAULT_PANEL_SPACING = 1;
   const DEFAULT_PANEL_SPACING_STORAGE_KEY = "signMaker.defaultPanelSpacing";
   const DEFAULT_STACKED_PANEL_SPACING = 0;
@@ -2879,6 +2880,7 @@ const ungroupSelectedBlockElement = () => {
         : computed.color && !isTransparentColor(computed.color)
           ? computed.color
           : getNamedColor("White", "white"));
+    const hasCustomPanelBorder = signElmt.closest(".panel")?.classList.contains("customPanelBorder");
 
     const getSignContainer = () => signElmt.closest(".signContainer");
 
@@ -3465,7 +3467,10 @@ const ungroupSelectedBlockElement = () => {
         rowEl.dataset.rowFullBorder === "true" && !rowEl.closest(".bE-groupedBlockElement");
       const borderColor =
         rowEl.dataset.fullBleedBorderColor ||
-        (backgroundColor || fullRowBorder ? getContrastingBorderColor(backgroundColor || fillColor) : "");
+        (backgroundColor || fullRowBorder
+          ? hasCustomPanelBorder || !backgroundColor
+            ? defaultBorderColor : getContrastingBorderColor(backgroundColor)
+          : "");
 
       if (fullRowBorder) {
         const { left, top, width, height } = rect;
@@ -4106,7 +4111,7 @@ const ungroupSelectedBlockElement = () => {
           const cellClipId = `dynamicBorderCell${index}`;
           svgParts.push(
             `<defs><clipPath id="${cellClipId}" clipPathUnits="userSpaceOnUse"><rect x="${snapCssValue(cell.left)}" y="${snapCssValue(cell.top)}" width="${snapCssValue(cell.right - cell.left)}" height="${snapCssValue(cell.bottom - cell.top)}" shape-rendering="crispEdges"/></clipPath></defs>`,
-            `<use href="#${ringPathId}" fill="${escapeXml(cell.color)}" clip-path="url(#${cellClipId})" shape-rendering="geometricPrecision"/>`
+            `<use href="#${ringPathId}" fill="${escapeXml(resolveCssColor(cell.color))}" clip-path="url(#${cellClipId})" shape-rendering="geometricPrecision"/>`
           );
         });
 
@@ -4297,7 +4302,6 @@ const ungroupSelectedBlockElement = () => {
   };
     
     const SIDE_MENU_VIEWPORT_GAP = 24;
-    const MIN_POST_VIEW_SCALE = 0.42;
     let postViewportLayoutFrame = null;
     let postViewportLayoutObserver = null;
     let ruralPostLayoutFrame = null;
@@ -4335,7 +4339,8 @@ const ungroupSelectedBlockElement = () => {
         const rect = part.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 ? Math.max(bottom, rect.bottom) : bottom;
       }, mainRect.bottom);
-      const height = Math.max(8 * rem, (lowestSignBottom - mainRect.top) / unitY + 6 * rem);
+      const heightAdjustment = Post.normalizeHeight(post.height) - Post.defaultHeight;
+      const height = Math.max(2 * rem, Math.max(8 * rem, (lowestSignBottom - mainRect.top) / unitY + 6 * rem) + heightAdjustment * rem);
 
       posts.forEach((support, index) => {
         const centerX = mainRect.left + mainRect.width * (index === 0 ? 0.1 : 0.9);
@@ -4394,17 +4399,6 @@ const ungroupSelectedBlockElement = () => {
         }
         seen.add(element);
 
-        if (element.id === "sMConfigBar") {
-          const configPosition =
-            element.dataset.position ||
-            document.documentElement.dataset.configPosition ||
-            "right";
-
-          if (configPosition === "top" || configPosition === "bottom") {
-            continue;
-          }
-        }
-
         const styles = window.getComputedStyle(element);
 
         if (
@@ -4430,8 +4424,9 @@ const ungroupSelectedBlockElement = () => {
         const center = rect.left + rect.width / 2;
 
         candidates.push({
-          element,
-          pushDirection: center < viewportWidth / 2 ? "left" : "right",
+          rect,
+          pushDirection: element.id === "sMConfigBar" && ["top", "bottom"].includes(element.dataset.position)
+            ? element.dataset.position : center < viewportWidth / 2 ? "left" : "right",
         });
       }
 
@@ -4455,100 +4450,112 @@ const ungroupSelectedBlockElement = () => {
       return Number.isFinite(scale) && scale > 0 ? scale : 1;
     };
 
+    const getPostPreviewBounds = (container, panel) => {
+      const root = panel || container;
+      const parts = root.querySelectorAll(".signContainer, .sign, .vmsPanelDisplay, .panelOuterFace, .warningDiamondFace, .exitTab, .exitTabHolder, .guideArrows, .aplArrows, .post, .fdotSupport");
+      const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+      for (const part of parts) {
+        const rect = part.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        const { visibility, opacity } = getComputedStyle(part);
+        if (visibility !== "visible" || opacity === "0") continue;
+        bounds.left = Math.min(bounds.left, rect.left);
+        bounds.top = Math.min(bounds.top, rect.top);
+        bounds.right = Math.max(bounds.right, rect.right);
+        bounds.bottom = Math.max(bounds.bottom, rect.bottom);
+      }
+      if (!panel && container.classList.contains("polePositionCenter")) {
+        // The standard center pole is painted as a background instead of an element.
+        const panels = container.querySelector("#panelContainer");
+        if (panels && getComputedStyle(panels).backgroundImage !== "none") {
+          const rect = panels.getBoundingClientRect();
+          if (rect.width && rect.height) bounds.bottom = Math.max(bounds.bottom, rect.bottom);
+        }
+      }
+      return Number.isFinite(bounds.left) ? bounds : root.getBoundingClientRect();
+    };
+
+    const fitPostPreview = (bounds, viewport, preferred, transform, shrinkForMenus) => {
+      const { matrix, originX, originY, zoom, rect } = transform;
+      const pivotX = rect.left + matrix.a * originX * zoom;
+      const pivotY = rect.top + matrix.d * originY * zoom;
+      const fitArea = shrinkForMenus ? preferred : viewport;
+      const width = bounds.right - bounds.left;
+      const height = bounds.bottom - bounds.top;
+      if (width <= 0 || height <= 0) return { x: 0, y: 0, scale: 1 };
+
+      const limit = Math.min(1,
+        matrix.a * (fitArea.right - fitArea.left) / width,
+        matrix.d * (fitArea.bottom - fitArea.top) / height);
+      // Subpixel rounding keeps repeated measurements from changing the fit.
+      const scale = limit >= 0.00001 ? Math.floor(limit * 1e5 + 1e-7) / 1e5 : limit;
+      const fitAxis = (start, end, pivot, currentScale, offset, preferredStart, preferredEnd, viewStart, viewEnd) => {
+        const anchor = pivot - offset * zoom;
+        const outputStart = anchor + (start - pivot) * scale / currentScale;
+        const outputEnd = anchor + (end - pivot) * scale / currentScale;
+        const min = preferredStart - outputStart;
+        const max = preferredEnd - outputEnd;
+        const shift = min <= max ? clamp(0, min, max)
+          : clamp((min + max) / 2, viewStart - outputStart, viewEnd - outputEnd);
+        return Math.round(shift / zoom * 1000) / 1000;
+      };
+      return {
+        x: fitAxis(bounds.left, bounds.right, pivotX, matrix.a, matrix.e,
+          preferred.left, preferred.right, viewport.left, viewport.right),
+        y: fitAxis(bounds.top, bounds.bottom, pivotY, matrix.d, matrix.f,
+          preferred.top, preferred.bottom, viewport.top, viewport.bottom),
+        scale,
+      };
+    };
+
     const updatePostViewportLayout = () => {
       if (window.SignMakerMobile?.active) {
         window.SignMakerMobile.schedule();
         return;
       }
-      const postContainerElmt = document.getElementById("postContainer");
-      if (!postContainerElmt) {
-        return;
-      }
-
-      const viewportWidth =
-        window.innerWidth || document.documentElement.clientWidth || 0;
-      const naturalPostWidth = postContainerElmt.offsetWidth || 0;
-      const mainVisualScale = getMainVisualScale();
-
-      const setTransform = value => {
-        if (postContainerElmt.style.transform !== value) postContainerElmt.style.transform = value;
+      const container = document.getElementById("postContainer");
+      const canvas = container?.parentElement;
+      if (!canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const visual = window.visualViewport;
+      const left = visual?.offsetLeft || 0;
+      const top = visual?.offsetTop || 0;
+      const width = visual?.width || document.documentElement.clientWidth || window.innerWidth;
+      const height = visual?.height || document.documentElement.clientHeight || window.innerHeight;
+      const navBottom = document.querySelector(".site-navigation")?.getBoundingClientRect().bottom || top;
+      const gap = Math.min(SIDE_MENU_VIEWPORT_GAP, width / 16, height / 16);
+      const viewport = {
+        left: Math.max(left, canvasRect.left) + gap,
+        top: Math.max(top, navBottom, canvasRect.top) + gap,
+        right: Math.min(left + width, canvasRect.right) - gap,
+        bottom: Math.min(top + height, canvasRect.bottom) - gap,
       };
+      if (viewport.right <= viewport.left || viewport.bottom <= viewport.top) return;
 
-      if (!viewportWidth || !naturalPostWidth || !mainVisualScale) {
-        setTransform("translateX(0px) scale(1)");
-        return;
+      const preferred = { ...viewport };
+      for (const { pushDirection, rect } of getVisibleSideMenuElements()) {
+        if (pushDirection === "left") preferred.left = Math.max(preferred.left, rect.right + gap);
+        if (pushDirection === "right") preferred.right = Math.min(preferred.right, rect.left - gap);
+        if (pushDirection === "top") preferred.top = Math.max(preferred.top, rect.bottom + gap);
+        if (pushDirection === "bottom") preferred.bottom = Math.min(preferred.bottom, rect.top - gap);
+      }
+      if (preferred.left >= preferred.right) {
+        preferred.left = viewport.left;
+        preferred.right = viewport.right;
+      }
+      if (preferred.top >= preferred.bottom) {
+        preferred.top = viewport.top;
+        preferred.bottom = viewport.bottom;
       }
 
-      const visibleMenus = getVisibleSideMenuElements();
-      if (!visibleMenus.length) {
-        setTransform("translateX(0px) scale(1)");
-        return;
-      }
-
-      const leftPushMenus = visibleMenus.filter(
-        ({ pushDirection }) => pushDirection === "left"
-      );
-      const rightPushMenus = visibleMenus.filter(
-        ({ pushDirection }) => pushDirection === "right"
-      );
-
-      const visiblePostWidthAtNormalScale = naturalPostWidth * mainVisualScale;
-      const normalPostLeft = (viewportWidth - visiblePostWidthAtNormalScale) / 2;
-      const normalPostRight = normalPostLeft + visiblePostWidthAtNormalScale;
-
-      let leftBlockedEdge = 0;
-      let rightBlockedEdge = viewportWidth;
-
-      if (leftPushMenus.length) {
-        leftBlockedEdge = Math.max(
-          ...leftPushMenus.map(({ element }) => {
-            const rect = element.getBoundingClientRect();
-            return Math.max(0, Math.min(viewportWidth, rect.right));
-          })
-        );
-      }
-
-      if (rightPushMenus.length) {
-        rightBlockedEdge = Math.min(
-          ...rightPushMenus.map(({ element }) => {
-            const rect = element.getBoundingClientRect();
-            return Math.max(0, Math.min(viewportWidth, rect.left));
-          })
-        );
-      }
-
-      const intrudesFromLeft =
-        leftBlockedEdge + SIDE_MENU_VIEWPORT_GAP > normalPostLeft;
-      const intrudesFromRight =
-        rightBlockedEdge - SIDE_MENU_VIEWPORT_GAP < normalPostRight;
-
-      if (!intrudesFromLeft && !intrudesFromRight) {
-        setTransform("translateX(0px) scale(1)");
-        return;
-      }
-
-      const safeLeft = Math.max(0, leftBlockedEdge + SIDE_MENU_VIEWPORT_GAP);
-      const safeRight = Math.min(
-        viewportWidth,
-        rightBlockedEdge - SIDE_MENU_VIEWPORT_GAP
-      );
-      const availableViewportWidth = Math.max(1, safeRight - safeLeft);
-
-      const targetVisibleCenter = (safeLeft + safeRight) / 2;
-      const viewportCenter = viewportWidth / 2;
-      const targetVisibleShift = targetVisibleCenter - viewportCenter;
-      const targetTranslateX = targetVisibleShift / mainVisualScale;
-
-      const targetScale =
-        document.documentElement.dataset.shrinkSignsForPanels !== "false" &&
-        visiblePostWidthAtNormalScale > availableViewportWidth
-          ? Math.max(
-              MIN_POST_VIEW_SCALE,
-              availableViewportWidth / visiblePostWidthAtNormalScale
-            )
-          : 1;
-
-      setTransform(`translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`);
+      const style = getComputedStyle(container);
+      const matrix = new DOMMatrixReadOnly(style.transform === "none" ? undefined : style.transform);
+      const [originX, originY] = style.transformOrigin.split(" ").map(parseFloat);
+      const transform = { matrix, originX, originY, zoom: getMainVisualScale(), rect: container.getBoundingClientRect() };
+      const next = fitPostPreview(getPostPreviewBounds(container), viewport, preferred, transform,
+        document.documentElement.dataset.shrinkSignsForPanels !== "false");
+      const value = `translate(${next.x}px, ${next.y}px) scale(${next.scale})`;
+      if (container.style.transform !== value) container.style.transform = value;
     };
 
     const fitToolbarBelowSiteNavigation = () => {
@@ -4722,7 +4729,8 @@ const ungroupSelectedBlockElement = () => {
       if (typeof ResizeObserver === "function") {
         const sizes = new ResizeObserver(schedule);
         const layoutTargets = [
-          document.getElementById("postContainer"), document.getElementById("sMConfigBar"),
+          document.getElementById("postContainer"), document.getElementById("panelContainer"),
+          document.getElementById("sMConfigBar"),
           document.getElementById("panelSelect"), document.querySelector(".site-navigation"),
           ...document.querySelectorAll(".sMModal"),
         ];
@@ -4731,7 +4739,11 @@ const ungroupSelectedBlockElement = () => {
       for (const target of document.querySelectorAll(".modals, #sMConfigBar, #panelSelect")) target.addEventListener("transitionend", schedule);
 
       window.addEventListener("resize", schedule);
+      window.visualViewport?.addEventListener("resize", schedule);
+      window.visualViewport?.addEventListener("scroll", schedule);
       window.addEventListener("load", schedule);
+      document.fonts?.addEventListener("loadingdone", schedule);
+      document.getElementById("postContainer")?.addEventListener("load", schedule, true);
 
       schedule();
     };
@@ -4763,10 +4775,11 @@ const ungroupSelectedBlockElement = () => {
       let savedSnapshot = getRestoreOnRefreshMode() === "never"
         ? null : await readSavedAppStateSnapshot();
       let restored = false;
-      const paintSign = async () => {
+      const paintSign = async ({ withPostSupports = false } = {}) => {
         await Promise.all([
           prepareIconImagesForPost(post),
           window.SignMakerFonts?.preparePost(post),
+          withPostSupports && window.SignMakerBoot?.loadPostSupports(),
         ]);
         redraw();
         await window.SignMakerFonts?.prepareElement(document.getElementById("panelContainer"));
@@ -4783,7 +4796,10 @@ const ungroupSelectedBlockElement = () => {
           .some(key => window.localStorage.getItem(key) !== null);
       } catch (_) {}
       const paintedFreshSign = !savedSnapshot && !hasStoredPostPreferences;
-      if (paintedFreshSign) await paintSign();
+      if (paintedFreshSign) {
+        post.polePosition = FIRST_RUN_POST_TYPE;
+        await paintSign({ withPostSupports: true });
+      }
       await window.SignMakerBoot?.loadEditor();
       initializeVmsRendering();
       savedSnapshot = await migrateSavedSignTypographyOnce() ?? savedSnapshot;
@@ -4895,7 +4911,7 @@ const ungroupSelectedBlockElement = () => {
       window.performance?.mark?.("signmaker:editor-ready");
       window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
       if (!savedSnapshot && !hasStoredPostPreferences && getRestoreOnRefreshMode() !== "never") {
-        formHandler.showWelcomeTutorial();
+        formHandler.showWelcomeHelp();
       }
     };
 
@@ -5461,6 +5477,19 @@ const ungroupSelectedBlockElement = () => {
         formHandler.updateForm();
         redraw();
       }, options);
+    };
+
+    const setSubpanelGap = (panelIndex, value) => {
+      const panel = post.panels[panelIndex];
+      if (!panel) return 0;
+      const gap = Panel.normalizeSubpanelGap(value);
+      if (gap !== Panel.normalizeSubpanelGap(panel.subpanelGap)) {
+        runWithUndo(() => {
+          panel.subpanelGap = gap;
+          redraw({ preserveOtherPanels: true, changedPanelIndex: panelIndex });
+        });
+      }
+      return gap;
     };
 
     const addSubPanel = function () {
@@ -12576,6 +12605,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
     postContainerElmt.classList.toggle("showBlockBoundingBoxes", !!post.showBlockBoundingBoxes);
     applyCustomPostColorVars(postContainerElmt, postUsesCustomColor ? post.color : "");
     const normalizedThickness = post.normalizeThickness(post.thickness);
+    postContainerElmt.style.setProperty("--post-height", `${Post.normalizeHeight(post.height)}rem`);
     post.thickness = normalizedThickness;
     postContainerElmt.style.setProperty(
       "--postThickness",
@@ -12681,15 +12711,21 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             ? "customPanelColor"
             : getColorClassToken(panel.color, "green");
           panelElmt.className = `panel ${panelColorClass} ${panel.corner.toLowerCase()}`;
+          const subpanelGap = Panel.normalizeSubpanelGap(panel.subpanelGap);
+          if (subpanelGap > 0) {
+            panelElmt.classList.add("hasSubpanelGap");
+            panelElmt.style.setProperty("--subpanel-gap", `${subpanelGap}rem`);
+          }
           panelElmt.classList.toggle("warningDiamond", panel.warningDiamond === true);
           const panelBorderThickness = Panel.getBorderThickness(panel);
           panelElmt.classList.toggle("panelBorderHidden", panelBorderThickness === 0);
           panelElmt.style.setProperty("--panelBorderWidth", `${panelBorderThickness}rem`);
           const panelFillColor = getResolvedCssColorValue(panel.color) || "var(--green)";
           const customPanelBorder = !!panel.borderColor && panel.borderColor !== "Inherit";
+          const panelBorderColor = (customPanelBorder && getResolvedCssColorValue(panel.borderColor)) ||
+            getExitOnlyContrastColor(panelFillColor);
           panelElmt.style.setProperty("--panelFillColor", panelFillColor);
-          panelElmt.style.setProperty("--panelBorderColor", customPanelBorder
-            ? getResolvedCssColorValue(panel.borderColor) : getExitOnlyContrastColor(panelFillColor));
+          panelElmt.style.setProperty("--panelBorderColor", panelBorderColor);
           panelElmt.classList.toggle("customPanelBorder", customPanelBorder);
           panelElmt.classList.toggle("hasPanelOuterBorder", panel.outerBorder === true);
           const outerBorderWidth = Panel.getOuterBorderThickness(panel);
@@ -12822,8 +12858,11 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 });
               },
             });
+          } else {
+            const offset = Panel.normalizeVerticalOffset(post.panels[stackTopIndex].verticalOffsetRem);
+            if (offset) (currentPanelStackElmt || panelElmt).style.top = `${offset}rem`;
           }
-          
+
           // Store CA style exit tabs to append inside sign later
           const caStyleExitTabs = [];
           let firstExitTab = null;
@@ -13296,7 +13335,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                        }
                        
                        const resolvedExitTabColor =
-                         exitTab.color != "Panel Color" && exitTab.color != undefined
+                         exitTab.color && !/^(Panel Color|Inherit)$/i.test(exitTab.color)
                            ? exitTab.color
                            : panel.color;
 
@@ -16622,12 +16661,15 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
                 (["DOWN", "DOWN_ALT"].includes(key) ? 0.9 :
                  ["TYPE_A", "TYPE_A_EXTENDED"].includes(key) ? 0.4 * extendedScale :
                  key === "TYPE_B" ? 0.55 : 0) * size / 3 * diagonalAmount;
-            const background = getResolvedCssColorValue(sign.exitBackgroundColor || "Yellow") || "var(--yellow)";
+            const exitBackgroundInherits = sign.exitBackgroundColor === "Inherit";
+            const background = exitBackgroundInherits ? panelFillColor
+                : getResolvedCssColorValue(sign.exitBackgroundColor || "Yellow") || "var(--yellow)";
             const inherited = getExitOnlyContrastColor(background);
             const textColor = sign.exitTextColor && sign.exitTextColor !== "Inherit"
                 ? getResolvedCssColorValue(sign.exitTextColor) : inherited;
             const borderColor = sign.exitBorderColor && sign.exitBorderColor !== "Inherit"
-                ? getResolvedCssColorValue(sign.exitBorderColor) : inherited;
+                ? getResolvedCssColorValue(sign.exitBorderColor)
+                : customPanelBorder || exitBackgroundInherits ? panelBorderColor : inherited;
             const cornerColored = sign.exitColorEdges === true && panel.corner === "Sharp" && variant !== "boxed";
             const borderWidth = `${panelBorderThickness}rem`;
 
@@ -16646,9 +16688,8 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
             signCont.style.setProperty("--exitOnlyBackground", background);
             guideArrowsElmt.style.setProperty("--exitOnlyTextColor", textColor);
             guideArrowsElmt.style.setProperty("--exitOnlyBorderColor", borderColor);
-            guideArrowsElmt.style.setProperty("--exitOnlyPanelColor", getResolvedCssColorValue(panel.color) || "var(--green)");
-            guideArrowsElmt.style.setProperty("--exitOnlyPanelBorderColor",
-                getExitOnlyContrastColor(getResolvedCssColorValue(panel.color) || "var(--green)"));
+            guideArrowsElmt.style.setProperty("--exitOnlyPanelColor", panelFillColor);
+            guideArrowsElmt.style.setProperty("--exitOnlyPanelBorderColor", panelBorderColor);
             guideArrowsElmt.style.setProperty("--exitOnlyTopBorder", sign.exitTopBorder ? borderWidth : "0px");
             guideArrowsElmt.style.setProperty("--exitOnlyVerticalPadding", `${verticalPadding}rem`);
             guideArrowsElmt.style.setProperty("--exitOnlyHorizontalPadding", `${coloredEdgePadding * horizontalPaddingScale}rem`);
@@ -17728,6 +17769,7 @@ const copyExportTargetToClipboard = async function (file, selectedPanelIndexSet)
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),
         setPanelSpacing: setPanelSpacing,
+        setSubpanelGap,
         setSubpanelDividerVisible,
         isSubpanelDividerVisible,
         canUseAplEdgeExitTab,
@@ -17902,6 +17944,16 @@ const serializePostWithElementTypes = (space) => {
       presetRevision: 1,
     },
     {
+      // mile_marker.json holds both panels: the base is the first, each variant names its own.
+      id: "default-mile-marker",
+      name: "Mile Marker",
+      document: "mile_marker",
+      presetRevision: 1,
+      panel: 0,
+      baseName: "Enhanced",
+      variants: [{ id: "standard", name: "Standard", panel: 1 }],
+    },
+    {
       id: "default-tolled-exit",
       name: "Tolled Exit",
       build: buildTolledExitTemplate,
@@ -17987,13 +18039,22 @@ const serializePostWithElementTypes = (space) => {
           if (existing && (!definition.document || existing.presetRevision === definition.presetRevision)) continue;
           const snapshot = definition.document ? documents[definition.document]?.post : null;
           if (definition.document && !snapshot?.panels?.length) throw new Error(`Invalid preset: ${definition.document}`);
+          const presetPanel = (index) => {
+            if (index === undefined) return JSON.stringify(snapshot);
+            if (!snapshot.panels[index]) throw new Error(`Invalid preset panel: ${definition.document}[${index}]`);
+            return JSON.stringify({ ...snapshot, panels: [snapshot.panels[index]] });
+          };
+          // Preset variants are refreshed with each revision; variants the user added are kept.
+          const presetVariants = (definition.variants || []).map(({ id, name, panel }) => ({ id, name, data: presetPanel(panel) }));
+          const presetVariantIds = new Set(presetVariants.map(variant => variant.id));
           await db.saveTemplate({
             ...existing,
             id: definition.id,
             name: definition.name,
-            data: snapshot ? JSON.stringify(snapshot) : createDefaultTemplateData(definition.build),
+            data: snapshot ? presetPanel(definition.panel) : createDefaultTemplateData(definition.build),
             templateScope: "panel",
-            variants: existing?.variants || [],
+            variants: [...presetVariants, ...(existing?.variants || []).filter(variant => !presetVariantIds.has(String(variant?.id)))],
+            ...(definition.baseName ? { baseName: definition.baseName } : {}),
             isDefault: true,
             ...(definition.document ? { presetRevision: definition.presetRevision } : {}),
             dateCreated: existing?.dateCreated || DEFAULT_TEMPLATE_DATE,
@@ -18607,7 +18668,7 @@ const serializePostWithElementTypes = (space) => {
       : activeTemplateEditor.activeVariantId
         ? String(variantNameInput?.value || activeVariant?.name || "").trim() ||
           "Missing Variant"
-        : "Base";
+        : activeTemplateEditor.draft.baseName || "Base";
     const statusText = hasEditor
       ? `Editing “${templateName}” - ${versionName}`
       : "";
@@ -18761,7 +18822,7 @@ const serializePostWithElementTypes = (space) => {
     versionSelect.innerHTML = "";
     const baseOption = document.createElement("option");
     baseOption.value = "";
-    baseOption.textContent = "Base";
+    baseOption.textContent = draft.baseName || "Base";
     versionSelect.appendChild(baseOption);
     for (const variant of draft.variants) {
       const option = document.createElement("option");
@@ -18773,7 +18834,7 @@ const serializePostWithElementTypes = (space) => {
 
     const activeVariant = getActiveTemplateEditorVariant();
     variantNameInput.disabled = !activeVariant;
-    variantNameInput.value = activeVariant?.name || "Base";
+    variantNameInput.value = activeVariant?.name || draft.baseName || "Base";
     populateTemplateFontSelect(variantFontSelect, "Keep Current Fonts");
     variantFontSelect.disabled = !activeVariant;
     variantFontSelect.value = activeVariant?.fontFamily || "";
@@ -19124,7 +19185,7 @@ const serializePostWithElementTypes = (space) => {
           variantSelect.setAttribute("aria-label", `${template.name} variant`);
           const baseOption = document.createElement("option");
           baseOption.value = "";
-          baseOption.textContent = "Base";
+          baseOption.textContent = template.baseName || "Base";
           variantSelect.appendChild(baseOption);
           for (const variant of variants) {
             const option = document.createElement("option");
@@ -19318,6 +19379,7 @@ const serializePostWithElementTypes = (space) => {
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),
         getPost: getPost,
+        getPostPreviewBounds,
         setPost: setPost,
         post: post,
 

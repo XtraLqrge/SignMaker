@@ -1,15 +1,19 @@
 #postContainer {
   display: flex;
+  flex: none;
   flex-direction: row;
-  height: 30rem;
+  --post-height: 30rem;
+  height: var(--post-height);
   position: relative;
+  --post-panel-center: 7.5rem;
+  transform-origin: center var(--post-panel-center);
   --post-color-mid: rgb(191, 191, 191);
   --post-color-light: rgb(240, 240, 240);
   --post-color-dark: rgb(128, 128, 128);
   --postThickness: 1rem;
   --post-arm-upper: 7.425rem;
   --post-arm-lower: 9.975rem;
-  --post-center-height: 24rem;
+  --post-upright-height: calc(var(--post-height) - 6rem);
   --postGradient: linear-gradient(90deg,
       var(--post-color-mid) 0%,
       var(--post-color-light) 40%,
@@ -24,9 +28,7 @@
 
 #postContainer.fdotSupportContainer {
   flex: none;
-  flex-direction: column;
   align-items: flex-start;
-  justify-content: flex-end;
   width: max-content;
   box-sizing: border-box;
   isolation: isolate;
@@ -48,12 +50,17 @@
 
 #postContainer.fdotSupportContainer #panelContainer {
   flex: none;
-  align-items: flex-end;
+  align-items: center;
   position: relative;
   z-index: 1;
-  height: auto;
-  margin-top: 0;
+  height: 15rem;
+  margin-top: calc(var(--post-panel-center) - 7.5rem);
   background: none;
+}
+
+/* Match the mounting line of each position when swapping support types. */
+#postContainer:is(.polePositionRural, [data-support-position="Rural"]) {
+  --post-panel-center: 20rem;
 }
 
 #postContainer.postColorBlack {
@@ -112,6 +119,7 @@
   position: relative;
   background: none;
   margin-top: 20rem;
+  height: 10rem;
   z-index: 1;
 }
 
@@ -122,7 +130,7 @@
       var(--post-color-light) 40%,
       var(--post-color-dark) 100%);
   background-repeat: no-repeat;
-  background-size: var(--postThickness, 1rem) var(--post-center-height);
+  background-size: var(--postThickness, 1rem) var(--post-upright-height);
   background-position: center bottom;
   margin-top: 7.5rem;
 }
@@ -131,7 +139,7 @@
   background: var(--postGradient);
   cursor: pointer;
   width: var(--postThickness, 1rem);
-  height: 24rem;
+  height: var(--post-upright-height);
 
   align-self: flex-end;
 }
@@ -183,7 +191,7 @@
 }
 
 #postContainer.polePositionCenter .panel {
-  margin-top: -22.5rem;
+  margin-top: calc(7.5rem - var(--post-height));
 }
 
 #postContainer.polePositionCenter .panel:not(:first-child) {
@@ -717,6 +725,17 @@
   flex-direction: row;
 }
 
+/* Split each gap around its divider so the divider stays centered. */
+.panel.hasSubpanelGap .signHolder {
+  column-gap: calc(var(--subpanel-gap) / 2);
+}
+
+.panel.hasSubpanelGap .signHolder > .subDivider.hiddenDividerWithAplArrow:not(.hasArrow) {
+  display: block !important;
+  width: 0 !important;
+  flex: 0 0 0 !important;
+}
+
 .signContainer > .sign {
   min-width: 100%;
   box-sizing: border-box;
@@ -799,15 +818,7 @@
   bottom: var(--standardGuideArrowDividerStopOffset, 1.15rem);
   left: 0;
   width: 100%;
-  background-color: var(--white);
-}
-
-.panel.white .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.yellow .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.orange .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.fluorescent.yellow-green .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before,
-.panel.fluorescent.pink .signHolder:not(:has(.subpanelAplArrows)) > .subDivider.hasStandardGuideArrowBelow::before {
-  background-color: var(--black);
+  background-color: var(--panelBorderColor, currentColor);
 }
 
 .globalTop,
@@ -1965,7 +1976,7 @@
 
 .subDivider {
   width: 0.2rem;
-  background-color: var(--white);
+  background-color: var(--panelBorderColor, currentColor);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2538,18 +2549,10 @@ img.exitOnlyArrow:last-child {
   flex: 0 0 0.2rem !important;
   align-self: stretch !important;
   margin: 0 0 var(--aplArrowZoneHeight, 5.8rem) 0 !important;
-  background-color: var(--white) !important;
+  background-color: var(--panelBorderColor, currentColor) !important;
   position: relative !important;
   overflow: visible !important;
   z-index: 4;
-}
-
-.panel.white .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.yellow .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.orange .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.fluorescent.yellow-green .signHolder:has(.subpanelAplArrows) .subDivider,
-.panel.fluorescent.pink .signHolder:has(.subpanelAplArrows) .subDivider {
-  background-color: var(--black) !important;
 }
 
 /* Divider with its own APL arrow: hide the full-height bar, then draw only the upper segment */
@@ -2565,15 +2568,7 @@ img.exitOnlyArrow:last-child {
   bottom: var(--aplDividerStopOffset, var(--aplArrowZoneHeight, 5.5rem));
   left: 0;
   width: 0.2rem;
-  background-color: var(--white);
-}
-
-.panel.white .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.yellow .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.orange .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.fluorescent.yellow-green .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before,
-.panel.fluorescent.pink .signHolder:has(.subpanelAplArrows) .subDivider.hasArrow::before {
-  background-color: var(--black);
+  background-color: var(--panelBorderColor, currentColor);
 }
 
 .signHolder:has(.subpanelAplArrows) .subDivider:last-child {
@@ -2890,32 +2885,13 @@ img.exitOnlyArrow:last-child {
 }
 
 
-/* Light-background signs should use black borders/dividers instead of white */
+/* Light sign faces use dark legends. Borders are resolved by Panel Style. */
 .panel.yellow .sign,
 .panel.white .sign,
 .panel.orange .sign,
 .panel.fluorescent.yellow-green .sign,
 .panel.fluorescent.pink .sign {
-  border-color: var(--black) !important;
   color: var(--black);
-}
-
-/* Divider lines between subpanels */
-.panel.yellow .subDivider,
-.panel.white .subDivider,
-.panel.orange .subDivider,
-.panel.fluorescent.yellow-green .subDivider,
-.panel.fluorescent.pink .subDivider {
-  background-color: var(--black) !important;
-}
-
-/* APL divider pseudo-line */
-.panel.yellow .subDivider.hasArrow::before,
-.panel.white .subDivider.hasArrow::before,
-.panel.orange .subDivider.hasArrow::before,
-.panel.fluorescent.yellow-green .subDivider.hasArrow::before,
-.panel.fluorescent.pink .subDivider.hasArrow::before {
-  background-color: var(--black) !important;
 }
 
 /* Borders inside light-background panel content */
@@ -2933,7 +2909,6 @@ img.exitOnlyArrow:last-child {
 .panel.orange .guideArrows,
 .panel.fluorescent.yellow-green .guideArrows,
 .panel.fluorescent.pink .guideArrows {
-  border-color: var(--black) !important;
   color: var(--black);
 }
 
@@ -3332,7 +3307,7 @@ img.exitOnlyArrow:last-child {
 }
 
 #postContainer.polePositionCenter .panelStack {
-  margin-top: -22.5rem;
+  margin-top: calc(7.5rem - var(--post-height));
 }
 
 #postContainer.polePositionRural .panelStack > .panel {
@@ -4694,13 +4669,9 @@ img.exitOnlyArrow:last-child {
 }
 
 .panel.customPanelBorder .exitTab,
-.panel.customPanelBorder > .signContainer > .guideArrows,
-.panel.customPanelBorder > .signContainer > .aplArrows,
-.panel.customPanelBorder .modernExitColoredLane,
-.panel.customPanelBorder .modernExitPlainLane {
+.panel.customPanelBorder > .signContainer > .guideArrows:not(.modernExitOnly),
+.panel.customPanelBorder > .signContainer > .aplArrows {
   border-color: var(--panelBorderColor) !important;
-  --exitOnlyBorderColor: var(--panelBorderColor);
-  --exitOnlyPanelBorderColor: var(--panelBorderColor);
 }
 
 .panel.hasPanelOuterBorder {

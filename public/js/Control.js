@@ -5197,13 +5197,9 @@ class DividerElement {
     newDivider.style.marginTop = "0";
     newDivider.style.marginBottom = "0";
 
-    if (this.dividerColor && this.dividerColor !== "Default") {
-      const resolvedColor =
-        lib.colors[this.dividerColor] || this.dividerColor || "";
-      if (resolvedColor) {
-        newDivider.style.backgroundColor = resolvedColor;
-      }
-    }
+    const dividerInherits = !this.dividerColor || /^(Default|Inherit)$/i.test(this.dividerColor);
+    newDivider.style.backgroundColor = dividerInherits ? "var(--panelBorderColor, currentColor)" :
+      lib.colors[this.dividerColor] || this.dividerColor;
 
     if (this.fullBleed) {
       newDivider.classList.add("fullBleed");
@@ -7400,8 +7396,9 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
           properties.borderColor.trim().length
           ? properties.borderColor
           : Block.defaultBorderColor;
+      const borderMatchesBackground = chosenBorderColor === Block.defaultBorderColor || chosenBorderColor === "Inherit";
       const resolvedBorderColor =
-        chosenBorderColor === Block.defaultBorderColor
+        borderMatchesBackground
           ? usesLightBleedBackground
             ? (lib.colors && lib.colors.Black) || "black"
             : (lib.colors && lib.colors.White) || "white"
@@ -7410,12 +7407,12 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         flexRow.dataset.rowFullBorder = "true";
         flexRow.style.setProperty(
           "--rowFullBorderColor",
-          chosenBorderColor === Block.defaultBorderColor && !resolvedBackgroundColor
-            ? "currentColor"
+          borderMatchesBackground &&
+            (!resolvedBackgroundColor || (panel?.borderColor && panel.borderColor !== "Inherit"))
+            ? "var(--panelBorderColor, currentColor)"
             : resolvedBorderColor
         );
       }
-      let appliedFullBleedBorderColor = "";
       const rowWidthValue = parseFloat(properties.width);
       const rowWidthStyle =
         !fullBleedDividerRow && Number.isFinite(rowWidthValue) && rowWidthValue > 0
@@ -7433,9 +7430,8 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
         flexRow.style.setProperty("--marginBottom", bottomNegativeSpacing);
         flexRow.style.setProperty("--blockPaddingTopExtra", topPositiveSpacing);
         flexRow.style.setProperty("--blockPaddingBottomExtra", bottomPositiveSpacing);
-        if (resolvedBorderColor) {
+        if (resolvedBorderColor && !borderMatchesBackground) {
           flexRow.dataset.fullBleedBorderColor = resolvedBorderColor;
-          appliedFullBleedBorderColor = resolvedBorderColor;
         } else {
           delete flexRow.dataset.fullBleedBorderColor;
         }
@@ -7451,9 +7447,7 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
             resolvedBackgroundColor
           );
         } else {
-          if (properties.fullBorder !== true || chosenBorderColor === Block.defaultBorderColor) {
-            delete flexRow.dataset.fullBleedBorderColor;
-          }
+          if (properties.fullBorder !== true) delete flexRow.dataset.fullBleedBorderColor;
           delete flexRow.dataset.fullBleedBackgroundColor;
           flexRow.style.removeProperty("--fullBleedInitialBackgroundColor");
           flexRow.style.removeProperty("--fullBleedResolvedBackgroundColor");
@@ -7475,12 +7469,6 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
 
       if (usesLightBleedBackground) {
         flexRow.style.color = "black";
-        if (properties.backgroundFullWidth && !appliedFullBleedBorderColor) {
-          const fallbackBorderColor =
-            (lib.colors && lib.colors.Black) || "rgb(0, 0, 0)";
-          flexRow.dataset.fullBleedBorderColor = fallbackBorderColor;
-          appliedFullBleedBorderColor = fallbackBorderColor;
-        }
       }
 
       const createAlignmentGroup = (alignmentName = "Center") => {
@@ -7543,11 +7531,9 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
           elem.fullBleed === true &&
           dividerBorderColor === null
         ) {
-          if (elem.dividerColor && elem.dividerColor !== "Default") {
+          if (elem.dividerColor && !/^(Default|Inherit)$/i.test(elem.dividerColor)) {
             dividerBorderColor =
               lib.colors[elem.dividerColor] || elem.dividerColor;
-          } else {
-            dividerBorderColor = lib.colors.White || "white";
           }
         }
 
@@ -7580,7 +7566,6 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
             ? dividerBorderColor.toLowerCase()
             : dividerBorderColor;
         flexRow.dataset.fullBleedBorderColor = normalizedDividerColor;
-        appliedFullBleedBorderColor = normalizedDividerColor;
       }
 
       flexRow.dataset.lightBackground = usesLightBleedBackground
@@ -7663,10 +7648,9 @@ class GroupedBlockElement {
     if (padding || paddingVertical) wrapper.style.padding = `${paddingVertical}rem ${padding}rem`;
     if (borderRadius) wrapper.style.borderRadius = `${borderRadius}rem`;
     if (this.border) {
-      // Inherit follows the group's text color; the width matches the sign's.
       wrapper.style.border = `var(--signBorderWidth, 0.2rem) solid ${
         this.borderColor === "Inherit"
-          ? "currentColor"
+          ? "var(--panelBorderColor, currentColor)"
           : (lib.colors[this.borderColor] || this.borderColor).toLowerCase()
       }`;
     }

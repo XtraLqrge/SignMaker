@@ -230,7 +230,19 @@ body .blockTypePickerList>.blockTypePickerItem { width:100%!important; min-width
 :is(#settings22Modal, #postStyleModal) .generalSettingsSection { display:grid; grid-template-columns:minmax(0,1fr); gap:0.55rem; width:100%; min-width:0; max-width:100%; margin:0.8rem 0 0; }
 :is(#settings22Modal, #postStyleModal) .generalSettingsSection>h3 { margin:0 0 0.15rem; padding:0 0 0.3rem; border-bottom:1px solid rgba(var(--baseColor),0.25); font-size:0.95rem; line-height:1.2; }
 :is(#settings22Modal, #postStyleModal) .generalSettingRow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,7.5rem); align-items:center; gap:0.5rem; width:100%; min-width:0; max-width:100%; }
-#postStyleModal .generalSettingRow { grid-template-columns:minmax(0,min(49%,9rem)) minmax(0,1fr); }
+#postStyleModal .generalSettingRow { grid-template-columns:minmax(0,min(45%,9rem)) minmax(0,1fr) auto; }
+#postStyleModal .generalSettingRow[hidden] { display:none; }
+#postStyleModal .postSettingReset {
+  display:grid;
+  place-items:center;
+  width:1.45rem;
+  height:1.45rem;
+  min-width:0;
+  padding:0;
+  margin:0;
+}
+#postStyleModal .postSettingReset .material-symbols-outlined { font-size:1rem; }
+html[data-mobile-ui] #mobileEditor #postStyleModal .postSettingReset { width:44px; height:44px; }
 :is(#settings22Modal, #postStyleModal) .generalSettingRow>label { text-align:left; }
 :is(#settings22Modal, #postStyleModal) .generalSettingControl { width:100%; min-width:0; max-width:100%; box-sizing:border-box; }
 :is(#settings22Modal, #postStyleModal) .generalSettingControl>input[type="number"] { width:100%; min-width:0; max-width:100%; height:1.35rem; margin:0; padding:0.15rem 0.25rem; font-size:0.8rem; box-sizing:border-box; }

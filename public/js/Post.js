@@ -189,6 +189,13 @@ class Post {
       typeof value === "string" ? parseFloat(value) : Number(value);
     return Math.min(2.5, Math.max(0, Number.isFinite(parsed) ? parsed : fallback));
   }
+
+  static get defaultHeight() { return 30; }
+
+  static normalizeHeight(value) {
+    const height = parseFloat(value);
+    return Number.isFinite(height) ? Math.min(60, Math.max(24, height)) : Post.defaultHeight;
+  }
 }
 
 Post.prototype.polePositions = [

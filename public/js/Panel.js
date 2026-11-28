@@ -47,6 +47,11 @@ class Panel {
 
   static get maxVerticalOffset() { return 6; }
 
+  static normalizeSubpanelGap(value) {
+    const gap = parseFloat(value);
+    return Number.isFinite(gap) ? Math.round(Math.min(12, Math.max(0, gap)) * 100) / 100 : 0;
+  }
+
   static normalizeVerticalOffset(value) {
     const offset = Number(value);
     return Number.isFinite(offset)

@@ -64,7 +64,38 @@ feet for two-upright spans. Use the completed data table for a specific
 installation.
 [FDOT Structures Design Programs Library](https://www.fdot.gov/structures/proglib.shtm)
 
+Post Style shows **Truss Height** (the depth, `C` / `E`; default 4.35 rem,
+2–12 rem) and **Truss Panel Length** (the target `B` / `A / D`; default
+5 rem, 2–15 rem) when a truss is selected. Both are saved with the sign as
+`post.trussDepth` and `post.trussPanelLength`. The drawing rounds the panel
+count up so that equal panels fill the span, and spans keep an even count.
+
+## Tampa monotubes
+
+The Post Type menu lists these under **Tampa**: a span and left/right
+cantilevers, each with curved or mitered corners. A single tube rises from each
+anchored upright and turns into the horizontal member. The sign hangs on wind
+beams in front of the tube, and a cantilever's free end is capped just past the
+sign.
+
+- **Mitered corners** follow the THEA East Selmon requirement: "Overhead sign
+  structures shall be monotube structures with mitered corners matching the
+  aesthetic of the existing monotube structures along the East Selmon
+  Expressway." Exposed galvanized surfaces are painted Pro-Tech PT211W57
+  (Textured White).
+  [THEA design-build RFP O-02520](https://www.tampa-xway.com/wp-content/uploads/2020/12/O-02520_ASDB_RFP_Final_12-03-2020-1.pdf)
+- **Curved corners** have no Tampa standard sheet behind them. The bend is
+  drawn at the tube centerline with an adjustable **Corner Radius** (default
+  3 rem, 0.5–10 rem, saved as `post.monotubeRadius`). Monotube details from
+  other states use a bent pipe; this
+  [Oklahoma DOT monotube plan sheet](https://www.odot.org/contracts/a2022/plans2210/192_2210_HSIPG-255F(581)TR_3579504/M001-3579504-Monotube%20Structure%201.pdf)
+  is reported to call for a 10 ft bend radius (not yet checked against the sheet).
+  Replace the default with project dimensions when a Tampa plan sheet is
+  available.
+
 ## Verification
+
+Switch between support types within the same Position and check that the mounted panels keep their vertical placement. Each Post Style row has a reset button. Panel Spacing resets to the saved Default Panel Spacing.
 
 Choose each Post Position and try its available Post Type options. Check
 the support color, thickness, visibility, and restore behavior. Export

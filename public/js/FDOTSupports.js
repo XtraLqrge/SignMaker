@@ -1,7 +1,7 @@
 /* Visual elevations based on FDOT FY 2026-27 Standard Plans.
  * See docs/fdot-supports.md for the drawing/sheet behind each family.
  * Overhead trusses are drawn head on, with depth shading on the three-chord section.
- * Span width fits the signs. Vertical dimensions use a fixed mounting layout.
+ * Span width fits the signs. The supports share the standard post mounting line.
  */
 window.SignMakerFDOTSupports = (() => {
   const definitions = [
@@ -31,6 +31,15 @@ window.SignMakerFDOTSupports = (() => {
     ["FDOTSpanWireA", "Direct span wire", "659-010", "Overhead", "wire", { attachment: "A" }],
     ["FDOTSpanWireBC", "Span wire with wind beams", "659-010", "Overhead", "wire", { attachment: "BC" }],
     ["FDOTSpanWireD", "Span wire with hangers", "659-010", "Overhead", "wire", { attachment: "D" }],
+    // Tampa monotubes: one tube rises from each upright and turns into the span.
+    // THEA specifies mitered corners (East Selmon); the curved style uses an
+    // adjustable bend radius, since no Tampa sheet for it was found.
+    ["TampaMonotubeSpanCurved", "Monotube span, curved corners", "Tampa", "Overhead", "monotube", { corners: "curved", group: "Tampa" }],
+    ["TampaMonotubeSpanMitered", "Monotube span, mitered corners", "THEA", "Overhead", "monotube", { corners: "mitered", group: "Tampa" }],
+    ["TampaMonotubeCantileverCurvedLeft", "Monotube cantilever, curved corner", "Tampa", "Left", "monotube", { side: "left", corners: "curved", group: "Tampa" }],
+    ["TampaMonotubeCantileverCurvedRight", "Monotube cantilever, curved corner", "Tampa", "Right", "monotube", { side: "right", corners: "curved", group: "Tampa" }],
+    ["TampaMonotubeCantileverMiteredLeft", "Monotube cantilever, mitered corner", "THEA", "Left", "monotube", { side: "left", corners: "mitered", group: "Tampa" }],
+    ["TampaMonotubeCantileverMiteredRight", "Monotube cantilever, mitered corner", "THEA", "Right", "monotube", { side: "right", corners: "mitered", group: "Tampa" }],
   ];
   const catalog = definitions.map(([id, label, index, position, kind, options = {}]) =>
     ({ id, label, index, position, kind, ...options })
@@ -42,10 +51,26 @@ window.SignMakerFDOTSupports = (() => {
     if (!byPosition.has(support.position)) byPosition.set(support.position, []);
     byPosition.get(support.position).push(support);
   }
-  const frontViewKinds = new Set(["truss", "mast", "wire"]);
-  const frontLayout = { height: 30, mountTop: 3.2 };
-  const groundLayout = { height: 24, mountTop: 1 };
+  const frontViewKinds = new Set(["truss", "monotube", "mast", "wire"]);
   const mountHeight = 3;
+  // Truss depth (top chord to bottom chord) and target panel length, in rem.
+  // The panel count is rounded up so whole panels fill the span.
+  const trussDefaults = { depth: 4.35, panelLength: 5 };
+  const trussLimits = { depth: [2, 12], panelLength: [2, 15] };
+  // Curved monotube corner: bend radius to the tube centerline, in rem.
+  const monotubeDefaults = { radius: 3 };
+  const monotubeLimits = { radius: [0.5, 10] };
+  const clamp = (value, [min, max], fallback) => {
+    const parsed = value == null || String(value).trim() === "" ? NaN : Number(value);
+    return Math.min(max, Math.max(min, Number.isFinite(parsed) ? parsed : fallback));
+  };
+  const trussSettings = (post) => ({
+    depth: clamp(post?.trussDepth, trussLimits.depth, trussDefaults.depth),
+    panelLength: clamp(post?.trussPanelLength, trussLimits.panelLength, trussDefaults.panelLength),
+  });
+  const monotubeSettings = (post) => ({
+    radius: clamp(post?.monotubeRadius, monotubeLimits.radius, monotubeDefaults.radius),
+  });
   const renderedGeometry = new WeakMap();
   let observedContainer;
   let observer;
@@ -93,16 +118,14 @@ window.SignMakerFDOTSupports = (() => {
     container.classList.toggle("fdotSupportContainer", !!support);
     if (support) {
       const overhead = frontViewKinds.has(support.kind);
-      const { height, mountTop } = overhead ? frontLayout : groundLayout;
       const left = overhead && support.side !== "right" ? 5.5 : 1;
       const right = overhead && support.side !== "left" ? 5.5 : 1;
-      const bottom = height - mountTop - mountHeight;
-      container.style.height = `${height}rem`;
-      container.style.padding = `0 ${right}rem ${bottom}rem ${left}rem`;
+      container.dataset.supportPosition = support.position;
+      container.style.paddingInline = `${left}rem ${right}rem`;
       panels.style.background = "none";
     } else {
-      container.style.padding = "";
-      container.style.height = "";
+      delete container.dataset.supportPosition;
+      container.style.paddingInline = "";
       container.querySelector(".fdotSupport")?.remove();
       observer?.disconnect();
       observer = null;
@@ -117,6 +140,7 @@ window.SignMakerFDOTSupports = (() => {
         frame = requestAnimationFrame(() => render(currentPost, container, panels));
       });
       observer.observe(panels);
+      observer.observe(container);
       observedContainer = panels;
     }
   }
@@ -141,11 +165,15 @@ window.SignMakerFDOTSupports = (() => {
     if (display === "none") return;
 
     const frontView = frontViewKinds.has(support.kind);
-    const { height: h, mountTop: py } = frontView ? frontLayout : groundLayout;
-    const ph = mountHeight;
+    const style = getComputedStyle(container);
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const width = container.offsetWidth;
     const w = width / rem;
+    const h = container.offsetHeight / rem;
+    if (!w || !h) return;
+    const mountCenter = parseFloat(style.getPropertyValue("--post-panel-center")) || 7.5;
+    const ph = mountHeight;
+    const py = mountCenter - ph / 2;
     const containerRect = container.getBoundingClientRect();
     const scale = width ? containerRect.width / width || 1 : 1;
     let faceLeft = Infinity;
@@ -160,12 +188,14 @@ window.SignMakerFDOTSupports = (() => {
     const pw = Number.isFinite(faceRight) ? (faceRight-faceLeft)/scale/rem : panels.offsetWidth/rem;
     // Read layout dimensions, which remain stable when the mobile preview is scaled.
     const t = Math.min(2.5, Math.max(0.08, post.thickness));
-    const style = getComputedStyle(container);
     const mid = style.getPropertyValue("--post-color-mid").trim();
     const light = style.getPropertyValue("--post-color-light").trim();
     const dark = style.getPropertyValue("--post-color-dark").trim();
     const n = (v) => Number(v.toFixed(3));
-    const geometry = [support.id, width, rem, px, pw, t, mid, light, dark].join("|");
+    const truss = trussSettings(post);
+    const monotube = monotubeSettings(post);
+    const geometry = [support.id, width, h, mountCenter, rem, px, pw, t, mid, light, dark,
+      truss.depth, truss.panelLength, monotube.radius].join("|");
     if (renderedGeometry.get(layer) === geometry) return;
     // Depth tones: near members are lighter, far members darker.
     const tone = (id, hi, base, lo) => ({ id, hi, base, lo, edge: mixColor(lo, "#000", 0.25) });
@@ -287,12 +317,12 @@ window.SignMakerFDOTSupports = (() => {
       // sit C apart, and the back chord is behind them at mid-depth (30° side elevation).
       // Seen head on, the back chord and the inclined-face webs show through the
       // front panels. Shading darkens with distance from the viewer.
-      const top = 1.15;
-      const lower = 5.5;
+      const top = Math.max(1.15, mountCenter - truss.depth / 2);
+      const lower = top + truss.depth;
       const back = (top+lower)/2;
       const chord = t*0.46;
       const web = Math.max(0.11, t*0.2);
-      const targetCount = Math.max(3, Math.ceil((right-left)/5));
+      const targetCount = Math.max(support.side ? 1 : 2, Math.ceil((right-left)/truss.panelLength));
       // Use an even panel count for a symmetric span elevation (700-041 sheet 4).
       const count = support.side ? targetCount : Math.ceil(targetCount/2)*2;
       const bay = (right-left)/count;
@@ -409,6 +439,55 @@ window.SignMakerFDOTSupports = (() => {
           rect(x-0.36, signBottom+1.19, 0.72, 0.24, light, 'rx="0.03"');
         }
       }
+    } else if (support.kind === "monotube") {
+      // One tube per upright, turning into the horizontal span. The sign hangs on
+      // wind beams in front of the tube, about a third of the way down its face.
+      const tube = Math.max(0.35, t*0.9);
+      const beamY = py+ph*0.35;
+      const uprights = support.side ? [support.side === "left" ? left : right] : [left, right];
+      const signLeft = px, signRight = px+pw;
+      // A cantilever's free end stops a little past the sign, then is capped.
+      const freeEnd = support.side === "left" ? Math.min(w-0.3, signRight+0.6)
+        : support.side === "right" ? Math.max(0.3, signLeft-0.6) : null;
+      const curved = support.corners === "curved";
+      const bendRoom = Math.min(bottom - beamY,
+        support.side ? Math.abs(freeEnd - uprights[0]) : (right - left) / 2);
+      const radius = curved ? Math.min(bendRoom, Math.max(tube / 2, monotube.radius)) : 0;
+      const corner = (x, inward) => curved
+        ? `L${n(x)} ${n(beamY+radius)} A${n(radius)} ${n(radius)} 0 0 ${inward > 0 ? 1 : 0} ${n(x+inward*radius)} ${n(beamY)}`
+        : `L${n(x)} ${n(beamY)}`;
+      let d;
+      if (support.side === "left") d = `M${n(left)} ${n(bottom)} ${corner(left, 1)} L${n(freeEnd)} ${n(beamY)}`;
+      else if (support.side === "right") d = `M${n(right)} ${n(bottom)} ${corner(right, -1)} L${n(freeEnd)} ${n(beamY)}`;
+      else {
+        const back = curved
+          ? `L${n(right-radius)} ${n(beamY)} A${n(radius)} ${n(radius)} 0 0 1 ${n(right)} ${n(beamY+radius)}`
+          : `L${n(right)} ${n(beamY)}`;
+        d = `M${n(left)} ${n(bottom)} ${corner(left, 1)} ${back} L${n(right)} ${n(bottom)}`;
+      }
+      // Tube shading that follows bends: dark edge, body, then a centered highlight.
+      parts.push(`<g data-fdot-part="monotube" data-radius="${n(radius)}" fill="none" stroke-linejoin="miter" stroke-miterlimit="4" stroke-linecap="butt">`);
+      parts.push(`<path d="${d}" stroke="${dark}" stroke-width="${n(tube)}"/>`);
+      parts.push(`<path d="${d}" stroke="${mid}" stroke-width="${n(tube*0.82)}"/>`);
+      parts.push(`<path d="${d}" stroke="${light}" stroke-width="${n(tube*0.28)}" stroke-opacity="0.85"/>`);
+      parts.push('</g>');
+      if (!curved) {
+        // Mitered joints: the weld seam runs from the outer to the inner corner.
+        for (const x of uprights) {
+          const inward = x === left ? 1 : -1;
+          path(`M${n(x-inward*tube/2)} ${n(beamY-tube/2)} L${n(x+inward*tube/2)} ${n(beamY+tube/2)}`, "none", dark, 0.05);
+        }
+      }
+      if (freeEnd !== null) {
+        const cap = support.side === "left" ? freeEnd : freeEnd-0.12;
+        rect(cap, beamY-tube*0.55, 0.12, tube*1.1, dark, 'rx="0.04"');
+      }
+      for (const x of uprights) {
+        // Hand hole near the base, then the anchored base plate.
+        rect(x-tube*0.18, bottom-2.2, tube*0.36, 0.7, dark, 'rx="0.08"');
+        base(x, bottom, tube, "anchor");
+      }
+      windBeams(signLeft+0.65, signRight-0.65, py+ph*0.25, py+ph*0.78);
     } else if (support.kind === "mast") {
       const x = support.side === "left" ? left : right;
       const end = support.side === "left" ? right : left;
@@ -464,7 +543,8 @@ window.SignMakerFDOTSupports = (() => {
     renderedGeometry.set(layer, geometry);
   }
 
-  return { catalog, get: (id) => byId.get(id), forPosition: (position) => byPosition.get(position), prepare, render, containsPoint };
+  return { catalog, get: (id) => byId.get(id), forPosition: (position) => byPosition.get(position), prepare, render, containsPoint,
+    trussDefaults, trussLimits, trussSettings, monotubeDefaults, monotubeLimits, monotubeSettings };
 })();
 
 Post.prototype.polePositions.push(

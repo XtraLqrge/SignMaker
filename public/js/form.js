@@ -4,6 +4,7 @@ const formHandler = (function () {
     let blockDragState = null;
     let panelDragState = null;
     let showHiddenPanelsInPanelList = true;
+    let panelGapShiftPressed = false;
     let exitTabDragState = null;
     let exitTabRowDragState = null;
     let nestedExitTabDragState = null;
@@ -8841,52 +8842,15 @@ const formHandler = (function () {
     }
   };
 
-  const showWelcomeTutorial = () => {
+  const showWelcomeHelp = () => {
     const dialog = document.getElementById("welcomeToSignMaker");
-    if (!dialog || getStoredItem("closedWelcome")) return;
+    if (!dialog || dialog.open || getStoredItem("closedWelcome")) return;
 
-    const steps = [...dialog.querySelectorAll(".welcomeStep")];
-    const back = dialog.querySelector("#welcomeBack");
-    const next = dialog.querySelector("#welcomeNext");
-    const destination = dialog.querySelector("#welcomeDestination");
-    const previewDestination = dialog.querySelector("#welcomePreviewDestination");
-    const previewArrow = dialog.querySelector("#welcomePreviewArrow");
-    const directionButtons = dialog.querySelectorAll(".welcomeDirections button");
-    let step = 0;
-
-    const showStep = (index) => {
-      steps[step].hidden = true;
-      step = index;
-      steps[step].hidden = false;
-      back.hidden = step === 0;
-      next.textContent = step === 0 ? "Start tutorial" :
-        step === steps.length - 1 ? "Open editor" : "Next";
-      dialog.scrollTop = 0;
-      (steps[step].querySelector("h3") || next).focus();
-    };
-
-    destination.addEventListener("input", () => {
-      previewDestination.textContent = destination.value.trim() || "Riverside";
-    });
-    for (const button of directionButtons) {
-      button.addEventListener("click", () => {
-        for (const option of directionButtons) {
-          option.setAttribute("aria-pressed", String(option === button));
-        }
-        previewArrow.parentElement.dataset.welcomeDirection = button.dataset.welcomeDirection;
-        previewArrow.alt = "Arrow pointing " + button.textContent.trim().toLowerCase();
-      });
-    }
-    back.addEventListener("click", () => showStep(step - 1));
-    next.addEventListener("click", () => {
-      if (step === steps.length - 1) dialog.close();
-      else showStep(step + 1);
-    });
-    for (const id of ["closeWelcome", "skipWelcome"]) {
-      dialog.querySelector("#" + id).addEventListener("click", () => dialog.close());
-    }
-    dialog.addEventListener("close", () => setStoredItem("closedWelcome", "true"), { once: true });
+    const close = () => dialog.close();
+    dialog.querySelector("#closeWelcome").addEventListener("click", close);
+    dialog.querySelector("#welcomeHelpLink").addEventListener("click", close);
     dialog.showModal();
+    setStoredItem("closedWelcome", "true");
   };
 
   const initialize = async (appExposed, { beforeUI } = {}) => {
@@ -10038,6 +10002,10 @@ const formHandler = (function () {
 
       if (lowerValue === "inherit" || lowerValue === "panel color" || lowerValue === "default") {
         if (selectEl?.id === "panelBorderColor") return exposed?.getPanelContrastColor?.() || "White";
+        if (selectEl?.id === "sdGroupedBlock_borderColor" || selectEl?.id === "sdBlocker_dividerColor") {
+          const border = exposed?.getCurrentPanel?.()?.borderColor;
+          return border && border !== "Inherit" ? border : exposed?.getPanelContrastColor?.() || "White";
+        }
         const effectiveOverride = selectEl?.dataset?.colorPickerEffectiveColor || "";
         return effectiveOverride || getCurrentPanelColorForPicker();
       }
@@ -10048,8 +10016,11 @@ const formHandler = (function () {
           let blockBackgroundValue = blockBackgroundSelect?.value || "Inherit";
 
           if (/^(inherit|panel color|default)$/i.test(blockBackgroundValue)) {
-            blockBackgroundValue = getCurrentPanelColorForPicker();
+            const border = exposed?.getCurrentPanel?.()?.borderColor;
+            return border && border !== "Inherit" ? border : exposed?.getPanelContrastColor?.() || "White";
           }
+          const border = exposed?.getCurrentPanel?.()?.borderColor;
+          if (border && border !== "Inherit") return border;
 
           const lightBlockBackgrounds = new Set([
             "orange",
@@ -14838,7 +14809,8 @@ const formHandler = (function () {
         exitTextField(name).value = Math.max(Number(exitTextField(name).min), Math.min(Number(exitTextField(name).max), value));
         exitTextField(`${name}Value`).value = value.toFixed(digits);
       }
-      const bg = getResolvedColorValue(sign.exitBackgroundColor || "Yellow");
+      const exitBackgroundInherits = sign.exitBackgroundColor === "Inherit";
+      const bg = getResolvedColorValue(exitBackgroundInherits ? panel.color : sign.exitBackgroundColor || "Yellow");
       let rgb = String(bg).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
       if (!rgb && /^#[0-9a-f]{6}$/i.test(bg)) {
         rgb = [bg, parseInt(bg.slice(1, 3), 16), parseInt(bg.slice(3, 5), 16), parseInt(bg.slice(5, 7), 16)];
@@ -14850,9 +14822,10 @@ const formHandler = (function () {
       const luminance = rgb && (0.2126 * linear(rgb[1]) + 0.7152 * linear(rgb[2]) + 0.0722 * linear(rgb[3]));
       const inheritedColor = luminance !== null && luminance > 0.179
         ? "Black" : "White";
-      for (const id of ["exitTextColor", "exitBorderColor"]) {
-        document.getElementById(id).dataset.colorPickerEffectiveColor = inheritedColor;
-      }
+      document.getElementById("exitTextColor").dataset.colorPickerEffectiveColor = inheritedColor;
+      const panelBorder = panel?.borderColor;
+      document.getElementById("exitBorderColor").dataset.colorPickerEffectiveColor =
+        panelBorder && panelBorder !== "Inherit" ? panelBorder : inheritedColor;
       for (const [id, value] of [
         ["exitTextColor", sign.exitTextColor || "Inherit"],
         ["exitBackgroundColor", sign.exitBackgroundColor || "Yellow"],
@@ -15033,6 +15006,23 @@ const formHandler = (function () {
 
     bindPanelStylePopoverPositioning();
     bindPanelSelectorPopoverPositioning();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.repeat && event.key === "Shift") return;
+      panelGapShiftPressed = !window.SignMakerMobile?.active &&
+        panelSelectorPopoverIsOpen() && event.key === "Shift" &&
+        !event.ctrlKey && !event.metaKey && !event.altKey;
+    });
+    document.addEventListener("pointerdown", () => { panelGapShiftPressed = false; });
+    window.addEventListener("blur", () => { panelGapShiftPressed = false; });
+    document.addEventListener("keyup", (event) => {
+      if (event.key !== "Shift") return;
+      if (panelGapShiftPressed && panelSelectorPopoverIsOpen()) {
+        document.getElementById("panelSelect").classList.toggle("showSubpanelGapInputs");
+        schedulePanelSelectorPopoverPosition();
+      }
+      panelGapShiftPressed = false;
+    });
 
     const normalizeInterfaceThemeMode = (value) => {
       const normalized = String(value || "").toLowerCase();
@@ -16808,6 +16798,49 @@ const formHandler = (function () {
       if (event.key !== "Enter") return;
       event.preventDefault();
       postThicknessValueInput.blur();
+    });
+    for (const id of postStructureFields.keys()) {
+      const number = document.getElementById(`${id}Value`);
+      number.addEventListener("blur", () => {
+        syncPostReference();
+        syncPostStructureControls(number);
+      });
+      number.addEventListener("keydown", event => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        number.blur();
+      });
+    }
+
+    const postStyle = document.getElementById("postStyleModal");
+    postStyle.addEventListener("click", event => {
+      const button = event.target.closest("[data-reset-post]");
+      if (!button) return;
+      const id = button.dataset.resetPost;
+      if (id === "settingsPanelSpacing") {
+        commitPanelSpacingChange(getDefaultPanelSpacingPreference());
+        return;
+      }
+      if (id === "settingsDefaultPanelSpacing") {
+        commitDefaultPanelSpacingChange(document.getElementById(id).defaultValue);
+        return;
+      }
+
+      const field = document.getElementById(`${id}Value`) || document.getElementById(id);
+      if (id === "showPost") {
+        if (!field.checked) return;
+        field.checked = false;
+      } else {
+        const defaultValue = {
+          postPosition: "Right",
+          postType: document.getElementById("postPosition").value,
+          postColor: Post.prototype.colors[0],
+        }[id] ?? field.defaultValue;
+        if (field.value === defaultValue) return;
+        field.value = defaultValue;
+      }
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      window.getNativeSelectPicker?.(field)?.sync();
     });
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
@@ -20501,11 +20534,16 @@ const formHandler = (function () {
       if (picker?.wrapper.classList.contains("open")) picker.close();
       const supports = window.SignMakerFDOTSupports?.forPosition(position) ?? [];
       const options = [new Option("Standard", position)];
-      if (supports.length) {
-        const group = document.createElement("optgroup");
-        group.label = "FDOT";
-        group.append(...supports.map(support => new Option(support.label, support.id)));
-        options.push(group);
+      const groups = new Map();
+      for (const support of supports) {
+        const label = support.group || "FDOT";
+        if (!groups.has(label)) {
+          const group = document.createElement("optgroup");
+          group.label = label;
+          groups.set(label, group);
+          options.push(group);
+        }
+        groups.get(label).append(new Option(support.label, support.id));
       }
       select.replaceChildren(...options);
       select.dataset.position = position;
@@ -20523,12 +20561,55 @@ const formHandler = (function () {
       window.getNativeSelectPicker?.(select)?.sync();
     }
     syncPostType(document.getElementById("postType"), position, type);
+    syncPostStructureControls();
+  };
+
+  // These dimensions belong to the sign, including after a switch between post types.
+  const postStructureFields = new Map([
+    ["postTrussDepth", ["trussDepth", "trussSettings", "depth"]],
+    ["postTrussPanelLength", ["trussPanelLength", "trussSettings", "panelLength"]],
+    ["postMonotubeRadius", ["monotubeRadius", "monotubeSettings", "radius"]],
+  ]);
+
+  const syncPostStructureControls = (forceField = null) => {
+    const supports = window.SignMakerFDOTSupports;
+    const support = supports.get(post.polePosition);
+    const visible = {
+      postTrussSetting: support?.kind === "truss",
+      postMonotubeSetting: support?.kind === "monotube" && support.corners === "curved",
+    };
+    for (const [className, show] of Object.entries(visible)) {
+      document.querySelectorAll(`#postStyleModal .${className}`).forEach(row => { row.hidden = !show; });
+    }
+    for (const [id, [, settings, key]] of postStructureFields) {
+      const value = String(supports[settings](post)[key]);
+      for (const fieldId of [id, `${id}Value`]) {
+        const field = document.getElementById(fieldId);
+        if (field && (field === forceField || !mergeLiveInputActive || liveEditingField !== field) && field.value !== value) {
+          field.value = value;
+        }
+      }
+    }
+  };
+
+  const readPostStructure = (field, [property, settings, key]) => {
+    const raw = field.value.trim();
+    if (!raw || !Number.isFinite(Number(raw))) {
+      syncPostStructureControls(field);
+      return false;
+    }
+    const value = Math.round(window.SignMakerFDOTSupports[settings]({ [property]: raw })[key] * 100) / 100;
+    const changed = post[property] !== value;
+    post[property] = value;
+    syncPostStructureControls();
+    return changed;
   };
 
   const postAppearanceFields = new Map([
     ["postPosition", "polePosition"], ["postType", "polePosition"],
     ["postColor", "color"], ["showPost", "showPost"],
     ["postThickness", "thickness"], ["postThicknessValue", "thickness"],
+      ["postHeight", "height"], ["postHeightValue", "height"],
   ]);
   const postAppearanceStorage = new Map([
     ["polePosition", STORAGE_KEYS.postPosition], ["color", STORAGE_KEYS.postColor],
@@ -20563,6 +20644,14 @@ const formHandler = (function () {
       syncPostPositionControls();
     } else if (property === "thickness") {
       syncPostThicknessControls(true);
+    } else if (property === "height") {
+      const height = String(Post.normalizeHeight(post.height));
+      for (const id of ["postHeight", "postHeightValue"]) {
+        const input = document.getElementById(id);
+        if (!(mergeLiveInputActive && input === liveEditingField) && input.value !== height) {
+          input.value = height;
+        }
+      }
     } else if (property === "showPost") {
       document.getElementById("showPost").checked = !!post.showPost;
     } else if (property === "color") {
@@ -20581,6 +20670,8 @@ const formHandler = (function () {
     if (property === "thickness") {
       if (!value.trim() || !Number.isFinite(Number(value))) return false;
       value = Math.round(post.normalizeThickness(value) * 10) / 10;
+    } else if (property === "height") {
+      value = Math.round(Post.normalizeHeight(value) * 2) / 2;
     } else if (fieldId === "postType") {
       const supports = window.SignMakerFDOTSupports;
       const position = supports?.get(previous)?.position ?? previous;
@@ -20594,7 +20685,7 @@ const formHandler = (function () {
     post[property] = value;
     syncPostAppearanceField(property);
     if (previous === value) return false;
-    setStoredItem(postAppearanceStorage.get(property), value);
+    if (postAppearanceStorage.has(property)) setStoredItem(postAppearanceStorage.get(property), value);
     return true;
   };
 
@@ -20675,6 +20766,11 @@ const formHandler = (function () {
     }
     if (postField) {
       if (readPostAppearance(postField, postValue)) exposed.redraw();
+      return;
+    }
+    const structureField = postStructureFields.get(field?.id?.replace(/Value$/, ""));
+    if (structureField) {
+      if (readPostStructure(field, structureField)) exposed.redraw();
       return;
     }
 
@@ -23082,6 +23178,7 @@ const formHandler = (function () {
     syncPostPositionControls();
 
     syncPostAppearanceField("color");
+    syncPostAppearanceField("height");
 
     const showPostCheckbox = document.getElementById("showPost");
     if (showPostCheckbox) {
@@ -23159,6 +23256,38 @@ const formHandler = (function () {
         const panelLabelText = getPanelListLabel(panelIndex);
         label.textContent = panelLabelText;
         panelButton.appendChild(label);
+
+        const gapField = document.createElement("label");
+        gapField.className = "panelSubpanelGapField";
+        const gapLabel = document.createElement("span");
+        gapLabel.textContent = "Gap";
+        gapLabel.setAttribute("aria-hidden", "true");
+        const subpanelGapInput = document.createElement("input");
+        subpanelGapInput.type = "number";
+        subpanelGapInput.className = "panelSubpanelGap";
+        subpanelGapInput.min = "0";
+        subpanelGapInput.max = "12";
+        subpanelGapInput.step = "0.1";
+        subpanelGapInput.inputMode = "decimal";
+        subpanelGapInput.value = String(Panel.normalizeSubpanelGap(post.panels[panelIndex].subpanelGap));
+        subpanelGapInput.title = panelLabelText + " subpanel gap (rem)";
+        subpanelGapInput.setAttribute("aria-label", subpanelGapInput.title);
+        gapField.append(gapLabel, subpanelGapInput);
+        const commitGap = () => {
+          if (subpanelGapInput.validity.badInput) {
+            subpanelGapInput.value = String(Panel.normalizeSubpanelGap(post.panels[panelIndex]?.subpanelGap));
+            return;
+          }
+          subpanelGapInput.value = String(exposed.setSubpanelGap(panelIndex, subpanelGapInput.value));
+        };
+        subpanelGapInput.addEventListener("change", commitGap);
+        subpanelGapInput.addEventListener("blur", commitGap);
+        subpanelGapInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            subpanelGapInput.blur();
+          }
+        });
 
         panelButton.addEventListener("click", function () {
           if (panelHiddenFromPost) {
@@ -23269,6 +23398,7 @@ const formHandler = (function () {
             app.deletePanelAt(panelIndex);
           });
         panelRow.appendChild(panelButton);
+        panelRow.appendChild(gapField);
         panelRow.appendChild(copyButton);
         panelRow.appendChild(hideButton);
         panelRow.appendChild(deleteButton);
@@ -23301,6 +23431,7 @@ const formHandler = (function () {
     });
 
     syncPostThicknessControls();
+    syncPostStructureControls();
 
     const hasBlockElementContent = (controlData) =>
       controlData &&
@@ -26054,7 +26185,7 @@ const formHandler = (function () {
       init: initialize,
       isAppMenuOpen,
       isNativeKeyboardTarget,
-      showWelcomeTutorial,
+      showWelcomeHelp,
       readForm,
       persistPostAppearance,
       updateForm,

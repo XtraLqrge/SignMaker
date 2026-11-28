@@ -86,7 +86,7 @@ function harness({minified=false, snapshot=null, preferences=false} = {}) {
     DEFAULT_POST_POSITION:'Right',getDefaultPanelSpacing:()=>1,ensureExtendedGuideArrowOptions(){},bindDownloadResolutionControl(){},
     getRestoreOnRefreshMode:()=>'always',readSavedAppStateSnapshot:async()=>snapshot,prepareIconImagesForPost:async()=>{},
     initializeVmsRendering:()=>note('vms-ready'),migrateSavedSignTypographyOnce:async()=>null,CustomShields:class {},exposeToFormHandler:{},
-    formHandler:{init:async(_api,{beforeUI})=>{await beforeUI();note('form-ready');},updateForm:()=>note('form-update'),showWelcomeTutorial:()=>note('welcome')},
+    formHandler:{init:async(_api,{beforeUI})=>{await beforeUI();note('form-ready');},updateForm:()=>note('form-update'),showWelcomeHelp:()=>note('welcome')},
     finishTemplateEditorSessionUi(){},applyRenderedExitTabAnchors(){},schedulePanelBorderGradientUpdate(){},schedulePostViewportLayoutUpdate(){},
     VmsPanel:{refreshPreviews(){}},saveAppState(){},bindPostViewportLayoutWatcher(){},
     PanelBorders:{refreshAll:()=>note('border-refresh')},applyPanelBorderGradient:()=>note('border-paint'),getResolvedCssColorValue:value=>value,

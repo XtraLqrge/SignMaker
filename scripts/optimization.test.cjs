@@ -22,38 +22,42 @@ function declaration(file,name,functionOnly=false) {
 }
 const context=extras=>vm.createContext({console,URL,Promise,setTimeout,clearTimeout,queueMicrotask,...extras});
 
-test('the tutorial uses Type A artwork and updates the practice sign direction', () => {
+test('first-run Help links to the guide in the editor tab and appears only once', () => {
   const { Event, parse: parseDOM } = require('./fixtures/mobile-dom.cjs');
   const html = read('scripts/index.source.html');
   const start = html.indexOf('<dialog id="welcomeToSignMaker"');
   const markup = html.slice(start, html.indexOf('</dialog>', start) + '</dialog>'.length);
-  const tree = parseDOM(markup);
-  const dialog = tree.querySelector('#welcomeToSignMaker');
-  dialog.showModal = () => {};
-  dialog.querySelectorAll('h3').forEach(heading => { heading.focus = () => {}; });
-  const byId = id => tree.querySelector('#' + id);
-  const c = context({document: {getElementById: byId}, getStoredItem: () => null});
-  vm.runInContext(declaration('public/js/form.js', 'showWelcomeTutorial') + 'showWelcomeTutorial();', c);
+  const source = declaration('public/js/form.js', 'showWelcomeHelp') + 'showWelcomeHelp();';
 
-  const arrow = byId('welcomePreviewArrow');
-  const directions = dialog.querySelectorAll('.welcomeDirections button');
-  assert.equal(arrow.getAttribute('src'), 'img/arrows/TYPE_A.svg');
-  assert.equal(directions.length, 3);
-  const click = node => node.dispatchEvent(new Event('click'));
-  click(byId('welcomeNext'));
-  const destination = byId('welcomeDestination');
-  destination.value = 'Main Street';
-  destination.dispatchEvent(new Event('input'));
-  assert.equal(byId('welcomePreviewDestination').textContent, 'Main Street');
-  click(byId('welcomeNext'));
-  for (const button of directions) {
-    assert.equal(button.querySelector('img').getAttribute('src'), arrow.getAttribute('src'));
-    click(button);
-    assert.equal(arrow.parentElement.dataset.welcomeDirection, button.dataset.welcomeDirection);
-    assert.equal(button.getAttribute('aria-pressed'), 'true');
-    assert.equal(directions.filter(option => option.getAttribute('aria-pressed') === 'true').length, 1);
+  for (const action of ['welcomeHelpLink', 'closeWelcome']) {
+    const stored = new Map();
+    function loadEditor() {
+      const tree = parseDOM(markup);
+      const byId = id => tree.querySelector('#' + id);
+      const dialog = byId('welcomeToSignMaker');
+      dialog.showModal = () => { dialog.open = true; };
+      dialog.close = () => { dialog.open = false; };
+      vm.runInContext(source, context({
+        document: {getElementById: byId},
+        getStoredItem: key => stored.get(key),
+        setStoredItem: (key, value) => stored.set(key, value),
+      }));
+      return {byId, dialog};
+    }
+
+    const {byId, dialog} = loadEditor();
+    assert.equal(dialog.open, true);
+    const link = byId('welcomeHelpLink');
+    assert.equal(link.getAttribute('href'), 'help.html');
+    assert.equal(link.getAttribute('target'), null);
+    assert.ok(fs.existsSync(path.join(root, 'public', link.getAttribute('href'))));
+    const click = new Event('click', {cancelable: true});
+    byId(action).dispatchEvent(click);
+    assert.ok(!click.defaultPrevented);
+    assert.equal(dialog.open, false);
+    assert.equal(stored.get('closedWelcome'), 'true');
+    assert.ok(!loadEditor().dialog.open);
   }
-  assert.equal(arrow.alt, 'Arrow pointing up right');
 });
 
 test('the exit tab editor labels each top control and the LEFT marker', () => {
@@ -806,9 +810,22 @@ test('desktop Subpanels shrinks around short editors and scrolls when the viewpo
 });
 test('layout scheduling coalesces events and unchanged transforms cause no writes',()=>{
   const jobs=[],observed=[];let writes=0,transform='';
-  const post={offsetWidth:300,style:{get transform(){return transform},set transform(value){writes++;transform=value;}}};
-  const c=context({window:{innerWidth:1000,requestAnimationFrame:fn=>{jobs.push(fn);return jobs.length;},addEventListener(){}},document:{getElementById:()=>post,documentElement:{clientWidth:1000},body:{},querySelector:()=>null,querySelectorAll:()=>[]},VmsPanel:{refreshPreviews(){}},MutationObserver:class{observe(target,options){observed.push({target,options});}},ResizeObserver:class{observe(){}},getMainVisualScale:()=>1,getVisibleSideMenuElements:()=>[],postViewportLayoutFrame:null,postViewportLayoutObserver:null});
-  vm.runInContext(['updatePostViewportLayout','fitToolbarBelowSiteNavigation','schedulePostViewportLayoutUpdate','bindPostViewportLayoutWatcher'].map(name=>declaration('public/js/main.js',name)).join('\n')+'\nthis.check={updatePostViewportLayout,schedulePostViewportLayoutUpdate,bindPostViewportLayoutWatcher};',c);
+  const rect = {left:350, top:160, right:650, bottom:560};
+  const post = {
+    parentElement: {getBoundingClientRect: () => ({left:0, top:40, right:1000, bottom:800})},
+    getBoundingClientRect: () => rect,
+    addEventListener() {},
+    style: {get transform(){return transform},set transform(value){writes++;transform=value;}},
+  };
+  const c = context({
+    window: {requestAnimationFrame: fn=>{jobs.push(fn);return jobs.length;},addEventListener(){}},
+    document: {getElementById:()=>post,documentElement:{clientWidth:1000,clientHeight:800,dataset:{}},body:{},querySelector:()=>null,querySelectorAll:()=>[]},
+    VmsPanel: {refreshPreviews(){}}, MutationObserver: class{observe(target,options){observed.push({target,options});}}, ResizeObserver: class{observe(){}},
+    getMainVisualScale:()=>1, getVisibleSideMenuElements:()=>[], getPostPreviewBounds:()=>rect,
+    getComputedStyle:()=>({transform:'none',transformOrigin:'150px 150px'}), DOMMatrixReadOnly: class {a=1;d=1;e=0;f=0;},
+    clamp:(value,min,max)=>Math.max(min,Math.min(value,max)),SIDE_MENU_VIEWPORT_GAP:24, postViewportLayoutFrame:null,postViewportLayoutObserver:null,
+  });
+  vm.runInContext(['fitPostPreview','updatePostViewportLayout','fitToolbarBelowSiteNavigation','schedulePostViewportLayoutUpdate','bindPostViewportLayoutWatcher'].map(name=>declaration('public/js/main.js',name)).join('\n')+'\nthis.check={updatePostViewportLayout,schedulePostViewportLayoutUpdate,bindPostViewportLayoutWatcher};',c);
   for(let n=0;n<100;n++)c.check.schedulePostViewportLayoutUpdate();assert.equal(jobs.length,1);jobs.shift()();
   c.check.updatePostViewportLayout();assert.equal(writes,1);
   c.check.bindPostViewportLayoutWatcher();assert.ok(observed.length);assert.ok(observed.every(record=>!record.options.subtree));
@@ -1095,6 +1112,7 @@ test('phone workspace starts without a desktop init call, follows emulated width
   const draw=()=>{panels.children=[];for(let i=0;i<models.length;i++){const node=new Node('div','panel'+i,'panel');node.dataset.panelIndex=String(i);panels.append(node);}};
   draw();
   const application={exposeToFormHandler:{vars:{get currentlySelectedPanelIndex(){return index;}}},getPost:()=>({panels:models}),
+    getPostPreviewBounds:(container,panel)=> (panel || container).getBoundingClientRect(),
     changeEditingPanel:value=>{index=value;draw();},newPanel:()=>{models.push({text:'C'});index=models.length-1;draw();}};
   root.clientWidth=1200;
   const media={matches:false,addEventListener:(_,handler)=>resize=handler},frames=[],events=new Map(),observers=[];
@@ -2134,17 +2152,42 @@ test('row range bounds and precision match the desktop baseline while mobile ret
   for(const side of ['top','bottom']){const slider=document.getElementById('sdBlock_'+side+'Padding');assert.equal(slider.min,'0');assert.equal(slider.max,'3');assert.equal(slider.step,'.01');}
 });
 
-test('panel auto-shrink preference keeps normal scale while retaining side-panel positioning', () => {
-  const post = {offsetWidth:900,style:{transform:''}};
-  const root = {dataset:{},clientWidth:1000};
-  let menus = [{pushDirection:'left',element:{getBoundingClientRect:()=>({right:500})}}];
-  const c=context({window:{innerWidth:1000},document:{documentElement:root,getElementById:()=>post},getMainVisualScale:()=>1,getVisibleSideMenuElements:()=>menus,SIDE_MENU_VIEWPORT_GAP:20,MIN_POST_VIEW_SCALE:0.1});
-  vm.runInContext(declaration('public/js/main.js','updatePostViewportLayout')+'this.update=updatePostViewportLayout;',c);
-  c.update();
-  assert.equal(post.style.transform, 'translateX(250px) scale(0.5111111111111111)');
-  root.dataset.shrinkSignsForPanels='false';c.update();
-  assert.equal(post.style.transform,'translateX(250px) scale(1)');
-  menus=[];c.update();assert.equal(post.style.transform,'translateX(0px) scale(1)');
-  menus=[{pushDirection:'right',element:{getBoundingClientRect:()=>({left:500})}}];c.update();
-  assert.equal(post.style.transform,'translateX(-250px) scale(1)');
+test('the post fits horizontal overhangs and tall supports at any preview scale', () => {
+  const c = context({clamp:(value,min,max)=>Math.max(min,Math.min(value,max))});
+  vm.runInContext(declaration('public/js/main.js','fitPostPreview')+'this.fit=fitPostPreview;',c);
+  const viewport = {left:120, top:75, right:900, bottom:610};
+  const menu = {...viewport, right:640};
+  const zoom = 0.8;
+  const originX = 530, originY = 150;
+  const normal = {rect:{left:-120,top:-80}, zoom, originX, originY, matrix:{a:1,d:1,e:0,f:0}};
+  const bigPost = {left:-185, top:-125, right:855, bottom:1315};
+  const project = (bounds, current, next) => {
+    const {matrix, rect} = current;
+    const pivotX = rect.left + matrix.a * originX * zoom;
+    const pivotY = rect.top + matrix.d * originY * zoom;
+    const x = value => pivotX + (next.x - matrix.e) * zoom + (value - pivotX) * next.scale / matrix.a;
+    const y = value => pivotY + (next.y - matrix.f) * zoom + (value - pivotY) * next.scale / matrix.d;
+    return {left:x(bounds.left), top:y(bounds.top), right:x(bounds.right), bottom:y(bounds.bottom)};
+  };
+  const fits = (inner, outer) => {
+    assert.ok(inner.left >= outer.left - 0.01 && inner.top >= outer.top - 0.01);
+    assert.ok(inner.right <= outer.right + 0.01 && inner.bottom <= outer.bottom + 0.01);
+  };
+  const first = c.fit(bigPost, viewport, menu, normal, true);
+  const firstRect = project(bigPost, normal, first);
+  fits(firstRect, menu);
+  assert.ok(first.scale < 0.42, 'a tall post must shrink below the old floor');
+  const resized = {matrix:{a:first.scale,d:first.scale,e:first.x,f:first.y}, zoom, originX, originY,
+    rect:{left:normal.rect.left + ((1-first.scale)*originX + first.x)*zoom,
+      top:normal.rect.top + ((1-first.scale)*originY + first.y)*zoom}};
+  const remaining = {...firstRect, right:firstRect.right-90, bottom:firstRect.bottom-110};
+  const next = c.fit(remaining, viewport, menu, resized, true);
+  fits(project(remaining,resized,next),menu);
+  assert.ok(next.scale > first.scale, 'removing a panel frees up preview space');
+  const narrowMenu = {...viewport, right:390};
+  const preferred = c.fit(bigPost, viewport, narrowMenu, normal, true);
+  const disabled = c.fit(bigPost, viewport, narrowMenu, normal, false);
+  assert.ok(disabled.scale > preferred.scale);
+  fits(project(bigPost,normal,disabled),viewport);
+  fits(project(bigPost,normal,c.fit(bigPost,viewport,viewport,normal,true)),viewport);
 });

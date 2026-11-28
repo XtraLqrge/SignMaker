@@ -7566,7 +7566,6 @@ createBlockWithNeighborBackground(row, sourceRowIndex) {
             ? dividerBorderColor.toLowerCase()
             : dividerBorderColor;
         flexRow.dataset.fullBleedBorderColor = normalizedDividerColor;
-        appliedFullBleedBorderColor = normalizedDividerColor;
       }
 
       flexRow.dataset.lightBackground = usesLightBleedBackground

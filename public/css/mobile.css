@@ -41,7 +41,7 @@ html[data-mobile-ui] .mobileTapHint { font-size: 13px; line-height: 1.5; text-al
 
 /* Only the live preview is isolated. Export clones retain the full post layout. */
 html[data-mobile-ui] main.mobileCanvas { position: relative; display: block; width: 100%; height: 200px; min-height: 180px; margin: 0; padding: 0; transform: none !important; overflow: clip; }
-html[data-mobile-ui] main.mobileCanvas:not(.mobileWholePost) #postContainer { position: absolute !important; display: block !important; left: 50% !important; right: auto !important; top: 20px !important; bottom: auto !important; width: max-content !important; height: auto !important; min-height: 0 !important; margin: 0 !important; transform: translateX(-50%) scale(var(--mobile-sign-scale, 1)) !important; transform-origin: top center !important; transition: none !important; }
+html[data-mobile-ui] main.mobileCanvas:not(.mobileWholePost) #postContainer { display: block !important; width: max-content !important; height: auto !important; min-height: 0 !important; }
 html[data-mobile-ui] main.mobileCanvas:not(.mobileWholePost) #panelContainer { display: block !important; position: relative !important; width: max-content !important; height: auto !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; background: none !important; }
 html[data-mobile-ui] main.mobileCanvas:not(.mobileWholePost) .panelStack { display: contents !important; }
 html[data-mobile-ui] main.mobileCanvas:not(.mobileWholePost) .panel { position: absolute !important; left: -100000px !important; top: 0 !important; visibility: hidden !important; pointer-events: none !important; margin: 0 !important; }
@@ -191,7 +191,7 @@ html[data-mobile-ui] .toolTip { display: none !important; }
 .mobileWholePostOption, .mobilePanelReorderHint { display: none; }
 html[data-mobile-ui] #mobileEditor .mobilePanelReorderHint { display: block; margin: 0 0 12px; opacity: 0.75; }
 html[data-mobile-ui] #mobileEditor .mobileWholePostOption { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0 0 12px; cursor: pointer; pointer-events: auto; }
-html[data-mobile-ui] main.mobileCanvas.mobileWholePost #postContainer { position: absolute !important; left: calc(50% - var(--mobile-post-width, 0px) / 2) !important; right: auto !important; top: 20px !important; bottom: auto !important; margin: 0 !important; transform: scale(var(--mobile-sign-scale, 1)) translate(var(--mobile-post-x, 0px), var(--mobile-post-y, 0px)) !important; transform-origin: top left !important; transition: none !important; }
+html[data-mobile-ui] main.mobileCanvas #postContainer { position: absolute !important; left: calc(50% - var(--mobile-post-width, 0px) / 2) !important; right: auto !important; top: 20px !important; bottom: auto !important; margin: 0 !important; transform: scale(var(--mobile-sign-scale, 1)) translate(var(--mobile-post-x, 0px), var(--mobile-post-y, 0px)) !important; transform-origin: top left !important; transition: none !important; }
 html[data-mobile-ui] main.mobileCanvas.mobileWholePost #panelContainer { flex-shrink: 0; }
 html[data-mobile-ui] main.mobileCanvas.mobileWholePost .panel { visibility: visible; pointer-events: auto; }
 html[data-mobile-ui] main.mobileCanvas.mobileWholePost .panel.panelHiddenFromPost { display: none !important; }

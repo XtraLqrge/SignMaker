@@ -4302,7 +4302,6 @@ const ungroupSelectedBlockElement = () => {
   };
     
     const SIDE_MENU_VIEWPORT_GAP = 24;
-    const MIN_POST_VIEW_SCALE = 0.42;
     let postViewportLayoutFrame = null;
     let postViewportLayoutObserver = null;
     let ruralPostLayoutFrame = null;
@@ -4400,17 +4399,6 @@ const ungroupSelectedBlockElement = () => {
         }
         seen.add(element);
 
-        if (element.id === "sMConfigBar") {
-          const configPosition =
-            element.dataset.position ||
-            document.documentElement.dataset.configPosition ||
-            "right";
-
-          if (configPosition === "top" || configPosition === "bottom") {
-            continue;
-          }
-        }
-
         const styles = window.getComputedStyle(element);
 
         if (
@@ -4436,8 +4424,9 @@ const ungroupSelectedBlockElement = () => {
         const center = rect.left + rect.width / 2;
 
         candidates.push({
-          element,
-          pushDirection: center < viewportWidth / 2 ? "left" : "right",
+          rect,
+          pushDirection: element.id === "sMConfigBar" && ["top", "bottom"].includes(element.dataset.position)
+            ? element.dataset.position : center < viewportWidth / 2 ? "left" : "right",
         });
       }
 
@@ -4461,100 +4450,112 @@ const ungroupSelectedBlockElement = () => {
       return Number.isFinite(scale) && scale > 0 ? scale : 1;
     };
 
+    const getPostPreviewBounds = (container, panel) => {
+      const root = panel || container;
+      const parts = root.querySelectorAll(".signContainer, .sign, .vmsPanelDisplay, .panelOuterFace, .warningDiamondFace, .exitTab, .exitTabHolder, .guideArrows, .aplArrows, .post, .fdotSupport");
+      const bounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+      for (const part of parts) {
+        const rect = part.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        const { visibility, opacity } = getComputedStyle(part);
+        if (visibility !== "visible" || opacity === "0") continue;
+        bounds.left = Math.min(bounds.left, rect.left);
+        bounds.top = Math.min(bounds.top, rect.top);
+        bounds.right = Math.max(bounds.right, rect.right);
+        bounds.bottom = Math.max(bounds.bottom, rect.bottom);
+      }
+      if (!panel && container.classList.contains("polePositionCenter")) {
+        // The standard center pole is painted as a background instead of an element.
+        const panels = container.querySelector("#panelContainer");
+        if (panels && getComputedStyle(panels).backgroundImage !== "none") {
+          const rect = panels.getBoundingClientRect();
+          if (rect.width && rect.height) bounds.bottom = Math.max(bounds.bottom, rect.bottom);
+        }
+      }
+      return Number.isFinite(bounds.left) ? bounds : root.getBoundingClientRect();
+    };
+
+    const fitPostPreview = (bounds, viewport, preferred, transform, shrinkForMenus) => {
+      const { matrix, originX, originY, zoom, rect } = transform;
+      const pivotX = rect.left + matrix.a * originX * zoom;
+      const pivotY = rect.top + matrix.d * originY * zoom;
+      const fitArea = shrinkForMenus ? preferred : viewport;
+      const width = bounds.right - bounds.left;
+      const height = bounds.bottom - bounds.top;
+      if (width <= 0 || height <= 0) return { x: 0, y: 0, scale: 1 };
+
+      const limit = Math.min(1,
+        matrix.a * (fitArea.right - fitArea.left) / width,
+        matrix.d * (fitArea.bottom - fitArea.top) / height);
+      // Subpixel rounding keeps repeated measurements from changing the fit.
+      const scale = limit >= 0.00001 ? Math.floor(limit * 1e5 + 1e-7) / 1e5 : limit;
+      const fitAxis = (start, end, pivot, currentScale, offset, preferredStart, preferredEnd, viewStart, viewEnd) => {
+        const anchor = pivot - offset * zoom;
+        const outputStart = anchor + (start - pivot) * scale / currentScale;
+        const outputEnd = anchor + (end - pivot) * scale / currentScale;
+        const min = preferredStart - outputStart;
+        const max = preferredEnd - outputEnd;
+        const shift = min <= max ? clamp(0, min, max)
+          : clamp((min + max) / 2, viewStart - outputStart, viewEnd - outputEnd);
+        return Math.round(shift / zoom * 1000) / 1000;
+      };
+      return {
+        x: fitAxis(bounds.left, bounds.right, pivotX, matrix.a, matrix.e,
+          preferred.left, preferred.right, viewport.left, viewport.right),
+        y: fitAxis(bounds.top, bounds.bottom, pivotY, matrix.d, matrix.f,
+          preferred.top, preferred.bottom, viewport.top, viewport.bottom),
+        scale,
+      };
+    };
+
     const updatePostViewportLayout = () => {
       if (window.SignMakerMobile?.active) {
         window.SignMakerMobile.schedule();
         return;
       }
-      const postContainerElmt = document.getElementById("postContainer");
-      if (!postContainerElmt) {
-        return;
-      }
-
-      const viewportWidth =
-        window.innerWidth || document.documentElement.clientWidth || 0;
-      const naturalPostWidth = postContainerElmt.offsetWidth || 0;
-      const mainVisualScale = getMainVisualScale();
-
-      const setTransform = value => {
-        if (postContainerElmt.style.transform !== value) postContainerElmt.style.transform = value;
+      const container = document.getElementById("postContainer");
+      const canvas = container?.parentElement;
+      if (!canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const visual = window.visualViewport;
+      const left = visual?.offsetLeft || 0;
+      const top = visual?.offsetTop || 0;
+      const width = visual?.width || document.documentElement.clientWidth || window.innerWidth;
+      const height = visual?.height || document.documentElement.clientHeight || window.innerHeight;
+      const navBottom = document.querySelector(".site-navigation")?.getBoundingClientRect().bottom || top;
+      const gap = Math.min(SIDE_MENU_VIEWPORT_GAP, width / 16, height / 16);
+      const viewport = {
+        left: Math.max(left, canvasRect.left) + gap,
+        top: Math.max(top, navBottom, canvasRect.top) + gap,
+        right: Math.min(left + width, canvasRect.right) - gap,
+        bottom: Math.min(top + height, canvasRect.bottom) - gap,
       };
+      if (viewport.right <= viewport.left || viewport.bottom <= viewport.top) return;
 
-      if (!viewportWidth || !naturalPostWidth || !mainVisualScale) {
-        setTransform("translateX(0px) scale(1)");
-        return;
+      const preferred = { ...viewport };
+      for (const { pushDirection, rect } of getVisibleSideMenuElements()) {
+        if (pushDirection === "left") preferred.left = Math.max(preferred.left, rect.right + gap);
+        if (pushDirection === "right") preferred.right = Math.min(preferred.right, rect.left - gap);
+        if (pushDirection === "top") preferred.top = Math.max(preferred.top, rect.bottom + gap);
+        if (pushDirection === "bottom") preferred.bottom = Math.min(preferred.bottom, rect.top - gap);
+      }
+      if (preferred.left >= preferred.right) {
+        preferred.left = viewport.left;
+        preferred.right = viewport.right;
+      }
+      if (preferred.top >= preferred.bottom) {
+        preferred.top = viewport.top;
+        preferred.bottom = viewport.bottom;
       }
 
-      const visibleMenus = getVisibleSideMenuElements();
-      if (!visibleMenus.length) {
-        setTransform("translateX(0px) scale(1)");
-        return;
-      }
-
-      const leftPushMenus = visibleMenus.filter(
-        ({ pushDirection }) => pushDirection === "left"
-      );
-      const rightPushMenus = visibleMenus.filter(
-        ({ pushDirection }) => pushDirection === "right"
-      );
-
-      const visiblePostWidthAtNormalScale = naturalPostWidth * mainVisualScale;
-      const normalPostLeft = (viewportWidth - visiblePostWidthAtNormalScale) / 2;
-      const normalPostRight = normalPostLeft + visiblePostWidthAtNormalScale;
-
-      let leftBlockedEdge = 0;
-      let rightBlockedEdge = viewportWidth;
-
-      if (leftPushMenus.length) {
-        leftBlockedEdge = Math.max(
-          ...leftPushMenus.map(({ element }) => {
-            const rect = element.getBoundingClientRect();
-            return Math.max(0, Math.min(viewportWidth, rect.right));
-          })
-        );
-      }
-
-      if (rightPushMenus.length) {
-        rightBlockedEdge = Math.min(
-          ...rightPushMenus.map(({ element }) => {
-            const rect = element.getBoundingClientRect();
-            return Math.max(0, Math.min(viewportWidth, rect.left));
-          })
-        );
-      }
-
-      const intrudesFromLeft =
-        leftBlockedEdge + SIDE_MENU_VIEWPORT_GAP > normalPostLeft;
-      const intrudesFromRight =
-        rightBlockedEdge - SIDE_MENU_VIEWPORT_GAP < normalPostRight;
-
-      if (!intrudesFromLeft && !intrudesFromRight) {
-        setTransform("translateX(0px) scale(1)");
-        return;
-      }
-
-      const safeLeft = Math.max(0, leftBlockedEdge + SIDE_MENU_VIEWPORT_GAP);
-      const safeRight = Math.min(
-        viewportWidth,
-        rightBlockedEdge - SIDE_MENU_VIEWPORT_GAP
-      );
-      const availableViewportWidth = Math.max(1, safeRight - safeLeft);
-
-      const targetVisibleCenter = (safeLeft + safeRight) / 2;
-      const viewportCenter = viewportWidth / 2;
-      const targetVisibleShift = targetVisibleCenter - viewportCenter;
-      const targetTranslateX = targetVisibleShift / mainVisualScale;
-
-      const targetScale =
-        document.documentElement.dataset.shrinkSignsForPanels !== "false" &&
-        visiblePostWidthAtNormalScale > availableViewportWidth
-          ? Math.max(
-              MIN_POST_VIEW_SCALE,
-              availableViewportWidth / visiblePostWidthAtNormalScale
-            )
-          : 1;
-
-      setTransform(`translateX(${targetTranslateX}px) scale(${Math.min(1, targetScale)})`);
+      const style = getComputedStyle(container);
+      const matrix = new DOMMatrixReadOnly(style.transform === "none" ? undefined : style.transform);
+      const [originX, originY] = style.transformOrigin.split(" ").map(parseFloat);
+      const transform = { matrix, originX, originY, zoom: getMainVisualScale(), rect: container.getBoundingClientRect() };
+      const next = fitPostPreview(getPostPreviewBounds(container), viewport, preferred, transform,
+        document.documentElement.dataset.shrinkSignsForPanels !== "false");
+      const value = `translate(${next.x}px, ${next.y}px) scale(${next.scale})`;
+      if (container.style.transform !== value) container.style.transform = value;
     };
 
     const fitToolbarBelowSiteNavigation = () => {
@@ -4728,7 +4729,8 @@ const ungroupSelectedBlockElement = () => {
       if (typeof ResizeObserver === "function") {
         const sizes = new ResizeObserver(schedule);
         const layoutTargets = [
-          document.getElementById("postContainer"), document.getElementById("sMConfigBar"),
+          document.getElementById("postContainer"), document.getElementById("panelContainer"),
+          document.getElementById("sMConfigBar"),
           document.getElementById("panelSelect"), document.querySelector(".site-navigation"),
           ...document.querySelectorAll(".sMModal"),
         ];
@@ -4737,7 +4739,11 @@ const ungroupSelectedBlockElement = () => {
       for (const target of document.querySelectorAll(".modals, #sMConfigBar, #panelSelect")) target.addEventListener("transitionend", schedule);
 
       window.addEventListener("resize", schedule);
+      window.visualViewport?.addEventListener("resize", schedule);
+      window.visualViewport?.addEventListener("scroll", schedule);
       window.addEventListener("load", schedule);
+      document.fonts?.addEventListener("loadingdone", schedule);
+      document.getElementById("postContainer")?.addEventListener("load", schedule, true);
 
       schedule();
     };
@@ -4905,7 +4911,7 @@ const ungroupSelectedBlockElement = () => {
       window.performance?.mark?.("signmaker:editor-ready");
       window.performance?.measure?.("signmaker:editor-startup", "signmaker:init-start", "signmaker:editor-ready");
       if (!savedSnapshot && !hasStoredPostPreferences && getRestoreOnRefreshMode() !== "never") {
-        formHandler.showWelcomeTutorial();
+        formHandler.showWelcomeHelp();
       }
     };
 
@@ -19373,6 +19379,7 @@ const serializePostWithElementTypes = (space) => {
         newNestExitTab: (...args) => runWithUndo(() => newNestExitTab(...args)),
         deleteNestExitTab: (...args) => runWithUndo(() => deleteNestExitTab(...args)),
         getPost: getPost,
+        getPostPreviewBounds,
         setPost: setPost,
         post: post,
 

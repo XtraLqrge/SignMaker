@@ -253,25 +253,11 @@ window.SignMakerMobile = (() => {
   const fitPreview = panel => {
     if (!panel || exporting) return;
     const post = document.getElementById('postContainer');
-    let height = panel.offsetHeight, width = panel.offsetWidth;
-    let minX = 0, minY = 0;
-    if (wholePost) {
-      const rect = post.getBoundingClientRect();
-      const scale = post.offsetWidth > 0 && rect.width > 0 ? rect.width / post.offsetWidth : 1;
-      width = post.offsetWidth;
-      height = post.offsetHeight;
-      for (const node of post.querySelectorAll('.panel:not(.panelHiddenFromPost), .post, .fdotSupport')) {
-        const bounds = node.getBoundingClientRect();
-        if (!bounds.width || !bounds.height) continue;
-        const left = (bounds.left - rect.left) / scale, top = (bounds.top - rect.top) / scale;
-        minX = Math.min(minX, left);
-        minY = Math.min(minY, top);
-        width = Math.max(width, left + bounds.width / scale);
-        height = Math.max(height, top + bounds.height / scale);
-      }
-      width -= minX;
-      height -= minY;
-    }
+    const rect = post.getBoundingClientRect();
+    const bounds = getApp().getPostPreviewBounds(post, wholePost ? null : panel);
+    const currentScale = parseFloat(post.style.getPropertyValue('--mobile-sign-scale')) || 1;
+    const width = (bounds.right - bounds.left) / currentScale;
+    const height = (bounds.bottom - bounds.top) / currentScale;
     const metrics = previewMetrics(width, height, canvas.clientWidth - 24,
       Math.max(40, Math.min((window.innerHeight || 700) * (editor.hidden ? 0.45 : 0.28),
         workspace.clientHeight - bar.offsetHeight - 240)));
@@ -279,8 +265,8 @@ window.SignMakerMobile = (() => {
     const heightValue = `${metrics.height}px`;
     if (post.style.getPropertyValue('--mobile-sign-scale') !== scaleValue) post.style.setProperty('--mobile-sign-scale', scaleValue);
     post.style.setProperty('--mobile-post-width', `${width * metrics.scale}px`);
-    post.style.setProperty('--mobile-post-x', `${-minX}px`);
-    post.style.setProperty('--mobile-post-y', `${-minY}px`);
+    post.style.setProperty('--mobile-post-x', `${(rect.left - bounds.left) / currentScale}px`);
+    post.style.setProperty('--mobile-post-y', `${(rect.top - bounds.top) / currentScale}px`);
     if (canvas.style.height !== heightValue) canvas.style.height = heightValue;
   };
   const sync = () => {

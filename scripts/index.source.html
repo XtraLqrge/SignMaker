@@ -2801,6 +2801,7 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
             <label for="panelListShowHiddenPanels">Show hidden panels</label>
             <input type="checkbox" id="panelListShowHiddenPanels" checked>
           </div>
+          <p class="panelPopoverHint panelGapHint">Press <kbd>Shift</kbd> to show or hide gap controls.</p>
           <div class="panelSpacingControl">
             <label for="panelSpacing">Spacing</label>
             <div class="panelSpacingInputs">
@@ -2877,62 +2878,12 @@ letter"><span class="sdShieldBigA">A</span><span>A</span></button>
       </div>
     </nav>
   </form>
-  <dialog id="welcomeToSignMaker" aria-labelledby="welcomeTitle">
-    <header class="welcomeHeader">
-      <img src="img/other-symbols/logo-48.webp" alt="" width="48" height="38">
-      <h2 id="welcomeTitle">Welcome to SignMaker</h2>
-      <button id="closeWelcome" type="button" aria-label="Close tutorial" title="Close tutorial">
-        <span class="material-symbols-outlined" aria-hidden="true">close</span>
-      </button>
-    </header>
-    <div class="welcomeBody">
-      <div class="welcomeSignPreview">
-        <div class="welcomeSample" role="group" aria-label="Practice sign">
-          <div class="welcomeShield" role="img" aria-label="Interstate 215">
-            <img src="img/shields/United%20States/Interstate/I-3Digit.svg" alt="" width="751" height="601" loading="lazy">
-            <span aria-hidden="true">215</span>
-          </div>
-          <span id="welcomePreviewDestination">Riverside</span>
-          <div class="welcomeSignDirection" data-welcome-direction="straight">
-            <img id="welcomePreviewArrow" class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="Arrow straight ahead" width="27" height="42" loading="lazy">
-          </div>
-        </div>
-      </div>
-      <section class="welcomeStep">
-        <h3 tabindex="-1">Make a guide sign</h3>
-        <p>Change the destination and arrow on this practice sign, then find those same tools in the editor.</p>
-      </section>
-      <section class="welcomeStep" hidden>
-        <h3 tabindex="-1">Change the destination</h3>
-        <p>Try a town or street name. In the editor, click the destination on a sign to open its <strong>Control Text</strong> block.</p>
-        <label for="welcomeDestination">Content</label>
-        <input id="welcomeDestination" type="text" value="Riverside" maxlength="40" autocomplete="off">
-      </section>
-      <section class="welcomeStep" hidden>
-        <h3 tabindex="-1">Point the arrow</h3>
-        <p>Pick a direction below. In the editor, open <strong>Guide Arrows</strong> (<strong>Arrows</strong> on mobile), pick <strong>Type A</strong> under <strong>Standard Arrows</strong>, and set the <strong>Angle</strong>.</p>
-        <div class="welcomeDirections" role="group" aria-label="Arrow direction">
-          <button type="button" data-welcome-direction="left" aria-pressed="false">
-            <img class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="" width="13" height="20" loading="lazy">Up left
-          </button>
-          <button type="button" data-welcome-direction="straight" aria-pressed="true">
-            <img class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="" width="13" height="20" loading="lazy">Straight
-          </button>
-          <button type="button" data-welcome-direction="right" aria-pressed="false">
-            <img class="welcomeGuideArrow" src="img/arrows/TYPE_A.svg" alt="" width="13" height="20" loading="lazy">Up right
-          </button>
-        </div>
-      </section>
-      <section class="welcomeStep" hidden>
-        <h3 tabindex="-1">Save your sign</h3>
-        <p>Open <strong>Export</strong>. Choose <strong>PNG</strong> or <strong>SVG</strong> for an image, or <strong>JSON</strong> to reopen and edit the sign in SignMaker.</p>
-        <p>The <strong>Help</strong> button next to <strong>Undo</strong> opens the user guide.</p>
-      </section>
-    </div>
+  <dialog id="welcomeToSignMaker" aria-labelledby="welcomeTitle" aria-describedby="welcomeDescription">
+    <h2 id="welcomeTitle">Welcome to SignMaker</h2>
+    <p id="welcomeDescription">Visit Help to learn how to build and export your first sign.</p>
     <div class="welcomeActions">
-      <button id="skipWelcome" type="button">Skip tutorial</button>
-      <button id="welcomeBack" type="button" hidden>Back</button>
-      <button id="welcomeNext" type="button" autofocus>Start tutorial</button>
+      <button id="closeWelcome" type="button">Not now</button>
+      <a id="welcomeHelpLink" href="help.html" autofocus>Open Help</a>
     </div>
   </dialog>
   <footer>

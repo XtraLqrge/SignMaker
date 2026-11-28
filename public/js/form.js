@@ -8842,52 +8842,15 @@ const formHandler = (function () {
     }
   };
 
-  const showWelcomeTutorial = () => {
+  const showWelcomeHelp = () => {
     const dialog = document.getElementById("welcomeToSignMaker");
-    if (!dialog || getStoredItem("closedWelcome")) return;
+    if (!dialog || dialog.open || getStoredItem("closedWelcome")) return;
 
-    const steps = [...dialog.querySelectorAll(".welcomeStep")];
-    const back = dialog.querySelector("#welcomeBack");
-    const next = dialog.querySelector("#welcomeNext");
-    const destination = dialog.querySelector("#welcomeDestination");
-    const previewDestination = dialog.querySelector("#welcomePreviewDestination");
-    const previewArrow = dialog.querySelector("#welcomePreviewArrow");
-    const directionButtons = dialog.querySelectorAll(".welcomeDirections button");
-    let step = 0;
-
-    const showStep = (index) => {
-      steps[step].hidden = true;
-      step = index;
-      steps[step].hidden = false;
-      back.hidden = step === 0;
-      next.textContent = step === 0 ? "Start tutorial" :
-        step === steps.length - 1 ? "Open editor" : "Next";
-      dialog.scrollTop = 0;
-      (steps[step].querySelector("h3") || next).focus();
-    };
-
-    destination.addEventListener("input", () => {
-      previewDestination.textContent = destination.value.trim() || "Riverside";
-    });
-    for (const button of directionButtons) {
-      button.addEventListener("click", () => {
-        for (const option of directionButtons) {
-          option.setAttribute("aria-pressed", String(option === button));
-        }
-        previewArrow.parentElement.dataset.welcomeDirection = button.dataset.welcomeDirection;
-        previewArrow.alt = "Arrow pointing " + button.textContent.trim().toLowerCase();
-      });
-    }
-    back.addEventListener("click", () => showStep(step - 1));
-    next.addEventListener("click", () => {
-      if (step === steps.length - 1) dialog.close();
-      else showStep(step + 1);
-    });
-    for (const id of ["closeWelcome", "skipWelcome"]) {
-      dialog.querySelector("#" + id).addEventListener("click", () => dialog.close());
-    }
-    dialog.addEventListener("close", () => setStoredItem("closedWelcome", "true"), { once: true });
+    const close = () => dialog.close();
+    dialog.querySelector("#closeWelcome").addEventListener("click", close);
+    dialog.querySelector("#welcomeHelpLink").addEventListener("click", close);
     dialog.showModal();
+    setStoredItem("closedWelcome", "true");
   };
 
   const initialize = async (appExposed, { beforeUI } = {}) => {
@@ -26222,7 +26185,7 @@ const formHandler = (function () {
       init: initialize,
       isAppMenuOpen,
       isNativeKeyboardTarget,
-      showWelcomeTutorial,
+      showWelcomeHelp,
       readForm,
       persistPostAppearance,
       updateForm,

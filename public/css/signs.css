@@ -7,7 +7,6 @@
   position: relative;
   --post-panel-center: 7.5rem;
   transform-origin: center var(--post-panel-center);
-  transition: transform 280ms ease;
   --post-color-mid: rgb(191, 191, 191);
   --post-color-light: rgb(240, 240, 240);
   --post-color-dark: rgb(128, 128, 128);

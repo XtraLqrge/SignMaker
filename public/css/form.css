@@ -409,6 +409,14 @@ label span.toolTip,
   font-family: inherit;
 }
 
+.panelGapHint {
+  margin: 0;
+}
+
+html[data-mobile-ui] .panelGapHint {
+  display: none;
+}
+
 .panelActions {
   display: flex;
   width: 100%;
@@ -918,14 +926,14 @@ dialog {
 
 
 #welcomeToSignMaker {
-  display: none;
   position: fixed;
   inset: 0;
-  width: min(36rem, calc(100vw - 1.5rem));
+  width: min(22rem, calc(100vw - 1.5rem));
   max-height: calc(100dvh - 1.5rem);
   margin: auto;
-  padding: 0;
+  padding: 1rem;
   box-sizing: border-box;
+  border: 0;
   background: var(--hotbarColor);
   color: var(--textColor);
   font: 400 16px/1.5 Inter, sans-serif;
@@ -939,198 +947,41 @@ dialog {
   background: rgba(0, 0, 0, 0.6);
 }
 
-#welcomeToSignMaker h2,
-#welcomeToSignMaker h3,
-#welcomeToSignMaker p {
+#welcomeTitle {
   margin: 0;
+  font-size: 1.125rem;
 }
 
-.welcomeHeader,
-.welcomeActions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.85rem;
-}
-
-.welcomeHeader {
-  background: rgba(var(--baseColor), 0.15);
-}
-
-:root[data-theme="dark"] .welcomeHeader {
-  background: rgb(50, 50, 200);
-}
-
-.welcomeHeader h2 {
-  font-size: 0.9rem;
-}
-
-.welcomeHeader img {
-  flex: none;
-  width: auto;
-  height: 1.3rem;
-}
-
-.welcomeBody {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.85rem;
-}
-
-.welcomeSignPreview {
-  display: grid;
-  place-items: center;
-  align-self: stretch;
-  padding: 1rem 0.75rem;
-  background: var(--backgroundColor);
-}
-
-.welcomeSample {
-  display: grid;
-  justify-items: center;
-  gap: 0.4rem;
-  width: min(14rem, 100%);
-  padding: 0.55rem 0.6rem 0.25rem;
-  box-sizing: border-box;
-  background: var(--green);
-  border: 0.18rem solid white;
-  border-radius: 0.6rem;
-  color: white;
-  font: 400 1.4rem/1.15 "Series EM", Inter, sans-serif;
-  overflow-wrap: anywhere;
-  text-align: center;
-}
-
-.welcomeShield {
-  position: relative;
-  width: 2.65rem;
-  font: 400 1.11rem/1 "Series E", Inter, sans-serif;
-}
-
-.welcomeShield img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.welcomeShield span {
-  position: absolute;
-  top: 47%;
-  left: 50%;
-  transform: translate(-50%, -30%);
-}
-
-.welcomeSignDirection {
-  display: grid;
-  place-items: center;
-  width: 3rem;
-  height: 2.75rem;
-}
-
-.welcomeGuideArrow {
-  display: block;
-}
-
-[data-welcome-direction="left"] > .welcomeGuideArrow {
-  transform: rotate(-45deg);
-}
-
-[data-welcome-direction="right"] > .welcomeGuideArrow {
-  transform: rotate(45deg);
-}
-
-#welcomeToSignMaker h3 {
-  font-size: 1.05rem;
-}
-
-#welcomeToSignMaker .welcomeStep > * + * {
-  margin-top: 0.5rem;
-}
-
-#welcomeToSignMaker label {
-  display: block;
-  font-weight: 600;
-}
-
-#welcomeToSignMaker input,
-#welcomeToSignMaker button {
-  font: inherit;
-  border: 0;
-  margin: 0;
-  min-width: 0;
-}
-
-#welcomeToSignMaker input {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.35rem 0.5rem;
-}
-
-.welcomeDirections {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.25rem;
-}
-
-#welcomeToSignMaker .welcomeDirections button {
-  display: grid;
-  justify-items: center;
-  gap: 0.3rem;
-  padding: 0.45rem 0.1rem;
-  font-size: 0.7rem;
-}
-
-:root[data-theme="light"] .welcomeDirections .welcomeGuideArrow {
-  filter: invert(1);
+#welcomeDescription {
+  margin: 0.5rem 0 1rem;
 }
 
 .welcomeActions {
+  display: flex;
   flex-wrap: wrap;
-  border-top: 1px solid rgba(var(--baseColor), 0.2);
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
-#welcomeToSignMaker [hidden] {
-  display: none !important;
+#welcomeToSignMaker :is(button, a) {
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  border: 0;
+  color: inherit;
+  font: inherit;
 }
 
-#welcomeToSignMaker button {
-  padding: 0.35rem 0.55rem;
-}
-
-#welcomeToSignMaker :is(#skipWelcome, #closeWelcome) {
+#closeWelcome {
   background: transparent;
 }
 
-#welcomeToSignMaker #skipWelcome {
-  margin-inline-end: auto;
-}
-
-#welcomeToSignMaker #closeWelcome {
-  display: grid;
-  place-items: center;
-  margin-inline-start: auto;
-}
-
-#welcomeNext,
-#welcomeToSignMaker [aria-pressed="true"] {
+#welcomeHelpLink {
   background: var(--selectedColor);
+  text-decoration: none;
 }
 
-#welcomeToSignMaker [aria-pressed="true"] {
-  box-shadow: inset 0 -2px currentColor;
-}
-
-@media (max-width: 36rem) {
-  .welcomeBody {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .welcomeSignPreview {
-    padding: 0.6rem;
-  }
+#welcomeToSignMaker :is(button, a):hover {
+  text-decoration: underline;
 }
 
 div.options {

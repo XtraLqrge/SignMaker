@@ -984,6 +984,18 @@
                         <input type="range" id="postThickness" min="0" max="2.5" step="0.5" value="1" onchange="formHandler.readForm(event);">
                         <input type="number" id="postThicknessValue" name="postThicknessValue" min="0" max="2.5" step="0.1" value="1" aria-label="Post thickness in rem" onchange="formHandler.readForm(event);">
                       </div></div></div>
+              <div class="generalSettingRow postTrussSetting" hidden><label for="postTrussDepth" data-tooltip="Distance between the top and bottom chords of the truss.">Truss Height (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="postTrussDepth" min="2" max="12" step="0.05" value="4.35" onchange="formHandler.readForm(event);">
+                        <input type="number" id="postTrussDepthValue" min="2" max="12" step="0.05" value="4.35" aria-label="Truss height in rem" onchange="formHandler.readForm(event);">
+                      </div></div></div>
+              <div class="generalSettingRow postTrussSetting" hidden><label for="postTrussPanelLength" data-tooltip="Target length of one truss panel, from one vertical to the next. Panels are evened out to fill the span.">Truss Panel Length (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="postTrussPanelLength" min="2" max="15" step="0.1" value="5" onchange="formHandler.readForm(event);">
+                        <input type="number" id="postTrussPanelLengthValue" min="2" max="15" step="0.1" value="5" aria-label="Truss panel length in rem" onchange="formHandler.readForm(event);">
+                      </div></div></div>
+              <div class="generalSettingRow postMonotubeSetting" hidden><label for="postMonotubeRadius" data-tooltip="Bend radius where each upright turns into the span, measured to the tube centerline.">Corner Radius (rem):</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
+                        <input type="range" id="postMonotubeRadius" min="0.5" max="10" step="0.1" value="3" onchange="formHandler.readForm(event);">
+                        <input type="number" id="postMonotubeRadiusValue" min="0.5" max="10" step="0.1" value="3" aria-label="Monotube corner radius in rem" onchange="formHandler.readForm(event);">
+                      </div></div></div>
               <div class="generalSettingRow"><label for="settingsPanelSpacing">Panel Spacing:</label><div class="generalSettingControl"><div class="settingsPanelSpacingControl">
                         <input type="range" id="settingsPanelSpacing" min="0" max="8" step="0.1" value="1">
                         <input type="number" id="settingsPanelSpacingValue" min="0" max="8" step="0.1" value="1">

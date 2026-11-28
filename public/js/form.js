@@ -17045,6 +17045,16 @@ const formHandler = (function () {
       event.preventDefault();
       postThicknessValueInput.blur();
     });
+    for (const id of ["postTrussDepth", "postTrussPanelLength", "postMonotubeRadius"]) {
+      const slider = document.getElementById(id);
+      const number = document.getElementById(`${id}Value`);
+      slider?.addEventListener("input", () => { number.value = slider.value; });
+      number?.addEventListener("keydown", event => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        number.blur();
+      });
+    }
 
     document.addEventListener("input", checkForLimonEasterEgg, true);
     bindSubpanelDisclosureScroll();
@@ -20742,11 +20752,16 @@ const formHandler = (function () {
       if (picker?.wrapper.classList.contains("open")) picker.close();
       const supports = window.SignMakerFDOTSupports?.forPosition(position) ?? [];
       const options = [new Option("Standard", position)];
-      if (supports.length) {
-        const group = document.createElement("optgroup");
-        group.label = "FDOT";
-        group.append(...supports.map(support => new Option(support.label, support.id)));
-        options.push(group);
+      const groups = new Map();
+      for (const support of supports) {
+        const label = support.group || "FDOT";
+        if (!groups.has(label)) {
+          const group = document.createElement("optgroup");
+          group.label = label;
+          groups.set(label, group);
+          options.push(group);
+        }
+        groups.get(label).append(new Option(support.label, support.id));
       }
       select.replaceChildren(...options);
       select.dataset.position = position;
@@ -20764,6 +20779,52 @@ const formHandler = (function () {
       window.getNativeSelectPicker?.(select)?.sync();
     }
     syncPostType(document.getElementById("postType"), position, type);
+    syncPostStructureControls();
+  };
+
+  // Overhead structure sizes (truss height and panel length, monotube corner radius)
+  // are saved with each sign, not as device defaults.
+  // field id → [post property, settings function on SignMakerFDOTSupports, setting key]
+  const postStructureFields = new Map([
+    ["postTrussDepth", ["trussDepth", "trussSettings", "depth"]],
+    ["postTrussDepthValue", ["trussDepth", "trussSettings", "depth"]],
+    ["postTrussPanelLength", ["trussPanelLength", "trussSettings", "panelLength"]],
+    ["postTrussPanelLengthValue", ["trussPanelLength", "trussSettings", "panelLength"]],
+    ["postMonotubeRadius", ["monotubeRadius", "monotubeSettings", "radius"]],
+    ["postMonotubeRadiusValue", ["monotubeRadius", "monotubeSettings", "radius"]],
+  ]);
+
+  const syncPostStructureControls = () => {
+    const supports = window.SignMakerFDOTSupports;
+    const support = supports?.get(post.polePosition);
+    const visible = {
+      postTrussSetting: support?.kind === "truss",
+      postMonotubeSetting: support?.kind === "monotube" && support.corners === "curved",
+    };
+    for (const [className, show] of Object.entries(visible)) {
+      document.querySelectorAll(`.${className}`).forEach((row) => { row.hidden = !show; });
+    }
+    for (const [id, [, settings, key]] of postStructureFields) {
+      const input = document.getElementById(id);
+      if (!input || typeof supports?.[settings] !== "function") continue;
+      const value = String(supports[settings](post)[key]);
+      if (input.value !== value) input.value = value;
+    }
+  };
+
+  const readPostStructure = (field) => {
+    const supports = window.SignMakerFDOTSupports;
+    const [property, settings, key] = postStructureFields.get(field.id);
+    const raw = String(field.value || "").trim();
+    if (typeof supports?.[settings] !== "function" || !raw || !Number.isFinite(Number(raw))) {
+      syncPostStructureControls();
+      return false;
+    }
+    const value = Math.round(supports[settings]({ [property]: raw })[key] * 100) / 100;
+    const changed = post[property] !== value;
+    post[property] = value;
+    syncPostStructureControls();
+    return changed;
   };
 
   const postAppearanceFields = new Map([
@@ -20916,6 +20977,10 @@ const formHandler = (function () {
     }
     if (postField) {
       if (readPostAppearance(postField, postValue)) exposed.redraw();
+      return;
+    }
+    if (postStructureFields.has(field?.id)) {
+      if (readPostStructure(field)) exposed.redraw();
       return;
     }
 
@@ -23542,6 +23607,7 @@ const formHandler = (function () {
     });
 
     syncPostThicknessControls();
+    syncPostStructureControls();
 
     const hasBlockElementContent = (controlData) =>
       controlData &&
